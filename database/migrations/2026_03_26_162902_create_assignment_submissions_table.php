@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('assignment_submissions', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+    $table->id('submission_id');
+    $table->foreignId('assignment_id')->constrained('assignments', 'assignment_id')->onDelete('cascade');
+    $table->foreignId('student_id')->constrained('students', 'student_id')->onDelete('cascade');
+    $table->string('file_path'); // مسار الملف المرفوع (PDF, Docx, etc.)
+    $table->decimal('grade', 5, 2)->nullable(); // العلامة اللي رح يحطها المعلم بعدين
+    $table->text('feedback')->nullable(); // ملاحظات المعلم على الحل
+    $table->dateTime('submitted_at');
+    $table->timestamps();
+});
     }
 
     /**
