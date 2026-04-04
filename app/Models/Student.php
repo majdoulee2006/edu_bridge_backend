@@ -38,4 +38,12 @@ class Student extends Model
     {
         return $this->hasMany(Grade::class, 'student_id', 'student_id');
     }
+
+
+    
+    public function parent()
+{
+    return $this->belongsTo(ParentModel::class, 'parent_id'); 
+    // تأكدي من اسم الكلاس الخاص بالأهل عندك (مثلاً Parent أو ParentModel)
+}
 }
