@@ -10,31 +10,34 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. إنشاء حساب طالب تجريبي
+        // 1. طالب تجريبي (يدخل برقمه الجامعي)
         User::create([
-            'full_name' => 'Student User',
-            'username' => 'student01',
-            'email' => 'student@edubridge.com',
+            'full_name' => 'Student Name',
+            'university_id' => '20261001',
+            'username' => 'student_user',
+            'email' => 'student@test.com',
             'password' => Hash::make('password123'),
-            'role' => 'student', // تأكدي أن هذا الحقل موجود في جدولك
+            'role' => 'student',
         ]);
 
-        // 2. إنشاء حساب ولي أمر تجريبي
+        // 2. ولي أمر تجريبي (يدخل باسم المستخدم أو الإيميل)
         User::create([
-            'full_name' => 'Parent User',
-            'username' => 'parent01',
-            'email' => 'parent@edubridge.com',
-            'password' => Hash::make('password123'),
+            'full_name' => 'Parent Name',
+            'university_id' => null,
+            'username' => 'parent_user',
+            'phone'=>'0986387993',
+            'email' => 'parent@test.com',
+            'password' => Hash::make('12345678'),
             'role' => 'parent',
         ]);
 
-        // 3. إنشاء حساب موظف إداري
         User::create([
-            'full_name' => 'Admin Staff',
-            'username' => 'admin01',
-            'email' => 'admin@edubridge.com',
-            'password' => Hash::make('password123'),
-            'role' => 'admin',
-        ]);
+            'full_name' => 'Teacher Name',
+            'username' => 'teacher_user',
+             'phone'=>'0986387992',
+            'email' => 'teacher@test.com',
+           'password' => Hash::make('12345678'),
+           'role' => 'teacher',
+]);
     }
 }

@@ -12,29 +12,32 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id('user_id');
-            $table->string('full_name');
-            $table->string('username')->unique();
-            $table->string('email')->unique()->nullable();
-            $table->string('password');
-            $table->string('phone')->nullable();
+    $table->id('user_id');
+    $table->string('full_name');
+    $table->string('username')->unique();
+    $table->string('email')->unique()->nullable();
+    $table->string('password');
+    $table->string('phone')->nullable();
 
-            // حقول الطالب
-            $table->string('university_id')->nullable();
-            $table->string('department')->nullable();
-            $table->string('branch')->nullable();
+    // تأكدي أن هذا السطر موجود مرة واحدة فقط
+    $table->string('university_id')->unique()->nullable();
 
-            // حقل الأهل
-            $table->text('children_ids')->nullable();
+    $table->string('department')->nullable();
+    $table->string('branch')->nullable();
+    $table->enum('gender', ['ذكر', 'أنثى'])->nullable();
+    $table->date('birth_date')->nullable();
+    $table->string('academic_year')->nullable();
 
-            $table->enum('role', ['admin', 'teacher', 'student', 'parent', 'head'])->default('student');
-            $table->enum('status', ['active', 'inactive'])->default('active');
+    // حقل الأهل (تأكدي من استخدام json أو text كما تفضلين)
+    $table->json('children_ids')->nullable();
 
-            $table->timestamp('last_login')->nullable();
-            $table->rememberToken();
-            $table->timestamps();
-        });
-    } // إغلاق دالة up
+    $table->enum('role', ['admin', 'teacher', 'student', 'parent', 'head'])->default('student');
+    $table->enum('status', ['active', 'inactive'])->default('active');
+
+    $table->timestamp('last_login')->nullable();
+    $table->rememberToken();
+    $table->timestamps();
+});    } // إغلاق دالة up
 
     /**
      * Reverse the migrations.
