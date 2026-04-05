@@ -6,24 +6,41 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id('user_id'); 
-            $table->string('username')->unique(); // 👈 الرقم الجامعي (تمت إضافته هنا)
-            $table->string('full_name');
-            $table->string('email')->unique()->nullable(); // الإيميل أصبح اختيارياً
-            $table->string('password');
-            $table->string('phone')->nullable();
-            $table->enum('role', ['admin', 'teacher', 'student', 'parent', 'head'])->default('student');
-            $table->enum('status', ['active', 'inactive'])->default('active');
-            $table->rememberToken();
-            $table->timestamps();
-        });
-    }
+    $table->id('user_id');
+    $table->string('full_name');
+    $table->string('username')->unique();
+    $table->string('email')->unique()->nullable();
+    $table->string('password');
+    $table->string('phone')->nullable();
+
+    // تأكدي أن هذا السطر موجود مرة واحدة فقط
+    $table->string('university_id')->unique()->nullable();
+
+    $table->string('department')->nullable();
+    $table->string('branch')->nullable();
+    $table->enum('gender', ['ذكر', 'أنثى'])->nullable();
+    $table->date('birth_date')->nullable();
+    $table->string('academic_year')->nullable();
+
+    // حقل الأهل (تأكدي من استخدام json أو text كما تفضلين)
+    $table->json('children_ids')->nullable();
+
+    $table->enum('role', ['admin', 'teacher', 'student', 'parent', 'head'])->default('student');
+    $table->enum('status', ['active', 'inactive'])->default('active');
+
+    $table->timestamp('last_login')->nullable();
+    $table->rememberToken();
+    $table->timestamps();
+});    } // إغلاق دالة up
 
     public function down(): void
     {
         Schema::dropIfExists('users');
     }
-};
+}; // إغلاق الكلاس

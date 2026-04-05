@@ -16,11 +16,16 @@ class User extends Authenticatable
     protected $fillable = [
         'username',
         'full_name',
+        'username',
         'email',
         'password',
         'phone',
         'role',
         'status',
+        'university_id',
+        'department',
+        'branch',
+        'children_ids',
     ];
 
     protected $hidden = [
@@ -32,6 +37,18 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'children_ids' => 'array',
+            'birth_date' => 'date',
+
         ];
+
     }
+
+    // ✅ أضيفي هذه العلاقة ليعمل الـ load('student') في الراوت
+    public function student()
+    {
+        // تأكدي أن اسم المودل Student وأن الحقل الأجنبي هو user_id في جدول الطلاب
+        return $this->hasOne(Student::class, 'user_id', 'user_id');
+    }
+
 }

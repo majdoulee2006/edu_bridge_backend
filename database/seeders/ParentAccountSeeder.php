@@ -13,13 +13,12 @@ class ParentAccountSeeder extends Seeder
      */
     public function run(): void
     {
-        // تأكدي من مسح السطر القديم $this->call(ParentAccountSeeder::class);
-        // لأنه كان بينادي الكلاس داخل نفسه وبيعمل Error تعليق للمشروع.
+
 
         User::updateOrCreate(
-            ['email' => 'parent@test.com'], // بيبحث إذا الإيميل موجود أولاً عشان ما يطلع خطأ Duplicate
+            ['email' => 'parent@test.com'],
             [
-                'full_name' => 'أبو أحمد (تجريبي)',
+                'full_name' => ' أحمد ',
                 'password' => Hash::make('123456'),
                 'role' => 'parent',
                 'status' => 'active',
