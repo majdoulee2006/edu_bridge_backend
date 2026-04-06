@@ -13,10 +13,10 @@ class DatabaseSeeder extends Seeder
         // 1. طالب تجريبي (يدخل برقمه الجامعي)
         User::create([
             'full_name' => 'Student Name',
-            'university_id' => '20261001',
-            'username' => 'student_user',
+            'university_id' => '2026100',
+            'username' => '2026100',
             'email' => 'student@test.com',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make('12345678'),
             'role' => 'student',
         ]);
 
@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'full_name' => 'Parent Name',
             'university_id' => null,
-            'username' => 'parent_user',
+            'username' => '098638799',
             'phone'=>'0986387993',
             'email' => 'parent@test.com',
             'password' => Hash::make('12345678'),
@@ -33,8 +33,8 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'full_name' => 'Teacher Name',
-            'username' => 'teacher_user',
-             'phone'=>'0986387992',
+            'username' => '0986387992',
+            'phone'=>'0986387992',
             'email' => 'teacher@test.com',
            'password' => Hash::make('12345678'),
            'role' => 'teacher',

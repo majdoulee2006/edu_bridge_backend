@@ -9,12 +9,15 @@ use App\Http\Controllers\Api\StudentController;
 // ✅ أضفنا ->name('login') هنا لحل مشكلة الخطأ 500 عند فقدان التوكن
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 
 // روابط محمية (تحتاج توكن)
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
+    // أضيفي هذا السطر في ملف api.php تحت رابط الـ register
+
 
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {
