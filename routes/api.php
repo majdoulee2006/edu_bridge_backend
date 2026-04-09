@@ -14,12 +14,15 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
-
+   
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {
         // بعد إضافة العلاقة في المودل، سيعمل هذا السطر بنجاح
         return $request->user()->load('student');
     });
+    //=============== واجهات الطالب ================
+    // مسار الصفحة الرئيسية للطالب
+   Route::get('/student/dashboard', [App\Http\Controllers\Api\StudentController::class, 'getDashboardData']);
+
 
 });

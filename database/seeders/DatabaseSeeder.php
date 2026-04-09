@@ -2,43 +2,52 @@
 
 namespace Database\Seeders;
 
-
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
-{
-    // 1. إنشاء مستخدم (أب) ليكون معلماً
-    $user = \App\Models\User::create([
-        'full_name' => 'أحمد علي',
-        'email' => 'teacher1@example.com',
-        'password' => bcrypt('password123'),
-        'phone' => '0912345678',
-        'role' => 'teacher',
-        'status' => 'active',
-    ]);
+    {
+        // 1. إنشاء حساب طالب تجريبي
+        User::create([
+            'full_name' => 'Student User',
+            'username' => 'student01',
+            'email' => 'student@edubridge.com',
+            'password' => Hash::make('password123'),
+            'role' => 'student', // تأكدي أن هذا الحقل موجود في جدولك
+        ]);
 
-    // 2. إنشاء المعلم وربطه بالمستخدم
-    $teacher = \App\Models\Teacher::create([
-        'user_id' => $user->user_id,
-        'specialization' => 'Computer Science',
-    ]);
+        // 2. إنشاء حساب ولي أمر تجريبي
+        User::create([
+            'full_name' => 'Parent User',
+            'username' => 'parent01',
+            'email' => 'parent@edubridge.com',
+            'password' => Hash::make('password123'),
+            'role' => 'parent',
+        ]);
 
-    // 3. إنشاء مادة (Course)
-    $course = \App\Models\Course::create([
-        'title' => 'Laravel Basics',
-        'description' => 'تعلم أساسيات إطار عمل لارافل',
-        'level' => 'Beginner',
-    ]);
+        // 3. إنشاء حساب موظف إداري
+        User::create([
+            'full_name' => 'Admin Staff',
+            'username' => 'admin01',
+            'email' => 'admin@edubridge.com',
+            'password' => Hash::make('password123'),
+            'role' => 'admin',
+        ]);
+        // إضافة إعلان هام
+        \App\Models\Announcement::create([
+            'title' => 'تم إصدار جدول الامتحانات', 
+            'content' => 'يرجى مراجعة الجدول والتأكد من القاعات.', 
+            'type' => 'إعلان هام'
+        ]);
 
-    // 4. الربط بين المعلم والمادة في الجدول الوسيط (الذي يحتوي على حقل role)
-    $teacher->courses()->attach($course->course_id, ['role' => 'Lead Instructor']);
-}
+        // إضافة نشاط طلابي
+        \App\Models\Announcement::create([
+            'title' => 'رحلة علمية', 
+            'content' => 'نظم قسم البرمجيات رحلة إلى المعرض التقني.', 
+            'type' => 'نشاط طلابي'
+        ]);
+    }
 }
