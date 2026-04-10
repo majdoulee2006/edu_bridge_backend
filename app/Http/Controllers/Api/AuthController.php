@@ -113,47 +113,39 @@ class AuthController extends Controller
 
     // --- 🚀 دالة تسجيل الدخول (الحل الجذري) ---
     public function login(Request $request)
-    {
-        try {
-            $request->validate([
-                'username' => 'required',
-                'password' => 'required',
-            ]);
+{
+    try {
+        $request->validate([
+            'login' => 'required', // سنسمي الحقل login في الطلب القادم من Flutter
+            'password' => 'required',
+        ]);
 
-            // محاولة الدخول باستخدام الحقل الموحد username
-            if (!Auth::attempt(['username' => $request->username, 'password' => $request->password])) {
-                return response()->json(['message' => 'بيانات الدخول غير صحيحة'], 401);
-            }
+        // نتحقق إذا كان المدخل إيميل أو يوزر نيم
+        $loginType = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-            $user = Auth::user();
-
-            // فحص حالة الحساب
-            //if ($user->status !== 'active') {
-                // return response()->json(['message' => 'يرجى تفعيل الحساب أولاً'], 403);
-           // }
-
-           // بدلاً من السطر القديم، استخدمي هذا:
-/** @var \App\Models\User $user */
-$user = Auth::user();
-$token = $user->createToken('auth_token')->plainTextToken;
-
-            // 💡 الحل الجذري لخطأ Flutter: تحويل كل شيء لنصوص String
-            return response()->json([
-                'access_token' => (string)$token,
-                'token_type'   => 'Bearer',
-                'user' => [
-                    'id'        => (string)$user->id,
-                    'full_name' => (string)$user->full_name,
-                    'role'      => (string)$user->role, // student, teacher, or parent
-                    'username'  => (string)$user->username,
-                ]
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'خطأ داخلي: ' . $e->getMessage()], 500);
+        if (!Auth::attempt([$loginType => $request->login, 'password' => $request->password])) {
+            return response()->json(['message' => 'بيانات الدخول غير صحيحة'], 401);
         }
-    }
 
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => (string)$token,
+            'token_type'   => 'Bearer',
+            'user' => [
+                'user_id'   => (string)$user->user_id, // انتبهي هنا استخدمنا user_id كما في المايجريشن
+                'full_name' => (string)$user->full_name,
+                'role'      => (string)$user->role,
+                'username'  => (string)$user->username,
+            ]
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'خطأ داخلي: ' . $e->getMessage()], 500);
+    }
+}
     // --- دالة تسجيل الخروج ---
     public function logout(Request $request)
     {
