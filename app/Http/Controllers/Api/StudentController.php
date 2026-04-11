@@ -4,47 +4,41 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Announcement;
+use App\Models\Announcement; 
 
 class StudentController extends Controller
 {
   public function getDashboardData(Request $request)
     {
-        // 1. جلب بيانات الطالب الذي سجل دخوله
-        $user = $request->user();
+        // 1. جلب بيانات الطالب اللي عامل تسجيل دخول حالياً
+        $student = $request->user();
 
-        // 2. جلب آخر الأخبار من قاعدة البيانات (لتغذية واجهتك)
-        // تأكدي من عمل import للمودل فوق: use App\Models\Announcement;
-        $latestNews = \App\Models\Announcement::latest()
-            ->take(5)
-            ->get()
-            ->map(function ($news) {
-                return [
-                    'id' => $news->id,
-                    'type' => $news->type ?? 'عام', 
-                    'title' => $news->title,
-                    'content' => $news->content,
-                    'time_ago' => $news->created_at->locale('ar')->diffForHumans(), 
-                ];
-            });
+        // 2. جلب آخر 5 أخبار/إعلانات من قاعدة البيانات وتجهيزها للفلاتر
+        $announcements = Announcement::latest()->take(5)->get()->map(function ($item) {
+            return [
+                'type' => $item->type ?? 'إعلان عام',
+                'title' => $item->title ?? 'بدون عنوان',
+                'content' => $item->content ?? '',
+                // حماية إضافية في حال كان حقل التاريخ فارغ
+                'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
+            ];
+        });
 
-        // 3. إرجاع الاستجابة المدمجة (بيانات واجهتك + بيانات فريقك الوهمية مؤقتاً)
+        // 3. بيانات مؤقتة للمحاضرة القادمة (لتشغيل واجهة الفلاتر بدون أخطاء)
+        $upcomingLecture = [
+            'subject' => 'برمجة تطبيقات الموبايل',
+            'room' => 'مخبر الحاسوب 1',
+            'time' => '10:00 صباحاً'
+        ];
+
+        // 4. إرسال البيانات بشكل مرتب (JSON) للفلاتر
         return response()->json([
             'status' => true,
-            'data' => [ // الأفضل دائماً وضع البيانات داخل كائن data
-                'student_name' => $user->full_name,
-                
-                // --- البيانات الخاصة بواجهتك (آخر الأخبار) ---
-                'latest_news' => $latestNews,
-
-                // --- بيانات فريقك (تركناها عشان ما يخرب شغلهم إذا رابطينه بمكان تاني) ---
-                'level' => 'السنة الثالثة - هندسة',
-                'gpa' => 3.85,
-                'upcoming_lecture' => [
-                    'subject' => 'الذكاء الاصطناعي',
-                    'time' => '10:00 AM',
-                    'room' => 'قاعة 4'
-                ]
+            'message' => 'تم جلب البيانات بنجاح',
+            'data' => [
+                'name' => $student->full_name ?? $student->name ?? 'طالب',
+                'upcoming_lecture' => $upcomingLecture,
+                'latest_news' => $announcements,
             ]
         ], 200);
     }
