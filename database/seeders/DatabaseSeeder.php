@@ -10,44 +10,62 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. إنشاء حساب طالب تجريبي
-        User::create([
-            'full_name' => 'Student User',
-            'username' => 'student01',
-            'email' => 'student@edubridge.com',
-            'password' => Hash::make('password123'),
-            'role' => 'student', // تأكدي أن هذا الحقل موجود في جدولك
+       User::create([
+        'full_name' => 'إدارة المعهد التقني',
+        'username' => 'admin_main', // 👈 ضروري جداً
+        'email' => 'admin@edu-bridge.com',
+        'password' => Hash::make('password123'),
+        'role' => 'admin',
+        'status' => 'active',
+    ]);
+
+    // 2. حساب رئيس قسم (Dept Head) - أضفنا username
+    User::create([
+        'full_name' => 'أحمد ديب',
+        'username' => 'ahmad_head', // 👈 ضروري جداً
+        'email' => 'head@test.com',
+        'password' => Hash::make('12345678'),
+        'role' => 'head',
+        'status' => 'active',
+    ]);
+
+        // 3. حساب طالب تجريبي
+        $student = User::create([
+            'full_name' => 'عمر الخالد',
+            'university_id' => '2026100',
+            'username' => '2026100',
+            'email' => 'student@test.com',
+            'password' => Hash::make('12345678'),
+            'role' => 'student',
+            'status' => 'active',
         ]);
 
-        // 2. إنشاء حساب ولي أمر تجريبي
-        User::create([
-            'full_name' => 'Parent User',
-            'username' => 'parent01',
-            'email' => 'parent@edubridge.com',
-            'password' => Hash::make('password123'),
+        // 4. حساب ولي أمر تجريبي
+        $parentUser = User::create([
+            'full_name' => 'أبو عمر الخالد',
+            'username' => '098638799',
+            'phone' => '0986387993',
+            'email' => 'parent@test.com',
+            'password' => Hash::make('12345678'),
             'role' => 'parent',
+            'status' => 'active',
         ]);
 
-        // 3. إنشاء حساب موظف إداري
+        // 5. حساب مدرس تجريبي
         User::create([
-            'full_name' => 'Admin Staff',
-            'username' => 'admin01',
-            'email' => 'admin@edubridge.com',
-            'password' => Hash::make('password123'),
-            'role' => 'admin',
-        ]);
-        // إضافة إعلان هام
-        \App\Models\Announcement::create([
-            'title' => 'تم إصدار جدول الامتحانات', 
-            'content' => 'يرجى مراجعة الجدول والتأكد من القاعات.', 
-            'type' => 'إعلان هام'
+            'full_name' => 'د. سامر المحمد',
+            'username' => '0986387992',
+            'phone' => '0986387992',
+            'email' => 'teacher@test.com',
+            'password' => Hash::make('12345678'),
+            'role' => 'teacher',
+            'status' => 'active',
         ]);
 
-        // إضافة نشاط طلابي
-        \App\Models\Announcement::create([
-            'title' => 'رحلة علمية', 
-            'content' => 'نظم قسم البرمجيات رحلة إلى المعرض التقني.', 
-            'type' => 'نشاط طلابي'
+        // استدعاء السيدرز الأخرى التي تعتمد على وجود المستخدمين
+        $this->call([
+            ParentSeeder::class,
+            NotificationSeeder::class,
         ]);
     }
 }

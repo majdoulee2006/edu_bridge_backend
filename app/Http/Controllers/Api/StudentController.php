@@ -42,4 +42,28 @@ class StudentController extends Controller
             ]
         ], 200);
     }
+
+
+    public function getProfileData(Request $request)
+    {
+        // جلب بيانات الطالب المرتبط بالتوكن الحالي
+        $student = $request->user();
+
+        // إرسال البيانات بشكل مرتب للفلاتر
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب بيانات الملف الشخصي بنجاح',
+            'data' => [
+                // ملاحظة: تأكدي من مطابقة هذه الأسماء مع أسماء الأعمدة في قاعدة البيانات لديك
+                'name' => $student->name ?? 'طالب',
+                'university_id' => $student->university_id ?? $student->id ?? '0000',
+                'phone' => $student->phone ?? 'غير متوفر',
+                'email' => $student->email ?? 'غير متوفر',
+                'department' => $student->department ?? 'هندسة الحاسوب',
+                'academic_year' => $student->year ?? 'غير محدد',
+                'birth_date' => $student->birth_date ?? '00/00/0000',
+                'gender' => $student->gender ?? 'غير محدد',
+            ]
+        ], 200);
+    }
 }
