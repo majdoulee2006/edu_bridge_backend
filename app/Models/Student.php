@@ -23,6 +23,7 @@ class Student extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
+
     }
 
     // علاقة الطالب بالمواد اللي مسجل فيها (Many to Many عبر Enrollments)
@@ -38,4 +39,15 @@ class Student extends Model
     {
         return $this->hasMany(Grade::class, 'student_id', 'student_id');
     }
+
+
+
+    public function parent()
+{
+    return $this->belongsTo(StudentParent::class, 'parent_id');
+    // تأكدي من اسم الكلاس الخاص بالأهل عندك (مثلاً Parent أو ParentModel)
+}
+
+
+
 }

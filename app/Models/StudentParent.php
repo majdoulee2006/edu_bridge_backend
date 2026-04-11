@@ -30,4 +30,9 @@ class StudentParent extends Model
     {
         return $this->hasMany(Student::class, 'parent_id', 'parent_id');
     }
+
+    public function getChildren($id) {
+    // جلب الطلاب التابعين للأب رقم 10 مثلاً
+    return Student::where('parent_id', $id)->get();
+}
 }

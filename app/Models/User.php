@@ -38,7 +38,10 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'children_ids' => 'array',
+            'birth_date' => 'date',
+
         ];
+
     }
 
     // ✅ أضيفي هذه العلاقة ليعمل الـ load('student') في الراوت
@@ -47,4 +50,5 @@ class User extends Authenticatable
         // تأكدي أن اسم المودل Student وأن الحقل الأجنبي هو user_id في جدول الطلاب
         return $this->hasOne(Student::class, 'user_id', 'user_id');
     }
+
 }
