@@ -15,8 +15,8 @@ class Student extends Model
         'user_id',
         'parent_id',
         'student_code',
-        'level',      // بالميجريشن مكتوب level وليس grade_level
-        'birth_date', // بالميجريشن مكتوب birth_date وليس date_of_birth
+        'level',      
+        'birth_date', 
     ];
 
     // علاقة الطالب بالحساب الأساسي (User)

@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
         'password' => Hash::make('password123'),
         'role' => 'admin',
         'status' => 'active',
-    ]);
+       ]);
 
     // 2. حساب رئيس قسم (Dept Head) - أضفنا username
     User::create([
@@ -27,18 +27,28 @@ class DatabaseSeeder extends Seeder
         'password' => Hash::make('12345678'),
         'role' => 'head',
         'status' => 'active',
-    ]);
+      ]);
 
         // 3. حساب طالب تجريبي
-        $student = User::create([
-            'full_name' => 'عمر الخالد',
-            'university_id' => '2026100',
-            'username' => '2026100',
-            'email' => 'student@test.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'student',
-            'status' => 'active',
+     User::create([
+        'full_name' => 'عمر الخالد',
+        'university_id' => '2026100',
+        'username' => '2026100',
+        'email' => 'student@test.com',
+        'password' => Hash::make('12345678'),
+        'role' => 'student',
+        'status' => 'active',
+        'department' => 'هندسة حواسب وشبكات',
+        'academic_year' => 'السنة الخامسة',
+        'phone' => '0930000000',
+        'birth_date' => '2002-05-20',
+        'gender' => 'ذكر',
+       ]);
+       $this->call([
+        // ... السيردرات التانية
+        AnnouncementSeeder::class,
         ]);
+        $this->command->info('✅ تم زراعة المستخدم والإعلانات بنجاح ومحمية من الحذف!');
 
         // 4. حساب ولي أمر تجريبي
         $parentUser = User::create([
@@ -67,5 +77,7 @@ class DatabaseSeeder extends Seeder
             ParentSeeder::class,
             NotificationSeeder::class,
         ]);
+
+         
     }
 }
