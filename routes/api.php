@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     #=========روابط واجهات الطالب ==========
      Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
      Route::get('/student/profile', [\App\Http\Controllers\Api\StudentController::class, 'getProfileData']);
+     Route::get('/student/notifications', [StudentController::class, 'getNotifications']);
 });
 
 

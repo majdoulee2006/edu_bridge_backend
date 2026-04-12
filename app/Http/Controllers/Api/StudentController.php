@@ -77,4 +77,36 @@ public function getDashboardData(Request $request)
             ]
         ], 200);
     }
+
+
+    public function getNotifications(Request $request)
+    {
+        $student = $request->user();
+
+        // جلب الإشعارات الخاصة بهذا المستخدم فقط
+        $notifications = \App\Models\Notification::where('user_id', $student->user_id ?? $student->id)
+            ->latest()
+            ->get()
+            ->map(function ($notify) {
+                return [
+                    'id' => $notify->id,
+                    'title' => $notify->title,
+                    'message' => $notify->message, // استخدام اسم الحقل في جدولك
+                    'type' => $notify->type,
+                    'is_read' => $notify->is_read,
+                    'time_ago' => $notify->created_at ? $notify->created_at->diffForHumans() : 'منذ قليل',
+                ];
+            });
+
+        // تقسيم الإشعارات حسب النوع المطلوب في الواجهة (Academic vs Administrative)
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب الإشعارات بنجاح',
+            'data' => [
+                // الفلترة بناءً على القيم التي ستدخلينها في حقل type
+                'academic' => $notifications->whereIn('type', ['academic', 'marks', 'attendance'])->values(),
+                'administrative' => $notifications->whereIn('type', ['administrative', 'general'])->values(),
+            ]
+        ], 200);
+    }
 }
