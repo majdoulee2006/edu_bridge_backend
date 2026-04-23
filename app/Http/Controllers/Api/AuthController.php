@@ -112,40 +112,52 @@ class AuthController extends Controller
     }
 
     // --- 🚀 دالة تسجيل الدخول (الحل الجذري) ---
+ // --- 🚀 دالة تسجيل الدخول (الحل الجذري والنهائي) ---
     public function login(Request $request)
-{
-    try {
-        $request->validate([
-            'login' => 'required', // سنسمي الحقل login في الطلب القادم من Flutter
-            'password' => 'required',
-        ]);
+    {
+        try {
+            $request->validate([
+                'login' => 'required', 
+                'password' => 'required',
+            ]);
 
-        // نتحقق إذا كان المدخل إيميل أو يوزر نيم
-        $loginType = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+            $loginType = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-        if (!Auth::attempt([$loginType => $request->login, 'password' => $request->password])) {
-            return response()->json(['message' => 'بيانات الدخول غير صحيحة'], 401);
+            if (!Auth::attempt([$loginType => $request->login, 'password' => $request->password])) {
+                return response()->json(['message' => 'بيانات الدخول غير صحيحة'], 401);
+            }
+
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            // --- ✨ الإضافة السحرية هنا ✨ ---
+            $parentId = null;
+            if ($user->role == 'parent') {
+                // نبحث عن السجل المرتبط بهذا المستخدم في جدول الأباء
+                $parentRecord = \DB::table('parents')->where('user_id', $user->user_id)->first();
+                if ($parentRecord) {
+                    $parentId = $parentRecord->parent_id;
+                }
+            }
+            // ------------------------------
+
+            return response()->json([
+                'access_token' => (string)$token,
+                'token_type'   => 'Bearer',
+                'user' => [
+                    'user_id'   => (string)$user->user_id,
+                    'full_name' => (string)$user->full_name,
+                    'role'      => (string)$user->role,
+                    'username'  => (string)$user->username,
+                    'parent_id' => $parentId, // ✅ سيرسل الآن الرقم 1 بدلاً من null
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'خطأ داخلي: ' . $e->getMessage()], 500);
         }
-
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'access_token' => (string)$token,
-            'token_type'   => 'Bearer',
-            'user' => [
-                'user_id'   => (string)$user->user_id, // انتبهي هنا استخدمنا user_id كما في المايجريشن
-                'full_name' => (string)$user->full_name,
-                'role'      => (string)$user->role,
-                'username'  => (string)$user->username,
-            ]
-        ], 200);
-
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'خطأ داخلي: ' . $e->getMessage()], 500);
     }
-}
     // --- دالة تسجيل الخروج ---
     public function logout(Request $request)
     {
