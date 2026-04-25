@@ -12,14 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('schedules', function (Blueprint $table) {
-    $table->id('schedule_id');
-    $table->foreignId('course_id')->constrained('courses', 'course_id')->onDelete('cascade');
-    $table->string('day'); // مثلاً: Monday
-    $table->time('start_time');
-    $table->time('end_time');
-    $table->string('room'); // رقم القاعة
-    $table->timestamps();
-});
+            $table->id('schedule_id');
+            $table->foreignId('course_id')->constrained('courses', 'course_id')->onDelete('cascade');
+            // إضافة رابط المعلم ليعمل الكنترولر بشكل صحيح
+            $table->foreignId('teacher_id')->constrained('users', 'id')->onDelete('cascade');
+            $table->string('day'); // مثلاً: Monday
+            $table->time('start_time');
+            $table->time('end_time');
+            $table->string('room'); // رقم القاعة
+            $table->timestamps();
+        });
     }
 
     /**
@@ -29,4 +31,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('schedules');
     }
-};
+}; 
