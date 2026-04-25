@@ -12,99 +12,84 @@ use App\Models\Grade;
 use App\Models\AssignmentSubmission;
 use App\Models\Schedule;
 use App\Models\Announcement;
+use App\Models\Parents;
+use App\Models\ParentStudent;
+use App\Models\StudentParent;
 
 class ParentController extends Controller
 {
-    /**
-     * جلب أبناء ولي الأمر
-     * GET /api/parent/children
-     */
     public function getChildren(Request $request)
     {
-        $parent = $request->user();
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
-        if (!$parent->isParent()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'هذه الخدمة متاحة فقط لأولياء الأمور'
-            ], 403);
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'هذه الخدمة متاحة فقط لأولياء الأمور'], 403);
         }
 
-        $children = $parent->children()
-            ->with(['student.courses', 'student.attendances'])
+        $children = $parent->students()
+            ->with('user')
             ->get()
-            ->map(function($child) {
-                $attendances = $child->student->attendances;
+            ->map(function($student) {
+                $attendances = $student->attendances;
 
                 return [
-                    'id' => $child->user_id,
-                    'name' => $child->full_name,
-                    'student_code' => $child->student->student_code ?? '',
-                    'level' => $child->student->level ?? '',
-                    'total_courses' => $child->student->courses->count(),
+                    'id' => $student->user_id,
+                    'name' => $student->user->full_name,
+                    'student_code' => $student->student_code ?? '',
+                    'level' => $student->level ?? '',
+                    'total_courses' => $student->courses->count(),
                     'attendance_rate' => $attendances->count() > 0
                         ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
                         : 0,
-                    'last_login' => $child->last_login,
                 ];
             });
 
-        return response()->json([
-            'success' => true,
-            'data' => $children
-        ], 200);
+        return response()->json(['success' => true, 'data' => $children], 200);
     }
 
-    /**
-     * جلب تفاصيل طفل محدد
-     * GET /api/parent/child/{childId}
-     */
     public function getChildDetails(Request $request, $childId)
     {
-        $parent = $request->user();
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
-        $child = $parent->children()->where('user_id', $childId)->first();
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $child = $parent->students()->where('students.student_id', $childId)->first();
 
         if (!$child) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الطفل غير موجود أو غير مرتبط بحسابك'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'الطفل غير موجود أو غير مرتبط بحسابك'], 404);
         }
 
         return response()->json([
             'success' => true,
             'data' => [
                 'id' => $child->user_id,
-                'name' => $child->full_name,
-                'student_code' => $child->student->student_code ?? '',
-                'email' => $child->email,
-                'phone' => $child->phone,
-                'level' => $child->student->level ?? '',
-                'department' => $child->department,
-                'academic_year' => $child->academic_year,
+                'name' => $child->user->full_name,
+                'student_code' => $child->student_code ?? '',
+                'email' => $child->user->email,
+                'phone' => $child->user->phone,
+                'level' => $child->level ?? '',
+                'academic_year' => $child->user->academic_year,
             ]
         ], 200);
     }
 
-    /**
-     * جلب حضور طفل
-     * GET /api/parent/child/{childId}/attendance
-     */
     public function getChildAttendance(Request $request, $childId)
     {
-        $parent = $request->user();
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
-        $child = $parent->children()->where('user_id', $childId)->first();
-
-        if (!$child) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الطفل غير موجود أو غير مرتبط بحسابك'
-            ], 404);
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
         }
 
-        $attendances = Attendance::where('student_id', $child->student->student_id)
+        $child = $parent->students()->where('students.student_id', $childId)->first();
+
+        if (!$child) {
+            return response()->json(['success' => false, 'message' => 'الطفل غير موجود'], 404);
+        }
+
+        $attendances = Attendance::where('student_id', $child->student_id)
             ->with(['lesson.course'])
             ->orderBy('attendance_date', 'desc')
             ->get()
@@ -119,7 +104,6 @@ class ParentController extends Controller
                 ];
             });
 
-        // إحصائيات
         $statistics = [
             'total' => $attendances->count(),
             'present' => $attendances->where('status', 'present')->count(),
@@ -130,31 +114,24 @@ class ParentController extends Controller
                 : 0,
         ];
 
-        return response()->json([
-            'success' => true,
-            'statistics' => $statistics,
-            'data' => $attendances
-        ], 200);
+        return response()->json(['success' => true, 'statistics' => $statistics, 'data' => $attendances], 200);
     }
 
-    /**
-     * جلب علامات طفل
-     * GET /api/parent/child/{childId}/grades
-     */
     public function getChildGrades(Request $request, $childId)
     {
-        $parent = $request->user();
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
-        $child = $parent->children()->where('user_id', $childId)->first();
-
-        if (!$child) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الطفل غير موجود أو غير مرتبط بحسابك'
-            ], 404);
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
         }
 
-        $grades = Grade::where('student_id', $child->student->student_id)
+        $child = $parent->students()->where('students.student_id', $childId)->first();
+
+        if (!$child) {
+            return response()->json(['success' => false, 'message' => 'الطفل غير موجود'], 404);
+        }
+
+        $grades = Grade::where('student_id', $child->student_id)
             ->with(['exam.course'])
             ->get()
             ->groupBy(function($grade) {
@@ -177,7 +154,7 @@ class ParentController extends Controller
                 ];
             })->values();
 
-        $overallAverage = Grade::where('student_id', $child->student->student_id)->avg('score');
+        $overallAverage = Grade::where('student_id', $child->student_id)->avg('score');
 
         return response()->json([
             'success' => true,
@@ -186,43 +163,34 @@ class ParentController extends Controller
         ], 200);
     }
 
-    /**
-     * جلب جدول طفل
-     * GET /api/parent/child/{childId}/schedule
-     */
     public function getChildSchedule(Request $request, $childId)
     {
-        $parent = $request->user();
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
-        $child = $parent->children()->where('user_id', $childId)->first();
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $child = $parent->students()->where('students.student_id', $childId)->first();
 
         if (!$child) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الطفل غير موجود أو غير مرتبط بحسابك'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'الطفل غير موجود'], 404);
         }
 
         $schedules = Schedule::whereHas('course', function($query) use ($child) {
                 $query->whereHas('students', function($q) use ($child) {
-                    $q->where('student_id', $child->student->student_id);
+                    $q->where('student_id', $child->student_id);
                 });
             })
             ->with('course')
-            ->orderByRaw("FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')")
+            ->orderByRaw("FIELD(day, 'Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')")
             ->orderBy('start_time')
             ->get()
             ->groupBy('day')
             ->map(function($items, $day) {
-                // ترجمة اسم اليوم
                 $dayNames = [
-                    'Monday' => 'الإثنين',
-                    'Tuesday' => 'الثلاثاء',
-                    'Wednesday' => 'الأربعاء',
-                    'Thursday' => 'الخميس',
-                    'Friday' => 'الجمعة',
-                    'Saturday' => 'السبت',
-                    'Sunday' => 'الأحد',
+                    'Monday' => 'الإثنين', 'Tuesday' => 'الثلاثاء', 'Wednesday' => 'الأربعاء',
+                    'Thursday' => 'الخميس', 'Friday' => 'الجمعة', 'Saturday' => 'السبت', 'Sunday' => 'الأحد',
                 ];
 
                 return [
@@ -239,30 +207,24 @@ class ParentController extends Controller
                 ];
             })->values();
 
-        return response()->json([
-            'success' => true,
-            'data' => $schedules
-        ], 200);
+        return response()->json(['success' => true, 'data' => $schedules], 200);
     }
 
-    /**
-     * جلب واجبات طفل
-     * GET /api/parent/child/{childId}/assignments
-     */
     public function getChildAssignments(Request $request, $childId)
     {
-        $parent = $request->user();
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
-        $child = $parent->children()->where('user_id', $childId)->first();
-
-        if (!$child) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الطفل غير موجود أو غير مرتبط بحسابك'
-            ], 404);
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
         }
 
-        $submissions = AssignmentSubmission::where('student_id', $child->student->student_id)
+        $child = $parent->students()->where('students.student_id', $childId)->first();
+
+        if (!$child) {
+            return response()->json(['success' => false, 'message' => 'الطفل غير موجود'], 404);
+        }
+
+        $submissions = AssignmentSubmission::where('student_id', $child->student_id)
             ->with(['assignment.course'])
             ->get()
             ->map(function($submission) {
@@ -270,7 +232,6 @@ class ParentController extends Controller
                     'id' => $submission->submission_id,
                     'title' => $submission->assignment->title,
                     'course_name' => $submission->assignment->course->title ?? '',
-                    'description' => $submission->assignment->description,
                     'due_date' => $submission->assignment->due_date->format('Y-m-d'),
                     'submitted_at' => $submission->submitted_at ? $submission->submitted_at->format('Y-m-d') : null,
                     'grade' => $submission->grade,
@@ -280,7 +241,6 @@ class ParentController extends Controller
                 ];
             });
 
-        // إحصائيات
         $statistics = [
             'total' => $submissions->count(),
             'submitted' => $submissions->where('submitted_at', '!=', null)->count(),
@@ -288,43 +248,25 @@ class ParentController extends Controller
             'pending' => $submissions->where('submitted_at', null)->count(),
         ];
 
-        return response()->json([
-            'success' => true,
-            'statistics' => $statistics,
-            'data' => $submissions
-        ], 200);
+        return response()->json(['success' => true, 'statistics' => $statistics, 'data' => $submissions], 200);
     }
 
-    /**
-     * جلب إعلانات المدرسة
-     * GET /api/parent/announcements
-     */
     public function getAnnouncements(Request $request)
     {
-        $announcements = Announcement::latest()
-            ->limit(20)
-            ->get()
-            ->map(function($announcement) {
-                return [
-                    'id' => $announcement->announcement_id,
-                    'title' => $announcement->title,
-                    'content' => $announcement->content,
-                    'type' => $announcement->type,
-                    'created_at' => $announcement->created_at->format('Y-m-d H:i'),
-                    'time_ago' => $announcement->created_at->diffForHumans(),
-                ];
-            });
+        $announcements = Announcement::latest()->limit(20)->get()->map(function($announcement) {
+            return [
+                'id' => $announcement->announcement_id,
+                'title' => $announcement->title,
+                'content' => $announcement->content,
+                'type' => $announcement->type,
+                'created_at' => $announcement->created_at ? $announcement->created_at->format('Y-m-d H:i') : null,
+                'time_ago' => $announcement->created_at ? $announcement->created_at->diffForHumans() : 'منذ قليل',
+            ];
+        });
 
-        return response()->json([
-            'success' => true,
-            'data' => $announcements
-        ], 200);
+        return response()->json(['success' => true, 'data' => $announcements], 200);
     }
 
-    /**
-     * ربط طالب جديد (لولي الأمر)
-     * POST /api/parent/link-student
-     */
     public function linkStudent(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -332,51 +274,35 @@ class ParentController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $parent = $request->user();
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
-        if (!$parent->isParent()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'هذه الخدمة متاحة فقط لأولياء الأمور'
-            ], 403);
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'هذه الخدمة متاحة فقط لأولياء الأمور'], 403);
         }
 
         $student = Student::where('student_code', $request->student_code)->first();
 
         if (!$student) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الكود الجامعي غير صحيح'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'الكود الجامعي غير صحيح'], 404);
         }
 
-        // التأكد أن الطالب غير مرتبط بالفعل بولي أمر آخر
-        if ($student->parent_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'هذا الطالب مرتبط بالفعل بولي أمر آخر'
-            ], 400);
+        // التأكد من عدم وجود الرابط مسبقاً
+        $exists = StudentParent::where('parent_id', $parent->parent_id)
+            ->where('student_id', $student->student_id)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['success' => false, 'message' => 'هذا الطالب مرتبط بالفعل بحسابك'], 400);
         }
 
-        // جلب سجل ولي الأمر من جدول parents
-        $parentRecord = \App\Models\Parents::where('user_id', $parent->user_id)->first();
-
-        if (!$parentRecord) {
-            return response()->json([
-                'success' => false,
-                'message' => 'بيانات ولي الأمر غير مكتملة'
-            ], 400);
-        }
-
-        // ربط الطالب بولي الأمر
-        $student->parent_id = $parentRecord->parent_id;
-        $student->save();
+        StudentParent::create([
+            'parent_id' => $parent->parent_id,
+            'student_id' => $student->student_id,
+            'relationship' => $request->input('relationship', 'father'),
+        ]);
 
         return response()->json([
             'success' => true,
@@ -389,22 +315,15 @@ class ParentController extends Controller
         ], 200);
     }
 
-    /**
-     * Dashboard لولي الأمر (إحصائيات سريعة)
-     * GET /api/parent/dashboard
-     */
     public function dashboard(Request $request)
     {
-        $parent = $request->user();
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
-        if (!$parent->isParent()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'هذه الخدمة متاحة فقط لأولياء الأمور'
-            ], 403);
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
         }
 
-        $children = $parent->children()->with(['student.attendances', 'student.grades'])->get();
+        $children = $parent->students()->with(['attendances', 'grades'])->get();
 
         $totalChildren = $children->count();
         $totalAbsences = 0;
@@ -412,17 +331,17 @@ class ParentController extends Controller
         $averageGrades = [];
 
         foreach ($children as $child) {
-            $attendances = $child->student->attendances;
+            $attendances = $child->attendances;
             $totalAbsences += $attendances->where('status', 'absent')->count();
             $totalLate += $attendances->where('status', 'late')->count();
-            $averageGrades[] = $child->student->grades->avg('score') ?? 0;
+            $averageGrades[] = $child->grades->avg('score') ?? 0;
         }
 
         $recentAnnouncements = Announcement::latest()->limit(5)->get()->map(function($ann) {
             return [
                 'id' => $ann->announcement_id,
                 'title' => $ann->title,
-                'time_ago' => $ann->created_at->diffForHumans(),
+                'time_ago' => $ann->created_at ? $ann->created_at->diffForHumans() : 'منذ قليل',
             ];
         });
 
@@ -435,14 +354,14 @@ class ParentController extends Controller
                 'average_children_grades' => round(collect($averageGrades)->avg(), 1),
                 'recent_announcements' => $recentAnnouncements,
                 'children' => $children->map(function($child) {
-                    $attendances = $child->student->attendances;
+                    $attendances = $child->attendances;
                     return [
                         'id' => $child->user_id,
-                        'name' => $child->full_name,
+                        'name' => $child->user->full_name,
                         'attendance_rate' => $attendances->count() > 0
                             ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
                             : 0,
-                        'average_grade' => round($child->student->grades->avg('score') ?? 0, 1),
+                        'average_grade' => round($child->grades->avg('score') ?? 0, 1),
                     ];
                 }),
             ]

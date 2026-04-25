@@ -551,41 +551,5 @@ class StudentController extends Controller
     /**
      * ربط الطالب بولي الأمر (للاستخدام من تطبيق ولي الأمر)
      */
-    public function linkStudent(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'student_code' => 'required|string|exists:students,student_code',
-            'parent_id' => 'required|exists:users,user_id',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $student = Student::where('student_code', $request->student_code)->first();
-
-        if (!$student) {
-            return response()->json([
-                'status' => false,
-                'message' => 'الكود الجامعي غير صحيح'
-            ], 404);
-        }
-
-        // تحديث parent_id في جدول students
-        $student->parent_id = $request->parent_id;
-        $student->save();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'تم ربط الطالب بنجاح',
-            'student' => [
-                'id' => $student->student_id,
-                'name' => $student->user->full_name,
-                'student_code' => $student->student_code,
-            ]
-        ], 200);
-    }
 }
