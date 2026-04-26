@@ -14,7 +14,6 @@ use App\Models\AssignmentSubmission;
 use App\Models\AbsenceRequest;
 use App\Models\Course;
 use App\Models\Schedule;
-
 class StudentController extends Controller
 {
     /**

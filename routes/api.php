@@ -7,7 +7,9 @@ use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\TeacherController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ParentController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\AttendanceController;
+use App\Http\Controllers\Api\MessageController;
 use App\Models\StudentParent;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +18,6 @@ use Illuminate\Support\Facades\DB;
 | API Routes
 |--------------------------------------------------------------------------
 */
-
 // ========== Routes العامة (لا تحتاج تسجيل دخول) ==========
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register']);
@@ -157,27 +158,58 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/profile', function (Request $request) {
         return $request->user()->load('student');
     });
+Route::get('/user/profile/{id}', function ($id) {
+            return DB::table('users')
+                ->where('user_id', $id)
+                ->select('full_name', 'email', 'phone')
+                ->first();
+        });
 
-    Route::get('/user/profile/{id}', function ($id) {
-        return DB::table('users')
-            ->where('user_id', $id)
-            ->select('full_name', 'email', 'phone')
-            ->first();
-    });
+        Route::get('/student/info/{id}', function ($id) {
+            return DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->where('students.student_id', $id)
+                ->select(
+                    'users.full_name',
+                    'users.department',
+                    'students.level',
+                    'students.student_code'
+                )
+                ->first();
+        });
 
-    Route::get('/student/info/{id}', function ($id) {
-        return DB::table('students')
-            ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->where('students.student_id', $id)
-            ->select(
-                'users.full_name',
-                'users.department',
-                'students.level',
-                'students.student_code'
-            )
-            ->first();
-    });
+        // رابط ربط الطالب (من الكود القديم) //
+        Route::post('/parent/add-student', [StudentController::class, 'linkStudent']);
 
-    // رابط ربط الطالب (من الكود القديم)
-    Route::post('/parent/add-student', [StudentController::class, 'linkStudent']);
+        #========== روابط واجهات الطالب ==========
+        Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
+        Route::get('/student/profile', [\App\Http\Controllers\Api\StudentController::class, 'getProfileData']);
+        Route::get('/student/notifications', [StudentController::class, 'getNotifications']);
+        Route::get('/student/messages/history/{receiver_id}', [MessageController::class, 'fetchChatHistory']);
+        Route::post('/student/messages/send', [MessageController::class, 'sendMessage']);
+        Route::get('/student/teachers', function () {
+            // جلب جميع المستخدمين اللي نوعهم teacher
+            $teachers = App\Models\User::where('role', 'teacher')->get()->map(function($teacher) {
+                return [
+                    'id' => $teacher->user_id,
+                    'name' => $teacher->full_name,
+                    'subject' => $teacher->department ?? 'مادة عامة',
+                    'is_online' => true, // يمكنك تحديث هذا لاحقاً بناءً على نشاط المستخدم
+                    'image_url' => 'https://ui-avatars.com/api/?name=' . urlencode($teacher->full_name) . '&background=random',
+                ];
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $teachers
+            ]);
+        });
+
+        Route::get('/student/attendance', [AttendanceController::class, 'getAttendanceHistory']);
+        Route::post('/student/leave-request', [AttendanceController::class, 'submitLeaveRequest']);
+        Route::post('/student/attendance/{attendance_id}/excuse', [AttendanceController::class, 'submitExcuse']);
+        
+        // 🌟 روابط مسح الباركود
+        Route::post('/teacher/attendance/generate-qr', [AttendanceController::class, 'generateQrToken']); // للمدرب
+        Route::post('/student/attendance/scan-qr', [AttendanceController::class, 'scanQrAndAttend']); // للطالب
 });
