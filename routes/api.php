@@ -7,36 +7,52 @@ use App\Http\Controllers\Api\StudentController;
 use App\Models\StudentParent;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\StudentParentController;
 
 
-
-// روابط عامة
-// ✅ أضفنا ->name('login') هنا لحل مشكلة الخطأ 500 عند فقدان التوكن
+// --- روابط عامة ---
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 
-// روابط محمية (تحتاج توكن)
+// --- روابط محمية (تحتاج توكن) ---
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
-    // أضيفي هذا السطر في ملف api.php تحت رابط الـ register
-
 
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {
-        // بعد إضافة العلاقة في المودل، سيعمل هذا السطر بنجاح
         return $request->user()->load('student');
     });
 
+    // ✅ روابط الأهل (داخل الحماية ليعمل auth()->id)
+    // طلب تقرير أداء (أكاديمي أو سلوكي) - التعديل لضمان وصول التوكن
+    Route::post('/parent/request-report', [StudentParentController::class, 'requestReport']);
+
+    // جلب الأداء
+    Route::get('/parent/performance/{studentId}', [StudentParentController::class, 'getFullPerformance']);
+    
+    // جلب الواجبات
+    Route::get('/parent/student/{studentId}/assignments', [StudentParentController::class, 'getAssignments']);
+    
+    // جلب الأذونات
+    Route::get('/parent/student/{studentId}/permissions', [StudentParentController::class, 'getPermissions']);
+    
+    // الرد على إذن
+    Route::post('/parent/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
+
+    // جلب الإشعارات الخاصة بالأب المسجل حالياً (بدون {id} يدوي)
+    Route::get('/parent/notifications', [NotificationController::class, 'getNotifications']);
+    
+    // ربط طالب جديد
+    Route::post('/parent/add-student', [StudentController::class, 'linkStudent']);
 });
 
 
-
-
-
-// --- روابط الأهل (Parents) ---
+// -----------------------------------------------------------
+// --- روابط الأهل (Parents) 
+// -----------------------------------------------------------
 
 // 1. جلب بيانات الأب
 Route::get('/parent/info/{user_id}', function ($user_id) {
@@ -53,7 +69,6 @@ Route::get('/parent/info/{user_id}', function ($user_id) {
 
 // 2. جلب الأبناء المرتبطين
 Route::get('/parent/children/{user_id}', function ($user_id) {
-    // جلب الطلاب الذين يملكون parent_id يساوي الـ ID الممرر
     $children = DB::table('students')
         ->join('users', 'students.user_id', '=', 'users.user_id')
         ->where('students.parent_id', $user_id) 
@@ -63,26 +78,21 @@ Route::get('/parent/children/{user_id}', function ($user_id) {
     return response()->json($children);
 });
 
-
-
 // 3. كود الربط الحقيقي (Link Student)
 Route::post('/parent/link-student', function (Request $request) {
     $studentCode = $request->student_code;
-    $userId = $request->user_id; // هذا ID الأب من جدول users
+    $userId = $request->user_id; 
 
-    // البحث عن الطالب بالكود
     $student = DB::table('students')->where('student_code', $studentCode)->first();
     if (!$student) {
         return response()->json(['message' => 'كود الطالب غير موجود'], 404);
     }
 
-    // البحث عن سجل الأب في جدول parents
     $parent = DB::table('parents')->where('user_id', $userId)->first();
     if (!$parent) {
         return response()->json(['message' => 'سجل الأب غير موجود'], 404);
     }
 
-    // تنفيذ عملية الربط في جدول parent_student
     DB::table('parent_student')->updateOrInsert([
         'parent_id' => $parent->parent_id,
         'student_id' => $student->student_id
@@ -95,25 +105,28 @@ Route::post('/parent/link-student', function (Request $request) {
 Route::get('/user/profile/{id}', function ($id) {
     return DB::table('users')
         ->where('user_id', $id)
-        ->select('full_name', 'email', 'phone') // تأكدي أن الأسماء مطابقة لجدولك
+        ->select('full_name', 'email', 'phone')
         ->first();
 });
 
+// جلب معلومات طالب محدد
 Route::get('/student/info/{id}', function ($id) {
     return DB::table('students')
-        ->join('users', 'students.user_id', '=', 'users.user_id') // ربط جدول الطلاب بالمستخدمين
+        ->join('users', 'students.user_id', '=', 'users.user_id')
         ->where('students.student_id', $id)
         ->select(
             'users.full_name', 
-            'users.department', // القسم موجود هنا في جدول اليوزرز
-            'students.level',    // السنة الدراسية موجودة هنا في جدول الطلاب
+            'users.department', 
+            'students.level',
             'students.student_code'
         )
         ->first();
 });
 
-// داخل ملف api.php
-
-Route::get('/parent/notifications/{id}', [NotificationController::class, 'getNotifications']);
-//(Function) تبحث عن الطالب بالكود الذي أدخله الأب
-Route::post('/parent/add-student', [StudentController::class, 'linkStudent']);
+// جلب الإشعارات باستخدام الـ ID مباشرة لضمان الظهور في المتصفح
+Route::get('/parent/notifications/{id}', function($id) {
+    return DB::table('notifications')
+        ->where('user_id', $id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+});

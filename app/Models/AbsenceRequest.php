@@ -4,19 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Attendance extends Model
+class AbsenceRequest extends Model
 {
-    protected $primaryKey = 'attendance_id';
+    protected $primaryKey = 'request_id';
 
     protected $fillable = [
         'student_id',
-        'lesson_id',
+        'date',
+        'reason',
+        'document',
         'status',
-        'attendance_date',
+        'reviewed_by',
     ];
 
     protected $casts = [
-        'attendance_date' => 'date',
+        'date' => 'date',
     ];
 
     public function student()
@@ -24,8 +26,8 @@ class Attendance extends Model
         return $this->belongsTo(Student::class, 'student_id', 'student_id');
     }
 
-    public function lesson()
+    public function reviewer()
     {
-        return $this->belongsTo(Lesson::class, 'lesson_id', 'lesson_id');
+        return $this->belongsTo(User::class, 'reviewed_by', 'user_id');
     }
 }
