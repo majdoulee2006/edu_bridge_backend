@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
         'username' => 'admin_main', // 👈 ضروري جداً
         'email' => 'admin@edu-bridge.com',
         'password' => Hash::make('password123'),
-        'role' => 'admin',
+        'role_id' =>1,
         'status' => 'active',
        ]);
 
@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
         'username' => 'ahmad_head', // 👈 ضروري جداً
         'email' => 'head@test.com',
         'password' => Hash::make('12345678'),
-        'role' => 'head',
+        'role_id' =>5,
         'status' => 'active',
       ]);
 
@@ -36,7 +36,7 @@ class DatabaseSeeder extends Seeder
         'username' => '2026100',
         'email' => 'student@test.com',
         'password' => Hash::make('12345678'),
-        'role' => 'student',
+        'role_id' =>3,
         'status' => 'active',
         'department' => 'هندسة حواسب وشبكات',
         'academic_year' => 'السنة الخامسة',
@@ -57,7 +57,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '0986387993',
             'email' => 'parent@test.com',
             'password' => Hash::make('12345678'),
-            'role' => 'parent',
+            'role_id' =>4,
             'status' => 'active',
         ]);
 
@@ -68,7 +68,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '0986387992',
             'email' => 'teacher@test.com',
             'password' => Hash::make('12345678'),
-            'role' => 'teacher',
+            'role_id' =>2,
             'status' => 'active',
         ]);
 
