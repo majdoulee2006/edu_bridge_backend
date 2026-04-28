@@ -11,6 +11,10 @@ use App\Http\Controllers\Teacher\ProfileController;
 use App\Http\Controllers\Teacher\MessageController; 
 use App\Http\Controllers\Teacher\NotificationController;
 use App\Http\Controllers\Teacher\ScheduleController; 
+use App\Http\Controllers\Teacher\LectureController; 
+use App\Http\Controllers\Teacher\AttendanceController;
+use App\Http\Controllers\Teacher\AssignmentController;
+use App\Http\Controllers\Teacher\SettingsController;
 /* لعند هون */
 
 Route::get('/', function () {
@@ -20,9 +24,8 @@ Route::get('/', function () {
 /* هدول ما دخلني فين */
 Route::get('/create-student', function () {
     try {
-        // البحث عن المستخدم إذا كان موجوداً، أو إنشاؤه إذا لم يكن موجوداً
         $user = User::updateOrCreate(
-            ['email' => 'student@test.com'], // شرط البحث
+            ['email' => 'student@test.com'],
             [
                 'full_name' => 'طالب تجريبي جديد',
                 'password' => Hash::make('123456'),
@@ -32,7 +35,6 @@ Route::get('/create-student', function () {
 
         return "تمت العملية بنجاح! الحساب جاهز الآن للاستخدام.";
     } catch (\Exception $e) {
-        // في حال حدوث خطأ، سيعرض لكِ السبب الحقيقي هنا بدل رقم 500
         return "حدث خطأ أثناء الإنشاء: " . $e->getMessage();
     }
 });
@@ -55,36 +57,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/teacher/dashboard', [DashboardController::class, 'index'])->name('teacher.dashboard');
 
-    // المحاضرات
-    Route::get('/lectures', function () {
-        return view('teacher.lectures');
-    })->name('lectures');
+    // المحاضرات - تم الربط بالكنترولر الجديد
+    Route::get('/lectures', [LectureController::class, 'index'])->name('lectures');
+    Route::post('/lectures', [LectureController::class, 'store'])->name('lectures.store');
 
-    // الحضور والغياب
-    Route::get('/attendance', function () {
-        return view('teacher.attendance');
-    })->name('attendance');
+    // الحضور والغياب - ربط بالكنترولر الجديد
+    Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance');
 
     // --- قسم الملف الشخصي (Profile Section) ---
-    // عرض البروفايل جلب البيانات من الداتابيز
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
-
-    // تحديث البيانات الشخصية (إيميل، هاتف)
     Route::post('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
-
-    // تحديث كلمة المرور
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
-
-    // مسار رفع الصورة الشخصية
     Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo');
 
+    // الإعدادات - ربط بالكنترولر الجديد
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings/save', [SettingsController::class, 'save'])->name('settings.save');
 
-    // الإعدادات
-    Route::get('/settings', function () {
-        return view('settein'); 
-    })->name('settings');
-
-    // --- قسم المراسلة (Messages Section) - تم الربط بالكنترولر ---
+    // --- قسم المراسلة (Messages Section) ---
     Route::get('/messages', [MessageController::class, 'index'])->name('messages');
     Route::post('/messages/send', [MessageController::class, 'sendMessage'])->name('messages.send');
 
@@ -93,13 +83,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
     
-    // الجداول - تم الربط بالكنترولر الجديد (ScheduleController)
+    // الجداول
     Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule');
 
-    // الواجبات
-    Route::get('/assignments', function () {
-        return view('teacher.assignments');
-    })->name('assignments');
+    // الواجبات - ربط بالكنترولر الجديد
+    Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments');
+    Route::post('/assignments', [AssignmentController::class, 'store'])->name('assignments.store');
 
     // تسجيل الخروج
     Route::post('/logout', [TeacherAuthController::class, 'logout'])->name('logout');

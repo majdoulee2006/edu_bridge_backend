@@ -12,9 +12,9 @@ class Course extends Model
     protected $primaryKey = 'course_id';
 
     protected $fillable = [
-        'title',       // بالميجريشن مكتوب title
+        'title',
         'description',
-        'level',       // مستوى المادة
+        'level',
     ];
 
     // علاقة المادة بالمعلمين (Many to Many)
@@ -22,5 +22,17 @@ class Course extends Model
     {
         return $this->belongsToMany(Teacher::class, 'course_teachers', 'course_id', 'teacher_id')
                     ->withPivot('role');
+    }
+
+    // علاقة المادة بالأقسام (Many to Many)
+    public function departments()
+    {
+        return $this->belongsToMany(Department::class, 'course_departments', 'course_id', 'department_id');
+    }
+
+    // علاقة المادة بالواجبات
+    public function assignments()
+    {
+        return $this->hasMany(Assignment::class, 'course_id', 'course_id');
     }
 }

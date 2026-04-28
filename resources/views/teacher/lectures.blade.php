@@ -24,7 +24,6 @@
             overflow: hidden; 
         }
 
-        /* --- Sidebar (الداش بورد الزابطة) --- */
         aside {
             width: 280px; background: var(--white); height: 100vh;
             display: flex; flex-direction: column; padding: 30px 20px;
@@ -43,7 +42,6 @@
         .nav-link.active { background: var(--main-yellow); color: #000; box-shadow: 0 4px 12px rgba(249, 242, 26, 0.3); }
         .nav-link:hover:not(.active) { background: #f9f9f9; transform: translateX(-5px); }
 
-        /* --- Content Area --- */
         main { 
             margin-right: 280px; 
             flex: 1; 
@@ -62,7 +60,6 @@
         .user-pill { display: flex; align-items: center; gap: 12px; background: #fff; padding: 8px 15px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         .user-pill img { width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--main-yellow); }
 
-        /* --- Lectures Card (نفس تصميم صورة محاضرة.png) --- */
         .lecture-card {
             background: #fff; 
             width: 100%; 
@@ -87,7 +84,6 @@
         .row-group { display: flex; gap: 20px; margin-bottom: 25px; }
         .row-group .input-group { flex: 1; margin-bottom: 0; }
 
-        /* --- Upload Box --- */
         .upload-box {
             border: 3px dashed #eee;
             padding: 30px;
@@ -108,6 +104,27 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
         .btn-add:hover { background: var(--main-yellow); color: #000; }
+
+        .alert {
+            width: 100%; max-width: 550px; padding: 15px 20px; border-radius: 15px;
+            margin-bottom: 20px; font-weight: 700; text-align: right;
+        }
+        .alert-success { background: #d4edda; color: #155724; border-right: 5px solid #28a745; }
+        .alert-error { background: #f8d7da; color: #721c24; border-right: 5px solid #dc3545; }
+
+        .lectures-list {
+            width: 100%; max-width: 550px; margin-top: 30px;
+        }
+        .lecture-item {
+            background: #fff; border-radius: 20px; padding: 20px 25px;
+            margin-bottom: 15px; display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03); border-right: 5px solid var(--main-yellow);
+        }
+        .lecture-item i { font-size: 1.5rem; color: var(--main-yellow); }
+        .lecture-info { flex: 1; text-align: right; }
+        .lecture-info h4 { font-weight: 900; font-size: 1rem; margin-bottom: 4px; }
+        .lecture-info p { color: #888; font-size: 0.85rem; font-weight: 600; }
+        .lecture-date { color: #aaa; font-size: 0.8rem; font-weight: 700; }
 
     </style>
 </head>
@@ -134,46 +151,77 @@
                 <p>قم بتعبئة بيانات المحاضرة الجديدة لرفعها للطلاب.</p>
             </div>
             <div class="user-pill">
-                <div style="text-align: left; font-weight: 900; font-size: 0.9rem;">هبة عيسى</div>
+                <div style="text-align: left; font-weight: 900; font-size: 0.9rem;">{{ Auth::user()->full_name ?? 'المعلم' }}</div>
                 <img src="https://via.placeholder.com/100">
             </div>
         </header>
 
-        <div class="lecture-card">
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-error">{{ session('error') }}</div>
+        @endif
+
+        <form class="lecture-card" action="{{ route('lectures.store') }}" method="POST" enctype="multipart/form-data">
+            @csrf
             <p class="setup-title">تفاصيل المحاضرة</p>
             
             <div class="input-group">
                 <label>عنوان المحاضرة</label>
-                <input type="text" class="custom-input" placeholder="مثلاً: مقدمة في Flutter UI">
+                <input type="text" name="title" class="custom-input" placeholder="مثلاً: مقدمة في Flutter UI" required>
             </div>
 
             <div class="row-group">
                 <div class="input-group">
                     <label>المادة</label>
-                    <select class="ui-select">
-                        <option>اختر المادة</option>
-                        <option>برمجة موبايل</option>
+                    <select name="course_id" class="ui-select" required>
+                        <option value="">اختر المادة</option>
+                        @forelse($courses as $course)
+                            <option value="{{ $course->course_id }}">{{ $course->title }}</option>
+                        @empty
+                            <option value="" disabled>لا توجد مواد متاحة</option>
+                        @endforelse
                     </select>
                 </div>
                 <div class="input-group">
                     <label>القسم / الصف</label>
-                    <select class="ui-select">
-                        <option>اختر الصف</option>
-                        <option>المرحلة الثالثة</option>
+                    <select name="department_id" class="ui-select" required>
+                        <option value="">اختر الصف</option>
+                        @forelse($departments as $department)
+                            <option value="{{ $department->department_id }}">{{ $department->name }}</option>
+                        @empty
+                            <option value="" disabled>لا توجد أقسام متاحة</option>
+                        @endforelse
                     </select>
                 </div>
-            </div>
 
             <label style="display: block; text-align: right; font-weight: 900; margin-bottom: 12px; font-size: 1.1rem;">ملف المحاضرة (PDF/Video)</label>
-            <div class="upload-box">
+            <div class="upload-box" onclick="document.getElementById('file-input').click()">
                 <i class="fa-solid fa-cloud-arrow-up"></i>
-                اسحب الملف هنا أو انقر للإرفاق
+                <span id="file-label">اسحب الملف هنا أو انقر للإرفاق</span>
+                <input type="file" id="file-input" name="content_file" accept=".pdf,.mp4,.mov,.avi,.mkv" required style="display:none" onchange="document.getElementById('file-label').textContent = this.files[0].name">
             </div>
 
-            <button class="btn-add">
+            <button type="submit" class="btn-add">
                 رفع المحاضرة الآن <i class="fa-solid fa-check-circle"></i>
             </button>
+        </form>
+
+        @if(isset($lessons) && $lessons->count() > 0)
+        <div class="lectures-list">
+            <p class="setup-title" style="text-align:center; margin-bottom: 20px;">📚 آخر المحاضرات المرفوعة</p>
+            @foreach($lessons as $lesson)
+            <div class="lecture-item">
+                <i class="fa-solid fa-circle-play"></i>
+                <div class="lecture-info">
+                    <h4>{{ $lesson->title }}</h4>
+                    <p>{{ $lesson->course->title ?? '—' }} | {{ $lesson->department->name ?? '—' }}</p>
+                </div>
+                <div class="lecture-date">{{ $lesson->created_at->format('Y-m-d') }}</div>
+            @endforeach
         </div>
+        @endif
     </main>
 
 </body>
