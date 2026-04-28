@@ -11,8 +11,8 @@ class NotificationSeeder extends Seeder
     public function run()
     {
         // 1. البحث عن ولي الأمر ورئيس القسم بالمسميات الجديدة
-        $parent = User::where('role', 'parent')->first();
-        $head = User::where('role', 'head')->first(); // 👈 تعديل: من head_of_department إلى head
+        $parent = User::where('role_id', 4)->first();
+        $head =  User::where('role_id', 5)->first(); // 👈 تعديل: من head_of_department إلى head
 
         if ($parent) {
             Notification::create([

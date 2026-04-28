@@ -11,7 +11,7 @@ class ParentSeeder extends Seeder
     public function run()
     {
         // البحث عن المستخدم الذي دوره "ولي أمر"
-        $parentUser = User::where('role', 'parent')->first();
+        $parentUser = User::where('role_id', 4)->first();
 
         if ($parentUser) {
             // حذف أي سجل قديم لتجنب التكرار
