@@ -15,14 +15,15 @@ class Student extends Model
         'user_id',
         'parent_id',
         'student_code',
-        'level',      // بالميجريشن مكتوب level وليس grade_level
-        'birth_date', // بالميجريشن مكتوب birth_date وليس date_of_birth
+        'level',
+        'birth_date',
     ];
 
     // علاقة الطالب بالحساب الأساسي (User)
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
+
     }
 
     // علاقة الطالب بالمواد اللي مسجل فيها (Many to Many عبر Enrollments)
@@ -38,4 +39,17 @@ class Student extends Model
     {
         return $this->hasMany(Grade::class, 'student_id', 'student_id');
     }
+
+
+
+    public function parentStudents() {
+    return $this->hasMany(StudentParent::class, 'student_id');
+}
+
+public function parents() {
+    return $this->belongsToMany(Parents::class, 'parent_students', 'student_id', 'parent_id');
+}
+
+
+
 }

@@ -6,28 +6,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class StudentParent extends Model
 {
-    // 1. تحديد اسم الجدول لأنه مختلف عن اسم الموديل
-    protected $table = 'parents';
+    // اسم الجدول الوسيط الجديد
+    protected $table = 'parent_students';
 
-    // 2. تحديد المفتاح الأساسي لأنه ليس id
-    protected $primaryKey = 'parent_id';
+    protected $primaryKey = 'id';
+    public $timestamps = true;
 
-    // 3. الحقول اللي مسموح نعدلها ونضيفها (حسب ملف الـ Migration تبعك)
     protected $fillable = [
-        'user_id',
-        'phone_number', // تأكدي من الاسم في ملف الميجريشن لو كان مختلف
-        'address',
+        'parent_id',
+        'student_id',
+        'relationship', // father, mother, guardian
     ];
 
-    // 4. علاقة ولي الأمر باليوزر (كل ولي أمر هو يوزر في الأساس)
-    public function user()
+    // علاقة بولي الأمر
+    public function parent()
     {
-        return $this->belongsTo(User::class, 'user_id', 'user_id');
+        return $this->belongsTo(Parents::class, 'parent_id', 'parent_id');
     }
 
-    // 5. علاقة ولي الأمر بأبنائه (ولي الأمر عنده كثير طلاب)
-    public function students()
+    // علاقة بالطالب
+    public function student()
     {
-        return $this->hasMany(Student::class, 'parent_id', 'parent_id');
+        return $this->belongsTo(Student::class, 'student_id', 'student_id');
     }
 }

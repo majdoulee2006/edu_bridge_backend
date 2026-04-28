@@ -13,8 +13,7 @@ class User extends Authenticatable
 
     protected $primaryKey = 'user_id';
 
-    protected $fillable = [
-        'username',
+protected $fillable = [
         'full_name',
         'username',
         'email',
@@ -27,7 +26,6 @@ class User extends Authenticatable
         'branch',
         'children_ids',
     ];
-
     protected $hidden = [
         'password',
         'remember_token',

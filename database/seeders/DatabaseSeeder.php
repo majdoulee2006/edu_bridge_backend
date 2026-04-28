@@ -10,34 +10,74 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. طالب تجريبي (يدخل برقمه الجامعي)
-        User::create([
-            'full_name' => 'Student Name',
-            'university_id' => '20261001',
-            'username' => 'student_user',
-            'email' => 'student@test.com',
-            'password' => Hash::make('password123'),
-            'role' => 'student',
-        ]);
+       User::create([
+        'full_name' => 'إدارة المعهد التقني',
+        'username' => 'admin_main', // 👈 ضروري جداً
+        'email' => 'admin@edu-bridge.com',
+        'password' => Hash::make('password123'),
+        'role_id' =>1,
+        'status' => 'active',
+       ]);
 
-        // 2. ولي أمر تجريبي (يدخل باسم المستخدم أو الإيميل)
-        User::create([
-            'full_name' => 'Parent Name',
-            'university_id' => null,
-            'username' => 'parent_user',
-            'phone'=>'0986387993',
+    // 2. حساب رئيس قسم (Dept Head) - أضفنا username
+    User::create([
+        'full_name' => 'أحمد ديب',
+        'username' => 'ahmad_head', // 👈 ضروري جداً
+        'email' => 'head@test.com',
+        'password' => Hash::make('12345678'),
+        'role_id' =>5,
+        'status' => 'active',
+      ]);
+
+        // 3. حساب طالب تجريبي
+     User::create([
+        'full_name' => 'عمر الخالد',
+        'university_id' => '2026100',
+        'username' => '2026100',
+        'email' => 'student@test.com',
+        'password' => Hash::make('12345678'),
+        'role_id' =>3,
+        'status' => 'active',
+        'department' => 'هندسة حواسب وشبكات',
+        'academic_year' => 'السنة الخامسة',
+        'phone' => '0930000000',
+        'birth_date' => '2002-05-20',
+        'gender' => 'ذكر',
+       ]);
+       $this->call([
+        // ... السيردرات التانية
+        AnnouncementSeeder::class,
+        ]);
+        $this->command->info('✅ تم زراعة المستخدم والإعلانات بنجاح ومحمية من الحذف!');
+
+        // 4. حساب ولي أمر تجريبي
+        $parentUser = User::create([
+            'full_name' => 'أبو عمر الخالد',
+            'username' => '098638799',
+            'phone' => '0986387993',
             'email' => 'parent@test.com',
             'password' => Hash::make('12345678'),
-            'role' => 'parent',
+            'role_id' =>4,
+            'status' => 'active',
         ]);
 
+        // 5. حساب مدرس تجريبي
         User::create([
-            'full_name' => 'Teacher Name',
-            'username' => 'teacher_user',
-             'phone'=>'0986387992',
+            'full_name' => 'د. سامر المحمد',
+            'username' => '0986387992',
+            'phone' => '0986387992',
             'email' => 'teacher@test.com',
-           'password' => Hash::make('12345678'),
-           'role' => 'teacher',
-]);
+            'password' => Hash::make('12345678'),
+            'role_id' =>2,
+            'status' => 'active',
+        ]);
+
+        // استدعاء السيدرز الأخرى التي تعتمد على وجود المستخدمين
+        $this->call([
+            ParentSeeder::class,
+            NotificationSeeder::class,
+        ]);
+
+         
     }
 }
