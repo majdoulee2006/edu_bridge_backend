@@ -3,153 +3,171 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Mail\OtpMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Models\Role;
+use App\Models\Student;
+use App\Models\Teacher;
+use App\Models\Parents;
 
 class AuthController extends Controller
 {
-    // --- دالة تسجيل حساب جديد ---
-    public function register(Request $request)
+    public function login(Request $request)
     {
-        try {
-            $role = $request->role;
-
-            $rules = [
-                'full_name' => 'required|string|max:255',
-                'email'     => 'required|email|unique:users',
-                'password'  => 'required|min:6',
-                'role'      => 'required|in:student,parent',
-            ];
-
-            if ($role == 'student') {
-                $rules += [
-                    'university_id' => 'required|unique:users',
-                    'department'    => 'required',
-                    'branch'        => 'required',
-                ];
-            } else {
-                $rules += [
-                    'phone'        => 'required|unique:users',
-                    'children_ids' => 'required|array',
-                ];
-            }
-
-            $request->validate($rules);
-
-            $userData = [
-                'full_name' => $request->full_name,
-                'username'  => $role == 'student' ? (string)$request->university_id : (string)$request->phone,
-                'email'     => $request->email,
-                'password'  => Hash::make($request->password),
-                'phone'     => $request->phone,
-                'role'      => $role,
-                'status'    => 'inactive', // يفضل البقاء غير نشط حتى تفعيل الـ OTP
-            ];
-
-            if ($role == 'student') {
-                $userData += [
-                    'university_id' => (string)$request->university_id,
-                    'gender'        => $request->gender,
-                    'birth_date'    => $request->birth_date,
-                    'academic_year' => $request->academic_year,
-                    'department'    => $request->department,
-                    'branch'        => $request->branch,
-                ];
-            } else {
-                $userData['children_ids'] = json_encode($request->children_ids);
-            }
-
-            $user = User::create($userData);
-
-            // منطق الـ OTP
-            $otpCode = (string)rand(1000, 9999);
-            DB::table('otps')->updateOrInsert(
-                ['email' => $user->email],
-                ['token' => $otpCode, 'expires_at' => now()->addMinutes(15), 'created_at' => now()]
-            );
-
-            try {
-                Mail::to($user->email)->send(new OtpMail($otpCode));
-            } catch (\Exception $e) { }
-
-            return response()->json([
-                'message' => 'تم إنشاء الحساب، يرجى التحقق من بريدك',
-                'email'   => $user->email,
-                'otp_debug' => $otpCode // مفيد جداً للمناقشة لو تعطل الإيميل
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'خطأ في السيرفر: ' . $e->getMessage()], 500);
-        }
-    }
-
-    // --- دالة التحقق من الرمز ---
-    public function verifyOtp(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'otp'   => 'required',
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|string',
+            'password' => 'required|string',
         ]);
 
-        $otpData = DB::table('otps')
-            ->where('email', $request->email)
-            ->where('token', (string)$request->otp)
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $user = User::where('username', $request->username)
+            ->orWhere('email', $request->username)
             ->first();
 
-        if (!$otpData || now()->gt($otpData->expires_at)) {
-            return response()->json(['message' => 'الرمز غير صحيح أو انتهى'], 422);
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['success' => false, 'message' => 'اسم المستخدم أو كلمة المرور غير صحيحة'], 401);
         }
 
-        User::where('email', $request->email)->update(['status' => 'active']);
-        DB::table('otps')->where('email', $request->email)->delete();
-
-        return response()->json(['message' => 'تم التفعيل بنجاح'], 200);
-    }
-
-    // --- 🚀 دالة تسجيل الدخول (الحل الجذري) ---
-    public function login(Request $request)
-{
-    try {
-        $request->validate([
-            'login' => 'required', // سنسمي الحقل login في الطلب القادم من Flutter
-            'password' => 'required',
-        ]);
-
-        // نتحقق إذا كان المدخل إيميل أو يوزر نيم
-        $loginType = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
-
-        if (!Auth::attempt([$loginType => $request->login, 'password' => $request->password])) {
-            return response()->json(['message' => 'بيانات الدخول غير صحيحة'], 401);
+        if ($user->status !== 'active') {
+            return response()->json(['success' => false, 'message' => 'الحساب غير نشط'], 403);
         }
 
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
+        $user->update(['last_login' => now()]);
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'access_token' => (string)$token,
-            'token_type'   => 'Bearer',
+            'success' => true,
+            'message' => 'تم تسجيل الدخول بنجاح',
+            'token' => $token,
             'user' => [
-                'user_id'   => (string)$user->user_id, // انتبهي هنا استخدمنا user_id كما في المايجريشن
-                'full_name' => (string)$user->full_name,
-                'role'      => (string)$user->role,
-                'username'  => (string)$user->username,
+                'id' => $user->user_id,
+                'name' => $user->full_name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->role->name ?? 'unknown',
+                'role_id' => $user->role_id,
             ]
         ], 200);
-
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'خطأ داخلي: ' . $e->getMessage()], 500);
     }
-}
-    // --- دالة تسجيل الخروج ---
+
+    public function register(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'full_name' => 'required|string|max:255',
+            'username' => 'required|string|unique:users,username',
+            'email' => 'nullable|email|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'password' => 'required|string|min:6|confirmed',
+            'role' => 'required|in:student,parent',
+            'student_code' => 'required_if:role,student|string|unique:students,student_code',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $role = Role::where('name', $request->role)->first();
+        if (!$role) {
+            return response()->json(['success' => false, 'message' => 'الدور غير موجود'], 400);
+        }
+
+        $user = User::create([
+            'full_name' => $request->full_name,
+            'username' => $request->username,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => Hash::make($request->password),
+            'role_id' => $role->role_id,
+            'status' => 'active',
+        ]);
+
+        if ($request->role == 'student') {
+            Student::create([
+                'user_id' => $user->user_id,
+                'student_code' => $request->student_code,
+                'level' => $request->input('level', 'السنة الأولى'),
+            ]);
+        } elseif ($request->role == 'parent') {
+            Parents::create(['user_id' => $user->user_id]);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إنشاء الحساب بنجاح',
+            'token' => $token,
+            'user' => $user->load('role'),
+        ], 201);
+    }
+
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'تم تسجيل الخروج']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تسجيل الخروج بنجاح'
+        ], 200);
+    }
+
+    public function profile(Request $request)
+    {
+        $user = $request->user()->load(['role', 'student', 'teacher', 'parent']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $user
+        ], 200);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'full_name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|unique:users,email,' . $user->user_id . ',user_id',
+            'phone' => 'sometimes|string|max:20',
+            'password' => 'sometimes|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $user->update($request->only(['full_name', 'email', 'phone']));
+
+        if ($request->filled('password')) {
+            $user->update(['password' => Hash::make($request->password)]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث الملف الشخصي بنجاح',
+            'data' => $user
+        ], 200);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        return response()->json(['success' => false, 'message' => 'قيد التطوير'], 501);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        return response()->json(['success' => false, 'message' => 'قيد التطوير'], 501);
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        return response()->json(['success' => false, 'message' => 'قيد التطوير'], 501);
     }
 }

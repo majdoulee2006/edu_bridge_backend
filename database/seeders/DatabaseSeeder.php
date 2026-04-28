@@ -15,9 +15,9 @@ class DatabaseSeeder extends Seeder
         'username' => 'admin_main', // 👈 ضروري جداً
         'email' => 'admin@edu-bridge.com',
         'password' => Hash::make('password123'),
-        'role' => 'admin',
+        'role_id' =>1,
         'status' => 'active',
-    ]);
+       ]);
 
     // 2. حساب رئيس قسم (Dept Head) - أضفنا username
     User::create([
@@ -25,20 +25,30 @@ class DatabaseSeeder extends Seeder
         'username' => 'ahmad_head', // 👈 ضروري جداً
         'email' => 'head@test.com',
         'password' => Hash::make('12345678'),
-        'role' => 'head',
+        'role_id' =>5,
         'status' => 'active',
-    ]);
+      ]);
 
         // 3. حساب طالب تجريبي
-        $student = User::create([
-            'full_name' => 'عمر الخالد',
-            'university_id' => '2026100',
-            'username' => '2026100',
-            'email' => 'student@test.com',
-            'password' => Hash::make('12345678'),
-            'role' => 'student',
-            'status' => 'active',
+     User::create([
+        'full_name' => 'عمر الخالد',
+        'university_id' => '2026100',
+        'username' => '2026100',
+        'email' => 'student@test.com',
+        'password' => Hash::make('12345678'),
+        'role_id' =>3,
+        'status' => 'active',
+        'department' => 'هندسة حواسب وشبكات',
+        'academic_year' => 'السنة الخامسة',
+        'phone' => '0930000000',
+        'birth_date' => '2002-05-20',
+        'gender' => 'ذكر',
+       ]);
+       $this->call([
+        // ... السيردرات التانية
+        AnnouncementSeeder::class,
         ]);
+        $this->command->info('✅ تم زراعة المستخدم والإعلانات بنجاح ومحمية من الحذف!');
 
         // 4. حساب ولي أمر تجريبي
         $parentUser = User::create([
@@ -47,7 +57,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '0986387993',
             'email' => 'parent@test.com',
             'password' => Hash::make('12345678'),
-            'role' => 'parent',
+            'role_id' =>4,
             'status' => 'active',
         ]);
 
@@ -58,7 +68,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '0986387992',
             'email' => 'teacher@test.com',
             'password' => Hash::make('12345678'),
-            'role' => 'teacher',
+            'role_id' =>2,
             'status' => 'active',
         ]);
 
@@ -67,5 +77,7 @@ class DatabaseSeeder extends Seeder
             ParentSeeder::class,
             NotificationSeeder::class,
         ]);
+
+         
     }
 }

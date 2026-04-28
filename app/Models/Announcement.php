@@ -9,6 +9,7 @@ class Announcement extends Model
 {
     use HasFactory;
 
+<<<<<<< HEAD
     // ملاحظة هامة: بما أن المفتاح الأساسي في الـ Migration هو announcement_id
     protected $primaryKey = 'announcement_id';
 
@@ -27,3 +28,8 @@ class Announcement extends Model
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 }
+=======
+    // هاد السطر بيسمحلك تتعاملي مع الداتابيز بدون قيود
+    protected $guarded = [];
+} 
+>>>>>>> a35b4cf9f7a4fcbf94da956bbede2fb41b4436c8
