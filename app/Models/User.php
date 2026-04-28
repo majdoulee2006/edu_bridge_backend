@@ -14,18 +14,33 @@ class User extends Authenticatable
     protected $primaryKey = 'user_id';
 
     protected $fillable = [
+        'role_id',
         'full_name',
         'username',
         'email',
         'password',
         'phone',
-        'role',
         'status',
         'university_id',
         'department',
         'branch',
         'children_ids',
     ];
+
+    protected $appends = ['role']; // ✅ لإضافة الـ role تلقائياً للـ JSON
+
+    // ✅ تحويل role_id الرقمي إلى نص (admin, parent, etc)
+    public function getRoleAttribute()
+    {
+        $roles = [
+            1 => 'admin',
+            2 => 'teacher',
+            3 => 'student',
+            4 => 'parent',
+            5 => 'head'
+        ];
+        return $roles[$this->role_id] ?? 'student';
+    }
 
     protected $hidden = [
         'password',

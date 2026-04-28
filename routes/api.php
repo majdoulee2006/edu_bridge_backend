@@ -68,10 +68,11 @@ Route::get('/parent/info/{user_id}', function ($user_id) {
 });
 
 // 2. جلب الأبناء المرتبطين
-Route::get('/parent/children/{user_id}', function ($user_id) {
-    $children = DB::table('students')
+Route::get('/parent/children/{parent_id}', function ($parent_id) {
+    $children = DB::table('parent_students')
+        ->join('students', 'parent_students.student_id', '=', 'students.student_id')
         ->join('users', 'students.user_id', '=', 'users.user_id')
-        ->where('students.parent_id', $user_id) 
+        ->where('parent_students.parent_id', $parent_id)
         ->select('students.student_id', 'users.full_name', 'students.level')
         ->get();
 
@@ -93,7 +94,7 @@ Route::post('/parent/link-student', function (Request $request) {
         return response()->json(['message' => 'سجل الأب غير موجود'], 404);
     }
 
-    DB::table('parent_student')->updateOrInsert([
+    DB::table('parent_students')->updateOrInsert([
         'parent_id' => $parent->parent_id,
         'student_id' => $student->student_id
     ]);
@@ -116,7 +117,7 @@ Route::get('/student/info/{id}', function ($id) {
         ->where('students.student_id', $id)
         ->select(
             'users.full_name', 
-            'users.department', 
+            'users.branch as department', 
             'students.level',
             'students.student_code'
         )
