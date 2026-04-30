@@ -77,7 +77,9 @@ class DatabaseSeeder extends Seeder
             ParentSeeder::class,
             NotificationSeeder::class,
         ]);
-
+       $this->call([
+    AcademicSeeder::class,
+]);
          
     }
 }
