@@ -32,39 +32,24 @@ class AcademicSeeder extends Seeder
         $prog2 = DB::table('programs')->insertGetId(['name' => 'دبلوم الذكاء الاصطناعي', 'department_id' => $deptId, 'created_at' => $now, 'updated_at' => $now]);
 
         // 4. إضافة مواد
-        $course1 = DB::table('courses')->insertGetId([
-            'title' => 'أساسيات البرمجة', 
-            'description' => 'مقدمة في البرمجة', 
-            'level' => 'مبتدئ',
-            'semester_id' => $semesterId, 
-            'created_at' => $now, 
-            'updated_at' => $now
-        ]);
-        
-        $course2 = DB::table('courses')->insertGetId([
-            'title' => 'قواعد البيانات', 
-            'description' => 'تصميم قواعد البيانات', 
-            'level' => 'متوسط',
-            'semester_id' => $semesterId, 
-            'created_at' => $now, 
-            'updated_at' => $now
-        ]);
+        $course1 = DB::table('courses')->insertGetId(['title' => 'أساسيات البرمجة', 'description' => 'مقدمة في البرمجة','level' =>'مبتدئ' ,'semester_id' => $semesterId, 'created_at' => $now, 'updated_at' => $now]);
+        $course2 = DB::table('courses')->insertGetId(['title' => 'قواعد البيانات', 'description' => 'تصميم قواعد البيانات', 'level' =>'متوسط','semester_id' => $semesterId, 'created_at' => $now, 'updated_at' => $now]);
 
-        // 5. ربط المواد بالمسارات
+        // 5. ربط المواد بالمسارات (تطبيق فكرة المادة المشتركة)
         DB::table('course_program')->insert([
             ['course_id' => $course1, 'program_id' => $prog1],
-            ['course_id' => $course1, 'program_id' => $prog2],
+            ['course_id' => $course1, 'program_id' => $prog2], // مادة مشتركة
             ['course_id' => $course2, 'program_id' => $prog1],
         ]);
 
-        // 6. إضافة محاضرات
+        // 6. إضافة محاضرات للمواد
         DB::table('lessons')->insert([
             ['course_id' => $course1, 'title' => 'المحاضرة الأولى: المتغيرات', 'description' => 'شرح أساسي', 'created_at' => $now, 'updated_at' => $now],
             ['course_id' => $course1, 'title' => 'المحاضرة الثانية: الشروط', 'description' => 'If Statement', 'created_at' => $now, 'updated_at' => $now],
             ['course_id' => $course2, 'title' => 'مقدمة في الجداول', 'description' => 'SQL Basics', 'created_at' => $now, 'updated_at' => $now],
         ]);
 
-        // 7. تسجيل الطالب
+        // 7. تسجيل الطالب التجريبي (عمر) بالمادة
         $studentId = DB::table('students')->where('student_code', '2026100')->value('student_id');
         if ($studentId) {
             DB::table('enrollments')->insert([
@@ -77,7 +62,7 @@ class AcademicSeeder extends Seeder
             ]);
         }
 
-        // 8. تعيين المدرس
+        // 8. ربط المدرس التجريبي بالمادة
         $teacherId = DB::table('teachers')->first()->teacher_id ?? null;
         if ($teacherId) {
             DB::table('course_teachers')->insert([
@@ -89,6 +74,6 @@ class AcademicSeeder extends Seeder
             ]);
         }
         
-        $this->command->info('✅ تم زراعة الهيكلية الأكاديمية بنجاح!');
+        $this->command->info('✅ تم زراعة الهيكلية الأكاديمية (فصول، أقسام، دورات، مواد، محاضرات) بنجاح!');
     }
 }

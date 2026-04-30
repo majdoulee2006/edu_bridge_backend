@@ -30,20 +30,31 @@ class DatabaseSeeder extends Seeder
       ]);
 
         // 3. حساب طالب تجريبي
-     User::create([
-        'full_name' => 'عمر الخالد',
-        'university_id' => '2026100',
-        'username' => '2026100',
-        'email' => 'student@test.com',
-        'password' => Hash::make('12345678'),
-        'role_id' =>3,
-        'status' => 'active',
-        'department' => 'هندسة حواسب وشبكات',
-        'academic_year' => 'السنة الخامسة',
-        'phone' => '0930000000',
-        'birth_date' => '2002-05-20',
-        'gender' => 'ذكر',
-       ]);
+    // 3. حساب طالب تجريبي
+        $studentUser = User::create([
+            'full_name' => 'عمر الخالد',
+            'university_id' => '2026100',
+            'username' => '2026100',
+            'email' => 'student@test.com',
+            'password' => Hash::make('12345678'),
+            'role_id' => 3,
+            'status' => 'active',
+            'department' => 'هندسة حواسب وشبكات', // ملاحظة: إذا هاد الحقل انحذف من users تجاهليه
+            'academic_year' => 'السنة الخامسة',   // ملاحظة: إذا هاد الحقل انحذف من users تجاهليه
+            'phone' => '0930000000',
+            'birth_date' => '2002-05-20',
+            'gender' => 'ذكر',
+        ]);
+
+        // إدخال ملف الطالب في جدول students المرتبط به
+        \Illuminate\Support\Facades\DB::table('students')->insert([
+            'user_id' => $studentUser->user_id, // أو $studentUser->id حسب اسم الـ primary key عندكم
+            'student_code' => '2026100',
+            'level' => 'السنة الخامسة',
+            'birth_date' => '2002-05-20',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
        $this->call([
         // ... السيردرات التانية
         AnnouncementSeeder::class,
@@ -78,8 +89,8 @@ class DatabaseSeeder extends Seeder
             NotificationSeeder::class,
         ]);
        $this->call([
-    AcademicSeeder::class,
-]);
+           AcademicSeeder::class,
+        ]);
          
     }
 }
