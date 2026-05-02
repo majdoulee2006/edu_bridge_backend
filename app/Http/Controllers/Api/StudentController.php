@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Student;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -19,13 +20,46 @@ class StudentController extends Controller
     /**
      * لوحة التحكم الرئيسية للطالب
      */
-    public function getDashboardData(Request $request)
+  public function getDashboardData(Request $request)
     {
         $user = $request->user();
         $student = $user->student;
 
-        // جلب آخر 5 إعلانات
-        $announcements = Announcement::latest()->take(5)->get()->map(function ($item) {
+        // 🌟 1. استخراج أرقام الكورسات أولاً لأننا سنحتاجها في المحاضرات والإعلانات معاً
+        $enrolledCourseIds = $student ? $student->courses->modelKeys() : [];
+
+        // 🌟 2. جلب آخر 5 إعلانات (باستخدام الاستهداف الذكي)
+        $announcements = Announcement::where(function($query) use ($user, $student, $enrolledCourseIds) {
+            
+            // أ) إعلانات عامة (للكل)
+            $query->where('type', 'general')
+                  ->orWhereNull('target_role');
+                  
+            // ب) إعلانات مخصصة للطلاب بشكل عام أو حسب القسم والسنة
+            $query->orWhere(function($q) use ($user, $student) {
+                $q->where('target_role', 'student')
+                  // إذا الإعلان مخصص لقسم، يجب أن يطابق قسم الطالب
+                  ->where(function($sub) use ($user) {
+                      $sub->whereNull('department_id')
+                          ->orWhere('department_id', $user->department_id);
+                  })
+                  // إذا الإعلان مخصص لسنة، يجب أن يطابق سنة الطالب
+                  ->where(function($sub) use ($user) {
+                      $sub->whereNull('academic_year')
+                          ->orWhere('academic_year', $user->academic_year);
+                  });
+            });
+
+            // ج) إعلانات مخصصة لكورسات الطالب الحالية فقط
+            if (!empty($enrolledCourseIds)) {
+                $query->orWhereIn('course_id', $enrolledCourseIds);
+            }
+
+        })
+        ->latest()
+        ->take(5)
+        ->get()
+        ->map(function ($item) {
             return [
                 'id' => $item->announcement_id,
                 'type' => $item->type ?? 'general',
@@ -35,15 +69,11 @@ class StudentController extends Controller
             ];
         });
 
-        // جلب المحاضرة القادمة
+        // 3. جلب المحاضرة القادمة
         $nextLecture = null;
         $today = now()->format('l'); // اسم اليوم بالعربية/الإنجليزية
 
-        $schedule = Schedule::whereHas('course', function($query) use ($student) {
-                $query->whereHas('students', function($q) use ($student) {
-                    $q->where('student_id', $student->student_id);
-                });
-            })
+        $schedule = Schedule::whereIn('course_id', $enrolledCourseIds)
             ->where('day', $today)
             ->where('start_time', '>', now()->format('H:i:s'))
             ->orderBy('start_time', 'asc')
@@ -52,17 +82,17 @@ class StudentController extends Controller
 
         if ($schedule) {
             $nextLecture = [
-                'course_name' => $schedule->course->title,
-                'room' => $schedule->room,
+                'course_name' => $schedule->course->title ?? 'مادة غير محددة',
+                'room' => $schedule->room ?? 'قاعة غير محددة',
                 'start_time' => date('h:i A', strtotime($schedule->start_time)),
                 'end_time' => date('h:i A', strtotime($schedule->end_time)),
             ];
         }
 
-        // إحصائيات سريعة
-        $totalCourses = $student->courses()->count();
-        $totalAttendances = Attendance::where('student_id', $student->student_id)->count();
-        $presentCount = Attendance::where('student_id', $student->student_id)->where('status', 'present')->count();
+        // 4. إحصائيات سريعة
+        $totalCourses = $student ? $student->courses()->count() : 0;
+        $totalAttendances = $student ? Attendance::where('student_id', $student->student_id)->count() : 0;
+        $presentCount = $student ? Attendance::where('student_id', $student->student_id)->where('status', 'present')->count() : 0;
         $attendanceRate = $totalAttendances > 0 ? round(($presentCount / $totalAttendances) * 100, 1) : 0;
 
         return response()->json([
@@ -78,13 +108,14 @@ class StudentController extends Controller
                     'email' => $user->email ?? 'غير متوفر',
                     'department' => $user->department ?? 'غير محدد',
                     'academic_year' => $user->academic_year ?? 'غير محدد',
-                    'birth_date' => $user->birth_date ? $user->birth_date->format('Y-m-d') : null,
+                    'birth_date' => $user->birth_date ? date('Y-m-d', strtotime($user->birth_date)) : null,
                     'gender' => $user->gender ?? 'غير محدد',
+                    'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
                 ],
                 'statistics' => [
                     'total_courses' => $totalCourses,
                     'attendance_rate' => $attendanceRate,
-                    'total_assignments' => AssignmentSubmission::where('student_id', $student->student_id)->count(),
+                    'total_assignments' => $student ? AssignmentSubmission::where('student_id', $student->student_id)->count() : 0,
                 ],
                 'next_lecture' => $nextLecture,
                 'announcements' => $announcements,
@@ -114,6 +145,8 @@ class StudentController extends Controller
                 'birth_date' => $user->birth_date ? $user->birth_date->format('Y-m-d') : null,
                 'gender' => $user->gender ?? 'غير محدد',
                 'level' => $student->level ?? 'غير محدد',
+                // 🌟 إضافة رابط الصورة (إذا مافي صورة بنرجع null)
+                'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
             ]
         ], 200);
     }
@@ -122,31 +155,54 @@ class StudentController extends Controller
      * تحديث الملف الشخصي للطالب
      */
     public function updateProfile(Request $request)
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        $validator = Validator::make($request->all(), [
-            'phone' => 'sometimes|string|max:20',
-            'email' => 'sometimes|email|unique:users,email,' . $user->user_id . ',user_id',
-            'department' => 'sometimes|string|max:255',
-        ]);
+    // 🌟 1. إعداد الـ Validation
+    $validator = Validator::make($request->all(), [
+        'phone' => 'sometimes|string|max:20',
+        'email' => 'sometimes|email|unique:users,email,' . $user->user_id . ',user_id',
+        'avatar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', 
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $user->update($request->only(['phone', 'email', 'department']));
-
+    if ($validator->fails()) {
         return response()->json([
-            'status' => true,
-            'message' => 'تم تحديث الملف الشخصي بنجاح',
-            'data' => $user
-        ], 200);
+            'status' => false,
+            'errors' => $validator->errors()
+        ], 422);
     }
 
+    // 🌟 2. تجهيز البيانات التي سيتم تحديثها
+    $dataToUpdate = $request->only(['phone', 'email']);
+
+    // 🌟 3. معالجة الصورة (في حال تم إرسالها)
+    if ($request->hasFile('avatar')) {
+        // حذف الصورة القديمة إذا وجدت
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+        
+        // حفظ الصورة الجديدة
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $dataToUpdate['avatar'] = $path; 
+    } else {
+         // هذا السطر مفيد للـ Debugging فقط إذا أردتِ التأكد (يمكنك حذفه لاحقاً)
+        \Log::info("No avatar file received for user: " . $user->user_id);
+    }
+
+    // 🌟 4. تحديث قاعدة البيانات
+    $user->update($dataToUpdate);
+
+    return response()->json([
+        'status' => true,
+        'message' => 'تم تحديث الملف الشخصي بنجاح',
+        'data' => [
+            'phone' => $user->phone,
+            'email' => $user->email,
+            'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+        ]
+    ], 200);
+}
     /**
      * جلب الإشعارات الخاصة بالطالب
      */
