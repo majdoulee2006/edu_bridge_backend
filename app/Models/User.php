@@ -25,6 +25,7 @@ protected $fillable = [
         'department',
         'branch',
         'children_ids',
+        'avatar'
     ];
     protected $hidden = [
         'password',
@@ -47,6 +48,17 @@ protected $fillable = [
     {
         // تأكدي أن اسم المودل Student وأن الحقل الأجنبي هو user_id في جدول الطلاب
         return $this->hasOne(Student::class, 'user_id', 'user_id');
+    }
+    // ✅ جلب الرسائل التي أرسلها هذا المستخدم
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id', 'user_id');
+    }
+
+    // ✅ جلب الرسائل التي استقبلها هذا المستخدم
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id', 'user_id');
     }
 
 }
