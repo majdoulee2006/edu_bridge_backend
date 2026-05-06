@@ -15,6 +15,7 @@ use App\Models\AssignmentSubmission;
 use App\Models\AbsenceRequest;
 use App\Models\Course;
 use App\Models\Schedule;
+use Carbon\Carbon;
 class StudentController extends Controller
 {
     /**
@@ -293,21 +294,61 @@ class StudentController extends Controller
             'data' => $courses
         ], 200);
     }
+   /**
+     * جلب المحاضرات (الدروس) المجمعة حسب المادة
+     */
+    public function getMyLectures(Request $request)
+    {
+        $student = $request->user()->student;
 
-    /**
+        // التعديل 1: غيرنا teacher إلى teachers
+        $courses = $student->courses()
+            ->with(['teachers.user', 'lessons']) 
+            ->get()
+            ->map(function ($course) {
+                return [
+                    'course_id' => $course->course_id,
+                    'course_name' => $course->title,
+                    // التعديل 2: جلبنا أول دكتور من مصفوفة الدكاترة
+                    'teacher_name' => $course->teachers->first()?->user->full_name ?? 'مدرس غير محدد', 
+                    'total_files' => $course->lessons->count(),
+                    
+                    'lessons' => $course->lessons->map(function ($lesson) {
+                        return [
+                            'id' => $lesson->lesson_id,
+                            'title' => $lesson->title,
+                            'type' => $lesson->type ?? 'pdf', 
+                            'url' => $lesson->content_url ? 
+                                    (filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_url : asset('storage/' . $lesson->content_url)) 
+                                    : null,
+                            'file_size' => $lesson->file_size,
+                            'duration' => $lesson->duration,
+                            'date' => $lesson->created_at ? $lesson->created_at->translatedFormat('d F') : null,
+                        ];
+                    })
+                ];
+            });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب المحاضرات بنجاح',
+            'data' => $courses
+        ], 200);
+    }
+/**
      * جلب جدول الطالب الأسبوعي
      */
     public function getMySchedule(Request $request)
     {
         $student = $request->user()->student;
 
-        $schedules = Schedule::whereHas('course', function($query) use ($student) {
+        $schedules = \App\Models\Schedule::whereHas('course', function($query) use ($student) {
                 $query->whereHas('students', function($q) use ($student) {
-                    $q->where('student_id', $student->student_id);
+                    $q->where('enrollments.student_id', $student->student_id);
                 });
             })
-            ->with('course')
-            ->orderBy('day')
+           ->with(['course', 'course.teachers.user']) // 💡 السحر هنا لجلب اليوزر مع المدرس
+            ->orderBy('day') 
             ->orderBy('start_time')
             ->get()
             ->groupBy('day')
@@ -316,10 +357,16 @@ class StudentController extends Controller
                     'day' => $day,
                     'lectures' => $items->map(function($item) {
                         return [
-                            'course_name' => $item->course->title,
-                            'start_time' => date('h:i A', strtotime($item->start_time)),
-                            'end_time' => date('h:i A', strtotime($item->end_time)),
-                            'room' => $item->room,
+                            // 💡 2. التعديل: استخدمنا title بدل course_name
+                            'course_name' => $item->course->title ?? 'مادة غير معروفة', 
+                            
+                            // 💡 3. التعديل: جلب اسم أول مدرس من قائمة المدرسين
+                          'teacher' => $item->course->teachers->first()?->user?->name ?? $item->course->teachers->first()?->user?->full_name ?? 'مدرس غير محدد',
+                            
+                            'start_time'  => date('h:i A', strtotime($item->start_time)),
+                            'end_time'    => date('h:i A', strtotime($item->end_time)),
+                            'room'        => $item->room,
+                            'duration'    => round((strtotime($item->end_time) - strtotime($item->start_time)) / 60) . ' دقيقة',
                         ];
                     })
                 ];
@@ -330,7 +377,108 @@ class StudentController extends Controller
             'data' => $schedules
         ], 200);
     }
+    /**
+     * جلب جدول الامتحانات للطالب
+     */
+    
+    public function getMyExams(Request $request)
+    {
+        $student = $request->user()->student;
 
+        // نجلب الامتحانات للمواد التي يدرسها الطالب فقط (مع تجنب الغموض في student_id)
+        $exams = \App\Models\Exam::whereHas('course', function($query) use ($student) {
+                $query->whereHas('students', function($q) use ($student) {
+                    $q->where('enrollments.student_id', $student->student_id);
+                });
+            })
+            ->with('course')
+            ->orderBy('exam_date') // ترتيب من الأقرب للأبعد
+            ->get()
+            ->map(function($exam) {
+                $date = \Carbon\Carbon::parse($exam->exam_date);
+                return [
+                    'exam_id'  => $exam->exam_id,
+                    // استخدمنا title بدل course_name
+                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان مادة'), 
+                    'day_num'  => $date->format('d'),
+                    'month'    => $date->translatedFormat('F'), // مثال: يونيو
+                    'day_name' => $date->translatedFormat('l'), // مثال: الأحد
+                    'time'     => $date->format('h:i A'),
+                    'duration' => 'ساعتان', // يمكنك جعلها ديناميكية لاحقاً
+                    'room'     => 'القاعة الامتحانية', 
+                    'type'     => 'نهائي'
+                ];
+            });
+
+        return response()->json([
+            'status' => true,
+            'data'   => $exams
+        ], 200);
+    }
+    /**
+     * تصدير جدول الامتحانات كملف PDF
+     */
+    public function exportExamsPdf(Request $request)
+    {
+        $student = $request->user()->student;
+
+        // نفس اللوجيك الصحيح اللي استعملناه بالدوال السابقة لجلب امتحانات الطالب
+        $exams = \App\Models\Exam::whereHas('course', function($query) use ($student) {
+                $query->whereHas('students', function($q) use ($student) {
+                    $q->where('enrollments.student_id', $student->student_id);
+                });
+            })
+            ->with('course')
+            ->orderBy('exam_date')
+            ->get();
+
+        // تمرير البيانات لملف التصميم (Blade)
+        $data = [
+            'exams' => $exams,
+            'student' => $student
+        ];
+
+        // توليد الـ PDF باستخدام الـ View
+        $pdf = \PDF::loadView('pdf.exams_schedule', $data);
+
+        // حفظ الملف في مجلد storage/app/public/pdfs
+        $fileName = 'exams_' . $student->student_id . '_' . time() . '.pdf';
+        \Storage::disk('public')->put('pdfs/' . $fileName, $pdf->output());
+
+        // إرجاع رابط الملف للفلاتر
+        return response()->json([
+            'status' => true,
+            'pdf_url' => asset('storage/pdfs/' . $fileName)
+        ], 200);
+    }
+    /**
+     * تصدير جدول الامتحانات كملف Excel
+     */
+    public function exportExamsExcel(Request $request)
+    {
+        $student = $request->user()->student;
+
+        // نجلب نفس البيانات تبع الامتحانات
+        $exams = \App\Models\Exam::whereHas('course', function($query) use ($student) {
+                $query->whereHas('students', function($q) use ($student) {
+                    $q->where('enrollments.student_id', $student->student_id);
+                });
+            })
+            ->with('course')
+            ->orderBy('exam_date')
+            ->get();
+
+        $fileName = 'exams_' . $student->student_id . '_' . time() . '.xlsx';
+        
+        // 💡 حفظ الملف باستخدام مكتبة الإكسل في مجلد storage/app/public/excels
+        \Maatwebsite\Excel\Facades\Excel::store(new \App\Exports\ExamsExport($exams), 'public/excels/' . $fileName);
+
+        // إرجاع الرابط للفلاتر
+        return response()->json([
+            'status' => true,
+            'excel_url' => asset('storage/excels/' . $fileName)
+        ], 200);
+    }
     /**
      * جلب سجل حضور الطالب
      */
@@ -413,42 +561,80 @@ class StudentController extends Controller
     }
 
     /**
-     * جلب واجبات الطالب
+     * جلب واجبات الطالب (مصنفة: مكتمل، فائت، قيد الانتظار)
      */
     public function getMyAssignments(Request $request)
     {
         $student = $request->user()->student;
 
-        $submissions = AssignmentSubmission::where('student_id', $student->student_id)
-            ->with(['assignment.course'])
-            ->get()
-            ->map(function($submission) {
-                return [
-                    'id' => $submission->submission_id,
-                    'title' => $submission->assignment->title,
-                    'course_name' => $submission->assignment->course->title,
-                    'due_date' => $submission->assignment->due_date->format('Y-m-d H:i'),
-                    'submitted_at' => $submission->submitted_at ? $submission->submitted_at->format('Y-m-d H:i') : null,
+        // 1. جلب أرقام المواد اللي مسجل فيها الطالب
+        $enrolledCourseIds = \App\Models\Enrollment::where('student_id', $student->student_id)
+            ->pluck('course_id');
+
+        // 2. جلب كل واجبات هاي المواد
+        $assignments = \App\Models\Assignment::with(['course.teachers.user', 'submissions' => function($query) use ($student) {
+            $query->where('student_id', $student->student_id);
+        }])
+        ->whereIn('course_id', $enrolledCourseIds)
+        ->orderBy('due_date', 'asc')
+        ->get();
+
+        $formattedAssignments = [];
+        $now = \Carbon\Carbon::now();
+
+        // 3. تصنيف وتنسيق البيانات للواجهة
+        foreach ($assignments as $assignment) {
+            $submission = $assignment->submissions->first();
+
+            if ($submission) {
+                $status = 'completed';
+            } else {
+                if ($now->greaterThan($assignment->due_date)) {
+                    $status = 'missed';
+                } else {
+                    $status = 'pending';
+                }
+            }
+
+            $formattedAssignments[] = [
+                'id' => $assignment->assignment_id,
+                'title' => $assignment->title,
+                'description' => $assignment->description,
+                'type' => $assignment->type, // pdf, code, project ...
+                'due_date' => $assignment->due_date->format('Y-m-d h:i A'),
+                'max_points' => $assignment->max_points,
+                'course_name' => $assignment->course->title ?? 'مادة غير معروفة',
+                'teacher_name' => $assignment->course->teachers->first()?->user?->name ?? 'مدرس غير محدد',
+                'status' => $status,
+                'submission' => $submission ? [
+                    'file_path' => $submission->file_path ? asset('storage/' . $submission->file_path) : null,
+                    'student_notes' => $submission->student_notes,
                     'grade' => $submission->grade,
-                    'max_points' => $submission->assignment->max_points,
-                    'status' => $submission->grade ? 'graded' : ($submission->submitted_at ? 'submitted' : 'pending'),
                     'feedback' => $submission->feedback,
-                ];
-            });
+                    'submitted_at' => $submission->created_at->format('Y-m-d h:i A'),
+                ] : null
+            ];
+        }
 
         return response()->json([
             'status' => true,
-            'data' => $submissions
+            'data' => $formattedAssignments
         ], 200);
     }
 
     /**
-     * تقديم واجب
+     * تقديم (رفع) واجب
      */
     public function submitAssignment(Request $request, $assignmentId)
     {
-        $validator = Validator::make($request->all(), [
-            'file' => 'required|file|mimes:pdf,doc,docx,zip|max:5120', // 5MB max
+        return response()->json([
+            'all_data' => $request->all(),
+            'has_file' => $request->hasFile('file')
+        ]);
+        // تم التعديل ليقبل 50 ميجا (51200 كيلوبايت) وإضافة الصور حسب تصميمك
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'file' => 'required|file|mimes:pdf,doc,docx,zip,jpg,jpeg,png,mp4|max:51200', 
+            'student_notes' => 'nullable|string' // استقبال ملاحظات الطالب
         ]);
 
         if ($validator->fails()) {
@@ -459,7 +645,7 @@ class StudentController extends Controller
         }
 
         $student = $request->user()->student;
-        $assignment = Assignment::find($assignmentId);
+        $assignment = \App\Models\Assignment::find($assignmentId);
 
         if (!$assignment) {
             return response()->json([
@@ -468,20 +654,26 @@ class StudentController extends Controller
             ], 404);
         }
 
+        // اختياري: منع التسليم إذا انتهى الوقت (حسب قوانين تطبيقك)
+        // if (\Carbon\Carbon::now()->greaterThan($assignment->due_date)) {
+        //     return response()->json(['status' => false, 'message' => 'عذراً، انتهى وقت تسليم هذا الواجب'], 403);
+        // }
+
         // رفع الملف
         $file = $request->file('file');
-        $fileName = time() . '_' . $student->student_code . '_' . $file->getClientOriginalName();
+        // استخدام student_id لضمان عدم تكرار الأسماء
+        $fileName = time() . '_' . $student->student_id . '_' . $file->getClientOriginalName();
         $filePath = $file->storeAs('assignments/' . $assignmentId, $fileName, 'public');
 
         // إنشاء أو تحديث التسليم
-        $submission = AssignmentSubmission::updateOrCreate(
+        $submission = \App\Models\AssignmentSubmission::updateOrCreate(
             [
                 'assignment_id' => $assignmentId,
                 'student_id' => $student->student_id,
             ],
             [
                 'file_path' => $filePath,
-                'submitted_at' => now(),
+                'student_notes' => $request->student_notes, // تخزين ملاحظة الطالب
                 'grade' => null,
                 'feedback' => null,
             ]
@@ -493,7 +685,6 @@ class StudentController extends Controller
             'data' => $submission
         ], 200);
     }
-
     /**
      * طلب إذن غياب
      */

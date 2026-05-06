@@ -8,13 +8,13 @@ class Schedule extends Model
 {
     protected $primaryKey = 'schedule_id';
 
+    // 💡 التعديل هنا: طابقنا الأسماء مع الداتا بيز تماماً
     protected $fillable = [
         'course_id',
-        'teacher_id',
-        'day_of_week',
+        'day',           // كانت day_of_week
         'start_time',
         'end_time',
-        'room_number',
+        'room',          // كانت room_number
     ];
 
     public function course()
@@ -22,8 +22,6 @@ class Schedule extends Model
         return $this->belongsTo(Course::class, 'course_id', 'course_id');
     }
 
-    public function teacher()
-    {
-        return $this->belongsTo(Teacher::class, 'teacher_id', 'teacher_id');
-    }
+    // 💡 تم إزالة دالة teacher() لأن teacher_id غير موجود بجدول schedules. 
+    // لنجلب المدرس نستخدم: $schedule->course->teacher
 }

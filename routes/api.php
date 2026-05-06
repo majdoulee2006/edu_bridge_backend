@@ -34,4 +34,11 @@ Route::middleware('auth:sanctum')->group(function () {
      Route::post('/student/profile/update', [StudentController::class, 'updateProfile']);
      Route::get('/student/notifications', [StudentController::class, 'getNotifications']);
      Route::get('/student/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
+     Route::get('/student/my-schedule', [StudentController::class, 'getMySchedule']); // جدول الحصص
+     Route::get('/student/my-exams', [StudentController::class, 'getMyExams']); // جدول الامتحانات
+     Route::get('/student/my-exams/pdf', [StudentController::class, 'exportExamsPdf']); // تصدير الـ PDF
+     Route::get('/student/my-exams/excel', [StudentController::class, 'exportExamsExcel']);
+     Route::get('/student/assignments', [StudentController::class, 'getMyAssignments']);
+     Route::post('/student/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
+     Route::get('/student/lectures', [StudentController::class, 'getMyLectures']);
 });

@@ -23,4 +23,31 @@ class Course extends Model
         return $this->belongsToMany(Teacher::class, 'course_teachers', 'course_id', 'teacher_id')
                     ->withPivot('role');
     }
+    
+    // إضافة علاقة المادة مع الطلاب
+    public function students()
+    {
+        return $this->belongsToMany(Student::class, 'enrollments', 'course_id', 'student_id');
+    }
+    
+    // علاقة المادة بالمحاضرات (الدروس) - شغلك 
+    public function lessons()
+    {
+        return $this->hasMany(Lesson::class, 'course_id', 'course_id')
+                    ->orderBy('created_at', 'desc'); // عشان تترتب من الأحدث للأقدم
+    }
+
+    // 👇 الإضافات الجديدة المطلوبة من زميلك 👇
+    
+    // علاقة المادة بالجدول الدراسي
+    public function schedule()
+    {
+        return $this->hasOne(Schedule::class, 'course_id', 'course_id');
+    }
+
+    // علاقة المادة بالإعلانات
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class, 'course_id', 'course_id');
+    }
 }
