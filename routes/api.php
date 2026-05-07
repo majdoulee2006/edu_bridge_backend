@@ -122,6 +122,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [TeacherController::class, 'getTeacherProfile']);
         Route::put('/profile', [TeacherController::class, 'updateTeacherProfile']);
     });
+<<<<<<< Updated upstream
 });
 
 // -----------------------------------------------------------
@@ -186,4 +187,6 @@ Route::get('/parent/notifications/{id}', function ($id) {
         ->where('user_id', $id)
         ->orderBy('created_at', 'desc')
         ->get();
+=======
+>>>>>>> Stashed changes
 });

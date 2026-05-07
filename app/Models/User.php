@@ -62,6 +62,16 @@ class User extends Authenticatable
         return $this->hasOne(Student::class, 'user_id', 'user_id');
     }
 
+    public function teacher()
+    {
+        return $this->hasOne(Teacher::class, 'user_id', 'user_id');
+    }
+
+    public function parent()
+    {
+        return $this->hasOne(Parents::class, 'user_id', 'user_id');
+    }
+
     public function sentMessages()
     {
         return $this->hasMany(Message::class, 'sender_id', 'user_id');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Course;
 use App\Models\Attendance;
 use App\Models\Grade;
@@ -12,6 +13,11 @@ use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use App\Models\Announcement;
 use App\Models\Student;
+use App\Models\Lesson;
+use App\Models\Notification;
+use App\Models\Schedule;
+use App\Models\AbsenceRequest;
+use App\Models\Message;
 
 class TeacherController extends Controller
 {
@@ -35,11 +41,14 @@ class TeacherController extends Controller
             ->get();
 
         // آخر 5 إعلانات
-        $recentAnnouncements = Announcement::whereIn('course_id', $courses->pluck('course_id'))
-                ->orWhere('type', 'general')
-                ->latest()
-                ->limit(5)
-                ->get();
+        $recentAnnouncements = Announcement::where(function($q) use ($courses) {
+                $q->whereIn('course_id', $courses->pluck('course_id'))
+                  ->orWhere('category', 'general')
+                  ->orWhereNull('course_id');
+            })
+            ->latest()
+            ->limit(5)
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -288,6 +297,137 @@ class TeacherController extends Controller
     }
 
     /**
+     * توليد QR لجلسة حضور
+     */
+    public function generateQrSession(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'course_id' => 'required|exists:courses,course_id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $teacher = $request->user()->teacher;
+        $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
+
+        if (!$course) {
+            return response()->json(['success' => false, 'message' => 'الدورة غير مرتبطة بك'], 403);
+        }
+
+        // إنشاء درس مؤقت لهذه الجلسة
+        $lesson = Lesson::create([
+            'course_id' => $course->course_id,
+            'teacher_id' => $teacher->teacher_id,
+            'title' => 'حصة ' . now()->format('Y-m-d H:i'),
+            'type' => 'session',
+        ]);
+
+        // توليد توكن عشوائي وإنشاء الجلسة
+        $token = \Illuminate\Support\Str::random(32);
+
+        $session = \App\Models\AttendanceSession::create([
+            'lesson_id' => $lesson->lesson_id,
+            'qr_token'  => $token,
+            'expires_at' => now()->addMinutes(60),
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'session_id' => $session->id,
+                'qr_token'  => $token,
+                'expires_at' => $session->expires_at,
+                'lesson_id' => $lesson->lesson_id,
+                'course_name' => $course->title,
+            ]
+        ], 200);
+    }
+
+    /**
+     * جلب قائمة الحاضرين والغائبين لجلسة معينة
+     */
+    public function getSessionAttendance(Request $request, $sessionId)
+    {
+        $session = \App\Models\AttendanceSession::find($sessionId);
+
+        if (!$session) {
+            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
+        }
+
+        $lesson = $session->lesson;
+        $course = $lesson->course;
+
+        $allStudents = $course->students()->with('user')->get();
+
+        $presentIds = Attendance::where('lesson_id', $lesson->lesson_id)
+            ->where('status', 'present')
+            ->pluck('student_id')
+            ->toArray();
+
+        $students = $allStudents->map(function ($student) use ($presentIds) {
+            return [
+                'student_id' => $student->student_id,
+                'name'   => $student->user->full_name,
+                'status' => in_array($student->student_id, $presentIds) ? 'present' : 'absent',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'session_active' => $session->is_active,
+                'present_count' => count($presentIds),
+                'total_count'   => $allStudents->count(),
+                'students' => $students,
+            ]
+        ], 200);
+    }
+
+    /**
+     * إنهاء جلسة الحضور وتسجيل الغياب
+     */
+    public function endSession(Request $request, $sessionId)
+    {
+        $session = \App\Models\AttendanceSession::find($sessionId);
+
+        if (!$session) {
+            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
+        }
+
+        $lesson = $session->lesson;
+        $course = $lesson->course;
+        $allStudents = $course->students()->get();
+
+        $presentIds = Attendance::where('lesson_id', $lesson->lesson_id)
+            ->where('status', 'present')
+            ->pluck('student_id')
+            ->toArray();
+
+        foreach ($allStudents as $student) {
+            if (!in_array($student->student_id, $presentIds)) {
+                Attendance::updateOrCreate(
+                    [
+                        'student_id' => $student->student_id,
+                        'lesson_id'  => $lesson->lesson_id,
+                        'attendance_date' => now()->toDateString(),
+                    ],
+                    ['status' => 'absent']
+                );
+            }
+        }
+
+        $session->update(['is_active' => false]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إنهاء الجلسة وتسجيل الغياب بنجاح',
+        ], 200);
+    }
+
+    /**
      * إدخال العلامات للطلاب
      */
     public function enterGrades(Request $request)
@@ -389,6 +529,50 @@ class TeacherController extends Controller
     }
 
     /**
+     * جلب واجبات المدرس
+     */
+    public function getAssignments(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) {
+            return response()->json(['success' => true, 'data' => []], 200);
+        }
+
+        $courseIds = $teacher->courses()->pluck('courses.course_id');
+
+        $assignments = Assignment::whereIn('course_id', $courseIds)
+            ->with(['course', 'submissions'])
+            ->latest()
+            ->get()
+            ->map(function ($assignment) {
+                $submissionsCount = $assignment->submissions->count();
+                $gradedCount      = $assignment->submissions->whereNotNull('grade')->count();
+                $isExpired        = $assignment->due_date->isPast();
+
+                if ($isExpired && $gradedCount >= $submissionsCount && $submissionsCount > 0) {
+                    $status = 'مكتمل';
+                } elseif ($isExpired && $submissionsCount > 0) {
+                    $status = 'قيد التصحيح';
+                } elseif (!$isExpired && $submissionsCount === 0) {
+                    $status = 'قيد الإنتظار';
+                } else {
+                    $status = 'نشط';
+                }
+
+                return [
+                    'id'                => $assignment->assignment_id,
+                    'title'             => $assignment->title,
+                    'course_name'       => $assignment->course->title ?? '',
+                    'due_date'          => $assignment->due_date->format('Y-m-d'),
+                    'submissions_count' => $submissionsCount,
+                    'status'            => $status,
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $assignments], 200);
+    }
+
+    /**
      * إنشاء واجب جديد
      */
     public function createAssignment(Request $request)
@@ -411,7 +595,7 @@ class TeacherController extends Controller
         $teacher = $request->user()->teacher;
 
         // التأكد أن هذه الدورة تخص المدرس
-        $course = $teacher->courses()->where('course_id', $request->course_id)->first();
+        $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
 
         if (!$course) {
             return response()->json([
@@ -421,11 +605,12 @@ class TeacherController extends Controller
         }
 
         $assignment = Assignment::create([
-            'course_id' => $request->course_id,
-            'title' => $request->title,
+            'course_id'   => $request->course_id,
+            'teacher_id'  => $teacher->teacher_id,
+            'title'       => $request->title,
             'description' => $request->description,
-            'due_date' => $request->due_date,
-            'max_points' => $request->max_points,
+            'due_date'    => $request->due_date,
+            'max_points'  => $request->max_points,
         ]);
 
         return response()->json([
@@ -531,7 +716,7 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        $course = $teacher->courses()->where('course_id', $submission->assignment->course_id)->first();
+        $course = $teacher->courses()->where('courses.course_id', $submission->assignment->course_id)->first();
 
         if (!$course) {
             return response()->json([
@@ -610,19 +795,459 @@ class TeacherController extends Controller
             ->get()
             ->map(function($announcement) {
                 return [
-                    'id' => $announcement->announcement_id,
-                    'title' => $announcement->title,
-                    'content' => $announcement->content,
-                    'type' => $announcement->type,
-                    'course' => $announcement->course ? $announcement->course->title : null,
+                    'id'         => $announcement->announcement_id,
+                    'title'      => $announcement->title,
+                    'content'    => $announcement->content,
+                    'type'       => $announcement->type,
+                    'course'     => $announcement->course ? $announcement->course->title : null,
                     'created_at' => $announcement->created_at->format('Y-m-d H:i'),
-                    'time_ago' => $announcement->created_at->diffForHumans(),
+                    'time_ago'   => $announcement->created_at->diffForHumans(),
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $announcements], 200);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  الجدول الدراسي
+    // ──────────────────────────────────────────────────────────────
+
+    public function getSchedule(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) {
+            return response()->json(['success' => true, 'data' => (object)[]], 200);
+        }
+        $courseIds = $teacher->courses()->pluck('courses.course_id');
+
+        $schedules = Schedule::whereIn('course_id', $courseIds)
+            ->with('course')
+            ->get()
+            ->groupBy('day')
+            ->map(function($items) {
+                return $items->map(function($item) {
+                    return [
+                        'id'          => $item->schedule_id,
+                        'course_id'   => $item->course_id,
+                        'course_name' => $item->course->title,
+                        'start_time'  => $item->start_time,
+                        'end_time'    => $item->end_time,
+                        'room'        => $item->room,
+                    ];
+                });
+            });
+
+        return response()->json(['success' => true, 'data' => $schedules], 200);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  المحاضرات
+    // ──────────────────────────────────────────────────────────────
+
+    public function getLessons(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+
+        $lessons = Lesson::where('teacher_id', $teacher->teacher_id)
+            ->with('course')
+            ->latest()
+            ->get()
+            ->map(function($lesson) {
+                return [
+                    'id'          => $lesson->lesson_id,
+                    'title'       => $lesson->title,
+                    'description' => $lesson->description,
+                    'content_url' => $lesson->content_url,
+                    'course_id'   => $lesson->course_id,
+                    'course_name' => $lesson->course ? $lesson->course->title : null,
+                    'created_at'  => $lesson->created_at->format('Y-m-d'),
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $lessons], 200);
+    }
+
+    public function createLesson(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'title'        => 'required|string|max:255',
+            'course_id'    => 'required|exists:courses,course_id',
+            'description'  => 'nullable|string',
+            'content_file' => 'required|file|mimes:pdf,mp4,mov,avi,mkv|max:102400',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $teacher = $request->user()->teacher;
+
+        $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
+        if (!$course) {
+            return response()->json(['success' => false, 'message' => 'هذه الدورة غير مرتبطة بك'], 403);
+        }
+
+        $file     = $request->file('content_file');
+        $filePath = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
+
+        $lesson = Lesson::create([
+            'title'       => $request->title,
+            'course_id'   => $request->course_id,
+            'teacher_id'  => $teacher->teacher_id,
+            'description' => $request->description,
+            'content_url' => $filePath,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم رفع المحاضرة بنجاح', 'data' => $lesson], 201);
+    }
+
+    public function deleteLesson(Request $request, $lessonId)
+    {
+        $teacher = $request->user()->teacher;
+
+        $lesson = Lesson::where('lesson_id', $lessonId)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->first();
+
+        if (!$lesson) {
+            return response()->json(['success' => false, 'message' => 'المحاضرة غير موجودة أو لا تخصك'], 404);
+        }
+
+        Storage::disk('public')->delete($lesson->content_url);
+        $lesson->delete();
+
+        return response()->json(['success' => true, 'message' => 'تم حذف المحاضرة بنجاح'], 200);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  الإشعارات
+    // ──────────────────────────────────────────────────────────────
+
+    public function getNotifications(Request $request)
+    {
+        $notifications = Notification::where('user_id', $request->user()->user_id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($n) {
+                return [
+                    'id'         => $n->id,
+                    'title'      => $n->title,
+                    'message'    => $n->message,
+                    'type'       => $n->type,
+                    'is_read'    => $n->is_read,
+                    'created_at' => $n->created_at->diffForHumans(),
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $notifications], 200);
+    }
+
+    public function markNotificationRead(Request $request, $notificationId)
+    {
+        $notification = Notification::where('id', $notificationId)
+            ->where('user_id', $request->user()->user_id)
+            ->first();
+
+        if (!$notification) {
+            return response()->json(['success' => false, 'message' => 'الإشعار غير موجود'], 404);
+        }
+
+        $notification->update(['is_read' => true]);
+
+        return response()->json(['success' => true, 'message' => 'تم تحديد الإشعار كمقروء'], 200);
+    }
+
+    public function markAllNotificationsRead(Request $request)
+    {
+        Notification::where('user_id', $request->user()->user_id)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json(['success' => true, 'message' => 'تم تحديد كل الإشعارات كمقروءة'], 200);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  تسليمات الواجبات
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * جلب كل تسليمات مواد المدرس
+     */
+    public function getSubmissions(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) {
+            return response()->json(['success' => true, 'data' => []], 200);
+        }
+
+        $courseIds     = $teacher->courses()->pluck('courses.course_id');
+        $assignmentIds = Assignment::whereIn('course_id', $courseIds)->pluck('assignment_id');
+
+        $submissions = AssignmentSubmission::whereIn('assignment_id', $assignmentIds)
+            ->with(['assignment.course', 'student.user'])
+            ->latest()
+            ->get()
+            ->map(function ($sub) {
+                return [
+                    'submission_id'    => $sub->submission_id,
+                    'student_name'     => $sub->student->user->full_name ?? 'غير معروف',
+                    'assignment_title' => $sub->assignment->title ?? '',
+                    'course_name'      => $sub->assignment->course->title ?? '',
+                    'student_notes'    => '',
+                    'file_path'        => $sub->file_path,
+                    'grade'            => $sub->grade,
+                    'feedback'         => $sub->feedback,
+                    'max_points'       => $sub->assignment->max_points ?? 100,
+                    'submitted_at'     => $sub->submitted_at ? \Carbon\Carbon::parse($sub->submitted_at)->format('Y-m-d H:i') : ($sub->created_at ? $sub->created_at->format('Y-m-d H:i') : null),
+                    'is_graded'        => !is_null($sub->grade),
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $submissions], 200);
+    }
+
+    public function getAssignmentSubmissions(Request $request, $assignmentId)
+    {
+        $teacher    = $request->user()->teacher;
+        $assignment = Assignment::where('assignment_id', $assignmentId)
+            ->whereHas('course', function($q) use ($teacher) {
+                $q->whereHas('teachers', function($q2) use ($teacher) {
+                    $q2->where('teacher_id', $teacher->teacher_id);
+                });
+            })->first();
+
+        if (!$assignment) {
+            return response()->json(['success' => false, 'message' => 'الواجب غير موجود أو لا يخصك'], 404);
+        }
+
+        $submissions = AssignmentSubmission::where('assignment_id', $assignmentId)
+            ->with('student.user')
+            ->get()
+            ->map(function($sub) {
+                return [
+                    'submission_id' => $sub->submission_id,
+                    'student_id'    => $sub->student_id,
+                    'student_name'  => $sub->student->user->full_name,
+                    'file_path'     => $sub->file_path,
+                    'grade'         => $sub->grade,
+                    'feedback'      => $sub->feedback,
+                    'submitted_at'  => $sub->submitted_at ? \Carbon\Carbon::parse($sub->submitted_at)->format('Y-m-d H:i') : null,
                 ];
             });
 
         return response()->json([
-            'success' => true,
-            'data' => $announcements
+            'success'    => true,
+            'assignment' => ['id' => $assignment->assignment_id, 'title' => $assignment->title],
+            'data'       => $submissions,
         ], 200);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  الامتحانات
+    // ──────────────────────────────────────────────────────────────
+
+    public function getExams(Request $request)
+    {
+        $teacher   = $request->user()->teacher;
+        $courseIds = $teacher->courses()->pluck('course_id');
+
+        $exams = \App\Models\Exam::whereIn('course_id', $courseIds)
+            ->with('course')
+            ->get()
+            ->map(function($exam) {
+                return [
+                    'id'        => $exam->exam_id,
+                    'exam_name' => $exam->exam_name,
+                    'course_id' => $exam->course_id,
+                    'course'    => $exam->course->title,
+                    'exam_date' => $exam->exam_date,
+                    'max_score' => $exam->max_score,
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $exams], 200);
+    }
+
+    public function createExam(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'course_id' => 'required|exists:courses,course_id',
+            'exam_name' => 'required|string|max:255',
+            'exam_date' => 'required|date',
+            'max_score' => 'nullable|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $teacher = $request->user()->teacher;
+        $course  = $teacher->courses()->where('course_id', $request->course_id)->first();
+
+        if (!$course) {
+            return response()->json(['success' => false, 'message' => 'هذه الدورة غير مرتبطة بك'], 403);
+        }
+
+        $exam = \App\Models\Exam::create([
+            'course_id' => $request->course_id,
+            'exam_name' => $request->exam_name,
+            'exam_date' => $request->exam_date,
+            'max_score' => $request->max_score ?? 100,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم إنشاء الامتحان بنجاح', 'data' => $exam], 201);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  الملف الشخصي
+    // ──────────────────────────────────────────────────────────────
+
+    public function getTeacherProfile(Request $request)
+    {
+        $user    = $request->user();
+        $teacher = $user->teacher;
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'user_id'        => $user->user_id,
+                'full_name'      => $user->full_name,
+                'username'       => $user->username,
+                'email'          => $user->email,
+                'phone'          => $user->phone,
+                'specialization' => $teacher ? $teacher->specialization : null,
+                'teacher_id'     => $teacher ? $teacher->teacher_id : null,
+            ],
+        ], 200);
+    }
+
+    public function updateTeacherProfile(Request $request)
+    {
+        $user      = $request->user();
+        $validator = Validator::make($request->all(), [
+            'full_name'      => 'sometimes|string|max:255',
+            'email'          => 'sometimes|email|unique:users,email,' . $user->user_id . ',user_id',
+            'phone'          => 'sometimes|nullable|string|max:20',
+            'specialization' => 'sometimes|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $user->update($request->only(['full_name', 'email', 'phone']));
+
+        if ($request->filled('specialization') && $user->teacher) {
+            $user->teacher->update(['specialization' => $request->specialization]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم تحديث الملف الشخصي بنجاح'], 200);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  الرسائل
+    // ──────────────────────────────────────────────────────────────
+
+    public function getMessages(Request $request)
+    {
+        $userId = $request->user()->user_id;
+
+        $messages = Message::where('sender_id', $userId)
+            ->orWhere('receiver_id', $userId)
+            ->with(['sender', 'receiver'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($msg) use ($userId) {
+                return [
+                    'id'          => $msg->id,
+                    'message'     => $msg->message,
+                    'is_read'     => $msg->is_read,
+                    'sent_at'     => $msg->created_at->format('Y-m-d H:i'),
+                    'direction'   => $msg->sender_id == $userId ? 'sent' : 'received',
+                    'other_party' => $msg->sender_id == $userId
+                        ? $msg->receiver->full_name
+                        : $msg->sender->full_name,
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $messages], 200);
+    }
+
+    public function sendMessage(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'receiver_id' => 'required|exists:users,user_id',
+            'message'     => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $msg = Message::create([
+            'sender_id'   => $request->user()->user_id,
+            'receiver_id' => $request->receiver_id,
+            'message'     => $request->message,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال الرسالة بنجاح', 'data' => $msg], 201);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  طلبات الغياب
+    // ──────────────────────────────────────────────────────────────
+
+    public function getAbsenceRequests(Request $request)
+    {
+        $teacher    = $request->user()->teacher;
+        $studentIds = $teacher->courses()
+            ->with('students')
+            ->get()
+            ->pluck('students')
+            ->flatten()
+            ->pluck('student_id')
+            ->unique();
+
+        $requests = AbsenceRequest::whereIn('student_id', $studentIds)
+            ->with('student.user')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($req) {
+                return [
+                    'id'           => $req->request_id,
+                    'student_id'   => $req->student_id,
+                    'student_name' => $req->student->user->full_name,
+                    'date'         => $req->date->format('Y-m-d'),
+                    'reason'       => $req->reason,
+                    'status'       => $req->status,
+                    'created_at'   => $req->created_at->format('Y-m-d'),
+                ];
+            });
+
+        return response()->json(['success' => true, 'data' => $requests], 200);
+    }
+
+    public function respondAbsenceRequest(Request $request, $requestId)
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:approved,rejected',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $absenceRequest = AbsenceRequest::find($requestId);
+
+        if (!$absenceRequest) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        $absenceRequest->update([
+            'status'      => $request->status,
+            'reviewed_by' => $request->user()->user_id,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم الرد على الطلب بنجاح'], 200);
     }
 }
