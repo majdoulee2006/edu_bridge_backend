@@ -41,4 +41,14 @@ Route::middleware('auth:sanctum')->group(function () {
      Route::get('/student/assignments', [StudentController::class, 'getMyAssignments']);
      Route::post('/student/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
      Route::get('/student/lectures', [StudentController::class, 'getMyLectures']);
+     // مسارات الحضور والإجازات
+     Route::get('/student/attendance', [StudentController::class, 'getMyAttendance']);
+     Route::post('/student/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
+     Route::post('/student/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
+     Route::get('/student/leave-requests', [StudentController::class, 'getMyAbsenceRequests']);
+     Route::post('/student/leave-requests', [StudentController::class, 'requestAbsence']);
+     // مسارات الإشعارات للطالب
+     Route::get('/student/notifications', [StudentController::class, 'getNotifications']);
+     Route::put('/student/notifications/{id}/read', [StudentController::class, 'markNotificationAsRead']);
+     Route::put('/student/notifications/read-all', [StudentController::class, 'markAllNotificationsAsRead']);
 });
