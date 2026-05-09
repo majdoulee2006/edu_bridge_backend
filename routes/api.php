@@ -4,33 +4,77 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\TeacherController;
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\HODController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\ExamScheduleController;
 use App\Http\Controllers\Api\TeacherReportController;
 use Illuminate\Support\Facades\DB;
 
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
 
-// --- روابط عامة (بدون توكن) ---
+// ========== Routes العامة (لا تحتاج تسجيل دخول) ==========
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-// --- روابط محمية (تحتاج توكن auth:sanctum) ---
+// ========== Routes المحمية (تتطلب توكن) ==========
 Route::middleware('auth:sanctum')->group(function () {
 
+    // ========== Auth Routes (مشتركة للجميع) ==========
     Route::post('/logout', [AuthController::class, 'logout']);
-    
-    // الملف الشخصي الموحد (لأي مستخدم مسجل)
-    Route::get('/user/profile', function (Request $request) {
-        return response()->json($request->user());
+    Route::get('/profile', [AuthController::class, 'profile']);
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
+
+    // ========== Student Routes (خاص بالطلاب) ==========
+    Route::prefix('student')->middleware('role:student')->group(function () {
+        Route::get('/dashboard', [StudentController::class, 'getDashboardData']);
+        Route::get('/profile', [StudentController::class, 'getProfileData']);
+        Route::put('/profile', [StudentController::class, 'updateProfile']);
+        Route::get('/courses', [StudentController::class, 'getMyCourses']);
+        Route::get('/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
+        Route::get('/schedule', [StudentController::class, 'getMySchedule']);
+        Route::get('/attendance', [StudentController::class, 'getMyAttendance']);
+        Route::get('/grades', [StudentController::class, 'getMyGrades']);
+        Route::get('/assignments', [StudentController::class, 'getMyAssignments']);
+        Route::post('/assignments/{assignmentId}/submit', [StudentController::class, 'submitAssignment']);
+        Route::get('/absence-requests', [StudentController::class, 'getMyAbsenceRequests']);
+        Route::post('/absence-request', [StudentController::class, 'requestAbsence']);
+        Route::get('/notifications', [StudentController::class, 'getNotifications']);
+        Route::put('/notifications/{notificationId}/read', [StudentController::class, 'markNotificationAsRead']);
     });
 
-    // 🎓 روابط الطالب (Student)
-    Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
+    // ========== Teacher Routes (خاص بالمدرسين) ==========
+    Route::prefix('teacher')->middleware('role:teacher')->group(function () {
+        Route::get('/dashboard', [TeacherController::class, 'dashboard']);
+        Route::get('/courses', [TeacherController::class, 'myCourses']);
+        Route::get('/courses/{courseId}/students', [TeacherController::class, 'courseStudents']);
+        Route::post('/attendance', [TeacherController::class, 'markAttendance']);
+        Route::get('/attendance/{courseId}', [TeacherController::class, 'getAttendance']);
+        Route::post('/grades', [TeacherController::class, 'enterGrades']);
+        Route::get('/grades/{courseId}', [TeacherController::class, 'getGrades']);
+        Route::post('/assignments', [TeacherController::class, 'createAssignment']);
+        Route::put('/assignments/{assignmentId}', [TeacherController::class, 'updateAssignment']);
+        Route::delete('/assignments/{assignmentId}', [TeacherController::class, 'deleteAssignment']);
+        Route::post('/assignments/{submissionId}/grade', [TeacherController::class, 'gradeAssignment']);
+        Route::post('/announcements', [TeacherController::class, 'createAnnouncement']);
+        Route::get('/announcements', [TeacherController::class, 'getAnnouncements']);
+        
+        // تقارير المدرسين (HOD logic on Teacher side)
+        Route::get('/report-requests', [TeacherReportController::class, 'getMyPendingReportRequests']);
+        Route::post('/submit-report', [TeacherReportController::class, 'submitReport']);
+    });
 
-    // 🏢 روابط رئيس القسم (HOD) - برانش Head
-    Route::prefix('hod')->group(function () {
+    // ========== Head Routes (خاص برؤساء الأقسام) - برانش Head ==========
+    Route::prefix('hod')->middleware('role:head')->group(function () {
+        Route::get('/dashboard', [HODController::class, 'getDashboardData']); // Placeholder or logic
         Route::get('/leave-requests', [HODController::class, 'getLeaveRequests']);
         Route::post('/leave-requests/{id}/status', [HODController::class, 'updateLeaveStatus']);
         Route::get('/staff-and-students', [HODController::class, 'getStaffAndStudents']);
@@ -55,8 +99,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/exams/{id}', [ExamScheduleController::class, 'destroy']);
     });
 
-    // 👨‍🏫 روابط المدرب (Teacher)
-    Route::get('/teacher/report-requests', [TeacherReportController::class, 'getMyPendingReportRequests']);
-    Route::post('/teacher/submit-report', [TeacherReportController::class, 'submitReport']);
+    // ========== Admin Routes (خاص بالإدارة) ==========
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/users', [AdminController::class, 'getUsers']);
+        Route::post('/users', [AdminController::class, 'createUser']);
+        Route::get('/courses', [AdminController::class, 'getCourses']);
+        Route::post('/courses', [AdminController::class, 'createCourse']);
+    });
 
 });

@@ -15,8 +15,8 @@ class Student extends Model
         'user_id',
         'parent_id',
         'student_code',
-        'level',      // بالميجريشن مكتوب level وليس grade_level
-        'birth_date', // بالميجريشن مكتوب birth_date وليس date_of_birth
+        'level',
+        'birth_date',
     ];
 
     // علاقة الطالب بالحساب الأساسي (User)
@@ -42,10 +42,12 @@ class Student extends Model
 
 
 
-    public function parent()
-{
-    return $this->belongsTo(StudentParent::class, 'parent_id');
-    // تأكدي من اسم الكلاس الخاص بالأهل عندك (مثلاً Parent أو ParentModel)
+    public function parentStudents() {
+    return $this->hasMany(StudentParent::class, 'student_id');
+}
+
+public function parents() {
+    return $this->belongsToMany(Parents::class, 'parent_students', 'student_id', 'parent_id');
 }
 
 

@@ -27,9 +27,8 @@ class User extends Authenticatable
         'children_ids',
     ];
 
-    protected $appends = ['role']; // ✅ لإضافة الـ role تلقائياً للـ JSON
+    protected $appends = ['role'];
 
-    // ✅ تحويل role_id الرقمي إلى نص (admin, parent, etc)
     public function getRoleAttribute()
     {
         $roles = [
@@ -50,20 +49,14 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'children_ids' => 'array',
             'birth_date' => 'date',
-
         ];
-
     }
 
-    // ✅ أضيفي هذه العلاقة ليعمل الـ load('student') في الراوت
     public function student()
     {
-        // تأكدي أن اسم المودل Student وأن الحقل الأجنبي هو user_id في جدول الطلاب
         return $this->hasOne(Student::class, 'user_id', 'user_id');
     }
-
 }
