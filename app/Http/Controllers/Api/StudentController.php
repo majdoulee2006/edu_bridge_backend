@@ -18,63 +18,50 @@ use App\Models\Schedule;
 use Carbon\Carbon;
 class StudentController extends Controller
 {
-    /**
+  /**
      * لوحة التحكم الرئيسية للطالب
      */
-  public function getDashboardData(Request $request)
+    public function getDashboardData(Request $request)
     {
         $user = $request->user();
         $student = $user->student;
 
-        // 🌟 1. استخراج أرقام الكورسات أولاً لأننا سنحتاجها في المحاضرات والإعلانات معاً
+        // 1. استخراج أرقام الكورسات لأننا سنحتاجها في المحاضرة القادمة
         $enrolledCourseIds = $student ? $student->courses->modelKeys() : [];
 
-        // 🌟 2. جلب آخر 5 إعلانات (باستخدام الاستهداف الذكي)
-        $announcements = Announcement::where(function($query) use ($user, $student, $enrolledCourseIds) {
-            
-            // أ) إعلانات عامة (للكل)
-            $query->where('type', 'general')
-                  ->orWhereNull('target_role');
-                  
-            // ب) إعلانات مخصصة للطلاب بشكل عام أو حسب القسم والسنة
-            $query->orWhere(function($q) use ($user, $student) {
-                $q->where('target_role', 'student')
-                  // إذا الإعلان مخصص لقسم، يجب أن يطابق قسم الطالب
-                  ->where(function($sub) use ($user) {
-                      $sub->whereNull('department_id')
-                          ->orWhere('department_id', $user->department_id);
-                  })
-                  // إذا الإعلان مخصص لسنة، يجب أن يطابق سنة الطالب
-                  ->where(function($sub) use ($user) {
-                      $sub->whereNull('academic_year')
-                          ->orWhere('academic_year', $user->academic_year);
-                  });
+        // 🌟 2. جلب الإعلانات (العامة + المخصصة لقسم الطالب فقط)
+        $announcements = \App\Models\Announcement::with('author')
+            ->where(function($query) use ($user) {
+                $query->whereNull('department_id')
+                      ->orWhere('department_id', $user->department_id);
+            })
+            ->latest() 
+            ->get()
+            ->map(function ($item) {
+                $categoryText = 'عام';
+                if ($item->category == 'important') $categoryText = 'هام جداً';
+                elseif ($item->category == 'student_activity') $categoryText = 'نشاط طلابي';
+                elseif ($item->category == 'academic') $categoryText = 'أكاديمي';
+                elseif ($item->category == 'administrative') $categoryText = 'إداري';
+
+                return [
+                    'id' => $item->announcement_id,
+                    'type' => $item->type ?? 'general',
+                    'title' => $item->title ?? 'إعلان',
+                    'content' => $item->content ?? '',
+                    'category' => $item->category ?? 'general',
+                    'category_text' => $categoryText,
+                    'image' => $item->image ? asset('storage/' . $item->image) : null,
+                    'author_name' => $item->author->full_name ?? 'الإدارة',
+                    'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
+                ];
             });
-
-            // ج) إعلانات مخصصة لكورسات الطالب الحالية فقط
-            if (!empty($enrolledCourseIds)) {
-                $query->orWhereIn('course_id', $enrolledCourseIds);
-            }
-
-        })
-        ->latest()
-        ->take(5)
-        ->get()
-        ->map(function ($item) {
-            return [
-                'id' => $item->announcement_id,
-                'type' => $item->type ?? 'general',
-                'title' => $item->title ?? 'إعلان',
-                'content' => $item->content ?? '',
-                'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
-            ];
-        });
 
         // 3. جلب المحاضرة القادمة
         $nextLecture = null;
-        $today = now()->format('l'); // اسم اليوم بالعربية/الإنجليزية
+        $today = now()->format('l');
 
-        $schedule = Schedule::whereIn('course_id', $enrolledCourseIds)
+        $schedule = \App\Models\Schedule::whereIn('course_id', $enrolledCourseIds)
             ->where('day', $today)
             ->where('start_time', '>', now()->format('H:i:s'))
             ->orderBy('start_time', 'asc')
@@ -90,33 +77,16 @@ class StudentController extends Controller
             ];
         }
 
-        // 4. إحصائيات سريعة
-        $totalCourses = $student ? $student->courses()->count() : 0;
-        $totalAttendances = $student ? Attendance::where('student_id', $student->student_id)->count() : 0;
-        $presentCount = $student ? Attendance::where('student_id', $student->student_id)->where('status', 'present')->count() : 0;
-        $attendanceRate = $totalAttendances > 0 ? round(($presentCount / $totalAttendances) * 100, 1) : 0;
-
         return response()->json([
             'status' => true,
             'message' => 'تم جلب البيانات بنجاح',
             'data' => [
+                // 🌟 رجعناها خفيفة ونظيفة مثل ما طلبتي بالضبط!
                 'student' => [
                     'id' => $user->user_id,
                     'name' => $user->full_name,
-                    'student_code' => $student->student_code ?? $user->university_id,
-                    'level' => $student->level ?? 'غير محدد',
-                    'phone' => $user->phone ?? 'غير متوفر',
-                    'email' => $user->email ?? 'غير متوفر',
-                    'department' => $user->department ?? 'غير محدد',
-                    'academic_year' => $user->academic_year ?? 'غير محدد',
-                    'birth_date' => $user->birth_date ? date('Y-m-d', strtotime($user->birth_date)) : null,
-                    'gender' => $user->gender ?? 'غير محدد',
                     'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
-                ],
-                'statistics' => [
-                    'total_courses' => $totalCourses,
-                    'attendance_rate' => $attendanceRate,
-                    'total_assignments' => $student ? AssignmentSubmission::where('student_id', $student->student_id)->count() : 0,
+                    'department' => $user->department ?? 'غير محدد',
                 ],
                 'next_lecture' => $nextLecture,
                 'announcements' => $announcements,
