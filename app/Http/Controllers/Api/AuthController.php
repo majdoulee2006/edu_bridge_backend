@@ -18,7 +18,8 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'username' => 'required|string',
+            'username' => 'required_without:login|string',
+            'login' => 'required_without:username|string',
             'password' => 'required|string',
         ]);
 
@@ -26,8 +27,10 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $user = User::where('username', $request->username)
-            ->orWhere('email', $request->username)
+        $loginIdentifier = $request->input('username') ?? $request->input('login');
+
+        $user = User::where('username', $loginIdentifier)
+            ->orWhere('email', $loginIdentifier)
             ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -46,12 +49,13 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'تم تسجيل الدخول بنجاح',
             'token' => $token,
+            'access_token' => $token,
             'user' => [
                 'id' => $user->user_id,
-                'name' => $user->full_name,
+                'full_name' => $user->full_name,
                 'username' => $user->username,
                 'email' => $user->email,
-                'role' => $user->role->name ?? 'unknown',
+                'role' => $user->role->name ?? 'student',
                 'role_id' => $user->role_id,
             ]
         ], 200);
