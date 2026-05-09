@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\TeacherController;
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ParentController;
 use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\DB;
@@ -13,11 +15,15 @@ use Illuminate\Support\Facades\DB;
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // --- روابط محمية (تحتاج توكن auth:sanctum) ---
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/profile', [AuthController::class, 'profile']);
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
     
     // الملف الشخصي الموحد (لأي مستخدم مسجل)
     Route::get('/user/profile', function (Request $request) {
@@ -25,10 +31,18 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // 🎓 روابط الطالب (Student)
-    Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
+    Route::prefix('student')->middleware('role:student')->group(function () {
+        Route::get('/dashboard', [StudentController::class, 'getDashboardData']);
+        Route::get('/profile', [StudentController::class, 'getProfileData']);
+        Route::get('/schedule', [StudentController::class, 'getMySchedule']);
+        Route::get('/attendance', [StudentController::class, 'getMyAttendance']);
+        Route::get('/grades', [StudentController::class, 'getMyGrades']);
+        Route::get('/assignments', [StudentController::class, 'getMyAssignments']);
+        Route::get('/notifications', [StudentController::class, 'getNotifications']);
+    });
 
     // 👨‍👩‍👧‍👦 روابط الأهل (Parent Portal) - برانش Parents
-    Route::prefix('parent')->group(function () {
+    Route::prefix('parent')->middleware('role:parent')->group(function () {
         Route::get('/dashboard', [ParentController::class, 'dashboard']);
         Route::get('/children', [ParentController::class, 'getChildren']);
         Route::get('/student/{id}', [ParentController::class, 'getChildDetails']);
@@ -45,6 +59,13 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // الإشعارات
         Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+    });
+
+    // ========== Admin Routes (خاص بالإدارة) ==========
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/users', [AdminController::class, 'getUsers']);
+        Route::post('/users', [AdminController::class, 'createUser']);
     });
 
 });
