@@ -4,13 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
-use App\Http\Controllers\Api\ParentController;
 use App\Http\Controllers\Api\HODController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\ExamScheduleController;
 use App\Http\Controllers\Api\TeacherReportController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\StudentParentController;
 use Illuminate\Support\Facades\DB;
 
 
@@ -32,33 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // 🎓 روابط الطالب (Student)
     Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
 
-    // 👨‍👩‍👧‍👦 روابط الأهل (Parent Portal) - المؤمنة بالكامل
-    Route::prefix('parent')->group(function () {
-        Route::get('/dashboard', [ParentController::class, 'dashboard']);
-        Route::get('/children', [ParentController::class, 'getChildren']);
-        Route::get('/student/{id}', [ParentController::class, 'getChildDetails']);
-        Route::get('/student/{id}/attendance', [ParentController::class, 'getChildAttendance']);
-        Route::get('/student/{id}/grades', [ParentController::class, 'getChildGrades']);
-        Route::get('/student/{id}/schedule', [ParentController::class, 'getChildSchedule']);
-        Route::get('/student/{id}/assignments', [ParentController::class, 'getChildAssignments']);
-        Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
-        Route::post('/link-student', [ParentController::class, 'linkStudent']);
-        
-        // التواصل والرسائل
-        Route::get('/messages', [ParentController::class, 'getMessages']);
-        Route::post('/messages', [ParentController::class, 'sendMessage']);
-        
-        // الإشعارات
-        Route::get('/notifications', [NotificationController::class, 'getNotifications']);
-        
-        // طلبات التقارير والأداء (من الكنترولر القديم لكن مع تأمينها)
-        Route::post('/request-report', [StudentParentController::class, 'requestReport']);
-        Route::get('/performance/{studentId}', [StudentParentController::class, 'getFullPerformance']);
-        Route::get('/student/{studentId}/permissions', [StudentParentController::class, 'getPermissions']);
-        Route::post('/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
-    });
-
-    // 🏢 روابط رئيس القسم (HOD)
+    // 🏢 روابط رئيس القسم (HOD) - برانش Head
     Route::prefix('hod')->group(function () {
         Route::get('/leave-requests', [HODController::class, 'getLeaveRequests']);
         Route::post('/leave-requests/{id}/status', [HODController::class, 'updateLeaveStatus']);
@@ -89,6 +60,3 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/teacher/submit-report', [TeacherReportController::class, 'submitReport']);
 
 });
-
-// ⚠️ تم حذف الروابط غير المؤمنة (Closures) التي كانت تسبب ثغرات أمنية
-// والآن يتم التعامل مع كل شيء عبر الـ ParentController الموحد والتوكن
