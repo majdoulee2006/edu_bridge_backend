@@ -21,7 +21,7 @@ class RoleMiddleware
         }
 
         $allowedRoles = explode(',', $role);
-        $userRole = $user->role->name;
+        $userRole = $user->role->name ?? 'student';
 
         if (!in_array($userRole, $allowedRoles)) {
             return response()->json([

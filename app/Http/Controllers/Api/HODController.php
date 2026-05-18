@@ -66,7 +66,7 @@ class HODController extends Controller
                 ->get();
 
             $students = DB::table('students')
-                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->join('users', 'students.user_id', '=', 'students.user_id')
                 ->select('students.student_id', 'users.full_name')
                 ->get();
 
@@ -146,9 +146,7 @@ class HODController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
             'role' => 'required|in:teacher,student,parent',
-            // حقول إضافية للمدرب
             'specialization' => 'required_if:role,teacher|string',
-            // حقول إضافية للطالب
             'student_code' => 'required_if:role,student|string|unique:students,student_code',
             'level' => 'nullable|string',
         ]);
@@ -156,17 +154,14 @@ class HODController extends Controller
         try {
             DB::beginTransaction();
 
-            // خريطة تحويل الأدوار إلى IDs حسب نظامكم
             $rolesMap = [
                 'teacher' => 2,
                 'student' => 3,
                 'parent' => 4
             ];
 
-            // توليد اسم مستخدم تلقائي من البريد الإلكتروني
             $username = explode('@', $request->email)[0] . rand(10, 99);
 
-            // 1. إنشاء المستخدم الأساسي مباشرة في الجدول لتجنب أي تعارض
             $userId = DB::table('users')->insertGetId([
                 'full_name' => $request->full_name,
                 'username' => $username,
@@ -178,7 +173,6 @@ class HODController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // 2. إنشاء السجل في الجدول التابع حسب الدور
             if ($request->role === 'teacher') {
                 DB::table('teachers')->insert([
                     'user_id' => $userId,
@@ -253,6 +247,84 @@ class HODController extends Controller
             $courses = DB::table('courses')->select('course_id', 'title')->get();
             return response()->json($courses);
         } catch (\Exception $e) {
+            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // جلب بيانات الملف الشخصي لرئيس القسم
+    public function getProfile()
+    {
+        try {
+            $user = auth()->user();
+            return response()->json($user);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // جلب الإعلانات الخاصة برئيس القسم أو الموجهة له
+    public function getAnnouncements()
+    {
+        try {
+            $userId = auth()->id();
+            $announcements = DB::table('announcements')
+                ->where('user_id', $userId)
+                ->orWhere('target_audience', 'all')
+                ->orWhere('target_audience', 'heads')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            // إضافة رابط الصورة الكامل
+            $announcements->transform(function ($item) {
+                if ($item->image_path) {
+                    $item->image_url = asset('storage/' . $item->image_path);
+                } else {
+                    $item->image_url = null;
+                }
+                return $item;
+            });
+
+            return response()->json($announcements);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // إنشاء إعلان جديد (مع دعم الصور)
+    public function storeAnnouncement(Request $request)
+    {
+        $request->validate([
+            'title' => 'nullable|string|max:255',
+            'content' => 'required|string',
+            'category' => 'nullable|string',
+            'target_audience' => 'required|in:all,teachers,students,parents',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // زيادة الحجم لـ 5MB
+        ]);
+
+        try {
+            $imagePath = null;
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('announcements', 'public');
+            }
+
+            $content = $request->content;
+            $title = $request->title ?? (mb_substr($content, 0, 50) . (mb_strlen($content) > 50 ? '...' : ''));
+
+            $id = DB::table('announcements')->insertGetId([
+                'user_id' => auth()->id(),
+                'title' => $title,
+                'category' => $request->category ?? 'عام',
+                'content' => $content,
+                'image_path' => $imagePath,
+                'target_audience' => $request->target_audience,
+                'type' => 'general',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return response()->json(['message' => 'Announcement created successfully', 'id' => $id], 201);
+        } catch (\Exception $e) {
+            \Log::error('Announcement failed: ' . $e->getMessage());
             return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
         }
     }

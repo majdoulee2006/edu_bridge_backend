@@ -1,5 +1,4 @@
 <?php
-// app/Models/AbsenceRequest.php
 
 namespace App\Models;
 
@@ -10,8 +9,8 @@ class AbsenceRequest extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'request_id';
     protected $table = 'absence_requests';
+    protected $primaryKey = 'request_id';
 
     protected $fillable = [
         'student_id',

@@ -1,0 +1,77 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // Elements
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const langToggle = document.getElementById('langToggle');
+    const fontSizeSlider = document.getElementById('fontSizeSlider');
+
+    // Default Settings
+    const defaultSettings = {
+        theme: 'light',
+        lang: 'ar',
+        fontSize: '16'
+    };
+
+    // Load Settings from LocalStorage
+    const loadSettings = () => {
+        const settings = JSON.parse(localStorage.getItem('hodSettings')) || defaultSettings;
+        applySettings(settings);
+
+        // Update UI elements if they exist on the page
+        if (darkModeToggle) {
+            darkModeToggle.checked = settings.theme === 'dark';
+        }
+        if (langToggle) {
+            // Depending on how you implement the toggle (checkbox or select)
+            if(langToggle.type === 'checkbox') {
+                 langToggle.checked = settings.lang === 'en';
+            }
+        }
+        if (fontSizeSlider) {
+            fontSizeSlider.value = settings.fontSize;
+        }
+    };
+
+    // Apply Settings to the DOM
+    const applySettings = (settings) => {
+        // Theme
+        document.documentElement.setAttribute('data-theme', settings.theme);
+        
+        // Language
+        document.documentElement.setAttribute('dir', settings.lang === 'ar' ? 'rtl' : 'ltr');
+        document.documentElement.setAttribute('lang', settings.lang);
+        
+        // Font Size
+        document.documentElement.style.setProperty('--base-font-size', `${settings.fontSize}px`);
+    };
+
+    // Save Settings
+    const saveSettings = (key, value) => {
+        const settings = JSON.parse(localStorage.getItem('hodSettings')) || defaultSettings;
+        settings[key] = value;
+        localStorage.setItem('hodSettings', JSON.stringify(settings));
+        applySettings(settings);
+    };
+
+    // Event Listeners for UI controls
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('change', (e) => {
+            saveSettings('theme', e.target.checked ? 'dark' : 'light');
+        });
+    }
+
+    if (langToggle) {
+        langToggle.addEventListener('change', (e) => {
+            // Assuming checkbox: checked = EN, unchecked = AR
+            saveSettings('lang', e.target.checked ? 'en' : 'ar');
+        });
+    }
+
+    if (fontSizeSlider) {
+        fontSizeSlider.addEventListener('input', (e) => {
+            saveSettings('fontSize', e.target.value);
+        });
+    }
+
+    // Initialize
+    loadSettings();
+});

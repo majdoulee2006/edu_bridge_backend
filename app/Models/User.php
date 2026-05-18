@@ -13,28 +13,32 @@ class User extends Authenticatable
 
     protected $primaryKey = 'user_id';
 
-     protected $fillable = [
-         'full_name',
-         'username',
-         'email',
-         'password',
-         'phone',
-         'role',
-         'status',
-         'university_id',
-         'branch',
-         'children_ids',
-     ];
-    protected $guarded = [];
+protected $fillable = [
+        'full_name',
+        'username',
+        'email',
+        'password',
+        'phone',
+        'role_id',
+        'status',
+        'university_id',
+        'department',
+        'branch',
+        'children_ids',
+    ];
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'role_id', 'role_id');
+    }
+
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'children_ids' => 'array',
             'birth_date' => 'date',

@@ -6,8 +6,10 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\TeacherController;
 use App\Http\Controllers\Api\AdminController;
-use App\Http\Controllers\Api\ParentController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Api\HODController;
+use App\Http\Controllers\Api\ScheduleController;
+use App\Http\Controllers\Api\ExamScheduleController;
+use App\Http\Controllers\Api\TeacherReportController;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -65,23 +67,36 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/announcements', [TeacherController::class, 'createAnnouncement']);
         Route::get('/announcements', [TeacherController::class, 'getAnnouncements']);
         
-        // HOD Feedback routes
-        Route::get('/report-requests', [\App\Http\Controllers\Api\TeacherReportController::class, 'getMyPendingReportRequests']);
-        Route::post('/teacher/submit-report', [\App\Http\Controllers\Api\TeacherReportController::class, 'submitReport']);
+        // تقارير المدرسين (HOD logic on Teacher side)
+        Route::get('/report-requests', [TeacherReportController::class, 'getMyPendingReportRequests']);
+        Route::post('/submit-report', [TeacherReportController::class, 'submitReport']);
     });
 
-    // ========== Parent Routes ==========
-    Route::prefix('parent')->middleware('role:parent')->group(function () {
-        Route::get('/dashboard', [ParentController::class, 'dashboard']);
-        Route::get('/children', [ParentController::class, 'getChildren']);
-        Route::get('/child/{childId}', [ParentController::class, 'getChildDetails']);
-        Route::post('/link-student', [ParentController::class, 'linkStudent']);
-        Route::get('/child/{childId}/attendance', [ParentController::class, 'getChildAttendance']);
-        Route::get('/child/{childId}/grades', [ParentController::class, 'getChildGrades']);
-        Route::get('/child/{childId}/schedule', [ParentController::class, 'getChildSchedule']);
-        Route::get('/child/{childId}/assignments', [ParentController::class, 'getChildAssignments']);
-        Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
-        Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+    // ========== Head Routes (خاص برؤساء الأقسام) - برانش Head ==========
+    Route::prefix('hod')->middleware('role:head')->group(function () {
+        Route::get('/dashboard', [HODController::class, 'getDashboardData']); // Placeholder or logic
+        Route::get('/leave-requests', [HODController::class, 'getLeaveRequests']);
+        Route::post('/leave-requests/{id}/status', [HODController::class, 'updateLeaveStatus']);
+        Route::get('/staff-and-students', [HODController::class, 'getStaffAndStudents']);
+        Route::post('/report-requests', [HODController::class, 'storeReportRequest']);
+        Route::get('/received-reports', [HODController::class, 'getReceivedReports']);
+        Route::post('/accounts', [HODController::class, 'storeAccount']);
+        Route::get('/accounts', [HODController::class, 'getAccounts']);
+        Route::get('/courses', [HODController::class, 'getCourses']);
+        Route::get('/profile', [HODController::class, 'getProfile']);
+        Route::get('/announcements', [HODController::class, 'getAnnouncements']);
+        Route::post('/announcements', [HODController::class, 'storeAnnouncement']);
+
+        // الجداول
+        Route::get('/schedules', [ScheduleController::class, 'index']);
+        Route::post('/schedules', [ScheduleController::class, 'store']);
+        Route::put('/schedules/{id}', [ScheduleController::class, 'update']);
+        Route::delete('/schedules/{id}', [ScheduleController::class, 'destroy']);
+
+        Route::get('/exams', [ExamScheduleController::class, 'index']);
+        Route::post('/exams', [ExamScheduleController::class, 'store']);
+        Route::put('/exams/{id}', [ExamScheduleController::class, 'update']);
+        Route::delete('/exams/{id}', [ExamScheduleController::class, 'destroy']);
     });
 
     // ========== Admin Routes ==========
@@ -89,40 +104,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
         Route::get('/users', [AdminController::class, 'getUsers']);
         Route::post('/users', [AdminController::class, 'createUser']);
-        Route::put('/users/{userId}', [AdminController::class, 'updateUser']);
-        Route::delete('/users/{userId}', [AdminController::class, 'deleteUser']);
         Route::get('/courses', [AdminController::class, 'getCourses']);
         Route::post('/courses', [AdminController::class, 'createCourse']);
-        Route::get('/departments', [AdminController::class, 'getDepartments']);
     });
 
-    // ========== HOD (Head of Department) Routes ==========
-    Route::prefix('hod')->middleware('role:head')->group(function () {
-        Route::get('/leave-requests', [\App\Http\Controllers\Api\HODController::class, 'getLeaveRequests']);
-        Route::post('/leave-requests/{id}/status', [\App\Http\Controllers\Api\HODController::class, 'updateLeaveStatus']);
-        Route::get('/staff-and-students', [\App\Http\Controllers\Api\HODController::class, 'getStaffAndStudents']);
-        Route::post('/report-requests', [\App\Http\Controllers\Api\HODController::class, 'storeReportRequest']);
-        Route::get('/received-reports', [\App\Http\Controllers\Api\HODController::class, 'getReceivedReports']);
-        Route::post('/accounts', [\App\Http\Controllers\Api\HODController::class, 'storeAccount']);
-        Route::get('/accounts', [\App\Http\Controllers\Api\HODController::class, 'getAccounts']);
-        Route::get('/courses', [\App\Http\Controllers\Api\HODController::class, 'getCourses']);
-
-        // Academic Schedule
-        Route::get('/schedules', [\App\Http\Controllers\Api\ScheduleController::class, 'index']);
-        Route::post('/schedules', [\App\Http\Controllers\Api\ScheduleController::class, 'store']);
-        Route::put('/schedules/{id}', [\App\Http\Controllers\Api\ScheduleController::class, 'update']);
-        Route::delete('/schedules/{id}', [\App\Http\Controllers\Api\ScheduleController::class, 'destroy']);
-
-        // Exam Schedule
-        Route::get('/exams', [\App\Http\Controllers\Api\ExamScheduleController::class, 'index']);
-        Route::post('/exams', [\App\Http\Controllers\Api\ExamScheduleController::class, 'store']);
-        Route::put('/exams/{id}', [\App\Http\Controllers\Api\ExamScheduleController::class, 'update']);
-        Route::delete('/exams/{id}', [\App\Http\Controllers\Api\ExamScheduleController::class, 'destroy']);
-    });
-
-});
-
-// ========== General Routes ==========
-Route::get('/user/profile', function (Request $request) {
-    return $request->user()->load('student');
 });
