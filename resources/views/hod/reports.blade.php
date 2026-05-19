@@ -202,6 +202,20 @@
 @section('content')
     <p class="page-subtitle">تقديم طلب تقرير عن أداء طالب</p>
 
+    @if(session('success'))
+        <div style="background-color: #d1fae5; color: #065f46; padding: 1rem 1.5rem; border-radius: 1rem; margin-bottom: 1.5rem; font-weight: bold; border: 1px solid #10b981; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-circle-check" style="font-size: 1.25rem;"></i>
+            <span>{{ session('success') }}</span>
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div style="background-color: #fee2e2; color: #991b1b; padding: 1rem 1.5rem; border-radius: 1rem; margin-bottom: 1.5rem; font-weight: bold; border: 1px solid #ef4444; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-circle-exclamation" style="font-size: 1.25rem;"></i>
+            <span>{{ $errors->first() }}</span>
+        </div>
+    @endif
+
     <form action="{{ route('hod.reports.store') }}" method="POST" id="report-form">
         @csrf
         <input type="hidden" name="report_type" id="report_type_input" value="academic">
