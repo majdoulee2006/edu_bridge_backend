@@ -33,7 +33,7 @@ class ScheduleController extends Controller
             $query->where('schedules.class_group', $request->class_group);
         }
 
-        $schedules = $query->orderByRaw("FIELD(schedules.day, 'الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس')")
+        $schedules = $query->orderByRaw("CASE schedules.day WHEN 'الأحد' THEN 1 WHEN 'الاثنين' THEN 2 WHEN 'الثلاثاء' THEN 3 WHEN 'الأربعاء' THEN 4 WHEN 'الخميس' THEN 5 ELSE 6 END")
                            ->get();
 
         return response()->json($schedules);

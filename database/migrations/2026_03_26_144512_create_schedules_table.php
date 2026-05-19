@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('schedule_id');
             $table->foreignId('course_id')->constrained('courses', 'course_id')->onDelete('cascade');
             // إضافة رابط المعلم ليعمل الكنترولر بشكل صحيح
-            $table->foreignId('teacher_id')->constrained('users', 'id')->onDelete('cascade');
+            $table->foreignId('teacher_id')->constrained('users', 'user_id')->onDelete('cascade');
             $table->string('day'); // مثلاً: Monday
             $table->time('start_time');
             $table->time('end_time');

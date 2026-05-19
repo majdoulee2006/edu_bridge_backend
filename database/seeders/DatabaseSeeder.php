@@ -87,10 +87,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ParentSeeder::class,
             NotificationSeeder::class,
+            AcademicSeeder::class,
+            HODSeeder::class,
+            HodDummySeeder::class,
         ]);
-       $this->call([
-           AcademicSeeder::class,
-        ]);
-         
     }
 }

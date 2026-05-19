@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Notification extends Model
 {
-<<<<<<< HEAD
     protected $fillable = [
         'user_id',
         'title',
@@ -25,8 +24,3 @@ class Notification extends Model
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 }
-=======
-// protected $fillable = ['user_id', 'title', 'message', 'type', 'is_read'];
- protected $guarded = [];
-}
->>>>>>> a35b4cf9f7a4fcbf94da956bbede2fb41b4436c8

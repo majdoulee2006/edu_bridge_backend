@@ -37,9 +37,9 @@ class HodDummySeeder extends Seeder
 
         // بعض الإجازات الوهمية لتظهر
         // نحتاج مدرب
-        $teacherId = DB::table('teachers')->first()->teacher_id ?? null;
-        if (!$teacherId) {
-            $userId = DB::table('users')->insertGetId([
+        $teacher = DB::table('teachers')->first();
+        if (!$teacher) {
+            $teacherUserId = DB::table('users')->insertGetId([
                 'full_name' => 'د. محمد العمري',
                 'username' => 'teacher_mohammad',
                 'password' => bcrypt('123456'),
@@ -47,9 +47,12 @@ class HodDummySeeder extends Seeder
                 'created_at' => now()
             ]);
             $teacherId = DB::table('teachers')->insertGetId([
-                'user_id' => $userId,
+                'user_id' => $teacherUserId,
                 'specialization' => 'علوم الحاسوب',
             ]);
+        } else {
+            $teacherId = $teacher->teacher_id;
+            $teacherUserId = $teacher->user_id;
         }
 
         DB::table('leave_requests')->insert([
@@ -104,7 +107,7 @@ class HodDummySeeder extends Seeder
             DB::table('schedules')->insert([
                 [
                     'course_id' => $courseId1,
-                    'teacher_id' => $teacherId,
+                    'teacher_id' => $teacherUserId,
                     'day' => 'Sunday',
                     'start_time' => '10:00:00',
                     'end_time' => '12:00:00',
@@ -115,7 +118,7 @@ class HodDummySeeder extends Seeder
                 ],
                 [
                     'course_id' => $courseId2,
-                    'teacher_id' => $teacherId,
+                    'teacher_id' => $teacherUserId,
                     'day' => 'Tuesday',
                     'start_time' => '08:30:00',
                     'end_time' => '10:30:00',

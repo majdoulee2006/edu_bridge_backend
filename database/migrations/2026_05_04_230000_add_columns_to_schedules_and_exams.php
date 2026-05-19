@@ -14,16 +14,20 @@ return new class extends Migration
         // ── 1. تعديل جدول schedules (الجدول الدراسي الأسبوعي) ──
         Schema::table('schedules', function (Blueprint $table) {
             // الأستاذ المسؤول عن هذه الحصة
-            $table->foreignId('teacher_id')
-                  ->nullable()
-                  ->after('course_id')
-                  ->constrained('teachers', 'teacher_id')
-                  ->onDelete('set null');
+            if (!Schema::hasColumn('schedules', 'teacher_id')) {
+                $table->foreignId('teacher_id')
+                      ->nullable()
+                      ->after('course_id')
+                      ->constrained('teachers', 'teacher_id')
+                      ->onDelete('set null');
+            }
 
             // الشعبة التي تخص هذه الحصة (مثال: "معلوماتية 1", "معلوماتية 2")
-            $table->string('class_group')
-                  ->nullable()
-                  ->after('teacher_id');
+            if (!Schema::hasColumn('schedules', 'class_group')) {
+                $table->string('class_group')
+                      ->nullable()
+                      ->after('teacher_id');
+            }
         });
 
         // ── 2. تعديل جدول exams (الجدول الامتحاني) ──
@@ -47,8 +51,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('schedules', function (Blueprint $table) {
-            $table->dropForeign(['teacher_id']);
-            $table->dropColumn(['teacher_id', 'class_group']);
+            if (Schema::hasColumn('schedules', 'class_group')) {
+                $table->dropColumn(['class_group']);
+            }
         });
 
         Schema::table('exams', function (Blueprint $table) {

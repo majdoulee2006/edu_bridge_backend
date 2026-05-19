@@ -350,7 +350,7 @@ class HODWebController extends Controller
             ->leftJoin('teachers', 'schedules.teacher_id', '=', 'teachers.teacher_id')
             ->leftJoin('users', 'teachers.user_id', '=', 'users.user_id')
             ->select('schedules.*', 'courses.title as course_title', 'users.full_name as teacher_name')
-            ->orderByRaw("FIELD(day, 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')")
+            ->orderByRaw("CASE day WHEN 'Sunday' THEN 1 WHEN 'Monday' THEN 2 WHEN 'Tuesday' THEN 3 WHEN 'Wednesday' THEN 4 WHEN 'Thursday' THEN 5 WHEN 'Friday' THEN 6 WHEN 'Saturday' THEN 7 ELSE 8 END")
             ->orderBy('start_time')
             ->get();
 

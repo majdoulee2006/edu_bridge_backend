@@ -183,7 +183,7 @@ class ParentController extends Controller
                 });
             })
             ->with('course')
-            ->orderByRaw("FIELD(day, 'Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')")
+            ->orderByRaw("CASE day WHEN 'Saturday' THEN 1 WHEN 'Sunday' THEN 2 WHEN 'Monday' THEN 3 WHEN 'Tuesday' THEN 4 WHEN 'Wednesday' THEN 5 WHEN 'Thursday' THEN 6 WHEN 'Friday' THEN 7 ELSE 8 END")
             ->orderBy('start_time')
             ->get()
             ->groupBy('day')
