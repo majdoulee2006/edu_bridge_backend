@@ -50,4 +50,10 @@ class Course extends Model
     {
         return $this->hasMany(Announcement::class, 'course_id', 'course_id');
     }
+
+    // علاقة المادة بالبرامج/الدورات
+    public function programs()
+    {
+        return $this->belongsToMany(\App\Models\Program::class, 'course_program', 'course_id', 'program_id');
+    }
 }

@@ -11,10 +11,11 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('performance_reports', function (Blueprint $table) {
-            // إضافة حقل نوع التقرير (أكاديمي أو سلوكي)
-            $table->enum('report_type', ['academic', 'behavioral'])->default('academic')->after('student_id');
-        });
+        if (!Schema::hasColumn('performance_reports', 'report_type')) {
+            Schema::table('performance_reports', function (Blueprint $table) {
+                $table->enum('report_type', ['academic', 'behavioral'])->default('academic')->after('student_id');
+            });
+        }
     }
 
     public function down()

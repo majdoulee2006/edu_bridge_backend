@@ -27,6 +27,20 @@ class TeacherController extends Controller
     public function dashboard(Request $request)
     {
         $teacher = $request->user()->teacher;
+
+        if (!$teacher) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'teacher' => ['id' => null, 'name' => $request->user()->full_name, 'specialization' => null],
+                    'statistics' => ['total_courses' => 0, 'total_students' => 0, 'total_assignments' => 0, 'total_announcements' => 0],
+                    'recent_assignments' => [],
+                    'recent_announcements' => [],
+                    'courses' => [],
+                ]
+            ], 200);
+        }
+
         $courses = $teacher->courses()->withCount('students')->get();
 
         // إحصائيات
@@ -43,71 +57,109 @@ class TeacherController extends Controller
         // آخر 5 إعلانات
         $recentAnnouncements = Announcement::where(function($q) use ($courses) {
                 $q->whereIn('course_id', $courses->pluck('course_id'))
-                  ->orWhere('category', 'general')
+                  ->orWhere('type', 'general')
                   ->orWhereNull('course_id');
             })
             ->latest()
             ->limit(5)
             ->get();
 
-        return response()->json([
+        $responseData = [
             'success' => true,
             'data' => [
                 'teacher' => [
-                    'id' => $teacher->teacher_id,
-                    'name' => $request->user()->full_name,
-                    'specialization' => $teacher->specialization,
+                    'id'             => $teacher->teacher_id,
+                    'name'           => $request->user()->full_name ?? '',
+                    'specialization' => $teacher->specialization ?? '',
                 ],
                 'statistics' => [
-                    'total_courses' => $totalCourses,
-                    'total_students' => $totalStudents,
-                    'total_assignments' => Assignment::whereIn('course_id', $courses->pluck('course_id'))->count(),
+                    'total_courses'       => $totalCourses,
+                    'total_students'      => $totalStudents,
+                    'total_assignments'   => Assignment::whereIn('course_id', $courses->pluck('course_id'))->count(),
                     'total_announcements' => Announcement::where('user_id', $request->user()->user_id)->count(),
                 ],
                 'recent_assignments' => $recentAssignments->map(function($assignment) {
                     return [
-                        'id' => $assignment->assignment_id,
-                        'title' => $assignment->title,
-                        'course_name' => $assignment->course->title,
-                        'due_date' => $assignment->due_date->format('Y-m-d'),
-                        'submissions_count' => $assignment->submissions()->count(),
+                        'id'               => $assignment->assignment_id,
+                        'title'            => $assignment->title ?? '',
+                        'course_name'      => $assignment->course->title ?? '',
+                        'due_date'         => $assignment->due_date->format('Y-m-d'),
+                        'submissions_count'=> $assignment->submissions()->count(),
                     ];
-                }),
+                })->values(),
                 'recent_announcements' => $recentAnnouncements->map(function($announcement) {
                     return [
-                        'id' => $announcement->announcement_id,
-                        'title' => $announcement->title,
-                        'content' => substr($announcement->content, 0, 100),
+                        'id'         => $announcement->announcement_id,
+                        'title'      => $announcement->title ?? '',
+                        'content'    => substr($announcement->content ?? '', 0, 100),
                         'created_at' => $announcement->created_at->diffForHumans(),
                     ];
-                }),
+                })->values(),
                 'courses' => $courses->map(function($course) {
                     return [
-                        'id' => $course->course_id,
-                        'title' => $course->title,
-                        'level' => $course->level,
+                        'id'             => $course->course_id,
+                        'title'          => $course->title ?? '',
+                        'level'          => $course->level ?? '',
                         'students_count' => $course->students_count,
                     ];
-                }),
-            ]
-        ], 200);
+                })->values(),
+            ],
+        ];
+
+        return response(
+            json_encode($responseData, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+            200,
+            ['Content-Type' => 'application/json; charset=utf-8']
+        );
     }
 
     /**
      * جلب جميع دورات المدرس
      */
+    public function myDepartmentPrograms(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher || !$teacher->specialization) {
+            return response()->json(['success' => true, 'data' => [], 'specialization' => ''], 200);
+        }
+
+        $department = \App\Models\Department::where('name', $teacher->specialization)->first();
+        if (!$department) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'specialization' => $teacher->specialization,
+            ], 200);
+        }
+
+        $programs = \App\Models\Program::where('department_id', $department->department_id)
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $programs,
+            'specialization' => $teacher->specialization,
+        ]);
+    }
+
     public function myCourses(Request $request)
     {
         $teacher = $request->user()->teacher;
+        if (!$teacher) {
+            return response()->json(['success' => true, 'data' => []], 200);
+        }
         $courses = $teacher->courses()
-            ->with(['students.user', 'schedule'])
+            ->with(['students.user', 'schedule', 'programs'])
             ->get()
             ->map(function($course) {
+                $program = $course->programs->first();
                 return [
                     'id' => $course->course_id,
                     'title' => $course->title,
                     'description' => $course->description,
                     'level' => $course->level,
+                    'program_id' => $program?->id ?? null,
+                    'program_name' => $program?->name ?? $course->level ?? '',
                     'students' => $course->students->map(function($student) {
                         return [
                             'id' => $student->student_id,
@@ -360,17 +412,26 @@ class TeacherController extends Controller
         $lesson = $session->lesson;
         $course = $lesson->course;
 
-        $allStudents = $course->students()->with('user')->get();
+        $enrolledStudents = $course->students()->with('user')->get();
 
         $presentIds = Attendance::where('lesson_id', $lesson->lesson_id)
             ->where('status', 'present')
             ->pluck('student_id')
             ->toArray();
 
+        // إضافة الطلاب الذين مسحوا QR لكن غير مسجّلين في الكورس
+        $enrolledIds = $enrolledStudents->pluck('student_id')->toArray();
+        $extraIds = array_diff($presentIds, $enrolledIds);
+        $extraStudents = !empty($extraIds)
+            ? \App\Models\Student::with('user')->whereIn('student_id', $extraIds)->get()
+            : collect();
+
+        $allStudents = $enrolledStudents->merge($extraStudents);
+
         $students = $allStudents->map(function ($student) use ($presentIds) {
             return [
                 'student_id' => $student->student_id,
-                'name'   => $student->user->full_name,
+                'name'   => $student->user->full_name ?? $student->user->name ?? 'غير معروف',
                 'status' => in_array($student->student_id, $presentIds) ? 'present' : 'absent',
             ];
         });
@@ -560,12 +621,16 @@ class TeacherController extends Controller
                 }
 
                 return [
-                    'id'                => $assignment->assignment_id,
-                    'title'             => $assignment->title,
-                    'course_name'       => $assignment->course->title ?? '',
-                    'due_date'          => $assignment->due_date->format('Y-m-d'),
+                    'id'              => $assignment->assignment_id,
+                    'title'           => $assignment->title,
+                    'description'     => $assignment->description ?? '',
+                    'course_id'       => $assignment->course_id,
+                    'course_name'     => $assignment->course->title ?? '',
+                    'due_date'        => $assignment->due_date->format('Y-m-d H:i:s'),
+                    'max_points'      => $assignment->max_points,
+                    'attachment_path' => $assignment->attachment_path,
                     'submissions_count' => $submissionsCount,
-                    'status'            => $status,
+                    'status'          => $status,
                 ];
             });
 
@@ -578,25 +643,24 @@ class TeacherController extends Controller
     public function createAssignment(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'course_id' => 'required|exists:courses,course_id',
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'due_date' => 'required|date|after:now',
+            'course_id'  => 'required|exists:courses,course_id',
+            'title'      => 'required|string|max:255',
+            'description'=> 'required|string',
+            'due_date'   => 'required|date|after:now',
             'max_points' => 'required|integer|min:1|max:100',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:20480',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors()
             ], 422);
         }
 
         $teacher = $request->user()->teacher;
 
-        // التأكد أن هذه الدورة تخص المدرس
         $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
-
         if (!$course) {
             return response()->json([
                 'success' => false,
@@ -604,19 +668,30 @@ class TeacherController extends Controller
             ], 403);
         }
 
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $attachmentPath = $file->storeAs(
+                'assignments',
+                time() . '_' . $file->getClientOriginalName(),
+                'public'
+            );
+        }
+
         $assignment = Assignment::create([
-            'course_id'   => $request->course_id,
-            'teacher_id'  => $teacher->teacher_id,
-            'title'       => $request->title,
-            'description' => $request->description,
-            'due_date'    => $request->due_date,
-            'max_points'  => $request->max_points,
+            'course_id'       => $request->course_id,
+            'teacher_id'      => $teacher->teacher_id,
+            'title'           => $request->title,
+            'description'     => $request->description,
+            'due_date'        => $request->due_date,
+            'max_points'      => $request->max_points,
+            'attachment_path' => $attachmentPath,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'تم إنشاء الواجب بنجاح',
-            'data' => $assignment
+            'data'    => $assignment
         ], 201);
     }
 
@@ -628,30 +703,57 @@ class TeacherController extends Controller
         $assignment = Assignment::find($assignmentId);
 
         if (!$assignment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الواجب غير موجود'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'الواجب غير موجود'], 404);
         }
 
         $teacher = $request->user()->teacher;
 
-        // التأكد أن هذا الواجب يخص المدرس
         $course = $teacher->courses()->where('course_id', $assignment->course_id)->first();
 
         if (!$course) {
-            return response()->json([
-                'success' => false,
-                'message' => 'لا يمكنك تعديل هذا الواجب'
-            ], 403);
+            return response()->json(['success' => false, 'message' => 'لا يمكنك تعديل هذا الواجب'], 403);
         }
 
-        $assignment->update($request->only(['title', 'description', 'due_date', 'max_points']));
+        $validator = Validator::make($request->all(), [
+            'course_id'   => 'sometimes|exists:courses,course_id',
+            'title'       => 'sometimes|string|max:255',
+            'description' => 'sometimes|string',
+            'due_date'    => 'sometimes|date',
+            'max_points'  => 'sometimes|integer|min:1|max:100',
+            'attachment'  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:20480',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $data = $request->only(['title', 'description', 'due_date', 'max_points']);
+
+        if ($request->filled('course_id')) {
+            $newCourse = $teacher->courses()->where('course_id', $request->course_id)->first();
+            if ($newCourse) {
+                $data['course_id'] = $request->course_id;
+            }
+        }
+
+        if ($request->hasFile('attachment')) {
+            if ($assignment->attachment_path) {
+                Storage::disk('public')->delete($assignment->attachment_path);
+            }
+            $file = $request->file('attachment');
+            $data['attachment_path'] = $file->storeAs(
+                'assignments',
+                time() . '_' . $file->getClientOriginalName(),
+                'public'
+            );
+        }
+
+        $assignment->update($data);
 
         return response()->json([
             'success' => true,
             'message' => 'تم تحديث الواجب بنجاح',
-            'data' => $assignment
+            'data'    => $assignment
         ], 200);
     }
 
@@ -693,25 +795,21 @@ class TeacherController extends Controller
      */
     public function gradeAssignment(Request $request, $submissionId)
     {
-        $validator = Validator::make($request->all(), [
-            'grade' => 'required|numeric|min:0',
-            'feedback' => 'nullable|string'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         $submission = AssignmentSubmission::with('assignment')->find($submissionId);
 
         if (!$submission) {
-            return response()->json([
-                'success' => false,
-                'message' => 'التسليم غير موجود'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'التسليم غير موجود'], 404);
+        }
+
+        $maxPoints = $submission->assignment->max_points ?? 100;
+
+        $validator = Validator::make($request->all(), [
+            'grade'    => "required|numeric|min:0|max:{$maxPoints}",
+            'feedback' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
         $teacher = $request->user()->teacher;
@@ -993,7 +1091,7 @@ class TeacherController extends Controller
                     'student_name'     => $sub->student->user->full_name ?? 'غير معروف',
                     'assignment_title' => $sub->assignment->title ?? '',
                     'course_name'      => $sub->assignment->course->title ?? '',
-                    'student_notes'    => '',
+                    'student_notes'    => $sub->notes ?? '',
                     'file_path'        => $sub->file_path,
                     'grade'            => $sub->grade,
                     'feedback'         => $sub->feedback,
@@ -1023,15 +1121,22 @@ class TeacherController extends Controller
         $submissions = AssignmentSubmission::where('assignment_id', $assignmentId)
             ->with('student.user')
             ->get()
-            ->map(function($sub) {
+            ->map(function($sub) use ($assignment) {
                 return [
-                    'submission_id' => $sub->submission_id,
-                    'student_id'    => $sub->student_id,
-                    'student_name'  => $sub->student->user->full_name,
-                    'file_path'     => $sub->file_path,
-                    'grade'         => $sub->grade,
-                    'feedback'      => $sub->feedback,
-                    'submitted_at'  => $sub->submitted_at ? \Carbon\Carbon::parse($sub->submitted_at)->format('Y-m-d H:i') : null,
+                    'submission_id'    => $sub->submission_id,
+                    'student_id'       => $sub->student_id,
+                    'student_name'     => $sub->student->user->full_name,
+                    'assignment_title' => $assignment->title,
+                    'course_name'      => $assignment->course->title ?? '',
+                    'max_points'       => $assignment->max_points,
+                    'file_path'        => $sub->file_path,
+                    'student_notes'    => $sub->notes ?? '',
+                    'grade'            => $sub->grade,
+                    'feedback'         => $sub->feedback,
+                    'is_graded'        => !is_null($sub->grade),
+                    'submitted_at'     => $sub->submitted_at
+                        ? \Carbon\Carbon::parse($sub->submitted_at)->format('Y-m-d H:i')
+                        : ($sub->created_at ? $sub->created_at->format('Y-m-d H:i') : null),
                 ];
             });
 

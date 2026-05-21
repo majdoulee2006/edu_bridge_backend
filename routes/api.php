@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\TeacherController;
 use App\Http\Controllers\Api\AnnouncementController;
+use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
 
@@ -14,11 +16,17 @@ use App\Http\Controllers\StudentParentController;
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // روابط محمية (تحتاج توكن)
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/profile/update', [AuthController::class, 'updateProfile']);
+    Route::post('/profile/request-change-email', [AuthController::class, 'requestChangeEmail']);
+    Route::post('/profile/confirm-change-email', [AuthController::class, 'confirmChangeEmail']);
 
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {
@@ -37,6 +45,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student/assignments', [StudentController::class, 'getMyAssignments']);
     Route::post('/student/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
     Route::get('/student/lectures', [StudentController::class, 'getMyLectures']);
+    Route::get('/student/courses', [StudentController::class, 'getMyCourses']);
+    Route::get('/student/grades', [StudentController::class, 'getMyGrades']);
+    Route::get('/student/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
 
     // مسارات الحضور والإجازات
     Route::get('/student/attendance', [StudentController::class, 'getMyAttendance']);
@@ -51,6 +62,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/student/notifications/read-all', [StudentController::class, 'markAllNotificationsAsRead']);
 
     #========= روابط واجهات ولي الأمر ==========
+    Route::get('/parent/children', function (Request $request) {
+        $parent = \App\Models\Parents::where('user_id', $request->user()->user_id)->first();
+        if (!$parent) return response()->json(['success' => true, 'data' => []]);
+        $children = $parent->students()->with(['user', 'attendances', 'grades'])->get()->map(function ($student) {
+            $att = $student->attendances;
+            return [
+                'student_id'      => $student->student_id,
+                'full_name'       => $student->user->full_name ?? '',
+                'level'           => $student->level ?? '',
+                'attendance_rate' => $att->count() > 0
+                    ? round(($att->where('status', 'present')->count() / $att->count()) * 100, 1)
+                    : 0,
+                'average_grade'   => round($student->grades->avg('score') ?? 0, 1),
+            ];
+        });
+        return response()->json(['success' => true, 'data' => $children]);
+    });
+    Route::get('/parent/announcements', function () {
+        $announcements = \App\Models\Announcement::latest()->limit(10)->get()->map(fn($a) => [
+            'id'         => $a->announcement_id,
+            'title'      => $a->title,
+            'content'    => $a->content,
+            'time_ago'   => $a->created_at ? $a->created_at->diffForHumans() : 'منذ قليل',
+        ]);
+        return response()->json(['success' => true, 'data' => $announcements]);
+    });
     Route::post('/parent/request-report', [StudentParentController::class, 'requestReport']);
     Route::get('/parent/performance/{studentId}', [StudentParentController::class, 'getFullPerformance']);
     Route::get('/parent/student/{studentId}/assignments', [StudentParentController::class, 'getAssignments']);
@@ -67,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // المواد والطلاب
         Route::get('/courses', [TeacherController::class, 'myCourses']);
+        Route::get('/programs', [TeacherController::class, 'myDepartmentPrograms']);
         Route::get('/courses/{courseId}/students', [TeacherController::class, 'courseStudents']);
 
         // الجدول الدراسي
@@ -122,7 +160,47 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [TeacherController::class, 'getTeacherProfile']);
         Route::put('/profile', [TeacherController::class, 'updateTeacherProfile']);
     });
-<<<<<<< Updated upstream
+
+    #========= روابط رئيس القسم ==========
+    Route::prefix('department-head')->middleware('role:head')->group(function () {
+        // Dashboard & Profile & Notifications
+        Route::get('/dashboard',     [DepartmentHeadController::class, 'dashboard']);
+        Route::get('/profile',       [DepartmentHeadController::class, 'getProfile']);
+        Route::get('/notifications', [DepartmentHeadController::class, 'getNotifications']);
+
+        // Accounts
+        Route::get('/users/trainers', [DepartmentHeadController::class, 'getTrainers']);
+        Route::get('/users/students', [DepartmentHeadController::class, 'getStudents']);
+        Route::get('/users/parents',  [DepartmentHeadController::class, 'getParents']);
+        Route::post('/users/trainer', [DepartmentHeadController::class, 'createTrainer']);
+        Route::post('/users/student', [DepartmentHeadController::class, 'createStudent']);
+        Route::post('/users/parent',  [DepartmentHeadController::class, 'createParent']);
+
+        // Courses
+        Route::get('/courses', [DepartmentHeadController::class, 'getCourses']);
+
+        // Leave Requests
+        Route::get('/leave-requests',               [DepartmentHeadController::class, 'getLeaveRequests']);
+        Route::put('/leave-requests/{id}/respond',  [DepartmentHeadController::class, 'respondLeaveRequest']);
+
+        // Teachers list & Report Requests
+        Route::get('/teachers',        [DepartmentHeadController::class, 'getTeachers']);
+        Route::post('/report-requests',[DepartmentHeadController::class, 'createReportRequest']);
+
+        // Schedule
+        Route::get('/schedule',       [DepartmentHeadController::class, 'getSchedule']);
+        Route::post('/schedule',      [DepartmentHeadController::class, 'createSchedule']);
+        Route::put('/schedule/{id}',  [DepartmentHeadController::class, 'updateSchedule']);
+    });
+
+    #========= روابط الأدمن ==========
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/users', [AdminController::class, 'getUsers']);
+        Route::post('/users', [AdminController::class, 'createUser']);
+        Route::put('/users/{id}', [AdminController::class, 'updateUser']);
+        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
+    });
 });
 
 // -----------------------------------------------------------
@@ -187,6 +265,4 @@ Route::get('/parent/notifications/{id}', function ($id) {
         ->where('user_id', $id)
         ->orderBy('created_at', 'desc')
         ->get();
-=======
->>>>>>> Stashed changes
 });

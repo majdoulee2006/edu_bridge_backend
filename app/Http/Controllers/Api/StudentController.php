@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\Student;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -9,10 +11,14 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Announcement;
 use App\Models\Notification;
 use App\Models\Attendance;
+use App\Models\AttendanceSession;
 use App\Models\Grade;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use App\Models\AbsenceRequest;
+use App\Models\LeaveRequest;
+use App\Models\Enrollment;
+use App\Models\Exam;
 use App\Models\Course;
 use App\Models\Schedule;
 use Carbon\Carbon;
@@ -30,12 +36,12 @@ class StudentController extends Controller
         $enrolledCourseIds = $student ? $student->courses->modelKeys() : [];
 
         // 🌟 2. جلب الإعلانات (العامة + المخصصة لقسم الطالب فقط)
-        $announcements = \App\Models\Announcement::with('author')
+        $announcements = Announcement::with('author')
             ->where(function($query) use ($user) {
                 $query->whereNull('department_id')
                       ->orWhere('department_id', $user->department_id);
             })
-            ->latest() 
+            ->latest()
             ->get()
             ->map(function ($item) {
                 $categoryText = 'عام';
@@ -61,7 +67,7 @@ class StudentController extends Controller
         $nextLecture = null;
         $today = now()->format('l');
 
-        $schedule = \App\Models\Schedule::whereIn('course_id', $enrolledCourseIds)
+        $schedule = Schedule::whereIn('course_id', $enrolledCourseIds)
             ->where('day', $today)
             ->where('start_time', '>', now()->format('H:i:s'))
             ->orderBy('start_time', 'asc')
@@ -78,7 +84,7 @@ class StudentController extends Controller
         }
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم جلب البيانات بنجاح',
             'data' => [
                 // 🌟 رجعناها خفيفة ونظيفة مثل ما طلبتي بالضبط!
@@ -103,7 +109,7 @@ class StudentController extends Controller
         $student = $user->student;
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم جلب بيانات الملف الشخصي بنجاح',
             'data' => [
                 'name' => $user->full_name,
@@ -133,12 +139,12 @@ class StudentController extends Controller
     $validator = Validator::make($request->all(), [
         'phone' => 'sometimes|string|max:20',
         'email' => 'sometimes|email|unique:users,email,' . $user->user_id . ',user_id',
-        'avatar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', 
+        'avatar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
     ]);
 
     if ($validator->fails()) {
         return response()->json([
-            'status' => false,
+            'success' => false,
             'errors' => $validator->errors()
         ], 422);
     }
@@ -152,20 +158,20 @@ class StudentController extends Controller
         if ($user->avatar) {
             Storage::disk('public')->delete($user->avatar);
         }
-        
+
         // حفظ الصورة الجديدة
         $path = $request->file('avatar')->store('avatars', 'public');
-        $dataToUpdate['avatar'] = $path; 
+        $dataToUpdate['avatar'] = $path;
     } else {
          // هذا السطر مفيد للـ Debugging فقط إذا أردتِ التأكد (يمكنك حذفه لاحقاً)
-        \Log::info("No avatar file received for user: " . $user->user_id);
+        Log::info("No avatar file received for user: " . $user->user_id);
     }
 
     // 🌟 4. تحديث قاعدة البيانات
     $user->update($dataToUpdate);
 
     return response()->json([
-        'status' => true,
+        'success' => true,
         'message' => 'تم تحديث الملف الشخصي بنجاح',
         'data' => [
             'phone' => $user->phone,
@@ -173,7 +179,9 @@ class StudentController extends Controller
             'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
         ]
     ], 200);
-}/**
+}
+
+    /**
      * جلب الإشعارات الخاصة بالطالب (معدلة لتناسب الهيكل الجديد)
      */
     public function getNotifications(Request $request)
@@ -181,7 +189,7 @@ class StudentController extends Controller
         $user = $request->user();
 
         // 🌟 إضافة (with('sender')) لجلب بيانات من أرسل الإشعار
-        $notifications = \App\Models\Notification::with('sender')
+        $notifications = Notification::with('sender')
             ->where('user_id', $user->user_id)
             ->latest()
             ->get()
@@ -200,7 +208,7 @@ class StudentController extends Controller
             });
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم جلب الإشعارات بنجاح',
             'data' => [
                 // 🌟 استخدام حقل category الجديد للتقسيم بشكل مباشر وأدق
@@ -218,13 +226,13 @@ class StudentController extends Controller
     {
         $user = $request->user();
 
-        $notification = \App\Models\Notification::where('user_id', $user->user_id)
+        $notification = Notification::where('user_id', $user->user_id)
             ->where('id', $notificationId)
             ->first();
 
         if (!$notification) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'message' => 'الإشعار غير موجود'
             ], 404);
         }
@@ -233,7 +241,7 @@ class StudentController extends Controller
         $notification->update(['is_read' => true]);
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم تحديث حالة الإشعار بنجاح'
         ], 200);
     }
@@ -245,12 +253,12 @@ class StudentController extends Controller
         $user = $request->user();
 
         // تحديث كل الإشعارات الغير مقروءة الخاصة بهذا الطالب لتصبح مقروءة
-        \App\Models\Notification::where('user_id', $user->user_id)
+        Notification::where('user_id', $user->user_id)
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم تحديد جميع الإشعارات كمقروءة'
         ], 200);
     }
@@ -282,7 +290,7 @@ class StudentController extends Controller
             });
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'data' => $courses
         ], 200);
     }
@@ -295,23 +303,23 @@ class StudentController extends Controller
 
         // التعديل 1: غيرنا teacher إلى teachers
         $courses = $student->courses()
-            ->with(['teachers.user', 'lessons']) 
+            ->with(['teachers.user', 'lessons'])
             ->get()
             ->map(function ($course) {
                 return [
                     'course_id' => $course->course_id,
                     'course_name' => $course->title,
                     // التعديل 2: جلبنا أول دكتور من مصفوفة الدكاترة
-                    'teacher_name' => $course->teachers->first()?->user->full_name ?? 'مدرس غير محدد', 
+                    'teacher_name' => $course->teachers->first()?->user->full_name ?? 'مدرس غير محدد',
                     'total_files' => $course->lessons->count(),
-                    
+
                     'lessons' => $course->lessons->map(function ($lesson) {
                         return [
                             'id' => $lesson->lesson_id,
                             'title' => $lesson->title,
-                            'type' => $lesson->type ?? 'pdf', 
-                            'url' => $lesson->content_url ? 
-                                    (filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_url : asset('storage/' . $lesson->content_url)) 
+                            'type' => $lesson->type ?? 'pdf',
+                            'url' => $lesson->content_url ?
+                                    (filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_url : asset('storage/' . $lesson->content_url))
                                     : null,
                             'file_size' => $lesson->file_size,
                             'duration' => $lesson->duration,
@@ -322,7 +330,7 @@ class StudentController extends Controller
             });
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم جلب المحاضرات بنجاح',
             'data' => $courses
         ], 200);
@@ -334,13 +342,13 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
-        $schedules = \App\Models\Schedule::whereHas('course', function($query) use ($student) {
+        $schedules = Schedule::whereHas('course', function($query) use ($student) {
                 $query->whereHas('students', function($q) use ($student) {
                     $q->where('enrollments.student_id', $student->student_id);
                 });
             })
            ->with(['course', 'course.teachers.user']) // 💡 السحر هنا لجلب اليوزر مع المدرس
-            ->orderBy('day') 
+            ->orderBy('day')
             ->orderBy('start_time')
             ->get()
             ->groupBy('day')
@@ -350,11 +358,11 @@ class StudentController extends Controller
                     'lectures' => $items->map(function($item) {
                         return [
                             // 💡 2. التعديل: استخدمنا title بدل course_name
-                            'course_name' => $item->course->title ?? 'مادة غير معروفة', 
-                            
+                            'course_name' => $item->course->title ?? 'مادة غير معروفة',
+
                             // 💡 3. التعديل: جلب اسم أول مدرس من قائمة المدرسين
                           'teacher' => $item->course->teachers->first()?->user?->name ?? $item->course->teachers->first()?->user?->full_name ?? 'مدرس غير محدد',
-                            
+
                             'start_time'  => date('h:i A', strtotime($item->start_time)),
                             'end_time'    => date('h:i A', strtotime($item->end_time)),
                             'room'        => $item->room,
@@ -365,20 +373,20 @@ class StudentController extends Controller
             })->values();
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'data' => $schedules
         ], 200);
     }
     /**
      * جلب جدول الامتحانات للطالب
      */
-    
+
     public function getMyExams(Request $request)
     {
         $student = $request->user()->student;
 
         // نجلب الامتحانات للمواد التي يدرسها الطالب فقط (مع تجنب الغموض في student_id)
-        $exams = \App\Models\Exam::whereHas('course', function($query) use ($student) {
+        $exams = Exam::whereHas('course', function($query) use ($student) {
                 $query->whereHas('students', function($q) use ($student) {
                     $q->where('enrollments.student_id', $student->student_id);
                 });
@@ -387,91 +395,89 @@ class StudentController extends Controller
             ->orderBy('exam_date') // ترتيب من الأقرب للأبعد
             ->get()
             ->map(function($exam) {
-                $date = \Carbon\Carbon::parse($exam->exam_date);
+                $date = Carbon::parse($exam->exam_date);
                 return [
                     'exam_id'  => $exam->exam_id,
                     // استخدمنا title بدل course_name
-                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان مادة'), 
+                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان مادة'),
                     'day_num'  => $date->format('d'),
                     'month'    => $date->translatedFormat('F'), // مثال: يونيو
                     'day_name' => $date->translatedFormat('l'), // مثال: الأحد
                     'time'     => $date->format('h:i A'),
                     'duration' => 'ساعتان', // يمكنك جعلها ديناميكية لاحقاً
-                    'room'     => 'القاعة الامتحانية', 
+                    'room'     => 'القاعة الامتحانية',
                     'type'     => 'نهائي'
                 ];
             });
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'data'   => $exams
         ], 200);
     }
     /**
-     * تصدير جدول الامتحانات كملف PDF
+     * تصدير جدول الامتحانات (PDF) — يرجع البيانات كـ JSON
      */
     public function exportExamsPdf(Request $request)
     {
         $student = $request->user()->student;
 
-        // نفس اللوجيك الصحيح اللي استعملناه بالدوال السابقة لجلب امتحانات الطالب
-        $exams = \App\Models\Exam::whereHas('course', function($query) use ($student) {
+        $exams = Exam::whereHas('course', function($query) use ($student) {
                 $query->whereHas('students', function($q) use ($student) {
                     $q->where('enrollments.student_id', $student->student_id);
                 });
             })
             ->with('course')
             ->orderBy('exam_date')
-            ->get();
+            ->get()
+            ->map(function($exam) {
+                $date = Carbon::parse($exam->exam_date);
+                return [
+                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان'),
+                    'date'     => $date->translatedFormat('d F Y'),
+                    'day'      => $date->translatedFormat('l'),
+                    'time'     => $date->format('h:i A'),
+                ];
+            });
 
-        // تمرير البيانات لملف التصميم (Blade)
-        $data = [
-            'exams' => $exams,
-            'student' => $student
-        ];
-
-        // توليد الـ PDF باستخدام الـ View
-        $pdf = \PDF::loadView('pdf.exams_schedule', $data);
-
-        // حفظ الملف في مجلد storage/app/public/pdfs
-        $fileName = 'exams_' . $student->student_id . '_' . time() . '.pdf';
-        \Storage::disk('public')->put('pdfs/' . $fileName, $pdf->output());
-
-        // إرجاع رابط الملف للفلاتر
         return response()->json([
-            'status' => true,
-            'pdf_url' => asset('storage/pdfs/' . $fileName)
+            'success'  => true,
+            'pdf_url'  => null,
+            'data'     => $exams,
         ], 200);
     }
+
     /**
-     * تصدير جدول الامتحانات كملف Excel
+     * تصدير جدول الامتحانات (Excel) — يرجع البيانات كـ JSON
      */
     public function exportExamsExcel(Request $request)
     {
         $student = $request->user()->student;
 
-        // نجلب نفس البيانات تبع الامتحانات
-        $exams = \App\Models\Exam::whereHas('course', function($query) use ($student) {
+        $exams = Exam::whereHas('course', function($query) use ($student) {
                 $query->whereHas('students', function($q) use ($student) {
                     $q->where('enrollments.student_id', $student->student_id);
                 });
             })
             ->with('course')
             ->orderBy('exam_date')
-            ->get();
+            ->get()
+            ->map(function($exam) {
+                $date = Carbon::parse($exam->exam_date);
+                return [
+                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان'),
+                    'date'     => $date->format('Y-m-d'),
+                    'time'     => $date->format('h:i A'),
+                ];
+            });
 
-        $fileName = 'exams_' . $student->student_id . '_' . time() . '.xlsx';
-        
-        // 💡 حفظ الملف باستخدام مكتبة الإكسل في مجلد storage/app/public/excels
-        \Maatwebsite\Excel\Facades\Excel::store(new \App\Exports\ExamsExport($exams), 'public/excels/' . $fileName);
-
-        // إرجاع الرابط للفلاتر
         return response()->json([
-            'status' => true,
-            'excel_url' => asset('storage/excels/' . $fileName)
+            'success'    => true,
+            'excel_url'  => null,
+            'data'       => $exams,
         ], 200);
     }
-    
+
 
     /**
      * جلب علامات الطالب
@@ -509,7 +515,7 @@ class StudentController extends Controller
             ->value('average');
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'overall_average' => round($overallAverage ?? 0, 1),
             'data' => $grades
         ], 200);
@@ -523,11 +529,11 @@ class StudentController extends Controller
         $student = $request->user()->student;
 
         // 1. جلب أرقام المواد اللي مسجل فيها الطالب
-        $enrolledCourseIds = \App\Models\Enrollment::where('student_id', $student->student_id)
+        $enrolledCourseIds = Enrollment::where('student_id', $student->student_id)
             ->pluck('course_id');
 
         // 2. جلب كل واجبات هاي المواد
-        $assignments = \App\Models\Assignment::with(['course.teachers.user', 'submissions' => function($query) use ($student) {
+        $assignments = Assignment::with(['course.teachers.user', 'submissions' => function($query) use ($student) {
             $query->where('student_id', $student->student_id);
         }])
         ->whereIn('course_id', $enrolledCourseIds)
@@ -535,7 +541,7 @@ class StudentController extends Controller
         ->get();
 
         $formattedAssignments = [];
-        $now = \Carbon\Carbon::now();
+        $now = Carbon::now();
 
         // 3. تصنيف وتنسيق البيانات للواجهة
         foreach ($assignments as $assignment) {
@@ -572,7 +578,7 @@ class StudentController extends Controller
         }
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'data' => $formattedAssignments
         ], 200);
     }
@@ -582,33 +588,33 @@ class StudentController extends Controller
      */
     public function submitAssignment(Request $request, $assignmentId)
     {
-        
+
         // تم التعديل ليقبل 50 ميجا (51200 كيلوبايت) وإضافة الصور حسب تصميمك
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'file' => 'required|file|mimes:pdf,doc,docx,zip,jpg,jpeg,png,mp4|max:51200', 
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|file|mimes:pdf,doc,docx,zip,jpg,jpeg,png,mp4|max:51200',
             'student_notes' => 'nullable|string' // استقبال ملاحظات الطالب
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'errors' => $validator->errors()
             ], 422);
         }
 
         $student = $request->user()->student;
-        $assignment = \App\Models\Assignment::find($assignmentId);
+        $assignment = Assignment::find($assignmentId);
 
         if (!$assignment) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'message' => 'الواجب غير موجود'
             ], 404);
         }
 
         // اختياري: منع التسليم إذا انتهى الوقت (حسب قوانين تطبيقك)
-        // if (\Carbon\Carbon::now()->greaterThan($assignment->due_date)) {
-        //     return response()->json(['status' => false, 'message' => 'عذراً، انتهى وقت تسليم هذا الواجب'], 403);
+        // if (Carbon::now()->greaterThan($assignment->due_date)) {
+        //     return response()->json(['success' => false, 'message' => 'عذراً، انتهى وقت تسليم هذا الواجب'], 403);
         // }
 
         // رفع الملف
@@ -618,7 +624,7 @@ class StudentController extends Controller
         $filePath = $file->storeAs('assignments/' . $assignmentId, $fileName, 'public');
 
         // إنشاء أو تحديث التسليم
-        $submission = \App\Models\AssignmentSubmission::updateOrCreate(
+        $submission = AssignmentSubmission::updateOrCreate(
             [
                 'assignment_id' => $assignmentId,
                 'student_id' => $student->student_id,
@@ -632,7 +638,7 @@ class StudentController extends Controller
         );
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم تقديم الواجب بنجاح',
             'data' => $submission
         ], 200);
@@ -649,7 +655,7 @@ class StudentController extends Controller
 
         if (!$isEnrolled) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'message' => 'غير مسموح لك بالوصول إلى هذه الدورة'
             ], 403);
         }
@@ -657,7 +663,7 @@ class StudentController extends Controller
         $course = Course::with(['lessons', 'resources'])->find($courseId);
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'course_name' => $course->title,
             'lessons' => $course->lessons->map(function($lesson) {
                 return [
@@ -680,7 +686,7 @@ class StudentController extends Controller
     /**
      * ربط الطالب بولي الأمر (للاستخدام من تطبيق ولي الأمر)
      */
-    
+
     /**
      * 1. جلب سجل حضور الطالب (مع الأعذار)
      */
@@ -688,14 +694,14 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
-        $attendances = \App\Models\Attendance::where('student_id', $student->student_id)
+        $attendances = Attendance::where('student_id', $student->student_id)
             ->with(['lesson.course'])
             ->orderBy('attendance_date', 'desc')
             ->get()
             ->map(function($attendance) {
                 return [
                     'id' => $attendance->attendance_id,
-                    'date' => \Carbon\Carbon::parse($attendance->attendance_date)->translatedFormat('d F، l'), // مثلاً: 24 أكتوبر، الثلاثاء
+                    'date' => Carbon::parse($attendance->attendance_date)->translatedFormat('d F، l'), // مثلاً: 24 أكتوبر، الثلاثاء
                     'status' => $attendance->status,
                     'status_text' => $attendance->status == 'present' ? 'حاضر' : ($attendance->status == 'absent' ? 'غائب' : 'متأخر'),
                     'course_name' => $attendance->lesson->course->title ?? 'غير محدد',
@@ -713,7 +719,7 @@ class StudentController extends Controller
         $late = $attendances->where('status', 'late')->count();
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'statistics' => [
                 'total' => $total,
                 'present' => $present,
@@ -730,7 +736,7 @@ class StudentController extends Controller
      */
     public function requestAbsence(Request $request)
     {
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'type' => 'required|in:full_day,hourly',
             'date' => 'required|date|after_or_equal:today',
             'reason' => 'required|string|min:10|max:500',
@@ -739,7 +745,7 @@ class StudentController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -754,7 +760,7 @@ class StudentController extends Controller
         }
 
         // استخدام موديل LeaveRequest الحقيقي
-        $leaveRequest = \App\Models\LeaveRequest::create([
+        $leaveRequest = LeaveRequest::create([
             'student_id' => $request->user()->user_id, // انتبهي: student_id في جدول الإجازات مربوط بـ users
             'type' => $request->type,
             'leave_category' => $request->type == 'hourly' ? 'hourly' : 'daily',
@@ -765,7 +771,7 @@ class StudentController extends Controller
         ]);
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم إرسال طلب الإجازة بنجاح، بانتظار موافقة رئيس القسم',
             'data' => $leaveRequest
         ], 200);
@@ -778,7 +784,7 @@ class StudentController extends Controller
     {
         $userId = $request->user()->user_id;
 
-        $requests = \App\Models\LeaveRequest::where('student_id', $userId)
+        $requests = LeaveRequest::where('student_id', $userId)
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function($req) {
@@ -793,7 +799,7 @@ class StudentController extends Controller
                 return [
                     'id' => $req->id,
                     'type' => $req->type == 'hourly' ? 'إجازة ساعية' : 'إجازة يوم كامل',
-                    'date' => \Carbon\Carbon::parse($req->date)->translatedFormat('d F Y'),
+                    'date' => Carbon::parse($req->date)->translatedFormat('d F Y'),
                     'reason' => $req->reason,
                     'status' => $req->status,
                     'status_text' => $statusText,
@@ -803,7 +809,7 @@ class StudentController extends Controller
             });
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'data' => $requests
         ], 200);
     }
@@ -819,21 +825,21 @@ class StudentController extends Controller
         $student = $request->user()->student;
 
         // البحث عن جلسة الحضور باستخدام التوكن (الباركود)
-        $session = \App\Models\AttendanceSession::where('qr_token', $request->qr_token)
+        $session = AttendanceSession::where('qr_token', $request->qr_token)
             ->where('is_active', true)
             ->where('expires_at', '>', now()) // التأكد أن الباركود لم تنتهِ صلاحيته
             ->first();
 
         if (!$session) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'message' => 'رمز الباركود غير صالح أو منتهي الصلاحية'
             ], 400);
         }
 
-        // تسجيل الطالب كـ "حاضر" 
+        // تسجيل الطالب كـ "حاضر"
         // (نستخدم updateOrCreate عشان لو السجل موجود مسبقاً كغائب تتحدث حالته لحاضر، ولو مو موجود يتم إنشاؤه)
-        $attendance = \App\Models\Attendance::updateOrCreate(
+        $attendance = Attendance::updateOrCreate(
             [
                 'student_id' => $student->student_id,
                 'lesson_id' => $session->lesson_id,
@@ -846,7 +852,7 @@ class StudentController extends Controller
         );
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم تسجيل حضورك بنجاح!',
             'data' => $attendance
         ], 200);
@@ -865,20 +871,20 @@ class StudentController extends Controller
         $student = $request->user()->student;
 
         // البحث عن سجل الغياب الخاص بهذا الطالب وهذا اليوم
-        $attendance = \App\Models\Attendance::where('attendance_id', $attendance_id)
+        $attendance = Attendance::where('attendance_id', $attendance_id)
             ->where('student_id', $student->student_id)
             ->first();
 
         if (!$attendance) {
-            return response()->json(['status' => false, 'message' => 'سجل الغياب غير موجود'], 404);
+            return response()->json(['success' => false, 'message' => 'سجل الغياب غير موجود'], 404);
         }
 
         if ($attendance->status == 'present') {
-            return response()->json(['status' => false, 'message' => 'لا يمكنك تقديم عذر لأنك كنت حاضراً في هذا اليوم!'], 400);
+            return response()->json(['success' => false, 'message' => 'لا يمكنك تقديم عذر لأنك كنت حاضراً في هذا اليوم!'], 400);
         }
 
         // رفع الملف المرفق للعذر (تقرير طبي مثلاً)
-        $documentPath = $attendance->excuse_attachment; 
+        $documentPath = $attendance->excuse_attachment;
         if ($request->hasFile('document')) {
             $document = $request->file('document');
             $documentPath = $document->store('attendance_excuses', 'public');
@@ -892,9 +898,34 @@ class StudentController extends Controller
         ]);
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم تقديم العذر بنجاح، بانتظار مراجعة الإدارة',
             'data' => $attendance
         ], 200);
     }
+
+    public function linkStudent(Request $request)
+    {
+        $request->validate(['student_code' => 'required|string']);
+
+        $student = DB::table('students')->where('student_code', $request->student_code)->first();
+        if (!$student) {
+            return response()->json(['message' => 'كود الطالب غير موجود'], 404);
+        }
+
+        $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
+        if (!$parent) {
+            return response()->json(['message' => 'سجل ولي الأمر غير موجود'], 404);
+        }
+
+        DB::table('parent_students')->updateOrInsert([
+            'parent_id'  => $parent->parent_id,
+            'student_id' => $student->student_id,
+        ]);
+
+        return response()->json(['message' => 'تم ربط الطالب بنجاح'], 200);
+    }
 }
+
+
+
