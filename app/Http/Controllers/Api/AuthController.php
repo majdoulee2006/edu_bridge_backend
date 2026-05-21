@@ -174,12 +174,35 @@ class AuthController extends Controller
         ]);
 
         if ($request->role === 'student') {
-            Student::create([
+            $student = Student::create([
                 'user_id'      => $user->user_id,
                 'student_code' => $request->university_id,
                 'level'        => $request->academic_year ?? 'السنة الأولى',
                 'birth_date'   => $request->birth_date,
             ]);
+
+            // Auto-enroll: سجّل الطالب بكل مواد برنامجه بناءً على القسم
+            $department = $request->department;
+            if ($department) {
+                $program = \DB::table('programs')
+                    ->where('name', 'LIKE', '%' . $department . '%')
+                    ->first();
+                if ($program) {
+                    $courseIds = \DB::table('course_program')
+                        ->where('program_id', $program->id)
+                        ->pluck('course_id');
+                    foreach ($courseIds as $courseId) {
+                        \DB::table('enrollments')->insertOrIgnore([
+                            'student_id'      => $student->student_id,
+                            'course_id'       => $courseId,
+                            'status'          => 'active',
+                            'enrollment_date' => now(),
+                            'created_at'      => now(),
+                            'updated_at'      => now(),
+                        ]);
+                    }
+                }
+            }
         } elseif ($request->role === 'parent') {
             Parents::create(['user_id' => $user->user_id]);
         }
@@ -370,6 +393,26 @@ class AuthController extends Controller
             'message' => 'تم تحديث الملف الشخصي بنجاح',
             'data'    => $user,
         ], 200);
+    }
+
+    public function updateAvatar(Request $request)
+    {
+        $request->validate(['avatar' => 'required|image|mimes:jpeg,png,jpg|max:5120']);
+
+        $user = $request->user();
+
+        if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
+            \Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث الصورة الشخصية',
+            'avatar'  => storageUrl($path),
+        ]);
     }
 
     // ──────────────────────────────────────────────

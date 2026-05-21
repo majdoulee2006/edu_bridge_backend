@@ -57,7 +57,7 @@ class StudentController extends Controller
                     'content' => $item->content ?? '',
                     'category' => $item->category ?? 'general',
                     'category_text' => $categoryText,
-                    'image' => $item->image ? asset('storage/' . $item->image) : null,
+                    'image' => $item->image ? storageUrl($item->image) : null,
                     'author_name' => $item->author->full_name ?? 'الإدارة',
                     'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
                 ];
@@ -91,7 +91,7 @@ class StudentController extends Controller
                 'student' => [
                     'id' => $user->user_id,
                     'name' => $user->full_name,
-                    'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                    'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
                     'department' => $user->department ?? 'غير محدد',
                 ],
                 'next_lecture' => $nextLecture,
@@ -123,7 +123,7 @@ class StudentController extends Controller
                 'gender' => $user->gender ?? 'غير محدد',
                 'level' => $student->level ?? 'غير محدد',
                 // 🌟 إضافة رابط الصورة (إذا مافي صورة بنرجع null)
-                'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
             ]
         ], 200);
     }
@@ -176,7 +176,7 @@ class StudentController extends Controller
         'data' => [
             'phone' => $user->phone,
             'email' => $user->email,
-            'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+            'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
         ]
     ], 200);
 }
@@ -319,7 +319,7 @@ class StudentController extends Controller
                             'title' => $lesson->title,
                             'type' => $lesson->type ?? 'pdf',
                             'url' => $lesson->content_url ?
-                                    (filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_url : asset('storage/' . $lesson->content_url))
+                                    (filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_url : storageUrl($lesson->content_url))
                                     : null,
                             'file_size' => $lesson->file_size,
                             'duration' => $lesson->duration,
@@ -568,7 +568,7 @@ class StudentController extends Controller
                 'teacher_name' => $assignment->course->teachers->first()?->user?->name ?? 'مدرس غير محدد',
                 'status' => $status,
                 'submission' => $submission ? [
-                    'file_path' => $submission->file_path ? asset('storage/' . $submission->file_path) : null,
+                    'file_path' => $submission->file_path ? storageUrl($submission->file_path) : null,
                     'student_notes' => $submission->student_notes,
                     'grade' => $submission->grade,
                     'feedback' => $submission->feedback,
@@ -631,9 +631,10 @@ class StudentController extends Controller
             ],
             [
                 'file_path' => $filePath,
-                'student_notes' => $request->student_notes, // تخزين ملاحظة الطالب
+                'student_notes' => $request->student_notes,
                 'grade' => null,
                 'feedback' => null,
+                'submitted_at' => now(),
             ]
         );
 
@@ -677,7 +678,7 @@ class StudentController extends Controller
                 return [
                     'id' => $resource->resource_id,
                     'name' => $resource->resource_name,
-                    'file_url' => asset('storage/' . $resource->file_path),
+                    'file_url' => storageUrl($resource->file_path),
                 ];
             }),
         ], 200);
@@ -708,7 +709,7 @@ class StudentController extends Controller
                     // بيانات العذر للواجهة
                     'excuse_status' => $attendance->excuse_status,
                     'excuse_text' => $attendance->excuse_text,
-                    'excuse_attachment' => $attendance->excuse_attachment ? asset('storage/' . $attendance->excuse_attachment) : null,
+                    'excuse_attachment' => $attendance->excuse_attachment ? storageUrl($attendance->excuse_attachment) : null,
                 ];
             });
 
@@ -803,7 +804,7 @@ class StudentController extends Controller
                     'reason' => $req->reason,
                     'status' => $req->status,
                     'status_text' => $statusText,
-                    'attachment' => $req->attachment ? asset('storage/' . $req->attachment) : null,
+                    'attachment' => $req->attachment ? storageUrl($req->attachment) : null,
                     'created_at' => $req->created_at->format('Y-m-d H:i'),
                 ];
             });

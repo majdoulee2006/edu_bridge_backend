@@ -12,6 +12,14 @@ use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
 
+// خدمة ملفات التخزين (بديل الـ symlink على Windows)
+Route::get('/file/{path}', function (string $path) {
+    $decoded  = urldecode($path);
+    $absolute = storage_path('app/public/' . $decoded);
+    abort_if(!file_exists($absolute), 404);
+    return response()->file($absolute);
+})->where('path', '.*');
+
 // روابط عامة
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register']);
@@ -25,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/profile/update', [AuthController::class, 'updateProfile']);
+    Route::post('/profile/avatar', [AuthController::class, 'updateAvatar']);
     Route::post('/profile/request-change-email', [AuthController::class, 'requestChangeEmail']);
     Route::post('/profile/confirm-change-email', [AuthController::class, 'confirmChangeEmail']);
 
@@ -159,6 +168,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // الملف الشخصي
         Route::get('/profile', [TeacherController::class, 'getTeacherProfile']);
         Route::put('/profile', [TeacherController::class, 'updateTeacherProfile']);
+        Route::post('/profile/avatar', [TeacherController::class, 'updateAvatar']);
     });
 
     #========= روابط رئيس القسم ==========

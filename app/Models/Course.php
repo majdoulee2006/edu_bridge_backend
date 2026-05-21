@@ -12,9 +12,10 @@ class Course extends Model
     protected $primaryKey = 'course_id';
 
     protected $fillable = [
-        'title',       // بالميجريشن مكتوب title
+        'title',
         'description',
-        'level',       // مستوى المادة
+        'level',
+        'year',        // 1 = السنة الأولى، 2 = السنة الثانية
     ];
 
     // علاقة المادة بالمعلمين (Many to Many)

@@ -51,6 +51,7 @@ class DepartmentHeadController extends Controller
                 'phone'       => $user->phone ?? '',
                 'department'  => $user->department ?? '',
                 'role_label'  => 'رئيس القسم الأكاديمي',
+                'avatar'      => $user->avatar ? storageUrl($user->avatar) : null,
             ],
         ]);
     }
@@ -149,13 +150,34 @@ class DepartmentHeadController extends Controller
                 'username'      => 'student_' . time(),
             ]);
 
-            DB::table('students')->insert([
+            $studentId = DB::table('students')->insertGetId([
                 'user_id'      => $user->user_id,
                 'student_code' => $request->academic_number ?? ('S' . time()),
                 'level'        => $request->level ?? '',
                 'created_at'   => now(),
                 'updated_at'   => now(),
             ]);
+
+            // Auto-enroll: سجّل الطالب بكل مواد قسم الرئيس
+            $head = DB::table('heads')->where('user_id', $request->user()->user_id)->first();
+            if ($head) {
+                $courseIds = DB::table('course_program')
+                    ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                    ->where('programs.department_id', $head->department_id)
+                    ->pluck('course_program.course_id')
+                    ->unique();
+
+                foreach ($courseIds as $courseId) {
+                    DB::table('enrollments')->insertOrIgnore([
+                        'student_id'      => $studentId,
+                        'course_id'       => $courseId,
+                        'status'          => 'active',
+                        'enrollment_date' => now(),
+                        'created_at'      => now(),
+                        'updated_at'      => now(),
+                    ]);
+                }
+            }
 
             DB::commit();
             return response()->json(['success' => true, 'message' => 'تم إنشاء حساب الطالب بنجاح'], 201);

@@ -22,7 +22,7 @@ use App\Models\Message;
 class TeacherController extends Controller
 {
     /**
-     * لوحة تحكم المدرس - Dashboard
+     * Ù„ÙˆØ­Ø© ØªØ­ÙƒÙ… Ø§Ù„Ù…Ø¯Ø±Ø³ - Dashboard
      */
     public function dashboard(Request $request)
     {
@@ -43,18 +43,18 @@ class TeacherController extends Controller
 
         $courses = $teacher->courses()->withCount('students')->get();
 
-        // إحصائيات
+        // Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª
         $totalStudents = $courses->sum('students_count');
         $totalCourses = $courses->count();
 
-        // آخر 5 واجبات
+        // Ø¢Ø®Ø± 5 ÙˆØ§Ø¬Ø¨Ø§Øª
         $recentAssignments = Assignment::whereIn('course_id', $courses->pluck('course_id'))
             ->with('course')
             ->latest()
             ->limit(5)
             ->get();
 
-        // آخر 5 إعلانات
+        // Ø¢Ø®Ø± 5 Ø¥Ø¹Ù„Ø§Ù†Ø§Øª
         $recentAnnouncements = Announcement::where(function($q) use ($courses) {
                 $q->whereIn('course_id', $courses->pluck('course_id'))
                   ->orWhere('type', 'general')
@@ -114,7 +114,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * جلب جميع دورات المدرس
+     * Ø¬Ù„Ø¨ Ø¬Ù…ÙŠØ¹ Ø¯ÙˆØ±Ø§Øª Ø§Ù„Ù…Ø¯Ø±Ø³
      */
     public function myDepartmentPrograms(Request $request)
     {
@@ -148,55 +148,68 @@ class TeacherController extends Controller
         if (!$teacher) {
             return response()->json(['success' => true, 'data' => []], 200);
         }
-        $courses = $teacher->courses()
-            ->with(['students.user', 'schedule', 'programs'])
-            ->get()
-            ->map(function($course) {
-                $program = $course->programs->first();
-                return [
-                    'id' => $course->course_id,
-                    'title' => $course->title,
-                    'description' => $course->description,
-                    'level' => $course->level,
-                    'program_id' => $program?->id ?? null,
-                    'program_name' => $program?->name ?? $course->level ?? '',
-                    'students' => $course->students->map(function($student) {
-                        return [
-                            'id' => $student->student_id,
-                            'name' => $student->user->full_name,
-                            'student_code' => $student->student_code,
-                            'email' => $student->user->email,
-                        ];
-                    }),
-                    'schedule' => $course->schedule ? [
-                        'day' => $course->schedule->day,
-                        'start_time' => $course->schedule->start_time,
-                        'end_time' => $course->schedule->end_time,
-                        'room' => $course->schedule->room,
-                    ] : null,
-                ];
+
+        $query = $teacher->courses()->with(['students.user', 'schedule', 'programs']);
+
+        // ÙÙ„ØªØ±Ø© Ø­Ø³Ø¨ Ø§Ù„Ø¨Ø±Ù†Ø§Ù…Ø¬/Ø§Ù„Ø¯ÙˆØ±Ø©
+        if ($request->filled('program_id')) {
+            $query->whereHas('programs', function ($q) use ($request) {
+                $q->where('programs.id', $request->program_id);
             });
+        }
+
+        // ÙÙ„ØªØ±Ø© Ø­Ø³Ø¨ Ø§Ù„Ø³Ù†Ø© Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠØ©
+        if ($request->filled('year')) {
+            $query->where('year', $request->year);
+        }
+
+        $courses = $query->get()->map(function ($course) {
+            $program = $course->programs->first();
+            return [
+                'id'           => $course->course_id,
+                'title'        => $course->title,
+                'description'  => $course->description,
+                'level'        => $course->level,
+                'year'         => $course->year ?? 1,
+                'program_id'   => $program?->id ?? null,
+                'program_name' => $program?->name ?? $course->level ?? '',
+                'students'     => $course->students->map(function ($student) {
+                    return [
+                        'id'           => $student->student_id,
+                        'name'         => $student->user->full_name,
+                        'student_code' => $student->student_code,
+                        'email'        => $student->user->email,
+                    ];
+                }),
+                'schedule' => $course->schedule ? [
+                    'day'        => $course->schedule->day,
+                    'start_time' => $course->schedule->start_time,
+                    'end_time'   => $course->schedule->end_time,
+                    'room'       => $course->schedule->room,
+                ] : null,
+            ];
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $courses
+            'data'    => $courses,
         ], 200);
     }
 
     /**
-     * جلب طلاب دورة معينة
+     * Ø¬Ù„Ø¨ Ø·Ù„Ø§Ø¨ Ø¯ÙˆØ±Ø© Ù…Ø¹ÙŠÙ†Ø©
      */
     public function courseStudents(Request $request, $courseId)
     {
         $teacher = $request->user()->teacher;
 
-        // التأكد أن هذه الدورة تخص المدرس
+        // Ø§Ù„ØªØ£ÙƒØ¯ Ø£Ù† Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØªØ®Øµ Ø§Ù„Ù…Ø¯Ø±Ø³
         $course = $teacher->courses()->where('course_id', $courseId)->first();
 
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'هذه الدورة غير مرتبطة بك'
+                'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'
             ], 403);
         }
 
@@ -204,7 +217,7 @@ class TeacherController extends Controller
             ->with('user')
             ->get()
             ->map(function($student) use ($courseId) {
-                // إحصائيات الطالب في هذه الدورة
+                // Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª Ø§Ù„Ø·Ø§Ù„Ø¨ ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø©
                 $attendanceCount = Attendance::where('student_id', $student->student_id)
                     ->whereHas('lesson', function($query) use ($courseId) {
                         $query->where('course_id', $courseId);
@@ -246,7 +259,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * تسجيل الحضور والغياب
+     * ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø­Ø¶ÙˆØ± ÙˆØ§Ù„ØºÙŠØ§Ø¨
      */
     public function markAttendance(Request $request)
     {
@@ -268,13 +281,13 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        // التأكد أن هذه الدورة تخص المدرس
+        // Ø§Ù„ØªØ£ÙƒØ¯ Ø£Ù† Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØªØ®Øµ Ø§Ù„Ù…Ø¯Ø±Ø³
         $course = $teacher->courses()->where('course_id', $request->course_id)->first();
 
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكنك تسجيل حضور في هذه الدورة'
+                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ ØªØ³Ø¬ÙŠÙ„ Ø­Ø¶ÙˆØ± ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø©'
             ], 403);
         }
 
@@ -295,12 +308,12 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "تم تسجيل حضور $saved طالب بنجاح"
+            'message' => "ØªÙ… ØªØ³Ø¬ÙŠÙ„ Ø­Ø¶ÙˆØ± $saved Ø·Ø§Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­"
         ], 200);
     }
 
     /**
-     * جلب سجل الحضور لدورة معينة
+     * Ø¬Ù„Ø¨ Ø³Ø¬Ù„ Ø§Ù„Ø­Ø¶ÙˆØ± Ù„Ø¯ÙˆØ±Ø© Ù…Ø¹ÙŠÙ†Ø©
      */
     public function getAttendance(Request $request, $courseId)
     {
@@ -311,7 +324,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'هذه الدورة غير مرتبطة بك'
+                'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'
             ], 403);
         }
 
@@ -349,7 +362,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * توليد QR لجلسة حضور
+     * ØªÙˆÙ„ÙŠØ¯ QR Ù„Ø¬Ù„Ø³Ø© Ø­Ø¶ÙˆØ±
      */
     public function generateQrSession(Request $request)
     {
@@ -365,18 +378,18 @@ class TeacherController extends Controller
         $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
 
         if (!$course) {
-            return response()->json(['success' => false, 'message' => 'الدورة غير مرتبطة بك'], 403);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'], 403);
         }
 
-        // إنشاء درس مؤقت لهذه الجلسة
+        // Ø¥Ù†Ø´Ø§Ø¡ Ø¯Ø±Ø³ Ù…Ø¤Ù‚Øª Ù„Ù‡Ø°Ù‡ Ø§Ù„Ø¬Ù„Ø³Ø©
         $lesson = Lesson::create([
             'course_id' => $course->course_id,
             'teacher_id' => $teacher->teacher_id,
-            'title' => 'حصة ' . now()->format('Y-m-d H:i'),
+            'title' => 'Ø­ØµØ© ' . now()->format('Y-m-d H:i'),
             'type' => 'session',
         ]);
 
-        // توليد توكن عشوائي وإنشاء الجلسة
+        // ØªÙˆÙ„ÙŠØ¯ ØªÙˆÙƒÙ† Ø¹Ø´ÙˆØ§Ø¦ÙŠ ÙˆØ¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø¬Ù„Ø³Ø©
         $token = \Illuminate\Support\Str::random(32);
 
         $session = \App\Models\AttendanceSession::create([
@@ -399,14 +412,14 @@ class TeacherController extends Controller
     }
 
     /**
-     * جلب قائمة الحاضرين والغائبين لجلسة معينة
+     * Ø¬Ù„Ø¨ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø­Ø§Ø¶Ø±ÙŠÙ† ÙˆØ§Ù„ØºØ§Ø¦Ø¨ÙŠÙ† Ù„Ø¬Ù„Ø³Ø© Ù…Ø¹ÙŠÙ†Ø©
      */
     public function getSessionAttendance(Request $request, $sessionId)
     {
         $session = \App\Models\AttendanceSession::find($sessionId);
 
         if (!$session) {
-            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø¬Ù„Ø³Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©'], 404);
         }
 
         $lesson = $session->lesson;
@@ -419,7 +432,7 @@ class TeacherController extends Controller
             ->pluck('student_id')
             ->toArray();
 
-        // إضافة الطلاب الذين مسحوا QR لكن غير مسجّلين في الكورس
+        // Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ø·Ù„Ø§Ø¨ Ø§Ù„Ø°ÙŠÙ† Ù…Ø³Ø­ÙˆØ§ QR Ù„ÙƒÙ† ØºÙŠØ± Ù…Ø³Ø¬Ù‘Ù„ÙŠÙ† ÙÙŠ Ø§Ù„ÙƒÙˆØ±Ø³
         $enrolledIds = $enrolledStudents->pluck('student_id')->toArray();
         $extraIds = array_diff($presentIds, $enrolledIds);
         $extraStudents = !empty($extraIds)
@@ -431,7 +444,7 @@ class TeacherController extends Controller
         $students = $allStudents->map(function ($student) use ($presentIds) {
             return [
                 'student_id' => $student->student_id,
-                'name'   => $student->user->full_name ?? $student->user->name ?? 'غير معروف',
+                'name'   => $student->user->full_name ?? $student->user->name ?? 'ØºÙŠØ± Ù…Ø¹Ø±ÙˆÙ',
                 'status' => in_array($student->student_id, $presentIds) ? 'present' : 'absent',
             ];
         });
@@ -448,14 +461,14 @@ class TeacherController extends Controller
     }
 
     /**
-     * إنهاء جلسة الحضور وتسجيل الغياب
+     * Ø¥Ù†Ù‡Ø§Ø¡ Ø¬Ù„Ø³Ø© Ø§Ù„Ø­Ø¶ÙˆØ± ÙˆØªØ³Ø¬ÙŠÙ„ Ø§Ù„ØºÙŠØ§Ø¨
      */
     public function endSession(Request $request, $sessionId)
     {
         $session = \App\Models\AttendanceSession::find($sessionId);
 
         if (!$session) {
-            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø¬Ù„Ø³Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©'], 404);
         }
 
         $lesson = $session->lesson;
@@ -484,12 +497,12 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنهاء الجلسة وتسجيل الغياب بنجاح',
+            'message' => 'ØªÙ… Ø¥Ù†Ù‡Ø§Ø¡ Ø§Ù„Ø¬Ù„Ø³Ø© ÙˆØªØ³Ø¬ÙŠÙ„ Ø§Ù„ØºÙŠØ§Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
         ], 200);
     }
 
     /**
-     * إدخال العلامات للطلاب
+     * Ø¥Ø¯Ø®Ø§Ù„ Ø§Ù„Ø¹Ù„Ø§Ù…Ø§Øª Ù„Ù„Ø·Ù„Ø§Ø¨
      */
     public function enterGrades(Request $request)
     {
@@ -510,7 +523,7 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        // التأكد أن هذا الامتحان يخص المدرس
+        // Ø§Ù„ØªØ£ÙƒØ¯ Ø£Ù† Ù‡Ø°Ø§ Ø§Ù„Ø§Ù…ØªØ­Ø§Ù† ÙŠØ®Øµ Ø§Ù„Ù…Ø¯Ø±Ø³
         $exam = \App\Models\Exam::where('exam_id', $request->exam_id)
             ->whereHas('course', function($query) use ($teacher) {
                 $query->whereHas('teachers', function($q) use ($teacher) {
@@ -521,7 +534,7 @@ class TeacherController extends Controller
         if (!$exam) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكنك إدخال علامات لهذا الامتحان'
+                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø¥Ø¯Ø®Ø§Ù„ Ø¹Ù„Ø§Ù…Ø§Øª Ù„Ù‡Ø°Ø§ Ø§Ù„Ø§Ù…ØªØ­Ø§Ù†'
             ], 403);
         }
 
@@ -542,12 +555,12 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "تم إدخال علامات $saved طالب بنجاح"
+            'message' => "ØªÙ… Ø¥Ø¯Ø®Ø§Ù„ Ø¹Ù„Ø§Ù…Ø§Øª $saved Ø·Ø§Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­"
         ], 200);
     }
 
     /**
-     * جلب العلامات لدورة معينة
+     * Ø¬Ù„Ø¨ Ø§Ù„Ø¹Ù„Ø§Ù…Ø§Øª Ù„Ø¯ÙˆØ±Ø© Ù…Ø¹ÙŠÙ†Ø©
      */
     public function getGrades(Request $request, $courseId)
     {
@@ -558,7 +571,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'هذه الدورة غير مرتبطة بك'
+                'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'
             ], 403);
         }
 
@@ -590,7 +603,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * جلب واجبات المدرس
+     * Ø¬Ù„Ø¨ ÙˆØ§Ø¬Ø¨Ø§Øª Ø§Ù„Ù…Ø¯Ø±Ø³
      */
     public function getAssignments(Request $request)
     {
@@ -611,13 +624,13 @@ class TeacherController extends Controller
                 $isExpired        = $assignment->due_date->isPast();
 
                 if ($isExpired && $gradedCount >= $submissionsCount && $submissionsCount > 0) {
-                    $status = 'مكتمل';
+                    $status = 'Ù…ÙƒØªÙ…Ù„';
                 } elseif ($isExpired && $submissionsCount > 0) {
-                    $status = 'قيد التصحيح';
+                    $status = 'Ù‚ÙŠØ¯ Ø§Ù„ØªØµØ­ÙŠØ­';
                 } elseif (!$isExpired && $submissionsCount === 0) {
-                    $status = 'قيد الإنتظار';
+                    $status = 'Ù‚ÙŠØ¯ Ø§Ù„Ø¥Ù†ØªØ¸Ø§Ø±';
                 } else {
-                    $status = 'نشط';
+                    $status = 'Ù†Ø´Ø·';
                 }
 
                 return [
@@ -638,7 +651,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * إنشاء واجب جديد
+     * Ø¥Ù†Ø´Ø§Ø¡ ÙˆØ§Ø¬Ø¨ Ø¬Ø¯ÙŠØ¯
      */
     public function createAssignment(Request $request)
     {
@@ -664,7 +677,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكنك إنشاء واجب في هذه الدورة'
+                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø¥Ù†Ø´Ø§Ø¡ ÙˆØ§Ø¬Ø¨ ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø©'
             ], 403);
         }
 
@@ -690,20 +703,20 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الواجب بنجاح',
+            'message' => 'ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
             'data'    => $assignment
         ], 201);
     }
 
     /**
-     * تحديث واجب
+     * ØªØ­Ø¯ÙŠØ« ÙˆØ§Ø¬Ø¨
      */
     public function updateAssignment(Request $request, $assignmentId)
     {
         $assignment = Assignment::find($assignmentId);
 
         if (!$assignment) {
-            return response()->json(['success' => false, 'message' => 'الواجب غير موجود'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„ÙˆØ§Ø¬Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
         }
 
         $teacher = $request->user()->teacher;
@@ -711,7 +724,7 @@ class TeacherController extends Controller
         $course = $teacher->courses()->where('course_id', $assignment->course_id)->first();
 
         if (!$course) {
-            return response()->json(['success' => false, 'message' => 'لا يمكنك تعديل هذا الواجب'], 403);
+            return response()->json(['success' => false, 'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ ØªØ¹Ø¯ÙŠÙ„ Ù‡Ø°Ø§ Ø§Ù„ÙˆØ§Ø¬Ø¨'], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -752,13 +765,13 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تحديث الواجب بنجاح',
+            'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
             'data'    => $assignment
         ], 200);
     }
 
     /**
-     * حذف واجب
+     * Ø­Ø°Ù ÙˆØ§Ø¬Ø¨
      */
     public function deleteAssignment(Request $request, $assignmentId)
     {
@@ -767,7 +780,7 @@ class TeacherController extends Controller
         if (!$assignment) {
             return response()->json([
                 'success' => false,
-                'message' => 'الواجب غير موجود'
+                'message' => 'Ø§Ù„ÙˆØ§Ø¬Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'
             ], 404);
         }
 
@@ -778,7 +791,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكنك حذف هذا الواجب'
+                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø­Ø°Ù Ù‡Ø°Ø§ Ø§Ù„ÙˆØ§Ø¬Ø¨'
             ], 403);
         }
 
@@ -786,19 +799,19 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم حذف الواجب بنجاح'
+            'message' => 'ØªÙ… Ø­Ø°Ù Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­'
         ], 200);
     }
 
     /**
-     * تصحيح واجب طالب
+     * ØªØµØ­ÙŠØ­ ÙˆØ§Ø¬Ø¨ Ø·Ø§Ù„Ø¨
      */
     public function gradeAssignment(Request $request, $submissionId)
     {
         $submission = AssignmentSubmission::with('assignment')->find($submissionId);
 
         if (!$submission) {
-            return response()->json(['success' => false, 'message' => 'التسليم غير موجود'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„ØªØ³Ù„ÙŠÙ… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
         }
 
         $maxPoints = $submission->assignment->max_points ?? 100;
@@ -819,7 +832,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا يمكنك تصحيح هذا الواجب'
+                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ ØªØµØ­ÙŠØ­ Ù‡Ø°Ø§ Ø§Ù„ÙˆØ§Ø¬Ø¨'
             ], 403);
         }
 
@@ -830,13 +843,13 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تصحيح الواجب بنجاح',
+            'message' => 'ØªÙ… ØªØµØ­ÙŠØ­ Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
             'data' => $submission
         ], 200);
     }
 
     /**
-     * إنشاء إعلان جديد
+     * Ø¥Ù†Ø´Ø§Ø¡ Ø¥Ø¹Ù„Ø§Ù† Ø¬Ø¯ÙŠØ¯
      */
     public function createAnnouncement(Request $request)
     {
@@ -856,13 +869,13 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        // إذا كان الإعلان خاص بدورة، تأكد أن الدورة تخص المدرس
+        // Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø¥Ø¹Ù„Ø§Ù† Ø®Ø§Øµ Ø¨Ø¯ÙˆØ±Ø©ØŒ ØªØ£ÙƒØ¯ Ø£Ù† Ø§Ù„Ø¯ÙˆØ±Ø© ØªØ®Øµ Ø§Ù„Ù…Ø¯Ø±Ø³
         if ($request->type == 'course_specific' && $request->course_id) {
             $course = $teacher->courses()->where('course_id', $request->course_id)->first();
             if (!$course) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'لا يمكنك إنشاء إعلان في هذه الدورة'
+                    'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø¥Ù†Ø´Ø§Ø¡ Ø¥Ø¹Ù„Ø§Ù† ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø©'
                 ], 403);
             }
         }
@@ -877,13 +890,13 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الإعلان بنجاح',
+            'message' => 'ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø¥Ø¹Ù„Ø§Ù† Ø¨Ù†Ø¬Ø§Ø­',
             'data' => $announcement
         ], 201);
     }
 
     /**
-     * جلب إعلانات المدرس
+     * Ø¬Ù„Ø¨ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø§Ù„Ù…Ø¯Ø±Ø³
      */
     public function getAnnouncements(Request $request)
     {
@@ -906,9 +919,9 @@ class TeacherController extends Controller
         return response()->json(['success' => true, 'data' => $announcements], 200);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  الجدول الدراسي
-    // ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Ø§Ù„Ø¬Ø¯ÙˆÙ„ Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠ
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function getSchedule(Request $request)
     {
@@ -938,9 +951,9 @@ class TeacherController extends Controller
         return response()->json(['success' => true, 'data' => $schedules], 200);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  المحاضرات
-    // ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø§Øª
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function getLessons(Request $request)
     {
@@ -982,7 +995,7 @@ class TeacherController extends Controller
 
         $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
         if (!$course) {
-            return response()->json(['success' => false, 'message' => 'هذه الدورة غير مرتبطة بك'], 403);
+            return response()->json(['success' => false, 'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'], 403);
         }
 
         $file     = $request->file('content_file');
@@ -996,7 +1009,7 @@ class TeacherController extends Controller
             'content_url' => $filePath,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'تم رفع المحاضرة بنجاح', 'data' => $lesson], 201);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø±ÙØ¹ Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­', 'data' => $lesson], 201);
     }
 
     public function deleteLesson(Request $request, $lessonId)
@@ -1008,18 +1021,18 @@ class TeacherController extends Controller
             ->first();
 
         if (!$lesson) {
-            return response()->json(['success' => false, 'message' => 'المحاضرة غير موجودة أو لا تخصك'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø© Ø£Ùˆ Ù„Ø§ ØªØ®ØµÙƒ'], 404);
         }
 
         Storage::disk('public')->delete($lesson->content_url);
         $lesson->delete();
 
-        return response()->json(['success' => true, 'message' => 'تم حذف المحاضرة بنجاح'], 200);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø­Ø°Ù Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­'], 200);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  الإشعارات
-    // ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function getNotifications(Request $request)
     {
@@ -1047,12 +1060,12 @@ class TeacherController extends Controller
             ->first();
 
         if (!$notification) {
-            return response()->json(['success' => false, 'message' => 'الإشعار غير موجود'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø¥Ø´Ø¹Ø§Ø± ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
         }
 
         $notification->update(['is_read' => true]);
 
-        return response()->json(['success' => true, 'message' => 'تم تحديد الإشعار كمقروء'], 200);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ¯ Ø§Ù„Ø¥Ø´Ø¹Ø§Ø± ÙƒÙ…Ù‚Ø±ÙˆØ¡'], 200);
     }
 
     public function markAllNotificationsRead(Request $request)
@@ -1061,15 +1074,15 @@ class TeacherController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
-        return response()->json(['success' => true, 'message' => 'تم تحديد كل الإشعارات كمقروءة'], 200);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ¯ ÙƒÙ„ Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª ÙƒÙ…Ù‚Ø±ÙˆØ¡Ø©'], 200);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  تسليمات الواجبات
-    // ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
-     * جلب كل تسليمات مواد المدرس
+     * Ø¬Ù„Ø¨ ÙƒÙ„ ØªØ³Ù„ÙŠÙ…Ø§Øª Ù…ÙˆØ§Ø¯ Ø§Ù„Ù…Ø¯Ø±Ø³
      */
     public function getSubmissions(Request $request)
     {
@@ -1088,7 +1101,7 @@ class TeacherController extends Controller
             ->map(function ($sub) {
                 return [
                     'submission_id'    => $sub->submission_id,
-                    'student_name'     => $sub->student->user->full_name ?? 'غير معروف',
+                    'student_name'     => $sub->student->user->full_name ?? 'ØºÙŠØ± Ù…Ø¹Ø±ÙˆÙ',
                     'assignment_title' => $sub->assignment->title ?? '',
                     'course_name'      => $sub->assignment->course->title ?? '',
                     'student_notes'    => $sub->notes ?? '',
@@ -1115,7 +1128,7 @@ class TeacherController extends Controller
             })->first();
 
         if (!$assignment) {
-            return response()->json(['success' => false, 'message' => 'الواجب غير موجود أو لا يخصك'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„ÙˆØ§Ø¬Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯ Ø£Ùˆ Ù„Ø§ ÙŠØ®ØµÙƒ'], 404);
         }
 
         $submissions = AssignmentSubmission::where('assignment_id', $assignmentId)
@@ -1147,9 +1160,9 @@ class TeacherController extends Controller
         ], 200);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  الامتحانات
-    // ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Ø§Ù„Ø§Ù…ØªØ­Ø§Ù†Ø§Øª
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function getExams(Request $request)
     {
@@ -1190,7 +1203,7 @@ class TeacherController extends Controller
         $course  = $teacher->courses()->where('course_id', $request->course_id)->first();
 
         if (!$course) {
-            return response()->json(['success' => false, 'message' => 'هذه الدورة غير مرتبطة بك'], 403);
+            return response()->json(['success' => false, 'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'], 403);
         }
 
         $exam = \App\Models\Exam::create([
@@ -1200,12 +1213,12 @@ class TeacherController extends Controller
             'max_score' => $request->max_score ?? 100,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'تم إنشاء الامتحان بنجاح', 'data' => $exam], 201);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø§Ù…ØªØ­Ø§Ù† Ø¨Ù†Ø¬Ø§Ø­', 'data' => $exam], 201);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  الملف الشخصي
-    // ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function getTeacherProfile(Request $request)
     {
@@ -1222,8 +1235,29 @@ class TeacherController extends Controller
                 'phone'          => $user->phone,
                 'specialization' => $teacher ? $teacher->specialization : null,
                 'teacher_id'     => $teacher ? $teacher->teacher_id : null,
+                'avatar'         => $user->avatar ? storageUrl($user->avatar) : null,
             ],
         ], 200);
+    }
+
+    public function updateAvatar(Request $request)
+    {
+        $request->validate(['avatar' => 'required|image|mimes:jpeg,png,jpg|max:5120']);
+
+        $user = $request->user();
+
+        if ($user->avatar && \Storage::disk('public')->exists($user->avatar)) {
+            \Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„ØµÙˆØ±Ø© Ø§Ù„Ø´Ø®ØµÙŠØ©',
+            'avatar'  => storageUrl($path),
+        ]);
     }
 
     public function updateTeacherProfile(Request $request)
@@ -1246,12 +1280,12 @@ class TeacherController extends Controller
             $user->teacher->update(['specialization' => $request->specialization]);
         }
 
-        return response()->json(['success' => true, 'message' => 'تم تحديث الملف الشخصي بنجاح'], 200);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ Ø¨Ù†Ø¬Ø§Ø­'], 200);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  الرسائل
-    // ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Ø§Ù„Ø±Ø³Ø§Ø¦Ù„
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function getMessages(Request $request)
     {
@@ -1295,12 +1329,12 @@ class TeacherController extends Controller
             'message'     => $request->message,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'تم إرسال الرسالة بنجاح', 'data' => $msg], 201);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø±Ø³Ø§Ù„Ø© Ø¨Ù†Ø¬Ø§Ø­', 'data' => $msg], 201);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  طلبات الغياب
-    // ──────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //  Ø·Ù„Ø¨Ø§Øª Ø§Ù„ØºÙŠØ§Ø¨
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function getAbsenceRequests(Request $request)
     {
@@ -1345,7 +1379,7 @@ class TeacherController extends Controller
         $absenceRequest = AbsenceRequest::find($requestId);
 
         if (!$absenceRequest) {
-            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø·Ù„Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
         }
 
         $absenceRequest->update([
@@ -1353,6 +1387,6 @@ class TeacherController extends Controller
             'reviewed_by' => $request->user()->user_id,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'تم الرد على الطلب بنجاح'], 200);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø§Ù„Ø±Ø¯ Ø¹Ù„Ù‰ Ø§Ù„Ø·Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­'], 200);
     }
 }
