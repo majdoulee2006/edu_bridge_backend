@@ -20,13 +20,15 @@ class DepartmentHeadController extends Controller
         $pending = DB::table('leave_requests')->where('status', 'pending')->count();
 
         $announcements = DB::table('announcements')
-            ->orderBy('created_at', 'desc')
+            ->join('users', 'announcements.user_id', '=', 'users.user_id')
+            ->orderBy('announcements.created_at', 'desc')
             ->limit(5)
-            ->get(['announcement_id', 'title', 'content', 'created_at'])
+            ->get(['announcements.announcement_id', 'announcements.title', 'announcements.content', 'announcements.created_at', 'users.full_name as author_name'])
             ->map(fn($a) => [
-                'id'      => $a->announcement_id,
-                'title'   => $a->title,
-                'content' => $a->content,
+                'id'          => $a->announcement_id,
+                'title'       => $a->title,
+                'content'     => $a->content,
+                'author_name' => $a->author_name,
             ]);
 
         return response()->json([
@@ -60,20 +62,54 @@ class DepartmentHeadController extends Controller
     public function getNotifications(Request $request)
     {
         $notifications = DB::table('notifications')
-            ->where('user_id', $request->user()->user_id)
-            ->orderBy('created_at', 'desc')
+            ->where('notifications.user_id', $request->user()->user_id)
+            ->leftJoin('leave_requests', function ($join) {
+                $join->on('leave_requests.id', '=', 'notifications.related_id')
+                     ->where('notifications.type', '=', 'leave_request');
+            })
+            ->orderBy('notifications.created_at', 'desc')
             ->limit(30)
-            ->get()
+            ->get([
+                'notifications.id',
+                'notifications.title',
+                'notifications.message',
+                'notifications.type',
+                'notifications.related_id',
+                'notifications.is_read',
+                'notifications.created_at',
+                'leave_requests.status as leave_status',
+            ])
             ->map(fn($n) => [
-                'id'         => $n->id,
-                'title'      => $n->title,
-                'message'    => $n->message,
-                'type'       => $n->type ?? 'general',
-                'is_read'    => (bool) $n->is_read,
-                'created_at' => $n->created_at,
+                'id'           => $n->id,
+                'title'        => $n->title,
+                'message'      => $n->message,
+                'type'         => $n->type ?? 'general',
+                'related_id'   => $n->related_id,
+                'is_read'      => (bool) $n->is_read,
+                'created_at'   => $n->created_at,
+                'leave_status' => $n->leave_status ?? null,
             ]);
 
         return response()->json(['success' => true, 'data' => $notifications]);
+    }
+
+    public function markNotificationRead(Request $request, $id)
+    {
+        DB::table('notifications')
+            ->where('id', $id)
+            ->where('user_id', $request->user()->user_id)
+            ->update(['is_read' => true, 'updated_at' => now()]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function markAllNotificationsRead(Request $request)
+    {
+        DB::table('notifications')
+            ->where('user_id', $request->user()->user_id)
+            ->update(['is_read' => true, 'updated_at' => now()]);
+
+        return response()->json(['success' => true]);
     }
 
     // ─── Users – Trainers / Students / Parents ────────────────────
@@ -288,10 +324,10 @@ class DepartmentHeadController extends Controller
     // ─── Leave Requests ───────────────────────────────────────────
     public function getLeaveRequests()
     {
+        // student_id في leave_requests يخزّن user_id مباشرة
         $requests = DB::table('leave_requests')
-            ->leftJoin('students', 'leave_requests.student_id', '=', 'students.student_id')
+            ->leftJoin('users as su', 'leave_requests.student_id', '=', 'su.user_id')
             ->leftJoin('teachers', 'leave_requests.teacher_id', '=', 'teachers.teacher_id')
-            ->leftJoin('users as su', 'students.user_id', '=', 'su.user_id')
             ->leftJoin('users as tu', 'teachers.user_id', '=', 'tu.user_id')
             ->select(
                 'leave_requests.id',
@@ -312,12 +348,54 @@ class DepartmentHeadController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
 
-        $affected = DB::table('leave_requests')
-            ->where('id', $id)
-            ->update(['status' => $request->status, 'updated_at' => now()]);
-
-        if (!$affected) {
+        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
+        if (!$leaveRequest) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        $newStatus = $request->status === 'approved' ? 'pending_parent' : 'rejected';
+
+        DB::table('leave_requests')
+            ->where('id', $id)
+            ->update(['status' => $newStatus, 'updated_at' => now()]);
+
+        if ($leaveRequest->student_id) {
+            $student     = DB::table('students')->where('user_id', $leaveRequest->student_id)->first();
+            $studentUser = DB::table('users')->where('user_id', $leaveRequest->student_id)->first();
+            $studentName = $studentUser->full_name ?? 'الطالب';
+
+            if ($newStatus === 'pending_parent' && $student) {
+                // إشعار أولياء الأمر للمراجعة
+                $parentIds = DB::table('parent_students')
+                    ->where('student_id', $student->student_id)
+                    ->pluck('parent_id');
+
+                foreach ($parentIds as $parentId) {
+                    $parent = DB::table('parents')->where('parent_id', $parentId)->first();
+                    if ($parent) {
+                        DB::table('notifications')->insert([
+                            'user_id'    => $parent->user_id,
+                            'title'      => 'طلب إجازة يحتاج موافقتك',
+                            'message'    => 'طلب ' . $studentName . ' إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعة الطلب والرد عليه',
+                            'type'       => 'leave_request',
+                            'is_read'    => 0,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            } elseif ($newStatus === 'rejected') {
+                // إشعار الطالب بالرفض
+                DB::table('notifications')->insert([
+                    'user_id'    => $leaveRequest->student_id,
+                    'title'      => 'تم رفض طلب الإجازة',
+                    'message'    => 'تم رفض طلب إجازتك بتاريخ ' . $leaveRequest->date . ' من قِبل رئيس القسم',
+                    'type'       => 'leave_request',
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب']);
@@ -334,25 +412,338 @@ class DepartmentHeadController extends Controller
         return response()->json(['success' => true, 'data' => $teachers]);
     }
 
+    // ─── Teachers by Course ───────────────────────────────────────
+    public function getTeachersByCourse($courseId)
+    {
+        $teachers = DB::table('course_teachers')
+            ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+            ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->where('course_teachers.course_id', $courseId)
+            ->get(['teachers.teacher_id as id', 'users.full_name as name']);
+
+        // fallback: if no teachers assigned to this course, return all
+        if ($teachers->isEmpty()) {
+            $teachers = DB::table('teachers')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->get(['teachers.teacher_id as id', 'users.full_name as name']);
+        }
+
+        return response()->json(['success' => true, 'data' => $teachers]);
+    }
+
+    // ─── Students by Course ───────────────────────────────────────
+    public function getStudentsByCourse($courseId)
+    {
+        $students = DB::table('enrollments')
+            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('enrollments.course_id', $courseId)
+            ->where('enrollments.status', 'active')
+            ->get(['students.student_id as id', 'users.full_name', 'students.student_code', 'students.level']);
+
+        // fallback: if no enrollments, return all students
+        if ($students->isEmpty()) {
+            $students = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->get(['students.student_id as id', 'users.full_name', 'students.student_code', 'students.level']);
+        }
+
+        return response()->json(['success' => true, 'data' => $students]);
+    }
+
     // ─── Report Requests ──────────────────────────────────────────
+    public function getReportRequests(Request $request)
+    {
+        $requests = DB::table('report_requests')
+            ->join('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->join('users as tu', 'teachers.user_id', '=', 'tu.user_id')
+            ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+            ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->leftJoin('courses', 'report_requests.course_id', '=', 'courses.course_id')
+            ->where('report_requests.head_id', $request->user()->user_id)
+            ->orderBy('report_requests.created_at', 'desc')
+            ->get([
+                'report_requests.id',
+                'report_requests.report_type',
+                'report_requests.notes',
+                'report_requests.status',
+                'report_requests.year',
+                'report_requests.created_at',
+                'tu.full_name as teacher_name',
+                'su.full_name as student_name',
+                'courses.title as course_name',
+            ]);
+
+        return response()->json(['success' => true, 'data' => $requests]);
+    }
+
     public function createReportRequest(Request $request)
     {
         $request->validate([
-            'teacher_id'  => 'required|exists:teachers,teacher_id',
-            'report_type' => 'required|string',
+            'student_id'  => 'required|exists:students,student_id',
+            'teacher_id'  => 'nullable|exists:teachers,teacher_id',
+            'report_type' => 'required|in:academic,behavioral',
+            'course_id'   => 'nullable|exists:courses,course_id',
+            'year'        => 'nullable|integer|in:1,2',
         ]);
 
+        $studentId = $request->student_id;
+        $courseId  = $request->course_id;
+
+        $studentRow = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $studentId)
+            ->first(['users.full_name as name', 'students.student_id']);
+
+        $studentName = $studentRow->name ?? 'الطالب';
+
+        // ─── أكاديمي: النظام يحسب تلقائياً ─────────────────────────
+        if ($request->report_type === 'academic') {
+            // متوسط العلامات
+            $gradesQ = DB::table('grades')->where('student_id', $studentId);
+            if ($courseId) $gradesQ->where('course_id', $courseId);
+            $grades   = $gradesQ->avg('score');
+            $avgGrade = $grades !== null ? round($grades, 1) : null;
+
+            // نسبة الحضور
+            $attQ  = DB::table('attendances')->where('student_id', $studentId);
+            if ($courseId) $attQ->where('course_id', $courseId);
+            $att     = $attQ->get(['status']);
+            $total   = $att->count();
+            $present = $att->where('status', 'present')->count();
+            $attRate = $total > 0 ? round(($present / $total) * 100, 1) : null;
+
+            // توليد نص التقرير
+            $courseName = $courseId
+                ? DB::table('courses')->where('course_id', $courseId)->value('title')
+                : null;
+
+            $notes = 'التقرير الأكاديمي للطالب: ' . $studentName;
+            if ($courseName) $notes .= " | المادة: $courseName";
+            if ($request->year) $notes .= " | السنة: {$request->year}";
+            $notes .= "\n";
+            $notes .= $avgGrade !== null
+                ? "متوسط العلامات: $avgGrade / 100\n"
+                : "لا توجد علامات مسجّلة.\n";
+            $notes .= $attRate !== null
+                ? "نسبة الحضور: $attRate% ($present حضور من $total جلسة)"
+                : "لا توجد بيانات حضور مسجّلة.";
+
+            DB::table('report_requests')->insert([
+                'head_id'     => $request->user()->user_id,
+                'student_id'  => $studentId,
+                'teacher_id'  => $request->teacher_id,
+                'report_type' => 'academic',
+                'course_id'   => $courseId,
+                'year'        => $request->year,
+                'notes'       => $notes,
+                'status'      => 'completed',
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+
+            // إشعار لأولياء الأمر
+            $parentIds = DB::table('parent_students')
+                ->where('student_id', $studentId)->pluck('parent_id');
+            foreach ($parentIds as $parentId) {
+                $parentUserId = DB::table('parents')->where('parent_id', $parentId)->value('user_id');
+                if ($parentUserId) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $parentUserId,
+                        'title'      => 'تقرير أكاديمي للطالب ' . $studentName,
+                        'message'    => $notes,
+                        'type'       => 'report',
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            return response()->json(['success' => true, 'message' => 'تم توليد التقرير الأكاديمي وإرساله للأهل']);
+        }
+
+        // ─── سلوكي: أرسل للمعلم ──────────────────────────────────
         DB::table('report_requests')->insert([
             'head_id'     => $request->user()->user_id,
+            'student_id'  => $studentId,
             'teacher_id'  => $request->teacher_id,
-            'report_type' => $request->report_type,
+            'report_type' => 'behavioral',
+            'course_id'   => $courseId,
+            'year'        => $request->year,
             'notes'       => $request->notes ?? '',
             'status'      => 'pending',
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
 
-        return response()->json(['success' => true, 'message' => 'تم إرسال طلب التقرير بنجاح']);
+        $teacher = $request->teacher_id
+            ? DB::table('teachers')->where('teacher_id', $request->teacher_id)->first()
+            : null;
+        if ($teacher) {
+            DB::table('notifications')->insert([
+                'user_id'    => $teacher->user_id,
+                'title'      => 'طلب تقرير سلوكي',
+                'message'    => 'طُلب منك تقرير سلوكي عن الطالب ' . $studentName,
+                'type'       => 'report',
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال طلب التقرير السلوكي للمدرب']);
+    }
+
+    // ─── Announcements ────────────────────────────────────────────
+    public function createAnnouncement(Request $request)
+    {
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'content' => 'required|string',
+        ]);
+
+        // mapping: 'teachers'→'teacher', 'students'→'student', 'all'→null
+        $audienceInput = $request->target_audience ?? 'all';
+        $targetRole = match($audienceInput) {
+            'teachers' => 'teacher',
+            'students' => 'student',
+            default    => null,
+        };
+
+        $announcementId = DB::table('announcements')->insertGetId([
+            'user_id'     => $request->user()->user_id,
+            'title'       => $request->title,
+            'content'     => $request->content,
+            'target_role' => $targetRole,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        $audience = $audienceInput;
+        $userIds  = collect();
+
+        if (in_array($audience, ['teachers', 'all'])) {
+            $teacherIds = DB::table('teachers')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->pluck('users.user_id');
+            $userIds = $userIds->merge($teacherIds);
+        }
+
+        if (in_array($audience, ['students', 'all'])) {
+            $studentIds = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->pluck('users.user_id');
+            $userIds = $userIds->merge($studentIds);
+        }
+
+        foreach ($userIds->unique() as $uid) {
+            DB::table('notifications')->insert([
+                'user_id'    => $uid,
+                'title'      => 'إعلان جديد من رئيس القسم',
+                'message'    => $request->title,
+                'type'       => 'announcement',
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم نشر الإعلان بنجاح', 'id' => $announcementId]);
+    }
+
+    public function getAnnouncements()
+    {
+        $announcements = DB::table('announcements')
+            ->join('users', 'announcements.user_id', '=', 'users.user_id')
+            ->orderBy('announcements.created_at', 'desc')
+            ->limit(20)
+            ->get([
+                'announcements.announcement_id as id',
+                'announcements.title',
+                'announcements.content',
+                'announcements.image',
+                'announcements.created_at',
+                'users.full_name as author_name',
+            ])
+            ->map(fn($a) => array_merge((array)$a, [
+                'image_url' => $a->image ? url('storage/' . $a->image) : null,
+                'time_ago'  => \Carbon\Carbon::parse($a->created_at)->diffForHumans(),
+            ]));
+
+        return response()->json(['success' => true, 'data' => $announcements]);
+    }
+
+    // ─── Programs with Schedule (for organization screen) ────────
+    public function getProgramsSchedule()
+    {
+        $programs = DB::table('programs')->orderBy('name')->get(['id', 'name']);
+
+        $result = $programs->map(function ($program) {
+            $years = [1, 2];
+            $yearData = [];
+            foreach ($years as $year) {
+                $schedules = DB::table('schedules')
+                    ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
+                    ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                    ->where('course_program.program_id', $program->id)
+                    ->where('courses.year', $year)
+                    ->orderByRaw("FIELD(schedules.day,'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')")
+                    ->orderBy('schedules.start_time')
+                    ->get([
+                        'schedules.schedule_id as id',
+                        'schedules.day',
+                        'schedules.start_time',
+                        'schedules.end_time',
+                        'schedules.room',
+                        'courses.title as course_name',
+                        'courses.year',
+                    ]);
+                $yearData[(string)$year] = $schedules;
+            }
+            return [
+                'id'       => $program->id,
+                'name'     => $program->name,
+                'schedule' => $yearData,
+            ];
+        });
+
+        return response()->json(['success' => true, 'data' => $result]);
+    }
+
+    // ─── All Courses Schedule (for display) ───────────────────────
+    public function getAllSchedule()
+    {
+        $schedules = DB::table('schedules')
+            ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
+            ->orderByRaw("FIELD(schedules.day,'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')")
+            ->orderBy('schedules.start_time')
+            ->get([
+                'schedules.schedule_id as id',
+                'schedules.day',
+                'schedules.start_time',
+                'schedules.end_time',
+                'schedules.room',
+                'courses.title as course_name',
+            ]);
+
+        return response()->json(['success' => true, 'data' => $schedules]);
+    }
+
+    public function getAllExams()
+    {
+        $exams = DB::table('exams')
+            ->join('courses', 'exams.course_id', '=', 'courses.course_id')
+            ->orderBy('exams.exam_date')
+            ->get([
+                'exams.exam_id as id',
+                'exams.exam_name',
+                'exams.exam_date',
+                'exams.max_score',
+                'courses.title as course_name',
+            ]);
+
+        return response()->json(['success' => true, 'data' => $exams]);
     }
 
     // ─── Schedule ─────────────────────────────────────────────────

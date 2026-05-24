@@ -740,7 +740,7 @@ class StudentController extends Controller
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:full_day,hourly',
             'date' => 'required|date|after_or_equal:today',
-            'reason' => 'required|string|min:10|max:500',
+            'reason' => 'required|string|min:3|max:500',
             'document' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
         ]);
 
@@ -762,14 +762,45 @@ class StudentController extends Controller
 
         // استخدام موديل LeaveRequest الحقيقي
         $leaveRequest = LeaveRequest::create([
-            'student_id' => $request->user()->user_id, // انتبهي: student_id في جدول الإجازات مربوط بـ users
-            'type' => $request->type,
-            'leave_category' => $request->type == 'hourly' ? 'hourly' : 'daily',
-            'date' => $request->date,
-            'reason' => $request->reason,
+            'student_id' => $request->user()->user_id,
+            'type'       => $request->type,
+            'date'       => $request->date,
+            'reason'     => $request->reason,
             'attachment' => $documentPath,
-            'status' => 'pending_hod', // تبدأ عند رئيس القسم
+            'status'     => 'pending_hod',
         ]);
+
+        // إشعار رئيس القسم بالطلب الجديد
+        $studentName = $request->user()->full_name ?? 'طالب';
+        $headUserId = \DB::table('heads')
+            ->join('students', function($j) use ($request) {
+                $j->whereExists(function($q) use ($request) {
+                    $q->from('enrollments')
+                      ->join('course_program', 'enrollments.course_id', '=', 'course_program.course_id')
+                      ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                      ->whereColumn('programs.department_id', 'heads.department_id')
+                      ->where('enrollments.student_id', $request->user()->student?->student_id ?? 0);
+                });
+            })
+            ->value('heads.user_id');
+
+        // fallback: notify the first available head
+        if (!$headUserId) {
+            $headUserId = \DB::table('heads')->value('user_id');
+        }
+
+        if ($headUserId) {
+            \DB::table('notifications')->insert([
+                'user_id'    => $headUserId,
+                'title'      => 'طلب إجازة جديد',
+                'message'    => 'قدّم الطالب ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date,
+                'type'       => 'leave_request',
+                'related_id' => $leaveRequest->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return response()->json([
             'success' => true,
@@ -895,12 +926,41 @@ class StudentController extends Controller
         $attendance->update([
             'excuse_text' => $request->excuse_text,
             'excuse_attachment' => $documentPath,
-            'excuse_status' => 'pending' // تتحول الحالة إلى قيد المراجعة
+            'excuse_status' => 'pending'
         ]);
+
+        // إشعار رئيس القسم بالتبرير الجديد
+        $studentName = $request->user()->full_name ?? 'طالب';
+        $headUserId = \DB::table('heads')
+            ->whereExists(function($q) use ($student) {
+                $q->from('enrollments')
+                  ->join('course_program', 'enrollments.course_id', '=', 'course_program.course_id')
+                  ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                  ->whereColumn('programs.department_id', 'heads.department_id')
+                  ->where('enrollments.student_id', $student->student_id);
+            })
+            ->value('user_id');
+
+        if (!$headUserId) {
+            $headUserId = \DB::table('heads')->value('user_id');
+        }
+
+        if ($headUserId) {
+            \DB::table('notifications')->insert([
+                'user_id'    => $headUserId,
+                'title'      => 'تبرير غياب جديد',
+                'message'    => 'قدّم الطالب ' . $studentName . ' تبريراً لغيابه بتاريخ ' . ($attendance->date ?? now()->toDateString()),
+                'type'       => 'attendance',
+                'related_id' => $attendance->attendance_id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تقديم العذر بنجاح، بانتظار مراجعة الإدارة',
+            'message' => 'تم تقديم العذر بنجاح، بانتظار مراجعة رئيس القسم',
             'data' => $attendance
         ], 200);
     }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use App\Models\Course;
 use App\Models\Attendance;
 use App\Models\Grade;
@@ -895,24 +896,169 @@ class TeacherController extends Controller
         ], 201);
     }
 
+    // ─── Report Requests from HoD ─────────────────────────────────
+    public function getReportRequests(Request $request)
+    {
+        $teacher = DB::table('teachers')->where('user_id', $request->user()->user_id)->first();
+        if (!$teacher) return response()->json(['success' => true, 'data' => []]);
+
+        $requests = DB::table('report_requests')
+            ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+            ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->leftJoin('courses', 'report_requests.course_id', '=', 'courses.course_id')
+            ->where('report_requests.teacher_id', $teacher->teacher_id)
+            ->orderBy('report_requests.created_at', 'desc')
+            ->get([
+                'report_requests.id',
+                'report_requests.report_type',
+                'report_requests.notes',
+                'report_requests.status',
+                'report_requests.year',
+                'report_requests.student_id',
+                'report_requests.course_id',
+                'report_requests.created_at',
+                'su.full_name as student_name',
+                'courses.title as course_name',
+            ]);
+
+        return response()->json(['success' => true, 'data' => $requests]);
+    }
+
+    public function getStudentAcademicStats(Request $request, $id)
+    {
+        $reportRequest = DB::table('report_requests')->where('id', $id)->first();
+        if (!$reportRequest) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        $studentId = $reportRequest->student_id;
+        $courseId  = $reportRequest->course_id;
+
+        // متوسط العلامات
+        $gradesQuery = DB::table('grades')->where('student_id', $studentId);
+        if ($courseId) $gradesQuery->where('course_id', $courseId);
+        $grades    = $gradesQuery->get(['score']);
+        $avgGrade  = $grades->count() > 0 ? round($grades->avg('score'), 1) : null;
+
+        // نسبة الحضور
+        $attQuery = DB::table('attendances')->where('student_id', $studentId);
+        if ($courseId) $attQuery->where('course_id', $courseId);
+        $att          = $attQuery->get(['status']);
+        $total        = $att->count();
+        $present      = $att->where('status', 'present')->count();
+        $attRate      = $total > 0 ? round(($present / $total) * 100, 1) : null;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'avg_grade'       => $avgGrade,
+                'attendance_rate' => $attRate,
+                'present'         => $present,
+                'total'           => $total,
+            ],
+        ]);
+    }
+
+    public function submitEvaluation(Request $request, $id)
+    {
+        $request->validate(['notes' => 'required|string|min:3']);
+
+        $reportRequest = DB::table('report_requests')->find($id);
+        if (!$reportRequest) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        DB::table('report_requests')->where('id', $id)->update([
+            'notes'      => $request->notes,
+            'status'     => 'completed',
+            'updated_at' => now(),
+        ]);
+
+        $studentName = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $reportRequest->student_id)
+            ->value('users.full_name');
+
+        // إشعار رئيس القسم (الأساسي)
+        DB::table('notifications')->insert([
+            'user_id'    => $reportRequest->head_id,
+            'title'      => 'تم إرسال تقييم الطالب',
+            'message'    => 'قدّم المعلم تقييمه للطالب ' . ($studentName ?? ''),
+            'type'       => 'report',
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // حفظ التقرير في performance_reports + إشعار ولي الأمر (ثانوي — لا يكسر العملية)
+        try {
+            DB::table('performance_reports')->insert([
+                'student_id'      => $reportRequest->student_id,
+                'report_type'     => $reportRequest->report_type ?? 'behavioral',
+                'attendance_rate' => 0,
+                'average_grade'   => 0,
+                'recommendations' => $request->notes,
+                'generated_at'    => now(),
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+
+            $parentUserId = DB::table('parent_students')
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                ->where('parent_students.student_id', $reportRequest->student_id)
+                ->value('parents.user_id');
+
+            if ($parentUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $parentUserId,
+                    'title'      => 'تقرير الطالب جاهز',
+                    'message'    => 'أرسل المعلم التقرير السلوكي للطالب ' . ($studentName ?? '') . '، يمكنك الاطلاع عليه الآن.',
+                    'type'       => 'report',
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('submitEvaluation side-effects failed: ' . $e->getMessage());
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال التقييم بنجاح']);
+    }
+
     /**
-     * Ø¬Ù„Ø¨ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø§Ù„Ù…Ø¯Ø±Ø³
+     * جلب إعلانات المدرس
      */
     public function getAnnouncements(Request $request)
     {
-        $announcements = Announcement::where('user_id', $request->user()->user_id)
-            ->with('course')
+        // إعلانات المعلم نفسه + إعلانات رئيس القسم الموجهة للمعلمين أو للجميع
+        $headUserIds = \DB::table('heads')->pluck('user_id');
+
+        $announcements = Announcement::where(function($q) use ($request, $headUserIds) {
+                $q->where('user_id', $request->user()->user_id)
+                  ->orWhere(function($q2) use ($headUserIds) {
+                      $q2->whereIn('user_id', $headUserIds)
+                         ->where(function($q3) {
+                             $q3->whereNull('target_role')
+                                ->orWhere('target_role', 'teacher');
+                         });
+                  });
+            })
+            ->with(['course', 'user'])
             ->latest()
             ->get()
-            ->map(function($announcement) {
+            ->map(function($announcement) use ($headUserIds) {
+                $isFromHead = $headUserIds->contains($announcement->user_id);
                 return [
-                    'id'         => $announcement->announcement_id,
-                    'title'      => $announcement->title,
-                    'content'    => $announcement->content,
-                    'type'       => $announcement->type,
-                    'course'     => $announcement->course ? $announcement->course->title : null,
-                    'created_at' => $announcement->created_at->format('Y-m-d H:i'),
-                    'time_ago'   => $announcement->created_at->diffForHumans(),
+                    'id'          => $announcement->announcement_id,
+                    'title'       => $announcement->title,
+                    'content'     => $announcement->content,
+                    'type'        => $announcement->type,
+                    'course'      => $announcement->course ? $announcement->course->title : null,
+                    'from_head'   => $isFromHead,
+                    'author_name' => $announcement->user ? $announcement->user->full_name : null,
+                    'created_at'  => $announcement->created_at->format('Y-m-d H:i'),
+                    'time_ago'    => $announcement->created_at->diffForHumans(),
                 ];
             });
 
