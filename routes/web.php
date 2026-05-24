@@ -119,23 +119,3 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
         ->name('hod.announcements.store');
 });
 
-// ===== مسارات الشؤون (Affairs) =====
-use App\Http\Controllers\Web\AffairsWebController;
-
-Route::get('/affairs/login', [AffairsWebController::class, 'showLoginForm'])->name('affairs.login');
-Route::post('/affairs/login', [AffairsWebController::class, 'login'])->name('affairs.login.submit');
-Route::post('/affairs/logout', [AffairsWebController::class, 'logout'])->name('affairs.logout');
-
-Route::prefix('affairs')->group(function () {
-    Route::get('/', fn() => redirect('/affairs/dashboard'));
-    Route::get('/dashboard', [AffairsWebController::class, 'dashboard'])->name('affairs.dashboard');
-    Route::get('/calendar', [AffairsWebController::class, 'calendar'])->name('affairs.calendar');
-    Route::get('/activities', [AffairsWebController::class, 'activities'])->name('affairs.activities');
-    Route::get('/accounts', [AffairsWebController::class, 'accounts'])->name('affairs.accounts');
-    Route::get('/leaves', [AffairsWebController::class, 'leaves'])->name('affairs.leaves');
-    Route::get('/messages', [AffairsWebController::class, 'messages'])->name('affairs.messages');
-    Route::get('/notifications', [AffairsWebController::class, 'notifications'])->name('affairs.notifications');
-    Route::get('/profile', [AffairsWebController::class, 'profile'])->name('affairs.profile');
-    Route::get('/settings', [AffairsWebController::class, 'settings'])->name('affairs.settings');
-});
-
