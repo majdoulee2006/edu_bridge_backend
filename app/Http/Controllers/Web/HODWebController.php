@@ -372,6 +372,41 @@ class HODWebController extends Controller
     }
 
     /**
+     * Show form to create an announcement
+     */
+    public function showCreateAnnouncementForm()
+    {
+        // Get list of courses for optional course-specific announcement
+        $courses = \App\Models\Course::select('course_id', 'title')->get();
+        return view('hod.create_announcement', compact('courses'));
+    }
+
+    /**
+     * Store a new announcement
+     */
+    public function storeAnnouncement(Request $request)
+    {
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'content' => 'required|string',
+            'type'    => 'required|in:general,course_specific',
+            'course_id' => 'nullable|exists:courses,course_id',
+        ]);
+
+        \App\Models\Announcement::create([
+            'user_id'   => auth()->id(),
+            'title'     => $request->title,
+            'content'   => $request->content,
+            'type'      => $request->type,
+            'course_id' => $request->type === 'course_specific' ? $request->course_id : null,
+        ]);
+
+        return redirect()->route('hod.dashboard')
+                         ->with('success', 'تم إضافة الإعلان بنجاح!');
+    }
+
+
+    /**
      * حفظ حصة دراسية جديدة
      */
     public function storeSchedule(Request $request)
@@ -380,20 +415,48 @@ class HODWebController extends Controller
             'course_id' => 'required|exists:courses,course_id',
             'teacher_id' => 'nullable|exists:teachers,teacher_id',
             'day' => 'required|string',
-            'start_time' => 'required',
-            'end_time' => 'required',
+            'period' => 'required|integer|between:1,5',
+            'department' => 'required|string',
+            'year' => 'required|string',
             'room' => 'required|string',
-            'class_group' => 'nullable|string|max:100',
         ]);
+
+        // تعيين أوقات الحصص بناءً على الرقم
+        $periods = [
+            1 => ['start' => '08:00', 'end' => '09:30'],
+            2 => ['start' => '09:30', 'end' => '11:00'],
+            3 => ['start' => '11:00', 'end' => '12:30'],
+            4 => ['start' => '12:30', 'end' => '14:00'],
+            5 => ['start' => '14:00', 'end' => '15:30'],
+        ];
+
+        $startTime = $periods[$request->period]['start'];
+        $endTime = $periods[$request->period]['end'];
+        
+        // دمج القسم والسنة في حقل الشعبة
+        $classGroup = $request->department . ' - ' . $request->year;
+
+        // التحقق من تضارب المواعيد للمدرب (لا يمكن إضافة نفس الأستاذ بنفس الوقت)
+        if ($request->teacher_id) {
+            $conflict = DB::table('schedules')
+                ->where('teacher_id', $request->teacher_id)
+                ->where('day', $request->day)
+                ->where('start_time', 'like', $startTime . '%')
+                ->first();
+
+            if ($conflict) {
+                return redirect()->back()->with('error', 'عذراً! لا يمكن إضافة الحصة. هذا الأستاذ لديه حصة أخرى في نفس اليوم ونفس الوقت في قسم آخر.');
+            }
+        }
 
         DB::table('schedules')->insert([
             'course_id' => $request->course_id,
             'teacher_id' => $request->teacher_id,
             'day' => $request->day,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
             'room' => $request->room,
-            'class_group' => $request->class_group,
+            'class_group' => $classGroup,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

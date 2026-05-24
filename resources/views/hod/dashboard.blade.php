@@ -118,7 +118,7 @@
     <!-- News Section -->
     <div class="section-title">
         <h3>آخر الأخبار والإعلانات</h3>
-        <a href="#">عرض الكل</a>
+        <a href="{{ route('hod.announcements.create') }}" class="btn btn-primary" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;">إنشاء إعلان</a>
     </div>
 
     @forelse($announcements as $announcement)

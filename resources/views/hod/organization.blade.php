@@ -129,11 +129,39 @@
     .modal-overlay.active .modal-card {
         transform: translateY(0);
     }
+
+    .dept-btn, .year-btn {
+        padding: 0.5rem 1.5rem;
+        border-radius: 2rem;
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .dept-btn.active, .year-btn.active {
+        background-color: var(--accent-color);
+        color: #1a1a1a;
+        border-color: var(--accent-color);
+    }
 </style>
 @endpush
 
 @section('content')
     <p class="page-subtitle">إدارة الجداول الأكاديمية</p>
+
+    @if (session('success'))
+        <div style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+            {{ session('error') }}
+        </div>
+    @endif
 
     <div class="type-switcher">
         <button class="type-btn active" id="btn-schedules" onclick="switchTab('schedules')"><i class="fa-solid fa-graduation-cap"></i> جدول دراسي</button>
@@ -143,57 +171,40 @@
     <!-- Weekly Schedule Tab Content -->
     <div id="tab-schedules" class="tab-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h4 style="font-weight: 800; font-size: 1.25rem;">الجدول الدراسي الأسبوعي الحالي</h4>
+            <h4 style="font-weight: 800; font-size: 1.25rem;">الجدول الدراسي الأسبوعي</h4>
             <button onclick="openModal('schedule-modal')" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fa-solid fa-plus"></i> إضافة حصة دراسية
             </button>
         </div>
 
+        <!-- Departments Navigation -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 0.5rem;">
+            <button class="dept-btn active" onclick="selectDept('اتصالات', this)">اتصالات</button>
+            <button class="dept-btn" onclick="selectDept('معلوماتية', this)">معلوماتية</button>
+            <button class="dept-btn" onclick="selectDept('الكترون', this)">الكترون</button>
+            <button class="dept-btn" onclick="selectDept('ذكاء', this)">ذكاء</button>
+        </div>
+
+        <!-- Years Navigation -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+            <button class="year-btn active" onclick="selectYear('سنة أولى', this)">سنة أولى</button>
+            <button class="year-btn" onclick="selectYear('سنة ثانية', this)">سنة ثانية</button>
+        </div>
+
         <div style="overflow-x: auto; background-color: var(--bg-secondary); border-radius: 1.5rem; box-shadow: var(--shadow); padding: 1rem;">
-            <table style="width: 100%; border-collapse: collapse; text-align: right;">
+            <table style="width: 100%; border-collapse: collapse; text-align: center; min-width: 800px;">
                 <thead>
                     <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.9rem;">
-                        <th style="padding: 1rem;">اليوم</th>
-                        <th style="padding: 1rem;">التوقيت</th>
-                        <th style="padding: 1rem;">المادة</th>
-                        <th style="padding: 1rem;">المدرب</th>
-                        <th style="padding: 1rem;">القاعة</th>
-                        <th style="padding: 1rem;">الشعبة</th>
-                        <th style="padding: 1rem; text-align: center;">إجراء</th>
+                        <th style="padding: 1rem; text-align: right; width: 10%;">اليوم / الحصة</th>
+                        <th style="padding: 1rem; width: 18%;">الأولى<br><small>08:00 - 09:30</small></th>
+                        <th style="padding: 1rem; width: 18%;">الثانية<br><small>09:30 - 11:00</small></th>
+                        <th style="padding: 1rem; width: 18%;">الثالثة<br><small>11:00 - 12:30</small></th>
+                        <th style="padding: 1rem; width: 18%;">الرابعة<br><small>12:30 - 14:00</small></th>
+                        <th style="padding: 1rem; width: 18%;">الخامسة<br><small>14:00 - 15:30</small></th>
                     </tr>
                 </thead>
-                <tbody>
-                    @forelse($schedules as $s)
-                    <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.95rem;">
-                        <td style="padding: 1rem; font-weight: bold;">
-                            @switch($s->day)
-                                @case('Sunday') الأحد @break
-                                @case('Monday') الاثنين @break
-                                @case('Tuesday') الثلاثاء @break
-                                @case('Wednesday') الأربعاء @break
-                                @case('Thursday') الخميس @break
-                                @case('Friday') الجمعة @break
-                                @case('Saturday') السبت @break
-                                @default {{ $s->day }}
-                            @endswitch
-                        </td>
-                        <td style="padding: 1rem; color: var(--text-secondary);" dir="ltr">{{ \Carbon\Carbon::parse($s->start_time)->format('h:i A') }} - {{ \Carbon\Carbon::parse($s->end_time)->format('h:i A') }}</td>
-                        <td style="padding: 1rem;">{{ $s->course_title }}</td>
-                        <td style="padding: 1rem;">{{ $s->teacher_name ?? 'غير محدد' }}</td>
-                        <td style="padding: 1rem;"><span style="background-color: #f1f5f9; color: #334155; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: bold;">{{ $s->room }}</span></td>
-                        <td style="padding: 1rem; color: var(--text-secondary);">{{ $s->class_group ?? '-' }}</td>
-                        <td style="padding: 1rem; text-align: center;">
-                            <form action="{{ route('hod.organization.delete_schedule', $s->schedule_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من رغبتك في حذف هذه الحصة؟')">
-                                @csrf
-                                <button type="submit" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1rem;"><i class="fa-solid fa-trash-can"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-secondary);">لا توجد حصص دراسية مضافة حالياً.</td>
-                    </tr>
-                    @endforelse
+                <tbody id="grid-body">
+                    <!-- Javascript will render grid here -->
                 </tbody>
             </table>
         </div>
@@ -272,39 +283,51 @@
                     </select>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">اليوم</label>
-                    <select name="day" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        <option value="Sunday">الأحد</option>
-                        <option value="Monday">الاثنين</option>
-                        <option value="Tuesday">الثلاثاء</option>
-                        <option value="Wednesday">الأربعاء</option>
-                        <option value="Thursday">الخميس</option>
-                        <option value="Friday">الجمعة</option>
-                        <option value="Saturday">السبت</option>
-                    </select>
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القسم</label>
+                        <select name="department" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                            <option value="اتصالات">اتصالات</option>
+                            <option value="معلوماتية">معلوماتية</option>
+                            <option value="الكترون">الكترون</option>
+                            <option value="ذكاء">ذكاء</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">السنة الدراسية</label>
+                        <select name="year" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                            <option value="سنة أولى">سنة أولى</option>
+                            <option value="سنة ثانية">سنة ثانية</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">وقت البدء</label>
-                        <input type="time" name="start_time" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">اليوم</label>
+                        <select name="day" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                            <option value="Sunday">الأحد</option>
+                            <option value="Monday">الاثنين</option>
+                            <option value="Tuesday">الثلاثاء</option>
+                            <option value="Wednesday">الأربعاء</option>
+                            <option value="Thursday">الخميس</option>
+                        </select>
                     </div>
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">وقت الانتهاء</label>
-                        <input type="time" name="end_time" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">رقم الحصة</label>
+                        <select name="period" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                            <option value="1">الحصة الأولى (8:00 - 9:30)</option>
+                            <option value="2">الحصة الثانية (9:30 - 11:00)</option>
+                            <option value="3">الحصة الثالثة (11:00 - 12:30)</option>
+                            <option value="4">الحصة الرابعة (12:30 - 14:00)</option>
+                            <option value="5">الحصة الخامسة (14:00 - 15:30)</option>
+                        </select>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-                    <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القاعة</label>
-                        <input type="text" name="room" placeholder="مثال: A1" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الشعبة / المجموعة</label>
-                        <input type="text" name="class_group" placeholder="مثال: شعبة 1" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                    </div>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القاعة</label>
+                    <input type="text" name="room" placeholder="مثال: A1" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                 </div>
 
                 <div style="display: flex; gap: 1rem;">
@@ -367,6 +390,84 @@
 
 @push('scripts')
 <script>
+    const allSchedules = @json($schedules);
+    const csrfToken = '{{ csrf_token() }}';
+
+    let currentDept = 'اتصالات';
+    let currentYear = 'سنة أولى';
+
+    function selectDept(dept, btnElement) {
+        currentDept = dept;
+        document.querySelectorAll('.dept-btn').forEach(btn => btn.classList.remove('active'));
+        btnElement.classList.add('active');
+        renderGrid();
+    }
+
+    function selectYear(year, btnElement) {
+        currentYear = year;
+        document.querySelectorAll('.year-btn').forEach(btn => btn.classList.remove('active'));
+        btnElement.classList.add('active');
+        renderGrid();
+    }
+
+    function renderGrid() {
+        const tbody = document.getElementById('grid-body');
+        tbody.innerHTML = '';
+        
+        const classGroup = currentDept + ' - ' + currentYear;
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+        const dayNames = {'Sunday':'الأحد', 'Monday':'الاثنين', 'Tuesday':'الثلاثاء', 'Wednesday':'الأربعاء', 'Thursday':'الخميس'};
+        const periodStarts = ['08:00:00', '09:30:00', '11:00:00', '12:30:00', '14:00:00'];
+
+        days.forEach(day => {
+            let tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--border-color)';
+            
+            let dayTd = document.createElement('td');
+            dayTd.style.padding = '1rem';
+            dayTd.style.fontWeight = 'bold';
+            dayTd.style.textAlign = 'right';
+            dayTd.innerText = dayNames[day];
+            tr.appendChild(dayTd);
+
+            periodStarts.forEach(time => {
+                let td = document.createElement('td');
+                td.style.padding = '1rem';
+                td.style.verticalAlign = 'top';
+
+                // Find schedule (database might return "08:00:00" or "08:00")
+                const timePrefix = time.substring(0, 5);
+                const sch = allSchedules.find(s => {
+                    if(!s.start_time) return false;
+                    return s.day === day && s.start_time.startsWith(timePrefix) && s.class_group === classGroup;
+                });
+                
+                if (sch) {
+                    td.innerHTML = `
+                        <div style="background-color: #eff6ff; padding: 0.75rem; border-radius: 0.5rem; border-right: 3px solid #3b82f6; text-align: right; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                            <div style="font-weight: 800; color: #1e40af; font-size: 0.95rem; margin-bottom: 0.25rem;">${sch.course_title}</div>
+                            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.25rem;"><i class="fa-solid fa-user-tie"></i> ${sch.teacher_name || 'غير محدد'}</div>
+                            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem;"><i class="fa-solid fa-door-open"></i> قاعة: ${sch.room}</div>
+                            <form action="/hod/organization/schedule/delete/${sch.schedule_id}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه الحصة؟')">
+                                <input type="hidden" name="_token" value="${csrfToken}">
+                                <button type="submit" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size: 0.8rem; padding: 0;"><i class="fa-solid fa-trash-can"></i> حذف</button>
+                            </form>
+                        </div>
+                    `;
+                } else {
+                    td.innerHTML = `<span style="color: #cbd5e1;">-</span>`;
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Initial render
+    document.addEventListener('DOMContentLoaded', () => {
+        renderGrid();
+    });
+
     function switchTab(tab) {
         if (tab === 'schedules') {
             document.getElementById('tab-schedules').style.display = 'block';

@@ -1,268 +1,122 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edu Bridge | الرسائل</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root { --main-yellow: #f9f21a; --bg-cream: #fcfcf3; --white: #ffffff; }
-        * { box-sizing: border-box; margin: 0; padding: 0; transition: 0.3s; }
-        body { font-family: 'Cairo', sans-serif; background-color: var(--bg-cream); display: flex; height: 100vh; overflow: hidden; }
+@extends('layouts.teacher')
+@section('title', 'الرسائل')
 
-        /* --- Sidebar --- */
-        aside {
-            width: 280px; background: var(--white); height: 100vh;
-            display: flex; flex-direction: column; padding: 30px 20px;
-            border-left: 1px solid #eee; position: fixed; right: 0; top: 0; z-index: 100;
-        }
-        .logo { font-weight: 900; font-size: 1.8rem; text-align: center; margin-bottom: 40px; }
-        .logo span { color: var(--main-yellow); text-shadow: 1px 1px 0 #000; }
-        
-        .nav-link {
-            display: flex; align-items: center; gap: 15px; padding: 12px 18px;
-            text-decoration: none; color: #636e72; font-weight: 700; border-radius: 15px; margin-bottom: 8px;
-            cursor: pointer;
-        }
-        .nav-link:hover { background: #fdfdf0; }
-        .nav-link.active { background: var(--main-yellow); color: #000; box-shadow: 0 4px 12px rgba(249, 242, 26, 0.3); }
+@push('styles')
+<style>
+    .msg-card { background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.25rem 1.5rem; box-shadow: var(--shadow); margin-bottom: 0.75rem; cursor: pointer; transition: transform 0.15s; }
+    .msg-card:hover { transform: translateX(-3px); }
+    .avatar { width: 46px; height: 46px; border-radius: 50%; background: var(--accent-color); color: #1a1a1a; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal-card { background: var(--bg-secondary); border-radius: 1.5rem; padding: 2rem; width: 100%; max-width: 520px; }
+    .form-input { width: 100%; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; }
+    .form-input:focus { outline: none; border-color: var(--accent-color); }
+    .section-label { font-size: 0.8rem; font-weight: 700; color: var(--accent-color); margin: 1.25rem 0 0.5rem; }
+</style>
+@endpush
 
-        /* --- Main Content --- */
-        main { margin-right: 280px; flex: 1; height: 100vh; padding: 40px; overflow-y: auto; }
-
-        .search-bar {
-            background: #fff; padding: 15px 25px; border-radius: 20px;
-            display: flex; align-items: center; gap: 15px; margin-bottom: 25px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-        }
-        .search-bar input { border: none; outline: none; width: 100%; font-family: 'Cairo'; font-size: 1rem; }
-
-        .filters { display: flex; gap: 10px; margin-bottom: 30px; }
-        .filter-btn {
-            padding: 8px 25px; border-radius: 15px; border: none;
-            background: #fff; font-weight: 800; cursor: pointer; color: #666;
-        }
-        .filter-btn.active { background: var(--main-yellow); color: #000; }
-
-        .group-label { color: var(--main-yellow); font-weight: 900; font-size: 0.9rem; margin-bottom: 15px; display: block; }
-
-        .message-card {
-            background: #fff; padding: 20px; border-radius: 25px;
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.01);
-            border: 1px solid transparent; cursor: pointer;
-            animation: fadeIn 0.4s ease;
-        }
-        .message-card:hover { border-color: var(--main-yellow); transform: translateY(-3px); }
-        
-        .msg-info { display: flex; gap: 15px; align-items: center; }
-        .avatar { width: 55px; height: 55px; border-radius: 15px; object-fit: cover; background: #eee; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; }
-        
-        .msg-details h4 { font-weight: 900; font-size: 1rem; margin-bottom: 5px; }
-        .msg-details p { color: #888; font-size: 0.85rem; font-weight: 600; }
-
-        .msg-meta { text-align: left; }
-        .time { font-size: 0.75rem; color: #aaa; font-weight: 700; margin-bottom: 5px; display: block; }
-        .unread-count { background: var(--main-yellow); color: #000; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 900; margin-right: auto; }
-        
-        .online-dot { width: 12px; height: 12px; background: #2ecc71; border-radius: 50%; border: 2px solid #fff; position: absolute; bottom: -2px; left: -2px; }
-
-        .floating-add {
-            position: fixed; bottom: 40px; left: 40px;
-            width: 60px; height: 60px; background: var(--main-yellow);
-            border-radius: 20px; display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; box-shadow: 0 10px 20px rgba(249, 242, 26, 0.4);
-            cursor: pointer; z-index: 200;
-        }
-
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
-            display: none; align-items: center; justify-content: center; z-index: 1000;
-        }
-        .modal-card {
-            background: #fff; width: 400px; padding: 30px; border-radius: 30px;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1); animation: fadeIn 0.3s ease;
-        }
-        .modal-card h2 { font-weight: 900; margin-bottom: 20px; }
-        .modal-card input, .modal-card textarea, .modal-card select {
-            width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 15px;
-            border: 1px solid #eee; font-family: 'Cairo'; outline: none; background: #f9f9f9;
-        }
-        .send-btn {
-            width: 100%; padding: 12px; background: var(--main-yellow); border: none;
-            border-radius: 15px; font-weight: 900; cursor: pointer; font-family: 'Cairo';
-        }
-        .send-btn:hover { background: #000; color: #fff; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
-</head>
-<body>
-
-    <aside>
-        <div class="logo">EDU<span>BRIDGE</span></div>
-        <nav>
-            <a href="{{ route('dashboard') }}" class="nav-link"><i class="fa-solid fa-house"></i> الرئيسية</a>
-            <a href="{{ route('profile') }}" class="nav-link"><i class="fa-solid fa-user"></i> الملف الشخصي</a>
-            <a href="{{ route('messages') }}" class="nav-link active"><i class="fa-solid fa-comment"></i> المراسلة</a>
-            <a href="{{ route('notifications') }}" class="nav-link"><i class="fa-solid fa-bell"></i> الإشعارات</a>
-            <a href="{{ route('schedule') }}" class="nav-link"><i class="fa-solid fa-calendar"></i> الجداول</a>
-            <a href="{{ route('assignments') }}" class="nav-link"><i class="fa-solid fa-file-pen"></i> الواجبات</a>
-            <a href="{{ route('attendance') }}" class="nav-link"><i class="fa-solid fa-check"></i> الحضور</a>
-            <a href="{{ route('lectures') }}" class="nav-link"><i class="fa-solid fa-play"></i> المحاضرات</a>
-        </nav>
-    </aside>
-
-    <main>
-        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-            <h1 style="font-weight: 900;">الرسائل</h1>
-            <a href="{{ route('settings') }}" style="text-decoration: none;">
-                <i class="fa-solid fa-gear" style="font-size: 1.2rem; color: #666; cursor: pointer;"></i>
-            </a>
-        </header>
-
-        <div class="search-bar">
-            <i class="fa-solid fa-magnifying-glass" style="color: #aaa;"></i>
-            <input type="text" id="searchInput" placeholder="ابحث في المحادثات..." onkeyup="searchMessages()">
+@section('content')
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 0.5rem; background: var(--bg-secondary); border-radius: 0.75rem; padding: 0.35rem;">
+            <button class="tab-btn-msg active" onclick="switchMsgTab('inbox', this)" style="padding: 0.4rem 1rem; border-radius: 0.5rem; border: none; background: var(--accent-color); color: #1a1a1a; font-weight: 700; cursor: pointer; font-family: inherit;">الوارد</button>
+            <button class="tab-btn-msg" onclick="switchMsgTab('sent', this)" style="padding: 0.4rem 1rem; border-radius: 0.5rem; border: none; background: transparent; color: var(--text-secondary); font-weight: 600; cursor: pointer; font-family: inherit;">المُرسَل</button>
         </div>
+        <button onclick="document.getElementById('send-modal').classList.add('active')" style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; padding: 0.6rem 1.25rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-plus"></i> رسالة جديدة
+        </button>
+    </div>
 
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">الكل</button>
-            <button class="filter-btn" data-filter="unread">غير مقروءة</button>
-            <button class="filter-btn" data-filter="group">الجروبات</button>
-        </div>
-
-        <div id="messagesList">
-            <span class="group-label">جهات الاتصال</span>
-            
-            @forelse($contacts as $contact)
-                <div class="message-card" onclick="openMessageModalWith('{{ $contact->user_id }}', '{{ $contact->full_name }}')">
-                    <div class="msg-info">
-                        <div style="position: relative;">
-                            <div class="avatar" style="background: #f9f21a; color: #000;">
-                                {{ mb_substr($contact->full_name, 0, 1) }}
-                            </div>
-                            <div class="online-dot"></div>
+    <!-- Inbox -->
+    <div id="tab-inbox">
+        @forelse($messages as $m)
+            <div class="msg-card">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="avatar">{{ mb_substr($m->sender_name, 0, 1) }}</div>
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700;">{{ $m->sender_name }}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">{{ \Carbon\Carbon::parse($m->created_at)->diffForHumans() }}</span>
                         </div>
-                        <div class="msg-details">
-                            <h4>{{ $contact->full_name }}</h4>
-                            <p>انقر لبدء المحادثة مع {{ $contact->full_name }}..</p>
-                        </div>
-                    </div>
-                    <div class="msg-meta">
-                        <span class="time">متاح</span>
+                        <div style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">{{ Str::limit($m->content, 80) }}</div>
                     </div>
                 </div>
-            @empty
-                <p style="text-align: center; color: #888;">لا يوجد جهات اتصال متاحة حالياً.</p>
-            @endforelse
-        </div>
-    </main>
-
-    <div class="floating-add" onclick="openModal()">
-        <i class="fa-solid fa-plus"></i>
+            </div>
+        @empty
+            <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
+                <i class="fa-solid fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.75rem; display: block; color: var(--accent-color);"></i>
+                لا توجد رسائل واردة
+            </div>
+        @endforelse
     </div>
 
-    <div class="modal-overlay" id="messageModal" onclick="closeModal()">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <h2>إرسال رسالة</h2>
-            
-            <select id="recipientSelect">
-                <option value="">اختر المستلم...</option>
-                @foreach($contacts as $contact)
-                    <option value="{{ $contact->user_id }}">{{ $contact->full_name }}</option>
-                @endforeach
-            </select>
-
-            <textarea rows="4" id="messageInput" placeholder="اكتب رسالتك هنا..."></textarea>
-            <button class="send-btn" id="sendBtn" onclick="handleSendMessage()">إرسال الآن</button>
-        </div>
+    <!-- Sent -->
+    <div id="tab-sent" style="display: none;">
+        @forelse($sent as $m)
+            <div class="msg-card">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="avatar" style="background: var(--bg-primary); border: 2px solid var(--accent-color); color: var(--text-primary);">
+                        {{ mb_substr($m->receiver_name, 0, 1) }}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700;">إلى: {{ $m->receiver_name }}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">{{ \Carbon\Carbon::parse($m->created_at)->diffForHumans() }}</span>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.2rem;">{{ Str::limit($m->content, 80) }}</div>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
+                لا توجد رسائل مُرسَلة
+            </div>
+        @endforelse
     </div>
 
-    <script>
-        function openModal() { 
-            document.getElementById('messageModal').style.display = 'flex'; 
-        }
-        
-        function closeModal() { 
-            document.getElementById('messageModal').style.display = 'none'; 
-        }
+    <!-- Send Message Modal -->
+    <div id="send-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="font-weight: 800;">رسالة جديدة</h3>
+                <button onclick="document.getElementById('send-modal').classList.remove('active')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.25rem;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form action="{{ route('teacher.messages.send') }}" method="POST">
+                @csrf
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">إرسال إلى</label>
+                    <select name="receiver_id" class="form-input" required>
+                        <option value="">← اختر المستلم</option>
+                        @foreach($users as $u)
+                            <option value="{{ $u->user_id }}">{{ $u->full_name }} ({{ $u->email }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">نص الرسالة</label>
+                    <textarea name="content" class="form-input" rows="4" placeholder="اكتب رسالتك هنا..." required style="resize: vertical;"></textarea>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">إرسال</button>
+                    <button type="button" onclick="document.getElementById('send-modal').classList.remove('active')" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endsection
 
-        // دالة لفتح المودال وتحديد الشخص فوراً عند الضغط على الكارد
-        function openMessageModalWith(userId, userName) {
-            document.getElementById('recipientSelect').value = userId;
-            openModal();
-        }
-
-        async function handleSendMessage() {
-            const receiverId = document.getElementById('recipientSelect').value;
-            const messageText = document.getElementById('messageInput').value;
-            const sendBtn = document.getElementById('sendBtn');
-
-            if(!receiverId || !messageText) {
-                alert("يرجى اختيار المستلم وكتابة الرسالة!");
-                return;
-            }
-
-            // تعطيل الزر أثناء الإرسال
-            sendBtn.disabled = true;
-            sendBtn.innerText = "جاري الإرسال...";
-
-            try {
-                const response = await fetch("{{ route('messages.send') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        receiver_id: receiverId,
-                        message_text: messageText
-                    })
-                });
-
-                const result = await response.json();
-
-                if(result.success) {
-                    alert(result.message);
-                    document.getElementById('messageInput').value = "";
-                    closeModal();
-                } else {
-                    alert("خطأ: " + result.message);
-                }
-            } catch (error) {
-                alert("فشل الاتصال بالسيرفر!");
-            } finally {
-                sendBtn.disabled = false;
-                sendBtn.innerText = "إرسال الآن";
-            }
-        }
-
-        // كود الفلترة والبحث (اللي كان عندك)
-        const filterButtons = document.querySelectorAll('.filter-btn');
-        const messageCards = document.querySelectorAll('.message-card');
-
-        function searchMessages() {
-            let input = document.getElementById('searchInput').value.toLowerCase();
-            messageCards.forEach(card => {
-                let name = card.querySelector('h4').innerText.toLowerCase();
-                card.style.display = name.includes(input) ? "flex" : "none";
-            });
-        }
-
-        filterButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                // ... منطق الفلترة الخاص بك ...
-            });
-        });
-    </script>
-</body>
-</html>
+@push('scripts')
+<script>
+function switchMsgTab(tab, btn) {
+    document.querySelectorAll('.tab-btn-msg').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-secondary)';
+    });
+    btn.style.background = 'var(--accent-color)';
+    btn.style.color = '#1a1a1a';
+    document.getElementById('tab-inbox').style.display = tab === 'inbox' ? 'block' : 'none';
+    document.getElementById('tab-sent').style.display = tab === 'sent' ? 'block' : 'none';
+}
+</script>
+@endpush

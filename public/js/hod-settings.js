@@ -20,6 +20,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (darkModeToggle) {
             darkModeToggle.checked = settings.theme === 'dark';
         }
+
+        const icon = document.getElementById('dark-mode-icon');
+        if (icon) {
+            if (settings.theme === 'dark') {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        }
         if (langToggle) {
             // Depending on how you implement the toggle (checkbox or select)
             if(langToggle.type === 'checkbox') {
@@ -74,4 +85,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize
     loadSettings();
+
+    // Global function for button toggles
+    window.toggleDarkMode = () => {
+        const settings = JSON.parse(localStorage.getItem('hodSettings')) || defaultSettings;
+        const newTheme = settings.theme === 'dark' ? 'light' : 'dark';
+        saveSettings('theme', newTheme);
+
+        const icon = document.getElementById('dark-mode-icon');
+        if (icon) {
+            if (newTheme === 'dark') {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        }
+        
+        if (darkModeToggle) {
+            darkModeToggle.checked = newTheme === 'dark';
+        }
+    };
 });

@@ -1,228 +1,270 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edu Bridge | المحاضرات</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root { 
-            --main-yellow: #f9f21a; 
-            --bg-cream: #fcfcf3; 
-            --white: #ffffff; 
-            --text-gray: #636e72;
-        }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; transition: 0.3s; }
-        
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background-color: var(--bg-cream); 
-            display: flex; 
-            height: 100vh; 
-            overflow: hidden; 
-        }
+@extends('layouts.teacher')
+@section('title', 'المحاضرات')
 
-        aside {
-            width: 280px; background: var(--white); height: 100vh;
-            display: flex; flex-direction: column; padding: 30px 20px;
-            border-left: 1px solid #eee; position: fixed; right: 0; top: 0;
-            z-index: 100;
-        }
-        .logo { font-weight: 900; font-size: 1.8rem; text-align: center; margin-bottom: 40px; }
-        .logo span { color: var(--main-yellow); text-shadow: 1px 1px 0 #000; }
-        
-        .nav-menu { list-style: none; flex: 1; }
-        .nav-link {
-            display: flex; align-items: center; gap: 15px; padding: 12px 18px;
-            text-decoration: none; color: var(--text-gray); font-weight: 700;
-            border-radius: 15px; margin-bottom: 8px; font-size: 0.95rem;
-        }
-        .nav-link.active { background: var(--main-yellow); color: #000; box-shadow: 0 4px 12px rgba(249, 242, 26, 0.3); }
-        .nav-link:hover:not(.active) { background: #f9f9f9; transform: translateX(-5px); }
+@push('styles')
+<style>
+    .lecture-card { background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.25rem 1.5rem; box-shadow: var(--shadow); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 1.25rem; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal-card { background: var(--bg-secondary); border-radius: 1.5rem; padding: 2rem; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+    .form-input { width: 100%; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; }
+    .form-input:focus { outline: none; border-color: var(--accent-color); }
 
-        main { 
-            margin-right: 280px; 
-            flex: 1; 
-            height: 100vh;
-            padding: 40px; 
-            overflow-y: auto; 
-            display: flex;
-            flex-direction: column;
-            align-items: center; 
-        }
+    /* File Upload Area */
+    .upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 0.875rem;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        position: relative;
+        background: var(--bg-primary);
+    }
+    .upload-area:hover, .upload-area.drag-over {
+        border-color: var(--accent-color);
+        background: color-mix(in srgb, var(--accent-color) 6%, var(--bg-primary));
+    }
+    .upload-area input[type="file"] {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        opacity: 0; cursor: pointer;
+    }
+    .upload-icon { font-size: 2rem; color: var(--accent-color); margin-bottom: 0.5rem; }
+    .upload-text { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .upload-hint { font-size: 0.78rem; color: var(--text-secondary); }
 
-        header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; }
-        .header-title h1 { font-weight: 900; font-size: 2.2rem; }
-        .header-title p { color: #888; font-weight: 700; font-size: 1.1rem; }
+    /* File preview */
+    .file-preview {
+        display: none; align-items: center; gap: 0.75rem;
+        background: var(--bg-primary); border-radius: 0.75rem;
+        padding: 0.75rem 1rem; margin-top: 0.5rem;
+        border: 1px solid var(--border-color);
+    }
+    .file-preview.visible { display: flex; }
+    .file-preview-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .file-preview-name { flex: 1; font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-preview-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1rem; }
 
-        .user-pill { display: flex; align-items: center; gap: 12px; background: #fff; padding: 8px 15px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-        .user-pill img { width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--main-yellow); }
+    /* Attachment chip in cards */
+    .attach-chip {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.2rem 0.65rem; border-radius: 2rem;
+        font-size: 0.78rem; font-weight: 700;
+        text-decoration: none; transition: opacity 0.2s;
+    }
+    .attach-chip:hover { opacity: 0.8; }
+    .attach-image    { background: #eff6ff; color: #1d4ed8; }
+    .attach-video    { background: #fdf4ff; color: #7e22ce; }
+    .attach-document { background: #fefce8; color: #854d0e; }
+</style>
+@endpush
 
-        .lecture-card {
-            background: #fff; 
-            width: 100%; 
-            max-width: 550px; 
-            border-radius: 40px;
-            padding: 40px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.03);
-            border-right: 8px solid var(--main-yellow);
-        }
+@section('content')
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <p style="color: var(--text-secondary);">{{ $lectures->count() }} محاضرة مضافة</p>
+        <button onclick="document.getElementById('add-lecture-modal').classList.add('active')" style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; padding: 0.6rem 1.25rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-plus"></i> إضافة محاضرة
+        </button>
+    </div>
 
-        .setup-title { text-align: right; color: #b8860b; font-weight: 900; margin-bottom: 25px; font-size: 1.3rem; }
-        
-        .input-group { text-align: right; margin-bottom: 25px; }
-        .input-group label { display: block; font-weight: 900; margin-bottom: 12px; font-size: 1.1rem; color: #333; }
-        
-        .custom-input, .ui-select {
-            width: 100%; padding: 18px; border-radius: 20px; background: #f9f9f9;
-            border: 1px solid #eee; font-family: 'Cairo'; font-weight: 700; color: #555; font-size: 1rem;
-            outline: none;
-        }
-
-        .row-group { display: flex; gap: 20px; margin-bottom: 25px; }
-        .row-group .input-group { flex: 1; margin-bottom: 0; }
-
-        .upload-box {
-            border: 3px dashed #eee;
-            padding: 30px;
-            border-radius: 25px;
-            text-align: center;
-            margin-bottom: 30px;
-            cursor: pointer;
-            color: #888;
-            font-weight: 800;
-        }
-        .upload-box i { font-size: 2rem; color: var(--main-yellow); margin-bottom: 10px; display: block; }
-        .upload-box:hover { border-color: var(--main-yellow); background: #fffdf0; }
-
-        .btn-add {
-            background: #000; color: #fff; border: none; width: 100%; padding: 20px;
-            border-radius: 20px; font-weight: 900; font-size: 1.2rem; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 12px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .btn-add:hover { background: var(--main-yellow); color: #000; }
-
-        .alert {
-            width: 100%; max-width: 550px; padding: 15px 20px; border-radius: 15px;
-            margin-bottom: 20px; font-weight: 700; text-align: right;
-        }
-        .alert-success { background: #d4edda; color: #155724; border-right: 5px solid #28a745; }
-        .alert-error { background: #f8d7da; color: #721c24; border-right: 5px solid #dc3545; }
-
-        .lectures-list {
-            width: 100%; max-width: 550px; margin-top: 30px;
-        }
-        .lecture-item {
-            background: #fff; border-radius: 20px; padding: 20px 25px;
-            margin-bottom: 15px; display: flex; align-items: center; gap: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03); border-right: 5px solid var(--main-yellow);
-        }
-        .lecture-item i { font-size: 1.5rem; color: var(--main-yellow); }
-        .lecture-info { flex: 1; text-align: right; }
-        .lecture-info h4 { font-weight: 900; font-size: 1rem; margin-bottom: 4px; }
-        .lecture-info p { color: #888; font-size: 0.85rem; font-weight: 600; }
-        .lecture-date { color: #aaa; font-size: 0.8rem; font-weight: 700; }
-
-    </style>
-</head>
-<body>
-
-    <aside>
-        <div class="logo">EDU<span>BRIDGE</span></div>
-        <nav class="nav-menu">
-            <a href="{{ route('dashboard') }}" class="nav-link"><i class="fa-solid fa-house"></i> الرئيسية</a>
-            <a href="{{ route('profile') }}" class="nav-link"><i class="fa-solid fa-user"></i> الملف الشخصي</a>
-            <a href="{{ route('messages') }}" class="nav-link"><i class="fa-solid fa-comment"></i> المراسلة</a>
-            <a href="{{ route('notifications') }}" class="nav-link"><i class="fa-solid fa-bell"></i> الإشعارات</a>
-            <a href="{{ route('schedule') }}" class="nav-link"><i class="fa-solid fa-calendar"></i> الجداول</a>
-            <a href="{{ route('assignments') }}" class="nav-link"><i class="fa-solid fa-file"></i> الواجبات</a>
-            <a href="{{ route('attendance') }}" class="nav-link"><i class="fa-solid fa-check"></i> الحضور</a>
-            <a href="{{ route('lectures') }}" class="nav-link active"><i class="fa-solid fa-play"></i> المحاضرات</a>
-        </nav>
-    </aside>
-
-    <main>
-        <header>
-            <div class="header-title">
-                <h1>إضافة محاضرة</h1>
-                <p>قم بتعبئة بيانات المحاضرة الجديدة لرفعها للطلاب.</p>
+    @forelse($lectures as $l)
+        <div class="lecture-card">
+            <div style="width: 52px; height: 52px; border-radius: 1rem; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #1a1a1a; flex-shrink: 0;">
+                <i class="fa-solid fa-chalkboard"></i>
             </div>
-            <div class="user-pill">
-                <div style="text-align: left; font-weight: 900; font-size: 0.9rem;">{{ Auth::user()->full_name ?? 'المعلم' }}</div>
-                <img src="https://via.placeholder.com/100">
-            </div>
-        </header>
-
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-error">{{ session('error') }}</div>
-        @endif
-
-        <form class="lecture-card" action="{{ route('lectures.store') }}" method="POST" enctype="multipart/form-data">
-            @csrf
-            <p class="setup-title">تفاصيل المحاضرة</p>
-            
-            <div class="input-group">
-                <label>عنوان المحاضرة</label>
-                <input type="text" name="title" class="custom-input" placeholder="مثلاً: مقدمة في Flutter UI" required>
-            </div>
-
-            <div class="row-group">
-                <div class="input-group">
-                    <label>المادة</label>
-                    <select name="course_id" class="ui-select" required>
-                        <option value="">اختر المادة</option>
-                        @forelse($courses as $course)
-                            <option value="{{ $course->course_id }}">{{ $course->title }}</option>
-                        @empty
-                            <option value="" disabled>لا توجد مواد متاحة</option>
-                        @endforelse
-                    </select>
+            <div style="flex: 1;">
+                <div style="font-weight: 700; margin-bottom: 0.25rem;">{{ $l->title }}</div>
+                <div style="color: var(--text-secondary); font-size: 0.85rem;">
+                    <span>{{ $l->course_title }}</span>
+                    &nbsp;|&nbsp;
+                    <i class="fa-regular fa-calendar"></i> {{ \Carbon\Carbon::parse($l->created_at)->format('Y-m-d') }}
                 </div>
-                <div class="input-group">
-                    <label>القسم / الصف</label>
-                    <select name="department_id" class="ui-select" required>
-                        <option value="">اختر الصف</option>
-                        @forelse($departments as $department)
-                            <option value="{{ $department->department_id }}">{{ $department->name }}</option>
-                        @empty
-                            <option value="" disabled>لا توجد أقسام متاحة</option>
-                        @endforelse
-                    </select>
-                </div>
+                @if($l->description)
+                    <div style="color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.25rem;">{{ Str::limit($l->description, 80) }}</div>
+                @endif
 
-            <label style="display: block; text-align: right; font-weight: 900; margin-bottom: 12px; font-size: 1.1rem;">ملف المحاضرة (PDF/Video)</label>
-            <div class="upload-box" onclick="document.getElementById('file-input').click()">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-                <span id="file-label">اسحب الملف هنا أو انقر للإرفاق</span>
-                <input type="file" id="file-input" name="content_file" accept=".pdf,.mp4,.mov,.avi,.mkv" required style="display:none" onchange="document.getElementById('file-label').textContent = this.files[0].name">
+                {{-- Attachment chip --}}
+                @if($l->file_path)
+                    @php
+                        $chipClass = match($l->file_type) {
+                            'image'    => 'attach-image',
+                            'video'    => 'attach-video',
+                            default    => 'attach-document',
+                        };
+                        $chipIcon = match($l->file_type) {
+                            'image'    => 'fa-image',
+                            'video'    => 'fa-video',
+                            default    => 'fa-file-lines',
+                        };
+                        $chipLabel = match($l->file_type) {
+                            'image'    => 'صورة',
+                            'video'    => 'فيديو',
+                            default    => 'مستند',
+                        };
+                    @endphp
+                    <div style="margin-top: 0.5rem;">
+                        <a href="{{ asset('storage/' . $l->file_path) }}"
+                           target="_blank"
+                           class="attach-chip {{ $chipClass }}">
+                            <i class="fa-solid {{ $chipIcon }}"></i>
+                            {{ $l->file_name ?? $chipLabel }}
+                        </a>
+                    </div>
+                @endif
             </div>
-
-            <button type="submit" class="btn-add">
-                رفع المحاضرة الآن <i class="fa-solid fa-check-circle"></i>
-            </button>
-        </form>
-
-        @if(isset($lessons) && $lessons->count() > 0)
-        <div class="lectures-list">
-            <p class="setup-title" style="text-align:center; margin-bottom: 20px;">📚 آخر المحاضرات المرفوعة</p>
-            @foreach($lessons as $lesson)
-            <div class="lecture-item">
-                <i class="fa-solid fa-circle-play"></i>
-                <div class="lecture-info">
-                    <h4>{{ $lesson->title }}</h4>
-                    <p>{{ $lesson->course->title ?? '—' }} | {{ $lesson->department->name ?? '—' }}</p>
-                </div>
-                <div class="lecture-date">{{ $lesson->created_at->format('Y-m-d') }}</div>
-            @endforeach
+            <form action="{{ route('teacher.lectures.delete', $l->lesson_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه المحاضرة؟')">
+                @csrf
+                <button type="submit" style="background: hsl(0,70%,95%); border: none; color: hsl(0,50%,40%); border-radius: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer;">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </form>
         </div>
-        @endif
-    </main>
+    @empty
+        <div style="text-align: center; padding: 4rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary);">
+            <i class="fa-solid fa-book-open" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
+            <p style="font-size: 1.1rem; font-weight: 600;">لا توجد محاضرات مضافة بعد</p>
+        </div>
+    @endforelse
 
-</body>
-</html>
+    <!-- Add Lecture Modal -->
+    <div id="add-lecture-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="font-weight: 800;">
+                    <i class="fa-solid fa-chalkboard" style="color: var(--accent-color);"></i>
+                    إضافة محاضرة
+                </h3>
+                <button onclick="closeLectureModal()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.25rem;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form action="{{ route('teacher.lectures.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+
+                {{-- عنوان المحاضرة --}}
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">عنوان المحاضرة</label>
+                    <input type="text" name="title" class="form-input" placeholder="أدخل عنوان المحاضرة هنا" required>
+                </div>
+
+                {{-- المادة --}}
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة</label>
+                    <select name="course_id" class="form-input" required>
+                        <option value="">← اختر المادة</option>
+                        @foreach($courses as $c)
+                            <option value="{{ $c->course_id }}">{{ $c->title }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- وصف المحاضرة --}}
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">وصف المحاضرة (اختياري)</label>
+                    <textarea name="description" class="form-input" rows="3" placeholder="ملاحظات أو وصف مختصر..." style="resize: vertical;"></textarea>
+                </div>
+
+                {{-- رفع ملف --}}
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">
+                        <i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i>
+                        ملف مرفق (اختياري)
+                    </label>
+
+                    <div class="upload-area" id="upload-area"
+                         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                         ondragleave="this.classList.remove('drag-over')"
+                         ondrop="this.classList.remove('drag-over')">
+                        <input type="file" name="attachment" id="file-input"
+                               accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip"
+                               onchange="previewFile(this)">
+                        <div id="upload-placeholder">
+                            <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                            <div class="upload-text">اسحب وأفلت الملف هنا، أو اضغط للاختيار</div>
+                            <div class="upload-hint">صور · فيديو · PDF · Word · PowerPoint · Excel · ZIP — حتى 50 ميجابايت</div>
+                        </div>
+                    </div>
+
+                    {{-- معاينة الملف المختار --}}
+                    <div class="file-preview" id="file-preview">
+                        <span class="file-preview-icon" id="preview-icon">📎</span>
+                        <span class="file-preview-name" id="preview-name"></span>
+                        <span class="file-preview-size" id="preview-size" style="color: var(--text-secondary); font-size: 0.78rem; white-space: nowrap;"></span>
+                        <button type="button" class="file-preview-remove" onclick="removeFile()" title="حذف الملف">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- أزرار --}}
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
+                        <i class="fa-solid fa-plus"></i> إضافة المحاضرة
+                    </button>
+                    <button type="button" onclick="closeLectureModal()" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endsection
+
+@push('scripts')
+<script>
+/* ===== Modal ===== */
+function closeLectureModal() {
+    document.getElementById('add-lecture-modal').classList.remove('active');
+    removeFile();
+}
+document.getElementById('add-lecture-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeLectureModal();
+});
+
+/* ===== File Upload ===== */
+const iconMap = {
+    image:    { icon: '🖼️', label: 'صورة' },
+    video:    { icon: '🎬', label: 'فيديو' },
+    pdf:      { icon: '📄', label: 'PDF' },
+    word:     { icon: '📝', label: 'Word' },
+    ppt:      { icon: '📊', label: 'PowerPoint' },
+    excel:    { icon: '📊', label: 'Excel' },
+    zip:      { icon: '📦', label: 'ZIP' },
+    default:  { icon: '📎', label: 'ملف' },
+};
+
+function getFileIcon(mime, name) {
+    if (mime.startsWith('image/'))  return iconMap.image;
+    if (mime.startsWith('video/'))  return iconMap.video;
+    if (mime === 'application/pdf') return iconMap.pdf;
+    if (mime.includes('word') || name.endsWith('.doc') || name.endsWith('.docx')) return iconMap.word;
+    if (mime.includes('presentation') || name.endsWith('.ppt') || name.endsWith('.pptx')) return iconMap.ppt;
+    if (mime.includes('excel') || name.endsWith('.xls') || name.endsWith('.xlsx')) return iconMap.excel;
+    if (name.endsWith('.zip'))      return iconMap.zip;
+    return iconMap.default;
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024)       return bytes + ' B';
+    if (bytes < 1048576)    return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function previewFile(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const info = getFileIcon(file.type, file.name);
+
+    document.getElementById('preview-icon').textContent = info.icon;
+    document.getElementById('preview-name').textContent = file.name;
+    document.getElementById('preview-size').textContent = formatSize(file.size);
+    document.getElementById('upload-placeholder').style.display = 'none';
+    document.getElementById('file-preview').classList.add('visible');
+}
+
+function removeFile() {
+    const input = document.getElementById('file-input');
+    input.value = '';
+    document.getElementById('upload-placeholder').style.display = 'block';
+    document.getElementById('file-preview').classList.remove('visible');
+}
+</script>
+@endpush
