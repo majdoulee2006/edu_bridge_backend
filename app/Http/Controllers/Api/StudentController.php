@@ -41,6 +41,9 @@ class StudentController extends Controller
                 $query->whereNull('department_id')
                       ->orWhere('department_id', $user->department_id);
             })
+            ->where(function($q) {
+                $q->whereNull('target_role')->orWhere('target_role', 'student');
+            })
             ->latest()
             ->get()
             ->map(function ($item) {

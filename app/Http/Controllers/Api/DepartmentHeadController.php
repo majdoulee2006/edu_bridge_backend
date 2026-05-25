@@ -23,12 +23,15 @@ class DepartmentHeadController extends Controller
             ->join('users', 'announcements.user_id', '=', 'users.user_id')
             ->orderBy('announcements.created_at', 'desc')
             ->limit(5)
-            ->get(['announcements.announcement_id', 'announcements.title', 'announcements.content', 'announcements.created_at', 'users.full_name as author_name'])
+            ->get(['announcements.announcement_id', 'announcements.title', 'announcements.content', 'announcements.image', 'announcements.created_at', 'users.full_name as author_name'])
             ->map(fn($a) => [
                 'id'          => $a->announcement_id,
                 'title'       => $a->title,
                 'content'     => $a->content,
+                'body'        => $a->content,
+                'image_url'   => $a->image ? url('storage/' . $a->image) : null,
                 'author_name' => $a->author_name,
+                'time_ago'    => \Carbon\Carbon::parse($a->created_at)->diffForHumans(),
             ]);
 
         return response()->json([
@@ -378,6 +381,7 @@ class DepartmentHeadController extends Controller
                             'title'      => 'طلب إجازة يحتاج موافقتك',
                             'message'    => 'طلب ' . $studentName . ' إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعة الطلب والرد عليه',
                             'type'       => 'leave_request',
+                            'related_id' => $id,
                             'is_read'    => 0,
                             'created_at' => now(),
                             'updated_at' => now(),
@@ -611,11 +615,18 @@ class DepartmentHeadController extends Controller
             default    => null,
         };
 
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        }
+
         $announcementId = DB::table('announcements')->insertGetId([
             'user_id'     => $request->user()->user_id,
             'title'       => $request->title,
             'content'     => $request->content,
             'target_role' => $targetRole,
+            'image'       => $imagePath,
+            'link_url'    => $request->link_url ?? null,
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
@@ -652,6 +663,53 @@ class DepartmentHeadController extends Controller
         return response()->json(['success' => true, 'message' => 'تم نشر الإعلان بنجاح', 'id' => $announcementId]);
     }
 
+    public function sendNotification(Request $request)
+    {
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'message' => 'required|string',
+            'target'  => 'required|in:students,all',
+        ]);
+
+        $userIds = collect();
+
+        // always include students
+        $studentIds = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->pluck('users.user_id');
+        $userIds = $userIds->merge($studentIds);
+
+        // include teachers if target is 'all'
+        if ($request->target === 'all') {
+            $teacherIds = DB::table('teachers')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->pluck('users.user_id');
+            $userIds = $userIds->merge($teacherIds);
+        }
+
+        $senderId = $request->user()->user_id;
+        $now = now();
+        $rows = $userIds->unique()->map(fn($uid) => [
+            'user_id'    => $uid,
+            'sender_id'  => $senderId,
+            'title'      => $request->title,
+            'message'    => $request->message,
+            'type'       => 'academic',
+            'category'   => 'academic',
+            'is_read'    => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        DB::table('notifications')->insert($rows);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال الإشعار بنجاح',
+            'count'   => count($rows),
+        ]);
+    }
+
     public function getAnnouncements()
     {
         $announcements = DB::table('announcements')
@@ -663,6 +721,7 @@ class DepartmentHeadController extends Controller
                 'announcements.title',
                 'announcements.content',
                 'announcements.image',
+                'announcements.link_url',
                 'announcements.created_at',
                 'users.full_name as author_name',
             ])
@@ -734,14 +793,21 @@ class DepartmentHeadController extends Controller
     {
         $exams = DB::table('exams')
             ->join('courses', 'exams.course_id', '=', 'courses.course_id')
+            ->leftJoin('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->leftJoin('programs', 'course_program.program_id', '=', 'programs.id')
             ->orderBy('exams.exam_date')
-            ->get([
-                'exams.exam_id as id',
-                'exams.exam_name',
-                'exams.exam_date',
-                'exams.max_score',
-                'courses.title as course_name',
-            ]);
+            ->selectRaw('
+                exams.exam_id as id,
+                exams.exam_name,
+                exams.exam_date,
+                exams.max_score,
+                exams.room,
+                courses.title as course_name,
+                courses.year,
+                MIN(programs.name) as program_name
+            ')
+            ->groupBy('exams.exam_id', 'exams.exam_name', 'exams.exam_date', 'exams.max_score', 'exams.room', 'courses.title', 'courses.year')
+            ->get();
 
         return response()->json(['success' => true, 'data' => $exams]);
     }

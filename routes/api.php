@@ -39,7 +39,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {
-        return $request->user()->load('student');
+        $user = $request->user();
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'full_name' => $user->full_name ?? $user->name ?? '',
+                'email'     => $user->email     ?? '',
+                'phone'     => $user->phone      ?? '',
+                'role'      => $user->role       ?? '',
+                'avatar'    => $user->avatar ? storageUrl($user->avatar) : null,
+            ]
+        ]);
     });
 
     #========= روابط واجهات الطالب ==========
@@ -131,6 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // المحاضرات
         Route::get('/lessons', [TeacherController::class, 'getLessons']);
         Route::post('/lessons', [TeacherController::class, 'createLesson']);
+        Route::post('/lessons/{lessonId}', [TeacherController::class, 'updateLesson']);
         Route::delete('/lessons/{lessonId}', [TeacherController::class, 'deleteLesson']);
 
         // الحضور والغياب (الروابط الثابتة قبل الـ wildcards)
@@ -222,6 +233,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Announcements
         Route::get('/announcements',  [DepartmentHeadController::class, 'getAnnouncements']);
         Route::post('/announcements', [DepartmentHeadController::class, 'createAnnouncement']);
+
+        // Send notification to students / students+teachers
+        Route::post('/notifications/send', [DepartmentHeadController::class, 'sendNotification']);
     });
 
     #========= روابط الأدمن ==========

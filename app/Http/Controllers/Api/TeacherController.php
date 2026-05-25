@@ -1158,6 +1158,44 @@ class TeacherController extends Controller
         return response()->json(['success' => true, 'message' => 'ØªÙ… Ø±ÙØ¹ Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­', 'data' => $lesson], 201);
     }
 
+
+    public function updateLesson(Request $request, $lessonId)
+    {
+        $teacher = $request->user()->teacher;
+
+        $lesson = Lesson::where('lesson_id', $lessonId)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->first();
+
+        if (!$lesson) {
+            return response()->json(['success' => false, 'message' => 'المحاضرة غير موجودة أو لا تخصك'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title'        => 'required|string|max:255',
+            'course_id'    => 'required|exists:courses,course_id',
+            'description'  => 'nullable|string',
+            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv|max:102400',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $lesson->title       = $request->title;
+        $lesson->course_id   = $request->course_id;
+        $lesson->description = $request->description;
+
+        if ($request->hasFile('content_file')) {
+            if ($lesson->content_url) Storage::disk('public')->delete($lesson->content_url);
+            $file = $request->file('content_file');
+            $lesson->content_url = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
+        }
+
+        $lesson->save();
+
+        return response()->json(['success' => true, 'message' => 'تم تعديل المحاضرة بنجاح', 'data' => $lesson], 200);
+    }
     public function deleteLesson(Request $request, $lessonId)
     {
         $teacher = $request->user()->teacher;
@@ -1170,8 +1208,13 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø© Ø£Ùˆ Ù„Ø§ ØªØ®ØµÙƒ'], 404);
         }
 
-        Storage::disk('public')->delete($lesson->content_url);
-        $lesson->delete();
+        try {
+            if ($lesson->content_url) Storage::disk('public')->delete($lesson->content_url);
+            $lesson->delete();
+        } catch (\Exception $e) {
+            \Log::error('Delete lesson: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
 
         return response()->json(['success' => true, 'message' => 'ØªÙ… Ø­Ø°Ù Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­'], 200);
     }

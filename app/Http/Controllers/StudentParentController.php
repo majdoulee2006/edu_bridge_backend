@@ -283,26 +283,25 @@ class StudentParentController extends Controller
             ->update(['status' => $request->status, 'updated_at' => now()]);
 
         // إشعار الطالب بنتيجة القرار
-        $studentUser = DB::table('users')->where('user_id', $leaveRequest->student_id)->first();
-        $typeText    = $leaveRequest->type === 'hourly' ? 'الساعية' : 'اليومية';
-
-        if ($request->status === 'approved') {
-            $message = $leaveRequest->type === 'hourly'
-                ? 'تمت الموافقة على طلب إجازتك الساعية بتاريخ ' . $leaveRequest->date
-                : 'تمت الموافقة على طلب إجازتك اليومية بتاريخ ' . $leaveRequest->date;
-        } else {
-            $message = 'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر';
+        if ($leaveRequest->student_id) {
+            $typeText = $leaveRequest->type === 'hourly' ? 'الساعية' : 'اليومية';
+            if ($request->status === 'approved') {
+                $message = $leaveRequest->type === 'hourly'
+                    ? 'تمت الموافقة على طلب إجازتك الساعية بتاريخ ' . $leaveRequest->date
+                    : 'تمت الموافقة على طلب إجازتك اليومية بتاريخ ' . $leaveRequest->date;
+            } else {
+                $message = 'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر';
+            }
+            DB::table('notifications')->insert([
+                'user_id'    => $leaveRequest->student_id,
+                'title'      => $request->status === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة',
+                'message'    => $message,
+                'type'       => 'leave_request',
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
-
-        DB::table('notifications')->insert([
-            'user_id'    => $leaveRequest->student_id,
-            'title'      => $request->status === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة',
-            'message'    => $message,
-            'type'       => 'leave_request',
-            'is_read'    => 0,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
 
         return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب']);
     }
