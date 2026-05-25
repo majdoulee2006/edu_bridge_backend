@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('assignments', function (Blueprint $table) {
     $table->id('assignment_id');
     $table->foreignId('course_id')->constrained('courses', 'course_id')->onDelete('cascade');
+    $table->foreignId('teacher_id')->nullable()->constrained('teachers', 'teacher_id')->onDelete('cascade');
     $table->string('title');
-    $table->text('description');
+    $table->text('description')->nullable();
     $table->dateTime('due_date'); // موعد التسليم النهائي
     $table->integer('max_points')->default(100);
     $table->timestamps();

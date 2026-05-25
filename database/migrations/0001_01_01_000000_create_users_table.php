@@ -39,8 +39,13 @@ return new class extends Migration
     $table->timestamps();
 });    } // إغلاق دالة up
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('users');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('sessions');
     }
 }; // إغلاق الكلاس
