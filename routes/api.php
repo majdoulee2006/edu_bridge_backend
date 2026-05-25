@@ -39,7 +39,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {
-        return $request->user()->load('student');
+        $user = $request->user();
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'full_name' => $user->full_name ?? $user->name ?? '',
+                'email'     => $user->email     ?? '',
+                'phone'     => $user->phone      ?? '',
+                'role'      => $user->role       ?? '',
+                'avatar'    => $user->avatar ? storageUrl($user->avatar) : null,
+            ]
+        ]);
     });
 
     #========= روابط واجهات الطالب ==========
@@ -104,6 +114,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/parent/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
     Route::get('/parent/notifications', [NotificationController::class, 'getNotifications']);
     Route::post('/parent/add-student', [StudentController::class, 'linkStudent']);
+    Route::get('/parent/leave-requests', [StudentParentController::class, 'getLeaveRequests']);
+    Route::post('/parent/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);
+    Route::post('/parent/leave-requests/submit', [StudentParentController::class, 'submitParentLeaveRequest']);
+    Route::get('/parent/reports/history', [StudentParentController::class, 'getReportHistory']);
 
     #========= روابط واجهات المعلم ==========
     Route::prefix('teacher')->middleware('role:teacher')->group(function () {
@@ -119,9 +133,15 @@ Route::middleware('auth:sanctum')->group(function () {
         // الجدول الدراسي
         Route::get('/schedule', [TeacherController::class, 'getSchedule']);
 
+        // طلبات التقارير من رئيس القسم
+        Route::get('/report-requests', [TeacherController::class, 'getReportRequests']);
+        Route::get('/report-requests/{id}/stats', [TeacherController::class, 'getStudentAcademicStats']);
+        Route::post('/report-requests/{id}/evaluate', [TeacherController::class, 'submitEvaluation']);
+
         // المحاضرات
         Route::get('/lessons', [TeacherController::class, 'getLessons']);
         Route::post('/lessons', [TeacherController::class, 'createLesson']);
+        Route::post('/lessons/{lessonId}', [TeacherController::class, 'updateLesson']);
         Route::delete('/lessons/{lessonId}', [TeacherController::class, 'deleteLesson']);
 
         // الحضور والغياب (الروابط الثابتة قبل الـ wildcards)
@@ -177,6 +197,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard',     [DepartmentHeadController::class, 'dashboard']);
         Route::get('/profile',       [DepartmentHeadController::class, 'getProfile']);
         Route::get('/notifications', [DepartmentHeadController::class, 'getNotifications']);
+        Route::put('/notifications/read-all', [DepartmentHeadController::class, 'markAllNotificationsRead']);
+        Route::put('/notifications/{id}/read', [DepartmentHeadController::class, 'markNotificationRead']);
 
         // Accounts
         Route::get('/users/trainers', [DepartmentHeadController::class, 'getTrainers']);
@@ -188,6 +210,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Courses
         Route::get('/courses', [DepartmentHeadController::class, 'getCourses']);
+        Route::get('/courses/{id}/teachers', [DepartmentHeadController::class, 'getTeachersByCourse']);
+        Route::get('/courses/{id}/students', [DepartmentHeadController::class, 'getStudentsByCourse']);
 
         // Leave Requests
         Route::get('/leave-requests',               [DepartmentHeadController::class, 'getLeaveRequests']);
@@ -195,12 +219,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Teachers list & Report Requests
         Route::get('/teachers',        [DepartmentHeadController::class, 'getTeachers']);
-        Route::post('/report-requests',[DepartmentHeadController::class, 'createReportRequest']);
+        Route::get('/report-requests',  [DepartmentHeadController::class, 'getReportRequests']);
+        Route::post('/report-requests', [DepartmentHeadController::class, 'createReportRequest']);
 
         // Schedule
         Route::get('/schedule',       [DepartmentHeadController::class, 'getSchedule']);
         Route::post('/schedule',      [DepartmentHeadController::class, 'createSchedule']);
         Route::put('/schedule/{id}',  [DepartmentHeadController::class, 'updateSchedule']);
+        Route::get('/all-schedule',      [DepartmentHeadController::class, 'getAllSchedule']);
+        Route::get('/all-exams',         [DepartmentHeadController::class, 'getAllExams']);
+        Route::get('/programs-schedule', [DepartmentHeadController::class, 'getProgramsSchedule']);
+
+        // Announcements
+        Route::get('/announcements',  [DepartmentHeadController::class, 'getAnnouncements']);
+        Route::post('/announcements', [DepartmentHeadController::class, 'createAnnouncement']);
+
+        // Send notification to students / students+teachers
+        Route::post('/notifications/send', [DepartmentHeadController::class, 'sendNotification']);
     });
 
     #========= روابط الأدمن ==========

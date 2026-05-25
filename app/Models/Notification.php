@@ -8,6 +8,10 @@ class Notification extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'is_read' => 'boolean',
+    ];
+
     // علاقة لجلب بيانات الشخص المستلم للإشعار (الطالب)
     public function user()
     {

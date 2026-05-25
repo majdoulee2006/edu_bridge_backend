@@ -18,8 +18,9 @@ class StudentParentController extends Controller
                 'report_type' => 'required|in:academic,behavioral',
             ]);
 
-            $studentId  = $request->student_id;
-            $reportType = $request->report_type;
+            $studentId     = $request->student_id;
+            $reportType    = $request->report_type;
+            $currentUserId = Auth::user()?->user_id;
 
             $student = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
@@ -27,15 +28,71 @@ class StudentParentController extends Controller
                 ->select('students.*', 'users.full_name as student_name')
                 ->first();
 
+            // ─── تقرير سلوكي: يُحال إلى المعلم أولاً ───
+            if ($reportType === 'behavioral') {
+                // منع الطلب المكرر إذا كان هناك طلب معلق بالفعل
+                $hasPending = DB::table('report_requests')
+                    ->where('student_id', $studentId)
+                    ->where('report_type', 'behavioral')
+                    ->where('status', 'pending')
+                    ->exists();
+                if ($hasPending) {
+                    return response()->json(['message' => 'يوجد طلب تقرير سلوكي قيد المراجعة حالياً.'], 422);
+                }
+
+                // إيجاد معلم مرتبط بالطالب عبر enrollments → course_teachers
+                $teacherId = DB::table('enrollments')
+                    ->join('course_teachers', 'enrollments.course_id', '=', 'course_teachers.course_id')
+                    ->where('enrollments.student_id', $studentId)
+                    ->where('enrollments.status', 'active')
+                    ->value('course_teachers.teacher_id');
+
+                if (!$teacherId) {
+                    return response()->json(['message' => 'لا يوجد معلم مرتبط بهذا الطالب حالياً.'], 422);
+                }
+
+                $headUserId = DB::table('heads')->value('user_id') ?? $currentUserId;
+
+                DB::table('report_requests')->insert([
+                    'head_id'     => $headUserId,
+                    'teacher_id'  => $teacherId,
+                    'student_id'  => $studentId,
+                    'report_type' => 'behavioral',
+                    'status'      => 'pending',
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+
+                // إشعار المعلم
+                $teacherUserId = DB::table('teachers')->where('teacher_id', $teacherId)->value('user_id');
+                if ($teacherUserId) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $teacherUserId,
+                        'title'      => 'طلب تقرير سلوكي',
+                        'message'    => 'طلب ولي أمر الطالب ' . ($student->student_name ?? 'الطالب') . ' تقريراً سلوكياً، يُرجى المراجعة.',
+                        'type'       => 'report',
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم إرسال طلب التقرير السلوكي للمعلم، سيتم إشعارك عند إتمامه.',
+                ], 200);
+            }
+
+            // ─── تقرير أكاديمي: يُولَّد تلقائياً ───
             $existingReport = DB::table('performance_reports')
                 ->where('student_id', $studentId)
-                ->where('report_type', $reportType)
+                ->where('report_type', 'academic')
                 ->where('created_at', '>', Carbon::now()->subDays(15))
                 ->first();
 
             if ($existingReport) {
                 return response()->json([
-                    'message' => 'لقد طلبت تقريراً لهذا الطالب مؤخراً، يمكنك طلب تقرير جديد بعد 15 يوماً.'
+                    'message' => 'لقد طلبت تقريراً أكاديمياً لهذا الطالب مؤخراً، يمكنك طلب تقرير جديد بعد 15 يوماً.'
                 ], 422);
             }
 
@@ -48,7 +105,7 @@ class StudentParentController extends Controller
 
             $reportId = DB::table('performance_reports')->insertGetId([
                 'student_id'      => $studentId,
-                'report_type'     => $reportType,
+                'report_type'     => 'academic',
                 'attendance_rate' => $attendanceRate,
                 'average_grade'   => $averageGrade,
                 'recommendations' => 'أداء الطالب مستقر بناءً على البيانات الحالية، ننصح بالاستمرار.',
@@ -57,19 +114,18 @@ class StudentParentController extends Controller
                 'updated_at'      => now(),
             ]);
 
-            $currentUserId = Auth::user()?->user_id;
-
             DB::table('notifications')->insert([
                 'user_id'    => $currentUserId,
-                'title'      => 'تقرير جديد جاهز',
-                'message'    => 'تم إصدار تقرير للابن: ' . ($student->student_name ?? 'الطالب') . ' بمعدل ' . $averageGrade . '%',
+                'title'      => 'تقرير أكاديمي جاهز',
+                'message'    => 'تم إصدار التقرير الأكاديمي للابن: ' . ($student->student_name ?? 'الطالب') . ' بمعدل ' . $averageGrade . '%',
                 'type'       => 'report',
                 'is_read'    => 0,
                 'created_at' => now(),
             ]);
 
             return response()->json([
-                'message'   => 'تم إنشاء التقرير بنجاح لـ ' . ($student->student_name ?? 'الطالب'),
+                'success' => true,
+                'message' => 'تم إنشاء التقرير الأكاديمي بنجاح لـ ' . ($student->student_name ?? 'الطالب'),
                 'report_id' => $reportId,
             ], 200);
 
@@ -80,12 +136,42 @@ class StudentParentController extends Controller
 
     public function getFullPerformance($studentId)
     {
-        $grades = DB::table('grades')
+        $gradesRaw = DB::table('grades')
             ->leftJoin('exams', 'grades.exam_id', '=', 'exams.exam_id')
             ->leftJoin('courses', 'exams.course_id', '=', 'courses.course_id')
             ->where('grades.student_id', $studentId)
-            ->select(DB::raw('COALESCE(courses.title, "مادة غير محددة") as name'), 'grades.score')
+            ->select(
+                DB::raw('COALESCE(courses.title, "مادة غير محددة") as course_name'),
+                'courses.course_id',
+                'exams.exam_name',
+                DB::raw('COALESCE(exams.max_score, 100) as max_score'),
+                'grades.score'
+            )
             ->get();
+
+        // Group grades by course with exam breakdown
+        $grouped = [];
+        foreach ($gradesRaw as $g) {
+            $key = $g->course_id ?? ('unknown_' . $g->course_name);
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = ['name' => $g->course_name, 'exams' => [], 'total' => 0, 'count' => 0];
+            }
+            $grouped[$key]['exams'][] = [
+                'exam_name' => $g->exam_name ?? 'اختبار',
+                'score'     => (float) $g->score,
+                'max_score' => (int) $g->max_score,
+            ];
+            $grouped[$key]['total'] += (float) $g->score;
+            $grouped[$key]['count']++;
+        }
+
+        $grades = array_values(array_map(function ($c) {
+            return [
+                'name'  => $c['name'],
+                'score' => $c['count'] > 0 ? round($c['total'] / $c['count'], 1) : 0,
+                'exams' => $c['exams'],
+            ];
+        }, $grouped));
 
         $totalDays      = DB::table('attendance')->where('student_id', $studentId)->count();
         $presentDays    = DB::table('attendance')->where('student_id', $studentId)->where('status', 'present')->count();
@@ -99,7 +185,7 @@ class StudentParentController extends Controller
             ->get();
 
         return response()->json([
-            'gpa'             => round(($grades->avg('score') / 100) * 4, 2) ?: 0,
+            'gpa'             => count($grades) > 0 ? round((array_sum(array_column($grades, 'score')) / count($grades) / 100) * 4, 2) : 0,
             'attendance_rate' => $attendanceRate,
             'present_count'   => $presentDays,
             'absent_count'    => $totalDays - $presentDays,
@@ -151,6 +237,191 @@ class StudentParentController extends Controller
             ->get();
 
         return response()->json($permissions);
+    }
+
+    public function getLeaveRequests(Request $request)
+    {
+        $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
+        if (!$parent) return response()->json(['success' => true, 'data' => []]);
+
+        $studentIds = DB::table('parent_students')
+            ->where('parent_id', $parent->parent_id)
+            ->pluck('student_id');
+
+        $userIds = DB::table('students')
+            ->whereIn('student_id', $studentIds)
+            ->pluck('user_id');
+
+        $requests = DB::table('leave_requests')
+            ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
+            ->whereIn('leave_requests.student_id', $userIds)
+            ->select(
+                'leave_requests.id',
+                'leave_requests.type',
+                'leave_requests.date',
+                'leave_requests.reason',
+                'leave_requests.status',
+                'users.full_name as student_name'
+            )
+            ->orderBy('leave_requests.created_at', 'desc')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $requests]);
+    }
+
+    public function respondLeaveRequest(Request $request, $id)
+    {
+        $request->validate(['status' => 'required|in:approved,rejected']);
+
+        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
+        if (!$leaveRequest) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        DB::table('leave_requests')
+            ->where('id', $id)
+            ->update(['status' => $request->status, 'updated_at' => now()]);
+
+        // إشعار الطالب بنتيجة القرار
+        if ($leaveRequest->student_id) {
+            $typeText = $leaveRequest->type === 'hourly' ? 'الساعية' : 'اليومية';
+            if ($request->status === 'approved') {
+                $message = $leaveRequest->type === 'hourly'
+                    ? 'تمت الموافقة على طلب إجازتك الساعية بتاريخ ' . $leaveRequest->date
+                    : 'تمت الموافقة على طلب إجازتك اليومية بتاريخ ' . $leaveRequest->date;
+            } else {
+                $message = 'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر';
+            }
+            DB::table('notifications')->insert([
+                'user_id'    => $leaveRequest->student_id,
+                'title'      => $request->status === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة',
+                'message'    => $message,
+                'type'       => 'leave_request',
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب']);
+    }
+
+    public function getReportHistory(Request $request)
+    {
+        $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
+        if (!$parent) return response()->json(['success' => true, 'data' => []]);
+
+        $allStudentIds = DB::table('parent_students')
+            ->where('parent_id', $parent->parent_id)
+            ->pluck('student_id');
+
+        // فلترة اختيارية حسب طالب محدد
+        $filterStudentId = $request->query('student_id');
+        $studentIds = ($filterStudentId && $allStudentIds->contains($filterStudentId))
+            ? collect([$filterStudentId])
+            : $allStudentIds;
+
+        // التقارير المكتملة من performance_reports
+        $completed = DB::table('performance_reports')
+            ->whereIn('performance_reports.student_id', $studentIds)
+            ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select(
+                'performance_reports.report_id as id',
+                'performance_reports.report_type',
+                'performance_reports.attendance_rate',
+                'performance_reports.average_grade',
+                'performance_reports.recommendations',
+                'performance_reports.created_at',
+                'users.full_name as student_name',
+                DB::raw("'completed' as status")
+            )
+            ->get()
+            ->map(fn($r) => (array) $r);
+
+        // طلبات التقارير السلوكية المعلقة عند المعلم
+        $pendingBehavioral = DB::table('report_requests')
+            ->whereIn('report_requests.student_id', $studentIds)
+            ->where('report_requests.status', 'pending')
+            ->where('report_requests.report_type', 'behavioral')
+            ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select(
+                'report_requests.id',
+                DB::raw("'behavioral' as report_type"),
+                DB::raw('null as attendance_rate'),
+                DB::raw('null as average_grade'),
+                DB::raw("null as recommendations"),
+                'report_requests.created_at',
+                'users.full_name as student_name',
+                DB::raw("'pending_teacher' as status")
+            )
+            ->get()
+            ->map(fn($r) => (array) $r);
+
+        $all = collect($completed)
+            ->concat($pendingBehavioral)
+            ->sortByDesc('created_at')
+            ->values();
+
+        return response()->json(['success' => true, 'data' => $all]);
+    }
+
+    public function submitParentLeaveRequest(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,student_id',
+            'type'       => 'required|in:full_day,hourly',
+            'date'       => 'required|date',
+            'reason'     => 'required|string|min:3',
+        ]);
+
+        $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
+        if (!$parent) return response()->json(['message' => 'ولي الأمر غير موجود'], 404);
+
+        $linked = DB::table('parent_students')
+            ->where('parent_id', $parent->parent_id)
+            ->where('student_id', $request->student_id)
+            ->exists();
+
+        if (!$linked) return response()->json(['message' => 'الطالب غير مرتبط بهذا الحساب'], 403);
+
+        // Get student user_id (leave_requests uses user_id as student_id column)
+        $studentUser = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $request->student_id)
+            ->select('users.user_id', 'users.full_name')
+            ->first();
+
+        if (!$studentUser) return response()->json(['message' => 'الطالب غير موجود'], 404);
+
+        $leaveId = DB::table('leave_requests')->insertGetId([
+            'student_id' => $studentUser->user_id,
+            'type'       => $request->type,
+            'date'       => $request->date,
+            'reason'     => $request->reason,
+            'status'     => 'pending_hod',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Notify dept head
+        $headUserId = DB::table('heads')->value('user_id');
+
+        if ($headUserId) {
+            DB::table('notifications')->insert([
+                'user_id'    => $headUserId,
+                'title'      => 'طلب إجازة من ولي الأمر',
+                'message'    => 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
+                'type'       => 'leave_request',
+                'related_id' => $leaveId,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال طلب الإجازة بنجاح، بانتظار موافقة رئيس القسم']);
     }
 
     public function respondPermission(Request $request, $requestId)

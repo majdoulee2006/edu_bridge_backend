@@ -10,16 +10,30 @@ class AnnouncementController extends Controller
 {
     public function getHomeAnnouncements()
     {
-        
-        $announcements = Announcement::with(['user' => function($query) {
-            $query->select('user_id', 'full_name', 'role_id'); 
-        }])
-        ->orderBy('created_at', 'desc') // الترتيب من الأحدث للأقدم
-        ->get();
+        $announcements = \DB::table('announcements')
+            ->join('users', 'announcements.user_id', '=', 'users.user_id')
+            ->where(function($q) {
+                $q->whereNull('announcements.target_role')->orWhere('announcements.target_role', 'student');
+            })
+            ->orderBy('announcements.created_at', 'desc')
+            ->get([
+                'announcements.announcement_id',
+                'announcements.title',
+                'announcements.content',
+                'announcements.created_at',
+                'users.full_name as author_name',
+            ])
+            ->map(fn($a) => [
+                'id'          => $a->announcement_id,
+                'title'       => $a->title,
+                'content'     => $a->content,
+                'created_at'  => $a->created_at,
+                'author_name' => $a->author_name,
+            ]);
 
         return response()->json([
             'status' => 'success',
-            'data' => $announcements
+            'data'   => $announcements,
         ]);
     }
 }
