@@ -14,8 +14,7 @@ class ParentAccountSeeder extends Seeder
     public function run(): void
     {
 
-
-        User::updateOrCreate(
+                User::updateOrCreate(
             ['email' => 'parent@test.com'],
             [
                 'full_name' => ' أحمد ',

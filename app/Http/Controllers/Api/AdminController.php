@@ -37,7 +37,7 @@ class AdminController extends Controller
                 return [
                     'id' => $user->user_id,
                     'name' => $user->full_name,
-                    'role' => $user->role->name ?? 'unknown',
+                    'role' => $user->role ?? 'unknown',
                     'created_at' => $user->created_at ? $user->created_at->diffForHumans() : null,
                 ];
             }),

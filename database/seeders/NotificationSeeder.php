@@ -31,6 +31,62 @@ class NotificationSeeder extends Seeder
                 'type' => 'leave_request',
             ]);
         }
+        // إشعارات المدرس
+        $teacher = User::where('role_id', 2)->first();
+        if ($teacher) {
+            $teacherUserId = $teacher->user_id;
+
+            Notification::create([
+                'user_id'    => $teacherUserId,
+                'title'      => 'تسليم واجب جديد',
+                'message'    => 'قام الطالب عمر الخالد بتسليم واجب "تمارين المتغيرات" في مادة أساسيات البرمجة.',
+                'type'       => 'academic',
+                'is_read'    => false,
+                'created_at' => now()->subMinutes(30),
+                'updated_at' => now()->subMinutes(30),
+            ]);
+
+            Notification::create([
+                'user_id'    => $teacherUserId,
+                'title'      => 'جلسة حضور انتهت',
+                'message'    => 'انتهت جلسة تسجيل الحضور لمادة أساسيات البرمجة. حضر 18 من أصل 22 طالباً.',
+                'type'       => 'attendance',
+                'is_read'    => false,
+                'created_at' => now()->subHours(2),
+                'updated_at' => now()->subHours(2),
+            ]);
+
+            Notification::create([
+                'user_id'    => $teacherUserId,
+                'title'      => 'تذكير: موعد تسليم الدرجات',
+                'message'    => 'تذكير من الإدارة: آخر موعد لرفع درجات الفصل الأول هو نهاية هذا الأسبوع.',
+                'type'       => 'administrative',
+                'is_read'    => false,
+                'created_at' => now()->subHours(5),
+                'updated_at' => now()->subHours(5),
+            ]);
+
+            Notification::create([
+                'user_id'    => $teacherUserId,
+                'title'      => 'تحديث الجدول الدراسي',
+                'message'    => 'تم تعديل جدول محاضرات مادة قواعد البيانات ليوم الثلاثاء إلى قاعة 401.',
+                'type'       => 'administrative',
+                'is_read'    => true,
+                'created_at' => now()->subDays(1),
+                'updated_at' => now()->subDays(1),
+            ]);
+
+            Notification::create([
+                'user_id'    => $teacherUserId,
+                'title'      => 'طلب تصحيح واجب',
+                'message'    => 'هناك 5 واجبات بانتظار التصحيح في مادة أساسيات البرمجة.',
+                'type'       => 'academic',
+                'is_read'    => true,
+                'created_at' => now()->subDays(2),
+                'updated_at' => now()->subDays(2),
+            ]);
+        }
+
         $student = User::where('university_id', '2026100')->first();
 
         if ($student) {

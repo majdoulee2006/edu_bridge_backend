@@ -11,9 +11,12 @@ class LeaveRequest extends Model
 
     protected $fillable = [
         'student_id',
+        'teacher_id',     // مضاف من مايجريشن زميلك
         'type',
+        'leave_category', // مضاف من مايجريشن زميلك
         'date',
         'reason',
+        'attachment',     // مضاف لرفع الملفات
         'status',
     ];
 

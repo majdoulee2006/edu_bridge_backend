@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\Student;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -9,69 +11,61 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Announcement;
 use App\Models\Notification;
 use App\Models\Attendance;
+use App\Models\AttendanceSession;
 use App\Models\Grade;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use App\Models\AbsenceRequest;
+use App\Models\LeaveRequest;
+use App\Models\Enrollment;
+use App\Models\Exam;
 use App\Models\Course;
 use App\Models\Schedule;
+use Carbon\Carbon;
 class StudentController extends Controller
 {
-    /**
+  /**
      * لوحة التحكم الرئيسية للطالب
      */
-  public function getDashboardData(Request $request)
+    public function getDashboardData(Request $request)
     {
         $user = $request->user();
         $student = $user->student;
 
-        // 🌟 1. استخراج أرقام الكورسات أولاً لأننا سنحتاجها في المحاضرات والإعلانات معاً
+        // 1. استخراج أرقام الكورسات لأننا سنحتاجها في المحاضرة القادمة
         $enrolledCourseIds = $student ? $student->courses->modelKeys() : [];
 
-        // 🌟 2. جلب آخر 5 إعلانات (باستخدام الاستهداف الذكي)
-        $announcements = Announcement::where(function($query) use ($user, $student, $enrolledCourseIds) {
-            
-            // أ) إعلانات عامة (للكل)
-            $query->where('type', 'general')
-                  ->orWhereNull('target_role');
-                  
-            // ب) إعلانات مخصصة للطلاب بشكل عام أو حسب القسم والسنة
-            $query->orWhere(function($q) use ($user, $student) {
-                $q->where('target_role', 'student')
-                  // إذا الإعلان مخصص لقسم، يجب أن يطابق قسم الطالب
-                  ->where(function($sub) use ($user) {
-                      $sub->whereNull('department_id')
-                          ->orWhere('department_id', $user->department_id);
-                  })
-                  // إذا الإعلان مخصص لسنة، يجب أن يطابق سنة الطالب
-                  ->where(function($sub) use ($user) {
-                      $sub->whereNull('academic_year')
-                          ->orWhere('academic_year', $user->academic_year);
-                  });
+        // 🌟 2. جلب الإعلانات (العامة + المخصصة لقسم الطالب فقط)
+        $announcements = Announcement::with('author')
+            ->where(function($query) use ($user) {
+                $query->whereNull('department_id')
+                      ->orWhere('department_id', $user->department_id);
+            })
+            ->latest()
+            ->get()
+            ->map(function ($item) {
+                $categoryText = 'عام';
+                if ($item->category == 'important') $categoryText = 'هام جداً';
+                elseif ($item->category == 'student_activity') $categoryText = 'نشاط طلابي';
+                elseif ($item->category == 'academic') $categoryText = 'أكاديمي';
+                elseif ($item->category == 'administrative') $categoryText = 'إداري';
+
+                return [
+                    'id' => $item->announcement_id,
+                    'type' => $item->type ?? 'general',
+                    'title' => $item->title ?? 'إعلان',
+                    'content' => $item->content ?? '',
+                    'category' => $item->category ?? 'general',
+                    'category_text' => $categoryText,
+                    'image' => $item->image ? storageUrl($item->image) : null,
+                    'author_name' => $item->author->full_name ?? 'الإدارة',
+                    'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
+                ];
             });
-
-            // ج) إعلانات مخصصة لكورسات الطالب الحالية فقط
-            if (!empty($enrolledCourseIds)) {
-                $query->orWhereIn('course_id', $enrolledCourseIds);
-            }
-
-        })
-        ->latest()
-        ->take(5)
-        ->get()
-        ->map(function ($item) {
-            return [
-                'id' => $item->announcement_id,
-                'type' => $item->type ?? 'general',
-                'title' => $item->title ?? 'إعلان',
-                'content' => $item->content ?? '',
-                'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
-            ];
-        });
 
         // 3. جلب المحاضرة القادمة
         $nextLecture = null;
-        $today = now()->format('l'); // اسم اليوم بالعربية/الإنجليزية
+        $today = now()->format('l');
 
         $schedule = Schedule::whereIn('course_id', $enrolledCourseIds)
             ->where('day', $today)
@@ -89,33 +83,16 @@ class StudentController extends Controller
             ];
         }
 
-        // 4. إحصائيات سريعة
-        $totalCourses = $student ? $student->courses()->count() : 0;
-        $totalAttendances = $student ? Attendance::where('student_id', $student->student_id)->count() : 0;
-        $presentCount = $student ? Attendance::where('student_id', $student->student_id)->where('status', 'present')->count() : 0;
-        $attendanceRate = $totalAttendances > 0 ? round(($presentCount / $totalAttendances) * 100, 1) : 0;
-
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم جلب البيانات بنجاح',
             'data' => [
+                // 🌟 رجعناها خفيفة ونظيفة مثل ما طلبتي بالضبط!
                 'student' => [
                     'id' => $user->user_id,
                     'name' => $user->full_name,
-                    'student_code' => $student->student_code ?? $user->university_id,
-                    'level' => $student->level ?? 'غير محدد',
-                    'phone' => $user->phone ?? 'غير متوفر',
-                    'email' => $user->email ?? 'غير متوفر',
+                    'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
                     'department' => $user->department ?? 'غير محدد',
-                    'academic_year' => $user->academic_year ?? 'غير محدد',
-                    'birth_date' => $user->birth_date ? date('Y-m-d', strtotime($user->birth_date)) : null,
-                    'gender' => $user->gender ?? 'غير محدد',
-                    'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
-                ],
-                'statistics' => [
-                    'total_courses' => $totalCourses,
-                    'attendance_rate' => $attendanceRate,
-                    'total_assignments' => $student ? AssignmentSubmission::where('student_id', $student->student_id)->count() : 0,
                 ],
                 'next_lecture' => $nextLecture,
                 'announcements' => $announcements,
@@ -132,7 +109,7 @@ class StudentController extends Controller
         $student = $user->student;
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم جلب بيانات الملف الشخصي بنجاح',
             'data' => [
                 'name' => $user->full_name,
@@ -146,7 +123,7 @@ class StudentController extends Controller
                 'gender' => $user->gender ?? 'غير محدد',
                 'level' => $student->level ?? 'غير محدد',
                 // 🌟 إضافة رابط الصورة (إذا مافي صورة بنرجع null)
-                'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
             ]
         ], 200);
     }
@@ -162,12 +139,12 @@ class StudentController extends Controller
     $validator = Validator::make($request->all(), [
         'phone' => 'sometimes|string|max:20',
         'email' => 'sometimes|email|unique:users,email,' . $user->user_id . ',user_id',
-        'avatar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', 
+        'avatar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
     ]);
 
     if ($validator->fails()) {
         return response()->json([
-            'status' => false,
+            'success' => false,
             'errors' => $validator->errors()
         ], 422);
     }
@@ -181,36 +158,39 @@ class StudentController extends Controller
         if ($user->avatar) {
             Storage::disk('public')->delete($user->avatar);
         }
-        
+
         // حفظ الصورة الجديدة
         $path = $request->file('avatar')->store('avatars', 'public');
-        $dataToUpdate['avatar'] = $path; 
+        $dataToUpdate['avatar'] = $path;
     } else {
          // هذا السطر مفيد للـ Debugging فقط إذا أردتِ التأكد (يمكنك حذفه لاحقاً)
-        \Log::info("No avatar file received for user: " . $user->user_id);
+        Log::info("No avatar file received for user: " . $user->user_id);
     }
 
     // 🌟 4. تحديث قاعدة البيانات
     $user->update($dataToUpdate);
 
     return response()->json([
-        'status' => true,
+        'success' => true,
         'message' => 'تم تحديث الملف الشخصي بنجاح',
         'data' => [
             'phone' => $user->phone,
             'email' => $user->email,
-            'avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
+            'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
         ]
     ], 200);
 }
+
     /**
-     * جلب الإشعارات الخاصة بالطالب
+     * جلب الإشعارات الخاصة بالطالب (معدلة لتناسب الهيكل الجديد)
      */
     public function getNotifications(Request $request)
     {
         $user = $request->user();
 
-        $notifications = Notification::where('user_id', $user->user_id)
+        // 🌟 إضافة (with('sender')) لجلب بيانات من أرسل الإشعار
+        $notifications = Notification::with('sender')
+            ->where('user_id', $user->user_id)
             ->latest()
             ->get()
             ->map(function ($notify) {
@@ -219,6 +199,8 @@ class StudentController extends Controller
                     'title' => $notify->title,
                     'message' => $notify->message,
                     'type' => $notify->type,
+                    'category' => $notify->category, // 👈 الحقل الجديد اللي ضفناه
+                    'sender_name' => $notify->sender->full_name ?? 'الإدارة', // 👈 جلب اسم المرسل
                     'is_read' => (bool)$notify->is_read,
                     'created_at' => $notify->created_at ? $notify->created_at->format('Y-m-d H:i:s') : null,
                     'time_ago' => $notify->created_at ? $notify->created_at->diffForHumans() : 'منذ قليل',
@@ -226,11 +208,12 @@ class StudentController extends Controller
             });
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم جلب الإشعارات بنجاح',
             'data' => [
-                'academic' => $notifications->whereIn('type', ['academic', 'marks', 'attendance', 'assignment'])->values(),
-                'administrative' => $notifications->whereIn('type', ['administrative', 'general', 'announcement'])->values(),
+                // 🌟 استخدام حقل category الجديد للتقسيم بشكل مباشر وأدق
+                'academic' => $notifications->where('category', 'academic')->values(),
+                'administrative' => $notifications->where('category', 'administrative')->values(),
                 'all' => $notifications->values(),
             ]
         ], 200);
@@ -249,16 +232,34 @@ class StudentController extends Controller
 
         if (!$notification) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'message' => 'الإشعار غير موجود'
             ], 404);
         }
 
+        // 🌟 دالتك هنا ممتازة ولا تحتاج تعديل منطقي، تعمل بكفاءة تامة
         $notification->update(['is_read' => true]);
 
         return response()->json([
-            'status' => true,
-            'message' => 'تم تحديث حالة الإشعار'
+            'success' => true,
+            'message' => 'تم تحديث حالة الإشعار بنجاح'
+        ], 200);
+    }
+    /**
+     * 8. تحديد كل إشعارات الطالب كمقروءة
+     */
+    public function markAllNotificationsAsRead(Request $request)
+    {
+        $user = $request->user();
+
+        // تحديث كل الإشعارات الغير مقروءة الخاصة بهذا الطالب لتصبح مقروءة
+        Notification::where('user_id', $user->user_id)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديد جميع الإشعارات كمقروءة'
         ], 200);
     }
 
@@ -289,12 +290,52 @@ class StudentController extends Controller
             });
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'data' => $courses
         ], 200);
     }
+   /**
+     * جلب المحاضرات (الدروس) المجمعة حسب المادة
+     */
+    public function getMyLectures(Request $request)
+    {
+        $student = $request->user()->student;
 
-    /**
+        // التعديل 1: غيرنا teacher إلى teachers
+        $courses = $student->courses()
+            ->with(['teachers.user', 'lessons'])
+            ->get()
+            ->map(function ($course) {
+                return [
+                    'course_id' => $course->course_id,
+                    'course_name' => $course->title,
+                    // التعديل 2: جلبنا أول دكتور من مصفوفة الدكاترة
+                    'teacher_name' => $course->teachers->first()?->user->full_name ?? 'مدرس غير محدد',
+                    'total_files' => $course->lessons->count(),
+
+                    'lessons' => $course->lessons->map(function ($lesson) {
+                        return [
+                            'id' => $lesson->lesson_id,
+                            'title' => $lesson->title,
+                            'type' => $lesson->type ?? 'pdf',
+                            'url' => $lesson->content_url ?
+                                    (filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_url : storageUrl($lesson->content_url))
+                                    : null,
+                            'file_size' => $lesson->file_size,
+                            'duration' => $lesson->duration,
+                            'date' => $lesson->created_at ? $lesson->created_at->translatedFormat('d F') : null,
+                        ];
+                    })
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم جلب المحاضرات بنجاح',
+            'data' => $courses
+        ], 200);
+    }
+/**
      * جلب جدول الطالب الأسبوعي
      */
     public function getMySchedule(Request $request)
@@ -303,10 +344,10 @@ class StudentController extends Controller
 
         $schedules = Schedule::whereHas('course', function($query) use ($student) {
                 $query->whereHas('students', function($q) use ($student) {
-                    $q->where('student_id', $student->student_id);
+                    $q->where('enrollments.student_id', $student->student_id);
                 });
             })
-            ->with('course')
+           ->with(['course', 'course.teachers.user']) // 💡 السحر هنا لجلب اليوزر مع المدرس
             ->orderBy('day')
             ->orderBy('start_time')
             ->get()
@@ -316,59 +357,127 @@ class StudentController extends Controller
                     'day' => $day,
                     'lectures' => $items->map(function($item) {
                         return [
-                            'course_name' => $item->course->title,
-                            'start_time' => date('h:i A', strtotime($item->start_time)),
-                            'end_time' => date('h:i A', strtotime($item->end_time)),
-                            'room' => $item->room,
+                            // 💡 2. التعديل: استخدمنا title بدل course_name
+                            'course_name' => $item->course->title ?? 'مادة غير معروفة',
+
+                            // 💡 3. التعديل: جلب اسم أول مدرس من قائمة المدرسين
+                          'teacher' => $item->course->teachers->first()?->user?->name ?? $item->course->teachers->first()?->user?->full_name ?? 'مدرس غير محدد',
+
+                            'start_time'  => date('h:i A', strtotime($item->start_time)),
+                            'end_time'    => date('h:i A', strtotime($item->end_time)),
+                            'room'        => $item->room,
+                            'duration'    => round((strtotime($item->end_time) - strtotime($item->start_time)) / 60) . ' دقيقة',
                         ];
                     })
                 ];
             })->values();
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'data' => $schedules
+        ], 200);
+    }
+    /**
+     * جلب جدول الامتحانات للطالب
+     */
+
+    public function getMyExams(Request $request)
+    {
+        $student = $request->user()->student;
+
+        // نجلب الامتحانات للمواد التي يدرسها الطالب فقط (مع تجنب الغموض في student_id)
+        $exams = Exam::whereHas('course', function($query) use ($student) {
+                $query->whereHas('students', function($q) use ($student) {
+                    $q->where('enrollments.student_id', $student->student_id);
+                });
+            })
+            ->with('course')
+            ->orderBy('exam_date') // ترتيب من الأقرب للأبعد
+            ->get()
+            ->map(function($exam) {
+                $date = Carbon::parse($exam->exam_date);
+                return [
+                    'exam_id'  => $exam->exam_id,
+                    // استخدمنا title بدل course_name
+                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان مادة'),
+                    'day_num'  => $date->format('d'),
+                    'month'    => $date->translatedFormat('F'), // مثال: يونيو
+                    'day_name' => $date->translatedFormat('l'), // مثال: الأحد
+                    'time'     => $date->format('h:i A'),
+                    'duration' => 'ساعتان', // يمكنك جعلها ديناميكية لاحقاً
+                    'room'     => 'القاعة الامتحانية',
+                    'type'     => 'نهائي'
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data'   => $exams
+        ], 200);
+    }
+    /**
+     * تصدير جدول الامتحانات (PDF) — يرجع البيانات كـ JSON
+     */
+    public function exportExamsPdf(Request $request)
+    {
+        $student = $request->user()->student;
+
+        $exams = Exam::whereHas('course', function($query) use ($student) {
+                $query->whereHas('students', function($q) use ($student) {
+                    $q->where('enrollments.student_id', $student->student_id);
+                });
+            })
+            ->with('course')
+            ->orderBy('exam_date')
+            ->get()
+            ->map(function($exam) {
+                $date = Carbon::parse($exam->exam_date);
+                return [
+                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان'),
+                    'date'     => $date->translatedFormat('d F Y'),
+                    'day'      => $date->translatedFormat('l'),
+                    'time'     => $date->format('h:i A'),
+                ];
+            });
+
+        return response()->json([
+            'success'  => true,
+            'pdf_url'  => null,
+            'data'     => $exams,
         ], 200);
     }
 
     /**
-     * جلب سجل حضور الطالب
+     * تصدير جدول الامتحانات (Excel) — يرجع البيانات كـ JSON
      */
-    public function getMyAttendance(Request $request)
+    public function exportExamsExcel(Request $request)
     {
         $student = $request->user()->student;
 
-        $attendances = Attendance::where('student_id', $student->student_id)
-            ->with(['lesson.course'])
-            ->orderBy('attendance_date', 'desc')
+        $exams = Exam::whereHas('course', function($query) use ($student) {
+                $query->whereHas('students', function($q) use ($student) {
+                    $q->where('enrollments.student_id', $student->student_id);
+                });
+            })
+            ->with('course')
+            ->orderBy('exam_date')
             ->get()
-            ->map(function($attendance) {
+            ->map(function($exam) {
+                $date = Carbon::parse($exam->exam_date);
                 return [
-                    'date' => $attendance->attendance_date->format('Y-m-d'),
-                    'status' => $attendance->status,
-                    'status_text' => $attendance->status == 'present' ? 'حاضر' : ($attendance->status == 'absent' ? 'غائب' : 'متأخر'),
-                    'course_name' => $attendance->lesson->course->title ?? 'غير محدد',
+                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان'),
+                    'date'     => $date->format('Y-m-d'),
+                    'time'     => $date->format('h:i A'),
                 ];
             });
 
-        // إحصائيات الحضور
-        $total = $attendances->count();
-        $present = $attendances->where('status', 'present')->count();
-        $absent = $attendances->where('status', 'absent')->count();
-        $late = $attendances->where('status', 'late')->count();
-
         return response()->json([
-            'status' => true,
-            'statistics' => [
-                'total' => $total,
-                'present' => $present,
-                'absent' => $absent,
-                'late' => $late,
-                'percentage' => $total > 0 ? round(($present / $total) * 100, 1) : 0,
-            ],
-            'data' => $attendances
+            'success'    => true,
+            'excel_url'  => null,
+            'data'       => $exams,
         ], 200);
     }
+
 
     /**
      * جلب علامات الطالب
@@ -406,54 +515,89 @@ class StudentController extends Controller
             ->value('average');
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'overall_average' => round($overallAverage ?? 0, 1),
             'data' => $grades
         ], 200);
     }
 
     /**
-     * جلب واجبات الطالب
+     * جلب واجبات الطالب (مصنفة: مكتمل، فائت، قيد الانتظار)
      */
     public function getMyAssignments(Request $request)
     {
         $student = $request->user()->student;
 
-        $submissions = AssignmentSubmission::where('student_id', $student->student_id)
-            ->with(['assignment.course'])
-            ->get()
-            ->map(function($submission) {
-                return [
-                    'id' => $submission->submission_id,
-                    'title' => $submission->assignment->title,
-                    'course_name' => $submission->assignment->course->title,
-                    'due_date' => $submission->assignment->due_date->format('Y-m-d H:i'),
-                    'submitted_at' => $submission->submitted_at ? $submission->submitted_at->format('Y-m-d H:i') : null,
+        // 1. جلب أرقام المواد اللي مسجل فيها الطالب
+        $enrolledCourseIds = Enrollment::where('student_id', $student->student_id)
+            ->pluck('course_id');
+
+        // 2. جلب كل واجبات هاي المواد
+        $assignments = Assignment::with(['course.teachers.user', 'submissions' => function($query) use ($student) {
+            $query->where('student_id', $student->student_id);
+        }])
+        ->whereIn('course_id', $enrolledCourseIds)
+        ->orderBy('due_date', 'asc')
+        ->get();
+
+        $formattedAssignments = [];
+        $now = Carbon::now();
+
+        // 3. تصنيف وتنسيق البيانات للواجهة
+        foreach ($assignments as $assignment) {
+            $submission = $assignment->submissions->first();
+
+            if ($submission) {
+                $status = 'completed';
+            } else {
+                if ($now->greaterThan($assignment->due_date)) {
+                    $status = 'missed';
+                } else {
+                    $status = 'pending';
+                }
+            }
+
+            $formattedAssignments[] = [
+                'id' => $assignment->assignment_id,
+                'title' => $assignment->title,
+                'description' => $assignment->description,
+                'type' => $assignment->type, // pdf, code, project ...
+                'due_date' => $assignment->due_date->format('Y-m-d h:i A'),
+                'max_points' => $assignment->max_points,
+                'course_name' => $assignment->course->title ?? 'مادة غير معروفة',
+                'teacher_name' => $assignment->course->teachers->first()?->user?->name ?? 'مدرس غير محدد',
+                'status' => $status,
+                'submission' => $submission ? [
+                    'file_path' => $submission->file_path ? storageUrl($submission->file_path) : null,
+                    'student_notes' => $submission->student_notes,
                     'grade' => $submission->grade,
-                    'max_points' => $submission->assignment->max_points,
-                    'status' => $submission->grade ? 'graded' : ($submission->submitted_at ? 'submitted' : 'pending'),
                     'feedback' => $submission->feedback,
-                ];
-            });
+                    'submitted_at' => $submission->created_at->format('Y-m-d h:i A'),
+                ] : null
+            ];
+        }
 
         return response()->json([
-            'status' => true,
-            'data' => $submissions
+            'success' => true,
+            'data' => $formattedAssignments
         ], 200);
     }
 
     /**
-     * تقديم واجب
+     * تقديم (رفع) واجب
      */
     public function submitAssignment(Request $request, $assignmentId)
     {
+
+        // تم التعديل ليقبل 50 ميجا (51200 كيلوبايت) وإضافة الصور حسب تصميمك
         $validator = Validator::make($request->all(), [
-            'file' => 'required|file|mimes:pdf,doc,docx,zip|max:5120', // 5MB max
+            'file' => 'required|file|mimes:pdf,doc,docx,zip,jpg,jpeg,png,mp4|max:51200',
+            'student_notes' => 'nullable|string' // استقبال ملاحظات الطالب
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -463,14 +607,20 @@ class StudentController extends Controller
 
         if (!$assignment) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'message' => 'الواجب غير موجود'
             ], 404);
         }
 
+        // اختياري: منع التسليم إذا انتهى الوقت (حسب قوانين تطبيقك)
+        // if (Carbon::now()->greaterThan($assignment->due_date)) {
+        //     return response()->json(['success' => false, 'message' => 'عذراً، انتهى وقت تسليم هذا الواجب'], 403);
+        // }
+
         // رفع الملف
         $file = $request->file('file');
-        $fileName = time() . '_' . $student->student_code . '_' . $file->getClientOriginalName();
+        // استخدام student_id لضمان عدم تكرار الأسماء
+        $fileName = time() . '_' . $student->student_id . '_' . $file->getClientOriginalName();
         $filePath = $file->storeAs('assignments/' . $assignmentId, $fileName, 'public');
 
         // إنشاء أو تحديث التسليم
@@ -481,90 +631,21 @@ class StudentController extends Controller
             ],
             [
                 'file_path' => $filePath,
-                'submitted_at' => now(),
+                'student_notes' => $request->student_notes,
                 'grade' => null,
                 'feedback' => null,
+                'submitted_at' => now(),
             ]
         );
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'message' => 'تم تقديم الواجب بنجاح',
             'data' => $submission
         ], 200);
     }
-
-    /**
-     * طلب إذن غياب
-     */
-    public function requestAbsence(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'date' => 'required|date|after_or_equal:today',
-            'reason' => 'required|string|min:10|max:500',
-            'document' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $student = $request->user()->student;
-
-        // رفع المستند إذا وجد
-        $documentPath = null;
-        if ($request->hasFile('document')) {
-            $document = $request->file('document');
-            $documentPath = $document->store('absence_requests', 'public');
-        }
-
-        $absenceRequest = AbsenceRequest::create([
-            'student_id' => $student->student_id,
-            'date' => $request->date,
-            'reason' => $request->reason,
-            'document' => $documentPath,
-            'status' => 'pending',
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'تم إرسال طلب الإذن بنجاح، سيتم مراجعته من قبل الإدارة',
-            'data' => $absenceRequest
-        ], 200);
-    }
-
-    /**
-     * جلب طلبات الإذن الخاصة بالطالب
-     */
-    public function getMyAbsenceRequests(Request $request)
-    {
-        $student = $request->user()->student;
-
-        $requests = AbsenceRequest::where('student_id', $student->student_id)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function($req) {
-                return [
-                    'id' => $req->request_id,
-                    'date' => $req->date->format('Y-m-d'),
-                    'reason' => $req->reason,
-                    'status' => $req->status,
-                    'status_text' => $req->status == 'approved' ? 'مقبول' : ($req->status == 'rejected' ? 'مرفوض' : 'قيد المراجعة'),
-                    'created_at' => $req->created_at->format('Y-m-d H:i'),
-                ];
-            });
-
-        return response()->json([
-            'status' => true,
-            'data' => $requests
-        ], 200);
-    }
-
-    /**
-     * جلب الروابط والمحاضرات المسجلة
+     /**
+      جلب الروابط والمحاضرات المسجلة
      */
     public function getCourseMaterials(Request $request, $courseId)
     {
@@ -575,7 +656,7 @@ class StudentController extends Controller
 
         if (!$isEnrolled) {
             return response()->json([
-                'status' => false,
+                'success' => false,
                 'message' => 'غير مسموح لك بالوصول إلى هذه الدورة'
             ], 403);
         }
@@ -583,7 +664,7 @@ class StudentController extends Controller
         $course = Course::with(['lessons', 'resources'])->find($courseId);
 
         return response()->json([
-            'status' => true,
+            'success' => true,
             'course_name' => $course->title,
             'lessons' => $course->lessons->map(function($lesson) {
                 return [
@@ -597,7 +678,7 @@ class StudentController extends Controller
                 return [
                     'id' => $resource->resource_id,
                     'name' => $resource->resource_name,
-                    'file_url' => asset('storage/' . $resource->file_path),
+                    'file_url' => storageUrl($resource->file_path),
                 ];
             }),
         ], 200);
@@ -607,4 +688,245 @@ class StudentController extends Controller
      * ربط الطالب بولي الأمر (للاستخدام من تطبيق ولي الأمر)
      */
 
+    /**
+     * 1. جلب سجل حضور الطالب (مع الأعذار)
+     */
+    public function getMyAttendance(Request $request)
+    {
+        $student = $request->user()->student;
+
+        $attendances = Attendance::where('student_id', $student->student_id)
+            ->with(['lesson.course'])
+            ->orderBy('attendance_date', 'desc')
+            ->get()
+            ->map(function($attendance) {
+                return [
+                    'id' => $attendance->attendance_id,
+                    'date' => Carbon::parse($attendance->attendance_date)->translatedFormat('d F، l'), // مثلاً: 24 أكتوبر، الثلاثاء
+                    'status' => $attendance->status,
+                    'status_text' => $attendance->status == 'present' ? 'حاضر' : ($attendance->status == 'absent' ? 'غائب' : 'متأخر'),
+                    'course_name' => $attendance->lesson->course->title ?? 'غير محدد',
+                    // بيانات العذر للواجهة
+                    'excuse_status' => $attendance->excuse_status,
+                    'excuse_text' => $attendance->excuse_text,
+                    'excuse_attachment' => $attendance->excuse_attachment ? storageUrl($attendance->excuse_attachment) : null,
+                ];
+            });
+
+        // إحصائيات الحضور
+        $total = $attendances->count();
+        $present = $attendances->where('status', 'present')->count();
+        $absent = $attendances->where('status', 'absent')->count();
+        $late = $attendances->where('status', 'late')->count();
+
+        return response()->json([
+            'success' => true,
+            'statistics' => [
+                'total' => $total,
+                'present' => $present,
+                'absent' => $absent,
+                'late' => $late,
+                'percentage' => $total > 0 ? round(($present / $total) * 100, 1) : 0,
+            ],
+            'data' => $attendances
+        ], 200);
+    }
+
+    /**
+     * 2. طلب إجازة (يومية أو ساعية)
+     */
+    public function requestAbsence(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|in:full_day,hourly',
+            'date' => 'required|date|after_or_equal:today',
+            'reason' => 'required|string|min:10|max:500',
+            'document' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $student = $request->user()->student;
+
+        // رفع المستند إذا وجد
+        $documentPath = null;
+        if ($request->hasFile('document')) {
+            $document = $request->file('document');
+            $documentPath = $document->store('leave_requests', 'public');
+        }
+
+        // استخدام موديل LeaveRequest الحقيقي
+        $leaveRequest = LeaveRequest::create([
+            'student_id' => $request->user()->user_id, // انتبهي: student_id في جدول الإجازات مربوط بـ users
+            'type' => $request->type,
+            'leave_category' => $request->type == 'hourly' ? 'hourly' : 'daily',
+            'date' => $request->date,
+            'reason' => $request->reason,
+            'attachment' => $documentPath,
+            'status' => 'pending_hod', // تبدأ عند رئيس القسم
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال طلب الإجازة بنجاح، بانتظار موافقة رئيس القسم',
+            'data' => $leaveRequest
+        ], 200);
+    }
+
+    /**
+     * 3. جلب طلبات الإجازة الخاصة بالطالب
+     */
+    public function getMyAbsenceRequests(Request $request)
+    {
+        $userId = $request->user()->user_id;
+
+        $requests = LeaveRequest::where('student_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($req) {
+                // تحديد النص العربي للحالة
+                $statusText = 'قيد المراجعة';
+                if ($req->status == 'approved') $statusText = 'مقبول';
+                elseif ($req->status == 'rejected') $statusText = 'مرفوض';
+                elseif ($req->status == 'pending_hod') $statusText = 'بانتظار رئيس القسم';
+                elseif ($req->status == 'pending_affairs') $statusText = 'بانتظار الشؤون';
+                elseif ($req->status == 'pending_parent') $statusText = 'بانتظار ولي الأمر';
+
+                return [
+                    'id' => $req->id,
+                    'type' => $req->type == 'hourly' ? 'إجازة ساعية' : 'إجازة يوم كامل',
+                    'date' => Carbon::parse($req->date)->translatedFormat('d F Y'),
+                    'reason' => $req->reason,
+                    'status' => $req->status,
+                    'status_text' => $statusText,
+                    'attachment' => $req->attachment ? storageUrl($req->attachment) : null,
+                    'created_at' => $req->created_at->format('Y-m-d H:i'),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $requests
+        ], 200);
+    }
+    /**
+     * 4. مسح الباركود وتسجيل الحضور
+     */
+    public function scanAttendanceQr(Request $request)
+    {
+        $request->validate([
+            'qr_token' => 'required|string'
+        ]);
+
+        $student = $request->user()->student;
+
+        // البحث عن جلسة الحضور باستخدام التوكن (الباركود)
+        $session = AttendanceSession::where('qr_token', $request->qr_token)
+            ->where('is_active', true)
+            ->where('expires_at', '>', now()) // التأكد أن الباركود لم تنتهِ صلاحيته
+            ->first();
+
+        if (!$session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'رمز الباركود غير صالح أو منتهي الصلاحية'
+            ], 400);
+        }
+
+        // تسجيل الطالب كـ "حاضر"
+        // (نستخدم updateOrCreate عشان لو السجل موجود مسبقاً كغائب تتحدث حالته لحاضر، ولو مو موجود يتم إنشاؤه)
+        $attendance = Attendance::updateOrCreate(
+            [
+                'student_id' => $student->student_id,
+                'lesson_id' => $session->lesson_id,
+                'attendance_date' => now()->toDateString(),
+            ],
+            [
+                'status' => 'present',
+                'excuse_status' => 'none'
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تسجيل حضورك بنجاح!',
+            'data' => $attendance
+        ], 200);
+    }
+
+    /**
+     * 5. تقديم عذر لغياب سابق
+     */
+    public function submitAttendanceExcuse(Request $request, $attendance_id)
+    {
+        $request->validate([
+            'excuse_text' => 'required|string|min:5',
+            'document' => 'nullable|file|mimes:pdf,jpg,png|max:2048',
+        ]);
+
+        $student = $request->user()->student;
+
+        // البحث عن سجل الغياب الخاص بهذا الطالب وهذا اليوم
+        $attendance = Attendance::where('attendance_id', $attendance_id)
+            ->where('student_id', $student->student_id)
+            ->first();
+
+        if (!$attendance) {
+            return response()->json(['success' => false, 'message' => 'سجل الغياب غير موجود'], 404);
+        }
+
+        if ($attendance->status == 'present') {
+            return response()->json(['success' => false, 'message' => 'لا يمكنك تقديم عذر لأنك كنت حاضراً في هذا اليوم!'], 400);
+        }
+
+        // رفع الملف المرفق للعذر (تقرير طبي مثلاً)
+        $documentPath = $attendance->excuse_attachment;
+        if ($request->hasFile('document')) {
+            $document = $request->file('document');
+            $documentPath = $document->store('attendance_excuses', 'public');
+        }
+
+        // تحديث السجل وحفظ العذر
+        $attendance->update([
+            'excuse_text' => $request->excuse_text,
+            'excuse_attachment' => $documentPath,
+            'excuse_status' => 'pending' // تتحول الحالة إلى قيد المراجعة
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تقديم العذر بنجاح، بانتظار مراجعة الإدارة',
+            'data' => $attendance
+        ], 200);
+    }
+
+    public function linkStudent(Request $request)
+    {
+        $request->validate(['student_code' => 'required|string']);
+
+        $student = DB::table('students')->where('student_code', $request->student_code)->first();
+        if (!$student) {
+            return response()->json(['message' => 'كود الطالب غير موجود'], 404);
+        }
+
+        $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
+        if (!$parent) {
+            return response()->json(['message' => 'سجل ولي الأمر غير موجود'], 404);
+        }
+
+        DB::table('parent_students')->updateOrInsert([
+            'parent_id'  => $parent->parent_id,
+            'student_id' => $student->student_id,
+        ]);
+
+        return response()->json(['message' => 'تم ربط الطالب بنجاح'], 200);
+    }
 }
+
+
+

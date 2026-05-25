@@ -1,5 +1,4 @@
 <?php
-// app/Models/AbsenceRequest.php
 
 namespace App\Models;
 

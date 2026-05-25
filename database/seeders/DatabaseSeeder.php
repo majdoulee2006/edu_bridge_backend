@@ -73,7 +73,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 5. حساب مدرس تجريبي
-        User::create([
+        $teacherUser = User::create([
             'full_name' => 'د. سامر المحمد',
             'username' => '0986387992',
             'phone' => '0986387992',
@@ -81,6 +81,14 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('12345678'),
             'role_id' =>2,
             'status' => 'active',
+        ]);
+
+        // إدخال ملف المدرس في جدول teachers المرتبط به
+        \Illuminate\Support\Facades\DB::table('teachers')->insert([
+            'user_id'        => $teacherUser->user_id,
+            'specialization' => 'علوم الحاسوب',
+            'created_at'     => now(),
+            'updated_at'     => now(),
         ]);
 
         // استدعاء السيدرز الأخرى التي تعتمد على وجود المستخدمين
