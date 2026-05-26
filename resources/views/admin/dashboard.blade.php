@@ -8,63 +8,37 @@
 
     <!-- Announcements & Events Feed -->
     @forelse($announcements as $announcement)
-        @if($loop->first && $announcement->image_path)
-            <!-- Main Hero Announcement (Featured) -->
-            <article class="relative flex flex-col rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft overflow-hidden group border border-slate-100/50 dark:border-slate-800/50 transition-colors">
-                <div class="relative w-full h-48 overflow-hidden">
-                    <div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" 
-                         style="background-image: url('{{ asset('storage/' . $announcement->image_path) }}');">
-                    </div>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div class="absolute bottom-4 right-4 text-white">
-                        <span class="inline-block px-3 py-1 bg-primary rounded-full text-xs font-bold text-primary-content backdrop-blur-sm mb-2 shadow-sm">هام جداً</span>
-                    </div>
-                </div>
-                <div class="p-5 flex flex-col gap-3">
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white leading-tight">
-                        {{ $announcement->title }}
-                    </h2>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed line-clamp-2">
-                        {{ $announcement->content }}
-                    </p>
-
-                    <div class="flex items-center justify-between mt-2 pt-3 border-t border-slate-100 dark:border-slate-800/50">
-                        <span class="text-xs text-slate-400 font-medium">{{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}</span>
-                        <a href="#" class="text-yellow-600 dark:text-yellow-400 text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all">
-                            تفاصيل الإعلان
-                            <span class="material-symbols-outlined text-lg">arrow_back</span>
-                        </a>
-                    </div>
-                </div>
-            </article>
-        @else
-            <!-- Standard Announcement Card -->
-            <article class="flex items-stretch gap-4 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100/50 dark:border-slate-800/50 transition-colors">
-                <div class="flex-grow flex flex-col justify-center gap-2 min-w-0">
-                    <h3 class="text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
-                        {{ $announcement->title }}
-                    </h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                        {{ $announcement->content }}
-                    </p>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md font-medium">
-                            {{ $announcement->category ?? 'إعلانات عامة' }}
-                        </span>
-                        <span class="text-[10px] text-slate-400">{{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}</span>
-                    </div>
-                </div>
+        <!-- Premium News Card (Matching HOD layout style) -->
+        <article class="overflow-hidden bg-surface-light dark:bg-surface-dark rounded-3xl shadow-soft border border-slate-100/50 dark:border-slate-800/50 transition-all duration-300 hover:shadow-lg">
+            <div class="relative w-full h-48">
                 @if($announcement->image_path)
-                    <div class="w-24 h-24 shrink-0 rounded-xl bg-cover bg-center" 
-                         style="background-image: url('{{ asset('storage/' . $announcement->image_path) }}');">
-                    </div>
+                    <div class="w-full h-full bg-cover bg-center" style="background-image: url('{{ asset('storage/' . $announcement->image_path) }}');"></div>
                 @else
-                    <div class="w-24 h-24 shrink-0 rounded-xl bg-primary/10 dark:bg-primary/5 text-primary flex items-center justify-center">
-                        <span class="material-symbols-outlined text-4xl">campaign</span>
+                    <div class="w-full h-full flex items-center justify-center bg-primary/10 dark:bg-primary/5 text-primary">
+                        <span class="material-symbols-outlined text-5xl">campaign</span>
                     </div>
                 @endif
-            </article>
-        @endif
+                <span class="absolute top-4 right-4 inline-block px-3 py-1 bg-primary text-primary-content text-xs font-bold rounded-full shadow-sm">
+                    {{ $announcement->category ?? 'إعلان هام' }}
+                </span>
+            </div>
+            
+            <div class="p-6">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 mb-3 font-bold">
+                    <span class="flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">schedule</span>
+                        {{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">groups</span>
+                        موجه إلى: {{ $announcement->target_audience == 'all' ? 'الجميع' : ($announcement->target_audience ?? 'الجميع') }}
+                    </span>
+                </div>
+                
+                <h4 class="text-base font-bold text-slate-900 dark:text-white mb-2 leading-tight">{{ $announcement->title }}</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{{ Str::limit($announcement->content, 180) }}</p>
+            </div>
+        </article>
     @empty
         <!-- Fallback if no announcements -->
         <article class="flex flex-col items-center justify-center p-8 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft text-center border border-slate-100/50 dark:border-slate-800/50">
