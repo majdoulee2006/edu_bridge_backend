@@ -73,7 +73,7 @@ class AdminWebController extends Controller
 
         // 2. Fetch upcoming events (from calendar events)
         $events = DB::table('calendar_events')
-            ->orderBy('start_date')
+            ->orderBy('event_date')
             ->limit(3)
             ->get();
 
