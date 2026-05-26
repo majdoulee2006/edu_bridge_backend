@@ -133,9 +133,18 @@
 
             <form action="{{ route('affairs.login.submit') }}" method="POST">
                 @csrf
+
+                {{-- رسائل الخطأ --}}
+                @if($errors->any())
+                <div style="background:#fee2e2; border:1px solid #fca5a5; color:#b91c1c; padding:1rem; border-radius:0.8rem; margin-bottom:1.2rem; font-weight:700; font-size:0.9rem; text-align:right;">
+                    <i class="fa-solid fa-circle-exclamation" style="margin-left:0.5rem;"></i>
+                    {{ $errors->first() }}
+                </div>
+                @endif
+
                 <div class="input-group">
                     <label>البريد الإلكتروني</label>
-                    <input type="email" name="email" placeholder="أدخل البريد الإلكتروني" required>
+                    <input type="email" name="email" value="{{ old('email') }}" placeholder="أدخل البريد الإلكتروني" required>
                 </div>
 
                 <div class="input-group">

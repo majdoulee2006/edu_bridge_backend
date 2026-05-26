@@ -13,11 +13,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-        'role'    => \App\Http\Middleware\RoleMiddleware::class,
-        'hod'     => \App\Http\Middleware\CheckHodRole::class,
-        'teacher' => \App\Http\Middleware\CheckTeacherRole::class,
-    ]);
-        //
+            'role'    => \App\Http\Middleware\RoleMiddleware::class,
+            'hod'     => \App\Http\Middleware\CheckHodRole::class,
+            'teacher' => \App\Http\Middleware\CheckTeacherRole::class,
+            'affairs' => \App\Http\Middleware\CheckAffairsRole::class,
+        ]);
+
+        // منع التحويل لـ api/login عند استخدام auth middleware
+        $middleware->redirectGuestsTo('/affairs/login');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

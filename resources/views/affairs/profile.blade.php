@@ -3,71 +3,173 @@
 
 @push('styles')
 <style>
-    .profile-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-top: 1rem;
+    .profile-page {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 1rem 3rem;
     }
-    .profile-avatar-wrapper {
+
+    /* Cover & Avatar */
+    .profile-cover {
+        height: 200px;
+        border-radius: 1.5rem;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
         position: relative;
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        margin-bottom: 1rem;
-        background: url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80') center/cover;
-        border: 4px solid var(--bg-secondary);
+        margin-bottom: 4rem;
+        overflow: visible;
         box-shadow: var(--shadow);
     }
-    .camera-btn {
+    .cover-pattern {
         position: absolute;
-        bottom: 5px;
-        left: 5px;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
+        inset: 0;
+        border-radius: 1.5rem;
+        background: repeating-linear-gradient(
+            45deg,
+            rgba(252, 227, 0, 0.04),
+            rgba(252, 227, 0, 0.04) 1px,
+            transparent 1px,
+            transparent 20px
+        );
+    }
+    .cover-accent {
+        position: absolute;
+        bottom: -2px;
+        right: 2rem;
+        width: 100px;
+        height: 100px;
         background: var(--accent-color);
-        color: white;
+        border-radius: 50%;
+        opacity: 0.08;
+        filter: blur(30px);
+    }
+
+    /* Avatar */
+    .profile-avatar-wrapper {
+        position: absolute;
+        bottom: -55px;
+        right: 2rem;
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent-color), #f9d813);
+        border: 5px solid var(--bg-primary);
+        box-shadow: 0 4px 20px rgba(252, 227, 0, 0.3);
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 3px solid var(--bg-primary);
+        font-size: 3rem;
+        color: var(--primary-dark);
+        cursor: pointer;
+        overflow: hidden;
+    }
+    .avatar-overlay {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s;
         cursor: pointer;
     }
-    .profile-name {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--text-primary);
-    }
-    .profile-role {
-        background: var(--accent-color);
-        color: var(--primary-dark);
-        padding: 0.2rem 1rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 700;
+    .avatar-overlay i { color: white; font-size: 1.5rem; }
+    .profile-avatar-wrapper:hover .avatar-overlay { opacity: 1; }
+
+    /* Name & Role */
+    .profile-identity {
+        padding: 0 2rem;
         margin-bottom: 2rem;
     }
+    .profile-name {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0 0 0.4rem 0;
+    }
+    .profile-role-badge {
+        display: inline-block;
+        background: var(--accent-color);
+        color: var(--primary-dark);
+        padding: 0.3rem 1.2rem;
+        border-radius: 2rem;
+        font-size: 0.9rem;
+        font-weight: 800;
+    }
+
+    /* Stats */
+    .profile-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background: var(--bg-secondary);
+        border-radius: 1rem;
+        padding: 1.2rem;
+        text-align: center;
+        box-shadow: var(--shadow);
+    }
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: var(--accent-color);
+        display: block;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 600;
+    }
+
+    /* Section Title */
+    .section-heading {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .section-heading i { color: var(--accent-color); }
+
+    /* Info Cards */
     .info-list {
-        width: 100%;
-        max-width: 600px;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.8rem;
+        margin-bottom: 2rem;
     }
     .info-card {
         background: var(--bg-secondary);
-        border-radius: 1.5rem;
-        padding: 1.25rem 1.5rem;
+        border-radius: 1rem;
+        padding: 1rem 1.5rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
         box-shadow: var(--shadow);
+        transition: transform 0.2s;
     }
-    .info-details {
+    .info-card:hover { transform: translateX(-3px); }
+    .info-right {
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
     }
+    .info-icon-wrapper {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+    .info-details {}
     .info-label {
         color: var(--text-secondary);
         font-size: 0.8rem;
@@ -75,170 +177,323 @@
     }
     .info-value {
         font-weight: 800;
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: var(--text-primary);
     }
-    .info-icon-wrapper {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: var(--bg-primary); color: var(--accent-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-    }
     .edit-btn {
-        color: var(--accent-color);
         background: none;
         border: none;
-        font-size: 1.2rem;
+        color: var(--accent-color);
+        font-size: 1rem;
         cursor: pointer;
+        padding: 0.4rem;
+        transition: opacity 0.2s;
     }
-    .edit-btn:hover {
-        opacity: 0.8;
+    .edit-btn:hover { opacity: 0.7; }
+
+    /* Action Rows */
+    .action-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        margin-bottom: 1.5rem;
     }
     .action-row {
         background: var(--bg-secondary);
-        border-radius: 1.5rem;
-        padding: 1.25rem 1.5rem;
+        border-radius: 1rem;
+        padding: 1rem 1.5rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
         box-shadow: var(--shadow);
         cursor: pointer;
+        transition: transform 0.2s;
         width: 100%;
-        max-width: 600px;
-        margin-top: 1rem;
-        font-weight: 800;
+        border: none;
+        text-align: right;
     }
-    .action-row:hover { background: #f8fafc; }
+    .action-row:hover { transform: translateX(-3px); }
+    .action-row-inner { display: flex; align-items: center; gap: 1rem; }
+    .action-row-icon {
+        width: 44px; height: 44px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+    }
+    .action-row-title { font-weight: 800; color: var(--text-primary); }
+    .action-row-desc { font-size: 0.8rem; color: var(--text-secondary); }
+
+    /* Logout */
     .logout-btn {
-        background: var(--accent-color);
-        color: var(--primary-dark);
-        border-radius: 1.5rem;
-        padding: 1.25rem 1.5rem;
+        width: 100%;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border: none;
+        border-radius: 1rem;
+        padding: 1.2rem;
+        font-size: 1.1rem;
+        font-weight: 800;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        font-weight: 800;
-        width: 100%;
-        max-width: 600px;
-        margin-top: 1rem;
-        border: none;
-        cursor: pointer;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
+        gap: 0.75rem;
+        transition: opacity 0.2s, transform 0.2s;
     }
+    .logout-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
-    /* Modal Styles for OTP */
+    /* OTP Modal */
     .modal-overlay {
-        position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-        display: none; align-items: center; justify-content: center; z-index: 10000;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        display: none; align-items: center; justify-content: center;
+        z-index: 10000;
+        backdrop-filter: blur(5px);
     }
     .modal-overlay.active { display: flex; }
     .modal-card {
-        background: var(--bg-secondary); border-radius: 1.5rem; padding: 2rem;
-        width: 90%; max-width: 400px; text-align: center;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        background: var(--bg-secondary);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        width: 90%; max-width: 420px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease;
     }
-    .modal-card input {
-        width: 100%; padding: 1rem; border-radius: 1rem; border: 2px solid var(--border-color);
-        margin: 1rem 0; font-size: 1rem; font-weight: 700; text-align: center;
+    @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
     }
-    .modal-card button {
+    .modal-icon {
+        width: 70px; height: 70px;
+        background: rgba(252, 227, 0, 0.15);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; color: var(--accent-color);
+        margin: 0 auto 1rem;
+    }
+    .modal-card h3 { font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem; }
+    .modal-card p { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    
+    .otp-input-row {
+        display: flex; gap: 0.8rem; justify-content: center; margin-bottom: 1.5rem;
+    }
+    .otp-digit {
+        width: 55px; height: 60px;
+        border: 2px solid var(--border-color);
+        border-radius: 0.75rem;
+        text-align: center; font-size: 1.8rem; font-weight: 800;
+        background: var(--bg-primary); color: var(--text-primary);
+        transition: border-color 0.2s;
+    }
+    .otp-digit:focus { border-color: var(--accent-color); outline: none; }
+
+    .modal-confirm-btn {
         width: 100%; padding: 1rem; border-radius: 1rem; border: none;
-        background: var(--accent-color); color: #1a1a1a; font-weight: 800; font-size: 1rem;
-        cursor: pointer;
+        background: var(--accent-color); color: var(--primary-dark);
+        font-weight: 800; font-size: 1.1rem; cursor: pointer; margin-bottom: 0.8rem;
     }
+    .modal-cancel-btn {
+        width: 100%; padding: 0.8rem; border-radius: 1rem; border: none;
+        background: transparent; color: var(--text-secondary); font-weight: 700; cursor: pointer;
+    }
+    .modal-cancel-btn:hover { color: var(--text-primary); }
 </style>
 @endpush
 
 @section('content')
-<div class="profile-container">
-    <div class="profile-avatar-wrapper">
-        <div class="camera-btn"><i class="fa-solid fa-camera"></i></div>
+<div class="profile-page">
+    
+    <!-- Cover -->
+    <div class="profile-cover">
+        <div class="cover-pattern"></div>
+        <div class="cover-accent"></div>
+        <div class="profile-avatar-wrapper">
+            <i class="fa-solid fa-user-tie"></i>
+            <div class="avatar-overlay">
+                <i class="fa-solid fa-camera"></i>
+            </div>
+        </div>
     </div>
-    <div class="profile-name">{{ auth()->user()->full_name ?? 'أحمد محمد' }}</div>
-    <div class="profile-role">موظف شؤون</div>
 
+    <!-- Name & Role -->
+    <div class="profile-identity">
+        <h2 class="profile-name">{{ $user->full_name }}</h2>
+        <span class="profile-role-badge">موظف شؤون طلاب</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="profile-stats">
+        <div class="stat-card">
+            <span class="stat-value">{{ $reviewedLeaves }}</span>
+            <span class="stat-label">طلب تمت معالجته</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ $sentMessages }}</span>
+            <span class="stat-label">رسالة مرسلة</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ now()->year - ($user->created_at ? $user->created_at->year : now()->year) }}</span>
+            <span class="stat-label">سنوات الخدمة</span>
+        </div>
+    </div>
+
+    <!-- Personal Info -->
+    <p class="section-heading"><i class="fa-solid fa-circle-info"></i> المعلومات الشخصية</p>
     <div class="info-list">
         <!-- Phone -->
         <div class="info-card">
-            <button class="edit-btn" onclick="openOTPModal('phone')"><i class="fa-solid fa-pen"></i></button>
-            <div class="info-details" style="text-align: right; flex: 1; padding-right: 1rem;">
-                <div class="info-label">رقم الهاتف</div>
-                <div class="info-value" dir="ltr">050 123 4567</div>
+            <div class="info-right">
+                <div class="info-icon-wrapper" style="background: rgba(252, 227, 0, 0.15); color: var(--accent-color);"><i class="fa-solid fa-phone"></i></div>
+                <div class="info-details">
+                    <div class="info-label">رقم الهاتف</div>
+                    <div class="info-value" dir="ltr" style="text-align: right;">{{ $user->phone ?? 'غير محدد' }}</div>
+                </div>
             </div>
-            <div class="info-icon-wrapper" style="background: #e0f2fe; color: #0284c7;"><i class="fa-solid fa-phone"></i></div>
+            <button class="edit-btn" onclick="openEditModal('phone')"><i class="fa-solid fa-pen"></i></button>
         </div>
 
         <!-- Email -->
         <div class="info-card">
-            <button class="edit-btn" onclick="openOTPModal('email')"><i class="fa-solid fa-pen"></i></button>
-            <div class="info-details" style="text-align: right; flex: 1; padding-right: 1rem;">
-                <div class="info-label">البريد الإلكتروني</div>
-                <div class="info-value">...ed@edubridge.com</div>
+            <div class="info-right">
+                <div class="info-icon-wrapper" style="background: rgba(252, 227, 0, 0.15); color: var(--accent-color);"><i class="fa-solid fa-envelope"></i></div>
+                <div class="info-details">
+                    <div class="info-label">البريد الإلكتروني</div>
+                    <div class="info-value">{{ $user->email }}</div>
+                </div>
             </div>
-            <div class="info-icon-wrapper" style="background: #e0e7ff; color: #4f46e5;"><i class="fa-solid fa-envelope"></i></div>
+            <button class="edit-btn" onclick="openEditModal('email')"><i class="fa-solid fa-pen"></i></button>
         </div>
 
         <!-- Birthdate -->
         <div class="info-card">
-            <div></div> <!-- Spacer -->
-            <div class="info-details" style="text-align: right; flex: 1; padding-right: 1rem;">
-                <div class="info-label">تاريخ الميلاد</div>
-                <div class="info-value">15 أغسطس 1993</div>
+            <div class="info-right">
+                <div class="info-icon-wrapper" style="background: rgba(252, 227, 0, 0.15); color: var(--accent-color);"><i class="fa-solid fa-calendar"></i></div>
+                <div class="info-details">
+                    <div class="info-label">تاريخ الميلاد</div>
+                    <div class="info-value">{{ $user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->format('d / m / Y') : 'غير محدد' }}</div>
+                </div>
             </div>
-            <div class="info-icon-wrapper" style="background: #f1f5f9; color: #64748b;"><i class="fa-solid fa-calendar"></i></div>
-        </div>
-
-        <!-- Gender -->
-        <div class="info-card">
-            <div></div> <!-- Spacer -->
-            <div class="info-details" style="text-align: right; flex: 1; padding-right: 1rem;">
-                <div class="info-label">الجنس</div>
-                <div class="info-value">ذكر</div>
-            </div>
-            <div class="info-icon-wrapper" style="background: #dbeafe; color: #2563eb;"><i class="fa-solid fa-person"></i></div>
+            <div></div>
         </div>
 
         <!-- Department -->
         <div class="info-card">
-            <i class="fa-solid fa-lock" style="color: var(--text-secondary);"></i>
-            <div class="info-details" style="text-align: right; flex: 1; padding-right: 1rem;">
-                <div class="info-label">القسم</div>
-                <div class="info-value">شؤون الطلاب</div>
+            <div class="info-right">
+                <div class="info-icon-wrapper" style="background: rgba(252, 227, 0, 0.15); color: var(--accent-color);"><i class="fa-solid fa-building"></i></div>
+                <div class="info-details">
+                    <div class="info-label">القسم</div>
+                    <div class="info-value">شؤون الطلاب</div>
+                </div>
             </div>
-            <div class="info-icon-wrapper" style="background: #f3f4f6; color: #4b5563;"><i class="fa-solid fa-building"></i></div>
+            <div></div>
         </div>
     </div>
 
-    <!-- Password -->
-    <div class="action-row">
-        <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary);"></i>
-        <div style="flex: 1; text-align: right; padding-right: 1rem; color: var(--text-primary);">تغيير كلمة المرور</div>
-        <i class="fa-solid fa-arrow-rotate-left" style="font-size: 1.2rem;"></i>
+    <!-- Action Rows -->
+    <p class="section-heading"><i class="fa-solid fa-sliders"></i> إعدادات الحساب</p>
+    <div class="action-rows">
+        <button class="action-row" onclick="openPasswordModal()">
+            <div class="action-row-inner">
+                <div class="action-row-icon" style="background: rgba(252,227,0,0.15); color: var(--accent-color);">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <div style="text-align: right;">
+                    <div class="action-row-title">تغيير كلمة المرور</div>
+                    <div class="action-row-desc">حماية إضافية للحساب</div>
+                </div>
+            </div>
+            <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary);"></i>
+        </button>
+
+        <button class="action-row" onclick="window.location.href='/affairs/settings'">
+            <div class="action-row-inner">
+                <div class="action-row-icon" style="background: rgba(252,227,0,0.15); color: var(--accent-color);">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <div style="text-align: right;">
+                    <div class="action-row-title">الإعدادات العامة</div>
+                    <div class="action-row-desc">الإشعارات، المظهر، اللغة</div>
+                </div>
+            </div>
+            <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary);"></i>
+        </button>
     </div>
 
     <!-- Logout -->
-    <form action="{{ route('affairs.logout') }}" method="POST" style="width: 100%; max-width: 600px;">
+    <form action="{{ route('affairs.logout') }}" method="POST">
         @csrf
         <button type="submit" class="logout-btn">
-            تسجيل الخروج <i class="fa-solid fa-arrow-right-from-bracket" style="transform: scaleX(-1);"></i>
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            تسجيل الخروج
         </button>
     </form>
+
+</div>
+
+<!-- Modals -->
+<!-- Update Info Modal -->
+<div class="modal-overlay" id="editInfoModal">
+    <div class="modal-card">
+        <h3 id="modalTitle" style="margin-bottom: 1.5rem;">تعديل البيانات</h3>
+        <form id="profileUpdateForm" action="{{ route('affairs.profile.update') }}" method="POST">
+            @csrf
+            <input type="hidden" name="full_name" value="{{ $user->full_name }}">
+            
+            <div id="phoneInputGroup" style="display: none; text-align: right; margin-bottom: 1rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">رقم الهاتف</label>
+                <input type="text" name="phone" class="form-control" value="{{ $user->phone }}" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+            </div>
+
+            <div id="emailInputGroup" style="display: none; text-align: right; margin-bottom: 1rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">البريد الإلكتروني</label>
+                <input type="email" name="email" class="form-control" value="{{ $user->email }}" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+            </div>
+
+            <button type="submit" class="modal-confirm-btn">حفظ التغييرات</button>
+            <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
+        </form>
+    </div>
+</div>
+
+<!-- Update Password Modal -->
+<div class="modal-overlay" id="editPasswordModal">
+    <div class="modal-card">
+        <h3 style="margin-bottom: 1.5rem;">تغيير كلمة المرور</h3>
+        <form action="{{ route('affairs.profile.password') }}" method="POST" style="text-align: right;">
+            @csrf
+            <div style="margin-bottom: 1rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الحالية</label>
+                <input type="password" name="current_password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الجديدة</label>
+                <input type="password" name="password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">تأكيد كلمة المرور الجديدة</label>
+                <input type="password" name="password_confirmation" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+            </div>
+
+            <button type="submit" class="modal-confirm-btn">تغيير كلمة المرور</button>
+            <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
+        </form>
+    </div>
 </div>
 
 <!-- OTP Modal -->
 <div class="modal-overlay" id="otpModal">
     <div class="modal-card">
-        <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-shield-halved" style="color: var(--accent-color);"></i> تحقق أمني (OTP)</h3>
-        <p style="color: var(--text-secondary); font-size: 0.9rem;">لقد أرسلنا رمز تحقق إلى هاتفك المحمول. يرجى إدخاله للمتابعة.</p>
-        <input type="text" placeholder="----" maxlength="4" style="letter-spacing: 0.5rem;">
-        <button type="button" onclick="verifyOTP()">تأكيد وإرسال</button>
-        <button type="button" style="background: transparent; color: var(--text-secondary); margin-top: 0.5rem;" onclick="closeOTPModal()">إلغاء</button>
+        <div class="modal-icon" style="width: 70px; height: 70px; background: rgba(252, 227, 0, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--accent-color); margin: 0 auto 1rem;"><i class="fa-solid fa-shield-halved"></i></div>
+        <h3 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem;">التحقق الأمني (OTP)</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">أرسلنا رمزاً مؤلفاً من 4 أرقام لتأكيد هويتك. أدخله أدناه للمتابعة.</p>
+        <div style="display: flex; gap: 0.8rem; justify-content: center; margin-bottom: 1.5rem;">
+            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary); color: var(--text-primary);">
+            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary); color: var(--text-primary);">
+            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary); color: var(--text-primary);">
+            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary); color: var(--text-primary);">
+        </div>
+        <button type="button" class="modal-confirm-btn" onclick="submitProfileForm()">تأكيد وحفظ</button>
+        <button type="button" class="modal-cancel-btn" onclick="closeOTPModal()">إلغاء</button>
     </div>
 </div>
 
@@ -246,15 +501,86 @@
 
 @push('scripts')
 <script>
-    function openOTPModal(type) {
-        document.getElementById('otpModal').classList.add('active');
+    let pendingForm = null;
+
+    function openEditModal(field) {
+        document.getElementById('editInfoModal').classList.add('active');
+        document.getElementById('phoneInputGroup').style.display = 'none';
+        document.getElementById('emailInputGroup').style.display = 'none';
+
+        if (field === 'phone') {
+            document.getElementById('modalTitle').innerText = 'تعديل رقم الهاتف';
+            document.getElementById('phoneInputGroup').style.display = 'block';
+            document.getElementById('emailInputGroup').style.display = 'block'; 
+            document.getElementById('emailInputGroup').style.display = 'none';
+        } else if (field === 'email') {
+            document.getElementById('modalTitle').innerText = 'تعديل البريد الإلكتروني';
+            document.getElementById('emailInputGroup').style.display = 'block';
+        }
     }
+
+    function openPasswordModal() {
+        document.getElementById('editPasswordModal').classList.add('active');
+    }
+
+    function closeModals() {
+        document.getElementById('editInfoModal').classList.remove('active');
+        document.getElementById('editPasswordModal').classList.remove('active');
+    }
+
+    // Intercept form submission to show OTP
+    document.getElementById('profileUpdateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        pendingForm = this;
+        closeModals();
+        openOTPModal();
+    });
+
+    function openOTPModal() {
+        document.getElementById('otpModal').classList.add('active');
+        document.querySelector('.otp-digit').focus();
+    }
+
     function closeOTPModal() {
         document.getElementById('otpModal').classList.remove('active');
+        document.querySelectorAll('.otp-digit').forEach(i => i.value = '');
     }
-    function verifyOTP() {
-        alert('تم تأكيد الرمز (Mockup)');
-        closeOTPModal();
+
+    function submitProfileForm() {
+        const code = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
+        if(code.length < 4) {
+            alert('يرجى إدخال الرمز كاملاً (4 أرقام)');
+            return;
+        }
+        if (pendingForm) {
+            pendingForm.submit();
+        }
     }
+
+    // Auto-advance OTP inputs
+    document.querySelectorAll('.otp-digit').forEach((input, index, inputs) => {
+        input.addEventListener('input', () => {
+            if(input.value && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+            }
+        });
+        input.addEventListener('keydown', (e) => {
+            if(e.key === 'Backspace' && !input.value && index > 0) {
+                inputs[index - 1].focus();
+            }
+        });
+    });
+
+    // Close on background click
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            closeModals();
+            closeOTPModal();
+        }
+    });
+
+    @if($errors->has('current_password') || $errors->has('password'))
+        openPasswordModal();
+    @endif
 </script>
 @endpush
