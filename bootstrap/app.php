@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'hod'     => \App\Http\Middleware\CheckHodRole::class,
             'teacher' => \App\Http\Middleware\CheckTeacherRole::class,
             'affairs' => \App\Http\Middleware\CheckAffairsRole::class,
+            'admin'   => \App\Http\Middleware\CheckAdminRole::class,
         ]);
 
         // منع التحويل لـ api/login عند استخدام auth middleware

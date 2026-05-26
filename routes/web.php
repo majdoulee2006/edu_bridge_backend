@@ -164,3 +164,54 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::get('/settings', [AffairsWebController::class, 'settings'])->name('affairs.settings');
     Route::get('/announcements', [AffairsWebController::class, 'announcements'])->name('affairs.announcements');
 });
+
+// ===== مسارات الإدارة (Admin) =====
+use App\Http\Controllers\Web\AdminWebController;
+
+Route::get('/admin/login', [AdminWebController::class, 'showLoginForm'])->name('admin.login');
+Route::post('/admin/login', [AdminWebController::class, 'login'])->name('admin.login.submit');
+Route::post('/admin/logout', [AdminWebController::class, 'logout'])->name('admin.logout');
+
+Route::prefix('admin')->middleware(['admin'])->group(function () {
+    Route::get('/', fn() => redirect('/admin/dashboard'));
+    Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/profile', [AdminWebController::class, 'profile'])->name('admin.profile');
+    Route::post('/profile', [AdminWebController::class, 'updateProfile'])->name('admin.profile.update');
+    Route::post('/profile/password', [AdminWebController::class, 'updatePassword'])->name('admin.profile.password');
+    Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
+    Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
+    Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
+    Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');
+    Route::post('/notifications/{id}/read', [AdminWebController::class, 'markNotificationRead'])->name('admin.notifications.read');
+    Route::post('/notifications/read-all', [AdminWebController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');
+
+    // ─── Accounts Management ───
+    Route::get('/accounts', [AdminWebController::class, 'accounts'])->name('admin.accounts');
+    Route::post('/accounts/approve/{id}', [AdminWebController::class, 'approveAccount'])->name('admin.accounts.approve');
+    Route::post('/accounts/reject/{id}', [AdminWebController::class, 'rejectAccount'])->name('admin.accounts.reject');
+
+    // Create accounts
+    Route::get('/accounts/create/student', [AdminWebController::class, 'createStudent'])->name('admin.accounts.create.student');
+    Route::post('/accounts/store/student', [AdminWebController::class, 'storeStudent'])->name('admin.accounts.store.student');
+
+    Route::get('/accounts/create/parent', [AdminWebController::class, 'createParent'])->name('admin.accounts.create.parent');
+    Route::post('/accounts/store/parent', [AdminWebController::class, 'storeParent'])->name('admin.accounts.store.parent');
+
+    Route::get('/accounts/create/teacher', [AdminWebController::class, 'createTeacher'])->name('admin.accounts.create.teacher');
+    Route::post('/accounts/store/teacher', [AdminWebController::class, 'storeTeacher'])->name('admin.accounts.store.teacher');
+
+    Route::get('/accounts/create/hod', [AdminWebController::class, 'createHOD'])->name('admin.accounts.create.hod');
+    Route::post('/accounts/store/hod', [AdminWebController::class, 'storeHOD'])->name('admin.accounts.store.hod');
+
+    Route::get('/accounts/create/affairs', [AdminWebController::class, 'createAffairs'])->name('admin.accounts.create.affairs');
+    Route::post('/accounts/store/affairs', [AdminWebController::class, 'storeAffairs'])->name('admin.accounts.store.affairs');
+
+    // Delete accounts
+    Route::get('/accounts/delete-list/{role_id}', [AdminWebController::class, 'deleteList'])->name('admin.accounts.delete-list');
+    Route::post('/accounts/delete/{role_id}', [AdminWebController::class, 'deleteAccounts'])->name('admin.accounts.delete');
+
+    // Placeholders for other pages
+    Route::get('/courses', function () { return view('admin.settings'); })->name('admin.courses');
+    Route::get('/semesters-subjects', function () { return view('admin.settings'); })->name('admin.semesters-subjects');
+    Route::get('/reports', function () { return view('admin.settings'); })->name('admin.reports');
+});
