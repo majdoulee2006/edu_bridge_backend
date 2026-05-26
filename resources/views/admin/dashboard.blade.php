@@ -10,15 +10,16 @@
         border-radius: 1rem;
         overflow: hidden;
         background-color: #ffffff;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         margin-bottom: 1.5rem;
-        border: 1px solid rgba(226, 232, 240, 0.8);
+        border: 1px solid #e5e7eb;
         transition: all 0.3s ease;
     }
+    .dark class .news-card, 
     .dark .news-card {
-        background-color: #1a2633;
-        border-color: rgba(63, 63, 70, 0.4);
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+        background-color: #1e1e1e;
+        border-color: #3f3f46;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
     
     .news-image {
@@ -28,7 +29,7 @@
         object-fit: cover;
     }
     .dark .news-image {
-        background-color: #101922;
+        background-color: #121212;
     }
     
     .news-content {
@@ -38,19 +39,19 @@
     .news-meta {
         display: flex;
         justify-content: space-between;
-        color: #64748b;
+        color: #6b7280;
         font-size: 0.875rem;
         margin-bottom: 0.5rem;
     }
     .dark .news-meta {
-        color: #94a3b8;
+        color: #a1a1aa;
     }
     
     .news-title {
         font-size: 1.25rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
-        color: #0f172a;
+        color: #1a1a1a;
         line-height: 1.4;
     }
     .dark .news-title {
@@ -58,26 +59,22 @@
     }
     
     .news-excerpt {
-        color: #475569;
+        color: #6b7280;
         line-height: 1.6;
         font-size: 0.95rem;
     }
     .dark .news-excerpt {
-        color: #cbd5e1;
+        color: #a1a1aa;
     }
 
     .badge-yellow {
-        background-color: #fef08a;
-        color: #854d0e;
+        background-color: #fce300 !important;
+        color: #1a1a1a !important;
         padding: 0.25rem 0.75rem;
         border-radius: 9999px;
         font-size: 0.75rem;
         font-weight: 700;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-    .dark .badge-yellow {
-        background-color: #fef08a;
-        color: #854d0e;
     }
 </style>
 @endpush
@@ -86,7 +83,7 @@
 
     <!-- Announcements Section -->
     <div class="flex items-center justify-between px-1 mb-2">
-        <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+        <h3 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <span class="w-1.5 h-6 bg-primary rounded-full"></span>
             آخر الأخبار والإعلانات
         </h3>
@@ -99,11 +96,11 @@
                 @if($announcement->image_path)
                     <img src="{{ asset('storage/' . $announcement->image_path) }}" class="news-image" alt="News Image">
                 @else
-                    <div class="news-image" style="display: flex; align-items: center; justify-content: center; background-color: rgba(242, 242, 13, 0.1); color: #ca8a04;">
-                        <span class="material-symbols-outlined text-[3rem]">campaign</span>
+                    <div class="news-image" style="display: flex; align-items: center; justify-content: center; background-color: rgba(252, 227, 0, 0.12); color: #ca8a04;">
+                        <i class="fa-solid fa-bullhorn" style="font-size: 3rem;"></i>
                     </div>
                 @endif
-                <span class="badge-yellow" style="position: absolute; top: 1rem; right: 1rem;">{{ $announcement->category ?? 'إعلان هام' }}</span>
+                <span class="badge-yellow" style="position: absolute; top: 1rem; right: 1rem;">{{ $announcement->category ?? 'عام' }}</span>
             </div>
             <div class="news-content">
                 <div class="news-meta">

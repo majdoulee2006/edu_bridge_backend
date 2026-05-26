@@ -275,7 +275,7 @@
 
             <!-- Alerts for Success & Error -->
             @if (session('success'))
-                <div class="max-w-lg md:max-w-4xl mx-auto px-5 mt-4">
+                <div class="max-w-lg md:max-w-5xl lg:max-w-6xl mx-auto px-5 mt-4">
                     <div class="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-400 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-3 shadow-soft">
                         <span class="material-symbols-outlined text-xl">check_circle</span>
                         <span class="text-sm font-semibold">{{ session('success') }}</span>
@@ -283,7 +283,7 @@
                 </div>
             @endif
             @if (session('error'))
-                <div class="max-w-lg md:max-w-4xl mx-auto px-5 mt-4">
+                <div class="max-w-lg md:max-w-5xl lg:max-w-6xl mx-auto px-5 mt-4">
                     <div class="bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-400 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30 flex items-center gap-3 shadow-soft">
                         <span class="material-symbols-outlined text-xl">error</span>
                         <span class="text-sm font-semibold">{{ session('error') }}</span>
@@ -292,7 +292,7 @@
             @endif
 
             <!-- Main Body -->
-            <main class="w-full max-w-lg md:max-w-4xl mx-auto px-5 mt-6 flex flex-col gap-6">
+            <main class="w-full max-w-lg md:max-w-5xl lg:max-w-6xl mx-auto px-5 mt-6 flex flex-col gap-6">
                 @yield('content')
             </main>
 
