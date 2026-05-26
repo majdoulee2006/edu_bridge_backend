@@ -241,17 +241,6 @@
                 @csrf
                 
                 <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">المرسل (من)</label>
-                    <select name="sender_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
-                        @foreach($users as $user)
-                            <option value="{{ $user->user_id }}">
-                                {{ $user->full_name }} ({{ $user->role_name }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">المستقبل (إلى)</label>
                     <select name="receiver_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
                         @foreach($users as $user)

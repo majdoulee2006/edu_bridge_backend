@@ -48,6 +48,7 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     // الرسائل
     Route::get('/messages', [TeacherWebController::class, 'messages'])->name('teacher.messages');
     Route::post('/messages', [TeacherWebController::class, 'sendMessage'])->name('teacher.messages.send');
+    Route::get('/messages/conversation/{userId}', [TeacherWebController::class, 'getConversation'])->name('teacher.messages.conversation');
 
     // الإشعارات
     Route::get('/notifications', [TeacherWebController::class, 'notifications'])->name('teacher.notifications');
@@ -119,3 +120,47 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
         ->name('hod.announcements.store');
 });
 
+// ===== مسارات الشؤون (Affairs) =====
+use App\Http\Controllers\Web\AffairsWebController;
+
+Route::get('/affairs/login', [AffairsWebController::class, 'showLoginForm'])->name('affairs.login');
+Route::post('/affairs/login', [AffairsWebController::class, 'login'])->name('affairs.login.submit');
+Route::post('/affairs/logout', [AffairsWebController::class, 'logout'])->name('affairs.logout');
+
+Route::prefix('affairs')->middleware(['affairs'])->group(function () {
+    Route::get('/', fn() => redirect('/affairs/dashboard'));
+    Route::get('/dashboard', [AffairsWebController::class, 'dashboard'])->name('affairs.dashboard');
+    Route::get('/calendar', [AffairsWebController::class, 'calendar'])->name('affairs.calendar');
+    Route::post('/calendar/events', [AffairsWebController::class, 'storeCalendarEvent'])->name('affairs.calendar.store');
+    Route::post('/calendar/events/update/{id}', [AffairsWebController::class, 'updateCalendarEvent'])->name('affairs.calendar.update');
+    Route::post('/calendar/events/delete/{id}', [AffairsWebController::class, 'deleteCalendarEvent'])->name('affairs.calendar.delete');
+    Route::get('/activities', [AffairsWebController::class, 'activities'])->name('affairs.activities');
+
+    // الحسابات
+    Route::get('/accounts', [AffairsWebController::class, 'accounts'])->name('affairs.accounts');
+    Route::post('/accounts', [AffairsWebController::class, 'storeAccount'])->name('affairs.accounts.store');
+    Route::post('/accounts/{id}/toggle', [AffairsWebController::class, 'toggleAccountStatus'])->name('affairs.accounts.toggle');
+    Route::post('/accounts/{id}/delete', [AffairsWebController::class, 'deleteAccount'])->name('affairs.accounts.delete');
+
+    // طلبات الإجازة
+    Route::get('/leaves', [AffairsWebController::class, 'leaves'])->name('affairs.leaves');
+    Route::post('/leaves/{id}/status', [AffairsWebController::class, 'updateLeaveStatus'])->name('affairs.leaves.status');
+
+    // الرسائل
+    Route::get('/messages', [AffairsWebController::class, 'messages'])->name('affairs.messages');
+    Route::post('/messages', [AffairsWebController::class, 'sendMessage'])->name('affairs.messages.send');
+    Route::get('/messages/conversation/{userId}', [AffairsWebController::class, 'getConversation'])->name('affairs.messages.conversation');
+
+    // الإشعارات
+    Route::get('/notifications', [AffairsWebController::class, 'notifications'])->name('affairs.notifications');
+    Route::post('/notifications/{id}/read', [AffairsWebController::class, 'markNotificationRead'])->name('affairs.notifications.read');
+    Route::post('/notifications/read-all', [AffairsWebController::class, 'markAllNotificationsRead'])->name('affairs.notifications.read_all');
+
+    // الملف الشخصي
+    Route::get('/profile', [AffairsWebController::class, 'profile'])->name('affairs.profile');
+    Route::post('/profile', [AffairsWebController::class, 'updateProfile'])->name('affairs.profile.update');
+    Route::post('/profile/password', [AffairsWebController::class, 'updatePassword'])->name('affairs.profile.password');
+
+    Route::get('/settings', [AffairsWebController::class, 'settings'])->name('affairs.settings');
+    Route::get('/announcements', [AffairsWebController::class, 'announcements'])->name('affairs.announcements');
+});

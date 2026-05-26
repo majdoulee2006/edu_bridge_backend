@@ -551,44 +551,77 @@ class TeacherWebController extends Controller
 
     public function messages()
     {
-        $messages = DB::table('messages')
-            ->join('users', 'messages.sender_id', '=', 'users.user_id')
-            ->where('messages.receiver_id', Auth::user()->user_id)
-            ->select('messages.*', 'users.full_name as sender_name')
-            ->orderByDesc('messages.created_at')
+        $currentUserId = Auth::id();
+
+        $conversations = \App\Models\Message::with(['sender', 'receiver'])
+            ->where('sender_id', $currentUserId)
+            ->orWhere('receiver_id', $currentUserId)
+            ->latest()
+            ->get()
+            ->map(function ($msg) use ($currentUserId) {
+                return ($msg->sender_id == $currentUserId) ? $msg->receiver_id : $msg->sender_id;
+            })
+            ->unique()
+            ->values();
+
+        $contacts = User::whereIn('user_id', $conversations)->get();
+
+        // قائمة كل المستخدمين للرسالة الجديدة
+        $allUsers = User::where('user_id', '!=', $currentUserId)->get();
+
+        return view('teacher.messages', compact('contacts', 'allUsers'));
+    }
+
+    public function getConversation($userId)
+    {
+        $currentUserId = Auth::id();
+        $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where(function ($q) use ($currentUserId, $userId) {
+                $q->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+            })
+            ->orWhere(function ($q) use ($currentUserId, $userId) {
+                $q->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+            })
+            ->orderBy('created_at', 'asc')
             ->get();
 
-        $sent = DB::table('messages')
-            ->join('users', 'messages.receiver_id', '=', 'users.user_id')
-            ->where('messages.sender_id', Auth::user()->user_id)
-            ->select('messages.*', 'users.full_name as receiver_name')
-            ->orderByDesc('messages.created_at')
-            ->get();
+        // تحديد الرسائل كمقروءة
+        \App\Models\Message::where('sender_id', $userId)
+            ->where('receiver_id', $currentUserId)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
 
-        // قائمة المستخدمين لإرسال رسائل
-        $users = DB::table('users')
-            ->where('user_id', '!=', Auth::user()->user_id)
-            ->select('user_id', 'full_name', 'email')
-            ->orderBy('full_name')
-            ->get();
-
-        return view('teacher.messages', compact('messages', 'sent', 'users'));
+        return response()->json($messages);
     }
 
     public function sendMessage(Request $request)
     {
         $request->validate([
             'receiver_id' => 'required|exists:users,user_id',
-            'content'     => 'required|string',
+            'message'     => 'required|string|max:2000',
         ]);
 
-        DB::table('messages')->insert([
+        $message = \App\Models\Message::create([
             'sender_id'   => Auth::user()->user_id,
             'receiver_id' => $request->receiver_id,
-            'content'     => $request->content,
-            'created_at'  => now(),
-            'updated_at'  => now(),
+            'message'     => $request->message,
+            'is_read'     => false,
         ]);
+
+        // إضافة إشعار للمستلم
+        DB::table('notifications')->insert([
+            'user_id' => $request->receiver_id,
+            'title'   => 'رسالة جديدة',
+            'message' => 'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            'type'    => 'message',
+            'is_read' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => clone $message]);
+        }
 
         return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
     }
