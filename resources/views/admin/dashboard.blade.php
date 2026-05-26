@@ -8,35 +8,35 @@
 
     <!-- Announcements & Events Feed -->
     @forelse($announcements as $announcement)
-        <!-- Premium News Card (Matching HOD layout style) -->
-        <article class="overflow-hidden bg-surface-light dark:bg-surface-dark rounded-3xl shadow-soft border border-slate-100/50 dark:border-slate-800/50 transition-all duration-300 hover:shadow-lg">
-            <div class="relative w-full h-48">
+        <!-- Premium News Card (Matching HOD layout style - Larger Scale) -->
+        <article class="overflow-hidden bg-surface-light dark:bg-surface-dark rounded-[2rem] shadow-soft border border-slate-100/50 dark:border-slate-800/50 transition-all duration-300 hover:shadow-lg">
+            <div class="relative w-full h-[240px] md:h-[280px]">
                 @if($announcement->image_path)
                     <div class="w-full h-full bg-cover bg-center" style="background-image: url('{{ asset('storage/' . $announcement->image_path) }}');"></div>
                 @else
                     <div class="w-full h-full flex items-center justify-center bg-primary/10 dark:bg-primary/5 text-primary">
-                        <span class="material-symbols-outlined text-5xl">campaign</span>
+                        <span class="material-symbols-outlined text-6xl">campaign</span>
                     </div>
                 @endif
-                <span class="absolute top-4 right-4 inline-block px-3 py-1 bg-primary text-primary-content text-xs font-bold rounded-full shadow-sm">
+                <span class="absolute top-6 right-6 inline-block px-4 py-1.5 bg-primary text-primary-content text-xs font-bold rounded-full shadow-sm">
                     {{ $announcement->category ?? 'إعلان هام' }}
                 </span>
             </div>
             
-            <div class="p-6">
-                <div class="flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 mb-3 font-bold">
-                    <span class="flex items-center gap-1">
-                        <span class="material-symbols-outlined text-xs">schedule</span>
+            <div class="p-8">
+                <div class="flex justify-between items-center text-xs md:text-sm text-slate-400 dark:text-slate-500 mb-4 font-bold">
+                    <span class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm md:text-base">schedule</span>
                         {{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}
                     </span>
-                    <span class="flex items-center gap-1">
-                        <span class="material-symbols-outlined text-xs">groups</span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm md:text-base">groups</span>
                         موجه إلى: {{ $announcement->target_audience == 'all' ? 'الجميع' : ($announcement->target_audience ?? 'الجميع') }}
                     </span>
                 </div>
                 
-                <h4 class="text-base font-bold text-slate-900 dark:text-white mb-2 leading-tight">{{ $announcement->title }}</h4>
-                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{{ Str::limit($announcement->content, 180) }}</p>
+                <h4 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-3 leading-tight">{{ $announcement->title }}</h4>
+                <p class="text-sm md:text-base text-slate-550 dark:text-slate-400 leading-relaxed">{{ $announcement->content }}</p>
             </div>
         </article>
     @empty
