@@ -31,7 +31,7 @@
             </div>
             <div class="flex items-center gap-3 px-1">
                 <span class="text-[10px] text-slate-400">صغير</span>
-                <input class="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer" max="100" min="0" type="range" value="50"/>
+                <input id="font-size-slider" class="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary" max="22" min="12" step="1" type="range" value="16"/>
                 <span class="text-[10px] text-slate-400">كبير</span>
             </div>
             <div class="flex justify-between px-1 text-[10px] text-slate-400">
@@ -64,8 +64,8 @@
                 <span class="text-sm font-bold text-slate-700 dark:text-slate-200">لغة لوحة التحكم</span>
             </div>
             <div class="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200/50 dark:border-slate-700">
-                <button class="px-3 py-1 text-xs font-bold rounded-full bg-white dark:bg-card-dark shadow-sm text-slate-900 dark:text-white">عربي</button>
-                <button class="px-3 py-1 text-xs font-medium rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">EN</button>
+                <button id="lang-ar" onclick="setLanguage('ar')" class="px-3 py-1 text-xs font-bold rounded-full transition-all bg-white dark:bg-card-dark shadow-sm text-slate-900 dark:text-white">عربي</button>
+                <button id="lang-en" onclick="setLanguage('en')" class="px-3 py-1 text-xs font-medium rounded-full transition-all text-slate-500 hover:text-slate-900 dark:hover:text-white">EN</button>
             </div>
         </div>
     </div>
@@ -81,8 +81,8 @@
                 <span class="text-sm font-bold text-slate-700 dark:text-slate-200">تفعيل التنبيهات الفورية</span>
             </div>
             <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                <input checked class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-6 border-primary" id="notif-toggle" name="toggle" type="checkbox"/>
-                <label class="block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-300" for="notif-toggle"></label>
+                <input class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-slate-200" id="notif-toggle" name="toggle" type="checkbox" onclick="toggleSwitch('notif-toggle')"/>
+                <label class="block overflow-hidden h-6 rounded-full bg-slate-200 cursor-pointer transition-colors duration-300" for="notif-toggle"></label>
             </div>
         </div>
 
@@ -93,8 +93,8 @@
                 <span class="text-sm font-bold text-slate-700 dark:text-slate-200">أصوات التنبيهات</span>
             </div>
             <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                <input checked class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-6 border-primary" id="sound-toggle" name="toggle" type="checkbox"/>
-                <label class="block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-300" for="sound-toggle"></label>
+                <input class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-slate-200" id="sound-toggle" name="toggle" type="checkbox" onclick="toggleSwitch('sound-toggle')"/>
+                <label class="block overflow-hidden h-6 rounded-full bg-slate-200 cursor-pointer transition-colors duration-300" for="sound-toggle"></label>
             </div>
         </div>
 
@@ -105,7 +105,7 @@
                 <span class="text-sm font-bold text-slate-700 dark:text-slate-200">الاهتزاز</span>
             </div>
             <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                <input class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-slate-200" id="vibrate-toggle" name="toggle" type="checkbox"/>
+                <input class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-slate-200" id="vibrate-toggle" name="toggle" type="checkbox" onclick="toggleSwitch('vibrate-toggle')"/>
                 <label class="block overflow-hidden h-6 rounded-full bg-slate-200 cursor-pointer transition-colors duration-300" for="vibrate-toggle"></label>
             </div>
         </div>
@@ -140,14 +140,116 @@
 
 @push('scripts')
 <script>
-    // Sync checkbox with the page's current theme on load
     document.addEventListener('DOMContentLoaded', function() {
+        // 1. Restore Dark Mode Switch Visuals
+        const darkCheckbox = document.getElementById('dark-mode-toggle-checkbox');
+        if (darkCheckbox) {
+            darkCheckbox.checked = document.documentElement.classList.contains('dark');
+        }
+
+        // 2. Restore Font Size Slider Visuals & Event Listener
+        const fontSlider = document.getElementById('font-size-slider');
+        const savedFontSize = localStorage.getItem('app-font-size') || '16';
+        if (fontSlider) {
+            fontSlider.value = savedFontSize;
+            fontSlider.addEventListener('input', function() {
+                const size = this.value;
+                document.documentElement.style.fontSize = size + 'px';
+                localStorage.setItem('app-font-size', size);
+            });
+        }
+
+        // 3. Restore Notification Switches States
+        initSwitch('notif-toggle', true);
+        initSwitch('sound-toggle', true);
+        initSwitch('vibrate-toggle', false);
+
+        // 4. Restore Language Active state
+        const savedLang = localStorage.getItem('app-lang') || 'ar';
+        updateLangVisuals(savedLang);
+    });
+
+    // Helper to init toggles
+    function initSwitch(id, defaultVal) {
+        const checkbox = document.getElementById(id);
+        if (!checkbox) return;
+        
+        const stored = localStorage.getItem(id);
+        const isChecked = stored !== null ? (stored === 'true') : defaultVal;
+        
+        checkbox.checked = isChecked;
+        
+        if (isChecked) {
+            checkbox.classList.remove('left-0', 'border-slate-200');
+            checkbox.classList.add('left-6', 'border-primary');
+            checkbox.nextElementSibling.classList.remove('bg-slate-200');
+            checkbox.nextElementSibling.classList.add('bg-primary');
+        } else {
+            checkbox.classList.remove('left-6', 'border-primary');
+            checkbox.classList.add('left-0', 'border-slate-200');
+            checkbox.nextElementSibling.classList.remove('bg-primary');
+            checkbox.nextElementSibling.classList.add('bg-slate-200');
+        }
+    }
+
+    // Toggle helper when clicked
+    function toggleSwitch(id) {
+        const checkbox = document.getElementById(id);
+        if (!checkbox) return;
+        const isChecked = checkbox.checked;
+        
+        localStorage.setItem(id, isChecked ? 'true' : 'false');
+        
+        if (isChecked) {
+            checkbox.classList.remove('left-0', 'border-slate-200');
+            checkbox.classList.add('left-6', 'border-primary');
+            checkbox.nextElementSibling.classList.remove('bg-slate-200');
+            checkbox.nextElementSibling.classList.add('bg-primary');
+        } else {
+            checkbox.classList.remove('left-6', 'border-primary');
+            checkbox.classList.add('left-0', 'border-slate-200');
+            checkbox.nextElementSibling.classList.remove('bg-primary');
+            checkbox.nextElementSibling.classList.add('bg-slate-200');
+        }
+    }
+
+    function toggleDarkMode() {
         const checkbox = document.getElementById('dark-mode-toggle-checkbox');
         if (document.documentElement.classList.contains('dark')) {
-            checkbox.checked = true;
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+            localStorage.setItem('color-theme', 'light');
+            if (checkbox) checkbox.checked = false;
         } else {
-            checkbox.checked = false;
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+            localStorage.setItem('color-theme', 'dark');
+            if (checkbox) checkbox.checked = true;
         }
-    });
+    }
+
+    function setLanguage(lang) {
+        localStorage.setItem('app-lang', lang);
+        updateLangVisuals(lang);
+        if (lang === 'en') {
+            alert('English localization will be loaded in the next updates.');
+        } else {
+            alert('تم تعيين اللغة العربية كلغة افتراضية للوحة التحكم.');
+        }
+    }
+
+    function updateLangVisuals(lang) {
+        const btnAr = document.getElementById('lang-ar');
+        const btnEn = document.getElementById('lang-en');
+        if (!btnAr || !btnEn) return;
+
+        if (lang === 'ar') {
+            btnAr.className = "px-3 py-1 text-xs font-bold rounded-full transition-all bg-white dark:bg-card-dark shadow-sm text-slate-900 dark:text-white";
+            btnEn.className = "px-3 py-1 text-xs font-medium rounded-full transition-all text-slate-500 hover:text-slate-900 dark:hover:text-white";
+        } else {
+            btnEn.className = "px-3 py-1 text-xs font-bold rounded-full transition-all bg-white dark:bg-card-dark shadow-sm text-slate-900 dark:text-white";
+            btnAr.className = "px-3 py-1 text-xs font-medium rounded-full transition-all text-slate-500 hover:text-slate-900 dark:hover:text-white";
+        }
+    }
 </script>
 @endpush

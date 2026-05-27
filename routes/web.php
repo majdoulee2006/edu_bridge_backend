@@ -210,8 +210,25 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/accounts/delete-list/{role_id}', [AdminWebController::class, 'deleteList'])->name('admin.accounts.delete-list');
     Route::post('/accounts/delete/{role_id}', [AdminWebController::class, 'deleteAccounts'])->name('admin.accounts.delete');
 
-    // Placeholders for other pages
-    Route::get('/courses', function () { return view('admin.settings'); })->name('admin.courses');
-    Route::get('/semesters-subjects', function () { return view('admin.settings'); })->name('admin.semesters-subjects');
-    Route::get('/reports', function () { return view('admin.settings'); })->name('admin.reports');
+    // الدورات
+    Route::get('/courses', [AdminWebController::class, 'courses'])->name('admin.courses');
+    Route::get('/courses/create', [AdminWebController::class, 'createCourse'])->name('admin.courses.create');
+    Route::post('/courses', [AdminWebController::class, 'storeCourse'])->name('admin.courses.store');
+    Route::post('/courses/delete/{id}', [AdminWebController::class, 'deleteCourse'])->name('admin.courses.delete');
+
+    // تخصيص رئيس قسم
+    Route::get('/courses/assign-hod', [AdminWebController::class, 'assignHODForm'])->name('admin.courses.assign-hod');
+    Route::post('/courses/assign-hod', [AdminWebController::class, 'assignHOD'])->name('admin.courses.assign-hod.store');
+
+    // الفصول والمواد
+    Route::get('/semesters-subjects', [AdminWebController::class, 'semestersSubjects'])->name('admin.semesters-subjects');
+    Route::post('/semesters-subjects', [AdminWebController::class, 'storeSubject'])->name('admin.semesters-subjects.store');
+
+    // التقارير
+    Route::get('/reports', [AdminWebController::class, 'reports'])->name('admin.reports');
+    Route::post('/reports/generate', [AdminWebController::class, 'generateReport'])->name('admin.reports.generate');
+    Route::post('/reports/export', [AdminWebController::class, 'exportReport'])->name('admin.reports.export');
+
+    // التقويم والأحداث
+    Route::post('/calendar/events', [AdminWebController::class, 'storeCalendarEvent'])->name('admin.calendar.store');
 });

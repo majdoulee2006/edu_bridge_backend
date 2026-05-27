@@ -4,29 +4,46 @@
 @section('header-title', 'الإشعارات')
 @section('header-subtitle', 'أحدث التنبيهات والطلبات الواردة')
 
-@push('styles')
-<style>
-    /* CSS للزر الجانبي مع خيارين */
-    .corner-menu-overlay {
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    .corner-menu {
-        transform: scale(0);
-        opacity: 0;
-        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        transform-origin: bottom right;
-    }
-    .corner-menu.active {
-        transform: scale(1);
-        opacity: 1;
-    }
-    .corner-fab-icon.active {
-        transform: rotate(45deg);
-    }
-</style>
-@endpush
+@section('header-actions')
+    <div class="flex items-center gap-3">
+        {{-- Add Event Dropdown --}}
+        <div class="relative">
+            <button id="add-event-dropdown-btn" class="flex items-center justify-center w-10 h-10 rounded-2xl bg-[#f2f20d] hover:bg-[#e0e00b] text-[#101924] shadow-soft hover:shadow-glow transition-all active:scale-95 duration-200">
+                <span class="material-symbols-outlined text-[24px]">add</span>
+            </button>
+            
+            {{-- Dropdown Menu --}}
+            <div id="add-event-dropdown-menu" class="hidden absolute left-0 mt-2 w-48 rounded-2xl bg-white dark:bg-slate-800 shadow-lg border border-slate-100 dark:border-slate-700 z-50 overflow-hidden">
+                <div class="flex flex-col p-1.5">
+                    <button type="button" onclick="openAddEventModal('activity')" class="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-right">
+                        <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center shrink-0 text-purple-600 dark:text-purple-400">
+                            <span class="material-symbols-outlined text-lg">event</span>
+                        </div>
+                        <div class="flex flex-col items-start">
+                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200">فعالية جديدة</span>
+                        </div>
+                    </button>
+                    
+                    <button type="button" onclick="openAddEventModal('holiday')" class="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-right">
+                        <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center shrink-0 text-orange-600 dark:text-orange-400">
+                            <span class="material-symbols-outlined text-lg">celebration</span>
+                        </div>
+                        <div class="flex flex-col items-start">
+                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200">عطلة جديدة</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if(isset($notifications) && $notifications->where('is_read', false)->count() > 0)
+            <form action="{{ route('admin.notifications.read_all') }}" method="POST" class="flex items-center">
+                @csrf
+                <button type="submit" class="text-[11px] font-bold text-yellow-700 dark:text-yellow-400 px-3 py-1.5 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 transition-colors">قراءة الكل</button>
+            </form>
+        @endif
+    </div>
+@endsection
 
 @section('content')
 
@@ -90,89 +107,134 @@
         </article>
     @endforelse
 
-    <div class="h-16"></div>
-
-    <!-- ================= CORNER FAB FOR ADDING EVENTS & HOLIDAYS ================= -->
-    <div class="fixed bottom-28 right-6 z-50">
-        <!-- Main Button -->
-        <button id="corner-fab" class="corner-fab relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-content shadow-glow transition-all active:scale-95 hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-yellow-200 dark:focus:ring-yellow-900">
-            <span class="material-symbols-outlined corner-fab-icon text-3xl transition-transform duration-300">add</span>
-        </button>
-
-        <!-- Dropdown Menu -->
-        <div id="corner-menu" class="corner-menu absolute bottom-20 right-0 z-40 w-48 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 overflow-hidden">
-            <div class="flex flex-col p-2">
-                <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-right">
-                    <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center shrink-0 text-orange-600 dark:text-orange-400">
-                        <span class="material-symbols-outlined">celebration</span>
-                    </div>
-                    <div class="flex flex-col items-start">
-                        <span class="text-sm font-bold text-slate-800 dark:text-slate-200">عطل رسمية</span>
-                        <span class="text-xs text-slate-400">إضافة عطلة جديدة</span>
-                    </div>
-                </a>
-                
-                <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-right">
-                    <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center shrink-0 text-purple-600 dark:text-purple-400">
-                        <span class="material-symbols-outlined">event</span>
-                    </div>
-                    <div class="flex flex-col items-start">
-                        <span class="text-sm font-bold text-slate-800 dark:text-slate-200">فعاليات</span>
-                        <span class="text-xs text-slate-400">إضافة فعالية جديدة</span>
-                    </div>
-                </a>
+    {{-- MODAL FOR ADDING EVENTS & HOLIDAYS --}}
+    <div id="event-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        {{-- Backdrop --}}
+        <div class="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm" onclick="closeEventModal()"></div>
+        
+        {{-- Modal Content --}}
+        <div class="relative bg-surface-light dark:bg-surface-dark rounded-[2rem] p-6 shadow-glow w-[90%] max-w-md border border-slate-100 dark:border-slate-700/50 transform transition-all scale-95 duration-200 z-50">
+            {{-- Header --}}
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/50 pb-4 mb-4">
+                <h3 id="modal-title" class="text-base font-bold text-slate-900 dark:text-white">إضافة حدث</h3>
+                <button type="button" onclick="closeEventModal()" class="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
             </div>
+            
+            {{-- Form --}}
+            <form action="{{ route('admin.calendar.store') }}" method="POST" class="flex flex-col gap-4">
+                @csrf
+                
+                {{-- Event Type (hidden/dynamic description) --}}
+                <input type="hidden" name="type" id="modal-event-type" value="activity">
+                
+                {{-- Date --}}
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-1">التاريخ</label>
+                    <input type="date" name="event_date" required
+                           class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border-none focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-800 dark:text-white transition-all outline-none">
+                </div>
+                
+                {{-- Title --}}
+                <div class="flex flex-col gap-1.5">
+                    <label id="title-label" class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-1">اسم الفعالية</label>
+                    <input type="text" name="title" id="event-title-input" required placeholder="أدخل الاسم"
+                           class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border-none focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-800 dark:text-white transition-all outline-none">
+                </div>
+                
+                {{-- Time (Only for Activity) --}}
+                <div id="time-group" class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-1">الوقت</label>
+                    <input type="time" name="event_time"
+                           class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border-none focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-800 dark:text-white transition-all outline-none">
+                </div>
+                
+                {{-- Location (Only for Activity) --}}
+                <div id="location-group" class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-1">المكان / القاعة</label>
+                    <input type="text" name="location" placeholder="مثال: القاعة الكبرى، مختبر الحاسوب"
+                           class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border-none focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-800 dark:text-white transition-all outline-none">
+                </div>
+                
+                {{-- Submit Button --}}
+                <button type="submit" class="w-full py-4 rounded-2xl bg-[#f2f20d] hover:bg-[#e0e00b] text-[#101924] font-extrabold text-sm shadow-soft hover:shadow-glow transition-all mt-2">
+                    تأكيد الحفظ
+                </button>
+            </form>
         </div>
-
-        <!-- Semi-transparent overlay to close dropdown on click outside -->
-        <div id="corner-menu-overlay" class="corner-menu-overlay fixed inset-0 z-30 bg-black/20 dark:bg-black/40 backdrop-blur-sm"></div>
     </div>
-
 @endsection
 
 @push('scripts')
 <script>
-    // Corner menu FAB logic
-    const cornerFab = document.getElementById('corner-fab');
-    const cornerMenu = document.getElementById('corner-menu');
-    const cornerMenuOverlay = document.getElementById('corner-menu-overlay');
-    const cornerFabIcon = document.querySelector('.corner-fab-icon');
+    // Header actions dropdown logic
+    const addEventBtn = document.getElementById('add-event-dropdown-btn');
+    const addEventMenu = document.getElementById('add-event-dropdown-menu');
     
-    let isMenuOpen = false;
-    
-    cornerFab.addEventListener('click', function(e) {
-        e.stopPropagation();
-        toggleCornerMenu();
-    });
-    
-    cornerMenuOverlay.addEventListener('click', function() {
-        closeCornerMenu();
-    });
-    
-    document.addEventListener('click', function(event) {
-        if (!cornerFab.contains(event.target) && !cornerMenu.contains(event.target)) {
-            closeCornerMenu();
+    if (addEventBtn && addEventMenu) {
+        addEventBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            addEventMenu.classList.toggle('hidden');
+        });
+        
+        document.addEventListener('click', function(event) {
+            if (!addEventBtn.contains(event.target) && !addEventMenu.contains(event.target)) {
+                addEventMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Modal Control Logic
+    function openAddEventModal(type) {
+        if (addEventMenu) {
+            addEventMenu.classList.add('hidden');
         }
-    });
-    
-    function toggleCornerMenu() {
-        isMenuOpen = !isMenuOpen;
-        if (isMenuOpen) {
-            cornerMenu.classList.add('active');
-            cornerMenuOverlay.style.opacity = '1';
-            cornerMenuOverlay.style.pointerEvents = 'auto';
-            cornerFabIcon.classList.add('active');
+        
+        const modal = document.getElementById('event-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const titleLabel = document.getElementById('title-label');
+        const eventTitleInput = document.getElementById('event-title-input');
+        const timeGroup = document.getElementById('time-group');
+        const locationGroup = document.getElementById('location-group');
+        const eventTypeInput = document.getElementById('modal-event-type');
+        
+        eventTypeInput.value = type;
+        
+        if (type === 'holiday') {
+            modalTitle.innerText = 'إضافة عطلة رسمية جديدة';
+            titleLabel.innerText = 'اسم العطلة / المناسبة';
+            eventTitleInput.placeholder = 'مثال: عطلة عيد الفطر السعيد';
+            timeGroup.classList.add('hidden');
+            locationGroup.classList.add('hidden');
+            // Remove required state for time if it has any, and clear
+            const timeInput = timeGroup.querySelector('input');
+            if (timeInput) {
+                timeInput.required = false;
+                timeInput.value = '';
+            }
+            const locInput = locationGroup.querySelector('input');
+            if (locInput) locInput.value = '';
         } else {
-            closeCornerMenu();
+            modalTitle.innerText = 'إضافة فعالية جديدة';
+            titleLabel.innerText = 'اسم الفعالية';
+            eventTitleInput.placeholder = 'مثال: ندوة الذكاء الاصطناعي الأكاديمية';
+            timeGroup.classList.remove('hidden');
+            locationGroup.classList.remove('hidden');
         }
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('.relative').classList.remove('scale-95');
+        }, 10);
     }
     
-    function closeCornerMenu() {
-        isMenuOpen = false;
-        cornerMenu.classList.remove('active');
-        cornerMenuOverlay.style.opacity = '0';
-        cornerMenuOverlay.style.pointerEvents = 'none';
-        cornerFabIcon.classList.remove('active');
+    function closeEventModal() {
+        const modal = document.getElementById('event-modal');
+        modal.querySelector('.relative').classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 150);
     }
 
     // Mark as read AJAX logic
