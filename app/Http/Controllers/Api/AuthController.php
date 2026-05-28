@@ -276,10 +276,6 @@ class AuthController extends Controller
             'sent_via_telegram'=> $sentViaTelegram,
         ];
 
-        if (app()->environment('local') && !$sentViaTelegram) {
-            $response['otp_dev'] = $otp;
-        }
-
         return response()->json($response, 201);
     }
 

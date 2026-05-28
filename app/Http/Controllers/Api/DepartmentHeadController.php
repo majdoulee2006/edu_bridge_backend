@@ -23,15 +23,17 @@ class DepartmentHeadController extends Controller
             ->join('users', 'announcements.user_id', '=', 'users.user_id')
             ->orderBy('announcements.created_at', 'desc')
             ->limit(5)
-            ->get(['announcements.announcement_id', 'announcements.title', 'announcements.content', 'announcements.image', 'announcements.created_at', 'users.full_name as author_name'])
+            ->get(['announcements.announcement_id', 'announcements.title', 'announcements.content', 'announcements.image', 'announcements.link_url', 'announcements.created_at', 'announcements.user_id', 'users.full_name as author_name'])
             ->map(fn($a) => [
                 'id'          => $a->announcement_id,
                 'title'       => $a->title,
                 'content'     => $a->content,
                 'body'        => $a->content,
                 'image_url'   => $a->image ? url('storage/' . $a->image) : null,
+                'link_url'    => $a->link_url,
                 'author_name' => $a->author_name,
                 'time_ago'    => \Carbon\Carbon::parse($a->created_at)->diffForHumans(),
+                'is_mine'     => $a->user_id === $request->user()->user_id,
             ]);
 
         return response()->json([
@@ -626,19 +628,81 @@ class DepartmentHeadController extends Controller
             $userIds = $userIds->merge($studentIds);
         }
 
-        foreach ($userIds->unique() as $uid) {
-            DB::table('notifications')->insert([
-                'user_id'    => $uid,
-                'title'      => 'إعلان جديد من رئيس القسم',
-                'message'    => $request->title,
-                'type'       => 'announcement',
-                'is_read'    => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        if ($audience === 'all') {
+            $parentIds = DB::table('parents')
+                ->join('users', 'parents.user_id', '=', 'users.user_id')
+                ->pluck('users.user_id');
+            $userIds = $userIds->merge($parentIds);
         }
 
+        $now = now();
+        $rows = $userIds->unique()->map(fn($uid) => [
+            'user_id'    => $uid,
+            'sender_id'  => $request->user()->user_id,
+            'title'      => 'إعلان جديد من رئيس القسم',
+            'message'    => $request->title,
+            'type'       => 'announcement',
+            'category'   => 'administrative',
+            'related_id' => $announcementId,
+            'is_read'    => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+        if (!empty($rows)) DB::table('notifications')->insert($rows);
+
         return response()->json(['success' => true, 'message' => 'تم نشر الإعلان بنجاح', 'id' => $announcementId]);
+    }
+
+    public function updateAnnouncement(Request $request, $id)
+    {
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'content' => 'required|string',
+        ]);
+
+        $ann = DB::table('announcements')
+            ->where('announcement_id', $id)
+            ->where('user_id', $request->user()->user_id)
+            ->first();
+
+        if (!$ann) return response()->json(['success' => false, 'message' => 'الإعلان غير موجود'], 404);
+
+        $imagePath = $ann->image;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        }
+
+        $targetRole = match($request->target_audience ?? 'all') {
+            'teachers' => 'teacher',
+            'students' => 'student',
+            default    => null,
+        };
+
+        DB::table('announcements')->where('announcement_id', $id)->update([
+            'title'       => $request->title,
+            'content'     => $request->content,
+            'target_role' => $targetRole,
+            'image'       => $imagePath,
+            'link_url'    => $request->link_url ?? $ann->link_url,
+            'updated_at'  => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم تحديث الإعلان بنجاح']);
+    }
+
+    public function deleteAnnouncement(Request $request, $id)
+    {
+        $ann = DB::table('announcements')
+            ->where('announcement_id', $id)
+            ->where('user_id', $request->user()->user_id)
+            ->first();
+
+        if (!$ann) return response()->json(['success' => false, 'message' => 'الإعلان غير موجود'], 404);
+
+        DB::table('announcements')->where('announcement_id', $id)->delete();
+        DB::table('notifications')->where('related_id', $id)->where('type', 'announcement')->delete();
+
+        return response()->json(['success' => true, 'message' => 'تم حذف الإعلان بنجاح']);
     }
 
     public function sendNotification(Request $request)

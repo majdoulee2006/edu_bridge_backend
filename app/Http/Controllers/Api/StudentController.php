@@ -58,9 +58,11 @@ class StudentController extends Controller
                     'type' => $item->type ?? 'general',
                     'title' => $item->title ?? 'إعلان',
                     'content' => $item->content ?? '',
+                    'body' => $item->content ?? '',
                     'category' => $item->category ?? 'general',
                     'category_text' => $categoryText,
-                    'image' => $item->image ? storageUrl($item->image) : null,
+                    'image_url' => $item->image ? url('storage/' . $item->image) : null,
+                    'link_url' => $item->link_url ?? null,
                     'author_name' => $item->author->full_name ?? 'الإدارة',
                     'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
                 ];
@@ -197,14 +199,24 @@ class StudentController extends Controller
             ->latest()
             ->get()
             ->map(function ($notify) {
+                $imageUrl = null;
+                $linkUrl = null;
+                if ($notify->type === 'announcement' && $notify->related_id) {
+                    $ann = \DB::table('announcements')->where('announcement_id', $notify->related_id)->first(['image', 'link_url']);
+                    $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
+                    $linkUrl  = $ann->link_url ?? null;
+                }
                 return [
                     'id' => $notify->id,
                     'title' => $notify->title,
                     'message' => $notify->message,
                     'type' => $notify->type,
-                    'category' => $notify->category, // 👈 الحقل الجديد اللي ضفناه
-                    'sender_name' => $notify->sender->full_name ?? 'الإدارة', // 👈 جلب اسم المرسل
+                    'category' => $notify->category,
+                    'sender_name' => $notify->sender->full_name ?? 'الإدارة',
                     'is_read' => (bool)$notify->is_read,
+                    'related_id' => $notify->related_id,
+                    'image_url'  => $imageUrl,
+                    'link_url'   => $linkUrl,
                     'created_at' => $notify->created_at ? $notify->created_at->format('Y-m-d H:i:s') : null,
                     'time_ago' => $notify->created_at ? $notify->created_at->diffForHumans() : 'منذ قليل',
                 ];
@@ -540,7 +552,7 @@ class StudentController extends Controller
             $query->where('student_id', $student->student_id);
         }])
         ->whereIn('course_id', $enrolledCourseIds)
-        ->orderBy('due_date', 'asc')
+        ->orderBy('created_at', 'desc')
         ->get();
 
         $formattedAssignments = [];
@@ -646,6 +658,25 @@ class StudentController extends Controller
                 'submitted_at' => now(),
             ]
         );
+
+        // إشعار المعلم بتسليم الواجب
+        $teacherUserId = \DB::table('teachers')
+            ->where('teacher_id', $assignment->teacher_id)
+            ->value('user_id');
+        if ($teacherUserId) {
+            $studentUser = $request->user();
+            \DB::table('notifications')->insert([
+                'user_id'    => $teacherUserId,
+                'sender_id'  => $studentUser->user_id,
+                'title'      => 'تسليم واجب جديد',
+                'message'    => 'سلّم الطالب ' . $studentUser->full_name . ' الواجب: ' . $assignment->title,
+                'type'       => 'assignment',
+                'related_id' => $assignmentId,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return response()->json([
             'success' => true,

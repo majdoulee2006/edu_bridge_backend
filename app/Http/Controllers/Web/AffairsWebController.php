@@ -450,26 +450,6 @@ class AffairsWebController extends Controller
         return view('affairs.settings');
     }
 
-    public function updatePassword(Request $request)
-    {
-        $request->validate([
-            'current_password' => 'required',
-            'password'         => 'required|min:6|confirmed',
-        ], [
-            'current_password.required' => 'أدخل كلمة المرور الحالية.',
-            'password.min'              => 'كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل.',
-            'password.confirmed'        => 'كلمتا المرور غير متطابقتين.',
-        ]);
-
-        if (!\Hash::check($request->current_password, Auth::user()->password)) {
-            return back()->withErrors(['current_password' => 'كلمة المرور الحالية غير صحيحة.']);
-        }
-
-        Auth::user()->update(['password' => \Hash::make($request->password)]);
-
-        return back()->with('success', 'تم تغيير كلمة المرور بنجاح.');
-    }
-
     // ─────────────────────────── Announcements ───────────────────────────
     public function announcements()
     {

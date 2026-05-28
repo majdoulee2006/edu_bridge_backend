@@ -20,6 +20,8 @@ class AnnouncementController extends Controller
                 'announcements.announcement_id',
                 'announcements.title',
                 'announcements.content',
+                'announcements.image',
+                'announcements.link_url',
                 'announcements.created_at',
                 'users.full_name as author_name',
             ])
@@ -27,8 +29,12 @@ class AnnouncementController extends Controller
                 'id'          => $a->announcement_id,
                 'title'       => $a->title,
                 'content'     => $a->content,
+                'body'        => $a->content,
+                'image_url'   => $a->image ? url('storage/' . $a->image) : null,
+                'link_url'    => $a->link_url ?? null,
                 'created_at'  => $a->created_at,
                 'author_name' => $a->author_name,
+                'time_ago'    => \Carbon\Carbon::parse($a->created_at)->diffForHumans(),
             ]);
 
         return response()->json([

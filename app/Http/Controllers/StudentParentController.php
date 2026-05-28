@@ -292,16 +292,23 @@ class StudentParentController extends Controller
             $headUserId = DB::table('heads')->value('user_id')
                 ?? DB::table('users')->where('role_id', 5)->value('user_id');
             if ($headUserId) {
-                DB::table('notifications')->insert([
-                    'user_id'    => $headUserId,
-                    'title'      => 'طلب إجازة بانتظار موافقتك',
-                    'message'    => 'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
-                    'type'       => 'leave_request',
-                    'related_id' => $id,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $alreadyNotified = DB::table('notifications')
+                    ->where('user_id', $headUserId)
+                    ->where('type', 'leave_request')
+                    ->where('related_id', $id)
+                    ->exists();
+                if (!$alreadyNotified) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $headUserId,
+                        'title'      => 'طلب إجازة بانتظار موافقتك',
+                        'message'    => 'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
         } else {
             // ولي الأمر رفض → إشعار الطالب

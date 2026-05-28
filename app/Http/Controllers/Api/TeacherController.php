@@ -56,7 +56,8 @@ class TeacherController extends Controller
             ->get();
 
         // Ø¢Ø®Ø± 5 Ø¥Ø¹Ù„Ø§Ù†Ø§Øª
-        $recentAnnouncements = Announcement::where(function($q) use ($courses) {
+        $recentAnnouncements = Announcement::with('user')
+            ->where(function($q) use ($courses) {
                 $q->whereIn('course_id', $courses->pluck('course_id'))
                   ->orWhere('type', 'general')
                   ->orWhereNull('course_id');
@@ -90,10 +91,15 @@ class TeacherController extends Controller
                 })->values(),
                 'recent_announcements' => $recentAnnouncements->map(function($announcement) {
                     return [
-                        'id'         => $announcement->announcement_id,
-                        'title'      => $announcement->title ?? '',
-                        'content'    => substr($announcement->content ?? '', 0, 100),
-                        'created_at' => $announcement->created_at->diffForHumans(),
+                        'id'          => $announcement->announcement_id,
+                        'title'       => $announcement->title ?? '',
+                        'content'     => substr($announcement->content ?? '', 0, 100),
+                        'body'        => $announcement->content ?? '',
+                        'author_name' => $announcement->user ? $announcement->user->full_name : 'الإدارة',
+                        'image_url'   => $announcement->image ? url('storage/' . $announcement->image) : null,
+                        'link_url'    => $announcement->link_url ?? null,
+                        'created_at'  => $announcement->created_at->diffForHumans(),
+                        'time_ago'    => $announcement->created_at->diffForHumans(),
                     ];
                 })->values(),
                 'courses' => $courses->map(function($course) {
@@ -643,6 +649,8 @@ class TeacherController extends Controller
                     'due_date'        => $assignment->due_date->format('Y-m-d H:i:s'),
                     'max_points'      => $assignment->max_points,
                     'attachment_path' => $assignment->attachment_path,
+                    'file_url'        => $assignment->attachment_path ? storageUrl($assignment->attachment_path) : null,
+                    'file_name'       => $assignment->attachment_path ? basename($assignment->attachment_path) : null,
                     'submissions_count' => $submissionsCount,
                     'status'          => $status,
                 ];
@@ -702,15 +710,37 @@ class TeacherController extends Controller
             'attachment_path' => $attachmentPath,
         ]);
 
+        // إشعار الطلاب المسجلين في المادة
+        $teacherUser = $request->user();
+        $studentIds = DB::table('student_courses')
+            ->where('course_id', $request->course_id)
+            ->pluck('student_id');
+        $studentUserIds = DB::table('students')
+            ->whereIn('student_id', $studentIds)
+            ->pluck('user_id');
+        $now = now();
+        $rows = $studentUserIds->map(fn($uid) => [
+            'user_id'    => $uid,
+            'sender_id'  => $teacherUser->user_id,
+            'title'      => 'واجب جديد — ' . $course->name,
+            'message'    => 'رفع المعلم ' . $teacherUser->full_name . ' واجباً جديداً: ' . $request->title,
+            'type'       => 'assignment',
+            'related_id' => $assignment->assignment_id,
+            'is_read'    => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+        if (!empty($rows)) DB::table('notifications')->insert($rows);
+
         return response()->json([
             'success' => true,
-            'message' => 'ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
+            'message' => 'تم إنشاء الواجب بنجاح',
             'data'    => $assignment
         ], 201);
     }
 
     /**
-     * ØªØ­Ø¯ÙŠØ« ÙˆØ§Ø¬Ø¨
+     * تحديث واجب
      */
     public function updateAssignment(Request $request, $assignmentId)
     {
@@ -842,9 +872,27 @@ class TeacherController extends Controller
             'feedback' => $request->feedback,
         ]);
 
+        // إشعار الطالب بتصحيح واجبه
+        $studentUserId = DB::table('students')
+            ->where('student_id', $submission->student_id)
+            ->value('user_id');
+        if ($studentUserId) {
+            DB::table('notifications')->insert([
+                'user_id'    => $studentUserId,
+                'sender_id'  => $request->user()->user_id,
+                'title'      => 'تم تصحيح واجبك',
+                'message'    => 'صحّح المعلم واجب "' . $submission->assignment->title . '" — علامتك: ' . $request->grade . '/' . ($submission->assignment->max_points ?? 100),
+                'type'       => 'assignment',
+                'related_id' => $submission->assignment->assignment_id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'ØªÙ… ØªØµØ­ÙŠØ­ Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
+            'message' => 'تم تصحيح الواجب بنجاح',
             'data' => $submission
         ], 200);
     }
@@ -1032,7 +1080,7 @@ class TeacherController extends Controller
     public function getAnnouncements(Request $request)
     {
         // إعلانات المعلم نفسه + إعلانات رئيس القسم الموجهة للمعلمين أو للجميع
-        $headUserIds = \DB::table('heads')->pluck('user_id');
+        $headUserIds = \DB::table('users')->where('role_id', 5)->pluck('user_id');
 
         $announcements = Announcement::where(function($q) use ($request, $headUserIds) {
                 $q->where('user_id', $request->user()->user_id)
@@ -1057,6 +1105,8 @@ class TeacherController extends Controller
                     'course'      => $announcement->course ? $announcement->course->title : null,
                     'from_head'   => $isFromHead,
                     'author_name' => $announcement->user ? $announcement->user->full_name : null,
+                    'image_url'   => $announcement->image ? url('storage/' . $announcement->image) : null,
+                    'link_url'    => $announcement->link_url ?? null,
                     'created_at'  => $announcement->created_at->format('Y-m-d H:i'),
                     'time_ago'    => $announcement->created_at->diffForHumans(),
                 ];
@@ -1155,6 +1205,25 @@ class TeacherController extends Controller
             'content_url' => $filePath,
         ]);
 
+        // notify students of new lecture
+        $teacherUser    = $request->user();
+        $courseName     = $course->name ?? $course->title ?? 'المادة';
+        $studentIds     = DB::table('student_courses')->where('course_id', $request->course_id)->pluck('student_id');
+        $studentUserIds = DB::table('students')->whereIn('student_id', $studentIds)->pluck('user_id');
+        $notifNow = now();
+        $notifRows = $studentUserIds->map(fn($uid) => [
+            'user_id'    => $uid,
+            'sender_id'  => $teacherUser->user_id,
+            'title'      => 'محاضرة جديدة — ' . $courseName,
+            'message'    => 'رفع المعلم ' . $teacherUser->full_name . ' محاضرة جديدة: ' . $request->title,
+            'type'       => 'lecture',
+            'related_id' => $lesson->lesson_id,
+            'is_read'    => 0,
+            'created_at' => $notifNow,
+            'updated_at' => $notifNow,
+        ])->all();
+        if (!empty($notifRows)) DB::table('notifications')->insert($notifRows);
+
         return response()->json(['success' => true, 'message' => 'ØªÙ… Ø±ÙØ¹ Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­', 'data' => $lesson], 201);
     }
 
@@ -1229,12 +1298,30 @@ class TeacherController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function($n) {
+                $imageUrl = null;
+                $data = [];
+                if ($n->type === 'announcement' && $n->related_id) {
+                    $ann = \DB::table('announcements')
+                        ->leftJoin('users', 'announcements.user_id', '=', 'users.user_id')
+                        ->where('announcements.announcement_id', $n->related_id)
+                        ->first(['announcements.image', 'announcements.content', 'announcements.link_url', 'users.full_name as author_name']);
+                    $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
+                    $data = [
+                        'image_url'   => $imageUrl,
+                        'content'     => $ann->content ?? '',
+                        'author_name' => $ann->author_name ?? 'الإدارة',
+                        'link_url'    => $ann->link_url ?? null,
+                    ];
+                }
                 return [
                     'id'         => $n->id,
                     'title'      => $n->title,
                     'message'    => $n->message,
                     'type'       => $n->type,
                     'is_read'    => $n->is_read,
+                    'related_id' => $n->related_id,
+                    'image_url'  => $imageUrl,
+                    'data'       => $data,
                     'created_at' => $n->created_at->diffForHumans(),
                 ];
             });

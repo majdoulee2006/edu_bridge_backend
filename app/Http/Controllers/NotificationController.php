@@ -16,9 +16,14 @@ class NotificationController extends Controller
               $join->on('leave_requests.id', '=', 'notifications.related_id')
                    ->where('notifications.type', '=', 'leave_request');
           })
+          ->leftJoin('announcements', function ($join) {
+              $join->on('announcements.announcement_id', '=', 'notifications.related_id')
+                   ->where('notifications.type', '=', 'announcement');
+          })
           ->select(
               'notifications.*',
-              'leave_requests.status as leave_status'
+              'leave_requests.status as leave_status',
+              DB::raw("CASE WHEN notifications.type = 'announcement' AND announcements.image IS NOT NULL THEN CONCAT('" . url('storage') . "/', announcements.image) ELSE NULL END as image_url")
           )
           ->orderBy('notifications.created_at', 'desc')
           ->get();

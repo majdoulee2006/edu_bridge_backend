@@ -103,12 +103,22 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['success' => true, 'data' => $children]);
     });
     Route::get('/parent/announcements', function () {
-        $announcements = \App\Models\Announcement::latest()->limit(10)->get()->map(fn($a) => [
-            'id'         => $a->announcement_id,
-            'title'      => $a->title,
-            'content'    => $a->content,
-            'time_ago'   => $a->created_at ? $a->created_at->diffForHumans() : 'منذ قليل',
-        ]);
+        $announcements = \DB::table('announcements')
+            ->leftJoin('users', 'announcements.user_id', '=', 'users.user_id')
+            ->latest('announcements.created_at')
+            ->limit(10)
+            ->get(['announcements.*', 'users.full_name as author_name'])
+            ->map(fn($a) => [
+                'id'          => $a->announcement_id,
+                'title'       => $a->title,
+                'content'     => $a->content,
+                'body'        => $a->content,
+                'image_url'   => $a->image ? url('storage/' . $a->image) : null,
+                'link_url'    => $a->link_url ?? null,
+                'author_name' => $a->author_name ?? 'الإدارة',
+                'time_ago'    => $a->created_at ? \Carbon\Carbon::parse($a->created_at)->diffForHumans() : 'منذ قليل',
+                'created_at'  => $a->created_at,
+            ]);
         return response()->json(['success' => true, 'data' => $announcements]);
     });
     Route::post('/parent/request-report', [StudentParentController::class, 'requestReport']);
@@ -235,8 +245,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/programs-schedule', [DepartmentHeadController::class, 'getProgramsSchedule']);
 
         // Announcements
-        Route::get('/announcements',  [DepartmentHeadController::class, 'getAnnouncements']);
-        Route::post('/announcements', [DepartmentHeadController::class, 'createAnnouncement']);
+        Route::get('/announcements',          [DepartmentHeadController::class, 'getAnnouncements']);
+        Route::post('/announcements',         [DepartmentHeadController::class, 'createAnnouncement']);
+        Route::post('/announcements/{id}',    [DepartmentHeadController::class, 'updateAnnouncement']);
+        Route::delete('/announcements/{id}',  [DepartmentHeadController::class, 'deleteAnnouncement']);
 
         // Send notification to students / students+teachers
         Route::post('/notifications/send', [DepartmentHeadController::class, 'sendNotification']);
