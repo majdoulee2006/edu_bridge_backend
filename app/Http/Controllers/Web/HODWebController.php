@@ -201,12 +201,10 @@ class HODWebController extends Controller
      */
     public function leaves()
     {
-        // جلب الإجازات المعلقة اليومية والساعية مع بيانات المدربين
         $pendingLeaves = DB::table('leave_requests')
-            ->join('teachers', 'leave_requests.teacher_id', '=', 'teachers.teacher_id')
-            ->join('users', 'teachers.user_id', '=', 'users.user_id')
-            ->select('leave_requests.*', 'users.full_name as teacher_name', 'teachers.specialization')
-            ->where('leave_requests.status', 'pending')
+            ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
+            ->select('leave_requests.*', 'users.full_name as student_name')
+            ->where('leave_requests.status', 'pending_hod')
             ->orderBy('leave_requests.created_at', 'desc')
             ->get();
 
@@ -219,11 +217,32 @@ class HODWebController extends Controller
     public function updateLeaveStatus(Request $request, $id)
     {
         $status = $request->input('status'); // 'approved' or 'rejected'
-        
+
+        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
+
         DB::table('leave_requests')
             ->where('id', $id)
             ->update(['status' => $status, 'updated_at' => now()]);
-            
+
+        // إشعار الطالب بالنتيجة
+        if ($leaveRequest && $leaveRequest->student_id) {
+            $title   = $status === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة';
+            $message = $status === 'approved'
+                ? 'وافق رئيس القسم على طلب إجازتك بتاريخ ' . $leaveRequest->date
+                : 'تم رفض طلب إجازتك بتاريخ ' . $leaveRequest->date . ' من قِبل رئيس القسم';
+
+            DB::table('notifications')->insert([
+                'user_id'    => $leaveRequest->student_id,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'leave_request',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         return redirect()->back()->with('success', 'تم تحديث حالة الإجازة بنجاح.');
     }
 
@@ -518,6 +537,8 @@ class HODWebController extends Controller
         $messages = DB::table('messages')
             ->leftJoin('users as senders', 'messages.sender_id', '=', 'senders.user_id')
             ->leftJoin('users as receivers', 'messages.receiver_id', '=', 'receivers.user_id')
+            ->where('messages.sender_id', \Illuminate\Support\Facades\Auth::id())
+            ->orWhere('messages.receiver_id', \Illuminate\Support\Facades\Auth::id())
             ->select('messages.*', 'senders.full_name as sender_name', 'receivers.full_name as receiver_name')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -536,15 +557,25 @@ class HODWebController extends Controller
     public function storeMessage(Request $request)
     {
         $request->validate([
-            'sender_id' => 'required',
             'receiver_id' => 'required',
-            'message' => 'required|string',
+            'message' => 'required',
         ]);
 
         DB::table('messages')->insert([
-            'sender_id' => $request->sender_id,
+            'sender_id' => \Illuminate\Support\Facades\Auth::id(),
             'receiver_id' => $request->receiver_id,
             'message' => $request->message,
+            'is_read' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // إضافة إشعار للمستلم
+        DB::table('notifications')->insert([
+            'user_id' => $request->receiver_id,
+            'title'   => 'رسالة جديدة',
+            'message' => 'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            'type'    => 'message',
             'is_read' => false,
             'created_at' => now(),
             'updated_at' => now(),

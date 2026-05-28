@@ -1,4 +1,4 @@
-@extends('layouts.teacher')
+@extends('layouts.affairs')
 @section('title', 'الرسائل')
 
 @push('styles')
@@ -444,7 +444,7 @@
             <h3>رسالة جديدة</h3>
             <button class="close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <form method="POST" action="{{ route('teacher.messages.send') }}">
+        <form method="POST" action="{{ route('affairs.messages.send') }}">
             @csrf
             <div class="modal-body">
                 <div class="form-group">
@@ -507,7 +507,7 @@
         chatBox.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-secondary);">جاري التحميل... <i class="fa-solid fa-spinner fa-spin"></i></div>';
 
         // Fetch messages via AJAX
-        fetch(`/teacher/messages/conversation/${userId}`)
+        fetch(`/affairs/messages/conversation/${userId}`)
             .then(res => res.json())
             .then(data => {
                 chatBox.innerHTML = '';
@@ -554,7 +554,7 @@
         input.value = '';
 
         // Post to server
-        fetch(`{{ route('teacher.messages.send') }}`, {
+        fetch(`{{ route('affairs.messages.send') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

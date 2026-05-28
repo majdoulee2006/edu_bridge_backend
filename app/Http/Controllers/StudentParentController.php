@@ -214,6 +214,8 @@ class StudentParentController extends Controller
                 'courses.title as course_name',
                 'assignments.due_date',
                 'assignments.max_points',
+                'assignments.file_path',
+                'assignments.file_name',
                 'assignment_submissions.submission_id',
                 'assignment_submissions.grade',
                 'assignment_submissions.submitted_at',
@@ -278,29 +280,47 @@ class StudentParentController extends Controller
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
-        DB::table('leave_requests')
-            ->where('id', $id)
-            ->update(['status' => $request->status, 'updated_at' => now()]);
+        if ($request->status === 'approved') {
+            // ولي الأمر وافق → ينتقل لرئيس القسم
+            DB::table('leave_requests')
+                ->where('id', $id)
+                ->update(['status' => 'pending_hod', 'updated_at' => now()]);
 
-        // إشعار الطالب بنتيجة القرار
-        if ($leaveRequest->student_id) {
-            $typeText = $leaveRequest->type === 'hourly' ? 'الساعية' : 'اليومية';
-            if ($request->status === 'approved') {
-                $message = $leaveRequest->type === 'hourly'
-                    ? 'تمت الموافقة على طلب إجازتك الساعية بتاريخ ' . $leaveRequest->date
-                    : 'تمت الموافقة على طلب إجازتك اليومية بتاريخ ' . $leaveRequest->date;
-            } else {
-                $message = 'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر';
+            $studentUser = DB::table('users')->where('user_id', $leaveRequest->student_id)->first();
+            $studentName = $studentUser->full_name ?? 'الطالب';
+
+            $headUserId = DB::table('heads')->value('user_id')
+                ?? DB::table('users')->where('role_id', 5)->value('user_id');
+            if ($headUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $headUserId,
+                    'title'      => 'طلب إجازة بانتظار موافقتك',
+                    'message'    => 'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
+                    'type'       => 'leave_request',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
-            DB::table('notifications')->insert([
-                'user_id'    => $leaveRequest->student_id,
-                'title'      => $request->status === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة',
-                'message'    => $message,
-                'type'       => 'leave_request',
-                'is_read'    => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        } else {
+            // ولي الأمر رفض → إشعار الطالب
+            DB::table('leave_requests')
+                ->where('id', $id)
+                ->update(['status' => 'rejected', 'updated_at' => now()]);
+
+            if ($leaveRequest->student_id) {
+                $typeText = $leaveRequest->type === 'hourly' ? 'الساعية' : 'اليومية';
+                DB::table('notifications')->insert([
+                    'user_id'    => $leaveRequest->student_id,
+                    'title'      => 'تم رفض طلب الإجازة',
+                    'message'    => 'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
+                    'type'       => 'leave_request',
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب']);

@@ -356,50 +356,28 @@ class DepartmentHeadController extends Controller
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
-        $newStatus = $request->status === 'approved' ? 'pending_parent' : 'rejected';
+        $newStatus = $request->status === 'approved' ? 'approved' : 'rejected';
 
         DB::table('leave_requests')
             ->where('id', $id)
             ->update(['status' => $newStatus, 'updated_at' => now()]);
 
         if ($leaveRequest->student_id) {
-            $student     = DB::table('students')->where('user_id', $leaveRequest->student_id)->first();
-            $studentUser = DB::table('users')->where('user_id', $leaveRequest->student_id)->first();
-            $studentName = $studentUser->full_name ?? 'الطالب';
+            $title   = $newStatus === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة';
+            $message = $newStatus === 'approved'
+                ? 'وافق رئيس القسم على طلب إجازتك بتاريخ ' . $leaveRequest->date
+                : 'تم رفض طلب إجازتك بتاريخ ' . $leaveRequest->date . ' من قِبل رئيس القسم';
 
-            if ($newStatus === 'pending_parent' && $student) {
-                // إشعار أولياء الأمر للمراجعة
-                $parentIds = DB::table('parent_students')
-                    ->where('student_id', $student->student_id)
-                    ->pluck('parent_id');
-
-                foreach ($parentIds as $parentId) {
-                    $parent = DB::table('parents')->where('parent_id', $parentId)->first();
-                    if ($parent) {
-                        DB::table('notifications')->insert([
-                            'user_id'    => $parent->user_id,
-                            'title'      => 'طلب إجازة يحتاج موافقتك',
-                            'message'    => 'طلب ' . $studentName . ' إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعة الطلب والرد عليه',
-                            'type'       => 'leave_request',
-                            'related_id' => $id,
-                            'is_read'    => 0,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
-            } elseif ($newStatus === 'rejected') {
-                // إشعار الطالب بالرفض
-                DB::table('notifications')->insert([
-                    'user_id'    => $leaveRequest->student_id,
-                    'title'      => 'تم رفض طلب الإجازة',
-                    'message'    => 'تم رفض طلب إجازتك بتاريخ ' . $leaveRequest->date . ' من قِبل رئيس القسم',
-                    'type'       => 'leave_request',
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+            DB::table('notifications')->insert([
+                'user_id'    => $leaveRequest->student_id,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'leave_request',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
         return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب']);
@@ -668,7 +646,7 @@ class DepartmentHeadController extends Controller
         $request->validate([
             'title'   => 'required|string|max:255',
             'message' => 'required|string',
-            'target'  => 'required|in:students,all',
+            'target'  => 'required|in:students,students_teachers,all',
         ]);
 
         $userIds = collect();
@@ -679,12 +657,23 @@ class DepartmentHeadController extends Controller
             ->pluck('users.user_id');
         $userIds = $userIds->merge($studentIds);
 
-        // include teachers if target is 'all'
-        if ($request->target === 'all') {
+        // include teachers
+        if (in_array($request->target, ['students_teachers', 'all'])) {
             $teacherIds = DB::table('teachers')
                 ->join('users', 'teachers.user_id', '=', 'users.user_id')
                 ->pluck('users.user_id');
             $userIds = $userIds->merge($teacherIds);
+        }
+
+        // include parents + affairs + admin
+        if ($request->target === 'all') {
+            $parentIds = DB::table('parents')
+                ->join('users', 'parents.user_id', '=', 'users.user_id')
+                ->pluck('users.user_id');
+            $staffIds = DB::table('users')
+                ->whereIn('role_id', [5, 6, 7]) // hod, affairs, admin
+                ->pluck('user_id');
+            $userIds = $userIds->merge($parentIds)->merge($staffIds);
         }
 
         $senderId = $request->user()->user_id;

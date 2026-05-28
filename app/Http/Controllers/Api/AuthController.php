@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use App\Models\OtpCode;
+use App\Services\TelegramService;
 use App\Models\Parents;
 use App\Models\Role;
 use App\Models\Student;
@@ -118,12 +119,30 @@ class AuthController extends Controller
     // ──────────────────────────────────────────────
     public function register(Request $request)
     {
+        // حذف الحساب القديم غير المفعّل قبل التحقق من التفرد
+        $existingInactive = User::where('email', $request->email)->where('status', 'inactive')->first();
+        if ($existingInactive) {
+            OtpCode::where('email', $request->email)->delete();
+            Student::where('user_id', $existingInactive->user_id)->delete();
+            Parents::where('user_id', $existingInactive->user_id)->delete();
+            $existingInactive->delete();
+        }
+
+        $existingInactiveByUid = $request->university_id
+            ? User::where('university_id', $request->university_id)->where('status', 'inactive')->first()
+            : null;
+        if ($existingInactiveByUid && (!$existingInactive || $existingInactiveByUid->user_id !== $existingInactive->user_id)) {
+            Student::where('user_id', $existingInactiveByUid->user_id)->delete();
+            $existingInactiveByUid->delete();
+        }
+
         $validator = Validator::make($request->all(), [
-            'full_name'     => 'required|string|max:255',
-            'email'         => 'required|email|unique:users,email',
-            'phone'         => 'nullable|string|max:20',
-            'password'      => 'required|string|min:6',
-            'role'          => 'required|in:student,parent',
+            'full_name'        => 'required|string|max:255',
+            'email'            => 'required|email|unique:users,email',
+            'phone'            => 'nullable|string|max:20',
+            'telegram_username'=> 'nullable|string|max:100',
+            'password'         => 'required|string|min:6',
+            'role'             => 'required|in:student,parent',
             // حقول الطالب
             'university_id' => 'required_if:role,student|string|unique:users,university_id',
             'gender'        => 'nullable|in:ذكر,أنثى',
@@ -156,21 +175,26 @@ class AuthController extends Controller
             $username = $base . $i++;
         }
 
+        $telegramId = $request->telegram_username && is_numeric(trim($request->telegram_username))
+            ? trim($request->telegram_username)
+            : null;
+
         $user = User::create([
-            'full_name'     => $request->full_name,
-            'username'      => $username,
-            'email'         => $request->email,
-            'phone'         => $request->phone,
-            'password'      => Hash::make($request->password),
-            'role_id'       => $role->role_id,
-            'status'        => 'inactive',   // يصبح active بعد التحقق
-            'university_id' => $request->university_id,
-            'gender'        => $request->gender,
-            'birth_date'    => $request->birth_date,
-            'academic_year' => $request->academic_year,
-            'department'    => $request->department,
-            'branch'        => $request->branch,
-            'children_ids'  => $request->children_ids,
+            'full_name'        => $request->full_name,
+            'username'         => $username,
+            'email'            => $request->email,
+            'phone'            => $request->phone,
+            'telegram_chat_id' => $telegramId,
+            'password'         => Hash::make($request->password),
+            'role_id'          => $role->role_id,
+            'status'           => 'inactive',
+            'university_id'    => $request->university_id,
+            'gender'           => $request->gender,
+            'birth_date'       => $request->birth_date,
+            'academic_year'    => $request->academic_year,
+            'department'       => $request->department,
+            'branch'           => $request->branch,
+            'children_ids'     => $request->children_ids,
         ]);
 
         if ($request->role === 'student') {
@@ -207,32 +231,52 @@ class AuthController extends Controller
             Parents::create(['user_id' => $user->user_id]);
         }
 
-        // في التطوير نستخدم OTP ثابت للتجربة السريعة
-        $otp = app()->environment('local') ? '123456' : str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        OtpCode::where('email', $request->email)->delete(); // حذف أي OTP قديم
-
+        OtpCode::where('email', $request->email)->delete();
         OtpCode::create([
             'email'      => $request->email,
             'code'       => $otp,
             'expires_at' => now()->addMinutes(15),
         ]);
 
-        // إرسال الإيميل
-        try {
-            Mail::to($request->email)->send(new OtpMail($otp, $request->full_name));
-        } catch (\Exception $e) {
-            Log::error('OTP Mail Error: ' . $e->getMessage());
+        $telegramUsername = $request->telegram_username;
+        $sentViaTelegram  = false;
+
+        // إرسال OTP عبر تيليغرام إذا أعطى المستخدم username
+        if ($telegramUsername) {
+            try {
+                $telegram = new TelegramService();
+                $chatId   = $telegram->findChatIdByUsername($telegramUsername);
+                if ($chatId) {
+                    $sentViaTelegram = $telegram->sendOtp($chatId, $otp, $request->full_name);
+                }
+            } catch (\Exception $e) {
+                Log::error('Telegram OTP Error: ' . $e->getMessage());
+            }
         }
 
+        // fallback: إرسال إيميل
+        if (!$sentViaTelegram) {
+            try {
+                Mail::to($request->email)->send(new OtpMail($otp, $request->full_name));
+            } catch (\Exception $e) {
+                Log::error('OTP Mail Error: ' . $e->getMessage());
+            }
+        }
+
+        $message = $sentViaTelegram
+            ? 'تم إنشاء الحساب. تحقق من تيليغرام للحصول على رمز التحقق.'
+            : 'تم إنشاء الحساب. تحقق من بريدك الإلكتروني للحصول على رمز التحقق.';
+
         $response = [
-            'success' => true,
-            'message' => 'تم إنشاء الحساب. تحقق من بريدك الإلكتروني للحصول على رمز التحقق.',
-            'email'   => $request->email,
+            'success'          => true,
+            'message'          => $message,
+            'email'            => $request->email,
+            'sent_via_telegram'=> $sentViaTelegram,
         ];
 
-        // في بيئة التطوير نرجّع الـ OTP مباشرة للتجربة
-        if (app()->environment('local')) {
+        if (app()->environment('local') && !$sentViaTelegram) {
             $response['otp_dev'] = $otp;
         }
 
@@ -494,6 +538,191 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'تم تحديث البريد الإلكتروني بنجاح',
         ], 200);
+    }
+
+    // ──────────────────────────────────────────────
+    // OTP LOGIN — STEP 1: إرسال OTP عبر تيليغرام
+    // ──────────────────────────────────────────────
+    public function sendLoginOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'يرجى إدخال رقم الهاتف'], 422);
+        }
+
+        $phone      = $request->phone;
+        $digitsOnly = preg_replace('/[^0-9]/', '', $phone);
+
+        $user = User::where('status', 'active')
+            ->where(function ($q) use ($phone, $digitsOnly) {
+                $q->where('phone', $phone)
+                  ->orWhere('phone', '+' . $digitsOnly)
+                  ->orWhereRaw("REPLACE(REPLACE(phone, '+', ''), ' ', '') = ?", [$digitsOnly]);
+            })->first();
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'لا يوجد حساب مرتبط بهذا الرقم'], 404);
+        }
+
+        if (!$user->telegram_chat_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذا الحساب لا يملك Chat ID مرتبط. يرجى تسجيل الدخول بكلمة المرور.',
+            ], 400);
+        }
+
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        OtpCode::where('email', $user->email)->delete();
+        OtpCode::create([
+            'email'      => $user->email,
+            'code'       => $otp,
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $telegram = new TelegramService();
+        $sent     = $telegram->sendOtp((int) $user->telegram_chat_id, $otp, $user->full_name);
+
+        if (!$sent) {
+            return response()->json(['success' => false, 'message' => 'فشل إرسال الرمز عبر تيليغرام'], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز التحقق عبر تيليغرام',
+            'email'   => $user->email,
+        ], 200);
+    }
+
+    // ──────────────────────────────────────────────
+    // OTP LOGIN — STEP 2: التحقق من OTP وإرجاع التوكن
+    // ──────────────────────────────────────────────
+    public function verifyLoginOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'otp'   => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $record = OtpCode::where('email', $request->email)
+            ->where('code', $request->otp)
+            ->where('used', false)
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
+
+        if (!$record) {
+            return response()->json(['success' => false, 'message' => 'الرمز غير صحيح أو منتهي الصلاحية'], 400);
+        }
+
+        $user = User::where('email', $request->email)->where('status', 'active')->first();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'الحساب غير موجود أو غير مفعّل'], 404);
+        }
+
+        $record->update(['used' => true]);
+        $user->update(['last_login' => now()]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $parentId = null;
+        if ($user->role_id == 4) {
+            $parent   = DB::table('parents')->where('user_id', $user->user_id)->first();
+            $parentId = $parent?->parent_id;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تسجيل الدخول بنجاح',
+            'token'   => $token,
+            'user'    => [
+                'id'        => $user->user_id,
+                'name'      => $user->full_name,
+                'username'  => $user->username,
+                'email'     => $user->email,
+                'role'      => $user->role ?? 'student',
+                'role_id'   => $user->role_id,
+                'parent_id' => $parentId,
+            ],
+        ], 200);
+    }
+
+    // ──────────────────────────────────────────────
+    // SEND PROFILE OTP (عبر تيليغرام لتغيير الهاتف/الإيميل/كلمة المرور)
+    // ──────────────────────────────────────────────
+    public function sendProfileOtp(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'telegram_chat_id' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'يرجى إدخال Chat ID الخاص بتيليغرام'], 422);
+        }
+
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        OtpCode::where('email', $user->email)->delete();
+        OtpCode::create([
+            'email'      => $user->email,
+            'code'       => $otp,
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        $telegram = new TelegramService();
+        $chatId   = $telegram->findChatIdByUsername($request->telegram_chat_id);
+
+        if (!$chatId) {
+            return response()->json(['success' => false, 'message' => 'لم يتم العثور على حساب تيليغرام بهذا الـ Chat ID'], 404);
+        }
+
+        $sent = $telegram->sendOtp($chatId, $otp, $user->full_name);
+
+        if (!$sent) {
+            return response()->json(['success' => false, 'message' => 'فشل إرسال الرمز عبر تيليغرام'], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال رمز التحقق عبر تيليغرام'], 200);
+    }
+
+    // ──────────────────────────────────────────────
+    // VERIFY PROFILE OTP
+    // ──────────────────────────────────────────────
+    public function verifyProfileOtp(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'otp' => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $record = OtpCode::where('email', $user->email)
+            ->where('code', $request->otp)
+            ->where('used', false)
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
+
+        if (!$record) {
+            return response()->json(['success' => false, 'message' => 'الرمز غير صحيح أو منتهي الصلاحية'], 400);
+        }
+
+        $record->delete();
+
+        return response()->json(['success' => true, 'message' => 'تم التحقق بنجاح'], 200);
     }
 
     public function forgotPassword(Request $request)

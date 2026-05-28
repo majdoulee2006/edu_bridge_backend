@@ -560,23 +560,29 @@ class StudentController extends Controller
                 }
             }
 
+            $attachmentPath = $assignment->attachment_path ?? null;
+            $attachmentName = $attachmentPath ? basename($attachmentPath) : null;
+
             $formattedAssignments[] = [
-                'id' => $assignment->assignment_id,
-                'title' => $assignment->title,
-                'description' => $assignment->description,
-                'type' => $assignment->type, // pdf, code, project ...
-                'due_date' => $assignment->due_date->format('Y-m-d h:i A'),
-                'max_points' => $assignment->max_points,
-                'course_name' => $assignment->course->title ?? 'مادة غير معروفة',
-                'teacher_name' => $assignment->course->teachers->first()?->user?->name ?? 'مدرس غير محدد',
-                'status' => $status,
-                'submission' => $submission ? [
-                    'file_path' => $submission->file_path ? storageUrl($submission->file_path) : null,
+                'id'            => $assignment->assignment_id,
+                'assignment_id' => $assignment->assignment_id,
+                'title'         => $assignment->title,
+                'description'   => $assignment->description,
+                'type'          => $assignment->type,
+                'due_date'      => $assignment->due_date->format('Y-m-d h:i A'),
+                'max_points'    => $assignment->max_points,
+                'course_name'   => $assignment->course->title ?? 'مادة غير معروفة',
+                'teacher_name'  => $assignment->course->teachers->first()?->user?->name ?? 'مدرس غير محدد',
+                'status'        => $status,
+                'file_url'      => $attachmentPath ? storageUrl($attachmentPath) : null,
+                'file_name'     => $attachmentName,
+                'submission'    => $submission ? [
+                    'file_path'     => $submission->file_path ? storageUrl($submission->file_path) : null,
                     'student_notes' => $submission->student_notes,
-                    'grade' => $submission->grade,
-                    'feedback' => $submission->feedback,
-                    'submitted_at' => $submission->created_at->format('Y-m-d h:i A'),
-                ] : null
+                    'grade'         => $submission->grade,
+                    'feedback'      => $submission->feedback,
+                    'submitted_at'  => $submission->created_at->format('Y-m-d h:i A'),
+                ] : null,
             ];
         }
 
@@ -763,51 +769,45 @@ class StudentController extends Controller
             $documentPath = $document->store('leave_requests', 'public');
         }
 
-        // استخدام موديل LeaveRequest الحقيقي
+        // استخدام موديل LeaveRequest الحقيقي — يذهب أولاً لولي الأمر
         $leaveRequest = LeaveRequest::create([
             'student_id' => $request->user()->user_id,
             'type'       => $request->type,
             'date'       => $request->date,
             'reason'     => $request->reason,
             'attachment' => $documentPath,
-            'status'     => 'pending_hod',
+            'status'     => 'pending_parent',
         ]);
 
-        // إشعار رئيس القسم بالطلب الجديد
+        // إشعار ولي الأمر بالطلب الجديد
         $studentName = $request->user()->full_name ?? 'طالب';
-        $headUserId = \DB::table('heads')
-            ->join('students', function($j) use ($request) {
-                $j->whereExists(function($q) use ($request) {
-                    $q->from('enrollments')
-                      ->join('course_program', 'enrollments.course_id', '=', 'course_program.course_id')
-                      ->join('programs', 'course_program.program_id', '=', 'programs.id')
-                      ->whereColumn('programs.department_id', 'heads.department_id')
-                      ->where('enrollments.student_id', $request->user()->student?->student_id ?? 0);
-                });
-            })
-            ->value('heads.user_id');
+        $student = $request->user()->student;
 
-        // fallback: notify the first available head
-        if (!$headUserId) {
-            $headUserId = \DB::table('heads')->value('user_id');
-        }
+        if ($student) {
+            $parentIds = \DB::table('parent_students')
+                ->where('student_id', $student->student_id)
+                ->pluck('parent_id');
 
-        if ($headUserId) {
-            \DB::table('notifications')->insert([
-                'user_id'    => $headUserId,
-                'title'      => 'طلب إجازة جديد',
-                'message'    => 'قدّم الطالب ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date,
-                'type'       => 'leave_request',
-                'related_id' => $leaveRequest->id,
-                'is_read'    => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            foreach ($parentIds as $parentId) {
+                $parent = \DB::table('parents')->where('parent_id', $parentId)->first();
+                if ($parent) {
+                    \DB::table('notifications')->insert([
+                        'user_id'    => $parent->user_id,
+                        'title'      => 'طلب إجازة يحتاج موافقتك',
+                        'message'    => 'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
+                        'type'       => 'leave_request',
+                        'related_id' => $leaveRequest->id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال طلب الإجازة بنجاح، بانتظار موافقة رئيس القسم',
+            'message' => 'تم إرسال طلب الإجازة بنجاح، بانتظار موافقة ولي الأمر',
             'data' => $leaveRequest
         ], 200);
     }

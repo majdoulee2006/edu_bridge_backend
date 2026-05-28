@@ -27,6 +27,8 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
+Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
 
 // روابط محمية (تحتاج توكن)
 Route::middleware('auth:sanctum')->group(function () {
@@ -36,6 +38,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/avatar', [AuthController::class, 'updateAvatar']);
     Route::post('/profile/request-change-email', [AuthController::class, 'requestChangeEmail']);
     Route::post('/profile/confirm-change-email', [AuthController::class, 'confirmChangeEmail']);
+    Route::post('/profile/send-otp', [AuthController::class, 'sendProfileOtp']);
+    Route::post('/profile/verify-otp', [AuthController::class, 'verifyProfileOtp']);
 
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {

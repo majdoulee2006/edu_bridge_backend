@@ -41,6 +41,7 @@ class User extends Authenticatable
             3 => 'student',
             4 => 'parent',
             5 => 'head',
+            6 => 'affairs',
         ];
         return $roles[$this->role_id] ?? 'student';
     }
