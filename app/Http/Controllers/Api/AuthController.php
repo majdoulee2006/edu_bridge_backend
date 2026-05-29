@@ -143,15 +143,14 @@ class AuthController extends Controller
             'telegram_username'=> 'nullable|string|max:100',
             'password'         => 'required|string|min:6',
             'role'             => 'required|in:student,parent',
-            // حقول الطالب
-            'university_id' => 'required_if:role,student|string|unique:users,university_id',
-            'gender'        => 'nullable|in:ذكر,أنثى',
-            'birth_date'    => 'nullable|date',
-            'academic_year' => 'nullable|string',
-            'department'    => 'nullable|string',
-            'branch'        => 'nullable|string',
-            // حقول ولي الأمر
-            'children_ids'  => 'nullable|array',
+            'university_id'    => 'required_if:role,student|string|unique:users,university_id',
+            'child_university_id' => 'required_if:role,parent|string',
+            'gender'           => 'nullable|in:ذكر,أنثى',
+            'birth_date'       => 'nullable|date',
+            'academic_year'    => 'nullable|string',
+            'department'       => 'nullable|string',
+            'branch'           => 'nullable|string',
+            'children_ids'     => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -160,6 +159,40 @@ class AuthController extends Controller
                 'message' => $validator->errors()->first(),
                 'errors'  => $validator->errors(),
             ], 422);
+        }
+
+        // تحقق من الرقم الجامعي للطالب
+        if ($request->role === 'student') {
+            $uid = \DB::table('university_ids')
+                ->where('university_id', $request->university_id)
+                ->where('role', 'student')
+                ->first();
+            if (!$uid) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الرقم الجامعي غير موجود. تواصل مع موظف الشؤون.',
+                ], 422);
+            }
+            if ($uid->is_used) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هذا الرقم الجامعي مستخدم مسبقاً.',
+                ], 422);
+            }
+        }
+
+        // تحقق من رقم الابن لولي الأمر
+        if ($request->role === 'parent' && $request->child_university_id) {
+            $childUid = \DB::table('university_ids')
+                ->where('university_id', $request->child_university_id)
+                ->where('role', 'student')
+                ->first();
+            if (!$childUid) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الرقم الجامعي للطفل غير موجود.',
+                ], 422);
+            }
         }
 
         $role = Role::where('name', $request->role)->first();
@@ -231,52 +264,19 @@ class AuthController extends Controller
             Parents::create(['user_id' => $user->user_id]);
         }
 
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        OtpCode::where('email', $request->email)->delete();
-        OtpCode::create([
-            'email'      => $request->email,
-            'code'       => $otp,
-            'expires_at' => now()->addMinutes(15),
-        ]);
-
-        $telegramUsername = $request->telegram_username;
-        $sentViaTelegram  = false;
-
-        // إرسال OTP عبر تيليغرام إذا أعطى المستخدم username
-        if ($telegramUsername) {
-            try {
-                $telegram = new TelegramService();
-                $chatId   = $telegram->findChatIdByUsername($telegramUsername);
-                if ($chatId) {
-                    $sentViaTelegram = $telegram->sendOtp($chatId, $otp, $request->full_name);
-                }
-            } catch (\Exception $e) {
-                Log::error('Telegram OTP Error: ' . $e->getMessage());
-            }
+        // علّم الرقم الجامعي كمستخدم
+        if ($request->role === 'student') {
+            \DB::table('university_ids')
+                ->where('university_id', $request->university_id)
+                ->update(['is_used' => true]);
         }
 
-        // fallback: إرسال إيميل
-        if (!$sentViaTelegram) {
-            try {
-                Mail::to($request->email)->send(new OtpMail($otp, $request->full_name));
-            } catch (\Exception $e) {
-                Log::error('OTP Mail Error: ' . $e->getMessage());
-            }
-        }
-
-        $message = $sentViaTelegram
-            ? 'تم إنشاء الحساب. تحقق من تيليغرام للحصول على رمز التحقق.'
-            : 'تم إنشاء الحساب. تحقق من بريدك الإلكتروني للحصول على رمز التحقق.';
-
-        $response = [
-            'success'          => true,
-            'message'          => $message,
-            'email'            => $request->email,
-            'sent_via_telegram'=> $sentViaTelegram,
-        ];
-
-        return response()->json($response, 201);
+        return response()->json([
+            'success'         => true,
+            'pending_approval'=> true,
+            'message'         => 'تم إرسال طلبك بنجاح. سيتم مراجعته من قِبل موظف الشؤون وسيُفعَّل حسابك قريباً.',
+            'email'           => $request->email,
+        ], 201);
     }
 
     // ──────────────────────────────────────────────

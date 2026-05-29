@@ -164,6 +164,16 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::get('/settings', [AffairsWebController::class, 'settings'])->name('affairs.settings');
     Route::put('/settings/password', [AffairsWebController::class, 'updatePassword'])->name('affairs.settings.password');
     Route::get('/announcements', [AffairsWebController::class, 'announcements'])->name('affairs.announcements');
+
+    // الأرقام الجامعية
+    Route::get('/university-ids', [AffairsWebController::class, 'universityIds'])->name('affairs.university_ids');
+    Route::post('/university-ids', [AffairsWebController::class, 'storeUniversityId'])->name('affairs.university_ids.store');
+    Route::post('/university-ids/{id}/delete', [AffairsWebController::class, 'deleteUniversityId'])->name('affairs.university_ids.delete');
+
+    // طلبات الحسابات المعلّقة
+    Route::get('/pending-accounts', [AffairsWebController::class, 'pendingAccounts'])->name('affairs.pending_accounts');
+    Route::post('/pending-accounts/{id}/approve', [AffairsWebController::class, 'approveAccount'])->name('affairs.pending_accounts.approve');
+    Route::post('/pending-accounts/{id}/reject', [AffairsWebController::class, 'rejectAccount'])->name('affairs.pending_accounts.reject');
 });
 
 // ===== مسارات الإدارة (Admin) =====

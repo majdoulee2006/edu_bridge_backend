@@ -345,11 +345,8 @@
                     <label>نوع الحساب (الدور)</label>
                     <select name="role_id" class="form-control" required>
                         <option value="">-- اختر الدور --</option>
-                        <option value="3">طالب</option>
                         <option value="2">معلم</option>
                         <option value="5">رئيس قسم</option>
-                        <option value="4">ولي أمر</option>
-                        <option value="6">موظف شؤون</option>
                     </select>
                 </div>
                 <div class="form-group">
