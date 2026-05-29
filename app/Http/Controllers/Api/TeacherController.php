@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -23,7 +23,7 @@ use App\Models\Message;
 class TeacherController extends Controller
 {
     /**
-     * Ù„ÙˆØ­Ø© ØªØ­ÙƒÙ… Ø§Ù„Ù…Ø¯Ø±Ø³ - Dashboard
+     * Ã™â€žÃ™Ë†Ã˜Â­Ã˜Â© Ã˜ÂªÃ˜Â­Ã™Æ’Ã™â€¦ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã˜Â±Ã˜Â³ - Dashboard
      */
     public function dashboard(Request $request)
     {
@@ -44,18 +44,18 @@ class TeacherController extends Controller
 
         $courses = $teacher->courses()->withCount('students')->get();
 
-        // Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª
+        // Ã˜Â¥Ã˜Â­Ã˜ÂµÃ˜Â§Ã˜Â¦Ã™Å Ã˜Â§Ã˜Âª
         $totalStudents = $courses->sum('students_count');
         $totalCourses = $courses->count();
 
-        // Ø¢Ø®Ø± 5 ÙˆØ§Ø¬Ø¨Ø§Øª
+        // Ã˜Â¢Ã˜Â®Ã˜Â± 5 Ã™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨Ã˜Â§Ã˜Âª
         $recentAssignments = Assignment::whereIn('course_id', $courses->pluck('course_id'))
             ->with('course')
             ->latest()
             ->limit(5)
             ->get();
 
-        // Ø¢Ø®Ø± 5 Ø¥Ø¹Ù„Ø§Ù†Ø§Øª
+        // Ã˜Â¢Ã˜Â®Ã˜Â± 5 Ã˜Â¥Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€ Ã˜Â§Ã˜Âª
         $recentAnnouncements = Announcement::with('user')
             ->where(function($q) use ($courses) {
                 $q->whereIn('course_id', $courses->pluck('course_id'))
@@ -95,7 +95,7 @@ class TeacherController extends Controller
                         'title'       => $announcement->title ?? '',
                         'content'     => substr($announcement->content ?? '', 0, 100),
                         'body'        => $announcement->content ?? '',
-                        'author_name' => $announcement->user ? $announcement->user->full_name : 'الإدارة',
+                        'author_name' => $announcement->user ? $announcement->user->full_name : 'Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©',
                         'image_url'   => $announcement->image ? url('storage/' . $announcement->image) : null,
                         'link_url'    => $announcement->link_url ?? null,
                         'created_at'  => $announcement->created_at->diffForHumans(),
@@ -121,7 +121,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * Ø¬Ù„Ø¨ Ø¬Ù…ÙŠØ¹ Ø¯ÙˆØ±Ø§Øª Ø§Ù„Ù…Ø¯Ø±Ø³
+     * Ã˜Â¬Ã™â€žÃ˜Â¨ Ã˜Â¬Ã™â€¦Ã™Å Ã˜Â¹ Ã˜Â¯Ã™Ë†Ã˜Â±Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã˜Â±Ã˜Â³
      */
     public function myDepartmentPrograms(Request $request)
     {
@@ -158,14 +158,14 @@ class TeacherController extends Controller
 
         $query = $teacher->courses()->with(['students.user', 'schedule', 'programs']);
 
-        // ÙÙ„ØªØ±Ø© Ø­Ø³Ø¨ Ø§Ù„Ø¨Ø±Ù†Ø§Ù…Ø¬/Ø§Ù„Ø¯ÙˆØ±Ø©
+        // Ã™ÂÃ™â€žÃ˜ÂªÃ˜Â±Ã˜Â© Ã˜Â­Ã˜Â³Ã˜Â¨ Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™â€ Ã˜Â§Ã™â€¦Ã˜Â¬/Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â©
         if ($request->filled('program_id')) {
             $query->whereHas('programs', function ($q) use ($request) {
                 $q->where('programs.id', $request->program_id);
             });
         }
 
-        // ÙÙ„ØªØ±Ø© Ø­Ø³Ø¨ Ø§Ù„Ø³Ù†Ø© Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠØ©
+        // Ã™ÂÃ™â€žÃ˜ÂªÃ˜Â±Ã˜Â© Ã˜Â­Ã˜Â³Ã˜Â¨ Ã˜Â§Ã™â€žÃ˜Â³Ã™â€ Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â±Ã˜Â§Ã˜Â³Ã™Å Ã˜Â©
         if ($request->filled('year')) {
             $query->where('year', $request->year);
         }
@@ -204,19 +204,19 @@ class TeacherController extends Controller
     }
 
     /**
-     * Ø¬Ù„Ø¨ Ø·Ù„Ø§Ø¨ Ø¯ÙˆØ±Ø© Ù…Ø¹ÙŠÙ†Ø©
+     * Ã˜Â¬Ã™â€žÃ˜Â¨ Ã˜Â·Ã™â€žÃ˜Â§Ã˜Â¨ Ã˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã™â€¦Ã˜Â¹Ã™Å Ã™â€ Ã˜Â©
      */
     public function courseStudents(Request $request, $courseId)
     {
         $teacher = $request->user()->teacher;
 
-        // Ø§Ù„ØªØ£ÙƒØ¯ Ø£Ù† Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØªØ®Øµ Ø§Ù„Ù…Ø¯Ø±Ø³
+        // Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â£Ã™Æ’Ã˜Â¯ Ã˜Â£Ã™â€  Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂªÃ˜Â®Ã˜Âµ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã˜Â±Ã˜Â³
         $course = $teacher->courses()->where('course_id', $courseId)->first();
 
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'
+                'message' => 'Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â·Ã˜Â© Ã˜Â¨Ã™Æ’'
             ], 403);
         }
 
@@ -224,7 +224,7 @@ class TeacherController extends Controller
             ->with('user')
             ->get()
             ->map(function($student) use ($courseId) {
-                // Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª Ø§Ù„Ø·Ø§Ù„Ø¨ ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø©
+                // Ã˜Â¥Ã˜Â­Ã˜ÂµÃ˜Â§Ã˜Â¦Ã™Å Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜Â·Ã˜Â§Ã™â€žÃ˜Â¨ Ã™ÂÃ™Å  Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â©
                 $attendanceCount = Attendance::where('student_id', $student->student_id)
                     ->whereHas('lesson', function($query) use ($courseId) {
                         $query->where('course_id', $courseId);
@@ -266,7 +266,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø­Ø¶ÙˆØ± ÙˆØ§Ù„ØºÙŠØ§Ø¨
+     * Ã˜ÂªÃ˜Â³Ã˜Â¬Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â¶Ã™Ë†Ã˜Â± Ã™Ë†Ã˜Â§Ã™â€žÃ˜ÂºÃ™Å Ã˜Â§Ã˜Â¨
      */
     public function markAttendance(Request $request)
     {
@@ -288,13 +288,13 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        // Ø§Ù„ØªØ£ÙƒØ¯ Ø£Ù† Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØªØ®Øµ Ø§Ù„Ù…Ø¯Ø±Ø³
+        // Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â£Ã™Æ’Ã˜Â¯ Ã˜Â£Ã™â€  Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂªÃ˜Â®Ã˜Âµ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã˜Â±Ã˜Â³
         $course = $teacher->courses()->where('course_id', $request->course_id)->first();
 
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ ØªØ³Ø¬ÙŠÙ„ Ø­Ø¶ÙˆØ± ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø©'
+                'message' => 'Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã˜ÂªÃ˜Â³Ã˜Â¬Ã™Å Ã™â€ž Ã˜Â­Ã˜Â¶Ã™Ë†Ã˜Â± Ã™ÂÃ™Å  Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â©'
             ], 403);
         }
 
@@ -315,12 +315,12 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "ØªÙ… ØªØ³Ø¬ÙŠÙ„ Ø­Ø¶ÙˆØ± $saved Ø·Ø§Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­"
+            'message' => "Ã˜ÂªÃ™â€¦ Ã˜ÂªÃ˜Â³Ã˜Â¬Ã™Å Ã™â€ž Ã˜Â­Ã˜Â¶Ã™Ë†Ã˜Â± $saved Ã˜Â·Ã˜Â§Ã™â€žÃ˜Â¨ Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­"
         ], 200);
     }
 
     /**
-     * Ø¬Ù„Ø¨ Ø³Ø¬Ù„ Ø§Ù„Ø­Ø¶ÙˆØ± Ù„Ø¯ÙˆØ±Ø© Ù…Ø¹ÙŠÙ†Ø©
+     * Ã˜Â¬Ã™â€žÃ˜Â¨ Ã˜Â³Ã˜Â¬Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â¶Ã™Ë†Ã˜Â± Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã™â€¦Ã˜Â¹Ã™Å Ã™â€ Ã˜Â©
      */
     public function getAttendance(Request $request, $courseId)
     {
@@ -331,7 +331,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'
+                'message' => 'Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â·Ã˜Â© Ã˜Â¨Ã™Æ’'
             ], 403);
         }
 
@@ -369,7 +369,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * ØªÙˆÙ„ÙŠØ¯ QR Ù„Ø¬Ù„Ø³Ø© Ø­Ø¶ÙˆØ±
+     * Ã˜ÂªÃ™Ë†Ã™â€žÃ™Å Ã˜Â¯ QR Ã™â€žÃ˜Â¬Ã™â€žÃ˜Â³Ã˜Â© Ã˜Â­Ã˜Â¶Ã™Ë†Ã˜Â±
      */
     public function generateQrSession(Request $request)
     {
@@ -385,18 +385,18 @@ class TeacherController extends Controller
         $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
 
         if (!$course) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'], 403);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â·Ã˜Â© Ã˜Â¨Ã™Æ’'], 403);
         }
 
-        // Ø¥Ù†Ø´Ø§Ø¡ Ø¯Ø±Ø³ Ù…Ø¤Ù‚Øª Ù„Ù‡Ø°Ù‡ Ø§Ù„Ø¬Ù„Ø³Ø©
+        // Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã˜Â¯Ã˜Â±Ã˜Â³ Ã™â€¦Ã˜Â¤Ã™â€šÃ˜Âª Ã™â€žÃ™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€žÃ˜Â³Ã˜Â©
         $lesson = Lesson::create([
             'course_id' => $course->course_id,
             'teacher_id' => $teacher->teacher_id,
-            'title' => 'Ø­ØµØ© ' . now()->format('Y-m-d H:i'),
+            'title' => 'Ã˜Â­Ã˜ÂµÃ˜Â© ' . now()->format('Y-m-d H:i'),
             'type' => 'session',
         ]);
 
-        // ØªÙˆÙ„ÙŠØ¯ ØªÙˆÙƒÙ† Ø¹Ø´ÙˆØ§Ø¦ÙŠ ÙˆØ¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø¬Ù„Ø³Ø©
+        // Ã˜ÂªÃ™Ë†Ã™â€žÃ™Å Ã˜Â¯ Ã˜ÂªÃ™Ë†Ã™Æ’Ã™â€  Ã˜Â¹Ã˜Â´Ã™Ë†Ã˜Â§Ã˜Â¦Ã™Å  Ã™Ë†Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€žÃ˜Â³Ã˜Â©
         $token = \Illuminate\Support\Str::random(32);
 
         $session = \App\Models\AttendanceSession::create([
@@ -419,14 +419,14 @@ class TeacherController extends Controller
     }
 
     /**
-     * Ø¬Ù„Ø¨ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø­Ø§Ø¶Ø±ÙŠÙ† ÙˆØ§Ù„ØºØ§Ø¦Ø¨ÙŠÙ† Ù„Ø¬Ù„Ø³Ø© Ù…Ø¹ÙŠÙ†Ø©
+     * Ã˜Â¬Ã™â€žÃ˜Â¨ Ã™â€šÃ˜Â§Ã˜Â¦Ã™â€¦Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â§Ã˜Â¶Ã˜Â±Ã™Å Ã™â€  Ã™Ë†Ã˜Â§Ã™â€žÃ˜ÂºÃ˜Â§Ã˜Â¦Ã˜Â¨Ã™Å Ã™â€  Ã™â€žÃ˜Â¬Ã™â€žÃ˜Â³Ã˜Â© Ã™â€¦Ã˜Â¹Ã™Å Ã™â€ Ã˜Â©
      */
     public function getSessionAttendance(Request $request, $sessionId)
     {
         $session = \App\Models\AttendanceSession::find($sessionId);
 
         if (!$session) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø¬Ù„Ø³Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©'], 404);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€žÃ˜Â³Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯Ã˜Â©'], 404);
         }
 
         $lesson = $session->lesson;
@@ -439,7 +439,7 @@ class TeacherController extends Controller
             ->pluck('student_id')
             ->toArray();
 
-        // Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ø·Ù„Ø§Ø¨ Ø§Ù„Ø°ÙŠÙ† Ù…Ø³Ø­ÙˆØ§ QR Ù„ÙƒÙ† ØºÙŠØ± Ù…Ø³Ø¬Ù‘Ù„ÙŠÙ† ÙÙŠ Ø§Ù„ÙƒÙˆØ±Ø³
+        // Ã˜Â¥Ã˜Â¶Ã˜Â§Ã™ÂÃ˜Â© Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â§Ã˜Â¨ Ã˜Â§Ã™â€žÃ˜Â°Ã™Å Ã™â€  Ã™â€¦Ã˜Â³Ã˜Â­Ã™Ë†Ã˜Â§ QR Ã™â€žÃ™Æ’Ã™â€  Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â³Ã˜Â¬Ã™â€˜Ã™â€žÃ™Å Ã™â€  Ã™ÂÃ™Å  Ã˜Â§Ã™â€žÃ™Æ’Ã™Ë†Ã˜Â±Ã˜Â³
         $enrolledIds = $enrolledStudents->pluck('student_id')->toArray();
         $extraIds = array_diff($presentIds, $enrolledIds);
         $extraStudents = !empty($extraIds)
@@ -451,7 +451,7 @@ class TeacherController extends Controller
         $students = $allStudents->map(function ($student) use ($presentIds) {
             return [
                 'student_id' => $student->student_id,
-                'name'   => $student->user->full_name ?? $student->user->name ?? 'ØºÙŠØ± Ù…Ø¹Ø±ÙˆÙ',
+                'name'   => $student->user->full_name ?? $student->user->name ?? 'Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â¹Ã˜Â±Ã™Ë†Ã™Â',
                 'status' => in_array($student->student_id, $presentIds) ? 'present' : 'absent',
             ];
         });
@@ -468,14 +468,14 @@ class TeacherController extends Controller
     }
 
     /**
-     * Ø¥Ù†Ù‡Ø§Ø¡ Ø¬Ù„Ø³Ø© Ø§Ù„Ø­Ø¶ÙˆØ± ÙˆØªØ³Ø¬ÙŠÙ„ Ø§Ù„ØºÙŠØ§Ø¨
+     * Ã˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡ Ã˜Â¬Ã™â€žÃ˜Â³Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â¶Ã™Ë†Ã˜Â± Ã™Ë†Ã˜ÂªÃ˜Â³Ã˜Â¬Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂºÃ™Å Ã˜Â§Ã˜Â¨
      */
     public function endSession(Request $request, $sessionId)
     {
         $session = \App\Models\AttendanceSession::find($sessionId);
 
         if (!$session) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø¬Ù„Ø³Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©'], 404);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€žÃ˜Â³Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯Ã˜Â©'], 404);
         }
 
         $lesson = $session->lesson;
@@ -504,12 +504,12 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'ØªÙ… Ø¥Ù†Ù‡Ø§Ø¡ Ø§Ù„Ø¬Ù„Ø³Ø© ÙˆØªØ³Ø¬ÙŠÙ„ Ø§Ù„ØºÙŠØ§Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
+            'message' => 'Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€žÃ˜Â³Ã˜Â© Ã™Ë†Ã˜ÂªÃ˜Â³Ã˜Â¬Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂºÃ™Å Ã˜Â§Ã˜Â¨ Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­',
         ], 200);
     }
 
     /**
-     * Ø¥Ø¯Ø®Ø§Ù„ Ø§Ù„Ø¹Ù„Ø§Ù…Ø§Øª Ù„Ù„Ø·Ù„Ø§Ø¨
+     * Ã˜Â¥Ã˜Â¯Ã˜Â®Ã˜Â§Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€žÃ˜Â§Ã™â€¦Ã˜Â§Ã˜Âª Ã™â€žÃ™â€žÃ˜Â·Ã™â€žÃ˜Â§Ã˜Â¨
      */
     public function enterGrades(Request $request)
     {
@@ -530,7 +530,7 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        // Ø§Ù„ØªØ£ÙƒØ¯ Ø£Ù† Ù‡Ø°Ø§ Ø§Ù„Ø§Ù…ØªØ­Ø§Ù† ÙŠØ®Øµ Ø§Ù„Ù…Ø¯Ø±Ø³
+        // Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â£Ã™Æ’Ã˜Â¯ Ã˜Â£Ã™â€  Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ˜Â§Ã™â€¦Ã˜ÂªÃ˜Â­Ã˜Â§Ã™â€  Ã™Å Ã˜Â®Ã˜Âµ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã˜Â±Ã˜Â³
         $exam = \App\Models\Exam::where('exam_id', $request->exam_id)
             ->whereHas('course', function($query) use ($teacher) {
                 $query->whereHas('teachers', function($q) use ($teacher) {
@@ -541,7 +541,7 @@ class TeacherController extends Controller
         if (!$exam) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø¥Ø¯Ø®Ø§Ù„ Ø¹Ù„Ø§Ù…Ø§Øª Ù„Ù‡Ø°Ø§ Ø§Ù„Ø§Ù…ØªØ­Ø§Ù†'
+                'message' => 'Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã˜Â¥Ã˜Â¯Ã˜Â®Ã˜Â§Ã™â€ž Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€¦Ã˜Â§Ã˜Âª Ã™â€žÃ™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ˜Â§Ã™â€¦Ã˜ÂªÃ˜Â­Ã˜Â§Ã™â€ '
             ], 403);
         }
 
@@ -562,12 +562,12 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "ØªÙ… Ø¥Ø¯Ø®Ø§Ù„ Ø¹Ù„Ø§Ù…Ø§Øª $saved Ø·Ø§Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­"
+            'message' => "Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã˜Â¯Ã˜Â®Ã˜Â§Ã™â€ž Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€¦Ã˜Â§Ã˜Âª $saved Ã˜Â·Ã˜Â§Ã™â€žÃ˜Â¨ Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­"
         ], 200);
     }
 
     /**
-     * Ø¬Ù„Ø¨ Ø§Ù„Ø¹Ù„Ø§Ù…Ø§Øª Ù„Ø¯ÙˆØ±Ø© Ù…Ø¹ÙŠÙ†Ø©
+     * Ã˜Â¬Ã™â€žÃ˜Â¨ Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€žÃ˜Â§Ã™â€¦Ã˜Â§Ã˜Âª Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã™â€¦Ã˜Â¹Ã™Å Ã™â€ Ã˜Â©
      */
     public function getGrades(Request $request, $courseId)
     {
@@ -578,7 +578,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'
+                'message' => 'Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â·Ã˜Â© Ã˜Â¨Ã™Æ’'
             ], 403);
         }
 
@@ -610,7 +610,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * Ø¬Ù„Ø¨ ÙˆØ§Ø¬Ø¨Ø§Øª Ø§Ù„Ù…Ø¯Ø±Ø³
+     * Ã˜Â¬Ã™â€žÃ˜Â¨ Ã™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã˜Â±Ã˜Â³
      */
     public function getAssignments(Request $request)
     {
@@ -631,13 +631,13 @@ class TeacherController extends Controller
                 $isExpired        = $assignment->due_date->isPast();
 
                 if ($isExpired && $gradedCount >= $submissionsCount && $submissionsCount > 0) {
-                    $status = 'Ù…ÙƒØªÙ…Ù„';
+                    $status = 'Ã™â€¦Ã™Æ’Ã˜ÂªÃ™â€¦Ã™â€ž';
                 } elseif ($isExpired && $submissionsCount > 0) {
-                    $status = 'Ù‚ÙŠØ¯ Ø§Ù„ØªØµØ­ÙŠØ­';
+                    $status = 'Ã™â€šÃ™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜ÂªÃ˜ÂµÃ˜Â­Ã™Å Ã˜Â­';
                 } elseif (!$isExpired && $submissionsCount === 0) {
-                    $status = 'Ù‚ÙŠØ¯ Ø§Ù„Ø¥Ù†ØªØ¸Ø§Ø±';
+                    $status = 'Ã™â€šÃ™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€ Ã˜ÂªÃ˜Â¸Ã˜Â§Ã˜Â±';
                 } else {
-                    $status = 'Ù†Ø´Ø·';
+                    $status = 'Ã™â€ Ã˜Â´Ã˜Â·';
                 }
 
                 return [
@@ -660,7 +660,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * Ø¥Ù†Ø´Ø§Ø¡ ÙˆØ§Ø¬Ø¨ Ø¬Ø¯ÙŠØ¯
+     * Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨ Ã˜Â¬Ã˜Â¯Ã™Å Ã˜Â¯
      */
     public function createAssignment(Request $request)
     {
@@ -686,7 +686,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø¥Ù†Ø´Ø§Ø¡ ÙˆØ§Ø¬Ø¨ ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø©'
+                'message' => 'Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨ Ã™ÂÃ™Å  Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â©'
             ], 403);
         }
 
@@ -710,7 +710,7 @@ class TeacherController extends Controller
             'attachment_path' => $attachmentPath,
         ]);
 
-        // إشعار الطلاب المسجلين في المادة
+        // Ø¥Ø´Ø¹Ø§Ø± Ø§Ù„Ø·Ù„Ø§Ø¨ Ø§Ù„Ù…Ø³Ø¬Ù„ÙŠÙ† ÙÙŠ Ø§Ù„Ù…Ø§Ø¯Ø©
         $teacherUser = $request->user();
         $studentIds = DB::table('enrollments')
             ->where('course_id', $request->course_id)
@@ -722,8 +722,8 @@ class TeacherController extends Controller
         $rows = $studentUserIds->map(fn($uid) => [
             'user_id'    => $uid,
             'sender_id'  => $teacherUser->user_id,
-            'title'      => 'واجب جديد — ' . $course->name,
-            'message'    => 'رفع المعلم ' . $teacherUser->full_name . ' واجباً جديداً: ' . $request->title,
+            'title'      => 'ÙˆØ§Ø¬Ø¨ Ø¬Ø¯ÙŠØ¯ â€” ' . $course->name,
+            'message'    => 'Ø±ÙØ¹ Ø§Ù„Ù…Ø¹Ù„Ù… ' . $teacherUser->full_name . ' ÙˆØ§Ø¬Ø¨Ø§Ù‹ Ø¬Ø¯ÙŠØ¯Ø§Ù‹: ' . $request->title,
             'type'       => 'assignment',
             'category'   => 'academic',
             'related_id' => $assignment->assignment_id,
@@ -734,8 +734,8 @@ class TeacherController extends Controller
         if (!empty($rows)) {
             DB::table('notifications')->insert($rows);
             // FCM push notifications
-            $fcmTitle = 'واجب جديد — ' . $course->name;
-            $fcmBody  = 'رفع المعلم ' . $teacherUser->full_name . ' واجباً جديداً: ' . $request->title;
+            $fcmTitle = 'ÙˆØ§Ø¬Ø¨ Ø¬Ø¯ÙŠØ¯ â€” ' . $course->name;
+            $fcmBody  = 'Ø±ÙØ¹ Ø§Ù„Ù…Ø¹Ù„Ù… ' . $teacherUser->full_name . ' ÙˆØ§Ø¬Ø¨Ø§Ù‹ Ø¬Ø¯ÙŠØ¯Ø§Ù‹: ' . $request->title;
             foreach ($studentUserIds as $uid) {
                 \App\Services\FcmService::sendToUser($uid, $fcmTitle, $fcmBody, [
                     'type' => 'assignment',
@@ -746,20 +746,20 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الواجب بنجاح',
+            'message' => 'ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
             'data'    => $assignment
         ], 201);
     }
 
     /**
-     * تحديث واجب
+     * ØªØ­Ø¯ÙŠØ« ÙˆØ§Ø¬Ø¨
      */
     public function updateAssignment(Request $request, $assignmentId)
     {
         $assignment = Assignment::find($assignmentId);
 
         if (!$assignment) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„ÙˆØ§Ø¬Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯'], 404);
         }
 
         $teacher = $request->user()->teacher;
@@ -767,7 +767,7 @@ class TeacherController extends Controller
         $course = $teacher->courses()->where('course_id', $assignment->course_id)->first();
 
         if (!$course) {
-            return response()->json(['success' => false, 'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ ØªØ¹Ø¯ÙŠÙ„ Ù‡Ø°Ø§ Ø§Ù„ÙˆØ§Ø¬Ø¨'], 403);
+            return response()->json(['success' => false, 'message' => 'Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã™Å Ã™â€ž Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨'], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -808,13 +808,13 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
+            'message' => 'Ã˜ÂªÃ™â€¦ Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨ Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­',
             'data'    => $assignment
         ], 200);
     }
 
     /**
-     * Ø­Ø°Ù ÙˆØ§Ø¬Ø¨
+     * Ã˜Â­Ã˜Â°Ã™Â Ã™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨
      */
     public function deleteAssignment(Request $request, $assignmentId)
     {
@@ -823,7 +823,7 @@ class TeacherController extends Controller
         if (!$assignment) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ø§Ù„ÙˆØ§Ø¬Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'
+                'message' => 'Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯'
             ], 404);
         }
 
@@ -834,7 +834,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø­Ø°Ù Ù‡Ø°Ø§ Ø§Ù„ÙˆØ§Ø¬Ø¨'
+                'message' => 'Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã˜Â­Ã˜Â°Ã™Â Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨'
             ], 403);
         }
 
@@ -842,19 +842,19 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'ØªÙ… Ø­Ø°Ù Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­'
+            'message' => 'Ã˜ÂªÃ™â€¦ Ã˜Â­Ã˜Â°Ã™Â Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨ Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­'
         ], 200);
     }
 
     /**
-     * ØªØµØ­ÙŠØ­ ÙˆØ§Ø¬Ø¨ Ø·Ø§Ù„Ø¨
+     * Ã˜ÂªÃ˜ÂµÃ˜Â­Ã™Å Ã˜Â­ Ã™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨ Ã˜Â·Ã˜Â§Ã™â€žÃ˜Â¨
      */
     public function gradeAssignment(Request $request, $submissionId)
     {
         $submission = AssignmentSubmission::with('assignment')->find($submissionId);
 
         if (!$submission) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„ØªØ³Ù„ÙŠÙ… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â³Ã™â€žÃ™Å Ã™â€¦ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯'], 404);
         }
 
         $maxPoints = $submission->assignment->max_points ?? 100;
@@ -875,7 +875,7 @@ class TeacherController extends Controller
         if (!$course) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ ØªØµØ­ÙŠØ­ Ù‡Ø°Ø§ Ø§Ù„ÙˆØ§Ø¬Ø¨'
+                'message' => 'Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã˜ÂªÃ˜ÂµÃ˜Â­Ã™Å Ã˜Â­ Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨'
             ], 403);
         }
 
@@ -884,7 +884,7 @@ class TeacherController extends Controller
             'feedback' => $request->feedback,
         ]);
 
-        // إشعار الطالب بتصحيح واجبه
+        // Ø¥Ø´Ø¹Ø§Ø± Ø§Ù„Ø·Ø§Ù„Ø¨ Ø¨ØªØµØ­ÙŠØ­ ÙˆØ§Ø¬Ø¨Ù‡
         $studentUserId = DB::table('students')
             ->where('student_id', $submission->student_id)
             ->value('user_id');
@@ -892,8 +892,8 @@ class TeacherController extends Controller
             DB::table('notifications')->insert([
                 'user_id'    => $studentUserId,
                 'sender_id'  => $request->user()->user_id,
-                'title'      => 'تم تصحيح واجبك',
-                'message'    => 'صحّح المعلم واجب "' . $submission->assignment->title . '" — علامتك: ' . $request->grade . '/' . ($submission->assignment->max_points ?? 100),
+                'title'      => 'ØªÙ… ØªØµØ­ÙŠØ­ ÙˆØ§Ø¬Ø¨Ùƒ',
+                'message'    => 'ØµØ­Ù‘Ø­ Ø§Ù„Ù…Ø¹Ù„Ù… ÙˆØ§Ø¬Ø¨ "' . $submission->assignment->title . '" â€” Ø¹Ù„Ø§Ù…ØªÙƒ: ' . $request->grade . '/' . ($submission->assignment->max_points ?? 100),
                 'type'       => 'assignment',
                 'related_id' => $submission->assignment->assignment_id,
                 'is_read'    => 0,
@@ -904,13 +904,13 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تصحيح الواجب بنجاح',
+            'message' => 'ØªÙ… ØªØµØ­ÙŠØ­ Ø§Ù„ÙˆØ§Ø¬Ø¨ Ø¨Ù†Ø¬Ø§Ø­',
             'data' => $submission
         ], 200);
     }
 
     /**
-     * Ø¥Ù†Ø´Ø§Ø¡ Ø¥Ø¹Ù„Ø§Ù† Ø¬Ø¯ÙŠØ¯
+     * Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã˜Â¥Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€  Ã˜Â¬Ã˜Â¯Ã™Å Ã˜Â¯
      */
     public function createAnnouncement(Request $request)
     {
@@ -930,13 +930,13 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        // Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø¥Ø¹Ù„Ø§Ù† Ø®Ø§Øµ Ø¨Ø¯ÙˆØ±Ø©ØŒ ØªØ£ÙƒØ¯ Ø£Ù† Ø§Ù„Ø¯ÙˆØ±Ø© ØªØ®Øµ Ø§Ù„Ù…Ø¯Ø±Ø³
+        // Ã˜Â¥Ã˜Â°Ã˜Â§ Ã™Æ’Ã˜Â§Ã™â€  Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€  Ã˜Â®Ã˜Â§Ã˜Âµ Ã˜Â¨Ã˜Â¯Ã™Ë†Ã˜Â±Ã˜Â©Ã˜Å’ Ã˜ÂªÃ˜Â£Ã™Æ’Ã˜Â¯ Ã˜Â£Ã™â€  Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂªÃ˜Â®Ã˜Âµ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã˜Â±Ã˜Â³
         if ($request->type == 'course_specific' && $request->course_id) {
             $course = $teacher->courses()->where('course_id', $request->course_id)->first();
             if (!$course) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ù„Ø§ ÙŠÙ…ÙƒÙ†Ùƒ Ø¥Ù†Ø´Ø§Ø¡ Ø¥Ø¹Ù„Ø§Ù† ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø©'
+                    'message' => 'Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã˜Â¥Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€  Ã™ÂÃ™Å  Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â©'
                 ], 403);
             }
         }
@@ -951,12 +951,12 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø¥Ø¹Ù„Ø§Ù† Ø¨Ù†Ø¬Ø§Ø­',
+            'message' => 'Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¹Ã™â€žÃ˜Â§Ã™â€  Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­',
             'data' => $announcement
         ], 201);
     }
 
-    // ─── Report Requests from HoD ─────────────────────────────────
+    // â”€â”€â”€ Report Requests from HoD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public function getReportRequests(Request $request)
     {
         $teacher = DB::table('teachers')->where('user_id', $request->user()->user_id)->first();
@@ -988,19 +988,19 @@ class TeacherController extends Controller
     {
         $reportRequest = DB::table('report_requests')->where('id', $id)->first();
         if (!$reportRequest) {
-            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø·Ù„Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
         }
 
         $studentId = $reportRequest->student_id;
         $courseId  = $reportRequest->course_id;
 
-        // متوسط العلامات
+        // Ù…ØªÙˆØ³Ø· Ø§Ù„Ø¹Ù„Ø§Ù…Ø§Øª
         $gradesQuery = DB::table('grades')->where('student_id', $studentId);
         if ($courseId) $gradesQuery->where('course_id', $courseId);
         $grades    = $gradesQuery->get(['score']);
         $avgGrade  = $grades->count() > 0 ? round($grades->avg('score'), 1) : null;
 
-        // نسبة الحضور
+        // Ù†Ø³Ø¨Ø© Ø§Ù„Ø­Ø¶ÙˆØ±
         $attQuery = DB::table('attendances')->where('student_id', $studentId);
         if ($courseId) $attQuery->where('course_id', $courseId);
         $att          = $attQuery->get(['status']);
@@ -1025,7 +1025,7 @@ class TeacherController extends Controller
 
         $reportRequest = DB::table('report_requests')->find($id);
         if (!$reportRequest) {
-            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø·Ù„Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
         }
 
         DB::table('report_requests')->where('id', $id)->update([
@@ -1039,18 +1039,18 @@ class TeacherController extends Controller
             ->where('students.student_id', $reportRequest->student_id)
             ->value('users.full_name');
 
-        // إشعار رئيس القسم (الأساسي)
+        // Ø¥Ø´Ø¹Ø§Ø± Ø±Ø¦ÙŠØ³ Ø§Ù„Ù‚Ø³Ù… (Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ)
         DB::table('notifications')->insert([
             'user_id'    => $reportRequest->head_id,
-            'title'      => 'تم إرسال تقييم الطالب',
-            'message'    => 'قدّم المعلم تقييمه للطالب ' . ($studentName ?? ''),
+            'title'      => 'ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø·Ø§Ù„Ø¨',
+            'message'    => 'Ù‚Ø¯Ù‘Ù… Ø§Ù„Ù…Ø¹Ù„Ù… ØªÙ‚ÙŠÙŠÙ…Ù‡ Ù„Ù„Ø·Ø§Ù„Ø¨ ' . ($studentName ?? ''),
             'type'       => 'report',
             'is_read'    => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        // حفظ التقرير في performance_reports + إشعار ولي الأمر (ثانوي — لا يكسر العملية)
+        // Ø­ÙØ¸ Ø§Ù„ØªÙ‚Ø±ÙŠØ± ÙÙŠ performance_reports + Ø¥Ø´Ø¹Ø§Ø± ÙˆÙ„ÙŠ Ø§Ù„Ø£Ù…Ø± (Ø«Ø§Ù†ÙˆÙŠ â€” Ù„Ø§ ÙŠÙƒØ³Ø± Ø§Ù„Ø¹Ù…Ù„ÙŠØ©)
         try {
             DB::table('performance_reports')->insert([
                 'student_id'      => $reportRequest->student_id,
@@ -1071,8 +1071,8 @@ class TeacherController extends Controller
             if ($parentUserId) {
                 DB::table('notifications')->insert([
                     'user_id'    => $parentUserId,
-                    'title'      => 'تقرير الطالب جاهز',
-                    'message'    => 'أرسل المعلم التقرير السلوكي للطالب ' . ($studentName ?? '') . '، يمكنك الاطلاع عليه الآن.',
+                    'title'      => 'ØªÙ‚Ø±ÙŠØ± Ø§Ù„Ø·Ø§Ù„Ø¨ Ø¬Ø§Ù‡Ø²',
+                    'message'    => 'Ø£Ø±Ø³Ù„ Ø§Ù„Ù…Ø¹Ù„Ù… Ø§Ù„ØªÙ‚Ø±ÙŠØ± Ø§Ù„Ø³Ù„ÙˆÙƒÙŠ Ù„Ù„Ø·Ø§Ù„Ø¨ ' . ($studentName ?? '') . 'ØŒ ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø§Ø·Ù„Ø§Ø¹ Ø¹Ù„ÙŠÙ‡ Ø§Ù„Ø¢Ù†.',
                     'type'       => 'report',
                     'is_read'    => 0,
                     'created_at' => now(),
@@ -1083,15 +1083,15 @@ class TeacherController extends Controller
             \Log::warning('submitEvaluation side-effects failed: ' . $e->getMessage());
         }
 
-        return response()->json(['success' => true, 'message' => 'تم إرسال التقييم بنجاح']);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„ØªÙ‚ÙŠÙŠÙ… Ø¨Ù†Ø¬Ø§Ø­']);
     }
 
     /**
-     * جلب إعلانات المدرس
+     * Ø¬Ù„Ø¨ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø§Ù„Ù…Ø¯Ø±Ø³
      */
     public function getAnnouncements(Request $request)
     {
-        // إعلانات المعلم نفسه + إعلانات رئيس القسم الموجهة للمعلمين أو للجميع
+        // Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø§Ù„Ù…Ø¹Ù„Ù… Ù†ÙØ³Ù‡ + Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø±Ø¦ÙŠØ³ Ø§Ù„Ù‚Ø³Ù… Ø§Ù„Ù…ÙˆØ¬Ù‡Ø© Ù„Ù„Ù…Ø¹Ù„Ù…ÙŠÙ† Ø£Ùˆ Ù„Ù„Ø¬Ù…ÙŠØ¹
         $headUserIds = \DB::table('users')->where('role_id', 5)->pluck('user_id');
 
         $announcements = Announcement::where(function($q) use ($request, $headUserIds) {
@@ -1127,9 +1127,9 @@ class TeacherController extends Controller
         return response()->json(['success' => true, 'data' => $announcements], 200);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //  Ø§Ù„Ø¬Ø¯ÙˆÙ„ Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠ
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    //  Ã˜Â§Ã™â€žÃ˜Â¬Ã˜Â¯Ã™Ë†Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â±Ã˜Â§Ã˜Â³Ã™Å 
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     public function getSchedule(Request $request)
     {
@@ -1159,9 +1159,9 @@ class TeacherController extends Controller
         return response()->json(['success' => true, 'data' => $schedules], 200);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //  Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø§Øª
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    //  Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¶Ã˜Â±Ã˜Â§Ã˜Âª
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     public function getLessons(Request $request)
     {
@@ -1203,7 +1203,7 @@ class TeacherController extends Controller
 
         $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
         if (!$course) {
-            return response()->json(['success' => false, 'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'], 403);
+            return response()->json(['success' => false, 'message' => 'Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â·Ã˜Â© Ã˜Â¨Ã™Æ’'], 403);
         }
 
         $file     = $request->file('content_file');
@@ -1219,24 +1219,31 @@ class TeacherController extends Controller
 
         // notify students of new lecture
         $teacherUser    = $request->user();
-        $courseName     = $course->name ?? $course->title ?? 'المادة';
+        $courseName     = $course->name ?? $course->title ?? 'Ø§Ù„Ù…Ø§Ø¯Ø©';
         $studentIds     = DB::table('enrollments')->where('course_id', $request->course_id)->pluck('student_id');
         $studentUserIds = DB::table('students')->whereIn('student_id', $studentIds)->pluck('user_id');
         $notifNow = now();
         $notifRows = $studentUserIds->map(fn($uid) => [
             'user_id'    => $uid,
             'sender_id'  => $teacherUser->user_id,
-            'title'      => 'محاضرة جديدة — ' . $courseName,
-            'message'    => 'رفع المعلم ' . $teacherUser->full_name . ' محاضرة جديدة: ' . $request->title,
+            'title'      => 'Ù…Ø­Ø§Ø¶Ø±Ø© Ø¬Ø¯ÙŠØ¯Ø© â€” ' . $courseName,
+            'message'    => 'Ø±ÙØ¹ Ø§Ù„Ù…Ø¹Ù„Ù… ' . $teacherUser->full_name . ' Ù…Ø­Ø§Ø¶Ø±Ø© Ø¬Ø¯ÙŠØ¯Ø©: ' . $request->title,
             'type'       => 'lecture',
             'related_id' => $lesson->lesson_id,
             'is_read'    => 0,
             'created_at' => $notifNow,
             'updated_at' => $notifNow,
         ])->all();
-        if (!empty($notifRows)) DB::table('notifications')->insert($notifRows);
+        if (!empty($notifRows)) {
+            DB::table('notifications')->insert($notifRows);
+            $fcmTitle = 'محاضرة جديدة  — ' . $courseName;
+            $fcmBody  = 'رفع المعلم ' . $teacherUser->full_name . ' محاضرة جديدة: ' . $request->title;
+            foreach ($studentUserIds as $uid) {
+                \App\Services\FcmService::sendToUser($uid, $fcmTitle, $fcmBody, ['type' => 'lecture']);
+            }
+        }
 
-        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø±ÙØ¹ Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­', 'data' => $lesson], 201);
+        return response()->json(['success' => true, 'message' => 'Ã˜ÂªÃ™â€¦ Ã˜Â±Ã™ÂÃ˜Â¹ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¶Ã˜Â±Ã˜Â© Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­', 'data' => $lesson], 201);
     }
 
 
@@ -1249,7 +1256,7 @@ class TeacherController extends Controller
             ->first();
 
         if (!$lesson) {
-            return response()->json(['success' => false, 'message' => 'المحاضرة غير موجودة أو لا تخصك'], 404);
+            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø© Ø£Ùˆ Ù„Ø§ ØªØ®ØµÙƒ'], 404);
         }
 
         $validator = Validator::make($request->all(), [
@@ -1275,7 +1282,7 @@ class TeacherController extends Controller
 
         $lesson->save();
 
-        return response()->json(['success' => true, 'message' => 'تم تعديل المحاضرة بنجاح', 'data' => $lesson], 200);
+        return response()->json(['success' => true, 'message' => 'ØªÙ… ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­', 'data' => $lesson], 200);
     }
     public function deleteLesson(Request $request, $lessonId)
     {
@@ -1286,7 +1293,7 @@ class TeacherController extends Controller
             ->first();
 
         if (!$lesson) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø© Ø£Ùˆ Ù„Ø§ ØªØ®ØµÙƒ'], 404);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¶Ã˜Â±Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯Ã˜Â© Ã˜Â£Ã™Ë† Ã™â€žÃ˜Â§ Ã˜ÂªÃ˜Â®Ã˜ÂµÃ™Æ’'], 404);
         }
 
         try {
@@ -1297,12 +1304,12 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
 
-        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø­Ø°Ù Ø§Ù„Ù…Ø­Ø§Ø¶Ø±Ø© Ø¨Ù†Ø¬Ø§Ø­'], 200);
+        return response()->json(['success' => true, 'message' => 'Ã˜ÂªÃ™â€¦ Ã˜Â­Ã˜Â°Ã™Â Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¶Ã˜Â±Ã˜Â© Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­'], 200);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //  Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    //  Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â´Ã˜Â¹Ã˜Â§Ã˜Â±Ã˜Â§Ã˜Âª
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     public function getNotifications(Request $request)
     {
@@ -1321,7 +1328,7 @@ class TeacherController extends Controller
                     $data = [
                         'image_url'   => $imageUrl,
                         'content'     => $ann->content ?? '',
-                        'author_name' => $ann->author_name ?? 'الإدارة',
+                        'author_name' => $ann->author_name ?? 'Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©',
                         'link_url'    => $ann->link_url ?? null,
                     ];
                 }
@@ -1348,12 +1355,12 @@ class TeacherController extends Controller
             ->first();
 
         if (!$notification) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø¥Ø´Ø¹Ø§Ø± ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â´Ã˜Â¹Ã˜Â§Ã˜Â± Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯'], 404);
         }
 
         $notification->update(['is_read' => true]);
 
-        return response()->json(['success' => true, 'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ¯ Ø§Ù„Ø¥Ø´Ø¹Ø§Ø± ÙƒÙ…Ù‚Ø±ÙˆØ¡'], 200);
+        return response()->json(['success' => true, 'message' => 'Ã˜ÂªÃ™â€¦ Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â´Ã˜Â¹Ã˜Â§Ã˜Â± Ã™Æ’Ã™â€¦Ã™â€šÃ˜Â±Ã™Ë†Ã˜Â¡'], 200);
     }
 
     public function markAllNotificationsRead(Request $request)
@@ -1362,15 +1369,15 @@ class TeacherController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
-        return response()->json(['success' => true, 'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ¯ ÙƒÙ„ Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª ÙƒÙ…Ù‚Ø±ÙˆØ¡Ø©'], 200);
+        return response()->json(['success' => true, 'message' => 'Ã˜ÂªÃ™â€¦ Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â¯ Ã™Æ’Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â´Ã˜Â¹Ã˜Â§Ã˜Â±Ã˜Â§Ã˜Âª Ã™Æ’Ã™â€¦Ã™â€šÃ˜Â±Ã™Ë†Ã˜Â¡Ã˜Â©'], 200);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //  ØªØ³Ù„ÙŠÙ…Ø§Øª Ø§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    //  Ã˜ÂªÃ˜Â³Ã™â€žÃ™Å Ã™â€¦Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨Ã˜Â§Ã˜Âª
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     /**
-     * Ø¬Ù„Ø¨ ÙƒÙ„ ØªØ³Ù„ÙŠÙ…Ø§Øª Ù…ÙˆØ§Ø¯ Ø§Ù„Ù…Ø¯Ø±Ø³
+     * Ã˜Â¬Ã™â€žÃ˜Â¨ Ã™Æ’Ã™â€ž Ã˜ÂªÃ˜Â³Ã™â€žÃ™Å Ã™â€¦Ã˜Â§Ã˜Âª Ã™â€¦Ã™Ë†Ã˜Â§Ã˜Â¯ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã˜Â±Ã˜Â³
      */
     public function getSubmissions(Request $request)
     {
@@ -1389,7 +1396,7 @@ class TeacherController extends Controller
             ->map(function ($sub) {
                 return [
                     'submission_id'    => $sub->submission_id,
-                    'student_name'     => $sub->student->user->full_name ?? 'ØºÙŠØ± Ù…Ø¹Ø±ÙˆÙ',
+                    'student_name'     => $sub->student->user->full_name ?? 'Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â¹Ã˜Â±Ã™Ë†Ã™Â',
                     'assignment_title' => $sub->assignment->title ?? '',
                     'course_name'      => $sub->assignment->course->title ?? '',
                     'student_notes'    => $sub->notes ?? '',
@@ -1416,7 +1423,7 @@ class TeacherController extends Controller
             })->first();
 
         if (!$assignment) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„ÙˆØ§Ø¬Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯ Ø£Ùˆ Ù„Ø§ ÙŠØ®ØµÙƒ'], 404);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â§Ã˜Â¬Ã˜Â¨ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã˜Â£Ã™Ë† Ã™â€žÃ˜Â§ Ã™Å Ã˜Â®Ã˜ÂµÃ™Æ’'], 404);
         }
 
         $submissions = AssignmentSubmission::where('assignment_id', $assignmentId)
@@ -1448,9 +1455,9 @@ class TeacherController extends Controller
         ], 200);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //  Ø§Ù„Ø§Ù…ØªØ­Ø§Ù†Ø§Øª
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    //  Ã˜Â§Ã™â€žÃ˜Â§Ã™â€¦Ã˜ÂªÃ˜Â­Ã˜Â§Ã™â€ Ã˜Â§Ã˜Âª
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     public function getExams(Request $request)
     {
@@ -1491,7 +1498,7 @@ class TeacherController extends Controller
         $course  = $teacher->courses()->where('course_id', $request->course_id)->first();
 
         if (!$course) {
-            return response()->json(['success' => false, 'message' => 'Ù‡Ø°Ù‡ Ø§Ù„Ø¯ÙˆØ±Ø© ØºÙŠØ± Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ùƒ'], 403);
+            return response()->json(['success' => false, 'message' => 'Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã˜Â±Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â±Ã˜ÂªÃ˜Â¨Ã˜Â·Ã˜Â© Ã˜Â¨Ã™Æ’'], 403);
         }
 
         $exam = \App\Models\Exam::create([
@@ -1501,12 +1508,12 @@ class TeacherController extends Controller
             'max_score' => $request->max_score ?? 100,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø§Ù…ØªØ­Ø§Ù† Ø¨Ù†Ø¬Ø§Ø­', 'data' => $exam], 201);
+        return response()->json(['success' => true, 'message' => 'Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ˜Â§Ã™â€¦Ã˜ÂªÃ˜Â­Ã˜Â§Ã™â€  Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­', 'data' => $exam], 201);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //  Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    //  Ã˜Â§Ã™â€žÃ™â€¦Ã™â€žÃ™Â Ã˜Â§Ã™â€žÃ˜Â´Ã˜Â®Ã˜ÂµÃ™Å 
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     public function getTeacherProfile(Request $request)
     {
@@ -1543,7 +1550,7 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„ØµÙˆØ±Ø© Ø§Ù„Ø´Ø®ØµÙŠØ©',
+            'message' => 'Ã˜ÂªÃ™â€¦ Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â´Ã˜Â®Ã˜ÂµÃ™Å Ã˜Â©',
             'avatar'  => storageUrl($path),
         ]);
     }
@@ -1568,12 +1575,12 @@ class TeacherController extends Controller
             $user->teacher->update(['specialization' => $request->specialization]);
         }
 
-        return response()->json(['success' => true, 'message' => 'ØªÙ… ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ Ø¨Ù†Ø¬Ø§Ø­'], 200);
+        return response()->json(['success' => true, 'message' => 'Ã˜ÂªÃ™â€¦ Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â« Ã˜Â§Ã™â€žÃ™â€¦Ã™â€žÃ™Â Ã˜Â§Ã™â€žÃ˜Â´Ã˜Â®Ã˜ÂµÃ™Å  Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­'], 200);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //  Ø§Ù„Ø±Ø³Ø§Ø¦Ù„
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    //  Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â³Ã˜Â§Ã˜Â¦Ã™â€ž
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     public function getMessages(Request $request)
     {
@@ -1617,12 +1624,12 @@ class TeacherController extends Controller
             'message'     => $request->message,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø±Ø³Ø§Ù„Ø© Ø¨Ù†Ø¬Ø§Ø­', 'data' => $msg], 201);
+        return response()->json(['success' => true, 'message' => 'Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â³Ã˜Â§Ã™â€žÃ˜Â© Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­', 'data' => $msg], 201);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    //  Ø·Ù„Ø¨Ø§Øª Ø§Ù„ØºÙŠØ§Ø¨
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    //  Ã˜Â·Ã™â€žÃ˜Â¨Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜ÂºÃ™Å Ã˜Â§Ã˜Â¨
+    // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
     public function getAbsenceRequests(Request $request)
     {
@@ -1667,7 +1674,7 @@ class TeacherController extends Controller
         $absenceRequest = AbsenceRequest::find($requestId);
 
         if (!$absenceRequest) {
-            return response()->json(['success' => false, 'message' => 'Ø§Ù„Ø·Ù„Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'], 404);
+            return response()->json(['success' => false, 'message' => 'Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨ Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯'], 404);
         }
 
         $absenceRequest->update([
@@ -1675,6 +1682,7 @@ class TeacherController extends Controller
             'reviewed_by' => $request->user()->user_id,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'ØªÙ… Ø§Ù„Ø±Ø¯ Ø¹Ù„Ù‰ Ø§Ù„Ø·Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­'], 200);
+        return response()->json(['success' => true, 'message' => 'Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â¯ Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨ Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­'], 200);
     }
 }
+

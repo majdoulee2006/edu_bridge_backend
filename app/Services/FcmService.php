@@ -18,11 +18,12 @@ class FcmService
 
         try {
             $creds = json_decode(file_get_contents($credPath), true);
-            $projectId = $creds['project_id'] ?? null;
+
+            $b64url = fn($data) => rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 
             $now = time();
-            $header = base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-            $payload = base64_encode(json_encode([
+            $header  = $b64url(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+            $payload = $b64url(json_encode([
                 'iss'   => $creds['client_email'],
                 'sub'   => $creds['client_email'],
                 'aud'   => 'https://oauth2.googleapis.com/token',
@@ -33,7 +34,7 @@ class FcmService
 
             $sig = '';
             openssl_sign("$header.$payload", $sig, $creds['private_key'], 'sha256WithRSAEncryption');
-            $jwt = "$header.$payload." . base64_encode($sig);
+            $jwt = "$header.$payload." . $b64url($sig);
 
             $res = Http::asForm()->post('https://oauth2.googleapis.com/token', [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
