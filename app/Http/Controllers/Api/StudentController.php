@@ -742,7 +742,8 @@ class StudentController extends Controller
             ->map(function($attendance) {
                 return [
                     'id' => $attendance->attendance_id,
-                    'date' => Carbon::parse($attendance->attendance_date)->translatedFormat('d F، l'), // مثلاً: 24 أكتوبر، الثلاثاء
+                    'date' => Carbon::parse($attendance->attendance_date)->translatedFormat('d F، l'),
+                    'time' => $attendance->created_at ? Carbon::parse($attendance->created_at)->format('h:i A') : null,
                     'status' => $attendance->status,
                     'status_text' => $attendance->status == 'present' ? 'حاضر' : ($attendance->status == 'absent' ? 'غائب' : 'متأخر'),
                     'course_name' => $attendance->lesson->course->title ?? 'غير محدد',
