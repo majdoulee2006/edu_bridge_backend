@@ -16,6 +16,8 @@ class Message extends Model
         'message',
         'attachment',
         'is_read',
+        'reply_to_message_id', 
+        'group_id'
     ];
 
     // 🌟 جلب بيانات المرسل من جدول الـ Users
