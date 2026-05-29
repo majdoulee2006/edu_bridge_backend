@@ -1,6 +1,6 @@
-@extends('layouts.affairs')
-@section('title', 'الرئيسية')
-@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'موظف الشؤون'))
+﻿@extends('layouts.affairs')
+@section('title', 'Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©')
+@section('subtitle', 'Ù…Ø±Ø­Ø¨Ø§Ù‹ØŒ ' . (auth()->user()->full_name ?? 'Ù…ÙˆØ¸Ù Ø§Ù„Ø´Ø¤ÙˆÙ†'))
 
 @push('styles')
 <style>
@@ -24,7 +24,7 @@
     }
     .view-all:hover { text-decoration: underline; }
 
-    /* ── Stats ── */
+    /* â”€â”€ Stats â”€â”€ */
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -50,7 +50,7 @@
     .stat-number { font-size: 2rem; font-weight: 900; line-height: 1; }
     .stat-label  { font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; margin-top: 0.2rem; }
 
-    /* ── Alert Bar ── */
+    /* â”€â”€ Alert Bar â”€â”€ */
     .alert-bar {
         background: rgba(239,68,68,0.08);
         border: 1px solid rgba(239,68,68,0.3);
@@ -62,7 +62,7 @@
         justify-content: space-between;
     }
 
-    /* ── Carousel ── */
+    /* â”€â”€ Carousel â”€â”€ */
     .announcements-carousel {
         display: flex;
         gap: 1rem;
@@ -131,7 +131,7 @@
         font-weight: 600;
     }
 
-    /* ── Posts ── */
+    /* â”€â”€ Posts â”€â”€ */
     .post-card {
         background: var(--bg-secondary);
         border-radius: 1.25rem;
@@ -198,7 +198,7 @@
 
 @section('content')
 
-{{-- ── Stats ── --}}
+{{-- â”€â”€ Stats â”€â”€ --}}
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon" style="background:rgba(252,227,0,0.15); color:var(--accent-color);">
@@ -206,7 +206,7 @@
         </div>
         <div>
             <div class="stat-number" style="color:var(--accent-color);">{{ $totalStudents }}</div>
-            <div class="stat-label">إجمالي الطلاب</div>
+            <div class="stat-label">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø·Ù„Ø§Ø¨</div>
         </div>
     </div>
 
@@ -216,7 +216,7 @@
         </div>
         <div>
             <div class="stat-number" style="color:#3b82f6;">{{ $totalTeachers }}</div>
-            <div class="stat-label">إجمالي المعلمين</div>
+            <div class="stat-label">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø¹Ù„Ù…ÙŠÙ†</div>
         </div>
     </div>
 
@@ -226,7 +226,7 @@
         </div>
         <div>
             <div class="stat-number" style="color:#ef4444;">{{ $pendingLeaves }}</div>
-            <div class="stat-label">طلبات إجازة معلقة</div>
+            <div class="stat-label">Ø·Ù„Ø¨Ø§Øª Ø¥Ø¬Ø§Ø²Ø© Ù…Ø¹Ù„Ù‚Ø©</div>
         </div>
     </div>
 
@@ -236,29 +236,29 @@
         </div>
         <div>
             <div class="stat-number" style="color:#10b981;">{{ $totalUsers }}</div>
-            <div class="stat-label">إجمالي المستخدمين</div>
+            <div class="stat-label">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†</div>
         </div>
     </div>
 </div>
 
-{{-- ── تنبيه طلبات الإجازة ── --}}
+{{-- â”€â”€ ØªÙ†Ø¨ÙŠÙ‡ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ø¥Ø¬Ø§Ø²Ø© â”€â”€ --}}
 @if($pendingLeaves > 0)
 <div class="alert-bar">
     <div style="display:flex; align-items:center; gap:0.75rem; color:#ef4444; font-weight:700;">
         <i class="fa-solid fa-triangle-exclamation"></i>
-        يوجد {{ $pendingLeaves }} طلب إجازة بانتظار المراجعة
+        ÙŠÙˆØ¬Ø¯ {{ $pendingLeaves }} Ø·Ù„Ø¨ Ø¥Ø¬Ø§Ø²Ø© Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©
     </div>
     <a href="{{ route('affairs.leaves') }}"
        style="background:#ef4444; color:white; padding:0.5rem 1.2rem; border-radius:0.5rem; font-weight:700; text-decoration:none; font-size:0.9rem;">
-        مراجعة الطلبات
+        Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø·Ù„Ø¨Ø§Øª
     </a>
 </div>
 @endif
 
-{{-- ── إعلانات المؤسسة (كاروسيل) ── --}}
+{{-- â”€â”€ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø§Ù„Ù…Ø¤Ø³Ø³Ø© (ÙƒØ§Ø±ÙˆØ³ÙŠÙ„) â”€â”€ --}}
 <div class="section-header">
-    <h2 class="section-title">إعلانات المؤسسة</h2>
-    <a href="{{ route('affairs.announcements') }}" class="view-all">عرض الكل</a>
+    <h2 class="section-title">Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø§Ù„Ù…Ø¤Ø³Ø³Ø©</h2>
+    <a href="{{ route('affairs.announcements') }}" class="view-all">Ø¹Ø±Ø¶ Ø§Ù„ÙƒÙ„</a>
 </div>
 
 <div class="announcements-carousel">
@@ -268,7 +268,7 @@
 
     @forelse($carouselAnnouncements as $i => $ann)
         <div class="announcement-card {{ $gradients[$i % 5] }}">
-            <span class="ann-badge">{{ $ann->category ?? 'عام' }}</span>
+            <span class="ann-badge">{{ $ann->category ?? 'Ø¹Ø§Ù…' }}</span>
             <h3>{{ $ann->title }}</h3>
             @if($ann->content)
                 <p>{{ Str::limit($ann->content, 80) }}</p>
@@ -277,28 +277,28 @@
     @empty
         <div class="empty-carousel">
             <i class="fa-regular fa-bell-slash" style="margin-left:0.5rem;"></i>
-            لا توجد إعلانات حالياً
+            Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø­Ø§Ù„ÙŠØ§Ù‹
         </div>
     @endforelse
 </div>
 
-{{-- ── منشورات الإدارة ── --}}
+{{-- â”€â”€ Ù…Ù†Ø´ÙˆØ±Ø§Øª Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© â”€â”€ --}}
 <div class="section-header">
-    <h2 class="section-title">منشورات الإدارة</h2>
+    <h2 class="section-title">Ù…Ù†Ø´ÙˆØ±Ø§Øª Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©</h2>
 </div>
 
 @forelse($posts as $post)
     @php
-        // اختيار لون الأفاتار بناءً على الـ index
+        // Ø§Ø®ØªÙŠØ§Ø± Ù„ÙˆÙ† Ø§Ù„Ø£ÙØ§ØªØ§Ø± Ø¨Ù†Ø§Ø¡Ù‹ Ø¹Ù„Ù‰ Ø§Ù„Ù€ index
         $colors = ['#111827','#1d4ed8','#065f46','#7c3aed','#be123c','#b45309'];
         $color  = $colors[$loop->index % count($colors)];
-        $initials = mb_substr($post->user->full_name ?? 'إ', 0, 1);
+        $initials = mb_substr($post->user->full_name ?? 'Ø¥', 0, 1);
     @endphp
     <div class="post-card">
         <div class="post-header">
             <div class="post-avatar" style="background:{{ $color }};">{{ $initials }}</div>
             <div>
-                <div class="post-author">{{ $post->user->full_name ?? 'الإدارة' }}</div>
+                <div class="post-author">{{ $post->user->full_name ?? 'Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©' }}</div>
                 <div class="post-time">{{ $post->created_at->diffForHumans() }}</div>
             </div>
         </div>
@@ -310,15 +310,16 @@
         <h3 class="post-title">{{ $post->title }}</h3>
         <p class="post-content">{{ $post->content }}</p>
 
-        @if($post->image_path)
-            <img src="{{ asset('storage/' . $post->image_path) }}" alt="{{ $post->title }}" class="post-image">
+        @if($post->image)
+            <img src="{{ asset('storage/' . $post->image) }}" alt="{{ $post->title }}" class="post-image">
         @endif
     </div>
 @empty
     <div class="no-posts">
         <i class="fa-regular fa-newspaper"></i>
-        لا توجد منشورات حتى الآن
+        Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù†Ø´ÙˆØ±Ø§Øª Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†
     </div>
 @endforelse
 
 @endsection
+

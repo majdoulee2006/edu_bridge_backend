@@ -1,6 +1,6 @@
-@extends('layouts.hod')
+﻿@extends('layouts.hod')
 
-@section('title', 'الرئيسية')
+@section('title', 'Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©')
 
 @push('styles')
 <style>
@@ -111,33 +111,33 @@
     <div class="welcome-header">
         <div class="welcome-text">
             <h2>Edu-Bridge</h2>
-            <p>مرحباً، {{ auth()->user()->full_name ?? 'رئيس القسم' }}</p>
+            <p>Ù…Ø±Ø­Ø¨Ø§Ù‹ØŒ {{ auth()->user()->full_name ?? 'Ø±Ø¦ÙŠØ³ Ø§Ù„Ù‚Ø³Ù…' }}</p>
         </div>
     </div>
 
     <!-- News Section -->
     <div class="section-title">
-        <h3>آخر الأخبار والإعلانات</h3>
-        <a href="{{ route('hod.announcements.create') }}" class="btn btn-primary" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;">إنشاء إعلان</a>
+        <h3>Ø¢Ø®Ø± Ø§Ù„Ø£Ø®Ø¨Ø§Ø± ÙˆØ§Ù„Ø¥Ø¹Ù„Ø§Ù†Ø§Øª</h3>
+        <a href="{{ route('hod.announcements.create') }}" class="btn btn-primary" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;">Ø¥Ù†Ø´Ø§Ø¡ Ø¥Ø¹Ù„Ø§Ù†</a>
     </div>
 
     @forelse($announcements as $announcement)
     <!-- News Card -->
     <div class="news-card">
         <div style="position: relative;">
-            @if($announcement->image_path)
-                <img src="{{ asset('storage/' . $announcement->image_path) }}" class="news-image" alt="News Image">
+            @if($announcement->image)
+                <img src="{{ asset('storage/' . $announcement->image) }}" class="news-image" alt="News Image">
             @else
                 <div class="news-image" style="display: flex; align-items: center; justify-content: center; background-color: #fce30020; color: #ca8a04;">
                     <i class="fa-solid fa-bullhorn" style="font-size: 3rem;"></i>
                 </div>
             @endif
-            <span class="badge badge-yellow" style="position: absolute; top: 1rem; right: 1rem;">{{ $announcement->category ?? 'إعلان هام' }}</span>
+            <span class="badge badge-yellow" style="position: absolute; top: 1rem; right: 1rem;">{{ $announcement->category ?? 'Ø¥Ø¹Ù„Ø§Ù† Ù‡Ø§Ù…' }}</span>
         </div>
         <div class="news-content">
             <div class="news-meta">
                 <span><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}</span>
-                <span>موجه إلى: {{ $announcement->target_audience == 'all' ? 'الجميع' : $announcement->target_audience }}</span>
+                <span>Ù…ÙˆØ¬Ù‡ Ø¥Ù„Ù‰: {{ $announcement->target_audience == 'all' ? 'Ø§Ù„Ø¬Ù…ÙŠØ¹' : $announcement->target_audience }}</span>
             </div>
             <h4 class="news-title">{{ $announcement->title }}</h4>
             <p class="news-excerpt">{{ Str::limit($announcement->content, 150) }}</p>
@@ -145,8 +145,9 @@
     </div>
     @empty
     <div class="card" style="text-align: center; color: var(--text-secondary);">
-        لا توجد إعلانات حالياً.
+        Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø­Ø§Ù„ÙŠØ§Ù‹.
     </div>
     @endforelse
 
 @endsection
+

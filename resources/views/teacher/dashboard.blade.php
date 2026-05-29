@@ -1,6 +1,6 @@
-@extends('layouts.teacher')
-@section('title', 'الرئيسية')
-@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'أستاذ'))
+﻿@extends('layouts.teacher')
+@section('title', 'Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©')
+@section('subtitle', 'Ù…Ø±Ø­Ø¨Ø§Ù‹ØŒ ' . (auth()->user()->full_name ?? 'Ø£Ø³ØªØ§Ø°'))
 
 @push('styles')
 <style>
@@ -143,32 +143,32 @@
 {{-- ===== Stats (3 cards) ===== --}}
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 2rem;">
 
-    {{-- Card 1: المواد الدراسية - clickable --}}
-    <div class="stat-card" onclick="openModal('courses-modal')" title="اضغط لعرض قائمة المواد">
+    {{-- Card 1: Ø§Ù„Ù…ÙˆØ§Ø¯ Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠØ© - clickable --}}
+    <div class="stat-card" onclick="openModal('courses-modal')" title="Ø§Ø¶ØºØ· Ù„Ø¹Ø±Ø¶ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù…ÙˆØ§Ø¯">
         <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
         <div>
             <div class="stat-value">{{ $courses->count() }}</div>
-            <div class="stat-label">المواد الدراسية</div>
-            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+            <div class="stat-label">Ø§Ù„Ù…ÙˆØ§Ø¯ Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠØ©</div>
+            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> Ø§Ø¶ØºØ· Ù„Ù„Ø¹Ø±Ø¶</div>
         </div>
     </div>
 
-    {{-- Card 2: الواجبات - clickable --}}
-    <div class="stat-card" onclick="openModal('assignments-modal')" title="اضغط لعرض قائمة الواجبات">
+    {{-- Card 2: Ø§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª - clickable --}}
+    <div class="stat-card" onclick="openModal('assignments-modal')" title="Ø§Ø¶ØºØ· Ù„Ø¹Ø±Ø¶ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª">
         <div class="stat-icon"><i class="fa-solid fa-file-pen"></i></div>
         <div>
             <div class="stat-value">{{ $recentAssignments->count() }}</div>
-            <div class="stat-label">الواجبات النشطة</div>
-            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+            <div class="stat-label">Ø§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª Ø§Ù„Ù†Ø´Ø·Ø©</div>
+            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> Ø§Ø¶ØºØ· Ù„Ù„Ø¹Ø±Ø¶</div>
         </div>
     </div>
 
-    {{-- Card 3: حصص اليوم - plain --}}
+    {{-- Card 3: Ø­ØµØµ Ø§Ù„ÙŠÙˆÙ… - plain --}}
     <div class="stat-card stat-card-plain">
         <div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div>
         <div>
             <div class="stat-value">{{ $todayCount }}</div>
-            <div class="stat-label">حصص اليوم</div>
+            <div class="stat-label">Ø­ØµØµ Ø§Ù„ÙŠÙˆÙ…</div>
         </div>
     </div>
 
@@ -178,27 +178,27 @@
 <div style="margin-bottom: 2rem;">
     <p class="section-title">
         <i class="fa-solid fa-bullhorn" style="color: var(--accent-color);"></i>
-        آخر الأخبار والإعلانات
+        Ø¢Ø®Ø± Ø§Ù„Ø£Ø®Ø¨Ø§Ø± ÙˆØ§Ù„Ø¥Ø¹Ù„Ø§Ù†Ø§Øª
     </p>
 
     @forelse($announcements as $ann)
         <div class="announce-card">
             <div class="announce-image-area">
-                @if($ann->image_path ?? false)
-                    <img src="{{ asset('storage/' . $ann->image_path) }}" alt="صورة الإعلان">
+                @if($ann->image ?? false)
+                    <img src="{{ asset('storage/' . $ann->image) }}" alt="ØµÙˆØ±Ø© Ø§Ù„Ø¥Ø¹Ù„Ø§Ù†">
                 @else
                     <i class="fa-solid fa-bullhorn" style="font-size: 2.5rem;"></i>
                 @endif
-                <span class="announce-badge">{{ $ann->category ?? 'إعلان هام' }}</span>
+                <span class="announce-badge">{{ $ann->category ?? 'Ø¥Ø¹Ù„Ø§Ù† Ù‡Ø§Ù…' }}</span>
             </div>
             <div class="announce-body">
                 <div class="announce-meta">
                     <span><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
-                    <span>موجه إلى:
+                    <span>Ù…ÙˆØ¬Ù‡ Ø¥Ù„Ù‰:
                         @if(($ann->target_audience ?? '') === 'all' || ($ann->type ?? '') === 'general')
-                            الجميع
+                            Ø§Ù„Ø¬Ù…ÙŠØ¹
                         @else
-                            {{ $ann->target_audience ?? 'المعلمون' }}
+                            {{ $ann->target_audience ?? 'Ø§Ù„Ù…Ø¹Ù„Ù…ÙˆÙ†' }}
                         @endif
                     </span>
                 </div>
@@ -209,7 +209,7 @@
     @empty
         <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
             <i class="fa-solid fa-bullhorn" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>
-            لا توجد إعلانات حالياً
+            Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø­Ø§Ù„ÙŠØ§Ù‹
         </div>
     @endforelse
 </div>
@@ -218,14 +218,14 @@
 
 
 {{-- ================================================================ --}}
-{{--  MODAL: قائمة المواد الدراسية                                    --}}
+{{--  MODAL: Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù…ÙˆØ§Ø¯ Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠØ©                                    --}}
 {{-- ================================================================ --}}
 <div id="courses-modal" class="modal-overlay">
     <div class="modal-card">
         <div class="modal-header">
             <h3 style="font-weight: 800; font-size: 1.1rem;">
                 <i class="fa-solid fa-book-open" style="color: var(--accent-color);"></i>
-                موادي الدراسية
+                Ù…ÙˆØ§Ø¯ÙŠ Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠØ©
             </h3>
             <button class="modal-close" onclick="closeModal('courses-modal')">
                 <i class="fa-solid fa-xmark"></i>
@@ -242,7 +242,7 @@
                             <i class="fa-solid fa-layer-group"></i> {{ $c->level }}
                         @endif
                         @if($c->credits ?? false)
-                            &nbsp; · &nbsp; {{ $c->credits }} ساعة
+                            &nbsp; Â· &nbsp; {{ $c->credits }} Ø³Ø§Ø¹Ø©
                         @endif
                     </div>
                 </div>
@@ -250,7 +250,7 @@
         @empty
             <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                 <i class="fa-solid fa-book-open" style="font-size: 2rem; opacity: 0.4; display: block; margin-bottom: 0.5rem;"></i>
-                لا توجد مواد مسندة حالياً
+                Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…ÙˆØ§Ø¯ Ù…Ø³Ù†Ø¯Ø© Ø­Ø§Ù„ÙŠØ§Ù‹
             </div>
         @endforelse
     </div>
@@ -258,14 +258,14 @@
 
 
 {{-- ================================================================ --}}
-{{--  MODAL: قائمة الواجبات                                           --}}
+{{--  MODAL: Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª                                           --}}
 {{-- ================================================================ --}}
 <div id="assignments-modal" class="modal-overlay">
     <div class="modal-card">
         <div class="modal-header">
             <h3 style="font-weight: 800; font-size: 1.1rem;">
                 <i class="fa-solid fa-file-pen" style="color: var(--accent-color);"></i>
-                الواجبات النشطة
+                Ø§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª Ø§Ù„Ù†Ø´Ø·Ø©
             </h3>
             <button class="modal-close" onclick="closeModal('assignments-modal')">
                 <i class="fa-solid fa-xmark"></i>
@@ -275,13 +275,13 @@
         @forelse($recentAssignments as $a)
             @php
                 $statusClass = 'badge-active';
-                $statusText  = 'نشط';
+                $statusText  = 'Ù†Ø´Ø·';
                 if(($a->graded_count ?? 0) >= ($a->submissions_count ?? 1) && ($a->submissions_count ?? 0) > 0) {
                     $statusClass = 'badge-graded';
-                    $statusText  = 'تم التصحيح';
+                    $statusText  = 'ØªÙ… Ø§Ù„ØªØµØ­ÙŠØ­';
                 } elseif(($a->submissions_count ?? 0) > 0) {
                     $statusClass = 'badge-pending';
-                    $statusText  = 'قيد التصحيح';
+                    $statusText  = 'Ù‚ÙŠØ¯ Ø§Ù„ØªØµØ­ÙŠØ­';
                 }
             @endphp
             <div class="list-item">
@@ -293,17 +293,17 @@
                     </div>
                     <div class="list-item-sub">
                         <i class="fa-solid fa-book"></i> {{ $a->course_title }}
-                        &nbsp;·&nbsp;
+                        &nbsp;Â·&nbsp;
                         <i class="fa-solid fa-calendar"></i> {{ \Carbon\Carbon::parse($a->due_date)->format('Y-m-d') }}
                         @if(isset($a->submissions_count))
-                            &nbsp;·&nbsp;
-                            <i class="fa-solid fa-users"></i> {{ $a->submissions_count }} تسليم
+                            &nbsp;Â·&nbsp;
+                            <i class="fa-solid fa-users"></i> {{ $a->submissions_count }} ØªØ³Ù„ÙŠÙ…
                         @endif
                     </div>
                 </div>
                 <a href="{{ route('teacher.assignments.submissions', $a->assignment_id) }}"
                    style="color: var(--accent-color); font-size: 1rem;"
-                   title="عرض الردود"
+                   title="Ø¹Ø±Ø¶ Ø§Ù„Ø±Ø¯ÙˆØ¯"
                    onclick="closeModal('assignments-modal')">
                     <i class="fa-solid fa-chevron-left"></i>
                 </a>
@@ -311,7 +311,7 @@
         @empty
             <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                 <i class="fa-solid fa-file-circle-plus" style="font-size: 2rem; opacity: 0.4; display: block; margin-bottom: 0.5rem;"></i>
-                لا توجد واجبات حالياً
+                Ù„Ø§ ØªÙˆØ¬Ø¯ ÙˆØ§Ø¬Ø¨Ø§Øª Ø­Ø§Ù„ÙŠØ§Ù‹
             </div>
         @endforelse
 
@@ -319,7 +319,7 @@
             <a href="{{ route('teacher.assignments') }}"
                onclick="closeModal('assignments-modal')"
                style="color: var(--accent-color); font-weight: 700; font-size: 0.9rem; text-decoration: none;">
-                <i class="fa-solid fa-arrow-left"></i> عرض كل الواجبات
+                <i class="fa-solid fa-arrow-left"></i> Ø¹Ø±Ø¶ ÙƒÙ„ Ø§Ù„ÙˆØ§Ø¬Ø¨Ø§Øª
             </a>
         </div>
     </div>
@@ -345,3 +345,4 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 });
 </script>
 @endpush
+

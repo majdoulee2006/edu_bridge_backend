@@ -15,7 +15,9 @@ tr:last-child td { border-bottom:none; }
 .badge-free { background:#d1fae5; color:#059669; padding:0.25rem 0.8rem; border-radius:2rem; font-size:0.8rem; font-weight:700; }
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; }
 .modal-overlay.active { display:flex; }
-.modal-content { background:var(--surface); border-radius:1.5rem; padding:2rem; width:420px; max-width:95vw; }
+.modal-content { background:#ffffff; border-radius:1.5rem; padding:2rem; width:420px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+.modal-content h3, .modal-content label { color:#1a1a1a !important; }
+.modal-content .form-control { background:#f5f5f5; color:#1a1a1a; border-color:#e0e0e0; }
 .modal-content h3 { font-size:1.3rem; font-weight:800; margin-bottom:1.5rem; }
 .form-group { margin-bottom:1.2rem; }
 .form-group label { display:block; font-weight:700; margin-bottom:0.5rem; font-size:0.9rem; }
