@@ -185,7 +185,7 @@
         <div class="announce-card">
             <div class="announce-image-area">
                 @if($ann->image ?? false)
-                    <img src="{{ asset('storage/' . $ann->image) }}" alt="ØµÙˆØ±Ø© Ø§Ù„Ø¥Ø¹Ù„Ø§Ù†">
+                    <a href="{{ asset('storage/' . $ann->image) }}" target="_blank" download style="display:block;position:relative;"><img src="{{ asset('storage/' . $ann->image) }}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;"><span style="position:absolute;bottom:0.4rem;left:0.4rem;background:rgba(0,0,0,0.6);color:white;padding:0.25rem 0.6rem;border-radius:0.5rem;font-size:0.75rem;"><i class=""fa-solid fa-download""></i></span></a>
                 @else
                     <i class="fa-solid fa-bullhorn" style="font-size: 2.5rem;"></i>
                 @endif
@@ -345,4 +345,5 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 });
 </script>
 @endpush
+
 

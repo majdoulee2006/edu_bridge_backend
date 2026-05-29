@@ -282,7 +282,7 @@ class AffairsWebController extends Controller
 
         DB::table('notifications')->insert([
             'user_id'    => $user->user_id,
-            'sender_id'  => Auth::id(),
+            'sender_id'  => Auth::user()->user_id,
             'title'      => 'تم تفعيل حسابك ✓',
             'message'    => 'مرحباً ' . $user->full_name . '! تم تفعيل حسابك. يمكنك الآن تسجيل الدخول.',
             'type'       => 'administrative',

@@ -126,7 +126,13 @@
     <div class="news-card">
         <div style="position: relative;">
             @if($announcement->image)
-                <img src="{{ asset('storage/' . $announcement->image) }}" class="news-image" alt="News Image">
+                <a href="{{ asset('storage/' . $announcement->image) }}" target="_blank" download
+                   style="display:block; position:relative;">
+                    <img src="{{ asset('storage/' . $announcement->image) }}" class="news-image" alt="News Image" style="cursor:pointer;">
+                    <span style="position:absolute; bottom:0.5rem; left:0.5rem; background:rgba(0,0,0,0.6); color:white; padding:0.3rem 0.7rem; border-radius:0.5rem; font-size:0.8rem;">
+                        <i class="fa-solid fa-download"></i> تنزيل
+                    </span>
+                </a>
             @else
                 <div class="news-image" style="display: flex; align-items: center; justify-content: center; background-color: #fce30020; color: #ca8a04;">
                     <i class="fa-solid fa-bullhorn" style="font-size: 3rem;"></i>
