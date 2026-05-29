@@ -10,11 +10,13 @@ class Assignment extends Model
 
     protected $fillable = [
         'course_id',
+        'teacher_id',
         'title',
         'description',
         'type',
         'due_date',
         'max_points',
+        'attachment_path',
     ];
 
     protected $casts = [
