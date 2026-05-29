@@ -665,17 +665,22 @@ class StudentController extends Controller
             ->value('user_id');
         if ($teacherUserId) {
             $studentUser = $request->user();
+            $title   = 'تسليم واجب جديد';
+            $message = 'سلّم الطالب ' . $studentUser->full_name . ' الواجب: ' . $assignment->title;
             \DB::table('notifications')->insert([
                 'user_id'    => $teacherUserId,
                 'sender_id'  => $studentUser->user_id,
-                'title'      => 'تسليم واجب جديد',
-                'message'    => 'سلّم الطالب ' . $studentUser->full_name . ' الواجب: ' . $assignment->title,
+                'title'      => $title,
+                'message'    => $message,
                 'type'       => 'assignment',
                 'category'   => 'academic',
                 'related_id' => $assignmentId,
                 'is_read'    => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
+            ]);
+            \App\Services\FcmService::sendToUser($teacherUserId, $title, $message, [
+                'type' => 'assignment', 'related_id' => (string) $assignmentId,
             ]);
         }
 

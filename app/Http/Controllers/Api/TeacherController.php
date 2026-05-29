@@ -731,7 +731,18 @@ class TeacherController extends Controller
             'created_at' => $now,
             'updated_at' => $now,
         ])->all();
-        if (!empty($rows)) DB::table('notifications')->insert($rows);
+        if (!empty($rows)) {
+            DB::table('notifications')->insert($rows);
+            // FCM push notifications
+            $fcmTitle = 'واجب جديد — ' . $course->name;
+            $fcmBody  = 'رفع المعلم ' . $teacherUser->full_name . ' واجباً جديداً: ' . $request->title;
+            foreach ($studentUserIds as $uid) {
+                \App\Services\FcmService::sendToUser($uid, $fcmTitle, $fcmBody, [
+                    'type' => 'assignment',
+                    'related_id' => (string) $assignment->assignment_id,
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,

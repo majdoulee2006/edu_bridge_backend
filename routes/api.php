@@ -34,6 +34,13 @@ Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // FCM Token
+    Route::post('/user/fcm-token', function (\Illuminate\Http\Request $request) {
+        $request->validate(['fcm_token' => 'required|string']);
+        $request->user()->update(['device_token' => $request->fcm_token]);
+        return response()->json(['success' => true]);
+    });
     Route::post('/profile/update', [AuthController::class, 'updateProfile']);
     Route::post('/profile/avatar', [AuthController::class, 'updateAvatar']);
     Route::post('/profile/request-change-email', [AuthController::class, 'requestChangeEmail']);

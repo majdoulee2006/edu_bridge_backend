@@ -280,17 +280,20 @@ class AffairsWebController extends Controller
         $user = User::findOrFail($id);
         $user->update(['status' => 'active']);
 
+        $notifTitle = 'تم تفعيل حسابك ✓';
+        $notifMsg   = 'مرحباً ' . $user->full_name . '! تم تفعيل حسابك. يمكنك الآن تسجيل الدخول.';
         DB::table('notifications')->insert([
             'user_id'    => $user->user_id,
             'sender_id'  => Auth::user()->user_id,
-            'title'      => 'تم تفعيل حسابك ✓',
-            'message'    => 'مرحباً ' . $user->full_name . '! تم تفعيل حسابك. يمكنك الآن تسجيل الدخول.',
+            'title'      => $notifTitle,
+            'message'    => $notifMsg,
             'type'       => 'administrative',
             'category'   => 'administrative',
             'is_read'    => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        \App\Services\FcmService::sendToUser($user->user_id, $notifTitle, $notifMsg, ['type' => 'administrative']);
 
         return back()->with('success', 'تم تفعيل الحساب.');
     }

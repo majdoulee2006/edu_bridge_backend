@@ -29,6 +29,8 @@ class User extends Authenticatable
         'branch',
         'children_ids',
         'avatar',
+        'device_token',
+        'last_login',
     ];
 
     protected $appends = ['role'];
