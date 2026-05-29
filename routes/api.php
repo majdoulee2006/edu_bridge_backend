@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
+use App\Http\Controllers\ChatController;
 
 // خدمة ملفات التخزين (بديل الـ symlink على Windows)
 Route::get('/file/{path}', function (string $path) {
@@ -62,6 +63,17 @@ Route::middleware('auth:sanctum')->group(function () {
             ]
         ]);
     });
+    #========= روابط الدردشة المشتركة ==========
+    Route::post('/send-message', [ChatController::class, 'sendMessage']);
+    Route::get('/messages/unread-count', [ChatController::class, 'getUnreadCount']); 
+    Route::get('/messages/{otherUserId}', [ChatController::class, 'getMessages']);
+    Route::put('/messages/{otherUserId}/mark-read', [ChatController::class, 'markAsRead']);
+    Route::get('/messages/{otherUserId}/search', [ChatController::class, 'searchMessages']);   
+    Route::delete('/messages/{messageId}', [ChatController::class, 'deleteMessage']);  
+    Route::put('/messages/{messageId}/edit', [ChatController::class, 'editMessage']);
+    Route::post('/groups/{groupId}/messages', [ChatController::class, 'sendGroupMessage']);
+    Route::post('/groups', [ChatController::class, 'createGroup']);
+    Route::get('/groups/{groupId}/messages', [ChatController::class, 'getGroupMessages']);            
 
     #========= روابط واجهات الطالب ==========
     Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
