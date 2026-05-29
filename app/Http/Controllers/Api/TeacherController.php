@@ -534,7 +534,7 @@ class TeacherController extends Controller
         $exam = \App\Models\Exam::where('exam_id', $request->exam_id)
             ->whereHas('course', function($query) use ($teacher) {
                 $query->whereHas('teachers', function($q) use ($teacher) {
-                    $q->where('teacher_id', $teacher->teacher_id);
+                    $q->where('teachers.teacher_id', $teacher->teacher_id);
                 });
             })->first();
 
@@ -712,7 +712,7 @@ class TeacherController extends Controller
 
         // إشعار الطلاب المسجلين في المادة
         $teacherUser = $request->user();
-        $studentIds = DB::table('student_courses')
+        $studentIds = DB::table('enrollments')
             ->where('course_id', $request->course_id)
             ->pluck('student_id');
         $studentUserIds = DB::table('students')
@@ -1208,7 +1208,7 @@ class TeacherController extends Controller
         // notify students of new lecture
         $teacherUser    = $request->user();
         $courseName     = $course->name ?? $course->title ?? 'المادة';
-        $studentIds     = DB::table('student_courses')->where('course_id', $request->course_id)->pluck('student_id');
+        $studentIds     = DB::table('enrollments')->where('course_id', $request->course_id)->pluck('student_id');
         $studentUserIds = DB::table('students')->whereIn('student_id', $studentIds)->pluck('user_id');
         $notifNow = now();
         $notifRows = $studentUserIds->map(fn($uid) => [
@@ -1399,7 +1399,7 @@ class TeacherController extends Controller
         $assignment = Assignment::where('assignment_id', $assignmentId)
             ->whereHas('course', function($q) use ($teacher) {
                 $q->whereHas('teachers', function($q2) use ($teacher) {
-                    $q2->where('teacher_id', $teacher->teacher_id);
+                    $q2->where('teachers.teacher_id', $teacher->teacher_id);
                 });
             })->first();
 
