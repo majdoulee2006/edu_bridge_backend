@@ -725,6 +725,7 @@ class TeacherController extends Controller
             'title'      => 'واجب جديد — ' . $course->name,
             'message'    => 'رفع المعلم ' . $teacherUser->full_name . ' واجباً جديداً: ' . $request->title,
             'type'       => 'assignment',
+            'category'   => 'academic',
             'related_id' => $assignment->assignment_id,
             'is_read'    => 0,
             'created_at' => $now,

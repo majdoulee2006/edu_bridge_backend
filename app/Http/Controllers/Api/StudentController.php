@@ -671,6 +671,7 @@ class StudentController extends Controller
                 'title'      => 'تسليم واجب جديد',
                 'message'    => 'سلّم الطالب ' . $studentUser->full_name . ' الواجب: ' . $assignment->title,
                 'type'       => 'assignment',
+                'category'   => 'academic',
                 'related_id' => $assignmentId,
                 'is_read'    => 0,
                 'created_at' => now(),
