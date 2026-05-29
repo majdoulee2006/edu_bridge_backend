@@ -900,6 +900,7 @@ class TeacherController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser($studentUserId, 'Grade', (string)$request->grade, ['type' => 'assignment', 'related_id' => (string)$submission->assignment->assignment_id]);
         }
 
         return response()->json([
@@ -1049,6 +1050,7 @@ class TeacherController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        \App\Services\FcmService::sendToUser($reportRequest->head_id, 'Report', 'Evaluation submitted', ['type' => 'report']);
 
         // Ø­ÙØ¸ Ø§Ù„ØªÙ‚Ø±ÙŠØ± ÙÙŠ performance_reports + Ø¥Ø´Ø¹Ø§Ø± ÙˆÙ„ÙŠ Ø§Ù„Ø£Ù…Ø± (Ø«Ø§Ù†ÙˆÙŠ â€” Ù„Ø§ ÙŠÙƒØ³Ø± Ø§Ù„Ø¹Ù…Ù„ÙŠØ©)
         try {

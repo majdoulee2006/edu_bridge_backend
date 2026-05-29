@@ -380,6 +380,11 @@ class DepartmentHeadController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            // FCM — نجيب user_id من جدول الطلاب
+            $studentUserId = DB::table('students')->where('student_id', $leaveRequest->student_id)->value('user_id');
+            if ($studentUserId) {
+                \App\Services\FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request']);
+            }
         }
 
         return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب']);
@@ -648,7 +653,14 @@ class DepartmentHeadController extends Controller
             'created_at' => $now,
             'updated_at' => $now,
         ])->all();
-        if (!empty($rows)) DB::table('notifications')->insert($rows);
+        if (!empty($rows)) {
+            DB::table('notifications')->insert($rows);
+            foreach ($userIds->unique() as $uid) {
+                \App\Services\FcmService::sendToUser($uid, 'إعلان جديد من رئيس القسم', $request->title, [
+                    'type' => 'announcement', 'related_id' => (string) $announcementId,
+                ]);
+            }
+        }
 
         return response()->json(['success' => true, 'message' => 'تم نشر الإعلان بنجاح', 'id' => $announcementId]);
     }
@@ -755,6 +767,9 @@ class DepartmentHeadController extends Controller
         ])->all();
 
         DB::table('notifications')->insert($rows);
+        foreach ($userIds->unique() as $uid) {
+            \App\Services\FcmService::sendToUser($uid, $request->title, $request->message, ['type' => 'academic']);
+        }
 
         return response()->json([
             'success' => true,
