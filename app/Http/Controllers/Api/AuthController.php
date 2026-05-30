@@ -28,6 +28,7 @@ class AuthController extends Controller
             'username'   => 'required|string',
             'password'   => 'required|string',
             'is_student' => 'nullable|boolean',
+            'device_id'  => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -72,21 +73,14 @@ class AuthController extends Controller
 
         $user->update(['last_login' => now()]);
 
-        // ── Single-Device Login (طالب + ولي أمر) ──────────────────
-        if (in_array($user->role_id, [3, 4])) {
-            $deviceToken = $request->input('device_token');
-
-            if ($deviceToken && $user->device_token && $user->device_token !== $deviceToken) {
-                return response()->json([
-                    'success'    => false,
-                    'message'    => 'هذا الحساب مسجّل دخول بالفعل من جهاز آخر. يُسمح بجهاز واحد فقط.',
-                    'error_code' => 'DEVICE_CONFLICT',
-                ], 409);
-            }
-
-            $user->tokens()->delete();
-            if ($deviceToken) {
-                $user->update(['device_token' => $deviceToken]);
+        // ── ربط الجهاز بحساب الطالب عند أول تسجيل دخول ──────────────────
+        if ($user->role_id === 3 && $request->filled('device_id')) {
+            $student = \App\Models\Student::where('user_id', $user->user_id)->first();
+            if ($student && empty($student->device_id)) {
+                $student->update([
+                    'device_id'        => $request->device_id,
+                    'is_device_locked' => 1,
+                ]);
             }
         }
 
@@ -376,11 +370,6 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $user->currentAccessToken()->delete();
-
-        // مسح device_token عند تسجيل الخروج
-        if (in_array($user->role_id, [3, 4])) {
-            $user->update(['device_token' => null]);
-        }
 
         return response()->json(['success' => true, 'message' => 'تم تسجيل الخروج بنجاح'], 200);
     }

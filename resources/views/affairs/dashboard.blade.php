@@ -1,6 +1,6 @@
 ﻿@extends('layouts.affairs')
-@section('title', 'Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©')
-@section('subtitle', 'Ù…Ø±Ø­Ø¨Ø§Ù‹ØŒ ' . (auth()->user()->full_name ?? 'Ù…ÙˆØ¸Ù Ø§Ù„Ø´Ø¤ÙˆÙ†'))
+@section('title', 'الرئيسية')
+@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'موظ� الشؤون'))
 
 @push('styles')
 <style>
@@ -206,7 +206,7 @@
         </div>
         <div>
             <div class="stat-number" style="color:var(--accent-color);">{{ $totalStudents }}</div>
-            <div class="stat-label">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø·Ù„Ø§Ø¨</div>
+            <div class="stat-label">إجمالي الطلاب</div>
         </div>
     </div>
 
@@ -216,7 +216,7 @@
         </div>
         <div>
             <div class="stat-number" style="color:#3b82f6;">{{ $totalTeachers }}</div>
-            <div class="stat-label">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø¹Ù„Ù…ÙŠÙ†</div>
+            <div class="stat-label">إجمالي المعلمين</div>
         </div>
     </div>
 
@@ -226,7 +226,7 @@
         </div>
         <div>
             <div class="stat-number" style="color:#ef4444;">{{ $pendingLeaves }}</div>
-            <div class="stat-label">Ø·Ù„Ø¨Ø§Øª Ø¥Ø¬Ø§Ø²Ø© Ù…Ø¹Ù„Ù‚Ø©</div>
+            <div class="stat-label">طلبات إجازة معلقة</div>
         </div>
     </div>
 
@@ -236,29 +236,29 @@
         </div>
         <div>
             <div class="stat-number" style="color:#10b981;">{{ $totalUsers }}</div>
-            <div class="stat-label">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†</div>
+            <div class="stat-label">إجمالي المستخدمين</div>
         </div>
     </div>
 </div>
 
-{{-- â”€â”€ ØªÙ†Ø¨ÙŠÙ‡ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ø¥Ø¬Ø§Ø²Ø© â”€â”€ --}}
+{{-- ── تنبيه طلبات الإجازة ── --}}
 @if($pendingLeaves > 0)
 <div class="alert-bar">
     <div style="display:flex; align-items:center; gap:0.75rem; color:#ef4444; font-weight:700;">
         <i class="fa-solid fa-triangle-exclamation"></i>
-        ÙŠÙˆØ¬Ø¯ {{ $pendingLeaves }} Ø·Ù„Ø¨ Ø¥Ø¬Ø§Ø²Ø© Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©
+        يوجد {{ $pendingLeaves }} طلب إجازة بانتظار المراجعة
     </div>
     <a href="{{ route('affairs.leaves') }}"
        style="background:#ef4444; color:white; padding:0.5rem 1.2rem; border-radius:0.5rem; font-weight:700; text-decoration:none; font-size:0.9rem;">
-        Ù…Ø±Ø§Ø¬Ø¹Ø© Ø§Ù„Ø·Ù„Ø¨Ø§Øª
+        مراجعة الطلبات
     </a>
 </div>
 @endif
 
-{{-- â”€â”€ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø§Ù„Ù…Ø¤Ø³Ø³Ø© (ÙƒØ§Ø±ÙˆØ³ÙŠÙ„) â”€â”€ --}}
+{{-- ── إعلانات المؤسسة (كاروسيل) â”€â”€ --}}
 <div class="section-header">
-    <h2 class="section-title">Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø§Ù„Ù…Ø¤Ø³Ø³Ø©</h2>
-    <a href="{{ route('affairs.announcements') }}" class="view-all">Ø¹Ø±Ø¶ Ø§Ù„ÙƒÙ„</a>
+    <h2 class="section-title">إعلانات المؤسسة</h2>
+    <a href="{{ route('affairs.announcements') }}" class="view-all">عرض الكل</a>
 </div>
 
 <div class="announcements-carousel">
@@ -268,7 +268,7 @@
 
     @forelse($carouselAnnouncements as $i => $ann)
         <div class="announcement-card {{ $gradients[$i % 5] }}">
-            <span class="ann-badge">{{ $ann->category ?? 'Ø¹Ø§Ù…' }}</span>
+            <span class="ann-badge">{{ $ann->category ?? 'عام' }}</span>
             <h3>{{ $ann->title }}</h3>
             @if($ann->content)
                 <p>{{ Str::limit($ann->content, 80) }}</p>
@@ -277,28 +277,28 @@
     @empty
         <div class="empty-carousel">
             <i class="fa-regular fa-bell-slash" style="margin-left:0.5rem;"></i>
-            Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø­Ø§Ù„ÙŠØ§Ù‹
+            لا توجد إعلانات حالياً
         </div>
     @endforelse
 </div>
 
-{{-- â”€â”€ Ù…Ù†Ø´ÙˆØ±Ø§Øª Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© â”€â”€ --}}
+{{-- ── منشورات الإدارة ── --}}
 <div class="section-header">
-    <h2 class="section-title">Ù…Ù†Ø´ÙˆØ±Ø§Øª Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©</h2>
+    <h2 class="section-title">منشورات الإدارة</h2>
 </div>
 
 @forelse($posts as $post)
     @php
-        // Ø§Ø®ØªÙŠØ§Ø± Ù„ÙˆÙ† Ø§Ù„Ø£ÙØ§ØªØ§Ø± Ø¨Ù†Ø§Ø¡Ù‹ Ø¹Ù„Ù‰ Ø§Ù„Ù€ index
+        // اختيار لون الأ�اتار بناءً على الـ index
         $colors = ['#111827','#1d4ed8','#065f46','#7c3aed','#be123c','#b45309'];
         $color  = $colors[$loop->index % count($colors)];
-        $initials = mb_substr($post->user->full_name ?? 'Ø¥', 0, 1);
+        $initials = mb_substr($post->user->full_name ?? 'إ', 0, 1);
     @endphp
     <div class="post-card">
         <div class="post-header">
             <div class="post-avatar" style="background:{{ $color }};">{{ $initials }}</div>
             <div>
-                <div class="post-author">{{ $post->user->full_name ?? 'Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©' }}</div>
+                <div class="post-author">{{ $post->user->full_name ?? 'الإدارة' }}</div>
                 <div class="post-time">{{ $post->created_at->diffForHumans() }}</div>
             </div>
         </div>
@@ -317,7 +317,7 @@
 @empty
     <div class="no-posts">
         <i class="fa-regular fa-newspaper"></i>
-        Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù†Ø´ÙˆØ±Ø§Øª Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†
+        لا توجد منشورات حتى الآن
     </div>
 @endforelse
 

@@ -184,8 +184,24 @@ class AffairsWebController extends Controller
     // ─────────────────────────── Accounts (معلم + رئيس قسم فقط) ────
     public function accounts()
     {
-        $users = User::whereIn('role_id', [2, 5])->latest()->get(); // teacher + head only
+        $users = User::whereIn('role_id', [2, 3, 5])->with('student')->latest()->get();
         return view('affairs.accounts', compact('users'));
+    }
+
+    public function resetStudentDevice(Request $request, int $studentId)
+    {
+        $student = Student::find($studentId);
+
+        if (!$student) {
+            return back()->with('error', 'الطالب غير موجود.');
+        }
+
+        $student->update([
+            'device_id'        => null,
+            'is_device_locked' => 0,
+        ]);
+
+        return back()->with('success', 'تم إعادة تسجيل الجهاز بنجاح. يمكن للطالب الآن تسجيل الدخول من جهاز جديد.');
     }
 
     public function storeAccount(Request $request)

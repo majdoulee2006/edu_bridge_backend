@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -110,6 +111,26 @@ class AffairsController extends Controller
         $user->delete();
 
         return response()->json(['success' => true, 'message' => 'تم رفض وحذف الطلب']);
+    }
+
+    // ── إعادة تسجيل جهاز الطالب ──────────────────────────────────────
+    public function resetDevice(Request $request, int $studentId)
+    {
+        $student = Student::find($studentId);
+
+        if (!$student) {
+            return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
+        }
+
+        $student->update([
+            'device_id'        => null,
+            'is_device_locked' => 0,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إعادة تسجيل الجهاز بنجاح، يمكن للطالب الآن تسجيل الدخول من جهاز جديد.',
+        ]);
     }
 }
 

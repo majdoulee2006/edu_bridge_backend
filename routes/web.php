@@ -141,6 +141,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/accounts', [AffairsWebController::class, 'storeAccount'])->name('affairs.accounts.store');
     Route::post('/accounts/{id}/toggle', [AffairsWebController::class, 'toggleAccountStatus'])->name('affairs.accounts.toggle');
     Route::post('/accounts/{id}/delete', [AffairsWebController::class, 'deleteAccount'])->name('affairs.accounts.delete');
+    Route::post('/students/{id}/reset-device', [AffairsWebController::class, 'resetStudentDevice'])->name('affairs.students.reset-device');
 
     // طلبات الإجازة
     Route::get('/leaves', [AffairsWebController::class, 'leaves'])->name('affairs.leaves');
@@ -192,6 +193,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
     Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
     Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
+    Route::get('/announcements/create', [AdminWebController::class, 'createAnnouncement'])->name('admin.announcements.create');
+    Route::post('/announcements', [AdminWebController::class, 'storeAnnouncement'])->name('admin.announcements.store');
     Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');
     Route::post('/notifications/{id}/read', [AdminWebController::class, 'markNotificationRead'])->name('admin.notifications.read');
     Route::post('/notifications/read-all', [AdminWebController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');

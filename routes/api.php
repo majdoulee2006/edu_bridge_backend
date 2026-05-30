@@ -329,12 +329,13 @@ Route::post('/parent/link-student', function (Request $request) {
 use App\Http\Controllers\Api\AffairsController;
 
 Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(function () {
-    Route::get('/university-ids',           [AffairsController::class, 'listUniversityIds']);
-    Route::post('/university-ids',          [AffairsController::class, 'addUniversityId']);
-    Route::delete('/university-ids/{id}',   [AffairsController::class, 'deleteUniversityId']);
-    Route::get('/pending-accounts',         [AffairsController::class, 'pendingAccounts']);
-    Route::post('/accounts/{userId}/approve', [AffairsController::class, 'approveAccount']);
-    Route::post('/accounts/{userId}/reject',  [AffairsController::class, 'rejectAccount']);
+    Route::get('/university-ids',                        [AffairsController::class, 'listUniversityIds']);
+    Route::post('/university-ids',                       [AffairsController::class, 'addUniversityId']);
+    Route::delete('/university-ids/{id}',                [AffairsController::class, 'deleteUniversityId']);
+    Route::get('/pending-accounts',                      [AffairsController::class, 'pendingAccounts']);
+    Route::post('/accounts/{userId}/approve',            [AffairsController::class, 'approveAccount']);
+    Route::post('/accounts/{userId}/reject',             [AffairsController::class, 'rejectAccount']);
+    Route::post('/students/{id}/reset-device',           [AffairsController::class, 'resetDevice']);
 });
 
 Route::get('/user/profile/{id}', function ($id) {

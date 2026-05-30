@@ -35,10 +35,18 @@ class TeacherWebController extends Controller
             'password.required' => 'كلمة المرور مطلوبة.',
         ]);
 
-        $loginField = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+        // يدعم: email أو phone أو username
+        $input = $request->login;
+        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
+            $loginField = 'email';
+        } elseif (preg_match('/^\+?[0-9]{7,15}$/', $input)) {
+            $loginField = 'phone';
+        } else {
+            $loginField = 'username';
+        }
 
-        if (Auth::attempt([$loginField => $request->login, 'password' => $request->password])) {
-            $teacher = Teacher::where('user_id', Auth::user()->user_id)->first();
+        if (Auth::attempt([$loginField => $input, 'password' => $request->password])) {
+            $teacher = Teacher::where('user_id', Auth::user()->getKey())->first();
             if (!$teacher) {
                 Auth::logout();
                 return back()->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
@@ -388,7 +396,7 @@ class TeacherWebController extends Controller
             $filePath = $file->store($folder, 'public');
         }
 
-        DB::table('assignments')->insert([
+        $assignmentId = DB::table('assignments')->insertGetId([
             'course_id'   => $request->course_id,
             'title'       => $request->title,
             'description' => $request->description,
@@ -400,6 +408,43 @@ class TeacherWebController extends Controller
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
+
+        // ── إشعار الطلاب المسجلين في المادة ─────────────────────────
+        $course       = DB::table('courses')->where('course_id', $request->course_id)->first();
+        $teacher      = $this->getTeacher();
+        $teacherUser  = DB::table('users')->where('user_id', $teacher->user_id)->first();
+        $courseName   = $course->title ?? $course->name ?? 'المادة';
+        $fcmTitle     = 'واجب جديد — ' . $courseName;
+        $fcmBody      = 'رفع المعلم ' . ($teacherUser->full_name ?? '') . ' واجباً جديداً: ' . $request->title;
+
+        $studentUserIds = DB::table('enrollments')
+            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+            ->where('enrollments.course_id', $request->course_id)
+            ->where('enrollments.status', 'active')
+            ->pluck('students.user_id');
+
+        $now = now();
+        $notifRows = $studentUserIds->map(fn($uid) => [
+            'user_id'    => $uid,
+            'sender_id'  => $teacher->user_id,
+            'title'      => $fcmTitle,
+            'message'    => $fcmBody,
+            'type'       => 'assignment',
+            'category'   => 'academic',
+            'related_id' => $assignmentId,
+            'is_read'    => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        if (!empty($notifRows)) {
+            DB::table('notifications')->insert($notifRows);
+            foreach ($studentUserIds as $uid) {
+                \App\Services\FcmService::sendToUser($uid, $fcmTitle, $fcmBody, [
+                    'type' => 'assignment', 'related_id' => (string) $assignmentId,
+                ]);
+            }
+        }
 
         return redirect()->back()->with('success', 'تم إضافة الواجب بنجاح!');
     }
@@ -450,6 +495,30 @@ class TeacherWebController extends Controller
                 'feedback'   => $request->feedback,
                 'updated_at' => now(),
             ]);
+
+        // ── إشعار الطالب بتصحيح واجبه ───────────────────────────────
+        $submission = DB::table('assignment_submissions')
+            ->join('students', 'assignment_submissions.student_id', '=', 'students.student_id')
+            ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+            ->where('assignment_submissions.submission_id', $submissionId)
+            ->select('students.user_id', 'assignments.title as assignment_title', 'assignments.max_points')
+            ->first();
+
+        if ($submission) {
+            $notifTitle = 'تم تصحيح واجبك';
+            $notifMsg   = 'صحّح المعلم واجب "' . $submission->assignment_title . '" — علامتك: ' . $request->grade . '/' . ($submission->max_points ?? 100);
+            DB::table('notifications')->insert([
+                'user_id'    => $submission->user_id,
+                'title'      => $notifTitle,
+                'message'    => $notifMsg,
+                'type'       => 'assignment',
+                'category'   => 'academic',
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            \App\Services\FcmService::sendToUser($submission->user_id, $notifTitle, $notifMsg, ['type' => 'assignment']);
+        }
 
         return redirect()->back()->with('success', 'تم حفظ التصحيح بنجاح!');
     }

@@ -152,6 +152,58 @@ class AdminWebController extends Controller
     //  MESSAGES & ANNOUNCEMENTS
     // ────────────────────────────────────────────────────────────
 
+    public function createAnnouncement()
+    {
+        return view('admin.announcements.create');
+    }
+
+    public function storeAnnouncement(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'title'           => 'required|string|max:255',
+            'content'         => 'required|string',
+            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'link_url'        => 'nullable|url|max:500',
+            'target_audience' => 'nullable|in:all,students,teachers',
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement = \App\Models\Announcement::create([
+            'user_id'         => Auth::id(),
+            'title'           => $request->title,
+            'content'         => $request->content,
+            'image'           => $imagePath,
+            'link_url'        => $request->input('link_url'),
+            'target_audience' => $request->input('target_audience', 'all'),
+            'type'            => 'general',
+        ]);
+
+        // FCM للطلاب والمعلمين
+        $target  = $request->input('target_audience', 'all');
+        $roleIds = match($target) { 'students'=>[3], 'teachers'=>[2], default=>[2,3] };
+        $userIds = \App\Models\User::whereIn('role_id', $roleIds)->where('status','active')->pluck('user_id');
+        $now     = now();
+        $rows    = $userIds->map(fn($uid) => [
+            'user_id'=>$uid, 'sender_id'=>Auth::id(),
+            'title'=>'إعلان جديد من الإدارة', 'message'=>$request->title,
+            'type'=>'announcement', 'category'=>'administrative',
+            'related_id'=>$announcement->id ?? $announcement->announcement_id,
+            'is_read'=>0, 'created_at'=>$now, 'updated_at'=>$now,
+        ])->all();
+        if (!empty($rows)) {
+            DB::table('notifications')->insert($rows);
+            foreach ($userIds as $uid) {
+                \App\Services\FcmService::sendToUser($uid, 'إعلان جديد من الإدارة', $request->title, ['type'=>'announcement']);
+            }
+        }
+
+        return redirect()->route('admin.dashboard')->with('success', 'تم نشر الإعلان بنجاح!');
+    }
+
     public function messages()
     {
         $users = DB::table('users')
@@ -203,7 +255,10 @@ class AdminWebController extends Controller
 
         $fullMessage = "📌 [ " . $request->subject . " ]\n\n" . $request->message;
 
-        // Insert messages & notifications for all recipients
+        // Insert messages & notifications + FCM for all recipients
+        $notifTitle = 'تعميم إداري: ' . $request->subject;
+        $notifMsg   = 'تلقيت تعميماً إدارياً جديداً من الإدارة العامة.';
+
         foreach ($recipientIds as $receiverId) {
             DB::table('messages')->insert([
                 'sender_id'   => Auth::id(),
@@ -216,13 +271,17 @@ class AdminWebController extends Controller
 
             DB::table('notifications')->insert([
                 'user_id'    => $receiverId,
-                'title'      => 'تعميم إداري: ' . $request->subject,
-                'message'    => 'تلقيت تعميماً إدارياً جديداً من الإدارة العامة.',
+                'sender_id'  => Auth::id(),
+                'title'      => $notifTitle,
+                'message'    => $notifMsg,
                 'type'       => 'message',
+                'category'   => 'administrative',
                 'is_read'    => false,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            \App\Services\FcmService::sendToUser($receiverId, $notifTitle, $notifMsg, ['type' => 'message']);
         }
 
         return redirect()->back()->with('success', 'تم إرسال التعميم الإداري بنجاح إلى (' . count($recipientIds) . ') مستخدم!');

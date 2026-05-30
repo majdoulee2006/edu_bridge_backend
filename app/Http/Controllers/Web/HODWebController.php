@@ -406,19 +406,64 @@ class HODWebController extends Controller
     public function storeAnnouncement(Request $request)
     {
         $request->validate([
-            'title'   => 'required|string|max:255',
-            'content' => 'required|string',
-            'type'    => 'required|in:general,course_specific',
-            'course_id' => 'nullable|exists:courses,course_id',
+            'title'            => 'required|string|max:255',
+            'content'          => 'required|string',
+            'type'             => 'required|in:general,course_specific',
+            'course_id'        => 'nullable|exists:courses,course_id',
+            'image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'link_url'         => 'nullable|url|max:500',
+            'target_audience'  => 'nullable|in:all,students,teachers',
         ]);
 
-        \App\Models\Announcement::create([
-            'user_id'   => auth()->id(),
-            'title'     => $request->title,
-            'content'   => $request->content,
-            'type'      => $request->type,
-            'course_id' => $request->type === 'course_specific' ? $request->course_id : null,
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement = \App\Models\Announcement::create([
+            'user_id'          => auth()->id(),
+            'title'            => $request->title,
+            'content'          => $request->content,
+            'type'             => $request->type,
+            'course_id'        => $request->type === 'course_specific' ? $request->course_id : null,
+            'target_audience'  => $request->input('target_audience', 'all'),
+            'link_url'         => $request->input('link_url'),
+            'image'            => $imagePath,
         ]);
+
+        // ── إشعار FCM للطلاب والمعلمين ──────────────────────────────
+        $target    = $request->input('target_audience', 'all');
+        $roleIds   = match($target) {
+            'students' => [3],
+            'teachers' => [2],
+            default    => [2, 3],
+        };
+        $userIds = \App\Models\User::whereIn('role_id', $roleIds)
+            ->where('status', 'active')
+            ->pluck('user_id');
+
+        $now = now();
+        $notifRows = $userIds->map(fn($uid) => [
+            'user_id'    => $uid,
+            'sender_id'  => auth()->id(),
+            'title'      => 'إعلان جديد من رئيس القسم',
+            'message'    => $request->title,
+            'type'       => 'announcement',
+            'category'   => 'administrative',
+            'related_id' => $announcement->id ?? $announcement->announcement_id,
+            'is_read'    => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        if (!empty($notifRows)) {
+            \Illuminate\Support\Facades\DB::table('notifications')->insert($notifRows);
+            foreach ($userIds as $uid) {
+                \App\Services\FcmService::sendToUser($uid, 'إعلان جديد من رئيس القسم', $request->title, [
+                    'type' => 'announcement',
+                ]);
+            }
+        }
 
         return redirect()->route('hod.dashboard')
                          ->with('success', 'تم إضافة الإعلان بنجاح!');

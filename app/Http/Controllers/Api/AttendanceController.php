@@ -136,52 +136,68 @@ class AttendanceController extends Controller
     public function scanQrAndAttend(Request $request)
     {
         $request->validate([
-            'qr_token' => 'required|string',
+            'qr_token'  => 'required|string',
+            'device_id' => 'required|string|max:255',
         ]);
 
-        $studentId = auth()->user()->user_id;
+        $user    = auth()->user();
+        $student = \App\Models\Student::where('user_id', $user->user_id)->first();
 
-        // البحث عن الجلسة بواسطة التوكن
+        if (!$student) {
+            return response()->json(['status' => 'error', 'message' => 'الطالب غير موجود'], 404);
+        }
+
+        // ── التحقق من الجهاز ─────────────────────────────────────────────
+        if ($student->is_device_locked && $student->device_id) {
+            if ($student->device_id !== $request->device_id) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'الجهاز غير مسجل. يُسمح فقط بتسجيل الحضور من جهازك الشخصي المربوط بحسابك.',
+                ], 403);
+            }
+        }
+
+        // ── التحقق من صلاحية QR ──────────────────────────────────────────
         $session = \App\Models\AttendanceSession::where('qr_token', $request->qr_token)
             ->where('is_active', true)
-            ->where('expires_at', '>', now()) // التأكد من أن الوقت لم ينتهِ
+            ->where('expires_at', '>', now())
             ->first();
 
         if (!$session) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'الباركود غير صالح أو انتهت صلاحيته.'
+                'status'  => 'error',
+                'message' => 'الباركود غير صالح أو انتهت صلاحيته.',
             ], 400);
         }
 
-        // التحقق مما إذا كان الطالب قد سجل حضوره مسبقاً في هذه الجلسة
-        $existingAttendance = Attendance::where('student_id', $studentId)
+        // ── التحقق من الحضور المسبق ───────────────────────────────────────
+        $existingAttendance = Attendance::where('student_id', $student->student_id)
             ->where('lesson_id', $session->lesson_id)
             ->whereDate('attendance_date', today())
             ->first();
 
         if ($existingAttendance && $existingAttendance->status === 'present') {
             return response()->json([
-                'status' => 'error',
-                'message' => 'لقد قمت بتسجيل حضورك مسبقاً.'
+                'status'  => 'error',
+                'message' => 'لقد قمت بتسجيل حضورك مسبقاً.',
             ], 400);
         }
 
-        // تسجيل الحضور أو تحديث السجل إذا كان موجوداً كغائب
+        // ── تسجيل الحضور ─────────────────────────────────────────────────
         if ($existingAttendance) {
             $existingAttendance->update(['status' => 'present', 'excuse_status' => 'none']);
         } else {
             Attendance::create([
-                'student_id' => $studentId,
-                'lesson_id' => $session->lesson_id,
-                'status' => 'present',
+                'student_id'      => $student->student_id,
+                'lesson_id'       => $session->lesson_id,
+                'status'          => 'present',
                 'attendance_date' => today(),
-                'excuse_status' => 'none',
+                'excuse_status'   => 'none',
             ]);
         }
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'تم تسجيل الحضور بنجاح!',
         ]);
     }

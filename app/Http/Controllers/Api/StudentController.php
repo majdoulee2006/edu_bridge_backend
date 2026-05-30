@@ -888,47 +888,166 @@ class StudentController extends Controller
     }
     /**
      * 4. مسح الباركود وتسجيل الحضور
+     *
+     * الحقول المطلوبة:
+     *   qr_token  : string   - التوكن من QR Code
+     *   device_id : string   - معرّف الجهاز الفريد (Android ID / iOS identifierForVendor)
+     *   latitude  : numeric  - خط عرض موقع الطالب  (اختياري إذا لم تُفعَّل الجلسة بموقع)
+     *   longitude : numeric  - خط طول موقع الطالب   (اختياري)
      */
     public function scanAttendanceQr(Request $request)
     {
         $request->validate([
-            'qr_token' => 'required|string'
+            'qr_token'  => 'required|string',
+            'device_id' => 'required|string|max:255',
+            'latitude'  => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
-        $student = $request->user()->student;
+        $student   = $request->user()->student;
+        $deviceId  = $request->device_id;
+        $latitude  = $request->latitude;
+        $longitude = $request->longitude;
 
-        // البحث عن جلسة الحضور باستخدام التوكن (الباركود)
+        // ─── 1. التحقق من صلاحية الـ QR ──────────────────────────────────
         $session = AttendanceSession::where('qr_token', $request->qr_token)
             ->where('is_active', true)
-            ->where('expires_at', '>', now()) // التأكد أن الباركود لم تنتهِ صلاحيته
+            ->where('expires_at', '>', now())
             ->first();
 
         if (!$session) {
             return response()->json([
-                'success' => false,
-                'message' => 'رمز الباركود غير صالح أو منتهي الصلاحية'
+                'success'       => false,
+                'message'       => 'رمز QR غير صالح أو انتهت صلاحيته',
+                'reject_reason' => 'expired_qr',
             ], 400);
         }
 
-        // تسجيل الطالب كـ "حاضر"
-        // (نستخدم updateOrCreate عشان لو السجل موجود مسبقاً كغائب تتحدث حالته لحاضر، ولو مو موجود يتم إنشاؤه)
+        // ─── 2. التحقق من عدم تسجيل الحضور مسبقاً ───────────────────────
+        $alreadyPresent = Attendance::where('student_id', $student->student_id)
+            ->where('lesson_id', $session->lesson_id)
+            ->where('status', 'present')
+            ->exists();
+
+        if ($alreadyPresent) {
+            return response()->json([
+                'success'       => false,
+                'message'       => 'تم تسجيل حضورك مسبقاً لهذه المحاضرة',
+                'reject_reason' => 'already_marked',
+            ], 409);
+        }
+
+        // ─── 3. التحقق من الجهاز ──────────────────────────────────────────
+        if ($student->device_id) {
+            // الطالب لديه جهاز مسجّل → يجب أن يتطابق
+            if ($student->device_id !== $deviceId) {
+                $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'device_mismatch');
+
+                return response()->json([
+                    'success'       => false,
+                    'message'       => 'هذا الجهاز غير مصرح له بتسجيل حضورك. يرجى استخدام جهازك المسجّل.',
+                    'reject_reason' => 'device_mismatch',
+                ], 403);
+            }
+        } else {
+            // أول مرة → نربط الجهاز بالطالب تلقائياً
+            $student->update([
+                'device_id'        => $deviceId,
+                'is_device_locked' => true,
+            ]);
+        }
+
+        // ─── 4. التحقق من الموقع (إن كانت الجلسة تشترطه) ────────────────
+        if ($session->latitude && $session->longitude) {
+            if (is_null($latitude) || is_null($longitude)) {
+                return response()->json([
+                    'success'       => false,
+                    'message'       => 'يجب إرسال الموقع الجغرافي لتسجيل الحضور في هذه الجلسة',
+                    'reject_reason' => 'location_too_far',
+                ], 422);
+            }
+
+            $distance = $this->haversineDistance(
+                $session->latitude, $session->longitude,
+                $latitude, $longitude
+            );
+
+            if ($distance > $session->radius_meters) {
+                $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'location_too_far');
+
+                return response()->json([
+                    'success'        => false,
+                    'message'        => "أنت خارج نطاق قاعة المحاضرة (مسافتك: {$distance}م، المسموح: {$session->radius_meters}م)",
+                    'reject_reason'  => 'location_too_far',
+                    'distance_m'     => $distance,
+                    'max_allowed_m'  => $session->radius_meters,
+                ], 403);
+            }
+        }
+
+        // ─── 5. تسجيل الحضور ─────────────────────────────────────────────
         $attendance = Attendance::updateOrCreate(
             [
-                'student_id' => $student->student_id,
-                'lesson_id' => $session->lesson_id,
+                'student_id'      => $student->student_id,
+                'lesson_id'       => $session->lesson_id,
                 'attendance_date' => now()->toDateString(),
             ],
             [
-                'status' => 'present',
-                'excuse_status' => 'none'
+                'status'        => 'present',
+                'excuse_status' => 'none',
+                'device_id'     => $deviceId,
+                'latitude'      => $latitude,
+                'longitude'     => $longitude,
+                'reject_reason' => null,
             ]
         );
 
         return response()->json([
             'success' => true,
             'message' => 'تم تسجيل حضورك بنجاح!',
-            'data' => $attendance
+            'data'    => $attendance,
         ], 200);
+    }
+
+    /**
+     * حساب المسافة بين نقطتين جغرافيتين بالمتر (Haversine Formula)
+     */
+    private function haversineDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6_371_000;
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) ** 2
+           + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
+
+        return round(2 * $earthRadius * asin(sqrt($a)));
+    }
+
+    /**
+     * تسجيل محاولة حضور مرفوضة لأغراض التدقيق
+     */
+    private function logRejectedAttendance(
+        $student, $session,
+        string $deviceId,
+        ?float $latitude, ?float $longitude,
+        string $reason
+    ): void {
+        Attendance::updateOrCreate(
+            [
+                'student_id'      => $student->student_id,
+                'lesson_id'       => $session->lesson_id,
+                'attendance_date' => now()->toDateString(),
+            ],
+            [
+                'status'        => 'absent',
+                'device_id'     => $deviceId,
+                'latitude'      => $latitude,
+                'longitude'     => $longitude,
+                'reject_reason' => $reason,
+            ]
+        );
     }
 
     /**
