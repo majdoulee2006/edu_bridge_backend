@@ -1,51 +1,24 @@
 @extends('layouts.admin')
 
 @section('title', 'الإشعارات')
-@section('header-title', 'الإشعارات')
-@section('header-subtitle', 'أحدث التنبيهات والطلبات الواردة')
-
-@section('header-actions')
-    <div class="flex items-center gap-3">
-        {{-- Add Event Dropdown --}}
-        <div class="relative">
-            <button id="add-event-dropdown-btn" class="flex items-center justify-center w-10 h-10 rounded-2xl bg-[#f2f20d] hover:bg-[#e0e00b] text-[#101924] shadow-soft hover:shadow-glow transition-all active:scale-95 duration-200">
-                <span class="material-symbols-outlined text-[24px]">add</span>
-            </button>
-            
-            {{-- Dropdown Menu --}}
-            <div id="add-event-dropdown-menu" class="hidden absolute left-0 mt-2 w-48 rounded-2xl bg-white dark:bg-slate-800 shadow-lg border border-slate-100 dark:border-slate-700 z-50 overflow-hidden">
-                <div class="flex flex-col p-1.5">
-                    <button type="button" onclick="openAddEventModal('activity')" class="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-right">
-                        <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center shrink-0 text-purple-600 dark:text-purple-400">
-                            <span class="material-symbols-outlined text-lg">event</span>
-                        </div>
-                        <div class="flex flex-col items-start">
-                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200">فعالية جديدة</span>
-                        </div>
-                    </button>
-                    
-                    <button type="button" onclick="openAddEventModal('holiday')" class="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-right">
-                        <div class="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center shrink-0 text-orange-600 dark:text-orange-400">
-                            <span class="material-symbols-outlined text-lg">celebration</span>
-                        </div>
-                        <div class="flex flex-col items-start">
-                            <span class="text-xs font-bold text-slate-800 dark:text-slate-200">عطلة جديدة</span>
-                        </div>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        @if(isset($notifications) && $notifications->where('is_read', false)->count() > 0)
-            <form action="{{ route('admin.notifications.read_all') }}" method="POST" class="flex items-center">
-                @csrf
-                <button type="submit" class="text-[11px] font-bold text-yellow-700 dark:text-yellow-400 px-3 py-1.5 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 transition-colors">قراءة الكل</button>
-            </form>
-        @endif
-    </div>
-@endsection
 
 @section('content')
+
+    {{-- ===== Page Header ===== --}}
+    <div class="flex items-center justify-between mb-4">
+        {{-- يمين: العنوان --}}
+        <div class="flex flex-col">
+            <h2 class="text-xl font-bold text-slate-800 dark:text-white leading-tight">الإشعارات</h2>
+            <span class="text-xs text-slate-400 dark:text-slate-500 mt-1">أحدث التنبيهات والطلبات الواردة</span>
+        </div>
+
+        {{-- يسار: زر إرسال إشعار --}}
+        <button onclick="document.getElementById('sendNotifModal').classList.remove('hidden')"
+                class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#f2f20d] hover:bg-[#e0e00b] text-[#101924] shadow-glow hover:scale-105 active:scale-95 transition-all font-bold text-xs">
+            <span class="material-symbols-outlined text-[18px]">add</span>
+            إرسال إشعار
+        </button>
+    </div>
 
     <div class="flex justify-between items-center px-1 mb-2">
         <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">التنبيهات الإدارية</h2>
@@ -258,4 +231,82 @@
         .catch(err => console.error(err));
     }
 </script>
+// إغلاق الـ modal بالضغط خارجه
+document.getElementById('sendNotifModal')?.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.add('hidden');
+});
 @endpush
+
+{{-- Modal إرسال إشعار --}}
+<div id="sendNotifModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6" dir="rtl">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-lg font-extrabold text-slate-800 dark:text-white">إرسال إشعار جديد</h3>
+            <button onclick="document.getElementById('sendNotifModal').classList.add('hidden')"
+                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+        </div>
+
+        <form action="{{ route('admin.messages.send') }}" method="POST" class="flex flex-col gap-4">
+            @csrf
+
+            {{-- الجمهور --}}
+            <div>
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 block mb-2">إرسال إلى</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer">
+                        <input checked class="peer sr-only" name="recipient_type" value="all" type="radio"
+                               onchange="document.getElementById('deptSelectorModal').classList.add('hidden')"/>
+                        <div class="flex items-center justify-center gap-2 p-3.5 rounded-2xl border-2 border-transparent bg-slate-50 dark:bg-slate-800 peer-checked:border-[#f2f20d] peer-checked:bg-yellow-50/10 transition-all">
+                            <span class="material-symbols-outlined text-xl text-slate-400 peer-checked:text-[#f2f20d]">groups</span>
+                            <p class="text-sm font-bold text-slate-800 dark:text-white">الجميع</p>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input class="peer sr-only" name="recipient_type" value="departments" type="radio"
+                               onchange="document.getElementById('deptSelectorModal').classList.remove('hidden')"/>
+                        <div class="flex items-center justify-center gap-2 p-3.5 rounded-2xl border-2 border-transparent bg-slate-50 dark:bg-slate-800 peer-checked:border-[#f2f20d] peer-checked:bg-yellow-50/10 transition-all">
+                            <span class="material-symbols-outlined text-xl text-slate-400">domain</span>
+                            <p class="text-sm font-bold text-slate-800 dark:text-white">قسم محدد</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            {{-- اختيار القسم - تظهر فقط عند اختيار "قسم محدد" --}}
+            <div id="deptSelectorModal" class="hidden">
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 block mb-2">الأقسام</label>
+                <div class="flex flex-col gap-2">
+                    @foreach(\App\Models\Department::orderBy('name')->get() as $d)
+                    <label class="cursor-pointer flex items-center gap-3 p-3.5 rounded-2xl border-2 border-transparent bg-slate-50 dark:bg-slate-800 hover:border-[#f2f20d]/40 transition-all has-[:checked]:border-[#f2f20d] has-[:checked]:bg-yellow-50/5">
+                        <input type="checkbox" name="target_departments[]" value="{{ $d->department_id }}"
+                               class="w-4 h-4 accent-[#f2f20d] cursor-pointer flex-shrink-0">
+                        <span class="text-sm font-bold text-slate-800 dark:text-white">{{ $d->name }}</span>
+                    </label>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- الموضوع --}}
+            <div>
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 block mb-1">الموضوع</label>
+                <input name="subject" type="text" required placeholder="موضوع الإشعار"
+                       class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 text-sm text-slate-800 dark:text-white focus:border-[#f2f20d] outline-none"/>
+            </div>
+
+            {{-- الرسالة --}}
+            <div>
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 block mb-1">نص الإشعار</label>
+                <textarea name="message" rows="3" required placeholder="اكتب نص الإشعار هنا..."
+                          class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3 px-4 text-sm text-slate-800 dark:text-white focus:border-[#f2f20d] outline-none resize-none"></textarea>
+            </div>
+
+            <button type="submit"
+                    class="w-full py-3.5 rounded-2xl bg-[#f2f20d] text-[#101924] font-extrabold text-sm hover:bg-[#e0e00b] transition-all active:scale-[0.98]">
+                <span class="material-symbols-outlined text-lg align-middle ml-1">send</span>
+                إرسال الإشعار
+            </button>
+        </form>
+    </div>
+</div>

@@ -899,7 +899,7 @@ class StudentController extends Controller
     {
         $request->validate([
             'qr_token'  => 'required|string',
-            'device_id' => 'required|string|max:255',
+            'device_id' => 'nullable|string|max:255',
             'latitude'  => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
         ]);
@@ -937,25 +937,7 @@ class StudentController extends Controller
             ], 409);
         }
 
-        // ─── 3. التحقق من الجهاز ──────────────────────────────────────────
-        if ($student->device_id) {
-            // الطالب لديه جهاز مسجّل → يجب أن يتطابق
-            if ($student->device_id !== $deviceId) {
-                $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'device_mismatch');
-
-                return response()->json([
-                    'success'       => false,
-                    'message'       => 'هذا الجهاز غير مصرح له بتسجيل حضورك. يرجى استخدام جهازك المسجّل.',
-                    'reject_reason' => 'device_mismatch',
-                ], 403);
-            }
-        } else {
-            // أول مرة → نربط الجهاز بالطالب تلقائياً
-            $student->update([
-                'device_id'        => $deviceId,
-                'is_device_locked' => true,
-            ]);
-        }
+        // التحقق من الجهاز معطّل مؤقتاً
 
         // ─── 4. التحقق من الموقع (إن كانت الجلسة تشترطه) ────────────────
         if ($session->latitude && $session->longitude) {

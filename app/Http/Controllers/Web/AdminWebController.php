@@ -164,7 +164,8 @@ class AdminWebController extends Controller
             'content'         => 'required|string',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'link_url'        => 'nullable|url|max:500',
-            'target_audience' => 'nullable|in:all,students,teachers',
+            'target_audience' => 'nullable|in:all,students,teachers,department',
+            'department_id'   => 'nullable|exists:departments,department_id',
         ]);
 
         $imagePath = null;
@@ -182,10 +183,16 @@ class AdminWebController extends Controller
             'type'            => 'general',
         ]);
 
-        // FCM للطلاب والمعلمين
+        // FCM حسب الجمهور المستهدف
         $target  = $request->input('target_audience', 'all');
-        $roleIds = match($target) { 'students'=>[3], 'teachers'=>[2], default=>[2,3] };
-        $userIds = \App\Models\User::whereIn('role_id', $roleIds)->where('status','active')->pluck('user_id');
+        $roleIds = match($target) { 'students'=>[3], 'teachers'=>[2], 'department'=>[2,3], default=>[2,3] };
+        $query   = \App\Models\User::whereIn('role_id', $roleIds)->where('status','active');
+
+        if ($target === 'department' && $request->filled('department_id')) {
+            $deptName = \App\Models\Department::find($request->department_id)?->name;
+            if ($deptName) $query->where('department', $deptName);
+        }
+        $userIds = $query->pluck('user_id');
         $now     = now();
         $rows    = $userIds->map(fn($uid) => [
             'user_id'=>$uid, 'sender_id'=>Auth::id(),
@@ -202,6 +209,58 @@ class AdminWebController extends Controller
         }
 
         return redirect()->route('admin.dashboard')->with('success', 'تم نشر الإعلان بنجاح!');
+    }
+
+    public function editAnnouncement($id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+        return view('admin.announcements.edit', compact('announcement'));
+    }
+
+    public function updateAnnouncement(\Illuminate\Http\Request $request, $id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'content' => 'required|string',
+            'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $updates = [
+            'title'      => $request->title,
+            'content'    => $request->content,
+            'updated_at' => now(),
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($announcement->image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
+            }
+            $updates['image'] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement->update($updates);
+
+        return redirect()->route('admin.dashboard')->with('success', 'تم تحديث الإعلان بنجاح!');
+    }
+
+    public function deleteAnnouncement($id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        if ($announcement->image) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
+        }
+        $announcement->delete();
+
+        return redirect()->route('admin.dashboard')->with('success', 'تم حذف الإعلان.');
     }
 
     public function messages()
@@ -390,6 +449,7 @@ class AdminWebController extends Controller
             'email'         => 'required|email|unique:users,email|max:255',
             'phone'         => 'nullable|string|max:20',
             'department'    => 'required|string|max:255',
+            'program_id'    => 'required|integer|exists:programs,id',
             'level'         => 'required|string|max:255',
             'birth_date'    => 'required|date',
             'gender'        => 'required|in:ذكر,أنثى',
@@ -401,9 +461,9 @@ class AdminWebController extends Controller
         ]);
 
         $userId = DB::table('users')->insertGetId([
-            'role_id'       => 3, // student
+            'role_id'       => 3,
             'full_name'     => $request->full_name,
-            'username'      => $request->university_id, // Username matches university ID
+            'username'      => $request->university_id,
             'university_id' => $request->university_id,
             'email'         => $request->email,
             'phone'         => $request->phone,
@@ -417,8 +477,9 @@ class AdminWebController extends Controller
             'updated_at'    => now(),
         ]);
 
-        DB::table('students')->insert([
+        $studentId = DB::table('students')->insertGetId([
             'user_id'      => $userId,
+            'program_id'   => $request->program_id,
             'student_code' => $request->university_id,
             'level'        => $request->level,
             'birth_date'   => $request->birth_date,
@@ -426,7 +487,26 @@ class AdminWebController extends Controller
             'updated_at'   => now(),
         ]);
 
-        return redirect()->route('admin.accounts')->with('success', 'تم إنشاء حساب الطالب بنجاح!');
+        // تسجيل تلقائي بكل مواد الدورة والسنة
+        $yearNum = $request->level === 'السنة الأولى' ? 1 : 2;
+        $courseIds = DB::table('course_program')
+            ->where('program_id', $request->program_id)
+            ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
+            ->where('courses.year', $yearNum)
+            ->pluck('course_program.course_id');
+
+        foreach ($courseIds as $courseId) {
+            DB::table('enrollments')->insert([
+                'student_id'      => $studentId,
+                'course_id'       => $courseId,
+                'enrollment_date' => now()->toDateString(),
+                'status'          => 'active',
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+        }
+
+        return redirect()->route('admin.accounts')->with('success', 'تم إنشاء حساب الطالب وتسجيله في ' . $courseIds->count() . ' مادة تلقائياً!');
     }
 
     // ─── Parent Create & Store ───
@@ -443,12 +523,12 @@ class AdminWebController extends Controller
     public function storeParent(Request $request)
     {
         $request->validate([
-            'full_name' => 'required|string|max:255',
-            'phone'     => 'required|string|max:20',
-            'username'  => 'required|string|unique:users,username|max:255',
-            'email'     => 'required|email|unique:users,email|max:255',
-            'children'  => 'nullable|array',
-            'password'  => 'required|string|min:6|confirmed',
+            'full_name'               => 'required|string|max:255',
+            'phone'                   => 'required|string|max:20',
+            'username'                => 'required|string|unique:users,username|max:255',
+            'email'                   => 'required|email|unique:users,email|max:255',
+            'children_university_ids' => 'nullable|array',
+            'password'                => 'required|string|min:6|confirmed',
         ], [
             'username.unique'    => 'اسم المستخدم مستخدم بالفعل.',
             'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
@@ -473,11 +553,18 @@ class AdminWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        if ($request->has('children')) {
-            foreach ($request->children as $studentId) {
+        if ($request->filled('children_university_ids')) {
+            foreach (array_filter($request->children_university_ids) as $universityId) {
+                $student = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->where('students.student_code', $universityId)
+                    ->select('students.student_id')
+                    ->first();
+                if (!$student) continue;
+                $studentId = $student->student_id;
                 DB::table('parent_students')->insert([
                     'parent_id'    => $parentId,
-                    'student_id'  => $studentId,
+                    'student_id'   => $studentId,
                     'relationship' => 'والد / ولي أمر',
                     'created_at'   => now(),
                     'updated_at'   => now(),
@@ -491,7 +578,9 @@ class AdminWebController extends Controller
     // ─── Teacher Create & Store ───
     public function createTeacher()
     {
-        return view('admin.accounts.create_teacher');
+        $departments = DB::table('departments')->orderBy('name')->get();
+        $courses     = DB::table('courses')->orderBy('title')->get();
+        return view('admin.accounts.create_teacher', compact('departments', 'courses'));
     }
 
     public function storeTeacher(Request $request)
@@ -499,36 +588,57 @@ class AdminWebController extends Controller
         $request->validate([
             'full_name'      => 'required|string|max:255',
             'phone'          => 'nullable|string|max:20',
-            'username'       => 'required|string|unique:users,username|max:255',
             'email'          => 'required|email|unique:users,email|max:255',
+            'department'     => 'required|string|max:255',
             'specialization' => 'required|string|max:255',
             'password'       => 'required|string|min:6|confirmed',
+            'courses'        => 'nullable|array',
         ], [
-            'username.unique'    => 'اسم المستخدم مستخدم بالفعل.',
             'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
         ]);
 
+        // توليد username تلقائياً من الإيميل
+        $base = strtolower(explode('@', $request->email)[0]);
+        $username = $base;
+        $i = 1;
+        while (DB::table('users')->where('username', $username)->exists()) {
+            $username = $base . $i++;
+        }
+
         $userId = DB::table('users')->insertGetId([
-            'role_id'    => 2, // teacher
+            'role_id'    => 2,
             'full_name'  => $request->full_name,
-            'username'   => $request->username,
+            'username'   => $username,
             'email'      => $request->email,
             'phone'      => $request->phone,
+            'department' => $request->department,
             'password'   => bcrypt($request->password),
             'status'     => 'active',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        DB::table('teachers')->insert([
+        $teacherId = DB::table('teachers')->insertGetId([
             'user_id'        => $userId,
             'specialization' => $request->specialization,
             'created_at'     => now(),
             'updated_at'     => now(),
         ]);
 
-        return redirect()->route('admin.accounts')->with('success', 'تم إنشاء حساب المدرب / المعلم بنجاح!');
+        // ربط المواد
+        if ($request->filled('courses')) {
+            foreach ($request->courses as $courseId) {
+                DB::table('course_teachers')->insertOrIgnore([
+                    'teacher_id' => $teacherId,
+                    'course_id'  => $courseId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        return redirect()->route('admin.accounts')->with('success', 'تم إنشاء حساب المعلم بنجاح!');
     }
 
     // ─── HOD Create & Store ───
@@ -543,22 +653,28 @@ class AdminWebController extends Controller
         $request->validate([
             'full_name'     => 'required|string|max:255',
             'phone'         => 'nullable|string|max:20',
-            'username'      => 'required|string|unique:users,username|max:255',
             'email'         => 'required|email|unique:users,email|max:255',
             'department_id' => 'required|exists:departments,department_id',
             'password'      => 'required|string|min:6|confirmed',
         ], [
-            'username.unique'    => 'اسم المستخدم مستخدم بالفعل.',
             'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
         ]);
 
+        // توليد username تلقائياً من الإيميل
+        $base = strtolower(explode('@', $request->email)[0]);
+        $username = $base;
+        $i = 1;
+        while (DB::table('users')->where('username', $username)->exists()) {
+            $username = $base . $i++;
+        }
+
         $dept = DB::table('departments')->where('department_id', $request->department_id)->first();
 
         $userId = DB::table('users')->insertGetId([
-            'role_id'    => 5, // head of department
+            'role_id'    => 5,
             'full_name'  => $request->full_name,
-            'username'   => $request->username,
+            'username'   => $username,
             'email'      => $request->email,
             'phone'      => $request->phone,
             'department' => $dept ? $dept->name : null,
@@ -589,19 +705,24 @@ class AdminWebController extends Controller
         $request->validate([
             'full_name' => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
-            'username'  => 'required|string|unique:users,username|max:255',
             'email'     => 'required|email|unique:users,email|max:255',
             'password'  => 'required|string|min:6|confirmed',
         ], [
-            'username.unique'    => 'اسم المستخدم مستخدم بالفعل.',
             'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
         ]);
 
+        $base = strtolower(explode('@', $request->email)[0]);
+        $username = $base;
+        $i = 1;
+        while (DB::table('users')->where('username', $username)->exists()) {
+            $username = $base . $i++;
+        }
+
         DB::table('users')->insert([
-            'role_id'    => 6, // affairs employee
+            'role_id'    => 6,
             'full_name'  => $request->full_name,
-            'username'   => $request->username,
+            'username'   => $username,
             'email'      => $request->email,
             'phone'      => $request->phone,
             'password'   => bcrypt($request->password),
@@ -865,23 +986,29 @@ class AdminWebController extends Controller
     public function semestersSubjects(Request $request)
     {
         $departments = DB::table('departments')->get();
-        $semesters = DB::table('semesters')->orderByDesc('start_date')->get();
-        
+        $semesters   = DB::table('semesters')->orderByDesc('start_date')->get();
+
+        // السنوات الأكاديمية: من عمود year في المواد (1 = السنة الأولى، 2 = السنة الثانية...)
+        $academicYears = DB::table('courses')
+            ->whereNotNull('year')->where('year', '!=', '')
+            ->distinct()->orderBy('year')->pluck('year');
+
         // Fetch programs with their associated department names
         $programs = DB::table('programs')
             ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
             ->select('programs.*', 'departments.name as department_name')
             ->get();
-        
+
         $teachers = DB::table('teachers')
             ->join('users', 'teachers.user_id', '=', 'users.user_id')
             ->select('teachers.teacher_id', 'users.full_name')
             ->get();
 
         // Default filters
-        $selectedDept = $request->get('department_id');
-        $selectedProgram = $request->get('program_id');
+        $selectedDept     = $request->get('department_id');
+        $selectedProgram  = $request->get('program_id');
         $selectedSemester = $request->get('semester_id');
+        $selectedYear     = $request->get('year');
 
         // Build subjects query
         $coursesQuery = DB::table('courses')
@@ -892,6 +1019,10 @@ class AdminWebController extends Controller
 
         if ($selectedSemester) {
             $coursesQuery->where('courses.semester_id', $selectedSemester);
+        }
+
+        if ($selectedYear) {
+            $coursesQuery->where('courses.year', $selectedYear);
         }
 
         if ($selectedProgram) {
@@ -923,14 +1054,13 @@ class AdminWebController extends Controller
                 ->first();
             $course->semester_name = $semInfo ? $semInfo->name : 'غير محدد';
 
-            // Get department names for this course via the programs relationship
             $coursePrograms = DB::table('course_program')
                 ->join('programs', 'course_program.program_id', '=', 'programs.id')
                 ->where('course_program.course_id', $course->course_id)
                 ->select('programs.department_id')
                 ->get();
-            
-            $deptIds = $coursePrograms->pluck('department_id')->unique();
+
+            $deptIds     = $coursePrograms->pluck('department_id')->unique();
             $courseDepts = DB::table('departments')
                 ->whereIn('department_id', $deptIds)
                 ->pluck('name');
@@ -939,7 +1069,8 @@ class AdminWebController extends Controller
 
         return view('admin.semesters_subjects', compact(
             'departments', 'semesters', 'programs', 'courses', 'teachers',
-            'selectedDept', 'selectedProgram', 'selectedSemester'
+            'selectedDept', 'selectedProgram', 'selectedSemester',
+            'selectedYear', 'academicYears'
         ));
     }
 
@@ -1039,11 +1170,12 @@ class AdminWebController extends Controller
 
     public function exportReport(Request $request)
     {
-        $request->validate([
-            'report_type' => 'required|in:attendance,performance',
-        ]);
+        $request->validate(['report_type' => 'required|in:attendance,performance']);
 
-        $reportType = $request->report_type;
+        $reportType   = $request->report_type;
+        $deptName     = $request->department_id ? (DB::table('departments')->where('department_id', $request->department_id)->value('name') ?? 'كل الأقسام') : 'كل الأقسام';
+        $semesterName = $request->semester_id   ? (DB::table('semesters')->where('semester_id', $request->semester_id)->value('name') ?? 'كل الفصول') : 'كل الفصول';
+        $dateLabel    = date('Y-m-d');
 
         if ($reportType === 'attendance') {
             $query = DB::table('attendance')
@@ -1052,69 +1184,60 @@ class AdminWebController extends Controller
                 ->join('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
                 ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
                 ->select(
-                    'users.full_name',
-                    'courses.title as course_title',
-                    DB::raw('COUNT(*) as total_sessions'),
-                    DB::raw("SUM(CASE WHEN attendance.status = 'present' THEN 1 ELSE 0 END) as present_count"),
-                    DB::raw("SUM(CASE WHEN attendance.status = 'absent' THEN 1 ELSE 0 END) as absent_count")
+                    'users.full_name as student_name',
+                    'courses.title as course',
+                    DB::raw("COUNT(*) as total"),
+                    DB::raw("SUM(attendance.status='present') as present"),
+                    DB::raw("SUM(attendance.status='absent') as absent"),
+                    'attendance.attendance_date'
                 )
-                ->groupBy('users.full_name', 'courses.title');
+                ->groupBy('users.full_name', 'courses.title', 'attendance.attendance_date');
 
-            if ($request->from_date) {
-                $query->where('attendance.attendance_date', '>=', $request->from_date);
-            }
-            if ($request->to_date) {
-                $query->where('attendance.attendance_date', '<=', $request->to_date);
-            }
-            if ($request->semester_id) {
-                $query->where('courses.semester_id', $request->semester_id);
-            }
-            if ($request->program_id) {
-                $courseIds = DB::table('course_program')->where('program_id', $request->program_id)->pluck('course_id');
-                $query->whereIn('lessons.course_id', $courseIds);
-            } elseif ($request->department_id) {
+            if ($request->semester_id) $query->where('courses.semester_id', $request->semester_id);
+            if ($request->from_date)   $query->where('attendance.attendance_date', '>=', $request->from_date);
+            if ($request->to_date)     $query->where('attendance.attendance_date', '<=', $request->to_date);
+            if ($request->department_id) {
                 $programIds = DB::table('programs')->where('department_id', $request->department_id)->pluck('id');
-                $courseIds = DB::table('course_program')->whereIn('program_id', $programIds)->pluck('course_id');
+                $courseIds  = DB::table('course_program')->whereIn('program_id', $programIds)->pluck('course_id');
                 $query->whereIn('lessons.course_id', $courseIds);
             }
 
-            $data = $query->get();
+            $data     = $query->orderBy('courses.title')->orderBy('users.full_name')->get();
+            $filename = "حضور_{$dateLabel}.xls";
 
-            $filename = "تقرير_الحضور_" . date('Y-m-d') . ".xls";
-            $headers = [
-                "Content-type"        => "application/vnd.ms-excel; charset=UTF-8",
-                "Content-Disposition" => "attachment; filename=$filename",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
-            ];
+            $rows = '';
+            foreach ($data as $row) {
+                $rate  = $row->total > 0 ? round(($row->present / $row->total) * 100) : 0;
+                $rows .= "<tr>
+                  <td>{$row->student_name}</td><td>{$row->course}</td>
+                  <td>{$row->attendance_date}</td>
+                  <td style='color:#166534;font-weight:bold'>{$row->present}</td>
+                  <td style='color:#b91c1c;font-weight:bold'>{$row->absent}</td>
+                  <td>{$row->total}</td><td>{$rate}%</td>
+                </tr>";
+            }
 
-            $columns = ['اسم الطالب', 'المادة الدراسية', 'عدد جلسات الحضور', 'عدد جلسات الغياب', 'نسبة الحضور'];
-
-            $callback = function() use($data, $columns) {
-                $file = fopen('php://output', 'w');
-                // UTF-8 BOM to display Arabic characters correctly in Excel
-                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-                fputcsv($file, $columns, "\t");
-
-                foreach ($data as $row) {
-                    $rate = $row->total_sessions > 0 ? round(($row->present_count / $row->total_sessions) * 100) : 0;
-                    fputcsv($file, [
-                        $row->full_name,
-                        $row->course_title,
-                        $row->present_count,
-                        $row->absent_count,
-                        $rate . "%"
-                    ], "\t");
-                }
-
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
+            $html = "<html xmlns:o='urn:schemas-microsoft-com:office:office'
+                          xmlns:x='urn:schemas-microsoft-com:office:excel'
+                          xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+<style>
+body{font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl}
+table{border-collapse:collapse;width:100%}
+th{background:#1e293b;color:#f2f20d;font-weight:bold;border:1px solid #ccc;padding:8px;text-align:right}
+td{border:1px solid #ddd;padding:7px;text-align:right}
+tr:nth-child(even) td{background:#f8fafc}
+.hdr td{background:#0f172a;color:#f2f20d;font-size:15px;font-weight:bold;padding:12px}
+.inf td{background:#f1f5f9;color:#334155;font-size:11px;padding:6px}
+</style></head><body>
+<table>
+<tr class='hdr'><td colspan='7'>تقرير الحضور والغياب</td></tr>
+<tr class='inf'><td>القسم: {$deptName}</td><td>الفصل: {$semesterName}</td><td colspan='5'>التاريخ: {$dateLabel}</td></tr>
+<tr><th>اسم الطالب</th><th>المادة</th><th>التاريخ</th><th>حاضر</th><th>غائب</th><th>الإجمالي</th><th>نسبة الحضور</th></tr>
+{$rows}
+</table></body></html>";
 
         } else {
-            // Performance report
             $query = DB::table('grades')
                 ->join('students', 'grades.student_id', '=', 'students.student_id')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
@@ -1122,59 +1245,82 @@ class AdminWebController extends Controller
                 ->join('courses', 'exams.course_id', '=', 'courses.course_id')
                 ->leftJoin('semesters', 'courses.semester_id', '=', 'semesters.semester_id')
                 ->select(
-                    'users.full_name',
-                    'courses.title as course_title',
+                    'users.full_name as student_name',
+                    'courses.title as course',
                     'grades.score as grade',
-                    'semesters.name as semester'
+                    'semesters.name as semester',
+                    DB::raw("COALESCE(courses.year,'') as academic_year")
                 );
 
-            if ($request->semester_id) {
-                $query->where('courses.semester_id', $request->semester_id);
-            }
-            if ($request->program_id) {
-                $courseIds = DB::table('course_program')->where('program_id', $request->program_id)->pluck('course_id');
-                $query->whereIn('exams.course_id', $courseIds);
-            } elseif ($request->department_id) {
+            if ($request->semester_id) $query->where('courses.semester_id', $request->semester_id);
+            if ($request->department_id) {
                 $programIds = DB::table('programs')->where('department_id', $request->department_id)->pluck('id');
-                $courseIds = DB::table('course_program')->whereIn('program_id', $programIds)->pluck('course_id');
+                $courseIds  = DB::table('course_program')->whereIn('program_id', $programIds)->pluck('course_id');
                 $query->whereIn('exams.course_id', $courseIds);
             }
 
-            $data = $query->get();
+            $data          = $query->orderBy('courses.title')->orderBy('users.full_name')->get();
+            $courseSummary = $data->groupBy('course')->map(fn($rows) => [
+                'count' => $rows->count(),
+                'avg'   => round($rows->avg('grade'), 1),
+                'max'   => $rows->max('grade'),
+                'min'   => $rows->min('grade'),
+            ]);
+            $filename = "اداء_{$dateLabel}.xls";
 
-            $filename = "تقرير_الأداء_" . date('Y-m-d') . ".xls";
-            $headers = [
-                "Content-type"        => "application/vnd.ms-excel; charset=UTF-8",
-                "Content-Disposition" => "attachment; filename=$filename",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
-            ];
+            $rows = '';
+            foreach ($data as $row) {
+                $sem = $row->semester ?? '-';
+                $yr  = $row->academic_year ?: '-';
+                $rows .= "<tr>
+                  <td>{$row->student_name}</td><td>{$row->course}</td>
+                  <td style='font-weight:bold;color:#1d4ed8'>{$row->grade}</td>
+                  <td>{$sem}</td><td>{$yr}</td>
+                </tr>";
+            }
 
-            $columns = ['اسم الطالب', 'المادة الدراسية', 'الدرجة', 'الفصل الدراسي'];
+            $sumRows = '';
+            foreach ($courseSummary as $course => $s) {
+                $sumRows .= "<tr>
+                  <td>{$course}</td><td>{$s['count']}</td>
+                  <td style='color:#1d4ed8;font-weight:bold'>{$s['avg']}</td>
+                  <td style='color:#166534;font-weight:bold'>{$s['max']}</td>
+                  <td style='color:#b91c1c;font-weight:bold'>{$s['min']}</td>
+                </tr>";
+            }
 
-            $callback = function() use($data, $columns) {
-                $file = fopen('php://output', 'w');
-                // UTF-8 BOM to display Arabic characters correctly in Excel
-                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-                fputcsv($file, $columns, "\t");
-
-                foreach ($data as $row) {
-                    fputcsv($file, [
-                        $row->full_name,
-                        $row->course_title,
-                        $row->grade,
-                        $row->semester ?? '-'
-                    ], "\t");
-                }
-
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
+            $html = "<html xmlns:o='urn:schemas-microsoft-com:office:office'
+                          xmlns:x='urn:schemas-microsoft-com:office:excel'
+                          xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+<style>
+body{font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl}
+table{border-collapse:collapse;width:100%}
+th{background:#1e293b;color:#f2f20d;font-weight:bold;border:1px solid #ccc;padding:8px;text-align:right}
+td{border:1px solid #ddd;padding:7px;text-align:right}
+tr:nth-child(even) td{background:#f8fafc}
+.hdr td{background:#0f172a;color:#f2f20d;font-size:15px;font-weight:bold;padding:12px}
+.inf td{background:#f1f5f9;color:#334155;font-size:11px;padding:6px}
+.sh th{background:#334155;color:#f2f20d}
+</style></head><body>
+<table>
+<tr class='hdr'><td colspan='5'>تقرير الأداء الأكاديمي</td></tr>
+<tr class='inf'><td>القسم: {$deptName}</td><td>الفصل: {$semesterName}</td><td colspan='3'>التاريخ: {$dateLabel}</td></tr>
+<tr><th>اسم الطالب</th><th>المادة</th><th>الدرجة</th><th>الفصل</th><th>السنة الدراسية</th></tr>
+{$rows}
+<tr><td colspan='5'></td></tr>
+<tr class='sh'><th colspan='5'>ملخص المواد</th></tr>
+<tr><th>المادة</th><th>عدد الطلاب</th><th>المعدل</th><th>أعلى درجة</th><th>أدنى درجة</th></tr>
+{$sumRows}
+</table></body></html>";
         }
-    }
 
+        return response("\xEF\xBB\xBF" . $html)
+            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->header('Pragma', 'no-cache')
+            ->header('Cache-Control', 'must-revalidate');
+    }
     public function storeCalendarEvent(Request $request)
     {
         $request->validate([
@@ -1201,23 +1347,26 @@ class AdminWebController extends Controller
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
             'level'       => 'required|string',
+            'year'        => 'required|integer|in:1,2',
             'semester_id' => 'required|integer',
             'teacher_id'  => 'required|integer',
             'program_id'  => 'required|integer',
             'hours'       => 'required|integer|min:1',
         ]);
 
+        // حفظ المادة مع السنة
         $courseId = DB::table('courses')->insertGetId([
             'title'       => $request->title,
             'description' => $request->description,
             'level'       => $request->level,
+            'year'        => $request->year,
             'semester_id' => $request->semester_id,
             'hours'       => $request->hours,
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
 
-        // Assign teacher
+        // ربط المعلم
         DB::table('course_teachers')->insert([
             'course_id'  => $courseId,
             'teacher_id' => $request->teacher_id,
@@ -1225,7 +1374,7 @@ class AdminWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Assign program (which belongs to a department)
+        // ربط الدورة (البرنامج)
         DB::table('course_program')->insert([
             'course_id'  => $courseId,
             'program_id' => $request->program_id,
@@ -1233,6 +1382,36 @@ class AdminWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'تم إضافة المادة وتعيين المدرس والمسار بنجاح!');
+        // تسجيل تلقائي لكل الطلاب اللي في نفس الدورة والسنة
+        $levelLabel = $request->year == 1 ? 'السنة الأولى' : 'السنة الثانية';
+        $students = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.program_id', $request->program_id)
+            ->where(function($q) use ($request, $levelLabel) {
+                $q->where('students.level', (string) $request->year)
+                  ->orWhere('students.level', $levelLabel)
+                  ->orWhere('users.academic_year', (string) $request->year)
+                  ->orWhere('users.academic_year', $levelLabel);
+            })
+            ->pluck('students.student_id');
+
+        foreach ($students as $studentId) {
+            $exists = DB::table('enrollments')
+                ->where('student_id', $studentId)
+                ->where('course_id', $courseId)
+                ->exists();
+            if (!$exists) {
+                DB::table('enrollments')->insert([
+                    'student_id'      => $studentId,
+                    'course_id'       => $courseId,
+                    'enrollment_date' => now()->toDateString(),
+                    'status'          => 'active',
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+            }
+        }
+
+        return back()->with('success', 'تم إضافة المادة وتسجيل ' . $students->count() . ' طالب تلقائياً!');
     }
 }

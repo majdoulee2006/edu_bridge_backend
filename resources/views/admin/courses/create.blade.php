@@ -60,21 +60,42 @@
             </div>
         </div>
 
-        {{-- Duration & Start Date --}}
+        {{-- Semester & Year --}}
         <div class="grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-2">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">مدة الدورة</label>
-                <input name="duration" value="{{ old('duration') }}" type="text"
-                       class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 placeholder:font-normal transition-all outline-none"
-                       placeholder="4 أسابيع" />
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">الفصل الدراسي</label>
+                <select name="semester_id"
+                        class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                    <option value="" disabled selected>اختر الفصل</option>
+                    @foreach(\App\Models\Semester::orderBy('name')->get() as $sem)
+                        <option value="{{ $sem->semester_id }}" {{ old('semester_id')==$sem->semester_id ? 'selected' : '' }}>
+                            {{ $sem->name }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
             <div class="flex flex-col gap-2">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">تاريخ البدء</label>
-                <div class="relative">
-                    <input name="start_date" value="{{ old('start_date') }}" type="date"
-                           class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white transition-all outline-none" />
-                </div>
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">السنة الدراسية</label>
+                <select name="year"
+                        class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                    <option value="" disabled selected>اختر السنة</option>
+                    @foreach(['أولى','ثانية','ثالثة','رابعة','خامسة'] as $yr)
+                        <option value="{{ $yr }}" {{ old('year')==$yr ? 'selected' : '' }}>السنة {{ $yr }}</option>
+                    @endforeach
+                </select>
             </div>
+        </div>
+
+        {{-- Level --}}
+        <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">المستوى</label>
+            <select name="level"
+                    class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                <option value="" disabled selected>اختر المستوى</option>
+                @foreach(['السنة الأولى','السنة الثانية','السنة الثالثة','السنة الرابعة','السنة الخامسة'] as $lvl)
+                    <option value="{{ $lvl }}" {{ old('level')==$lvl ? 'selected' : '' }}>{{ $lvl }}</option>
+                @endforeach
+            </select>
         </div>
 
         {{-- Submit --}}

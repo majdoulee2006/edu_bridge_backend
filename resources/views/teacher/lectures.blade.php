@@ -112,12 +112,18 @@
                     </div>
                 @endif
             </div>
-            <form action="{{ route('teacher.lectures.delete', $l->lesson_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه المحاضرة؟')">
-                @csrf
-                <button type="submit" style="background: hsl(0,70%,95%); border: none; color: hsl(0,50%,40%); border-radius: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer;">
-                    <i class="fa-solid fa-trash"></i>
+            <div style="display: flex; gap: 0.5rem;">
+                <button onclick="openEditModal({{ $l->lesson_id }}, '{{ addslashes($l->title) }}', '{{ $l->course_id }}', '{{ addslashes($l->description ?? '') }}')"
+                    style="background: hsl(220,70%,95%); border: none; color: hsl(220,50%,40%); border-radius: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer;">
+                    <i class="fa-solid fa-pen"></i>
                 </button>
-            </form>
+                <form action="{{ route('teacher.lectures.delete', $l->lesson_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه المحاضرة؟')">
+                    @csrf
+                    <button type="submit" style="background: hsl(0,70%,95%); border: none; color: hsl(0,50%,40%); border-radius: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer;">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </form>
+            </div>
         </div>
     @empty
         <div style="text-align: center; padding: 4rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary);">
@@ -125,6 +131,51 @@
             <p style="font-size: 1.1rem; font-weight: 600;">لا توجد محاضرات مضافة بعد</p>
         </div>
     @endforelse
+
+    <!-- Edit Lecture Modal -->
+    <div id="edit-lecture-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="font-weight: 800;">
+                    <i class="fa-solid fa-pen" style="color: var(--accent-color);"></i>
+                    تعديل المحاضرة
+                </h3>
+                <button onclick="document.getElementById('edit-lecture-modal').classList.remove('active')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.25rem;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="edit-lecture-form" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="_method" value="POST">
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">عنوان المحاضرة</label>
+                    <input type="text" name="title" id="edit-title" class="form-input" required>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة</label>
+                    <select name="course_id" id="edit-course_id" class="form-input" required>
+                        @foreach($courses as $c)
+                            <option value="{{ $c->course_id }}">{{ $c->title }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">وصف المحاضرة (اختياري)</label>
+                    <textarea name="description" id="edit-description" class="form-input" rows="3" style="resize: vertical;"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
+                        <i class="fa-solid fa-save"></i> حفظ التعديلات
+                    </button>
+                    <button type="button" onclick="document.getElementById('edit-lecture-modal').classList.remove('active')" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Add Lecture Modal -->
     <div id="add-lecture-modal" class="modal-overlay">
@@ -210,6 +261,24 @@
 
 @push('scripts')
 <script>
+/* ===== Edit Modal ===== */
+function openEditModal(id, title, courseId, description) {
+    document.getElementById('edit-title').value = title;
+    document.getElementById('edit-description').value = description;
+    const select = document.getElementById('edit-course_id');
+    for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value == courseId) {
+            select.selectedIndex = i;
+            break;
+        }
+    }
+    document.getElementById('edit-lecture-form').action = '/teacher/lectures/update/' + id;
+    document.getElementById('edit-lecture-modal').classList.add('active');
+}
+document.getElementById('edit-lecture-modal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+});
+
 /* ===== Modal ===== */
 function closeLectureModal() {
     document.getElementById('add-lecture-modal').classList.remove('active');

@@ -43,6 +43,7 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     // المحاضرات
     Route::get('/lectures', [TeacherWebController::class, 'lectures'])->name('teacher.lectures');
     Route::post('/lectures', [TeacherWebController::class, 'storeLecture'])->name('teacher.lectures.store');
+    Route::post('/lectures/update/{id}', [TeacherWebController::class, 'updateLecture'])->name('teacher.lectures.update');
     Route::post('/lectures/delete/{id}', [TeacherWebController::class, 'deleteLecture'])->name('teacher.lectures.delete');
 
     // الرسائل
@@ -50,8 +51,19 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::post('/messages', [TeacherWebController::class, 'sendMessage'])->name('teacher.messages.send');
     Route::get('/messages/conversation/{userId}', [TeacherWebController::class, 'getConversation'])->name('teacher.messages.conversation');
 
+    // الإعلانات
+    Route::get('/announcements/create', [TeacherWebController::class, 'createAnnouncement'])->name('teacher.announcements.create');
+    Route::post('/announcements', [TeacherWebController::class, 'storeAnnouncement'])->name('teacher.announcements.store');
+    Route::get('/announcements/{id}/edit', [TeacherWebController::class, 'editAnnouncement'])->name('teacher.announcements.edit');
+    Route::post('/announcements/{id}/update', [TeacherWebController::class, 'updateAnnouncement'])->name('teacher.announcements.update');
+    Route::post('/announcements/{id}/delete', [TeacherWebController::class, 'deleteAnnouncement'])->name('teacher.announcements.delete');
+
     // الإشعارات
     Route::get('/notifications', [TeacherWebController::class, 'notifications'])->name('teacher.notifications');
+
+    // التقارير
+    Route::get('/reports', [TeacherWebController::class, 'reports'])->name('teacher.reports');
+    Route::post('/reports/{id}/submit', [TeacherWebController::class, 'submitReport'])->name('teacher.reports.submit');
 
     // الملف الشخصي
     Route::get('/profile', [TeacherWebController::class, 'profile'])->name('teacher.profile');
@@ -97,6 +109,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/accounts', [HODWebController::class, 'accounts']);
     Route::post('/accounts/teacher', [HODWebController::class, 'storeTeacher'])->name('hod.accounts.store_teacher');
     Route::post('/accounts/student', [HODWebController::class, 'storeStudent'])->name('hod.accounts.store_student');
+    Route::post('/accounts/parent', [HODWebController::class, 'storeParent'])->name('hod.accounts.store_parent');
     Route::post('/accounts/delete/{id}', [HODWebController::class, 'deleteAccount'])->name('hod.accounts.delete');
     Route::get('/organization', [HODWebController::class, 'organization']);
     Route::post('/organization/schedule', [HODWebController::class, 'storeSchedule'])->name('hod.organization.store_schedule');
@@ -106,18 +119,23 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/messages', [HODWebController::class, 'messages']);
     Route::post('/messages', [HODWebController::class, 'storeMessage'])->name('hod.messages.store');
     Route::post('/messages/delete/{id}', [HODWebController::class, 'deleteMessage'])->name('hod.messages.delete');
-    Route::get('/reports', [HODWebController::class, 'reports']);
+    Route::get('/reports', [HODWebController::class, 'reports'])->name('hod.reports');
+    Route::get('/reports/create', [HODWebController::class, 'createReport'])->name('hod.reports.create');
     Route::post('/reports', [HODWebController::class, 'storeReport'])->name('hod.reports.store');
     Route::post('/reports/delete/{id}', [HODWebController::class, 'deleteReport'])->name('hod.reports.delete');
     
     // واجهات الـ Mockup القديمة
-    Route::get('/notifications', function () { return view('hod.notifications'); });
+    Route::get('/notifications', [HODWebController::class, 'notifications'])->name('hod.notifications');
+    Route::post('/notifications/send', [HODWebController::class, 'sendNotification'])->name('hod.notifications.send');
     Route::get('/settings', function () { return view('hod.settings'); });
     // إعلانات رئيس القسم
     Route::get('/announcements/create', [HODWebController::class, 'showCreateAnnouncementForm'])
         ->name('hod.announcements.create');
     Route::post('/announcements', [HODWebController::class, 'storeAnnouncement'])
         ->name('hod.announcements.store');
+    Route::get('/announcements/{id}/edit', [HODWebController::class, 'editAnnouncement'])->name('hod.announcements.edit');
+    Route::post('/announcements/{id}/update', [HODWebController::class, 'updateAnnouncement'])->name('hod.announcements.update');
+    Route::post('/announcements/{id}/delete', [HODWebController::class, 'deleteAnnouncement'])->name('hod.announcements.delete');
 });
 
 // ===== مسارات الشؤون (Affairs) =====
@@ -175,6 +193,10 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::get('/pending-accounts', [AffairsWebController::class, 'pendingAccounts'])->name('affairs.pending_accounts');
     Route::post('/pending-accounts/{id}/approve', [AffairsWebController::class, 'approveAccount'])->name('affairs.pending_accounts.approve');
     Route::post('/pending-accounts/{id}/reject', [AffairsWebController::class, 'rejectAccount'])->name('affairs.pending_accounts.reject');
+
+    // التقارير
+    Route::get('/reports', [AffairsWebController::class, 'reports'])->name('affairs.reports');
+    Route::post('/reports', [AffairsWebController::class, 'storeReport'])->name('affairs.reports.store');
 });
 
 // ===== مسارات الإدارة (Admin) =====
@@ -195,6 +217,9 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
     Route::get('/announcements/create', [AdminWebController::class, 'createAnnouncement'])->name('admin.announcements.create');
     Route::post('/announcements', [AdminWebController::class, 'storeAnnouncement'])->name('admin.announcements.store');
+    Route::get('/announcements/{id}/edit', [AdminWebController::class, 'editAnnouncement'])->name('admin.announcements.edit');
+    Route::post('/announcements/{id}/update', [AdminWebController::class, 'updateAnnouncement'])->name('admin.announcements.update');
+    Route::post('/announcements/{id}/delete', [AdminWebController::class, 'deleteAnnouncement'])->name('admin.announcements.delete');
     Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');
     Route::post('/notifications/{id}/read', [AdminWebController::class, 'markNotificationRead'])->name('admin.notifications.read');
     Route::post('/notifications/read-all', [AdminWebController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');

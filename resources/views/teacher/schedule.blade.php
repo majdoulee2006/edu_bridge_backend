@@ -190,11 +190,9 @@
         <button class="type-btn active" id="btn-weekly" onclick="switchTab('weekly')">
             <i class="fa-solid fa-calendar-days"></i> الجدول الأسبوعي
         </button>
-        @if(isset($exams) && $exams->count() > 0)
         <button class="type-btn" id="btn-exams" onclick="switchTab('exams')">
             <i class="fa-solid fa-file-pen"></i> الجدول الامتحاني
         </button>
-        @endif
     </div>
 
     {{-- ========= Weekly Schedule Tab ========= --}}
@@ -252,36 +250,39 @@
     </div>
 
     {{-- ========= Exams Tab ========= --}}
-    @if(isset($exams) && $exams->count() > 0)
     <div id="tab-exams" style="display: none;">
+        @if(isset($exams) && $exams->count() > 0)
         <div class="exam-table-wrapper">
             <table class="exam-table">
                 <thead>
                     <tr>
-                        <th>الامتحان</th>
                         <th>المادة</th>
+                        <th>الدورة</th>
                         <th>التاريخ والتوقيت</th>
                         <th>القاعة</th>
-                        <th>الشعبة</th>
-                        <th style="text-align: center;">الدرجة الكبرى</th>
+                        <th style="text-align: center;">العلامة</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($exams as $e)
                     <tr>
-                        <td style="font-weight: bold;">{{ $e->exam_name }}</td>
-                        <td>{{ $e->course_title }}</td>
+                        <td style="font-weight: bold;">{{ $e->course_title }}</td>
+                        <td style="color: var(--text-secondary);">{{ $e->class_group ?? '-' }}</td>
                         <td dir="ltr" style="color: var(--text-secondary);">{{ \Carbon\Carbon::parse($e->exam_date)->format('Y-m-d h:i A') }}</td>
                         <td><span class="room-badge">{{ $e->room ?? '-' }}</span></td>
-                        <td style="color: var(--text-secondary);">{{ $e->class_group ?? '-' }}</td>
                         <td style="text-align: center; font-weight: bold; color: var(--accent-color);">{{ $e->max_score }}</td>
                     </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
+        @else
+        <div class="empty-state">
+            <i class="fa-regular fa-calendar-xmark" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
+            <p style="font-size: 1.1rem; font-weight: 600;">لا توجد امتحانات مجدولة حتى الآن</p>
+        </div>
+        @endif
     </div>
-    @endif
 
 @endsection
 
@@ -295,14 +296,14 @@ function switchTab(tab) {
 
     if (tab === 'weekly') {
         tabWeekly.style.display = 'block';
-        if(tabExams) tabExams.style.display = 'none';
+        tabExams.style.display = 'none';
         btnWeekly.classList.add('active');
-        if(btnExams) btnExams.classList.remove('active');
+        btnExams.classList.remove('active');
     } else {
         tabWeekly.style.display = 'none';
-        if(tabExams) tabExams.style.display = 'block';
+        tabExams.style.display = 'block';
         btnWeekly.classList.remove('active');
-        if(btnExams) btnExams.classList.add('active');
+        btnExams.classList.add('active');
     }
 }
 </script>

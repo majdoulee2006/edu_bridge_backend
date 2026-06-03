@@ -97,13 +97,14 @@ class AuthController extends Controller
             'message' => 'تم تسجيل الدخول بنجاح',
             'token'   => $token,
             'user'    => [
-                'id'        => $user->user_id,
-                'name'      => $user->full_name,
-                'username'  => $user->username,
-                'email'     => $user->email,
-                'role'      => $user->role ?? 'student',
-                'role_id'   => $user->role_id,
-                'parent_id' => $parentId,
+                'id'               => $user->user_id,
+                'name'             => $user->full_name,
+                'username'         => $user->username,
+                'email'            => $user->email,
+                'role'             => $user->role ?? 'student',
+                'role_id'          => $user->role_id,
+                'parent_id'        => $parentId,
+                'telegram_chat_id' => $user->telegram_chat_id,
             ],
         ], 200);
     }
@@ -145,6 +146,7 @@ class AuthController extends Controller
             'department'       => 'nullable|string',
             'branch'           => 'nullable|string',
             'children_ids'     => 'nullable|array',
+            'fcm_token'        => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -222,6 +224,7 @@ class AuthController extends Controller
             'department'       => $request->department,
             'branch'           => $request->branch,
             'children_ids'     => $request->children_ids,
+            'device_token'     => $request->fcm_token,
         ]);
 
         if ($request->role === 'student') {
@@ -232,11 +235,11 @@ class AuthController extends Controller
                 'birth_date'   => $request->birth_date,
             ]);
 
-            // Auto-enroll: سجّل الطالب بكل مواد برنامجه بناءً على القسم
-            $department = $request->department;
-            if ($department) {
+            // Auto-enroll: سجّل الطالب بكل مواد برنامجه بناءً على الفرع/التخصص
+            $branch = $request->branch ?? $request->department;
+            if ($branch) {
                 $program = \DB::table('programs')
-                    ->where('name', 'LIKE', '%' . $department . '%')
+                    ->where('name', 'LIKE', '%' . $branch . '%')
                     ->first();
                 if ($program) {
                     $courseIds = \DB::table('course_program')
@@ -263,6 +266,32 @@ class AuthController extends Controller
             \DB::table('university_ids')
                 ->where('university_id', $request->university_id)
                 ->update(['is_used' => true]);
+        }
+
+        // ── إشعار FCM لجميع موظفي الشؤون ────────────────────────────
+        $roleLabel = $request->role === 'student' ? 'طالب' : 'ولي أمر';
+        $fcmTitle  = 'طلب تسجيل جديد';
+        $fcmBody   = 'قدّم ' . $request->full_name . ' طلب انضمام كـ' . $roleLabel . '. يرجى مراجعة الطلب والموافقة أو الرفض.';
+
+        $affairsUsers = User::where('role_id', 6)->get();
+        foreach ($affairsUsers as $affairsUser) {
+            // إشعار داخل DB
+            DB::table('notifications')->insert([
+                'user_id'    => $affairsUser->user_id,
+                'sender_id'  => null,
+                'title'      => $fcmTitle,
+                'message'    => $fcmBody,
+                'type'       => 'administrative',
+                'category'   => 'administrative',
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            // FCM push
+            \App\Services\FcmService::sendToUser($affairsUser->user_id, $fcmTitle, $fcmBody, [
+                'type'   => 'pending_account',
+                'screen' => 'pending_accounts',
+            ]);
         }
 
         return response()->json([

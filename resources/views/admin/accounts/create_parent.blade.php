@@ -1,145 +1,180 @@
 @extends('layouts.admin')
-
 @section('title', 'إنشاء حساب ولي أمر')
-@section('header-title', 'إنشاء حساب ولي أمر')
-@section('header-subtitle', 'إضافة ولي أمر جديد وربطه بالطلاب')
-
-@section('back-button')
-    <a href="{{ route('admin.accounts') }}" class="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-        <span class="material-symbols-outlined text-slate-800 dark:text-white text-2xl">arrow_forward</span>
-    </a>
-@endsection
 
 @section('content')
 
+    {{-- ===== Page Header ===== --}}
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{{ route('admin.accounts') }}"
+           class="w-10 h-10 rounded-2xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft flex-shrink-0">
+            <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+        </a>
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 dark:text-white">إنشاء حساب ولي أمر</h2>
+            <span class="text-xs text-slate-400 dark:text-slate-500">إضافة ولي أمر جديد وربطه بالطلاب</span>
+        </div>
+    </div>
+
     <form class="space-y-5 pb-10" action="{{ route('admin.accounts.store.parent') }}" method="POST">
         @csrf
-        
-        <!-- Full Name -->
+
+        <!-- الاسم الكامل -->
         <div class="space-y-1.5">
             <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الاسم الكامل</label>
             <div class="relative group">
-                <input required name="full_name" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm" placeholder="مثال: يوسف الخالد" type="text" value="{{ old('full_name') }}"/>
-                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">person</span>
+                <input required name="full_name" value="{{ old('full_name') }}" type="text" placeholder="مثال: يوسف الخالد"
+                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">person</span>
             </div>
-            @error('full_name')
-                <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-            @enderror
+            @error('full_name')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
         </div>
 
-        <!-- Phone & Username -->
+        <!-- رقم الهاتف + اسم المستخدم -->
         <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">رقم الهاتف</label>
-                <div class="relative group">
-                    <input required name="phone" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm" dir="ltr" placeholder="09xxxxxxxx" type="tel" value="{{ old('phone') }}"/>
-                </div>
-                @error('phone')
-                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-                @enderror
+                <input required name="phone" value="{{ old('phone') }}" type="tel" dir="ltr" placeholder="09xxxxxxxx"
+                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                @error('phone')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">اسم المستخدم</label>
-                <div class="relative group">
-                    <input required name="username" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm" dir="ltr" placeholder="yousef_parent" type="text" value="{{ old('username') }}"/>
-                </div>
-                @error('username')
-                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-                @enderror
+                <input required name="username" value="{{ old('username') }}" type="text" dir="ltr" placeholder="yousef_parent"
+                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                @error('username')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
         </div>
 
-        <!-- Email -->
+        <!-- البريد الإلكتروني -->
         <div class="space-y-1.5">
             <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">البريد الإلكتروني</label>
             <div class="relative group">
-                <input required name="email" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm" dir="ltr" placeholder="parent@test.com" type="email" value="{{ old('email') }}"/>
-                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">mail</span>
+                <input required name="email" value="{{ old('email') }}" type="email" dir="ltr" placeholder="parent@test.com"
+                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">mail</span>
             </div>
-            @error('email')
-                <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-            @enderror
+            @error('email')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
         </div>
 
-        <!-- Linked Children Search Checklist -->
+        <!-- عدد الأبناء -->
         <div class="space-y-1.5">
-            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">ربط الأبناء (الطلاب)</label>
-            <div class="bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 shadow-sm space-y-3">
-                <div class="relative">
-                    <input type="text" id="childrenSearch" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl py-2 px-3 pl-8 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-1 focus:ring-primary" placeholder="ابحث عن ابن بالاسم أو الرقم الجامعي..."/>
-                    <span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
-                </div>
-                
-                <div class="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar" id="childrenList">
-                    @foreach($students as $st)
-                        <label class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer select-none border border-transparent hover:border-slate-100 dark:hover:border-slate-700 transition-all child-item" data-name="{{ $st->full_name }}" data-code="{{ $st->student_code }}">
-                            <input type="checkbox" name="children[]" value="{{ $st->student_id }}" class="rounded border-slate-300 dark:border-slate-600 text-primary focus:ring-primary focus:ring-offset-0 size-4"/>
-                            <div class="flex flex-col min-w-0">
-                                <span class="text-xs font-bold text-slate-800 dark:text-white truncate">{{ $st->full_name }}</span>
-                                <span class="text-[10px] text-slate-400">الرقم الجامعي: {{ $st->student_code }} - {{ $st->level }}</span>
-                            </div>
-                        </label>
-                    @endforeach
-                </div>
-            </div>
-            @error('children')
-                <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-            @enderror
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">عدد الأبناء</label>
+            <input type="number" name="children_count" id="children_count_input"
+                   min="1" max="10" value="{{ old('children_count', 1) }}"
+                   oninput="updateChildrenFields(parseInt(this.value) || 1)"
+                   class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm"
+                   placeholder="أدخل عدد الأبناء..."/>
         </div>
 
-        <!-- Password -->
+        <!-- حقول الأرقام الجامعية للأبناء — تتولّد ديناميكياً --}}
+        <div id="children-fields" class="space-y-3"></div>
+
+        <!-- كلمة المرور -->
         <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">كلمة المرور</label>
                 <div class="relative group">
-                    <input required name="password" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm" type="password" placeholder="••••••••"/>
-                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-200 transition-colors" onclick="togglePasswordVisibility(this)">visibility_off</span>
+                    <input required name="password" type="password" placeholder="••••••••"
+                           class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer" onclick="togglePasswordVisibility(this)">visibility_off</span>
                 </div>
-                @error('password')
-                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-                @enderror
+                @error('password')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">تأكيد كلمة المرور</label>
                 <div class="relative group">
-                    <input required name="password_confirmation" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm" type="password" placeholder="••••••••"/>
-                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-200 transition-colors" onclick="togglePasswordVisibility(this)">visibility_off</span>
+                    <input required name="password_confirmation" type="password" placeholder="••••••••"
+                           class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer" onclick="togglePasswordVisibility(this)">visibility_off</span>
                 </div>
             </div>
         </div>
 
         <div class="pt-4">
-            <button class="w-full bg-primary hover:bg-primary-dark text-primary-content font-bold text-lg rounded-2xl py-4 shadow-glow hover:shadow-lg active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2" type="submit">
+            <button type="submit"
+                    class="w-full bg-primary hover:bg-primary-dark text-primary-content font-bold text-lg rounded-2xl py-4 shadow-glow hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                 <span>إنشاء الحساب</span>
                 <span class="material-symbols-outlined text-xl">arrow_back</span>
             </button>
         </div>
     </form>
 
-    <script>
-        function togglePasswordVisibility(btn) {
-            const input = btn.previousElementSibling;
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.textContent = 'visibility';
-            } else {
-                input.type = 'password';
-                btn.textContent = 'visibility_off';
-            }
-        }
-
-        // Live Search of Children
-        document.getElementById('childrenSearch').addEventListener('input', function(e) {
-            const val = e.target.value.toLowerCase();
-            document.querySelectorAll('.child-item').forEach(item => {
-                const name = item.getAttribute('data-name').toLowerCase();
-                const code = item.getAttribute('data-code').toLowerCase();
-                if (name.includes(val) || code.includes(val)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
-    </script>
 @endsection
+
+@push('scripts')
+<script>
+function togglePasswordVisibility(btn) {
+    const input = btn.previousElementSibling;
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.textContent = input.type === 'password' ? 'visibility_off' : 'visibility';
+}
+
+const ordinals = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر'];
+
+function updateChildrenFields(count) {
+    count = Math.max(1, Math.min(parseInt(count) || 1, 10));
+    const container = document.getElementById('children-fields');
+    container.innerHTML = '';
+    for (let i = 1; i <= count; i++) {
+        container.innerHTML += `
+        <div class="space-y-1.5">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">
+                الرقم الجامعي للابن ${ordinals[i-1] || i}
+            </label>
+            <div class="relative group">
+                <input name="children_university_ids[]"
+                       type="text" dir="ltr"
+                       placeholder="مثال: 2023xxxx"
+                       id="uid-input-${i}"
+                       oninput="lookupStudent(${i}, this.value)"
+                       ${i === 1 ? 'required' : ''}
+                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" id="uid-icon-${i}">badge</span>
+            </div>
+            <div id="uid-result-${i}" class="hidden text-xs px-3 py-2 rounded-xl font-semibold"></div>
+        </div>`;
+    }
+}
+
+let lookupTimers = {};
+function lookupStudent(index, uid) {
+    const resultDiv = document.getElementById('uid-result-' + index);
+    const icon = document.getElementById('uid-icon-' + index);
+
+    clearTimeout(lookupTimers[index]);
+    if (!uid || uid.length < 4) { resultDiv.classList.add('hidden'); return; }
+
+    lookupTimers[index] = setTimeout(() => {
+        fetch('/api/student/info/' + encodeURIComponent(uid))
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.full_name) {
+                    resultDiv.className = 'text-xs px-3 py-2 rounded-xl font-semibold bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800';
+                    resultDiv.innerHTML = '✓ ' + data.full_name + ' — ' + (data.department || '') + ' — ' + (data.level || '');
+                    resultDiv.classList.remove('hidden');
+                    icon.textContent = 'check_circle';
+                    icon.style.color = '#16a34a';
+                } else {
+                    resultDiv.className = 'text-xs px-3 py-2 rounded-xl font-semibold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800';
+                    resultDiv.textContent = '✗ الرقم الجامعي غير موجود';
+                    resultDiv.classList.remove('hidden');
+                    icon.textContent = 'error';
+                    icon.style.color = '#dc2626';
+                }
+            })
+            .catch(() => resetResult(index));
+    }, 500);
+}
+
+function resetResult(index) {
+    const r = document.getElementById('uid-result-' + index);
+    r.classList.add('hidden');
+    const icon = document.getElementById('uid-icon-' + index);
+    icon.textContent = 'badge';
+    icon.style.color = '';
+}
+
+// تهيئة العدد عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => updateChildrenFields({{ old('children_count', 1) }}));
+</script>
+@endpush

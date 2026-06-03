@@ -1,22 +1,30 @@
 @extends('layouts.admin')
 
 @section('title', 'الفصول والمواد')
-@section('header-title', 'الفصول الدراسية والمواد')
-@section('header-subtitle', 'عرض وإدارة المواد الدراسية حسب القسم والفصل')
 
-@section('header-actions')
-    <div class="flex items-center gap-2">
-        <button onclick="openAddSubjectModal()" class="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-content text-xs font-bold rounded-full shadow-glow hover:scale-105 active:scale-95 transition-all">
+@section('content')
+
+    {{-- ===== Page Header ===== --}}
+    <div class="flex items-center justify-between mb-2">
+        {{-- يمين: سهم الرجوع + العنوان --}}
+        <div class="flex items-center gap-3">
+            <a href="{{ route('admin.dashboard') }}"
+               class="w-10 h-10 rounded-2xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft">
+                <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+            </a>
+            <div class="flex flex-col">
+                <h2 class="text-xl font-bold text-slate-800 dark:text-white leading-tight">الفصول الدراسية والمواد</h2>
+                <span class="text-xs text-slate-400 dark:text-slate-500 mt-1">عرض وإدارة المواد الدراسية حسب القسم والفصل</span>
+            </div>
+        </div>
+
+        {{-- يسار: زر إضافة مادة --}}
+        <button onclick="openAddSubjectModal()"
+                class="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-content text-xs font-bold rounded-full shadow-glow hover:scale-105 active:scale-95 transition-all">
             <span class="material-symbols-outlined text-[18px]">add</span>
             إضافة مادة جديدة
         </button>
-        <a href="{{ route('admin.dashboard') }}" class="w-10 h-10 rounded-2xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft">
-            <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
-        </a>
     </div>
-@endsection
-
-@section('content')
 
     {{-- ===== Filters ===== --}}
     <form method="GET" action="{{ route('admin.semesters-subjects') }}" id="filter-form" class="bg-white dark:bg-surface-dark p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-soft flex flex-col gap-4 transition-colors">
@@ -24,7 +32,7 @@
             {{-- Department Filter --}}
             <div class="flex flex-col gap-1.5">
                 <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">القسم الأكاديمي</label>
-                <select name="department_id" onchange="document.getElementById('filter-form').submit()"
+                <select name="department_id" id="dept-select" onchange="filterPrograms(this.value)"
                         class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
                     <option value="">جميع الأقسام</option>
                     @foreach($departments as $dept)
@@ -38,11 +46,13 @@
             {{-- Program Filter --}}
             <div class="flex flex-col gap-1.5">
                 <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الدورة / البرنامج</label>
-                <select name="program_id" onchange="document.getElementById('filter-form').submit()"
+                <select name="program_id" id="program-select" onchange="document.getElementById('filter-form').submit()"
                         class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
                     <option value="">جميع الدورات</option>
                     @foreach($programs as $prog)
-                        <option value="{{ $prog->id }}" {{ $selectedProgram == $prog->id ? 'selected' : '' }}>
+                        <option value="{{ $prog->id }}"
+                                data-dept="{{ $prog->department_id }}"
+                                {{ $selectedProgram == $prog->id ? 'selected' : '' }}>
                             {{ $prog->name }}
                         </option>
                     @endforeach
@@ -52,36 +62,59 @@
             {{-- Year Filter --}}
             <div class="flex flex-col gap-1.5">
                 <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">السنة الدراسية</label>
-                <select class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
-                    <option>{{ date('Y') - 1 }} - {{ date('Y') }}</option>
-                    <option>{{ date('Y') }} - {{ date('Y') + 1 }}</option>
+                <select name="year" onchange="document.getElementById('filter-form').submit()"
+                        class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                    <option value="">جميع السنوات</option>
+                    <option value="1" {{ $selectedYear == '1' ? 'selected' : '' }}>السنة الأولى</option>
+                    <option value="2" {{ $selectedYear == '2' ? 'selected' : '' }}>السنة الثانية</option>
                 </select>
             </div>
         </div>
 
         {{-- Semester Tabs --}}
+        @php
+            $sem1 = $semesters->firstWhere(fn($s) => str_contains($s->name, 'أول'))  ?? $semesters->first();
+            $sem2 = $semesters->firstWhere(fn($s) => str_contains($s->name, 'ثاني')) ?? $semesters->skip(1)->first();
+        @endphp
         <div class="flex flex-col gap-2 mt-2">
             <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الفصل الدراسي</label>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                @foreach($semesters as $sem)
-                    <button type="button"
-                            onclick="document.querySelector('[name=semester_id]').value='{{ $sem->semester_id }}'; document.getElementById('filter-form').submit()"
-                            class="py-3 px-4 rounded-2xl text-sm font-bold text-center transition-all
-                            {{ $selectedSemester == $sem->semester_id
-                                ? 'bg-primary text-primary-content shadow-glow'
-                                : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary/30' }}">
-                        {{ $sem->name }}
-                    </button>
-                @endforeach
-                @if($semesters->isEmpty())
-                    <button type="button"
-                            class="py-3 px-4 rounded-2xl text-sm font-bold text-center bg-primary text-primary-content shadow-glow">
-                        فصل أول
-                    </button>
-                    <button type="button"
-                            class="py-3 px-4 rounded-2xl text-sm font-bold text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary/30">
-                        فصل ثاني
-                    </button>
+            <div class="grid grid-cols-2 gap-3">
+                {{-- فصل أول --}}
+                @if($sem1)
+                <button type="button"
+                        onclick="document.querySelector('[name=semester_id]').value='{{ $sem1->semester_id }}'; document.getElementById('filter-form').submit()"
+                        class="py-3.5 px-4 rounded-2xl text-sm font-bold text-center transition-all flex items-center justify-center gap-2
+                        {{ $selectedSemester == $sem1->semester_id
+                            ? 'bg-primary text-primary-content shadow-glow scale-[1.02]'
+                            : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary/50 hover:text-primary' }}">
+                    <span class="material-symbols-outlined text-[18px]">looks_one</span>
+                    الفصل الأول
+                </button>
+                @else
+                <button type="button" disabled
+                        class="py-3.5 px-4 rounded-2xl text-sm font-bold text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-400 opacity-50 cursor-not-allowed flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">looks_one</span>
+                    الفصل الأول
+                </button>
+                @endif
+
+                {{-- فصل ثاني --}}
+                @if($sem2)
+                <button type="button"
+                        onclick="document.querySelector('[name=semester_id]').value='{{ $sem2->semester_id }}'; document.getElementById('filter-form').submit()"
+                        class="py-3.5 px-4 rounded-2xl text-sm font-bold text-center transition-all flex items-center justify-center gap-2
+                        {{ $selectedSemester == $sem2->semester_id
+                            ? 'bg-primary text-primary-content shadow-glow scale-[1.02]'
+                            : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary/50 hover:text-primary' }}">
+                    <span class="material-symbols-outlined text-[18px]">looks_two</span>
+                    الفصل الثاني
+                </button>
+                @else
+                <button type="button" disabled
+                        class="py-3.5 px-4 rounded-2xl text-sm font-bold text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-400 opacity-50 cursor-not-allowed flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">looks_two</span>
+                    الفصل الثاني
+                </button>
                 @endif
             </div>
         </div>
@@ -299,6 +332,17 @@
                     </div>
                 </div>
 
+                {{-- Year --}}
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">السنة الدراسية</label>
+                    <select name="year" required
+                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                        <option value="" disabled selected>اختر السنة...</option>
+                        <option value="1">السنة الأولى</option>
+                        <option value="2">السنة الثانية</option>
+                    </select>
+                </div>
+
                 {{-- Program --}}
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">المسار الأكاديمي (الدورة / التخصص)</label>
@@ -452,6 +496,42 @@
             modal.classList.add('hidden');
         }, 300);
     }
+
+    // ===== فلترة الدورات حسب القسم =====
+    function filterPrograms(deptId) {
+        const sel = document.getElementById('program-select');
+        let firstVisible = null;
+
+        [...sel.options].forEach(opt => {
+            if (opt.value === '') {
+                opt.style.display = '';
+                return;
+            }
+            const show = !deptId || opt.dataset.dept === deptId;
+            opt.style.display = show ? '' : 'none';
+            if (show && !firstVisible) firstVisible = opt;
+        });
+
+        // إذا الخيار الحالي مش من هذا القسم → ارجع لـ "جميع الدورات"
+        const currentOpt = sel.options[sel.selectedIndex];
+        if (currentOpt && currentOpt.value && currentOpt.dataset.dept !== deptId && deptId) {
+            sel.value = '';
+        }
+
+        // Submit الفورم بعد الفلترة
+        document.getElementById('filter-form').submit();
+    }
+
+    // تطبيق الفلترة عند تحميل الصفحة (إذا في قسم محدد)
+    document.addEventListener('DOMContentLoaded', function () {
+        const deptVal = document.getElementById('dept-select').value;
+        if (deptVal) {
+            [...document.getElementById('program-select').options].forEach(opt => {
+                if (opt.value === '') return;
+                opt.style.display = (!opt.dataset.dept || opt.dataset.dept === deptVal) ? '' : 'none';
+            });
+        }
+    });
 
     // Close when clicking outside cards
     document.getElementById('subject-modal').addEventListener('click', function(e) {

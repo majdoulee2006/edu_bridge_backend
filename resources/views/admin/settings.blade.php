@@ -55,21 +55,6 @@
         </div>
     </div>
 
-    <!-- Language Settings -->
-    <div class="bg-white dark:bg-card-dark rounded-3xl p-5 shadow-soft border border-slate-100 dark:border-slate-800/50 transition-colors space-y-4">
-        <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 mb-2">اللغة والترجمة</h4>
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-slate-400 text-[20px]">language</span>
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">لغة لوحة التحكم</span>
-            </div>
-            <div class="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200/50 dark:border-slate-700">
-                <button id="lang-ar" onclick="setLanguage('ar')" class="px-3 py-1 text-xs font-bold rounded-full transition-all bg-white dark:bg-card-dark shadow-sm text-slate-900 dark:text-white">عربي</button>
-                <button id="lang-en" onclick="setLanguage('en')" class="px-3 py-1 text-xs font-medium rounded-full transition-all text-slate-500 hover:text-slate-900 dark:hover:text-white">EN</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Notifications Settings -->
     <div class="bg-white dark:bg-card-dark rounded-3xl p-5 shadow-soft border border-slate-100 dark:border-slate-800/50 transition-colors space-y-6">
         <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 mb-2">الإشعارات والتنبيهات</h4>
@@ -125,16 +110,7 @@
         </div>
     </div>
 
-    <!-- Logout Action -->
-    <form action="{{ route('admin.logout') }}" method="POST">
-        @csrf
-        <button type="submit" class="w-full bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-3xl p-4 flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 active:scale-95 transition-all mb-8">
-            <span class="material-symbols-outlined text-[20px]">logout</span>
-            <span class="text-sm font-bold">تسجيل الخروج من لوحة التحكم</span>
-        </button>
-    </form>
-
-    <div class="h-10"></div>
+    <div class="h-4"></div>
 
 @endsection
 

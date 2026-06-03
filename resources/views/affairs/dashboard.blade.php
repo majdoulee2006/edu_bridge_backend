@@ -258,7 +258,7 @@
 {{-- ── إعلانات المؤسسة (كاروسيل) â”€â”€ --}}
 <div class="section-header">
     <h2 class="section-title">إعلانات المؤسسة</h2>
-    <a href="{{ route('affairs.announcements') }}" class="view-all">عرض الكل</a>
+    {{-- عرض الكل محذوف --}}
 </div>
 
 <div class="announcements-carousel">

@@ -77,17 +77,26 @@ class AffairsController extends Controller
 
         $user->update(['status' => 'active']);
 
-        // إشعار المستخدم
+        $notifTitle = 'تم تفعيل حسابك ✓';
+        $notifMsg   = 'مرحباً ' . $user->full_name . '! تم مراجعة طلبك وتفعيل حسابك. يمكنك الآن تسجيل الدخول.';
+
+        // إشعار داخل DB
         DB::table('notifications')->insert([
             'user_id'    => $user->user_id,
             'sender_id'  => $request->user()->user_id,
-            'title'      => 'تم تفعيل حسابك ✓',
-            'message'    => 'مرحباً ' . $user->full_name . '! تم مراجعة طلبك وتفعيل حسابك. يمكنك الآن تسجيل الدخول.',
+            'title'      => $notifTitle,
+            'message'    => $notifMsg,
             'type'       => 'administrative',
             'category'   => 'administrative',
             'is_read'    => 0,
             'created_at' => now(),
             'updated_at' => now(),
+        ]);
+
+        // FCM push للمستخدم المُفعَّل (إذا سجّل fcm_token عند التسجيل)
+        \App\Services\FcmService::sendToUser($user->user_id, $notifTitle, $notifMsg, [
+            'type'   => 'account_approved',
+            'screen' => 'login',
         ]);
 
         return response()->json(['success' => true, 'message' => 'تم تفعيل الحساب']);

@@ -1,16 +1,20 @@
 @extends('layouts.admin')
 
 @section('title', 'إنشاء حساب طالب')
-@section('header-title', 'إنشاء حساب طالب')
-@section('header-subtitle', 'إضافة ملف طالب جديد في النظام')
-
-@section('back-button')
-    <a href="{{ route('admin.accounts') }}" class="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-        <span class="material-symbols-outlined text-slate-800 dark:text-white text-2xl">arrow_forward</span>
-    </a>
-@endsection
 
 @section('content')
+
+    {{-- ===== Page Header ===== --}}
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{{ route('admin.accounts') }}"
+           class="w-10 h-10 rounded-2xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft flex-shrink-0">
+            <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+        </a>
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 dark:text-white">إنشاء حساب طالب</h2>
+            <span class="text-xs text-slate-400 dark:text-slate-500">إضافة ملف طالب جديد في النظام</span>
+        </div>
+    </div>
 
     <form class="space-y-5 pb-10" action="{{ route('admin.accounts.store.student') }}" method="POST">
         @csrf
@@ -61,22 +65,22 @@
             @enderror
         </div>
 
-        <!-- Department & Level -->
+        <!-- Department & Level & Program -->
         <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">القسم</label>
                 <div class="relative group">
-                    <select required name="department" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">
+                    <select required name="department" id="dept-sel"
+                            onchange="filterPrograms(this)"
+                            class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">
                         <option disabled selected value="">اختر القسم</option>
                         @foreach($departments as $dept)
-                            <option value="{{ $dept->name }}" {{ old('department') == $dept->name ? 'selected' : '' }}>{{ $dept->name }}</option>
+                            <option value="{{ $dept->name }}" data-id="{{ $dept->department_id }}" {{ old('department') == $dept->name ? 'selected' : '' }}>{{ $dept->name }}</option>
                         @endforeach
                     </select>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:text-primary transition-colors">expand_more</span>
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
                 </div>
-                @error('department')
-                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-                @enderror
+                @error('department')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">السنة الدراسية</label>
@@ -85,17 +89,47 @@
                         <option disabled selected value="">اختر السنة الدراسية</option>
                         <option value="السنة الأولى" {{ old('level') == 'السنة الأولى' ? 'selected' : '' }}>السنة الأولى</option>
                         <option value="السنة الثانية" {{ old('level') == 'السنة الثانية' ? 'selected' : '' }}>السنة الثانية</option>
-                        <option value="السنة الثالثة" {{ old('level') == 'السنة الثالثة' ? 'selected' : '' }}>السنة الثالثة</option>
-                        <option value="السنة الرابعة" {{ old('level') == 'السنة الرابعة' ? 'selected' : '' }}>السنة الرابعة</option>
-                        <option value="السنة الخامسة" {{ old('level') == 'السنة الخامسة' ? 'selected' : '' }}>السنة الخامسة</option>
                     </select>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:text-primary transition-colors">expand_more</span>
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
                 </div>
-                @error('level')
-                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-                @enderror
+                @error('level')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
         </div>
+
+        <!-- الدورة (البرنامج) -->
+        <div class="space-y-1.5">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الدورة / التخصص</label>
+            <div class="relative group">
+                <select required name="program_id" id="prog-sel"
+                        class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">
+                    <option disabled selected value="">اختر القسم أولاً...</option>
+                    @foreach($programs as $prog)
+                        <option value="{{ $prog->id }}" data-dept="{{ $prog->department_id }}"
+                                {{ old('program_id') == $prog->id ? 'selected' : '' }}>
+                            {{ $prog->name }}
+                        </option>
+                    @endforeach
+                </select>
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+            </div>
+            @error('program_id')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+        </div>
+
+        <script>
+        function filterPrograms(deptSel) {
+            const deptId = deptSel.options[deptSel.selectedIndex]?.dataset.id;
+            const progSel = document.getElementById('prog-sel');
+            progSel.innerHTML = '<option disabled selected value="">اختر الدورة...</option>';
+            @foreach($programs as $prog)
+            if ('{{ $prog->department_id }}' === deptId) {
+                const o = document.createElement('option');
+                o.value = '{{ $prog->id }}';
+                o.textContent = '{{ $prog->name }}';
+                progSel.appendChild(o);
+            }
+            @endforeach
+        }
+        </script>
 
         <!-- Birth Date & Gender -->
         <div class="grid grid-cols-2 gap-4">

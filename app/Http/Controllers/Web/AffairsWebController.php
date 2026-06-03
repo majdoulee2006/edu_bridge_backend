@@ -532,4 +532,91 @@ class AffairsWebController extends Controller
     {
         return view('affairs.announcements');
     }
+
+    // ===== التقارير =====
+
+    public function reports()
+    {
+        // التقارير المنجزة (الصادرة)
+        $reports = DB::table('performance_reports')
+            ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
+            ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->leftJoin('report_requests', 'performance_reports.report_request_id', '=', 'report_requests.id')
+            ->leftJoin('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as tu', 'teachers.user_id', '=', 'tu.user_id')
+            ->select(
+                'performance_reports.*',
+                'su.full_name as student_name',
+                'tu.full_name as teacher_name'
+            )
+            ->orderByDesc('performance_reports.created_at')
+            ->get();
+
+        // للنموذج: قائمة الطلاب والمدربين
+        $students = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select('students.student_id', 'users.full_name')
+            ->orderBy('users.full_name')
+            ->get();
+
+        $teachers = DB::table('teachers')
+            ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->select('teachers.teacher_id', 'users.full_name')
+            ->orderBy('users.full_name')
+            ->get();
+
+        return view('affairs.reports', compact('reports', 'students', 'teachers'));
+    }
+
+    public function storeReport(Request $request)
+    {
+        $request->validate([
+            'student_id'  => 'required|exists:students,student_id',
+            'teacher_id'  => 'required|exists:teachers,teacher_id',
+            'report_type' => 'required|in:academic,behavioral',
+            'notes'       => 'nullable|string|max:1000',
+        ]);
+
+        $requestId = DB::table('report_requests')->insertGetId([
+            'head_id'     => null,
+            'teacher_id'  => $request->teacher_id,
+            'student_id'  => $request->student_id,
+            'report_type' => $request->report_type,
+            'notes'       => $request->notes,
+            'status'      => 'pending',
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        // إشعار المدرب (داخلي + FCM)
+        $teacherUserId = DB::table('teachers')->where('teacher_id', $request->teacher_id)->value('user_id');
+        $studentName   = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $request->student_id)
+            ->value('users.full_name') ?? 'طالب';
+
+        $typLabel = $request->report_type === 'behavioral' ? 'سلوكي' : 'أكاديمي';
+        $title    = 'طلب تقرير جديد';
+        $message  = 'طُلب منك تقرير ' . $typLabel . ' عن الطالب ' . $studentName;
+
+        DB::table('notifications')->insert([
+            'user_id'    => $teacherUserId,
+            'sender_id'  => auth()->id(),
+            'title'      => $title,
+            'message'    => $message,
+            'type'       => 'report_request',
+            'related_id' => $requestId,
+            'category'   => 'academic',
+            'is_read'    => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \App\Services\FcmService::sendToUser($teacherUserId, $title, $message, [
+            'type'       => 'report_request',
+            'request_id' => (string) $requestId,
+        ]);
+
+        return redirect()->back()->with('success', 'تم إرسال طلب التقرير للمدرب وتم إشعاره بنجاح!');
+    }
 }

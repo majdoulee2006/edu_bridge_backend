@@ -136,16 +136,14 @@
                     التقارير
                 </a>
 
-                {{-- Messages --}}
-                <a href="{{ route('admin.messages') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/messages*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
-                    <i class="fa-solid fa-message text-base"></i>
-                    الرسائل
-                </a>
-
-                {{-- Notifications --}}
-                <a href="{{ route('admin.notifications') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/notifications*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                {{-- Notifications (merged with messages) --}}
+                <a href="{{ route('admin.notifications') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/notifications*') || Request::is('admin/messages*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
                     <i class="fa-solid fa-bell text-base"></i>
                     الإشعارات
+                    @php $unread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
+                    @if($unread > 0)
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-black">{{ $unread }}</span>
+                    @endif
                 </a>
 
                 {{-- Profile --}}
@@ -162,13 +160,35 @@
 
                 <!-- Logout Button -->
                 <div class="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800">
-                    <form action="{{ route('admin.logout') }}" method="POST">
+                    <form id="admin-logout-form" action="{{ route('admin.logout') }}" method="POST">
                         @csrf
-                        <button type="submit" class="w-full flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all text-right">
+                        <button type="button" onclick="confirmLogout()"
+                                class="w-full flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all text-right">
                             <i class="fa-solid fa-arrow-right-from-bracket text-base"></i>
                             تسجيل الخروج
                         </button>
                     </form>
+                </div>
+
+                <!-- Logout Confirm Modal -->
+                <div id="logout-confirm-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center" dir="rtl">
+                        <div class="w-14 h-14 rounded-full bg-red-50 dark:bg-red-950/30 flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-arrow-right-from-bracket text-2xl text-red-500"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">تسجيل الخروج</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">هل تريد تسجيل الخروج من لوحة التحكم؟</p>
+                        <div class="flex gap-3">
+                            <button onclick="document.getElementById('admin-logout-form').submit()"
+                                    class="flex-1 py-3 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm transition-all active:scale-95">
+                                نعم، خروج
+                            </button>
+                            <button onclick="document.getElementById('logout-confirm-modal').classList.add('hidden')"
+                                    class="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm transition-all active:scale-95">
+                                إلغاء
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </nav>
         </aside>
@@ -248,6 +268,10 @@
     @stack('scripts')
 
     <script>
+        function confirmLogout() {
+            document.getElementById('logout-confirm-modal').classList.remove('hidden');
+        }
+
         // Theme toggle logic
         const themeToggleBtn = document.getElementById('theme-toggle');
 

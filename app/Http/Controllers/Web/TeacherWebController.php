@@ -603,6 +603,24 @@ class TeacherWebController extends Controller
         return redirect()->back()->with('success', 'تمت إضافة المحاضرة بنجاح!');
     }
 
+    public function updateLecture(Request $request, $id)
+    {
+        $request->validate([
+            'course_id'   => 'required|exists:courses,course_id',
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        DB::table('lessons')->where('lesson_id', $id)->update([
+            'course_id'   => $request->course_id,
+            'title'       => $request->title,
+            'description' => $request->description,
+            'updated_at'  => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'تم تحديث المحاضرة بنجاح!');
+    }
+
     public function deleteLecture($id)
     {
         // حذف الملف المرفق إن وُجد
@@ -612,6 +630,78 @@ class TeacherWebController extends Controller
         }
         DB::table('lessons')->where('lesson_id', $id)->delete();
         return redirect()->back()->with('success', 'تم حذف المحاضرة.');
+    }
+
+    // ────────────────────────────────────────────────────────────
+    //  ANNOUNCEMENTS
+    // ────────────────────────────────────────────────────────────
+
+    public function createAnnouncement()
+    {
+        $courses = DB::table('course_teachers')
+            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+            ->where('course_teachers.teacher_id', $this->getTeacher()->teacher_id)
+            ->select('courses.course_id', 'courses.title')
+            ->get();
+        return view('teacher.announcements_create', compact('courses'));
+    }
+
+    public function storeAnnouncement(Request $request)
+    {
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'content' => 'required|string',
+            'image'   => 'nullable|image|max:5120',
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        }
+
+        \App\Models\Announcement::create([
+            'user_id' => Auth::id(),
+            'title'   => $request->title,
+            'content' => $request->content,
+            'image'   => $imagePath,
+            'type'    => 'general',
+        ]);
+
+        return redirect()->route('teacher.dashboard')->with('success', 'تم نشر الإعلان بنجاح!');
+    }
+
+    public function editAnnouncement($id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', Auth::id())->firstOrFail();
+        return view('teacher.announcements_edit', compact('announcement'));
+    }
+
+    public function updateAnnouncement(Request $request, $id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', Auth::id())->firstOrFail();
+
+        $request->validate(['title' => 'required|string|max:255', 'content' => 'required|string']);
+
+        $updates = ['title' => $request->title, 'content' => $request->content, 'updated_at' => now()];
+
+        if ($request->hasFile('image')) {
+            if ($announcement->image) \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
+            $updates['image'] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement->update($updates);
+        return redirect()->route('teacher.dashboard')->with('success', 'تم تحديث الإعلان!');
+    }
+
+    public function deleteAnnouncement($id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', Auth::id())->firstOrFail();
+        if ($announcement->image) \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
+        $announcement->delete();
+        return redirect()->route('teacher.dashboard')->with('success', 'تم حذف الإعلان.');
     }
 
     // ────────────────────────────────────────────────────────────
@@ -721,10 +811,16 @@ class TeacherWebController extends Controller
         $courses = DB::table('course_teachers')
             ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
             ->where('course_teachers.teacher_id', $teacher->teacher_id)
-            ->select('courses.title')
+            ->select('courses.course_id', 'courses.title')
             ->get();
 
-        return view('teacher.profile', compact('teacher', 'user', 'courses'));
+        $courseIds = $courses->pluck('course_id');
+        $totalStudents = DB::table('enrollments')
+            ->whereIn('course_id', $courseIds)
+            ->distinct('student_id')
+            ->count('student_id');
+
+        return view('teacher.profile', compact('teacher', 'user', 'courses', 'totalStudents'));
     }
 
     public function updateProfile(Request $request)
@@ -842,5 +938,150 @@ class TeacherWebController extends Controller
             ]);
 
         return redirect()->back()->with('success', 'تم تغيير كلمة المرور بنجاح!');
+    }
+
+    // ===== التقارير =====
+
+    public function reports()
+    {
+        $teacher = DB::table('teachers')
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$teacher) {
+            return view('teacher.reports', ['requests' => collect()]);
+        }
+
+        $requests = DB::table('report_requests')
+            ->where('report_requests.teacher_id', $teacher->teacher_id)
+            ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+            ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->leftJoin('performance_reports', 'performance_reports.report_request_id', '=', 'report_requests.id')
+            ->select(
+                'report_requests.*',
+                'su.full_name as student_name',
+                'students.student_code',
+                'performance_reports.attendance_rate',
+                'performance_reports.average_grade',
+                'performance_reports.recommendations as submitted_notes',
+                'performance_reports.generated_at'
+            )
+            ->orderByDesc('report_requests.created_at')
+            ->get();
+
+        return view('teacher.reports', compact('requests'));
+    }
+
+    public function submitReport(Request $request, $id)
+    {
+        $request->validate([
+            'behavioral_notes' => 'nullable|string|max:2000',
+        ]);
+
+        $reportRequest = DB::table('report_requests')->where('id', $id)->firstOrFail();
+        $studentId     = $reportRequest->student_id;
+        $isBehavioral  = $reportRequest->report_type === 'behavioral';
+
+        // ===== حساب البيانات الأكاديمية الحقيقية =====
+        $attendanceRate = null;
+        $avgGrade       = null;
+        $recommendations = $request->behavioral_notes ?? '';
+
+        if (!$isBehavioral) {
+            // نسبة الحضور الفعلية
+            $totalSessions   = DB::table('attendance')->where('student_id', $studentId)->count();
+            $presentSessions = DB::table('attendance')->where('student_id', $studentId)->where('status', 'present')->count();
+            $attendanceRate  = $totalSessions > 0 ? round(($presentSessions / $totalSessions) * 100, 1) : 0;
+
+            // المعدل من الامتحانات
+            $avgGrade = DB::table('grades')->where('student_id', $studentId)->avg('score');
+
+            // إذا ما في درجات امتحان، نأخذ من الواجبات
+            if ($avgGrade === null) {
+                $avgGrade = DB::table('assignment_submissions')
+                    ->where('student_id', $studentId)
+                    ->whereNotNull('grade')
+                    ->avg('grade');
+            }
+
+            $avgGrade = $avgGrade !== null ? round($avgGrade, 1) : null;
+
+            // توليد التوصية تلقائياً
+            $attendancePart = '';
+            if ($attendanceRate >= 90)      $attendancePart = 'نسبة الحضور ممتازة (' . $attendanceRate . '%)';
+            elseif ($attendanceRate >= 75)  $attendancePart = 'نسبة الحضور جيدة (' . $attendanceRate . '%)';
+            elseif ($attendanceRate > 0)    $attendancePart = 'نسبة الحضور تحتاج تحسيناً (' . $attendanceRate . '%)';
+
+            $gradePart = '';
+            if ($avgGrade !== null) {
+                if ($avgGrade >= 85)      $gradePart = 'مستوى أكاديمي ممتاز (المعدل: ' . $avgGrade . ')';
+                elseif ($avgGrade >= 70)  $gradePart = 'مستوى أكاديمي جيد (المعدل: ' . $avgGrade . ')';
+                elseif ($avgGrade >= 60)  $gradePart = 'مستوى أكاديمي مقبول (المعدل: ' . $avgGrade . ')';
+                else                      $gradePart = 'يحتاج دعماً أكاديمياً (المعدل: ' . $avgGrade . ')';
+            }
+
+            $parts = array_filter([$attendancePart, $gradePart]);
+            $recommendations = $parts ? implode(' — ', $parts) : 'لا توجد بيانات كافية لتوليد توصية.';
+        }
+
+        // حفظ التقرير
+        DB::table('performance_reports')->insert([
+            'report_request_id' => $id,
+            'student_id'        => $studentId,
+            'report_type'       => $reportRequest->report_type,
+            'attendance_rate'   => $attendanceRate,
+            'average_grade'     => $avgGrade,
+            'recommendations'   => $recommendations,
+            'generated_at'      => now(),
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        DB::table('report_requests')->where('id', $id)->update([
+            'status'     => 'completed',
+            'updated_at' => now(),
+        ]);
+
+        // ===== إشعار الأهل (FCM + داخلي) =====
+        $studentName = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $studentId)
+            ->value('users.full_name') ?? 'الطالب';
+
+        $notifTitle = $isBehavioral ? 'تقرير سلوكي جديد' : 'تقرير أكاديمي جديد';
+        $notifBody  = 'تم إرسال تقرير ' . ($isBehavioral ? 'سلوكي' : 'أكاديمي') . ' عن ابنك/ابنتك ' . $studentName;
+
+        $parentRows = DB::table('parent_students')
+            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+            ->where('parent_students.student_id', $studentId)
+            ->pluck('parents.user_id');
+
+        foreach ($parentRows as $parentUserId) {
+            // إشعار داخلي
+            DB::table('notifications')->insert([
+                'user_id'    => $parentUserId,
+                'sender_id'  => auth()->id(),
+                'title'      => $notifTitle,
+                'message'    => $notifBody,
+                'type'       => 'report',
+                'related_id' => $id,
+                'category'   => 'academic',
+                'is_read'    => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // FCM
+            \App\Services\FcmService::sendToUser($parentUserId, $notifTitle, $notifBody, [
+                'type'       => $reportRequest->report_type . '_report',
+                'student_id' => (string) $studentId,
+            ]);
+        }
+
+        $msg = $isBehavioral
+            ? 'تم إرسال التقرير السلوكي وإشعار ولي الأمر بنجاح!'
+            : 'تم توليد التقرير الأكاديمي وإشعار ولي الأمر بنجاح!';
+
+        return redirect()->back()->with('success', $msg);
     }
 }

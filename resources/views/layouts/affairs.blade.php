@@ -148,6 +148,9 @@
                 <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-signature"></i> طلبات الإجازة
                 </a>
+                <a href="{{ url('/affairs/reports') }}" class="nav-item {{ Request::is('affairs/reports') ? 'active' : '' }}">
+                    <i class="fa-solid fa-file-lines"></i> التقارير
+                </a>
                 <a href="{{ url('/affairs/messages') }}" class="nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}">
                     <i class="fa-solid fa-envelope"></i> الرسائل
                 </a>

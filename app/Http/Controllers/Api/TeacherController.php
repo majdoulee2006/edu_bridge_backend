@@ -126,26 +126,22 @@ class TeacherController extends Controller
     public function myDepartmentPrograms(Request $request)
     {
         $teacher = $request->user()->teacher;
-        if (!$teacher || !$teacher->specialization) {
-            return response()->json(['success' => true, 'data' => [], 'specialization' => ''], 200);
+        if (!$teacher) {
+            return response()->json(['success' => true, 'data' => []], 200);
         }
 
-        $department = \App\Models\Department::where('name', $teacher->specialization)->first();
-        if (!$department) {
-            return response()->json([
-                'success' => true,
-                'data' => [],
-                'specialization' => $teacher->specialization,
-            ], 200);
-        }
+        // جلب البرامج المرتبطة بمواد المعلم مباشرة
+        $programIds = \DB::table('course_teachers')
+            ->join('course_program', 'course_teachers.course_id', '=', 'course_program.course_id')
+            ->where('course_teachers.teacher_id', $teacher->teacher_id)
+            ->pluck('course_program.program_id')
+            ->unique();
 
-        $programs = \App\Models\Program::where('department_id', $department->department_id)
-            ->get(['id', 'name']);
+        $programs = \App\Models\Program::whereIn('id', $programIds)->get(['id', 'name']);
 
         return response()->json([
             'success' => true,
-            'data' => $programs,
-            'specialization' => $teacher->specialization,
+            'data'    => $programs,
         ]);
     }
 
@@ -1231,6 +1227,7 @@ class TeacherController extends Controller
             'title'      => 'محاضرة جديدة — ' . $courseName,
             'message'    => 'رفع المعلم ' . $teacherUser->full_name . ' محاضرة جديدة: ' . $request->title,
             'type'       => 'lecture',
+            'category'   => 'academic',
             'related_id' => $lesson->lesson_id,
             'is_read'    => 0,
             'created_at' => $notifNow,

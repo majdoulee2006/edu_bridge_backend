@@ -53,10 +53,6 @@
                     <i class="fa-solid fa-users"></i>
                     الحسابات
                 </a>
-                <a href="{{ url('/hod/messages') }}" class="nav-item {{ Request::is('hod/messages') ? 'active' : '' }}">
-                    <i class="fa-solid fa-envelope"></i>
-                    الرسائل
-                </a>
                 <a href="{{ url('/hod/reports') }}" class="nav-item {{ Request::is('hod/reports') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-lines"></i>
                     طلب التقارير

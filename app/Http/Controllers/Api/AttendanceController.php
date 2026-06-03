@@ -147,15 +147,7 @@ class AttendanceController extends Controller
             return response()->json(['status' => 'error', 'message' => 'الطالب غير موجود'], 404);
         }
 
-        // ── التحقق من الجهاز ─────────────────────────────────────────────
-        if ($student->is_device_locked && $student->device_id) {
-            if ($student->device_id !== $request->device_id) {
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'الجهاز غير مسجل. يُسمح فقط بتسجيل الحضور من جهازك الشخصي المربوط بحسابك.',
-                ], 403);
-            }
-        }
+        // التحقق من الجهاز معطّل مؤقتاً
 
         // ── التحقق من صلاحية QR ──────────────────────────────────────────
         $session = \App\Models\AttendanceSession::where('qr_token', $request->qr_token)

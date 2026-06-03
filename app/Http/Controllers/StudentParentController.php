@@ -254,10 +254,21 @@ class StudentParentController extends Controller
             ->whereIn('student_id', $studentIds)
             ->pluck('user_id');
 
-        $requests = DB::table('leave_requests')
+        $query = DB::table('leave_requests')
             ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
-            ->whereIn('leave_requests.student_id', $userIds)
-            ->select(
+            ->whereIn('leave_requests.student_id', $userIds);
+
+        // فلتر بابن محدد إذا تم تمريره
+        if ($request->filled('student_id')) {
+            $studentUserId = DB::table('students')
+                ->where('student_id', $request->student_id)
+                ->value('user_id');
+            if ($studentUserId) {
+                $query->where('leave_requests.student_id', $studentUserId);
+            }
+        }
+
+        $requests = $query->select(
                 'leave_requests.id',
                 'leave_requests.type',
                 'leave_requests.date',
