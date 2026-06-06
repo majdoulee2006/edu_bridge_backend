@@ -27,6 +27,15 @@
                 <i class="fa-solid fa-graduation-cap" style="color: var(--accent-color);"></i>
                 Edu-Bridge
             </div>
+
+            <!-- HOD Info -->
+            <div style="text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
+                    {{ mb_substr(auth()->user()->full_name ?? 'ر', 0, 1) }}
+                </div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? 'رئيس القسم' }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">رئيس القسم</div>
+            </div>
             
             <nav class="nav-menu">
                 <a href="{{ url('/hod/dashboard') }}" class="nav-item {{ Request::is('hod/dashboard') ? 'active' : '' }}">
@@ -81,11 +90,30 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
-                <h1 class="page-title">@yield('title')</h1>
-                <div class="header-actions">
-                    <!-- Profile snippet or anything else can go here -->
+                <div>
+                    <h1 class="page-title">@yield('title')</h1>
+                    @hasSection('subtitle')
+                        <p class="page-subtitle" style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.25rem;">@yield('subtitle')</p>
+                    @endif
+                </div>
+                <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
+                    <!-- Dark Mode Toggle -->
+                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
+                        <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
+                    </button>
                 </div>
             </header>
+
+            @if (session('success'))
+                <div style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
+                </div>
+            @endif
+            @if (session('error'))
+                <div style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
+                </div>
+            @endif
 
             <div class="content-body">
                 @yield('content')

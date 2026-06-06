@@ -226,6 +226,20 @@
                     <span class="chip" style="background-color: transparent; border: 1px dashed var(--border-color);">لا يوجد مواد مسندة</span>
                 @endforelse
             </div>
+            
+            <!-- Advisor controls -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                    @if($teacher->is_advisor)
+                        <span style="color: #10b981;"><i class="fa-solid fa-check-circle"></i> مربي لـ: {{ $teacher->advisor_course_title }}</span>
+                    @else
+                        <span><i class="fa-solid fa-times-circle"></i> ليس مربي دورة</span>
+                    @endif
+                </div>
+                <button onclick="openAdvisorModal({{ $teacher->teacher_id }}, '{{ $teacher->full_name }}')" class="btn" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+                    <i class="fa-solid fa-user-tie"></i> تعيين مربي
+                </button>
+            </div>
         </div>
         @empty
         <div class="account-card" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
@@ -375,6 +389,38 @@
         </div>
     </div>
 
+    <!-- Assign Advisor Modal -->
+    <div id="advisor-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h4 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; text-align: center;">إعداد مربي الدورة</h4>
+            <p id="advisor-teacher-name" style="text-align: center; color: var(--text-secondary); margin-bottom: 1.5rem;"></p>
+            
+            <form action="{{ route('hod.accounts.advisor') }}" method="POST">
+                @csrf
+                <input type="hidden" name="teacher_id" id="advisor-teacher-id">
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">اختر الدورة / القاعة</label>
+                    <select name="course_id" id="advisor-course-id" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                        <option value="">-- اختر الدورة --</option>
+                        @foreach($all_courses ?? [] as $course)
+                            <option value="{{ $course->course_id }}">{{ $course->title }}</option>
+                        @endforeach
+                    </select>
+                    <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">ملاحظة: المعلم يمكن أن يكون مربياً لدورة واحدة فقط.</small>
+                </div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" name="action" value="assign" class="btn" style="background-color: #10b981; color: white; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">تفعيل كمربي</button>
+                    <button type="submit" name="action" value="remove" class="btn" style="background-color: #ef4444; color: white; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">إلغاء المربي</button>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button type="button" onclick="closeModal('advisor-modal')" class="btn" style="width: 100%; background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">إغلاق</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -404,6 +450,12 @@
         } else {
             openModal('student-modal');
         }
+    }
+
+    function openAdvisorModal(teacherId, teacherName) {
+        document.getElementById('advisor-teacher-id').value = teacherId;
+        document.getElementById('advisor-teacher-name').innerText = "المعلم: " + teacherName;
+        openModal('advisor-modal');
     }
 
     function openModal(modalId) {

@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول | موظف الشؤون</title>
+    <title>تسجيل الدخول | شؤون الطلاب</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-yellow: #fce300;
-            --primary-dark: #1a1a1a;
+            --primary-yellow: #f2f20d;
+            --primary-dark: #1a2633;
             --white: #FFFFFF;
             --text-muted: #888888;
             --shadow: 0 20px 40px rgba(0,0,0,0.08);
@@ -54,7 +55,7 @@
         .role-badge {
             background: var(--primary-dark);
             color: var(--primary-yellow);
-            padding: 0.2rem 1rem;
+            padding: 0.2rem 1.2rem;
             border-radius: 20px;
             font-size: 0.9rem;
             font-weight: 700;
@@ -94,7 +95,7 @@
         .input-group input:focus {
             border-color: var(--primary-yellow);
             background: var(--white);
-            box-shadow: 0 5px 15px rgba(252, 227, 0, 0.2);
+            box-shadow: 0 5px 15px rgba(242, 242, 13, 0.2);
         }
 
         .btn-login {
@@ -109,12 +110,12 @@
             cursor: pointer;
             transition: var(--transition);
             margin-top: 1rem;
-            box-shadow: 0 10px 20px rgba(252, 227, 0, 0.3);
+            box-shadow: 0 10px 20px rgba(242, 242, 13, 0.3);
         }
 
         .btn-login:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(252, 227, 0, 0.4);
+            box-shadow: 0 15px 30px rgba(242, 242, 13, 0.4);
         }
 
         @keyframes fadeIn {
@@ -127,9 +128,9 @@
     <div class="login-container">
         <div class="login-card">
             <div class="logo">Edu<span>Bridge</span></div>
-            <div class="role-badge">بوابة موظف الشؤون</div>
+            <div class="role-badge">بوابة شؤون الطلاب</div>
             <h2>مرحباً بك مجدداً</h2>
-            <p>سجل دخولك للوصول إلى لوحة التحكم</p>
+            <p>سجل دخولك للوصول إلى لوحة التحكم الخاصة بالشؤون</p>
 
             <form action="{{ route('affairs.login.submit') }}" method="POST">
                 @csrf

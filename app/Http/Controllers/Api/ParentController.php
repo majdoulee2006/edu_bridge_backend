@@ -33,10 +33,11 @@ class ParentController extends Controller
                 $attendances = $student->attendances;
 
                 return [
-                    'id' => $student->user_id,
-                    'name' => $student->user->full_name,
+                    'student_id' => $student->student_id,
+                    'full_name' => $student->user->full_name,
                     'student_code' => $student->student_code ?? '',
                     'level' => $student->level ?? '',
+                    'average_grade' => round($student->grades->avg('score') ?? 0, 1),
                     'total_courses' => $student->courses->count(),
                     'attendance_rate' => $attendances->count() > 0
                         ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
@@ -356,15 +357,121 @@ class ParentController extends Controller
                 'children' => $children->map(function($child) {
                     $attendances = $child->attendances;
                     return [
-                        'id' => $child->user_id,
-                        'name' => $child->user->full_name,
+                        'student_id' => $child->student_id,
+                        'full_name' => $child->user->full_name,
                         'attendance_rate' => $attendances->count() > 0
                             ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
                             : 0,
                         'average_grade' => round($child->grades->avg('score') ?? 0, 1),
+                        'level' => $child->level ?? 'غير محدد'
                     ];
                 }),
             ]
         ], 200);
+    }
+
+    public function requestReport(Request $request)
+    {
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $studentId = $request->input('student_id');
+        $reportType = $request->input('report_type');
+
+        $child = $parent->students()->where('students.student_id', $studentId)->first();
+
+        if (!$child) {
+            return response()->json(['success' => false, 'message' => 'الطفل غير موجود أو غير مرتبط بحسابك'], 404);
+        }
+
+        // إيجاد المربي أو الأستاذ
+        $advisorCourseTeacher = \Illuminate\Support\Facades\DB::table('enrollments')
+            ->join('course_teachers', 'enrollments.course_id', '=', 'course_teachers.course_id')
+            ->where('enrollments.student_id', $child->student_id)
+            ->where('course_teachers.role', 'advisor')
+            ->select('course_teachers.teacher_id')
+            ->first();
+
+        if (!$advisorCourseTeacher) {
+            return response()->json(['success' => false, 'message' => 'لم يتم تعيين مربي دائم لهذا الطالب بعد.'], 404);
+        }
+
+        // تحقق من عدم وجود طلب معلق من نفس النوع لنفس الطالب خلال آخر 15 يوم
+        $recentRequest = \Illuminate\Support\Facades\DB::table('report_requests')
+            ->where('head_id', $request->user()->user_id)
+            ->where('student_id', $child->student_id)
+            ->where('report_type', $reportType)
+            ->where('created_at', '>', now()->subDays(15))
+            ->first();
+
+        if ($recentRequest) {
+            return response()->json(['success' => false, 'message' => 'لا يمكنك طلب نفس التقرير أكثر من مرة خلال 15 يوماً.'], 400);
+        }
+
+        $requestId = \Illuminate\Support\Facades\DB::table('report_requests')->insertGetId([
+            'head_id' => $request->user()->user_id, // Parent's User ID
+            'teacher_id' => $advisorCourseTeacher->teacher_id,
+            'student_id' => $child->student_id,
+            'report_type' => $reportType,
+            'notes' => 'طلب تقرير ' . ($reportType == 'academic' ? 'أكاديمي' : 'سلوكي') . ' من ولي الأمر',
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'تم إرسال طلب التقرير بنجاح.',
+            'request_id' => $requestId
+        ], 200); // 200 instead of 201 for standard flutter dio expecting 200
+    }
+
+    public function getReportsHistory(Request $request)
+    {
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $query = \Illuminate\Support\Facades\DB::table('report_requests')
+            ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('report_requests.head_id', $request->user()->user_id)
+            ->select(
+                'report_requests.*',
+                'users.full_name as student_name',
+                \Illuminate\Support\Facades\DB::raw("IF(report_requests.status = 'pending', 'pending_teacher', report_requests.status) as status")
+            )
+            ->orderByDesc('report_requests.created_at');
+
+        if ($request->has('student_id')) {
+            $query->where('report_requests.student_id', $request->input('student_id'));
+        }
+
+        $history = $query->get();
+
+        // لجلب التقارير السابقة من performance_reports
+        // سنفترض أن الطلبات المكتملة تعود بمعلومات التقرير
+        $completedRequests = $history->where('status', 'completed');
+        foreach ($completedRequests as $req) {
+            $report = \Illuminate\Support\Facades\DB::table('performance_reports')
+                ->where('student_id', $req->student_id)
+                ->where('report_type', $req->report_type)
+                ->where('created_at', '>=', $req->updated_at) // تقريبي
+                ->orderByDesc('created_at')
+                ->first();
+                
+            if ($report) {
+                $req->average_grade = $report->average_grade;
+                $req->attendance_rate = $report->attendance_rate;
+                $req->recommendations = $report->recommendations;
+            }
+        }
+
+        return response()->json(['success' => true, 'data' => $history], 200);
     }
 }

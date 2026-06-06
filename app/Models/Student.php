@@ -40,9 +40,11 @@ class Student extends Model
         return $this->hasMany(Grade::class, 'student_id', 'student_id');
     }
 
-
-
-    public function parentStudents() {
+    // علاقة الطالب بالحضور
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class, 'student_id', 'student_id');
+    }    public function parentStudents() {
     return $this->hasMany(StudentParent::class, 'student_id');
 }
 

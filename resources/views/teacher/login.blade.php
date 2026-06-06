@@ -3,57 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edu-Bridge | تسجيل دخول المعلم</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>تسجيل الدخول | بوابة المعلمين</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ asset('css/hod-style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: var(--bg-primary); }
-        .login-wrapper { width: 100%; max-width: 440px; padding: 1rem; }
-        .login-card { background: var(--bg-secondary); border-radius: 1.5rem; padding: 2.5rem; box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
-        .login-logo { text-align: center; margin-bottom: 2rem; }
-        .login-logo .icon { width: 72px; height: 72px; background: var(--accent-color); border-radius: 1.5rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2rem; }
-        .login-logo h1 { font-size: 1.5rem; font-weight: 800; }
-        .login-logo p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem; }
-        .form-group { margin-bottom: 1.25rem; }
-        .form-label { display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
-        .form-input { width: 100%; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; transition: border-color 0.2s; }
-        .form-input:focus { outline: none; border-color: var(--accent-color); }
-        .btn-login { width: 100%; padding: 0.9rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.2s; margin-top: 0.5rem; }
-        .btn-login:hover { opacity: 0.9; }
-        .error-msg { background: hsl(0,70%,95%); color: hsl(0,50%,35%); padding: 0.75rem 1rem; border-radius: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem; }
+        :root {
+            --primary-yellow: #f2f20d;
+            --primary-dark: #1a2633;
+            --white: #FFFFFF;
+            --text-muted: #888888;
+            --shadow: 0 20px 40px rgba(0,0,0,0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+
+        body {
+            background: linear-gradient(135deg, #fffde6 0%, #FFFFFF 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+            animation: fadeIn 0.8s ease;
+        }
+
+        .login-card {
+            background: var(--white);
+            border-radius: 30px;
+            padding: 3rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            color: var(--primary-dark);
+        }
+
+        .logo span { color: var(--primary-yellow); }
+        .role-badge {
+            background: var(--primary-dark);
+            color: var(--primary-yellow);
+            padding: 0.2rem 1.2rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 { font-weight: 800; margin-bottom: 0.5rem; color: var(--primary-dark); }
+        p { color: var(--text-muted); margin-bottom: 2.5rem; font-size: 0.9rem; }
+
+        .input-group {
+            text-align: right;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--primary-dark);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 1.2rem;
+            border-radius: 15px;
+            border: 2px solid #F0F0F0;
+            background: #F9F9F9;
+            outline: none;
+            transition: var(--transition);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary-yellow);
+            background: var(--white);
+            box-shadow: 0 5px 15px rgba(242, 242, 13, 0.2);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 1.2rem;
+            border-radius: 15px;
+            border: none;
+            background: var(--primary-yellow);
+            color: var(--primary-dark);
+            font-size: 1.1rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 1rem;
+            box-shadow: 0 10px 20px rgba(242, 242, 13, 0.3);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(242, 242, 13, 0.4);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
-    <div class="login-wrapper">
+    <div class="login-container">
         <div class="login-card">
-            <div class="login-logo">
-                <div class="icon"><i class="fa-solid fa-chalkboard-teacher" style="color:#1a1a1a;"></i></div>
-                <h1>Edu-Bridge</h1>
-                <p>بوابة المعلم</p>
-            </div>
-
-            @if ($errors->has('login'))
-                <div class="error-msg"><i class="fa-solid fa-circle-exclamation"></i> {{ $errors->first('login') }}</div>
-            @endif
+            <div class="logo">Edu<span>Bridge</span></div>
+            <div class="role-badge">بوابة المعلمين</div>
+            <h2>مرحباً بك مجدداً</h2>
+            <p>سجل دخولك للوصول إلى لوحة تحكم المعلم</p>
 
             <form action="{{ route('teacher.login.post') }}" method="POST">
                 @csrf
-                <div class="form-group">
-                    <label class="form-label">البريد الإلكتروني أو رقم الهاتف</label>
-                    <input type="text" name="login" class="form-input" placeholder="example@edu.com أو 09..." value="{{ old('login') }}" required>
+
+                {{-- رسائل الخطأ --}}
+                @if($errors->any())
+                <div style="background:#fee2e2; border:1px solid #fca5a5; color:#b91c1c; padding:1rem; border-radius:0.8rem; margin-bottom:1.2rem; font-weight:700; font-size:0.9rem; text-align:right;">
+                    <i class="fa-solid fa-circle-exclamation" style="margin-left:0.5rem;"></i>
+                    {{ $errors->first() }}
                 </div>
-                <div class="form-group">
-                    <label class="form-label">كلمة المرور</label>
-                    <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+                @endif
+
+                <div class="input-group">
+                    <label>اسم المستخدم أو البريد الإلكتروني</label>
+                    <input type="text" name="login" value="{{ old('login') }}" placeholder="أدخل اسم المستخدم أو البريد" required>
                 </div>
-                <button type="submit" class="btn-login">
-                    <i class="fa-solid fa-right-to-bracket"></i> تسجيل الدخول
-                </button>
+
+                <div class="input-group">
+                    <label>كلمة المرور</label>
+                    <input type="password" name="password" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn-login">تسجيل الدخول</button>
             </form>
         </div>
     </div>
-    <script src="{{ asset('js/hod-settings.js') }}"></script>
 </body>
 </html>

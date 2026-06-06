@@ -113,10 +113,48 @@ class TeacherWebController extends Controller
             ->limit(5)
             ->get();
 
+        // تحقق إذا كان المعلم مربياً
+        $advisorCourse = DB::table('course_teachers')
+            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+            ->where('course_teachers.teacher_id', $teacher->teacher_id)
+            ->where('course_teachers.role', 'advisor')
+            ->select('courses.*')
+            ->first();
+
+        $advisorStudents = collect();
+        $parentReportRequests = collect();
+        if ($advisorCourse) {
+            // جلب طلاب الدورة اللي المعلم مربي إلها
+            $advisorStudents = DB::table('enrollments')
+                ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->where('enrollments.course_id', $advisorCourse->course_id)
+                ->select('students.student_id', 'users.full_name', 'students.student_code')
+                ->get();
+                
+            // جلب طلبات التقارير الواردة من أولياء الأمور
+            $parentReportRequests = DB::table('report_requests')
+                ->join('users', 'report_requests.head_id', '=', 'users.user_id')
+                ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+                ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+                ->where('report_requests.teacher_id', $teacher->teacher_id)
+                ->where('report_requests.status', 'pending')
+                ->where('users.role', 'parent') // للتأكد أن الطلب من ولي أمر وليس رئيس قسم
+                ->select(
+                    'report_requests.id as request_id',
+                    'report_requests.notes',
+                    'report_requests.created_at',
+                    'users.full_name as parent_name',
+                    'student_users.full_name as student_name',
+                    'students.student_id'
+                )
+                ->get();
+        }
+
         return view('teacher.dashboard', compact(
             'teacher', 'courses',
             'recentAssignments', 'todayCount',
-            'announcements'
+            'announcements', 'advisorCourse', 'advisorStudents', 'parentReportRequests'
         ));
     }
 
@@ -773,5 +811,168 @@ class TeacherWebController extends Controller
             ]);
 
         return redirect()->back()->with('success', 'تم تغيير كلمة المرور بنجاح!');
+    }
+
+    // ────────────────────────────────────────────────────────────
+    //  ADVISOR TOOLS (أدوات المربي)
+    // ────────────────────────────────────────────────────────────
+
+    public function storeAdvisorAttendance(Request $request)
+    {
+        $teacher = $this->getTeacher();
+        
+        $request->validate([
+            'course_id' => 'required|exists:courses,course_id',
+            'attendance' => 'required|array', // مصفوفة مفاتيحها student_id وقيمتها الحالة
+            'date' => 'required|date'
+        ]);
+
+        $courseId = $request->input('course_id');
+        $date = $request->input('date');
+        $attendances = $request->input('attendance');
+
+        // التأكد من أن المعلم هو المربي لهذه الدورة
+        $isAdvisor = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->where('course_id', $courseId)
+            ->where('role', 'advisor')
+            ->exists();
+
+        if (!$isAdvisor) {
+            return back()->with('error', 'ليس لديك صلاحية مربي لهذه الدورة.');
+        }
+
+        // بما أن الحضور يومي للقاعة ككل وليس لحصة معينة (lesson_id)،
+        // سنقوم بإنشاء حصة وهمية أو درس وهمي يمثل هذا اليوم إذا لم يكن هناك درس
+        $lesson = DB::table('lessons')
+            ->where('course_id', $courseId)
+            ->where('title', 'الحضور اليومي للقاعة')
+            ->first();
+
+        if (!$lesson) {
+            $lessonId = DB::table('lessons')->insertGetId([
+                'course_id' => $courseId,
+                'title' => 'الحضور اليومي للقاعة',
+                'description' => 'سجل خاص بتفقد المربي',
+                'content' => 'يومي',
+                'teacher_id' => $teacher->teacher_id,
+                'department_id' => 1, // Default
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } else {
+            $lessonId = $lesson->lesson_id;
+        }
+
+        // إنشاء جلسة حضور لهذا اليوم
+        $sessionId = DB::table('attendance_sessions')->insertGetId([
+            'lesson_id' => $lessonId,
+            'qr_token' => 'DAILY_' . $courseId . '_' . uniqid(),
+            'expires_at' => now()->addHours(24),
+            'is_active' => false,
+            'created_at' => $date . ' 00:00:00',
+            'updated_at' => now(),
+        ]);
+
+        // إدخال سجلات الطلاب
+        $attendanceRecords = [];
+        foreach ($attendances as $studentId => $status) {
+            $attendanceRecords[] = [
+                'session_id' => $sessionId,
+                'student_id' => $studentId,
+                'status' => $status,
+                'recorded_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if (!empty($attendanceRecords)) {
+            DB::table('attendance')->insert($attendanceRecords);
+        }
+
+        return back()->with('success', 'تم حفظ الحضور اليومي للقاعة بنجاح.');
+    }
+
+    public function storeAdvisorReport(Request $request)
+    {
+        $teacher = $this->getTeacher();
+
+        $request->validate([
+            'student_id' => 'required|exists:students,student_id',
+            'course_id' => 'required|exists:courses,course_id',
+            'report_content' => 'required|string',
+            'request_id' => 'nullable|exists:report_requests,id',
+        ]);
+
+        $studentId = $request->input('student_id');
+        $courseId = $request->input('course_id');
+        $requestId = $request->input('request_id');
+
+        // التأكد من الصلاحية
+        $isAdvisor = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->where('course_id', $courseId)
+            ->where('role', 'advisor')
+            ->exists();
+
+        if (!$isAdvisor) {
+            return back()->with('error', 'ليس لديك صلاحية مربي لهذه الدورة.');
+        }
+
+        // حفظ التقرير السلوكي في جدول performance_reports
+        DB::table('performance_reports')->insert([
+            'student_id' => $studentId,
+            'report_type' => 'behavioral',
+            'attendance_rate' => 0.00, // Not applicable for behavioral, but required in DB
+            'average_grade' => 0.00, // Not applicable for behavioral, but required in DB
+            'recommendations' => 'تقرير المربي: ' . $request->input('report_content'),
+            'generated_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $studentName = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $studentId)
+            ->value('users.full_name');
+
+        // إذا كان التقرير بناءً على طلب ولي الأمر
+        if ($requestId) {
+            // تحديث حالة الطلب إلى مكتمل
+            DB::table('report_requests')
+                ->where('id', $requestId)
+                ->update(['status' => 'completed', 'updated_at' => now()]);
+                
+            // جلب الـ user_id الخاص بولي الأمر (المخزن في head_id) لإرسال إشعار
+            $parentId = DB::table('report_requests')->where('id', $requestId)->value('head_id');
+            if ($parentId) {
+                DB::table('notifications')->insert([
+                    'user_id' => $parentId,
+                    'title' => 'تم الرد على طلب التقرير السلوكي',
+                    'message' => 'قام المربي بكتابة التقرير السلوكي للطالب ' . $studentName . '. يمكنك الاطلاع عليه الآن.',
+                    'type' => 'system',
+                    'is_read' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        // إرسال إشعار أو رسالة لرئيس القسم (نجلب أي حساب رئيس قسم - head)
+        $headId = DB::table('users')->where('role', 'head')->value('user_id');
+        if ($headId) {
+            DB::table('notifications')->insert([
+                'user_id' => $headId,
+                'title' => 'تقرير سلوكي جديد',
+                'message' => 'تم رفع تقرير سلوكي جديد للطالب ' . $studentName . ' بواسطة المربي ' . Auth::user()->full_name,
+                'type' => 'system',
+                'is_read' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return back()->with('success', 'تم إرسال التقرير السلوكي بنجاح للجهات المعنية.');
     }
 }

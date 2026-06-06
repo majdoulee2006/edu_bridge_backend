@@ -172,115 +172,106 @@
 
     <div class="posts-list">
         
-        <!-- إعلان 1 -->
-        <div class="post-card" data-type="announcement">
-            <div class="post-header">
-                <div class="post-avatar" style="background: var(--accent-color); color: #111827;"><i class="fa-solid fa-bullhorn"></i></div>
-                <div>
-                    <div class="post-author">إعلان هام</div>
-                    <div class="post-time">منذ 3 ساعات</div>
-                </div>
+        <!-- إعلان كبير 1 -->
+        <div class="post-card announce-card-large" data-type="announcement" style="padding:0; background:transparent;">
+            <div class="announce-large-header">
+                <div class="announce-large-icon"><i class="fa-solid fa-bullhorn"></i></div>
+                <span class="announce-badge">إعلان هام</span>
             </div>
-            <h3 class="post-title">تحديث مواعيد الاختبارات النهائية للفصل الدراسي الأول</h3>
-            <p class="post-content">
-                نحيطكم علماً بأنه تم إجراء بعض التعديلات على جدول الاختبارات النهائية للفصل الدراسي الأول. يرجى مراجعة الجدول الجديد المتاح في قسم الإعلانات الأكاديمية.
-            </p>
+            <div class="announce-large-body" style="background: var(--bg-secondary);">
+                <div class="announce-meta">
+                    <i class="fa-regular fa-clock"></i>
+                    <span>منذ 3 ساعات</span>
+                </div>
+                <h4 class="announce-title">تحديث مواعيد الاختبارات النهائية للفصل الدراسي الأول</h4>
+                <p class="announce-text">
+                    نحيطكم علماً بأنه تم إجراء بعض التعديلات على جدول الاختبارات النهائية للفصل الدراسي الأول. يرجى مراجعة الجدول الجديد المتاح في قسم الإعلانات الأكاديمية.
+                </p>
+            </div>
         </div>
 
         <!-- إعلان 2 -->
-        <div class="post-card" data-type="announcement">
-            <div class="post-header">
-                <div class="post-avatar" style="background: #374151;"><i class="fa-solid fa-info"></i></div>
-                <div>
-                    <div class="post-author">تحديثات النظام</div>
-                    <div class="post-time">منذ 5 ساعات</div>
+        <div class="post-card announce-card-compact" data-type="announcement" style="padding: 1rem; display: flex;">
+            <div class="announce-compact-icon">
+                <i class="fa-solid fa-info"></i>
+            </div>
+            <div class="announce-compact-body">
+                <span class="announce-tag">تحديثات النظام</span>
+                <h4 class="announce-compact-title">إطلاق النظام الإلكتروني الجديد لتسجيل الحضور والانصراف</h4>
+                <div class="announce-meta" style="margin-bottom: 0;">
+                    <span>منذ 5 ساعات</span>
                 </div>
             </div>
-            <h3 class="post-title">إطلاق النظام الإلكتروني الجديد لتسجيل الحضور والانصراف</h3>
-            <p class="post-content">
-                تم تفعيل النظام الجديد لتسجيل الحضور عبر البصمة الإلكترونية لجميع الموظفين. يرجى التأكد من تسجيل بصمتكم في قسم الموارد البشرية خلال هذا الأسبوع.
-            </p>
         </div>
 
         <!-- منشور 1 -->
-        <div class="post-card" data-type="post">
-            <div class="post-header">
-                <div class="post-avatar" style="background: #111827;"><i class="fa-solid fa-users-gear"></i></div>
-                <div>
-                    <div class="post-author">شؤون الموظفين</div>
-                    <div class="post-time">منذ ساعتين</div>
+        <div class="post-card announce-card-compact" data-type="post" style="padding: 1rem; display: flex;">
+            <div class="announce-compact-icon">
+                <i class="fa-solid fa-users-gear"></i>
+            </div>
+            <div class="announce-compact-body">
+                <span class="announce-tag">شؤون الموظفين</span>
+                <h4 class="announce-compact-title">اجتماع الكادر الإداري الشهري</h4>
+                <div class="announce-meta" style="margin-bottom: 0;">
+                    <span>منذ ساعتين</span>
                 </div>
             </div>
-            <h3 class="post-title">اجتماع الكادر الإداري الشهري</h3>
-            <p class="post-content">
-                يرجى من جميع موظفي الشؤون الحضور للاجتماع الشهري لمناقشة خطة العمل للفترة القادمة وتوزيع المهام الجديدة.
-                القاعة رقم 4.
-            </p>
-            <div style="width: 100%; height: 180px; border-radius: 1rem; background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80') center/cover; margin-bottom: 1rem;"></div>
-            <!-- Action buttons removed per user request -->
         </div>
 
         <!-- منشور 2 -->
-        <div class="post-card" data-type="post">
-            <div class="post-header">
-                <div class="post-avatar" style="background: #0f172a;"><i class="fa-solid fa-server"></i></div>
-                <div>
-                    <div class="post-author">الدعم الفني</div>
-                    <div class="post-time">أمس</div>
+        <div class="post-card announce-card-compact" data-type="post" style="padding: 1rem; display: flex;">
+            <div class="announce-compact-icon">
+                <i class="fa-solid fa-server"></i>
+            </div>
+            <div class="announce-compact-body">
+                <span class="announce-tag">الدعم الفني</span>
+                <h4 class="announce-compact-title">صيانة دورية للخوادم</h4>
+                <div class="announce-meta" style="margin-bottom: 0;">
+                    <span>أمس</span>
                 </div>
             </div>
-            <h3 class="post-title">صيانة دورية للخوادم</h3>
-            <p class="post-content">
-                نحيطكم علماً بأنه سيتم إجراء صيانة دورية للخوادم يوم الجمعة القادم، مما قد يؤدي إلى انقطاع مؤقت في الخدمة. نعتذر عن أي إزعاج.
-            </p>
-            <!-- Action buttons removed per user request -->
         </div>
         
         <!-- منشور 3 -->
-        <div class="post-card" data-type="post">
-            <div class="post-header">
-                <div class="post-avatar" style="background: #10b981;"><i class="fa-solid fa-tree"></i></div>
-                <div>
-                    <div class="post-author">النشاطات الطلابية</div>
-                    <div class="post-time">أمس</div>
+        <div class="post-card announce-card-compact" data-type="post" style="padding: 1rem; display: flex;">
+            <div class="announce-compact-icon">
+                <i class="fa-solid fa-tree"></i>
+            </div>
+            <div class="announce-compact-body">
+                <span class="announce-tag">النشاطات الطلابية</span>
+                <h4 class="announce-compact-title">حملة التشجير السنوية في الحرم الجامعي</h4>
+                <div class="announce-meta" style="margin-bottom: 0;">
+                    <span>أمس</span>
                 </div>
             </div>
-            <h3 class="post-title">حملة التشجير السنوية في الحرم الجامعي</h3>
-            <p class="post-content">
-                ندعو جميع الموظفين والطلاب للمشاركة في حملة التشجير السنوية التي ستقام يوم السبت القادم في ساحة الحرم الجامعي الرئيسية. سيتم توفير كافة الأدوات الزراعية والشتلات.
-            </p>
-            <!-- Action buttons removed per user request -->
         </div>
 
         <!-- منشور 4 -->
-        <div class="post-card" data-type="post">
-            <div class="post-header">
-                <div class="post-avatar" style="background: #ef4444;"><i class="fa-solid fa-droplet"></i></div>
-                <div>
-                    <div class="post-author">الشؤون الصحية</div>
-                    <div class="post-time">منذ يومين</div>
+        <div class="post-card announce-card-compact" data-type="post" style="padding: 1rem; display: flex;">
+            <div class="announce-compact-icon">
+                <i class="fa-solid fa-droplet"></i>
+            </div>
+            <div class="announce-compact-body">
+                <span class="announce-tag">الشؤون الصحية</span>
+                <h4 class="announce-compact-title">حملة التبرع بالدم</h4>
+                <div class="announce-meta" style="margin-bottom: 0;">
+                    <span>منذ يومين</span>
                 </div>
             </div>
-            <h3 class="post-title">حملة التبرع بالدم</h3>
-            <p class="post-content">
-                بالتعاون مع المستشفى الوطني، نقيم حملة للتبرع بالدم في العيادة المركزية للمؤسسة. من يرغب بالتبرع يرجى التوجه للعيادة خلال أوقات الدوام الرسمي هذا الأسبوع.
-            </p>
-            <!-- Action buttons removed per user request -->
         </div>
         
         <!-- إعلان 3 -->
-        <div class="post-card" data-type="announcement">
-            <div class="post-header">
-                <div class="post-avatar" style="background: var(--accent-color); color: #111827;"><i class="fa-solid fa-gift"></i></div>
-                <div>
-                    <div class="post-author">إدارة المؤسسة</div>
-                    <div class="post-time">منذ 3 أيام</div>
+        <div class="post-card announce-card-compact" data-type="announcement" style="padding: 1rem; display: flex;">
+            <div class="announce-compact-icon">
+                <i class="fa-solid fa-gift"></i>
+            </div>
+            <div class="announce-compact-body">
+                <span class="announce-tag">إدارة المؤسسة</span>
+                <h4 class="announce-compact-title">تكريم الموظفين المتميزين لشهر أكتوبر</h4>
+                <div class="announce-meta" style="margin-bottom: 0;">
+                    <span>منذ 3 أيام</span>
                 </div>
             </div>
-            <h3 class="post-title">تكريم الموظفين المتميزين لشهر أكتوبر</h3>
-            <p class="post-content">
-                نبارك للزملاء الذين تم اختيارهم كموظفين متميزين لهذا الشهر تقديراً لجهودهم وتفانيهم في العمل. سيقام حفل التكريم يوم الخميس القادم.
-            </p>
         </div>
 
     </div>

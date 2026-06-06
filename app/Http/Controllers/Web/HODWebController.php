@@ -76,7 +76,12 @@ class HODWebController extends Controller
             ->take(5)
             ->get();
 
-        return view('hod.dashboard', compact('announcements'));
+        // إحصائيات رئيس القسم
+        $teachersCount = \App\Models\User::where('role_id', 2)->count();
+        $studentsCount = \App\Models\User::where('role_id', 3)->count();
+        $coursesCount = \App\Models\Course::count();
+
+        return view('hod.dashboard', compact('announcements', 'teachersCount', 'studentsCount', 'coursesCount'));
     }
 
     /**
@@ -243,6 +248,17 @@ class HODWebController extends Controller
                 ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
                 ->where('course_teachers.teacher_id', $teacher->teacher_id)
                 ->pluck('courses.title');
+                
+            // Check if teacher is an advisor
+            $advisorCourse = DB::table('course_teachers')
+                ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+                ->where('course_teachers.teacher_id', $teacher->teacher_id)
+                ->where('course_teachers.role', 'advisor')
+                ->select('courses.course_id', 'courses.title')
+                ->first();
+                
+            $teacher->is_advisor = $advisorCourse ? true : false;
+            $teacher->advisor_course_title = $advisorCourse ? $advisorCourse->title : null;
         }
 
         // 2. جلب الطلاب
@@ -250,8 +266,11 @@ class HODWebController extends Controller
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->select('students.student_id', 'students.student_code', 'students.level', 'students.birth_date', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone')
             ->get();
+            
+        // 3. جلب كل الدورات لتعيين المربي
+        $all_courses = DB::table('courses')->select('course_id', 'title')->get();
 
-        return view('hod.accounts', compact('teachers', 'students'));
+        return view('hod.accounts', compact('teachers', 'students', 'all_courses'));
     }
 
     /**
@@ -288,6 +307,50 @@ class HODWebController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'تمت إضافة حساب المدرب بنجاح!');
+    }
+
+    public function assignAdvisor(Request $request)
+    {
+        $request->validate([
+            'teacher_id' => 'required|exists:teachers,teacher_id',
+            'course_id' => 'nullable|exists:courses,course_id',
+            'action' => 'required|in:assign,remove'
+        ]);
+
+        $teacherId = $request->input('teacher_id');
+        $action = $request->input('action');
+
+        // Remove any existing advisor role for this teacher
+        DB::table('course_teachers')
+            ->where('teacher_id', $teacherId)
+            ->where('role', 'advisor')
+            ->delete();
+
+        if ($action === 'assign') {
+            $courseId = $request->input('course_id');
+            if (!$courseId) {
+                return back()->with('error', 'الرجاء اختيار الدورة لتفعيل المربي.');
+            }
+
+            // Also ensure no one else is advisor for this course (1-to-1 rule)
+            DB::table('course_teachers')
+                ->where('course_id', $courseId)
+                ->where('role', 'advisor')
+                ->delete();
+
+            // Insert new advisor role
+            DB::table('course_teachers')->insert([
+                'course_id' => $courseId,
+                'teacher_id' => $teacherId,
+                'role' => 'advisor',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return back()->with('success', 'تم تعيين المربي بنجاح.');
+        }
+
+        return back()->with('success', 'تم إزالة صفة المربي عن المعلم.');
     }
 
     /**

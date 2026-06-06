@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\HODController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\ExamScheduleController;
 use App\Http\Controllers\Api\TeacherReportController;
+use App\Http\Controllers\Api\ParentController;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -106,6 +107,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/users', [AdminController::class, 'createUser']);
         Route::get('/courses', [AdminController::class, 'getCourses']);
         Route::post('/courses', [AdminController::class, 'createCourse']);
+    });
+
+    // ========== Parent Routes ==========
+    Route::prefix('parent')->middleware('role:parent')->group(function () {
+        Route::get('/dashboard', [ParentController::class, 'dashboard']);
+        Route::get('/children', [ParentController::class, 'getChildren']);
+        Route::post('/add-student', [ParentController::class, 'linkStudent']);
+        Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
+        Route::get('/children/{id}/details', [ParentController::class, 'getChildDetails']);
+        Route::get('/children/{id}/attendance', [ParentController::class, 'getChildAttendance']);
+        Route::get('/children/{id}/grades', [ParentController::class, 'getChildGrades']);
+        Route::get('/children/{id}/schedule', [ParentController::class, 'getChildSchedule']);
+        Route::get('/children/{id}/assignments', [ParentController::class, 'getChildAssignments']);
+        Route::post('/request-report', [ParentController::class, 'requestReport']);
+        Route::get('/reports/history', [ParentController::class, 'getReportsHistory']);
     });
 
 });

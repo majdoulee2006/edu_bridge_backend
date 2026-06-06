@@ -108,11 +108,40 @@
 
 @section('content')
 
-    <div class="welcome-header">
-        <div class="welcome-text">
-            <h2>Edu-Bridge</h2>
-            <p>مرحباً، {{ auth()->user()->full_name ?? 'رئيس القسم' }}</p>
+@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'رئيس القسم'))
+
+    {{-- ===== Stats (3 cards) ===== --}}
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 2rem;">
+
+        {{-- Card 1: المعلمون --}}
+        <div class="stat-card" onclick="window.location.href='{{ url('/hod/accounts?role=teacher') }}'" title="اضغط لعرض المعلمين">
+            <div class="stat-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
+            <div>
+                <div class="stat-value">{{ $teachersCount ?? 0 }}</div>
+                <div class="stat-label">عدد المعلمين</div>
+                <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+            </div>
         </div>
+
+        {{-- Card 2: الطلاب --}}
+        <div class="stat-card" onclick="window.location.href='{{ url('/hod/accounts?role=student') }}'" title="اضغط لعرض الطلاب">
+            <div class="stat-icon"><i class="fa-solid fa-user-graduate"></i></div>
+            <div>
+                <div class="stat-value">{{ $studentsCount ?? 0 }}</div>
+                <div class="stat-label">عدد الطلاب</div>
+                <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+            </div>
+        </div>
+
+        {{-- Card 3: المواد الدراسية --}}
+        <div class="stat-card stat-card-plain">
+            <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
+            <div>
+                <div class="stat-value">{{ $coursesCount ?? 0 }}</div>
+                <div class="stat-label">إجمالي المواد</div>
+            </div>
+        </div>
+
     </div>
 
     <!-- News Section -->
@@ -121,28 +150,48 @@
         <a href="{{ route('hod.announcements.create') }}" class="btn btn-primary" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;">إنشاء إعلان</a>
     </div>
 
-    @forelse($announcements as $announcement)
-    <!-- News Card -->
-    <div class="news-card">
-        <div style="position: relative;">
-            @if($announcement->image_path)
-                <img src="{{ asset('storage/' . $announcement->image_path) }}" class="news-image" alt="News Image">
-            @else
-                <div class="news-image" style="display: flex; align-items: center; justify-content: center; background-color: #fce30020; color: #ca8a04;">
-                    <i class="fa-solid fa-bullhorn" style="font-size: 3rem;"></i>
+    @forelse($announcements as $index => $announcement)
+        @if($index === 0)
+            <!-- Large Card -->
+            <div class="announce-card-large">
+                <div class="announce-large-header">
+                    @if($announcement->image_path)
+                        <img src="{{ asset('storage/' . $announcement->image_path) }}" class="announce-large-img" alt="صورة الإعلان">
+                    @else
+                        <div class="announce-large-icon"><i class="fa-solid fa-bullhorn"></i></div>
+                    @endif
+                    <span class="announce-badge">{{ $announcement->category ?? 'إعلان هام' }}</span>
                 </div>
-            @endif
-            <span class="badge badge-yellow" style="position: absolute; top: 1rem; right: 1rem;">{{ $announcement->category ?? 'إعلان هام' }}</span>
-        </div>
-        <div class="news-content">
-            <div class="news-meta">
-                <span><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}</span>
-                <span>موجه إلى: {{ $announcement->target_audience == 'all' ? 'الجميع' : $announcement->target_audience }}</span>
+                <div class="announce-large-body">
+                    <div class="announce-meta">
+                        <i class="fa-regular fa-clock"></i>
+                        <span>{{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}</span>
+                        <span style="margin: 0 0.25rem;">·</span>
+                        <span>موجه إلى: {{ $announcement->target_audience == 'all' ? 'الجميع' : $announcement->target_audience }}</span>
+                    </div>
+                    <h4 class="announce-title">{{ $announcement->title }}</h4>
+                    <p class="announce-text">{{ Str::limit($announcement->content, 150) }}</p>
+                </div>
             </div>
-            <h4 class="news-title">{{ $announcement->title }}</h4>
-            <p class="news-excerpt">{{ Str::limit($announcement->content, 150) }}</p>
-        </div>
-    </div>
+        @else
+            <!-- Compact Card -->
+            <div class="announce-card-compact">
+                <div class="announce-compact-icon">
+                    @if($announcement->image_path)
+                        <img src="{{ asset('storage/' . $announcement->image_path) }}" alt="صورة">
+                    @else
+                        <i class="fa-solid fa-file-lines"></i>
+                    @endif
+                </div>
+                <div class="announce-compact-body">
+                    <span class="announce-tag">{{ $announcement->category ?? 'إعلان' }}</span>
+                    <h4 class="announce-compact-title">{{ $announcement->title }}</h4>
+                    <div class="announce-meta" style="margin-bottom: 0;">
+                        <span>{{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}</span>
+                    </div>
+                </div>
+            </div>
+        @endif
     @empty
     <div class="card" style="text-align: center; color: var(--text-secondary);">
         لا توجد إعلانات حالياً.

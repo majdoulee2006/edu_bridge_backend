@@ -58,6 +58,10 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::post('/profile', [TeacherWebController::class, 'updateProfile'])->name('teacher.profile.update');
     Route::post('/profile/send-otp', [TeacherWebController::class, 'sendOTP'])->name('teacher.profile.send_otp');
     Route::post('/profile/verify-otp', [TeacherWebController::class, 'verifyOTP'])->name('teacher.profile.verify_otp');
+    
+    // أدوات مربي الدورة (Advisor Tools)
+    Route::post('/advisor/attendance', [TeacherWebController::class, 'storeAdvisorAttendance'])->name('teacher.advisor.attendance');
+    Route::post('/advisor/report', [TeacherWebController::class, 'storeAdvisorReport'])->name('teacher.advisor.report');
     Route::post('/profile/password', [TeacherWebController::class, 'updatePassword'])->name('teacher.profile.password');
 });
 
@@ -97,6 +101,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/accounts', [HODWebController::class, 'accounts']);
     Route::post('/accounts/teacher', [HODWebController::class, 'storeTeacher'])->name('hod.accounts.store_teacher');
     Route::post('/accounts/student', [HODWebController::class, 'storeStudent'])->name('hod.accounts.store_student');
+    Route::post('/accounts/advisor', [HODWebController::class, 'assignAdvisor'])->name('hod.accounts.advisor');
     Route::post('/accounts/delete/{id}', [HODWebController::class, 'deleteAccount'])->name('hod.accounts.delete');
     Route::get('/organization', [HODWebController::class, 'organization']);
     Route::post('/organization/schedule', [HODWebController::class, 'storeSchedule'])->name('hod.organization.store_schedule');

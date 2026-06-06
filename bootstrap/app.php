@@ -20,6 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'   => \App\Http\Middleware\CheckAdminRole::class,
         ]);
 
+        $middleware->validateCsrfTokens(except: [
+            'affairs/accounts',
+            'affairs/accounts/*',
+        ]);
+
         // منع التحويل لـ api/login عند استخدام auth middleware
         $middleware->redirectGuestsTo('/affairs/login');
     })
