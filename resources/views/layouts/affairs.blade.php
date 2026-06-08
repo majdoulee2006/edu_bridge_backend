@@ -135,8 +135,21 @@
                 <a href="{{ url('/affairs/accounts') }}" class="nav-item {{ Request::is('affairs/accounts') ? 'active' : '' }}">
                     <i class="fa-solid fa-users-gear"></i> الحسابات
                 </a>
+                <a href="{{ url('/affairs/university-ids') }}" class="nav-item {{ Request::is('affairs/university-ids') ? 'active' : '' }}">
+                    <i class="fa-solid fa-id-card"></i> الأرقام الجامعية
+                </a>
+                <a href="{{ url('/affairs/pending-accounts') }}" class="nav-item {{ Request::is('affairs/pending-accounts') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
+                    <span><i class="fa-solid fa-clock"></i> طلبات التسجيل</span>
+                    @php $pc = \App\Models\User::whereIn('role_id',[3,4])->where('status','inactive')->count(); @endphp
+                    @if($pc > 0)
+                        <span style="background:#ef4444; color:white; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $pc }}</span>
+                    @endif
+                </a>
                 <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-signature"></i> طلبات الإجازة
+                </a>
+                <a href="{{ url('/affairs/reports') }}" class="nav-item {{ Request::is('affairs/reports') ? 'active' : '' }}">
+                    <i class="fa-solid fa-file-lines"></i> التقارير
                 </a>
                 <a href="{{ url('/affairs/messages') }}" class="nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}">
                     <i class="fa-solid fa-envelope"></i> الرسائل

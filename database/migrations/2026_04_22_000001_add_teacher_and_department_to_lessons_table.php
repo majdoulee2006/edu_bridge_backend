@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('lessons', function (Blueprint $table) {
-            $table->foreignId('teacher_id')->nullable()->constrained('teachers', 'teacher_id')->onDelete('cascade');
-            $table->foreignId('department_id')->nullable()->constrained('departments', 'department_id')->onDelete('cascade');
+            if (!Schema::hasColumn('lessons', 'teacher_id')) {
+                $table->foreignId('teacher_id')->nullable()->constrained('teachers', 'teacher_id')->onDelete('cascade');
+            }
+            if (!Schema::hasColumn('lessons', 'department_id')) {
+                $table->foreignId('department_id')->nullable()->constrained('departments', 'department_id')->onDelete('cascade');
+            }
         });
     }
 

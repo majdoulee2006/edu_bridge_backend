@@ -57,9 +57,12 @@
                     <i class="fa-solid fa-chalkboard-teacher"></i>
                     المحاضرات
                 </a>
-                <a href="{{ url('/teacher/messages') }}" class="nav-item {{ Request::is('teacher/messages') ? 'active' : '' }}">
-                    <i class="fa-solid fa-envelope"></i>
-                    الرسائل
+                <a href="{{ url('/teacher/reports') }}" class="nav-item {{ Request::is('teacher/reports') ? 'active' : '' }}" style="position:relative;">
+                    <i class="fa-solid fa-file-lines"></i> التقارير
+                    @php $pendingReports = \Illuminate\Support\Facades\DB::table('report_requests')->join('teachers','report_requests.teacher_id','=','teachers.teacher_id')->where('teachers.user_id', auth()->id())->where('report_requests.status','pending')->count(); @endphp
+                    @if($pendingReports > 0)
+                        <span style="position:absolute;left:1rem;top:50%;transform:translateY(-50%);background:#ef4444;color:white;border-radius:50%;padding:0.1rem 0.5rem;font-size:0.75rem;font-weight:bold;">{{ $pendingReports }}</span>
+                    @endif
                 </a>
                 <a href="{{ url('/teacher/notifications') }}" class="nav-item {{ Request::is('teacher/notifications') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-bell"></i> الإشعارات

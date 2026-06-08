@@ -4,32 +4,6 @@
 
 @push('styles')
 <style>
-    .tabs-container {
-        display: flex;
-        background-color: var(--bg-secondary);
-        border-radius: 2rem;
-        padding: 0.25rem;
-        margin-bottom: 2rem;
-        box-shadow: var(--shadow);
-    }
-    
-    .tab-btn {
-        flex: 1;
-        padding: 0.75rem;
-        border: none;
-        background: transparent;
-        border-radius: 1.5rem;
-        font-weight: 700;
-        color: var(--text-secondary);
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    
-    .tab-btn.active {
-        background-color: var(--accent-color);
-        color: #1a1a1a;
-    }
-    
     .leave-card {
         background-color: var(--bg-secondary);
         border-radius: 1.5rem;
@@ -94,6 +68,24 @@
         font-size: 0.9rem;
     }
     
+    .status-btn {
+        padding: 0.45rem 1.2rem;
+        border-radius: 2rem;
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 0.88rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .status-btn.active {
+        background-color: var(--accent-color);
+        color: #1a1a1a;
+        border-color: var(--accent-color);
+    }
+
     .leave-actions {
         display: flex;
         gap: 1rem;
@@ -128,61 +120,63 @@
 
 @section('content')
 
-    <div class="tabs-container">
-        <button class="tab-btn active" onclick="showTab('daily', this)">إجازات يومية</button>
-        <button class="tab-btn" onclick="showTab('hourly', this)">إجازات ساعية</button>
+    @if(session('success'))
+        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">
+            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
+        </div>
+    @endif
+
+    {{-- فلتر الحالة --}}
+    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+        <button class="status-btn active" onclick="setStatus('all',      this)">الكل</button>
+        <button class="status-btn"        onclick="setStatus('pending',  this)">معلقة</button>
+        <button class="status-btn"        onclick="setStatus('approved', this)">موافق عليها</button>
+        <button class="status-btn"        onclick="setStatus('rejected', this)">مرفوضة</button>
     </div>
 
-    <!-- الإجازات اليومية -->
-    <div id="daily-leaves">
-        @php $hasDaily = false; @endphp
-        @foreach($pendingLeaves as $leave)
-            @if($leave->leave_category == 'daily')
-                @php $hasDaily = true; @endphp
+    {{-- الكروت --}}
+    <div id="leaves-container">
+        @forelse($allLeaves as $leave)
+            @php
+                $cat    = $leave->leave_category ?? 'daily';
+                $status = $leave->status ?? 'pending';
+                $statusGroup = in_array($status, ['pending','pending_hod','pending_parent']) ? 'pending' : $status;
+            @endphp
+            <div class="leave-item" data-category="{{ $cat }}" data-status="{{ $statusGroup }}">
                 @include('hod.partials.leave_card', ['leave' => $leave])
-            @endif
-        @endforeach
-        
-        @if(!$hasDaily)
-        <div class="card" style="text-align: center; color: var(--text-secondary);">
-            لا توجد طلبات إجازة يومية معلقة حالياً.
-        </div>
-        @endif
+            </div>
+        @empty
+        @endforelse
     </div>
 
-    <!-- الإجازات الساعية -->
-    <div id="hourly-leaves" style="display: none;">
-        @php $hasHourly = false; @endphp
-        @foreach($pendingLeaves as $leave)
-            @if($leave->leave_category == 'hourly')
-                @php $hasHourly = true; @endphp
-                @include('hod.partials.leave_card', ['leave' => $leave])
-            @endif
-        @endforeach
-        
-        @if(!$hasHourly)
-        <div class="card" style="text-align: center; color: var(--text-secondary);">
-            لا توجد طلبات إجازة ساعية معلقة حالياً.
-        </div>
-        @endif
+    <div id="empty-state" style="display:none;text-align:center;padding:3rem;color:var(--text-secondary);">
+        <i class="fa-regular fa-folder-open" style="font-size:2.5rem;display:block;margin-bottom:0.75rem;opacity:0.4;"></i>
+        لا توجد إجازات تطابق الفلتر المحدد.
     </div>
 
 @endsection
 
 @push('scripts')
 <script>
-    function showTab(tabId, btn) {
-        // إخفاء جميع الأقسام
-        document.getElementById('daily-leaves').style.display = 'none';
-        document.getElementById('hourly-leaves').style.display = 'none';
-        
-        // إزالة الكلاس active من كل الأزرار
-        const buttons = document.querySelectorAll('.tab-btn');
-        buttons.forEach(b => b.classList.remove('active'));
-        
-        // إظهار القسم المطلوب وإضافة الكلاس active للزر
-        document.getElementById(tabId + '-leaves').style.display = 'block';
+    let activeStatus = 'all';
+
+    function setStatus(status, btn) {
+        activeStatus = status;
+        document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        applyFilters();
     }
+
+    function applyFilters() {
+        let visible = 0;
+        document.querySelectorAll('.leave-item').forEach(item => {
+            const show = activeStatus === 'all' || item.dataset.status === activeStatus;
+            item.style.display = show ? 'block' : 'none';
+            if (show) visible++;
+        });
+        document.getElementById('empty-state').style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', applyFilters);
 </script>
 @endpush

@@ -3,51 +3,39 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Announcement;
-use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class AnnouncementSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // 🌟 البحث عن الطالب باستخدام الرقم الجامعي (2026100) بدلاً من الإيميل
-        $user = User::where('university_id', '2026100')->first();
+        $now = Carbon::now();
+        
+        // رح نجيب أول مستخدم بالداتابيز (غالباً المدير أو الشؤون) ليكون هو الناشر
+        $userId = DB::table('users')->first()->user_id ?? 1;
 
-        // تأكدنا إنو الطالب موجود؟ هلق بنزرع كل الإعلانات باسمه
-        if ($user) {
-            
-            // اختياري: تنظيف الإعلانات القديمة مشان ما تتكرر وتتكوم فوق بعض كل ما نعمل seed
-            Announcement::truncate();
-
-            // الإعلان الأول
-            Announcement::create([
-                'user_id' => $user->user_id ?? $user->id,
-                'title' => 'تم إصدار جدول الامتحانات النهائية',
-                'content' => 'يرجى مراجعة الجدول الدراسي والتأكد من التوقيت والقاعات.',
-                'type' => 'course_specific',
-                'created_at' => now(),
-            ]);
-
-            // الإعلان الثاني
-            Announcement::create([
-                'user_id' => $user->user_id ?? $user->id,
+        DB::table('announcements')->insert([
+            [
+                'user_id' => $userId,
+                'title' => 'تم إصدار جدول الامتحانات النهائية للفصل الدراسي الأول',
+                'content' => 'يرجى من جميع الطلاب مراجعة الجدول الدراسي والتأكد من توقيت الامتحانات والقاعات المخصصة.',
+                'type' => 'general',
+                'course_id' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'user_id' => $userId,
                 'title' => 'ورشة عمل حول مهارات البحث العلمي',
-                'content' => 'يدعوكم قسم تقانة المعلومات لحضور الورشة التفاعلية يوم الخميس القادم في مدرج الكلية.',
+                'content' => 'ندعو جميع الطلاب للحضور والمشاركة في ورشة العمل التي ستقام في مبنى الأنشطة.',
                 'type' => 'general',
-                'created_at' => now()->subDays(1),
-            ]);
-
-            // الإعلان الثالث
-            Announcement::create([
-                'user_id' => $user->user_id ?? $user->id,
-                'title' => 'تحديث نظام استعارة الكتب',
-                'content' => 'تم إضافة مجموعة جديدة من المراجع البرمجية إلى مكتبة المعهد، يمكنكم استعارتها ابتداءً من الغد.',
-                'type' => 'general',
-                'created_at' => now()->subDays(3),
-            ]);
-        }
+                'course_id' => null,
+                'created_at' => Carbon::now()->subDays(1), // إعلان من مبارح
+                'updated_at' => Carbon::now()->subDays(1),
+            ]
+        ]);
+        
+        $this->command->info('✅ تم زراعة الإعلانات بنجاح!');
     }
 }

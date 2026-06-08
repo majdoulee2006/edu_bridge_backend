@@ -70,7 +70,6 @@ class HODWebController extends Controller
      */
     public function dashboard()
     {
-        // آخر الإعلانات والأخبار
         $announcements = DB::table('announcements')
             ->orderBy('created_at', 'desc')
             ->take(5)
@@ -82,6 +81,75 @@ class HODWebController extends Controller
         $coursesCount = \App\Models\Course::count();
 
         return view('hod.dashboard', compact('announcements', 'teachersCount', 'studentsCount', 'coursesCount'));
+    }
+
+    public function notifications()
+    {
+        $notifications = DB::table('notifications')
+            ->where('user_id', auth()->id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        // تحديد كل الإشعارات كمقروءة
+        DB::table('notifications')
+            ->where('user_id', auth()->id())
+            ->where('is_read', false)
+            ->update(['is_read' => true, 'updated_at' => now()]);
+
+        return view('hod.notifications', compact('notifications'));
+    }
+
+    /**
+     * إرسال إشعار لمجموعة من المستخدمين
+     */
+    public function sendNotification(Request $request)
+    {
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'message' => 'required|string|max:1000',
+            'target'  => 'required|in:students,students_teachers,all',
+        ]);
+
+        $category = 'administrative';
+
+        // تحديد المستخدمين المستهدفين
+        $query = DB::table('users')->where('status', 'active');
+
+        if ($request->target === 'students') {
+            $query->where('role_id', 3);
+        } elseif ($request->target === 'students_teachers') {
+            $query->whereIn('role_id', [2, 3]);
+        }
+        // 'all' → كل المستخدمين
+
+        $users = $query->get(['user_id', 'device_token']);
+
+        $senderId = auth()->id();
+        $now = now();
+
+        foreach ($users as $u) {
+            DB::table('notifications')->insert([
+                'user_id'    => $u->user_id,
+                'sender_id'  => $senderId,
+                'title'      => $request->title,
+                'message'    => $request->message,
+                'type'       => $category === 'academic' ? 'academic' : 'administrative',
+                'category'   => $category,
+                'is_read'    => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            // FCM
+            if (!empty($u->device_token)) {
+                \App\Services\FcmService::send($u->device_token, $request->title, $request->message, [
+                    'type'     => $category,
+                    'category' => $category,
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'تم إرسال الإشعار بنجاح لـ ' . $users->count() . ' مستخدم!');
     }
 
     /**
@@ -206,16 +274,19 @@ class HODWebController extends Controller
      */
     public function leaves()
     {
-        // جلب الإجازات المعلقة اليومية والساعية مع بيانات المدربين
-        $pendingLeaves = DB::table('leave_requests')
-            ->join('teachers', 'leave_requests.teacher_id', '=', 'teachers.teacher_id')
-            ->join('users', 'teachers.user_id', '=', 'users.user_id')
-            ->select('leave_requests.*', 'users.full_name as teacher_name', 'teachers.specialization')
-            ->where('leave_requests.status', 'pending')
+        $allLeaves = DB::table('leave_requests')
+            ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
+            ->leftJoin('students', 'students.user_id', '=', 'users.user_id')
+            ->select(
+                'leave_requests.*',
+                'users.full_name as student_name',
+                'students.level',
+                'students.student_code'
+            )
             ->orderBy('leave_requests.created_at', 'desc')
             ->get();
 
-        return view('hod.leaves', compact('pendingLeaves'));
+        return view('hod.leaves', compact('allLeaves'));
     }
 
     /**
@@ -224,11 +295,32 @@ class HODWebController extends Controller
     public function updateLeaveStatus(Request $request, $id)
     {
         $status = $request->input('status'); // 'approved' or 'rejected'
-        
+
+        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
+
         DB::table('leave_requests')
             ->where('id', $id)
             ->update(['status' => $status, 'updated_at' => now()]);
-            
+
+        // إشعار الطالب بالنتيجة
+        if ($leaveRequest && $leaveRequest->student_id) {
+            $title   = $status === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة';
+            $message = $status === 'approved'
+                ? 'وافق رئيس القسم على طلب إجازتك بتاريخ ' . $leaveRequest->date
+                : 'تم رفض طلب إجازتك بتاريخ ' . $leaveRequest->date . ' من قِبل رئيس القسم';
+
+            DB::table('notifications')->insert([
+                'user_id'    => $leaveRequest->student_id,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'leave_request',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         return redirect()->back()->with('success', 'تم تحديث حالة الإجازة بنجاح.');
     }
 
@@ -237,12 +329,12 @@ class HODWebController extends Controller
      */
     public function accounts(Request $request)
     {
-        // 1. جلب المدربين
+        // 1. المدربين
         $teachers = DB::table('teachers')
             ->join('users', 'teachers.user_id', '=', 'users.user_id')
-            ->select('teachers.teacher_id', 'teachers.specialization', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone')
+            ->select('teachers.teacher_id', 'teachers.specialization', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone', 'users.department')
             ->get();
-             
+
         foreach ($teachers as $teacher) {
             $teacher->courses = DB::table('course_teachers')
                 ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
@@ -261,50 +353,92 @@ class HODWebController extends Controller
             $teacher->advisor_course_title = $advisorCourse ? $advisorCourse->title : null;
         }
 
-        // 2. جلب الطلاب
+        // 2. الطلاب
         $students = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->select('students.student_id', 'students.student_code', 'students.level', 'students.birth_date', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone')
+            ->select('students.student_id', 'students.student_code', 'students.level', 'students.birth_date', 'users.user_id', 'users.full_name', 'users.university_id', 'users.email', 'users.phone', 'users.department', 'users.gender')
             ->get();
             
         // 3. جلب كل الدورات لتعيين المربي
         $all_courses = DB::table('courses')->select('course_id', 'title')->get();
 
-        return view('hod.accounts', compact('teachers', 'students', 'all_courses'));
+        // 3. الأهل
+        $parents = DB::table('parents')
+            ->join('users', 'parents.user_id', '=', 'users.user_id')
+            ->select('parents.parent_id', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone')
+            ->get();
+
+        foreach ($parents as $parent) {
+            $parent->children = DB::table('parent_students')
+                ->join('students', 'parent_students.student_id', '=', 'students.student_id')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->where('parent_students.parent_id', $parent->parent_id)
+                ->pluck('users.full_name');
+        }
+
+        // 4. بيانات النماذج
+        $departments = DB::table('departments')->orderBy('name')->get();
+        $courses     = DB::table('courses')->orderBy('title')->get();
+
+        return view('hod.accounts', compact('teachers', 'students', 'parents', 'departments', 'courses', 'all_courses'));
     }
 
     /**
-     * إضافة مدرب جديد
+     * إضافة مدرب جديد — مطابق للأدمن
      */
     public function storeTeacher(Request $request)
     {
         $request->validate([
-            'full_name' => 'required|string|max:255',
-            'username' => 'required|string|unique:users,username|max:255',
-            'email' => 'nullable|email|unique:users,email|max:255',
-            'phone' => 'nullable|string|max:20',
+            'full_name'      => 'required|string|max:255',
+            'phone'          => 'nullable|string|max:20',
+            'email'          => 'required|email|unique:users,email|max:255',
+            'department'     => 'required|string|max:255',
             'specialization' => 'required|string|max:255',
-            'password' => 'required|string|min:6',
+            'password'       => 'required|string|min:6|confirmed',
+            'courses'        => 'nullable|array',
+        ], [
+            'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
         ]);
+
+        // توليد username تلقائياً من الإيميل
+        $base     = strtolower(explode('@', $request->email)[0]);
+        $username = $base;
+        $i = 1;
+        while (DB::table('users')->where('username', $username)->exists()) {
+            $username = $base . $i++;
+        }
 
         $userId = DB::table('users')->insertGetId([
-            'role_id' => 2, // teacher
-            'full_name' => $request->full_name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => bcrypt($request->password),
-            'status' => 'active',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'role_id'        => 2,
+            'full_name'      => $request->full_name,
+            'username'       => $username,
+            'email'          => $request->email,
+            'phone'          => $request->phone,
+            'department'     => $request->department,
+            'password'       => bcrypt($request->password),
+            'status'         => 'active',
+            'created_at'     => now(),
+            'updated_at'     => now(),
         ]);
 
-        DB::table('teachers')->insert([
-            'user_id' => $userId,
+        $teacherId = DB::table('teachers')->insertGetId([
+            'user_id'        => $userId,
             'specialization' => $request->specialization,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'     => now(),
+            'updated_at'     => now(),
         ]);
+
+        if ($request->filled('courses')) {
+            foreach ($request->courses as $courseId) {
+                DB::table('course_teachers')->insert([
+                    'teacher_id' => $teacherId,
+                    'course_id'  => $courseId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
 
         return redirect()->back()->with('success', 'تمت إضافة حساب المدرب بنجاح!');
     }
@@ -354,43 +488,110 @@ class HODWebController extends Controller
     }
 
     /**
-     * إضافة طالب جديد
+     * إضافة طالب جديد — مطابق للأدمن
      */
     public function storeStudent(Request $request)
     {
         $request->validate([
-            'full_name' => 'required|string|max:255',
-            'username' => 'required|string|unique:users,username|max:255',
-            'email' => 'nullable|email|unique:users,email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'student_code' => 'required|string|unique:students,student_code|max:255',
-            'level' => 'nullable|string|max:50',
-            'birth_date' => 'nullable|date',
-            'password' => 'required|string|min:6',
+            'full_name'     => 'required|string|max:255',
+            'university_id' => 'required|string|unique:users,university_id|max:255',
+            'email'         => 'required|email|unique:users,email|max:255',
+            'phone'         => 'nullable|string|max:20',
+            'department'    => 'required|string|max:255',
+            'level'         => 'required|string|max:255',
+            'birth_date'    => 'required|date',
+            'gender'        => 'required|in:ذكر,أنثى',
+            'password'      => 'required|string|min:6|confirmed',
+        ], [
+            'university_id.unique' => 'الرقم الجامعي مستخدم بالفعل.',
+            'email.unique'         => 'البريد الإلكتروني مستخدم بالفعل.',
+            'password.confirmed'   => 'تأكيد كلمة المرور غير متطابق.',
         ]);
 
         $userId = DB::table('users')->insertGetId([
-            'role_id' => 3, // student
-            'full_name' => $request->full_name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => bcrypt($request->password),
-            'status' => 'active',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'role_id'       => 3,
+            'full_name'     => $request->full_name,
+            'username'      => $request->university_id,
+            'university_id' => $request->university_id,
+            'email'         => $request->email,
+            'phone'         => $request->phone,
+            'department'    => $request->department,
+            'gender'        => $request->gender,
+            'birth_date'    => $request->birth_date,
+            'academic_year' => $request->level,
+            'password'      => bcrypt($request->password),
+            'status'        => 'active',
+            'created_at'    => now(),
+            'updated_at'    => now(),
         ]);
 
         DB::table('students')->insert([
-            'user_id' => $userId,
-            'student_code' => $request->student_code,
-            'level' => $request->level,
-            'birth_date' => $request->birth_date,
+            'user_id'      => $userId,
+            'student_code' => $request->university_id,
+            'level'        => $request->level,
+            'birth_date'   => $request->birth_date,
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'تمت إضافة حساب الطالب بنجاح!');
+    }
+
+    /**
+     * إضافة ولي أمر جديد — مطابق للأدمن
+     */
+    public function storeParent(Request $request)
+    {
+        $request->validate([
+            'full_name'               => 'required|string|max:255',
+            'phone'                   => 'required|string|max:20',
+            'username'                => 'required|string|unique:users,username|max:255',
+            'email'                   => 'required|email|unique:users,email|max:255',
+            'children_university_ids' => 'nullable|array',
+            'password'                => 'required|string|min:6|confirmed',
+        ], [
+            'username.unique'    => 'اسم المستخدم مستخدم بالفعل.',
+            'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
+        ]);
+
+        $userId = DB::table('users')->insertGetId([
+            'role_id'    => 4,
+            'full_name'  => $request->full_name,
+            'username'   => $request->username,
+            'email'      => $request->email,
+            'phone'      => $request->phone,
+            'password'   => bcrypt($request->password),
+            'status'     => 'active',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تمت إضافة حساب الطالب بنجاح!');
+        $parentId = DB::table('parents')->insertGetId([
+            'user_id'    => $userId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if ($request->filled('children_university_ids')) {
+            foreach (array_filter($request->children_university_ids) as $universityId) {
+                $student = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->where('students.student_code', $universityId)
+                    ->select('students.student_id')
+                    ->first();
+                if (!$student) continue;
+                DB::table('parent_students')->insert([
+                    'parent_id'    => $parentId,
+                    'student_id'   => $student->student_id,
+                    'relationship' => 'والد / ولي أمر',
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'تمت إضافة حساب ولي الأمر بنجاح!');
     }
 
     /**
@@ -450,24 +651,98 @@ class HODWebController extends Controller
     public function storeAnnouncement(Request $request)
     {
         $request->validate([
-            'title'   => 'required|string|max:255',
-            'content' => 'required|string',
-            'type'    => 'required|in:general,course_specific',
-            'course_id' => 'nullable|exists:courses,course_id',
+            'title'            => 'required|string|max:255',
+            'content'          => 'required|string',
+            'type'             => 'required|in:general,course_specific',
+            'course_id'        => 'nullable|exists:courses,course_id',
+            'image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'link_url'         => 'nullable|url|max:500',
+            'target_audience'  => 'nullable|in:all,students,teachers',
         ]);
 
-        \App\Models\Announcement::create([
-            'user_id'   => auth()->id(),
-            'title'     => $request->title,
-            'content'   => $request->content,
-            'type'      => $request->type,
-            'course_id' => $request->type === 'course_specific' ? $request->course_id : null,
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement = \App\Models\Announcement::create([
+            'user_id'          => auth()->id(),
+            'title'            => $request->title,
+            'content'          => $request->content,
+            'type'             => $request->type,
+            'course_id'        => $request->type === 'course_specific' ? $request->course_id : null,
+            'target_audience'  => $request->input('target_audience', 'all'),
+            'link_url'         => $request->input('link_url'),
+            'image'            => $imagePath,
         ]);
+
+        // ── إشعار FCM للطلاب والمعلمين ──────────────────────────────
+        $target    = $request->input('target_audience', 'all');
+        $roleIds   = match($target) {
+            'students' => [3],
+            'teachers' => [2],
+            default    => [2, 3],
+        };
+        $userIds = \App\Models\User::whereIn('role_id', $roleIds)
+            ->where('status', 'active')
+            ->pluck('user_id');
+
+        $now = now();
+        $notifRows = $userIds->map(fn($uid) => [
+            'user_id'    => $uid,
+            'sender_id'  => auth()->id(),
+            'title'      => 'إعلان جديد من رئيس القسم',
+            'message'    => $request->title,
+            'type'       => 'announcement',
+            'category'   => 'administrative',
+            'related_id' => $announcement->id ?? $announcement->announcement_id,
+            'is_read'    => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all();
+
+        if (!empty($notifRows)) {
+            \Illuminate\Support\Facades\DB::table('notifications')->insert($notifRows);
+            foreach ($userIds as $uid) {
+                \App\Services\FcmService::sendToUser($uid, 'إعلان جديد من رئيس القسم', $request->title, [
+                    'type' => 'announcement',
+                ]);
+            }
+        }
 
         return redirect()->route('hod.dashboard')
                          ->with('success', 'تم إضافة الإعلان بنجاح!');
     }
 
+    public function editAnnouncement($id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', auth()->id())->firstOrFail();
+        return view('hod.announcement_edit', compact('announcement'));
+    }
+
+    public function updateAnnouncement(Request $request, $id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', auth()->id())->firstOrFail();
+        $request->validate(['title' => 'required|string|max:255', 'content' => 'required|string']);
+        $updates = ['title' => $request->title, 'content' => $request->content, 'updated_at' => now()];
+        if ($request->hasFile('image')) {
+            if ($announcement->image) \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
+            $updates['image'] = $request->file('image')->store('announcements', 'public');
+        }
+        $announcement->update($updates);
+        return redirect()->route('hod.dashboard')->with('success', 'تم تحديث الإعلان!');
+    }
+
+    public function deleteAnnouncement($id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', auth()->id())->firstOrFail();
+        if ($announcement->image) \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
+        $announcement->delete();
+        return redirect()->route('hod.dashboard')->with('success', 'تم حذف الإعلان.');
+    }
 
     /**
      * حفظ حصة دراسية جديدة
@@ -640,6 +915,21 @@ class HODWebController extends Controller
     /**
      * Reports (طلب التقارير)
      */
+    public function createReport()
+    {
+        $teachers = DB::table('teachers')
+            ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->select('teachers.teacher_id', 'users.full_name')
+            ->get();
+
+        $students = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select('students.student_id', 'users.full_name')
+            ->get();
+
+        return view('hod.report_create', compact('teachers', 'students'));
+    }
+
     public function reports()
     {
         // جلب قائمة المدربين والطلاب لإنشاء تقرير
@@ -675,18 +965,56 @@ class HODWebController extends Controller
             'recommendations' => 'nullable|string',
         ]);
 
-        DB::table('performance_reports')->insert([
-            'student_id' => $request->student_id,
+        // رئيس القسم الحالي
+        $head = DB::table('heads')->where('user_id', auth()->id() ?? 0)->first();
+
+        // نحتاج teacher_id — نأخذ من الطلب إذا أُرسل أو أول مدرب
+        $teacherId = $request->input('teacher_id')
+            ?? DB::table('teachers')->value('teacher_id');
+
+        $requestId = DB::table('report_requests')->insertGetId([
+            'head_id'     => $head->id ?? null,
+            'teacher_id'  => $teacherId,
+            'student_id'  => $request->student_id,
             'report_type' => $request->report_type,
-            'attendance_rate' => rand(75, 100),
-            'average_grade' => rand(60, 99),
-            'recommendations' => $request->recommendations ?? 'تم إنشاء التقرير بناءً على طلب رئيس القسم.',
-            'generated_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'notes'       => $request->recommendations,
+            'status'      => 'pending',
+            'created_at'  => now(),
+            'updated_at'  => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تم طلب وإنشاء التقرير بنجاح!');
+        // إشعار المدرب
+        $teacherUserId = DB::table('teachers')->where('teacher_id', $teacherId)->value('user_id');
+        $studentName   = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $request->student_id)
+            ->value('users.full_name') ?? 'طالب';
+
+        $typLabel = $request->report_type === 'behavioral' ? 'سلوكي' : 'أكاديمي';
+        $title    = 'طلب تقرير من رئيس القسم';
+        $message  = 'طُلب منك تقرير ' . $typLabel . ' عن الطالب ' . $studentName;
+
+        if ($teacherUserId) {
+            DB::table('notifications')->insert([
+                'user_id'    => $teacherUserId,
+                'sender_id'  => auth()->id(),
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'report_request',
+                'related_id' => $requestId,
+                'category'   => 'academic',
+                'is_read'    => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser($teacherUserId, $title, $message, [
+                'type'       => 'report_request',
+                'request_id' => (string) $requestId,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'تم إرسال طلب التقرير للمدرب بنجاح!');
     }
 
     /**

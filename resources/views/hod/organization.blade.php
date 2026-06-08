@@ -145,6 +145,32 @@
         color: #1a1a1a;
         border-color: var(--accent-color);
     }
+
+    .exam-filter-btn {
+        padding: 0.5rem 1.5rem;
+        border-radius: 2rem;
+        border: 1px solid var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    .exam-filter-btn.active {
+        background-color: var(--accent-color);
+        color: #1a1a1a;
+        border-color: var(--accent-color);
+    }
+    .exam-filter-label {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        font-weight: 700;
+        display: block;
+        margin-bottom: 0.4rem;
+    }
 </style>
 @endpush
 
@@ -212,47 +238,40 @@
 
     <!-- Exams Tab Content -->
     <div id="tab-exams" class="tab-content" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h4 style="font-weight: 800; font-size: 1.25rem;">الجدول الامتحاني الحالي</h4>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4 style="font-weight: 800; font-size: 1.25rem;">الجدول الامتحاني</h4>
             <button onclick="openModal('exam-modal')" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fa-solid fa-plus"></i> إضافة امتحان جديد
+                <i class="fa-solid fa-plus"></i> إضافة امتحان
             </button>
+        </div>
+
+        {{-- فلتر القسم --}}
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 0.5rem;">
+            <button class="dept-btn active" onclick="selectExamDept('اتصالات', this)">اتصالات</button>
+            <button class="dept-btn" onclick="selectExamDept('معلوماتية', this)">معلوماتية</button>
+            <button class="dept-btn" onclick="selectExamDept('الكترون', this)">الكترون</button>
+            <button class="dept-btn" onclick="selectExamDept('ذكاء', this)">ذكاء</button>
+        </div>
+
+        {{-- فلتر السنة --}}
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+            <button class="year-btn active" onclick="selectExamYear('سنة أولى', this)">سنة أولى</button>
+            <button class="year-btn" onclick="selectExamYear('سنة ثانية', this)">سنة ثانية</button>
         </div>
 
         <div style="overflow-x: auto; background-color: var(--bg-secondary); border-radius: 1.5rem; box-shadow: var(--shadow); padding: 1rem;">
             <table style="width: 100%; border-collapse: collapse; text-align: right;">
                 <thead>
                     <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.9rem;">
-                        <th style="padding: 1rem;">الامتحان</th>
                         <th style="padding: 1rem;">المادة</th>
                         <th style="padding: 1rem;">التاريخ والتوقيت</th>
                         <th style="padding: 1rem;">القاعة</th>
-                        <th style="padding: 1rem;">الشعبة</th>
-                        <th style="padding: 1rem; text-align: center;">الدرجة الكبرى</th>
+                        <th style="padding: 1rem; text-align: center;">الدرجة</th>
                         <th style="padding: 1rem; text-align: center;">إجراء</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @forelse($exams as $e)
-                    <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.95rem;">
-                        <td style="padding: 1rem; font-weight: bold;">{{ $e->exam_name }}</td>
-                        <td style="padding: 1rem;">{{ $e->course_title }}</td>
-                        <td style="padding: 1rem; color: var(--text-secondary);" dir="ltr">{{ \Carbon\Carbon::parse($e->exam_date)->format('Y-m-d h:i A') }}</td>
-                        <td style="padding: 1rem;"><span style="background-color: #f1f5f9; color: #334155; padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: bold;">{{ $e->room ?? '-' }}</span></td>
-                        <td style="padding: 1rem; color: var(--text-secondary);">{{ $e->class_group ?? '-' }}</td>
-                        <td style="padding: 1rem; text-align: center; font-weight: bold; color: var(--accent-color);">{{ $e->max_score }}</td>
-                        <td style="padding: 1rem; text-align: center;">
-                            <form action="{{ route('hod.organization.delete_exam', $e->exam_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من رغبتك في حذف هذا الامتحان؟')">
-                                @csrf
-                                <button type="submit" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1rem;"><i class="fa-solid fa-trash-can"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-secondary);">لا توجد امتحانات مضافة حالياً.</td>
-                    </tr>
-                    @endforelse
+                <tbody id="exam-table-body">
+                    {{-- يُعبأ عبر JavaScript --}}
                 </tbody>
             </table>
         </div>
@@ -333,6 +352,42 @@
                 <div style="display: flex; gap: 1rem;">
                     <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">حفظ</button>
                     <button type="button" onclick="closeModal('schedule-modal')" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); flex: 1; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Exam Modal -->
+    <div id="edit-exam-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h4 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">تعديل الامتحان</h4>
+            <form id="edit-exam-form" method="POST">
+                @csrf
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">المادة الدراسية</label>
+                    <select name="course_id" id="edit-exam-course" style="width:100%; padding:0.75rem; border-radius:0.75rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
+                        @foreach($courses as $c)
+                            <option value="{{ $c->course_id }}">{{ $c->title }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">التاريخ والوقت</label>
+                    <input type="datetime-local" name="exam_date" id="edit-exam-date" style="width:100%; padding:0.75rem; border-radius:0.75rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
+                </div>
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem;">
+                    <div style="flex:1;">
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">القاعة</label>
+                        <input type="text" name="room" id="edit-exam-room" style="width:100%; padding:0.75rem; border-radius:0.75rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">الدرجة الكبرى</label>
+                        <input type="number" name="max_score" id="edit-exam-score" style="width:100%; padding:0.75rem; border-radius:0.75rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
+                    </div>
+                </div>
+                <div style="display:flex; gap:1rem;">
+                    <button type="submit" style="background:var(--accent-color); color:#1a1a1a; flex:1; padding:0.75rem; border-radius:0.75rem; border:none; font-weight:700; cursor:pointer;">حفظ</button>
+                    <button type="button" onclick="closeModal('edit-exam-modal')" style="background:transparent; border:1px solid var(--border-color); color:var(--text-primary); flex:1; padding:0.75rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">إلغاء</button>
                 </div>
             </form>
         </div>
@@ -463,9 +518,83 @@
         });
     }
 
+    // ===== Exam Filter Logic =====
+    const allExams = @json($exams);
+    let examDept = 'اتصالات';
+    let examYear = 'سنة أولى';
+
+    function selectExamDept(dept, btn) {
+        examDept = dept;
+        document.querySelectorAll('#tab-exams .dept-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderExams();
+    }
+
+    function selectExamYear(year, btn) {
+        examYear = year;
+        document.querySelectorAll('#tab-exams .year-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderExams();
+    }
+
+    function renderExams() {
+        const tbody = document.getElementById('exam-table-body');
+        const group = examDept + ' - ' + examYear;
+        const filtered = allExams.filter(e => !e.class_group || e.class_group === group || e.class_group === '');
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="padding:2rem; text-align:center; color:var(--text-secondary);">لا توجد امتحانات لهذا القسم والسنة.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(e => `
+            <tr style="border-bottom:1px solid var(--border-color); font-size:0.95rem;">
+                <td style="padding:1rem; font-weight:bold;">${e.course_title}</td>
+                <td style="padding:1rem; color:var(--text-secondary);" dir="ltr">${formatDate(e.exam_date)}</td>
+                <td style="padding:1rem;">
+                    <span style="background:#f1f5f9; color:#334155; padding:0.25rem 0.6rem; border-radius:0.5rem; font-size:0.85rem; font-weight:bold;">
+                        ${e.room || '-'}
+                    </span>
+                </td>
+                <td style="padding:1rem; text-align:center; font-weight:bold; color:var(--accent-color);">${e.max_score}</td>
+                <td style="padding:1rem; text-align:center;">
+                    <div style="display:flex; gap:0.5rem; justify-content:center;">
+                        <button onclick="openEditExam(${JSON.stringify(e).replace(/"/g,'&quot;')})"
+                                style="background:#eff6ff; border:none; color:#1d4ed8; border-radius:0.5rem; padding:0.35rem 0.65rem; cursor:pointer; font-size:0.8rem; font-weight:700;">
+                            <i class="fa-solid fa-pen"></i> تعديل
+                        </button>
+                        <form action="/hod/organization/exam/delete/${e.exam_id}" method="POST"
+                              onsubmit="return confirm('حذف هذا الامتحان؟')" style="margin:0;">
+                            <input type="hidden" name="_token" value="${csrfToken}">
+                            <button type="submit" style="background:#fef2f2; border:none; color:#dc2626; border-radius:0.5rem; padding:0.35rem 0.65rem; cursor:pointer; font-size:0.8rem; font-weight:700;">
+                                <i class="fa-solid fa-trash"></i> حذف
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function formatDate(d) {
+        if (!d) return '-';
+        const dt = new Date(d);
+        return dt.toLocaleDateString('ar-SA') + ' ' + dt.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'});
+    }
+
+    function openEditExam(exam) {
+        document.getElementById('edit-exam-course').value = exam.course_id;
+        document.getElementById('edit-exam-date').value = exam.exam_date ? exam.exam_date.substring(0, 16) : '';
+        document.getElementById('edit-exam-room').value = exam.room || '';
+        document.getElementById('edit-exam-score').value = exam.max_score || 100;
+        document.getElementById('edit-exam-form').action = `/hod/organization/exam/edit/${exam.exam_id}`;
+        openModal('edit-exam-modal');
+    }
+
     // Initial render
     document.addEventListener('DOMContentLoaded', () => {
         renderGrid();
+        renderExams();
     });
 
     function switchTab(tab) {

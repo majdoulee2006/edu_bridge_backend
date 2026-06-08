@@ -8,7 +8,6 @@
 
     <input checked class="hidden" id="tab-create" name="tabs" type="radio"/>
     <input class="hidden" id="tab-delete" name="tabs" type="radio"/>
-    <input class="hidden" id="tab-requests" name="tabs" type="radio"/>
 
     <!-- Tabs Header -->
     <div class="tab-list bg-white dark:bg-surface-dark p-1.5 rounded-[1.25rem] shadow-soft flex items-center justify-between relative z-10 border border-slate-100 dark:border-slate-850 transition-colors">
@@ -17,14 +16,6 @@
         </label>
         <label class="flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm text-center transition-all duration-300 cursor-pointer text-slate-500 dark:text-slate-450 hover:bg-slate-50 dark:hover:bg-slate-800/50 select-none" for="tab-delete">
             حذف حساب
-        </label>
-        <label class="flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm text-center transition-all duration-300 cursor-pointer text-slate-500 dark:text-slate-450 hover:bg-slate-50 dark:hover:bg-slate-800/50 select-none relative flex justify-center items-center gap-2" for="tab-requests">
-            الطلبات
-            @if(count($pendingUsers) > 0)
-                <span class="flex h-5 px-1.5 min-w-[20px] rounded-full bg-rose-500 text-white font-black text-[10px] items-center justify-center shadow-sm">
-                    {{ count($pendingUsers) }}
-                </span>
-            @endif
         </label>
     </div>
 
@@ -210,7 +201,8 @@
     </div>
 
     <!-- Tab 3: Requests -->
-    <div class="tab-content content-requests flex-col gap-6 mt-4">
+    {{-- تبويب الطلبات محذوف - الادارة تنشئ الحسابات مباشرة --}}
+    <div class="tab-content content-requests flex-col gap-6 mt-4" style="display:none!important">
         <div class="flex items-center justify-between mb-2 px-2">
             <h2 class="text-base font-bold text-slate-700 dark:text-slate-300">الطلبات الجديدة المعلقة</h2>
             <span class="text-xs font-extrabold px-3 py-1.5 rounded-full bg-primary/20 text-yellow-800 dark:text-yellow-400 shadow-sm">{{ count($pendingUsers) }} طلب معلق</span>
@@ -302,8 +294,7 @@
 @push('styles')
 <style>
     #tab-create:checked ~ .tab-list label[for="tab-create"],
-    #tab-delete:checked ~ .tab-list label[for="tab-delete"],
-    #tab-requests:checked ~ .tab-list label[for="tab-requests"] {
+    #tab-delete:checked ~ .tab-list label[for="tab-delete"] {
         background-color: #f2f20d;
         color: #1a2633;
         font-weight: 800;
@@ -313,8 +304,7 @@
         display: none;
     }
     #tab-create:checked ~ .content-create,
-    #tab-delete:checked ~ .content-delete,
-    #tab-requests:checked ~ .content-requests {
+    #tab-delete:checked ~ .content-delete {
         display: flex;
         animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }

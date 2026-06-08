@@ -9,8 +9,8 @@ class AbsenceRequest extends Model
 {
     use HasFactory;
 
-    protected $table = 'absence_requests';
     protected $primaryKey = 'request_id';
+    protected $table = 'absence_requests';
 
     protected $fillable = [
         'student_id',

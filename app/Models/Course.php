@@ -15,6 +15,7 @@ class Course extends Model
         'title',
         'description',
         'level',
+        'year',        // 1 = السنة الأولى، 2 = السنة الثانية
     ];
 
     // علاقة المادة بالمعلمين (Many to Many)
@@ -23,16 +24,37 @@ class Course extends Model
         return $this->belongsToMany(Teacher::class, 'course_teachers', 'course_id', 'teacher_id')
                     ->withPivot('role');
     }
-
-    // علاقة المادة بالأقسام (Many to Many)
-    public function departments()
+    
+    // إضافة علاقة المادة مع الطلاب
+    public function students()
     {
-        return $this->belongsToMany(Department::class, 'course_departments', 'course_id', 'department_id');
+        return $this->belongsToMany(Student::class, 'enrollments', 'course_id', 'student_id');
+    }
+    
+    // علاقة المادة بالمحاضرات (الدروس) - شغلك 
+    public function lessons()
+    {
+        return $this->hasMany(Lesson::class, 'course_id', 'course_id')
+                    ->orderBy('created_at', 'desc'); // عشان تترتب من الأحدث للأقدم
     }
 
-    // علاقة المادة بالواجبات
-    public function assignments()
+    // 👇 الإضافات الجديدة المطلوبة من زميلك 👇
+    
+    // علاقة المادة بالجدول الدراسي
+    public function schedule()
     {
-        return $this->hasMany(Assignment::class, 'course_id', 'course_id');
+        return $this->hasOne(Schedule::class, 'course_id', 'course_id');
+    }
+
+    // علاقة المادة بالإعلانات
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class, 'course_id', 'course_id');
+    }
+
+    // علاقة المادة بالبرامج/الدورات
+    public function programs()
+    {
+        return $this->belongsToMany(\App\Models\Program::class, 'course_program', 'course_id', 'program_id');
     }
 }

@@ -28,53 +28,69 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('hod.announcements.store') }}">
+        <form method="POST" action="{{ route('hod.announcements.store') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="form-group">
-                <label class="form-label">العنوان</label>
+                <label class="form-label">العنوان *</label>
                 <input type="text" name="title" class="form-control" value="{{ old('title') }}" required>
-                @error('title')
-                    <p class="text-red-600 mt-1">{{ $message }}</p>
-                @enderror
+                @error('title') <p class="text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div class="form-group">
-                <label class="form-label">المحتوى</label>
+                <label class="form-label">المحتوى *</label>
                 <textarea name="content" rows="4" class="form-control" required>{{ old('content') }}</textarea>
-                @error('content')
-                    <p class="text-red-600 mt-1">{{ $message }}</p>
-                @enderror
+                @error('content') <p class="text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">الجمهور المستهدف</label>
+                <select name="target_audience" class="form-control">
+                    <option value="all"      {{ old('target_audience') == 'all'      ? 'selected' : '' }}>الجميع (طلاب + معلمون)</option>
+                    <option value="students" {{ old('target_audience') == 'students' ? 'selected' : '' }}>الطلاب فقط</option>
+                    <option value="teachers" {{ old('target_audience') == 'teachers' ? 'selected' : '' }}>المعلمون فقط</option>
+                </select>
             </div>
 
             <div class="form-group">
                 <label class="form-label">النوع</label>
                 <select name="type" id="typeSelect" class="form-control" required>
-                    <option value="general" {{ old('type') == 'general' ? 'selected' : '' }}>إعلان عام</option>
-                    <option value="course_specific" {{ old('type') == 'course_specific' ? 'selected' : '' }}>إعلان خاص بدورة</option>
+                    <option value="general"         {{ old('type') == 'general'         ? 'selected' : '' }}>إعلان عام</option>
+                    <option value="course_specific" {{ old('type') == 'course_specific' ? 'selected' : '' }}>إعلان خاص بمادة</option>
                 </select>
-                @error('type')
-                    <p class="text-red-600 mt-1">{{ $message }}</p>
-                @enderror
             </div>
 
-            <div class="form-group" id="courseDiv" style="display: none;">
-                <label class="form-label">اختر الدورة</label>
+            <div class="form-group" id="courseDiv" style="display:none;">
+                <label class="form-label">اختر المادة</label>
                 <select name="course_id" class="form-control">
-                    <option value="">-- لا اختيار --</option>
+                    <option value="">-- اختر --</option>
                     @foreach($courses as $course)
                         <option value="{{ $course->course_id }}" {{ old('course_id') == $course->course_id ? 'selected' : '' }}>
                             {{ $course->title }}
                         </option>
                     @endforeach
                 </select>
-                @error('course_id')
-                    <p class="text-red-600 mt-1">{{ $message }}</p>
-                @enderror
             </div>
 
-            <button type="submit" class="btn-primary">حفظ الإعلان</button>
-            <a href="{{ url('/hod/dashboard') }}" style="margin-right: 1rem; color: #6b7280; text-decoration: none;">إلغاء</a>
+            <div class="form-group">
+                <label class="form-label">صورة مرفقة (اختياري)</label>
+                <input type="file" name="image" class="form-control" accept="image/*"
+                       style="padding: 0.5rem; cursor:pointer;">
+                <small style="color:#6b7280;">JPG / PNG / WebP — حتى 5MB</small>
+                @error('image') <p class="text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">رابط خارجي (اختياري)</label>
+                <input type="url" name="link_url" class="form-control"
+                       placeholder="https://..." value="{{ old('link_url') }}">
+                @error('link_url') <p class="text-red-600 mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div style="display:flex; gap:1rem; align-items:center; margin-top:1.5rem;">
+                <button type="submit" class="btn-primary">نشر الإعلان</button>
+                <a href="{{ url('/hod/dashboard') }}" style="color:#6b7280; text-decoration:none;">إلغاء</a>
+            </div>
         </form>
     </div>
 </div>

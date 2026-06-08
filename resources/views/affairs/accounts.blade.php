@@ -223,6 +223,23 @@
 
 @section('content')
 <div class="accounts-container">
+
+    {{-- رسائل النجاح والخطأ --}}
+    @if(session('success'))
+        <div id="flash-success" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;
+             border-radius:0.75rem;padding:1rem 1.25rem;margin-bottom:1.5rem;font-weight:600;
+             display:flex;align-items:center;gap:0.5rem;">
+            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div id="flash-error" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;
+             border-radius:0.75rem;padding:1rem 1.25rem;margin-bottom:1.5rem;font-weight:600;
+             display:flex;align-items:center;gap:0.5rem;">
+            <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
+        </div>
+    @endif
+
     <!-- Header -->
     <div class="page-header">
         <h2>إدارة الحسابات (المستخدمين)</h2>
@@ -252,7 +269,7 @@
     <div class="accounts-grid" id="accountsGrid">
         @forelse($users as $user)
             @php
-                $roleName = $user->role->name ?? 'user';
+                $roleName = is_string($user->role) ? $user->role : ($user->role->name ?? 'user');
                 $roleLabel = match($roleName) {
                     'student'      => 'طالب',
                     'teacher'      => 'معلم',
@@ -288,6 +305,20 @@
                             <i class="fa-solid {{ $isActive ? 'fa-ban' : 'fa-check' }}"></i>
                         </button>
                     </form>
+                    @if($roleName === 'student' && $user->student)
+                    <form method="POST"
+                          action="{{ route('affairs.students.reset-device', $user->student->student_id) }}"
+                          style="flex:1;"
+                          onsubmit="return confirmResetDevice('{{ $user->full_name }}')">
+                        @csrf
+                        <button type="submit"
+                                class="btn-icon"
+                                title="إعادة تسجيل الجهاز"
+                                style="width:100%; color: #f59e0b;">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                        </button>
+                    </form>
+                    @endif
                     <form method="POST" action="{{ route('affairs.accounts.delete', $user->user_id) }}" style="flex:1;" onsubmit="return confirm('هل أنت متأكد من حذف هذا الحساب؟')">
                         @csrf
                         <button type="submit" class="btn-icon btn-delete" title="حذف" style="width:100%;">
@@ -345,11 +376,8 @@
                     <label>نوع الحساب (الدور)</label>
                     <select name="role_id" class="form-control" required>
                         <option value="">-- اختر الدور --</option>
-                        <option value="3">طالب</option>
                         <option value="2">معلم</option>
                         <option value="5">رئيس قسم</option>
-                        <option value="4">ولي أمر</option>
-                        <option value="6">موظف شؤون</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -418,12 +446,22 @@
 
     searchInput.addEventListener('input', filterAccounts);
 
-    // Flash message auto-hide
-    @if(session('success'))
-        setTimeout(() => {
-            const flash = document.getElementById('flash-msg');
-            if(flash) flash.style.display = 'none';
-        }, 4000);
-    @endif
+    // تأكيد إعادة تسجيل الجهاز
+    function confirmResetDevice(studentName) {
+        return confirm(
+            'إعادة تسجيل جهاز الطالب: ' + studentName + '\n\n' +
+            'سيتمكن الطالب من تسجيل الدخول من جهاز جديد وسيُربط الجهاز الجديد بحسابه تلقائياً.\n\n' +
+            'هل تريد المتابعة؟'
+        );
+    }
+
+    // إخفاء رسائل Flash تلقائياً بعد 5 ثواني
+    setTimeout(() => {
+        ['flash-success', 'flash-error'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.transition = 'opacity 0.5s', el.style.opacity = '0',
+                    setTimeout(() => el.remove(), 500);
+        });
+    }, 5000);
 </script>
 @endpush

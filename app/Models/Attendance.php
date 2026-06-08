@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Attendance extends Model
 {
+    use HasFactory;
+
+
     protected $table = 'attendance';
     protected $primaryKey = 'attendance_id';
 
@@ -14,6 +18,9 @@ class Attendance extends Model
         'lesson_id',
         'status',
         'attendance_date',
+        'excuse_text',
+        'excuse_attachment',
+        'excuse_status',
     ];
 
     protected $casts = [

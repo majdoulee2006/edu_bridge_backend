@@ -13,45 +13,80 @@ class User extends Authenticatable
 
     protected $primaryKey = 'user_id';
 
-protected $fillable = [
+    protected $fillable = [
+        'role_id',
         'full_name',
+        'first_name',
+        'last_name',
         'username',
         'email',
         'password',
         'phone',
-        'role_id',
         'status',
         'university_id',
+        'gender',
+        'birth_date',
+        'academic_year',
         'department',
         'branch',
         'children_ids',
+        'avatar',
+        'device_token',
+        'last_login',
     ];
+
+    protected $appends = ['role'];
+
+    public function getRoleAttribute()
+    {
+        $roles = [
+            1 => 'admin',
+            2 => 'teacher',
+            3 => 'student',
+            4 => 'parent',
+            5 => 'head',
+            6 => 'affairs',
+        ];
+        return $roles[$this->role_id] ?? 'student';
+    }
+
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    public function role()
-    {
-        return $this->belongsTo(Role::class, 'role_id', 'role_id');
-    }
-
     protected function casts(): array
     {
         return [
-            'password' => 'hashed',
-            'children_ids' => 'array',
-            'birth_date' => 'date',
-
+            'email_verified_at' => 'datetime',
+            'password'          => 'hashed',
+            'children_ids'      => 'array',
+            'birth_date'        => 'date',
         ];
-
     }
 
-    // ✅ أضيفي هذه العلاقة ليعمل الـ load('student') في الراوت
     public function student()
     {
-        // تأكدي أن اسم المودل Student وأن الحقل الأجنبي هو user_id في جدول الطلاب
         return $this->hasOne(Student::class, 'user_id', 'user_id');
     }
 
+    public function teacher()
+    {
+        return $this->hasOne(Teacher::class, 'user_id', 'user_id');
+    }
+
+    public function parent()
+    {
+        return $this->hasOne(Parents::class, 'user_id', 'user_id');
+    }
+
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id', 'user_id');
+    }
+
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id', 'user_id');
+    }
 }

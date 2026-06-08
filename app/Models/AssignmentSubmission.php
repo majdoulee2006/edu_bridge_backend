@@ -12,6 +12,7 @@ class AssignmentSubmission extends Model
         'assignment_id',
         'student_id',
         'file_path',
+        'student_notes',
         'grade',
         'feedback',
         'submitted_at',

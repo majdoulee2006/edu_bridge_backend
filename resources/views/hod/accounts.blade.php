@@ -4,12 +4,7 @@
 
 @push('styles')
 <style>
-    .page-subtitle {
-        color: var(--text-secondary);
-        font-size: 1rem;
-        margin-top: -1.5rem;
-        margin-bottom: 2rem;
-    }
+    .page-subtitle { color: var(--text-secondary); font-size: 1rem; margin-top: -1.5rem; margin-bottom: 2rem; }
 
     .type-switcher {
         display: flex;
@@ -19,14 +14,13 @@
         margin-bottom: 2rem;
         box-shadow: var(--shadow);
     }
-    
     .type-btn {
         flex: 1;
         padding: 0.75rem;
         text-align: center;
         border-radius: 0.75rem;
         font-weight: 700;
-        font-size: 1.1rem;
+        font-size: 1rem;
         cursor: pointer;
         border: none;
         background: transparent;
@@ -37,11 +31,7 @@
         gap: 0.5rem;
         transition: all 0.3s;
     }
-    
-    .type-btn.active {
-        background-color: var(--accent-color);
-        color: #1a1a1a;
-    }
+    .type-btn.active { background-color: var(--accent-color); color: #1a1a1a; }
 
     .add-btn {
         width: 100%;
@@ -59,22 +49,10 @@
         cursor: pointer;
         margin-bottom: 2rem;
         transition: border-color 0.2s;
+        font-family: inherit;
     }
-
-    .add-btn:hover {
-        border-color: var(--accent-color);
-    }
-
-    .add-icon {
-        background-color: #fefce8;
-        color: #ca8a04;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+    .add-btn:hover { border-color: var(--accent-color); }
+    .add-icon { background-color: #fefce8; color: #ca8a04; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
     .account-card {
         background-color: var(--bg-secondary);
@@ -84,338 +62,380 @@
         box-shadow: var(--shadow);
         position: relative;
     }
-
-    .account-header {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .account-avatar {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-
-    .avatar-blue { background-color: #dbeafe; color: #1d4ed8; }
+    .account-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .account-avatar { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; }
+    .avatar-blue   { background-color: #dbeafe; color: #1d4ed8; }
     .avatar-purple { background-color: #f3e8ff; color: #7e22ce; }
     .avatar-orange { background-color: #ffedd5; color: #c2410c; }
+    .avatar-green  { background-color: #dcfce7; color: #16a34a; }
+    .account-info h4 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .account-info p  { color: var(--text-secondary); font-size: 0.88rem; }
+    .delete-btn-wrap { position: absolute; top: 1.25rem; left: 1.25rem; }
 
-    .account-info h4 {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin-bottom: 0.25rem;
-    }
+    .chips-container { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .chip { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.83rem; font-weight: 600; background-color: var(--bg-primary); color: var(--text-secondary); }
+    .chip-accent { background-color: #fefce8; color: #ca8a04; border: 1px solid #fef08a; }
 
-    .account-info p {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-    }
-
-    .menu-dots {
-        position: absolute;
-        top: 1.5rem;
-        left: 1.5rem;
-        color: var(--text-secondary);
-        cursor: pointer;
-    }
-
-    .chips-container {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
-    .chip {
-        padding: 0.25rem 0.75rem;
-        border-radius: 1rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        background-color: var(--bg-primary);
-        color: var(--text-secondary);
-    }
-    
-    .chip-highlight {
-        background-color: #fefce8;
-        color: #ca8a04;
-        border: 1px solid #fef08a;
-    }
-
-    /* Modal styles */
+    /* Modal */
     .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        opacity: 0;
-        pointer-events: none;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); display: flex; align-items: center;
+        justify-content: center; z-index: 1000; opacity: 0; pointer-events: none;
         transition: opacity 0.3s ease;
     }
-    .modal-overlay.active {
-        opacity: 1;
-        pointer-events: auto;
-    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
     .modal-card {
-        background-color: var(--bg-secondary);
-        border-radius: 1.5rem;
-        padding: 2.5rem;
-        width: 90%;
-        max-width: 500px;
-        box-shadow: var(--shadow);
-        transform: translateY(20px);
-        transition: transform 0.3s ease;
+        background-color: var(--bg-secondary); border-radius: 1.5rem; padding: 2rem;
+        width: 92%; max-width: 560px; box-shadow: var(--shadow);
+        transform: translateY(20px); transition: transform 0.3s ease;
+        max-height: 90vh; overflow-y: auto;
     }
-    .modal-overlay.active .modal-card {
-        transform: translateY(0);
+    .modal-overlay.active .modal-card { transform: translateY(0); }
+
+    .form-label { display: block; margin-bottom: 0.4rem; font-weight: 700; font-size: 0.88rem; color: var(--text-secondary); }
+    .form-input {
+        width: 100%; padding: 0.7rem 0.9rem; border-radius: 0.75rem;
+        border: 1px solid var(--border-color); background-color: var(--bg-primary);
+        color: var(--text-primary); font-family: inherit; font-size: 0.95rem;
+        box-sizing: border-box;
     }
+    .form-input:focus { outline: none; border-color: var(--accent-color); }
+    .form-group { margin-bottom: 0.9rem; }
+    .form-row { display: flex; gap: 0.75rem; margin-bottom: 0.9rem; }
+    .form-row > * { flex: 1; }
+
+    .gender-toggle { display: flex; background: var(--bg-primary); border-radius: 0.75rem; border: 1px solid var(--border-color); overflow: hidden; }
+    .gender-toggle label { flex: 1; text-align: center; padding: 0.65rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-secondary); transition: all 0.2s; }
+    .gender-toggle input[type=radio] { display: none; }
+    .gender-toggle input[type=radio]:checked + label { background-color: var(--accent-color); color: #1a1a1a; }
+
+    .courses-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; background: var(--bg-primary); border-radius: 0.75rem; border: 1px solid var(--border-color); padding: 0.75rem; max-height: 180px; overflow-y: auto; }
+    .course-check { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.5rem; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; }
+    .course-check:hover { border-color: var(--accent-color); background: rgba(202,138,4,0.05); }
+    .course-check input { accent-color: var(--accent-color); cursor: pointer; }
+    .course-check span { font-size: 0.83rem; font-weight: 600; color: var(--text-primary); }
+
+    .uid-result { display: none; font-size: 0.8rem; padding: 0.35rem 0.6rem; border-radius: 0.5rem; margin-top: 0.3rem; font-weight: 600; }
+    .uid-ok  { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .uid-err { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+    .btn-save   { background-color: var(--accent-color); color: #1a1a1a; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem; font-family: inherit; }
+    .btn-cancel { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); flex: 1; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem; font-family: inherit; }
 </style>
 @endpush
 
 @section('content')
     <p class="page-subtitle">إدارة المستخدمين والصلاحيات</p>
 
+    @if(session('success'))
+        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div style="background:#fef2f2;color:#dc2626;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('error') }}</div>
+    @endif
+
+    {{-- Tab Switcher --}}
     <div class="type-switcher">
-        <button class="type-btn active" id="btn-teachers" onclick="switchTab('teachers')"><i class="fa-solid fa-graduation-cap"></i> مدرب</button>
-        <button class="type-btn" id="btn-students" onclick="switchTab('students')"><i class="fa-solid fa-user-group"></i> طالب</button>
+        <button class="type-btn active" id="btn-teachers" onclick="switchTab('teachers')">
+            <i class="fa-solid fa-chalkboard-teacher"></i> مدرب
+        </button>
+        <button class="type-btn" id="btn-students" onclick="switchTab('students')">
+            <i class="fa-solid fa-user-graduate"></i> طالب
+        </button>
+        <button class="type-btn" id="btn-parents" onclick="switchTab('parents')">
+            <i class="fa-solid fa-people-roof"></i> ولي الأمر
+        </button>
     </div>
 
+    {{-- Add Button --}}
     <button id="add-account-btn" class="add-btn" onclick="openAddModal()">
         <div class="add-icon"><i class="fa-solid fa-plus"></i></div>
         <span id="add-btn-text">إضافة حساب مدرب جديد</span>
     </button>
 
-    <!-- Tab 1: Teachers List -->
-    <div id="tab-teachers" class="tab-content">
+    {{-- ===== Tab: Teachers ===== --}}
+    <div id="tab-teachers">
         @forelse($teachers as $index => $teacher)
-        @php
-            $colors = ['blue', 'purple', 'orange'];
-            $colorClass = 'avatar-' . $colors[$index % count($colors)];
-            $initial = mb_substr($teacher->full_name, 0, 1, 'UTF-8');
-        @endphp
-        <!-- Account Card -->
+        @php $colorClass = ['avatar-blue','avatar-purple','avatar-orange','avatar-green'][$index % 4]; @endphp
         <div class="account-card">
-            <form action="{{ route('hod.accounts.delete', $teacher->user_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من رغبتك في حذف هذا الحساب؟')" style="position: absolute; top: 1.5rem; left: 1.5rem;">
-                @csrf
-                <button type="submit" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1.1rem;">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            </form>
+            <div class="delete-btn-wrap">
+                <form action="{{ route('hod.accounts.delete', $teacher->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
+                    @csrf
+                    <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
+                </form>
+            </div>
             <div class="account-header">
-                <div class="account-avatar {{ $colorClass }}">{{ $initial }}</div>
+                <div class="account-avatar {{ $colorClass }}">{{ mb_substr($teacher->full_name,0,1,'UTF-8') }}</div>
                 <div class="account-info">
                     <h4>{{ $teacher->full_name }}</h4>
-                    <p>قسم {{ $teacher->specialization ?? 'عام' }} | اسم المستخدم: {{ $teacher->username }}</p>
+                    <p>{{ $teacher->department ?? '' }}{{ $teacher->department && $teacher->specialization ? ' — ' : '' }}{{ $teacher->specialization ?? '' }}</p>
                 </div>
             </div>
             <div class="chips-container">
+                @if($teacher->email)<span class="chip">{{ $teacher->email }}</span>@endif
+                @if($teacher->phone)<span class="chip">{{ $teacher->phone }}</span>@endif
                 @forelse($teacher->courses ?? [] as $course)
-                    <span class="chip">{{ $course }}</span>
+                    <span class="chip chip-accent">{{ $course }}</span>
                 @empty
-                    <span class="chip" style="background-color: transparent; border: 1px dashed var(--border-color);">لا يوجد مواد مسندة</span>
+                    <span class="chip" style="border:1px dashed var(--border-color);background:transparent;">لا توجد مواد مسندة</span>
                 @endforelse
             </div>
-            
-            <!-- Advisor controls -->
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                    @if($teacher->is_advisor)
-                        <span style="color: #10b981;"><i class="fa-solid fa-check-circle"></i> مربي لـ: {{ $teacher->advisor_course_title }}</span>
-                    @else
-                        <span><i class="fa-solid fa-times-circle"></i> ليس مربي دورة</span>
-                    @endif
-                </div>
-                <button onclick="openAdvisorModal({{ $teacher->teacher_id }}, '{{ $teacher->full_name }}')" class="btn" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
-                    <i class="fa-solid fa-user-tie"></i> تعيين مربي
-                </button>
-            </div>
         </div>
         @empty
-        <div class="account-card" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
-            لا توجد حسابات مدربين حالياً.
-        </div>
+        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">لا توجد حسابات مدربين حالياً.</div>
         @endforelse
     </div>
 
-    <!-- Tab 2: Students List -->
-    <div id="tab-students" class="tab-content" style="display: none;">
+    {{-- ===== Tab: Students ===== --}}
+    <div id="tab-students" style="display:none;">
         @forelse($students as $index => $student)
-        @php
-            $colors = ['blue', 'purple', 'orange'];
-            $colorClass = 'avatar-' . $colors[$index % count($colors)];
-            $initial = mb_substr($student->full_name, 0, 1, 'UTF-8');
-        @endphp
-        <!-- Account Card -->
+        @php $colorClass = ['avatar-blue','avatar-purple','avatar-orange','avatar-green'][$index % 4]; @endphp
         <div class="account-card">
-            <form action="{{ route('hod.accounts.delete', $student->user_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من رغبتك في حذف هذا الحساب؟')" style="position: absolute; top: 1.5rem; left: 1.5rem;">
-                @csrf
-                <button type="submit" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 1.1rem;">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            </form>
+            <div class="delete-btn-wrap">
+                <form action="{{ route('hod.accounts.delete', $student->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
+                    @csrf
+                    <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
+                </form>
+            </div>
             <div class="account-header">
-                <div class="account-avatar {{ $colorClass }}">{{ $initial }}</div>
+                <div class="account-avatar {{ $colorClass }}">{{ mb_substr($student->full_name,0,1,'UTF-8') }}</div>
                 <div class="account-info">
                     <h4>{{ $student->full_name }}</h4>
-                    <p>رمز الطالب: {{ $student->student_code }} | المستوى: {{ $student->level ?? 'غير محدد' }}</p>
+                    <p>{{ $student->department ?? '' }}{{ $student->department && $student->level ? ' — ' : '' }}{{ $student->level ?? '' }}</p>
                 </div>
             </div>
             <div class="chips-container">
-                <span class="chip">اسم المستخدم: {{ $student->username }}</span>
-                @if($student->phone)
-                    <span class="chip">{{ $student->phone }}</span>
-                @endif
-                @if($student->birth_date)
-                    <span class="chip">تاريخ الميلاد: {{ $student->birth_date }}</span>
-                @endif
+                @if($student->university_id)<span class="chip chip-accent">{{ $student->university_id }}</span>@endif
+                @if($student->email)<span class="chip">{{ $student->email }}</span>@endif
+                @if($student->phone)<span class="chip">{{ $student->phone }}</span>@endif
+                @if($student->gender)<span class="chip">{{ $student->gender }}</span>@endif
+                @if($student->birth_date)<span class="chip">{{ $student->birth_date }}</span>@endif
             </div>
         </div>
         @empty
-        <div class="account-card" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
-            لا توجد حسابات طلاب حالياً.
-        </div>
+        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">لا توجد حسابات طلاب حالياً.</div>
         @endforelse
     </div>
 
-    <!-- Add Teacher Modal -->
+    {{-- ===== Tab: Parents ===== --}}
+    <div id="tab-parents" style="display:none;">
+        @forelse($parents as $index => $parent)
+        @php $colorClass = ['avatar-green','avatar-blue','avatar-purple','avatar-orange'][$index % 4]; @endphp
+        <div class="account-card">
+            <div class="delete-btn-wrap">
+                <form action="{{ route('hod.accounts.delete', $parent->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
+                    @csrf
+                    <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
+                </form>
+            </div>
+            <div class="account-header">
+                <div class="account-avatar {{ $colorClass }}">{{ mb_substr($parent->full_name,0,1,'UTF-8') }}</div>
+                <div class="account-info">
+                    <h4>{{ $parent->full_name }}</h4>
+                    <p>{{ $parent->email }} @if($parent->phone) | {{ $parent->phone }} @endif</p>
+                </div>
+            </div>
+            <div class="chips-container">
+                <span class="chip" style="color:var(--text-secondary);font-size:0.8rem;">الأبناء:</span>
+                @forelse($parent->children ?? [] as $child)
+                    <span class="chip chip-accent">{{ $child }}</span>
+                @empty
+                    <span class="chip" style="border:1px dashed var(--border-color);background:transparent;">لا يوجد أبناء مرتبطون</span>
+                @endforelse
+            </div>
+        </div>
+        @empty
+        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">لا توجد حسابات أولياء أمور حالياً.</div>
+        @endforelse
+    </div>
+
+
+    {{-- ==================== MODALS ==================== --}}
+
+    {{-- Modal: Add Teacher --}}
     <div id="teacher-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">إضافة حساب مدرب جديد</h4>
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">إضافة حساب مدرب جديد</h4>
             <form action="{{ route('hod.accounts.store_teacher') }}" method="POST">
                 @csrf
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الاسم الكامل</label>
-                    <input type="text" name="full_name" required placeholder="مثال: د. أحمد الرواد" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-group">
+                    <label class="form-label">الاسم الكامل</label>
+                    <input type="text" name="full_name" required placeholder="مثال: د. أحمد المحمد" class="form-input">
                 </div>
-
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">اسم المستخدم</label>
-                    <input type="text" name="username" required placeholder="مثال: ahmed_teacher" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                </div>
-
-                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">البريد الإلكتروني</label>
-                        <input type="email" name="email" placeholder="teacher@domain.com" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">رقم الهاتف</label>
+                        <input type="tel" name="phone" placeholder="09xxxxxxxx" dir="ltr" class="form-input">
                     </div>
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">رقم الهاتف</label>
-                        <input type="text" name="phone" placeholder="09xxxxxxx" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                    <div>
+                        <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                        <input type="email" name="email" required placeholder="teacher@domain.com" dir="ltr" class="form-input">
                     </div>
                 </div>
-
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">التخصص / القسم</label>
-                    <input type="text" name="specialization" required placeholder="مثال: هندسة البرمجيات" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
+                        <select name="department" required class="form-input">
+                            <option value="" disabled selected>اختر القسم</option>
+                            @foreach($departments as $dept)
+                                <option value="{{ $dept->name }}">{{ $dept->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">التخصص <span style="color:#ef4444">*</span></label>
+                        <input type="text" name="specialization" required placeholder="مثال: هندسة برمجيات" class="form-input">
+                    </div>
                 </div>
-
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">كلمة المرور</label>
-                    <input type="password" name="password" minlength="6" required placeholder="••••••••" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-group">
+                    <label class="form-label">المواد التي يدرسها</label>
+                    <div class="courses-grid">
+                        @foreach($courses as $course)
+                        <label class="course-check">
+                            <input type="checkbox" name="courses[]" value="{{ $course->course_id }}">
+                            <span>{{ $course->title }}</span>
+                        </label>
+                        @endforeach
+                    </div>
                 </div>
-
-                <div style="display: flex; gap: 1rem;">
-                    <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">إضافة وحفظ</button>
-                    <button type="button" onclick="closeModal('teacher-modal')" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); flex: 1; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">إلغاء</button>
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <input type="password" name="password" required minlength="6" placeholder="••••••••" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">تأكيد كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <input type="password" name="password_confirmation" required placeholder="••••••••" class="form-input">
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+                    <button type="submit" class="btn-save">إضافة وحفظ</button>
+                    <button type="button" onclick="closeModal('teacher-modal')" class="btn-cancel">إلغاء</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Add Student Modal -->
+    {{-- Modal: Add Student --}}
     <div id="student-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">إضافة حساب طالب جديد</h4>
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">إضافة حساب طالب جديد</h4>
             <form action="{{ route('hod.accounts.store_student') }}" method="POST">
                 @csrf
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الاسم الكامل</label>
-                    <input type="text" name="full_name" required placeholder="مثال: يوسف المحمد" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-group">
+                    <label class="form-label">الاسم الكامل <span style="color:#ef4444">*</span></label>
+                    <input type="text" name="full_name" required placeholder="مثال: يوسف المحمد" class="form-input">
                 </div>
-
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">اسم المستخدم</label>
-                    <input type="text" name="username" required placeholder="مثال: yousef_student" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                </div>
-
-                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">رمز الطالب (كود)</label>
-                        <input type="text" name="student_code" required placeholder="مثال: STD005" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">رقم الهاتف</label>
+                        <input type="tel" name="phone" placeholder="09xxxxxxxx" dir="ltr" class="form-input">
                     </div>
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">المستوى</label>
-                        <input type="text" name="level" placeholder="مثال: السنة الأولى" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                    <div>
+                        <label class="form-label">الرقم الجامعي <span style="color:#ef4444">*</span></label>
+                        <input type="text" name="university_id" required placeholder="2023xxxx" dir="ltr" class="form-input">
                     </div>
                 </div>
-
-                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">تاريخ الميلاد</label>
-                        <input type="date" name="birth_date" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-group">
+                    <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                    <input type="email" name="email" required placeholder="student@university.edu" dir="ltr" class="form-input">
+                </div>
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
+                        <select name="department" required class="form-input">
+                            <option value="" disabled selected>اختر القسم</option>
+                            @foreach($departments as $dept)
+                                <option value="{{ $dept->name }}">{{ $dept->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">رقم الهاتف</label>
-                        <input type="text" name="phone" placeholder="09xxxxxxx" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                    <div>
+                        <label class="form-label">السنة الدراسية <span style="color:#ef4444">*</span></label>
+                        <select name="level" required class="form-input">
+                            <option value="" disabled selected>اختر السنة</option>
+                            <option value="السنة الأولى">السنة الأولى</option>
+                            <option value="السنة الثانية">السنة الثانية</option>
+                        </select>
                     </div>
                 </div>
-
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">البريد الإلكتروني</label>
-                    <input type="email" name="email" placeholder="student@domain.com" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">تاريخ الميلاد <span style="color:#ef4444">*</span></label>
+                        <input type="date" name="birth_date" required class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">الجنس <span style="color:#ef4444">*</span></label>
+                        <div class="gender-toggle">
+                            <input type="radio" name="gender" id="male-s" value="ذكر" checked>
+                            <label for="male-s">ذكر</label>
+                            <input type="radio" name="gender" id="female-s" value="أنثى">
+                            <label for="female-s">أنثى</label>
+                        </div>
+                    </div>
                 </div>
-
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">كلمة المرور</label>
-                    <input type="password" name="password" minlength="6" required placeholder="••••••••" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <input type="password" name="password" required minlength="6" placeholder="••••••••" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">تأكيد كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <input type="password" name="password_confirmation" required placeholder="••••••••" class="form-input">
+                    </div>
                 </div>
-
-                <div style="display: flex; gap: 1rem;">
-                    <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">إضافة وحفظ</button>
-                    <button type="button" onclick="closeModal('student-modal')" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); flex: 1; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">إلغاء</button>
+                <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+                    <button type="submit" class="btn-save">إضافة وحفظ</button>
+                    <button type="button" onclick="closeModal('student-modal')" class="btn-cancel">إلغاء</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Assign Advisor Modal -->
-    <div id="advisor-modal" class="modal-overlay">
+    {{-- Modal: Add Parent --}}
+    <div id="parent-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; text-align: center;">إعداد مربي الدورة</h4>
-            <p id="advisor-teacher-name" style="text-align: center; color: var(--text-secondary); margin-bottom: 1.5rem;"></p>
-            
-            <form action="{{ route('hod.accounts.advisor') }}" method="POST">
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">إضافة حساب ولي أمر جديد</h4>
+            <form action="{{ route('hod.accounts.store_parent') }}" method="POST">
                 @csrf
-                <input type="hidden" name="teacher_id" id="advisor-teacher-id">
-                
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">اختر الدورة / القاعة</label>
-                    <select name="course_id" id="advisor-course-id" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        <option value="">-- اختر الدورة --</option>
-                        @foreach($all_courses ?? [] as $course)
-                            <option value="{{ $course->course_id }}">{{ $course->title }}</option>
-                        @endforeach
-                    </select>
-                    <small style="color: var(--text-secondary); margin-top: 0.5rem; display: block;">ملاحظة: المعلم يمكن أن يكون مربياً لدورة واحدة فقط.</small>
+                <div class="form-group">
+                    <label class="form-label">الاسم الكامل <span style="color:#ef4444">*</span></label>
+                    <input type="text" name="full_name" required placeholder="مثال: يوسف الخالد" class="form-input">
                 </div>
-
-                <div style="display: flex; gap: 1rem;">
-                    <button type="submit" name="action" value="assign" class="btn" style="background-color: #10b981; color: white; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">تفعيل كمربي</button>
-                    <button type="submit" name="action" value="remove" class="btn" style="background-color: #ef4444; color: white; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">إلغاء المربي</button>
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">رقم الهاتف <span style="color:#ef4444">*</span></label>
+                        <input type="tel" name="phone" required placeholder="09xxxxxxxx" dir="ltr" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">اسم المستخدم <span style="color:#ef4444">*</span></label>
+                        <input type="text" name="username" required placeholder="yousef_parent" dir="ltr" class="form-input">
+                    </div>
                 </div>
-                <div style="margin-top: 1rem;">
-                    <button type="button" onclick="closeModal('advisor-modal')" class="btn" style="width: 100%; background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">إغلاق</button>
+                <div class="form-group">
+                    <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                    <input type="email" name="email" required placeholder="parent@test.com" dir="ltr" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">عدد الأبناء</label>
+                    <input type="number" id="children_count" min="1" max="10" value="1"
+                           oninput="updateChildrenFields(parseInt(this.value)||1)"
+                           class="form-input" placeholder="أدخل عدد الأبناء">
+                </div>
+                <div id="children-fields" style="margin-bottom:0.9rem;display:flex;flex-direction:column;gap:0.6rem;"></div>
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <input type="password" name="password" required minlength="6" placeholder="••••••••" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">تأكيد كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <input type="password" name="password_confirmation" required placeholder="••••••••" class="form-input">
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+                    <button type="submit" class="btn-save">إضافة وحفظ</button>
+                    <button type="button" onclick="closeModal('parent-modal')" class="btn-cancel">إلغاء</button>
                 </div>
             </form>
         </div>
@@ -429,41 +449,63 @@
 
     function switchTab(tab) {
         activeTab = tab;
-        if (tab === 'teachers') {
-            document.getElementById('tab-teachers').style.display = 'block';
-            document.getElementById('tab-students').style.display = 'none';
-            document.getElementById('btn-teachers').classList.add('active');
-            document.getElementById('btn-students').classList.remove('active');
-            document.getElementById('add-btn-text').innerText = 'إضافة حساب مدرب جديد';
-        } else {
-            document.getElementById('tab-teachers').style.display = 'none';
-            document.getElementById('tab-students').style.display = 'block';
-            document.getElementById('btn-teachers').classList.remove('active');
-            document.getElementById('btn-students').classList.add('active');
-            document.getElementById('add-btn-text').innerText = 'إضافة حساب طالب جديد';
-        }
+        ['teachers','students','parents'].forEach(t => {
+            document.getElementById('tab-' + t).style.display = (t === tab) ? 'block' : 'none';
+            document.getElementById('btn-' + t).classList.toggle('active', t === tab);
+        });
+        const labels = { teachers: 'مدرب جديد', students: 'طالب جديد', parents: 'ولي أمر جديد' };
+        document.getElementById('add-btn-text').innerText = 'إضافة حساب ' + labels[tab];
     }
 
     function openAddModal() {
-        if (activeTab === 'teachers') {
-            openModal('teacher-modal');
-        } else {
-            openModal('student-modal');
+        const map = { teachers: 'teacher-modal', students: 'student-modal', parents: 'parent-modal' };
+        openModal(map[activeTab]);
+        if (activeTab === 'parents') updateChildrenFields(1);
+    }
+
+    function openModal(id)  { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // ===== Children Fields (Parent Modal) =====
+    const ordinals = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر'];
+    let lookupTimers = {};
+
+    function updateChildrenFields(count) {
+        count = Math.max(1, Math.min(count, 10));
+        const container = document.getElementById('children-fields');
+        container.innerHTML = '';
+        for (let i = 1; i <= count; i++) {
+            container.innerHTML += `
+            <div>
+                <label class="form-label">الرقم الجامعي للابن ${ordinals[i-1] || i}</label>
+                <input name="children_university_ids[]" type="text" dir="ltr"
+                       placeholder="مثال: 2023xxxx" id="uid-input-${i}"
+                       oninput="lookupStudent(${i}, this.value)"
+                       ${i===1?'required':''} class="form-input">
+                <div id="uid-result-${i}" class="uid-result"></div>
+            </div>`;
         }
     }
 
-    function openAdvisorModal(teacherId, teacherName) {
-        document.getElementById('advisor-teacher-id').value = teacherId;
-        document.getElementById('advisor-teacher-name').innerText = "المعلم: " + teacherName;
-        openModal('advisor-modal');
-    }
-
-    function openModal(modalId) {
-        document.getElementById(modalId).classList.add('active');
-    }
-
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
+    function lookupStudent(index, uid) {
+        const result = document.getElementById('uid-result-' + index);
+        clearTimeout(lookupTimers[index]);
+        if (!uid || uid.length < 4) { result.style.display='none'; return; }
+        lookupTimers[index] = setTimeout(() => {
+            fetch('/api/student/info/' + encodeURIComponent(uid))
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.full_name) {
+                        result.className = 'uid-result uid-ok';
+                        result.textContent = '✓ ' + data.full_name + (data.department ? ' — ' + data.department : '') + (data.level ? ' — ' + data.level : '');
+                    } else {
+                        result.className = 'uid-result uid-err';
+                        result.textContent = '✗ الرقم الجامعي غير موجود';
+                    }
+                    result.style.display = 'block';
+                })
+                .catch(() => { result.style.display='none'; });
+        }, 500);
     }
 </script>
 @endpush

@@ -181,11 +181,27 @@ class AffairsWebController extends Controller
         return view('affairs.activities', compact('events'));
     }
 
-    // ─────────────────────────── Accounts ───────────────────────────
+    // ─────────────────────────── Accounts (معلم + رئيس قسم فقط) ────
     public function accounts()
     {
-        $users = User::with('role')->latest()->get();
+        $users = User::whereIn('role_id', [2, 3, 5])->with('student')->latest()->get();
         return view('affairs.accounts', compact('users'));
+    }
+
+    public function resetStudentDevice(Request $request, int $studentId)
+    {
+        $student = Student::find($studentId);
+
+        if (!$student) {
+            return back()->with('error', 'الطالب غير موجود.');
+        }
+
+        $student->update([
+            'device_id'        => null,
+            'is_device_locked' => 0,
+        ]);
+
+        return back()->with('success', 'تم إعادة تسجيل الجهاز بنجاح. يمكن للطالب الآن تسجيل الدخول من جهاز جديد.');
     }
 
     public function storeAccount(Request $request)
@@ -193,14 +209,13 @@ class AffairsWebController extends Controller
         $request->validate([
             'full_name' => 'required|string|max:255',
             'email'     => 'required|email|unique:users,email',
-            'role_id'   => 'required|integer|exists:roles,role_id',
+            'role_id'   => 'required|integer|in:2,5', // معلم أو رئيس قسم فقط
             'password'  => 'required|min:6',
         ], [
-            'email.unique'   => 'البريد الإلكتروني مستخدم بالفعل.',
-            'role_id.exists' => 'الدور المختار غير صحيح.',
+            'email.unique' => 'البريد الإلكتروني مستخدم بالفعل.',
+            'role_id.in'   => 'يمكن إنشاء حسابات للمعلمين ورؤساء الأقسام فقط.',
         ]);
 
-        // توليد username فريد من البريد الإلكتروني
         $baseUsername = explode('@', $request->email)[0];
         $username = $baseUsername;
         $counter = 1;
@@ -208,7 +223,6 @@ class AffairsWebController extends Controller
             $username = $baseUsername . $counter++;
         }
 
-        // إنشاء المستخدم الأساسي
         $user = User::create([
             'full_name' => $request->full_name,
             'email'     => $request->email,
@@ -218,37 +232,100 @@ class AffairsWebController extends Controller
             'username'  => $username,
         ]);
 
-        // إنشاء السجل الخاص بالدور في الجدول المناسب
-        switch ((int) $request->role_id) {
-            case 2: // معلم → teachers
-                DB::table('teachers')->insert([
-                    'user_id'        => $user->user_id,
-                    'specialization' => 'عام',
-                    'created_at'     => now(),
-                    'updated_at'     => now(),
-                ]);
-                break;
-
-            case 3: // طالب → students
-                // توليد كود طالب فريد
-                $studentCode = 'STU-' . strtoupper(substr($username, 0, 4)) . '-' . rand(1000, 9999);
-                while (DB::table('students')->where('student_code', $studentCode)->exists()) {
-                    $studentCode = 'STU-' . strtoupper(substr($username, 0, 4)) . '-' . rand(1000, 9999);
-                }
-                DB::table('students')->insert([
-                    'user_id'      => $user->user_id,
-                    'student_code' => $studentCode,
-                    'level'        => '1',
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]);
-                break;
-
-            // head (5) يحتاج department_id — يُضاف يدوياً من الإدارة
-            // parent (4) و affairs (6) لا يحتاجان جدول إضافي
+        if ((int) $request->role_id === 2) {
+            DB::table('teachers')->insert([
+                'user_id'        => $user->user_id,
+                'specialization' => 'عام',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
         }
 
         return back()->with('success', 'تم إنشاء الحساب بنجاح.');
+    }
+
+    // ─────────────────────────── الأرقام الجامعية ────────────────────
+    public function universityIds()
+    {
+        $ids = DB::table('university_ids')->orderByDesc('created_at')->get();
+        return view('affairs.university_ids', compact('ids'));
+    }
+
+    public function storeUniversityId(Request $request)
+    {
+        $request->validate([
+            'university_id' => 'required|string|unique:university_ids,university_id',
+            'full_name'     => 'required|string|max:255',
+        ], ['university_id.unique' => 'هذا الرقم الجامعي مسجّل مسبقاً.']);
+
+        DB::table('university_ids')->insert([
+            'university_id' => $request->university_id,
+            'full_name'     => $request->full_name,
+            'role'          => 'student',
+            'is_used'       => false,
+            'created_by'    => Auth::id(),
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+
+        return back()->with('success', 'تم إضافة الرقم الجامعي بنجاح.');
+    }
+
+    public function deleteUniversityId($id)
+    {
+        $uid = DB::table('university_ids')->where('id', $id)->first();
+        if ($uid && $uid->is_used) {
+            return back()->with('error', 'لا يمكن حذف رقم مستخدم.');
+        }
+        DB::table('university_ids')->where('id', $id)->delete();
+        return back()->with('success', 'تم الحذف.');
+    }
+
+    // ─────────────────────────── طلبات الحسابات المعلّقة ─────────────
+    public function pendingAccounts()
+    {
+        $pending = User::whereIn('role_id', [3, 4])
+            ->where('status', 'inactive')
+            ->orderByDesc('created_at')
+            ->get();
+        return view('affairs.pending_accounts', compact('pending'));
+    }
+
+    public function approveAccount($id)
+    {
+        $user = User::findOrFail($id);
+        $user->update(['status' => 'active']);
+
+        $notifTitle = 'تم تفعيل حسابك ✓';
+        $notifMsg   = 'مرحباً ' . $user->full_name . '! تم تفعيل حسابك. يمكنك الآن تسجيل الدخول.';
+        DB::table('notifications')->insert([
+            'user_id'    => $user->user_id,
+            'sender_id'  => Auth::user()->user_id,
+            'title'      => $notifTitle,
+            'message'    => $notifMsg,
+            'type'       => 'administrative',
+            'category'   => 'administrative',
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \App\Services\FcmService::sendToUser($user->user_id, $notifTitle, $notifMsg, ['type' => 'administrative']);
+
+        return back()->with('success', 'تم تفعيل الحساب.');
+    }
+
+    public function rejectAccount($id)
+    {
+        $user = User::findOrFail($id);
+        if ($user->university_id) {
+            DB::table('university_ids')
+                ->where('university_id', $user->university_id)
+                ->update(['is_used' => false]);
+        }
+        DB::table('students')->where('user_id', $id)->delete();
+        DB::table('parents')->where('user_id', $id)->delete();
+        $user->delete();
+        return back()->with('success', 'تم رفض الطلب وحذفه.');
     }
 
     public function toggleAccountStatus(Request $request, $id)
@@ -454,5 +531,92 @@ class AffairsWebController extends Controller
     public function announcements()
     {
         return view('affairs.announcements');
+    }
+
+    // ===== التقارير =====
+
+    public function reports()
+    {
+        // التقارير المنجزة (الصادرة)
+        $reports = DB::table('performance_reports')
+            ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
+            ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->leftJoin('report_requests', 'performance_reports.report_request_id', '=', 'report_requests.id')
+            ->leftJoin('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as tu', 'teachers.user_id', '=', 'tu.user_id')
+            ->select(
+                'performance_reports.*',
+                'su.full_name as student_name',
+                'tu.full_name as teacher_name'
+            )
+            ->orderByDesc('performance_reports.created_at')
+            ->get();
+
+        // للنموذج: قائمة الطلاب والمدربين
+        $students = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select('students.student_id', 'users.full_name')
+            ->orderBy('users.full_name')
+            ->get();
+
+        $teachers = DB::table('teachers')
+            ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->select('teachers.teacher_id', 'users.full_name')
+            ->orderBy('users.full_name')
+            ->get();
+
+        return view('affairs.reports', compact('reports', 'students', 'teachers'));
+    }
+
+    public function storeReport(Request $request)
+    {
+        $request->validate([
+            'student_id'  => 'required|exists:students,student_id',
+            'teacher_id'  => 'required|exists:teachers,teacher_id',
+            'report_type' => 'required|in:academic,behavioral',
+            'notes'       => 'nullable|string|max:1000',
+        ]);
+
+        $requestId = DB::table('report_requests')->insertGetId([
+            'head_id'     => null,
+            'teacher_id'  => $request->teacher_id,
+            'student_id'  => $request->student_id,
+            'report_type' => $request->report_type,
+            'notes'       => $request->notes,
+            'status'      => 'pending',
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        // إشعار المدرب (داخلي + FCM)
+        $teacherUserId = DB::table('teachers')->where('teacher_id', $request->teacher_id)->value('user_id');
+        $studentName   = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $request->student_id)
+            ->value('users.full_name') ?? 'طالب';
+
+        $typLabel = $request->report_type === 'behavioral' ? 'سلوكي' : 'أكاديمي';
+        $title    = 'طلب تقرير جديد';
+        $message  = 'طُلب منك تقرير ' . $typLabel . ' عن الطالب ' . $studentName;
+
+        DB::table('notifications')->insert([
+            'user_id'    => $teacherUserId,
+            'sender_id'  => auth()->id(),
+            'title'      => $title,
+            'message'    => $message,
+            'type'       => 'report_request',
+            'related_id' => $requestId,
+            'category'   => 'academic',
+            'is_read'    => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \App\Services\FcmService::sendToUser($teacherUserId, $title, $message, [
+            'type'       => 'report_request',
+            'request_id' => (string) $requestId,
+        ]);
+
+        return redirect()->back()->with('success', 'تم إرسال طلب التقرير للمدرب وتم إشعاره بنجاح!');
     }
 }

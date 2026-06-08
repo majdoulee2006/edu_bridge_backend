@@ -3,24 +3,30 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Message extends Model
 {
-    // لأنك استخدمتي $table->bigIncrements('id') في المايجريشن
-    protected $primaryKey = 'id';
+    use HasFactory;
 
     protected $fillable = [
         'sender_id',
         'receiver_id',
+        'course_id',
         'message',
-        'is_read'
+        'attachment',
+        'is_read',
+        'reply_to_message_id', 
+        'group_id'
     ];
 
+    // 🌟 جلب بيانات المرسل من جدول الـ Users
     public function sender()
     {
         return $this->belongsTo(User::class, 'sender_id', 'user_id');
     }
 
+    // 🌟 جلب بيانات المستقبل من جدول الـ Users
     public function receiver()
     {
         return $this->belongsTo(User::class, 'receiver_id', 'user_id');

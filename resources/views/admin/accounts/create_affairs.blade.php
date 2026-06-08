@@ -1,16 +1,20 @@
 @extends('layouts.admin')
 
 @section('title', 'إنشاء حساب موظف شؤون')
-@section('header-title', 'إنشاء حساب موظف شؤون')
-@section('header-subtitle', 'إضافة موظف شؤون طلاب/إداري جديد في النظام')
-
-@section('back-button')
-    <a href="{{ route('admin.accounts') }}" class="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-        <span class="material-symbols-outlined text-slate-800 dark:text-white text-2xl">arrow_forward</span>
-    </a>
-@endsection
 
 @section('content')
+
+    {{-- ===== Page Header ===== --}}
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{{ route('admin.accounts') }}"
+           class="w-10 h-10 rounded-2xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft flex-shrink-0">
+            <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+        </a>
+        <div>
+            <h2 class="text-xl font-bold text-slate-800 dark:text-white">إنشاء حساب موظف شؤون</h2>
+            <span class="text-xs text-slate-400 dark:text-slate-500">إضافة موظف شؤون طلاب/إداري جديد في النظام</span>
+        </div>
+    </div>
 
     <form class="space-y-5 pb-10" action="{{ route('admin.accounts.store.affairs') }}" method="POST">
         @csrf
@@ -27,26 +31,11 @@
             @enderror
         </div>
 
-        <!-- Phone & Username -->
-        <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">رقم الهاتف</label>
-                <div class="relative group">
-                    <input name="phone" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm" dir="ltr" placeholder="09xxxxxxxx" type="tel" value="{{ old('phone') }}"/>
-                </div>
-                @error('phone')
-                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-                @enderror
-            </div>
-            <div class="space-y-1.5">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">اسم المستخدم</label>
-                <div class="relative group">
-                    <input required name="username" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm" dir="ltr" placeholder="affairs_user" type="text" value="{{ old('username') }}"/>
-                </div>
-                @error('username')
-                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-                @enderror
-            </div>
+        <!-- رقم الهاتف -->
+        <div class="space-y-1.5">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">رقم الهاتف</label>
+            <input name="phone" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm" dir="ltr" placeholder="09xxxxxxxx" type="tel" value="{{ old('phone') }}"/>
+            @error('phone')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
         </div>
 
         <!-- Email -->

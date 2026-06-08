@@ -101,7 +101,14 @@
         align-items: center;
         justify-content: center;
         font-size: 1.25rem;
+        flex-shrink: 0;
     }
+    .icon-green  { background-color: #f0fdf4; color: #16a34a; }
+    .icon-blue   { background-color: #eff6ff; color: #2563eb; }
+    .icon-purple { background-color: #faf5ff; color: #9333ea; }
+    .icon-gold   { background-color: #fefce8; color: #ca8a04; }
+    .icon-teal   { background-color: #f0fdfa; color: #0d9488; }
+    .icon-red    { background-color: #fef2f2; color: #dc2626; }
     
     .item-details p {
         color: var(--text-secondary);
@@ -232,67 +239,47 @@
         <span class="profile-role">رئيس القسم الأكاديمي</span>
     </div>
 
+    {{-- Section 1: معلومات التواصل --}}
     <div class="info-section">
-        <h3 class="section-label">بيانات الحساب</h3>
+        <h3 class="section-label">معلومات التواصل</h3>
         <div class="info-card">
+            {{-- رقم الهاتف --}}
             <div class="info-item">
                 <div class="item-content" style="width: 100%;">
-                    <div class="item-icon"><i class="fa-solid fa-phone"></i></div>
+                    <div class="item-icon icon-green"><i class="fa-solid fa-phone"></i></div>
                     <div class="item-details" style="flex: 1; margin-right: 1.5rem;">
                         <p>رقم الهاتف</p>
-                        
                         <div id="phone-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <h5 dir="ltr" style="text-align: right;">{{ $user->phone ?? 'غير متوفر' }}</h5>
                             <i class="fa-solid fa-pen edit-icon" onclick="toggleEdit('phone')"></i>
                         </div>
-
                         <form id="phone-form" action="{{ route('hod.profile.update') }}" method="POST" style="display: none; align-items: center; gap: 1rem; width: 100%; margin-top: 0.5rem;">
                             @csrf
-                            <input type="text" name="phone" value="{{ $user->phone }}" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <input type="text" name="phone" value="{{ $user->phone }}" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
                             <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">حفظ</button>
-                            <button type="button" class="btn" onclick="toggleEdit('phone')" style="background-color: #f3f4f6; color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
+                            <button type="button" class="btn" onclick="toggleEdit('phone')" style="background-color: var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
                         </form>
                     </div>
                 </div>
             </div>
-            
+
+            <div style="height: 1px; background-color: var(--border-color); margin: 0 1rem;"></div>
+
+            {{-- البريد الإلكتروني --}}
             <div class="info-item">
                 <div class="item-content" style="width: 100%;">
-                    <div class="item-icon"><i class="fa-solid fa-envelope"></i></div>
+                    <div class="item-icon icon-blue"><i class="fa-solid fa-envelope"></i></div>
                     <div class="item-details" style="flex: 1; margin-right: 1.5rem;">
                         <p>البريد الإلكتروني</p>
-                        
                         <div id="email-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <h5>{{ $user->email ?? 'email@example.com' }}</h5>
                             <i class="fa-solid fa-pen edit-icon" onclick="toggleEdit('email')"></i>
                         </div>
-
                         <form id="email-form" action="{{ route('hod.profile.update') }}" method="POST" style="display: none; align-items: center; gap: 1rem; width: 100%; margin-top: 0.5rem;">
                             @csrf
-                            <input type="email" name="email" value="{{ $user->email }}" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color);" required>
+                            <input type="email" name="email" value="{{ $user->email }}" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);" required>
                             <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">حفظ</button>
-                            <button type="button" class="btn" onclick="toggleEdit('email')" style="background-color: #f3f4f6; color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="info-item">
-                <div class="item-content" style="width: 100%;">
-                    <div class="item-icon"><i class="fa-solid fa-lock"></i></div>
-                    <div class="item-details" style="flex: 1; margin-right: 1.5rem;">
-                        <p>كلمة المرور</p>
-                        
-                        <div id="password-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <h5>••••••••</h5>
-                            <button class="btn btn-primary" onclick="toggleEdit('password')" style="background-color: var(--border-color); color: var(--text-primary); border-radius: 1rem; padding: 0.25rem 1rem; font-size: 0.85rem;">تغيير</button>
-                        </div>
-
-                        <form id="password-form" action="{{ route('hod.profile.update') }}" method="POST" style="display: none; align-items: center; gap: 1rem; width: 100%; margin-top: 0.5rem;">
-                            @csrf
-                            <input type="password" name="password" placeholder="كلمة المرور الجديدة" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color);" minlength="6" required>
-                            <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">حفظ</button>
-                            <button type="button" class="btn" onclick="toggleEdit('password')" style="background-color: #f3f4f6; color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
+                            <button type="button" class="btn" onclick="toggleEdit('email')" style="background-color: var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
                         </form>
                     </div>
                 </div>
@@ -300,47 +287,71 @@
         </div>
     </div>
 
+    {{-- Section 2: المعلومات الشخصية --}}
     <div class="info-section">
         <h3 class="section-label">المعلومات الشخصية</h3>
         <div class="info-card">
             <div class="info-item">
                 <div class="item-content">
-                    <div class="item-icon" style="background-color: #f3f4f6; color: #6b7280;"><i class="fa-solid fa-building"></i></div>
+                    <div class="item-icon icon-purple"><i class="fa-solid fa-building"></i></div>
                     <div class="item-details">
                         <p>القسم</p>
-                        <h5>{{ $departmentName }}</h5>
+                        <h5>{{ $departmentName ?? 'غير محدد' }}</h5>
                     </div>
                 </div>
-                <i class="fa-solid fa-lock edit-icon" style="opacity: 0.5;"></i>
+                <i class="fa-solid fa-lock edit-icon" style="opacity: 0.4;"></i>
             </div>
-            
+        </div>
+    </div>
+
+    {{-- Section 3: الصلاحيات والنظام --}}
+    <div class="info-section">
+        <h3 class="section-label">الصلاحيات والنظام</h3>
+        <div class="info-card">
             <div class="info-item">
                 <div class="item-content">
-                    <div class="item-icon"><i class="fa-regular fa-calendar"></i></div>
+                    <div class="item-icon icon-gold"><i class="fa-solid fa-user-shield"></i></div>
                     <div class="item-details">
-                        <p>تاريخ الانضمام</p>
-                        <h5>{{ $user && $user->created_at ? \Carbon\Carbon::parse($user->created_at)->format('d F Y') : 'غير متوفر' }}</h5>
+                        <p>نوع الحساب</p>
+                        <h5>رئيس القسم</h5>
                     </div>
                 </div>
-                <i class="fa-solid fa-lock edit-icon" style="opacity: 0.5;"></i>
+                <i class="fa-solid fa-lock edit-icon" style="opacity: 0.4;"></i>
             </div>
 
+            <div style="height: 1px; background-color: var(--border-color); margin: 0 1rem;"></div>
+
+            <div class="info-item">
+                <div class="item-content">
+                    <div class="item-icon icon-teal"><i class="fa-regular fa-clock"></i></div>
+                    <div class="item-details">
+                        <p>آخر تسجيل دخول</p>
+                        <h5>{{ $user && $user->updated_at ? \Carbon\Carbon::parse($user->updated_at)->format('d/m/Y H:i') : 'غير متاح' }}</h5>
+                    </div>
+                </div>
+                <i class="fa-solid fa-lock edit-icon" style="opacity: 0.4;"></i>
+            </div>
+        </div>
+    </div>
+
+    {{-- Section 4: الإعدادات والأمان --}}
+    <div class="info-section">
+        <h3 class="section-label">الإعدادات والأمان</h3>
+        <div class="info-card">
             <div class="info-item">
                 <div class="item-content" style="width: 100%;">
-                    <div class="item-icon"><i class="fa-solid fa-cake-candles"></i></div>
+                    <div class="item-icon icon-red"><i class="fa-solid fa-lock"></i></div>
                     <div class="item-details" style="flex: 1; margin-right: 1.5rem;">
-                        <p>تاريخ الميلاد</p>
-                        
-                        <div id="dob-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <h5>{{ $user->birth_date ?? 'غير متوفر' }}</h5>
-                            <i class="fa-solid fa-pen edit-icon" onclick="toggleEdit('dob')"></i>
+                        <p>كلمة المرور</p>
+                        <div id="password-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <h5>••••••••</h5>
+                            <button onclick="toggleEdit('password')" style="background-color: var(--border-color); color: var(--text-primary); border-radius: 1rem; padding: 0.25rem 1rem; font-size: 0.85rem; border: none; cursor: pointer; font-weight: 700;">تغيير</button>
                         </div>
-
-                        <form id="dob-form" action="{{ route('hod.profile.update') }}" method="POST" style="display: none; align-items: center; gap: 1rem; width: 100%; margin-top: 0.5rem;">
+                        <form id="password-form" action="{{ route('hod.profile.update') }}" method="POST" style="display: none; align-items: center; gap: 1rem; width: 100%; margin-top: 0.5rem;">
                             @csrf
-                            <input type="date" name="birth_date" value="{{ $user->birth_date }}" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <input type="password" name="password" placeholder="كلمة المرور الجديدة" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);" minlength="6" required>
                             <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">حفظ</button>
-                            <button type="button" class="btn" onclick="toggleEdit('dob')" style="background-color: #f3f4f6; color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
+                            <button type="button" class="btn" onclick="toggleEdit('password')" style="background-color: var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
                         </form>
                     </div>
                 </div>
@@ -404,12 +415,6 @@
         e.preventDefault();
         activeFormId = 'phone-form';
         sendOTPRequest({ phone: this.querySelector('input[name="phone"]').value });
-    });
-
-    document.getElementById('dob-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        activeFormId = 'dob-form';
-        sendOTPRequest({ birth_date: this.querySelector('input[name="birth_date"]').value });
     });
 
     document.getElementById('email-form').addEventListener('submit', function(e) {

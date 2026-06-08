@@ -16,14 +16,10 @@ class RoleMiddleware
             return response()->json(['success' => false, 'message' => 'يجب تسجيل الدخول أولاً'], 401);
         }
 
-        if (!$user->role) {
-            return response()->json(['success' => false, 'message' => 'لا يوجد دور للمستخدم'], 403);
-        }
-
         $allowedRoles = explode(',', $role);
-        $userRole = $user->role->name ?? 'student';
+        $userRole = $user->role;
 
-        if (!in_array($userRole, $allowedRoles)) {
+        if (!$userRole || !in_array($userRole, $allowedRoles)) {
             return response()->json([
                 'success' => false,
                 'message' => 'غير مصرح لك بالوصول لهذه الخدمة'

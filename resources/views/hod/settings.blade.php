@@ -162,19 +162,6 @@
         </div>
     </div>
 
-    <div class="settings-group">
-        <div class="settings-group-title">اللغة</div>
-        <div class="setting-item">
-            <div class="setting-label">
-                لغة التطبيق
-                <i class="fa-solid fa-globe" style="margin-right: 0.5rem;"></i>
-            </div>
-            <div class="toggle-container">
-                <button class="toggle-btn" onclick="setLang('en')">EN</button>
-                <button class="toggle-btn active" onclick="setLang('ar')">عربي</button>
-            </div>
-        </div>
-    </div>
 
     <div class="settings-group">
         <div class="settings-group-title">الإشعارات</div>
@@ -206,26 +193,5 @@
 
 @push('scripts')
 <script>
-    function setLang(lang) {
-        // Here we would typically save the language in localStorage
-        // and reload the page or change direction dynamically.
-        const settings = JSON.parse(localStorage.getItem('hodSettings')) || {};
-        settings.lang = lang;
-        localStorage.setItem('hodSettings', JSON.stringify(settings));
-        
-        if (lang === 'en') {
-            document.documentElement.setAttribute('dir', 'ltr');
-            document.documentElement.setAttribute('lang', 'en');
-            // update toggle UI
-            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector('button[onclick="setLang(\'en\')"]').classList.add('active');
-        } else {
-            document.documentElement.setAttribute('dir', 'rtl');
-            document.documentElement.setAttribute('lang', 'ar');
-            // update toggle UI
-            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector('button[onclick="setLang(\'ar\')"]').classList.add('active');
-        }
-    }
 </script>
 @endpush

@@ -1,6 +1,6 @@
-@extends('layouts.affairs')
+﻿@extends('layouts.affairs')
 @section('title', 'الرئيسية')
-@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'موظف الشؤون'))
+@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'موظ� الشؤون'))
 
 @push('styles')
 <style>
@@ -24,7 +24,7 @@
     }
     .view-all:hover { text-decoration: underline; }
 
-    /* ── Stats ── */
+    /* â”€â”€ Stats â”€â”€ */
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -50,7 +50,7 @@
     .stat-number { font-size: 2rem; font-weight: 900; line-height: 1; }
     .stat-label  { font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; margin-top: 0.2rem; }
 
-    /* ── Alert Bar ── */
+    /* â”€â”€ Alert Bar â”€â”€ */
     .alert-bar {
         background: rgba(239,68,68,0.08);
         border: 1px solid rgba(239,68,68,0.3);
@@ -62,7 +62,7 @@
         justify-content: space-between;
     }
 
-    /* ── Carousel ── */
+    /* â”€â”€ Carousel â”€â”€ */
     .announcements-carousel {
         display: flex;
         gap: 1rem;
@@ -131,7 +131,7 @@
         font-weight: 600;
     }
 
-    /* ── Posts ── */
+    /* â”€â”€ Posts â”€â”€ */
     .post-card {
         background: var(--bg-secondary);
         border-radius: 1.25rem;
@@ -198,7 +198,7 @@
 
 @section('content')
 
-{{-- ── Stats ── --}}
+{{-- â”€â”€ Stats â”€â”€ --}}
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon" style="background:rgba(252,227,0,0.15); color:var(--accent-color);">
@@ -255,10 +255,10 @@
 </div>
 @endif
 
-{{-- ── إعلانات المؤسسة (كاروسيل) ── --}}
+{{-- ── إعلانات المؤسسة (كاروسيل) â”€â”€ --}}
 <div class="section-header">
     <h2 class="section-title">إعلانات المؤسسة</h2>
-    <a href="{{ route('affairs.announcements') }}" class="view-all">عرض الكل</a>
+    {{-- عرض الكل محذوف --}}
 </div>
 
 <div class="announcements-carousel">
@@ -289,7 +289,7 @@
 
 @forelse($posts as $post)
     @php
-        // اختيار لون الأفاتار بناءً على الـ index
+        // اختيار لون الأ�اتار بناءً على الـ index
         $colors = ['#111827','#1d4ed8','#065f46','#7c3aed','#be123c','#b45309'];
         $color  = $colors[$loop->index % count($colors)];
         $initials = mb_substr($post->user->full_name ?? 'إ', 0, 1);
@@ -310,8 +310,8 @@
         <h3 class="post-title">{{ $post->title }}</h3>
         <p class="post-content">{{ $post->content }}</p>
 
-        @if($post->image_path)
-            <img src="{{ asset('storage/' . $post->image_path) }}" alt="{{ $post->title }}" class="post-image">
+        @if($post->image)
+            <img src="{{ asset('storage/' . $post->image) }}" alt="{{ $post->title }}" class="post-image">
         @endif
     </div>
 @empty
@@ -322,3 +322,4 @@
 @endforelse
 
 @endsection
+

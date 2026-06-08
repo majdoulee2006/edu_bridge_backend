@@ -1,4 +1,4 @@
-@extends('layouts.teacher')
+﻿@extends('layouts.teacher')
 @section('title', 'الرئيسية')
 @section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'أستاذ'))
 
@@ -140,11 +140,10 @@
 
 @section('content')
 
-{{-- ===== Stats (3 cards) ===== --}}
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 2rem;">
+{{-- ===== Stats (2 cards) ===== --}}
+<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-bottom: 2rem;">
 
-    {{-- Card 1: المواد الدراسية - clickable --}}
-    <div class="stat-card" onclick="openModal('courses-modal')" title="اضغط لعرض قائمة المواد">
+    <div class="stat-card" onclick="openModal('courses-modal')">
         <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
         <div>
             <div class="stat-value">{{ $courses->count() }}</div>
@@ -153,22 +152,12 @@
         </div>
     </div>
 
-    {{-- Card 2: الواجبات - clickable --}}
-    <div class="stat-card" onclick="openModal('assignments-modal')" title="اضغط لعرض قائمة الواجبات">
+    <div class="stat-card" onclick="openModal('assignments-modal')">
         <div class="stat-icon"><i class="fa-solid fa-file-pen"></i></div>
         <div>
             <div class="stat-value">{{ $recentAssignments->count() }}</div>
             <div class="stat-label">الواجبات النشطة</div>
             <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
-        </div>
-    </div>
-
-    {{-- Card 3: حصص اليوم - plain --}}
-    <div class="stat-card stat-card-plain">
-        <div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div>
-        <div>
-            <div class="stat-value">{{ $todayCount }}</div>
-            <div class="stat-label">حصص اليوم</div>
         </div>
     </div>
 
@@ -181,47 +170,94 @@
         آخر الأخبار والإعلانات
     </p>
 
-    @forelse($announcements as $index => $ann)
-        @if($index === 0)
-            <!-- Large Card -->
-            <div class="announce-card-large">
-                <div class="announce-large-header">
-                    @if($ann->image_path ?? false)
-                        <img src="{{ asset('storage/' . $ann->image_path) }}" class="announce-large-img" alt="صورة الإعلان">
-                    @else
-                        <div class="announce-large-icon"><i class="fa-solid fa-bullhorn"></i></div>
-                    @endif
-                    <span class="announce-badge">{{ $ann->category ?? 'إعلان هام' }}</span>
-                </div>
-                <div class="announce-large-body">
-                    <div class="announce-meta">
-                        <i class="fa-regular fa-clock"></i>
-                        <span>{{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
-                        <span style="margin: 0 0.25rem;">·</span>
-                        <span>موجه إلى: {{ (($ann->target_audience ?? '') === 'all' || ($ann->type ?? '') === 'general') ? 'الجميع' : ($ann->target_audience ?? 'المعلمون') }}</span>
+    @forelse($announcements as $ann)
+        @php
+            $imgUrl  = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
+            $isOwner = isset($ann->user_id) && $ann->user_id == Auth::id();
+            $annId   = $ann->announcement_id ?? $ann->id;
+        @endphp
+
+        @if($loop->first)
+        {{-- كارت كبير --}}
+        <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 1.25rem; min-height: 200px;">
+            {{-- صورة يسار --}}
+            <div style="width: 38%; flex-shrink: 0; background: #1e293b; position: relative; overflow: hidden;">
+                @if($imgUrl)
+                    <a href="{{ $imgUrl }}" target="_blank" download style="display: block; position: absolute; inset: 0;">
+                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0); transition: background 0.2s;"
+                             onmouseover="this.style.background='rgba(0,0,0,0.35)'"
+                             onmouseout="this.style.background='rgba(0,0,0,0)'">
+                            <i class="fa-solid fa-download" style="color: white; font-size: 1.8rem; opacity: 0;"></i>
+                        </div>
+                    </a>
+                @else
+                    <i class="fa-solid fa-bullhorn" style="position: absolute; inset: 0; margin: auto; font-size: 4rem; color: rgba(255,255,255,0.08); width: fit-content; height: fit-content;"></i>
+                @endif
+            </div>
+            {{-- نص يمين --}}
+            <div style="flex: 1; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <span style="background: var(--accent-color); color: #1a1a1a; padding: 0.2rem 0.75rem; border-radius: 2rem; font-size: 0.78rem; font-weight: 700;">إعلان هام</span>
+                        @if($isOwner)
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="{{ route('teacher.announcements.edit', $annId) }}"
+                               style="display: flex; align-items: center; gap: 0.25rem; padding: 0.3rem 0.6rem; border-radius: 0.5rem; background: #eff6ff; color: #1d4ed8; font-size: 0.75rem; font-weight: 700; text-decoration: none;">
+                                <i class="fa-solid fa-pen" style="font-size: 0.7rem;"></i> تعديل
+                            </a>
+                            <form action="{{ route('teacher.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف الإعلان؟')" style="margin: 0;">
+                                @csrf
+                                <button type="submit" style="display: flex; align-items: center; gap: 0.25rem; padding: 0.3rem 0.6rem; border-radius: 0.5rem; background: #fef2f2; color: #dc2626; font-size: 0.75rem; font-weight: 700; border: none; cursor: pointer; font-family: inherit;">
+                                    <i class="fa-solid fa-trash" style="font-size: 0.7rem;"></i> حذف
+                                </button>
+                            </form>
+                        </div>
+                        @endif
                     </div>
-                    <h4 class="announce-title">{{ $ann->title }}</h4>
-                    <p class="announce-text">{{ Str::limit($ann->content, 150) }}</p>
+                    <h4 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-primary);">{{ $ann->title }}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">{{ Str::limit($ann->content, 200) }}</p>
+                </div>
+                <div style="margin-top: 0.75rem; font-size: 0.78rem; color: var(--text-secondary);">
+                    <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}
                 </div>
             </div>
+        </div>
         @else
-            <!-- Compact Card -->
-            <div class="announce-card-compact">
-                <div class="announce-compact-icon">
-                    @if($ann->image_path ?? false)
-                        <img src="{{ asset('storage/' . $ann->image_path) }}" alt="صورة">
-                    @else
-                        <i class="fa-solid fa-file-lines"></i>
+        {{-- كروت أخرى --}}
+        <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 0.75rem; min-height: 110px;">
+            <div style="width: 150px; flex-shrink: 0; background: #1e293b; position: relative; overflow: hidden;">
+                @if($imgUrl)
+                    <a href="{{ $imgUrl }}" target="_blank" download style="display: block; position: absolute; inset: 0;">
+                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    </a>
+                @else
+                    <i class="fa-solid fa-bullhorn" style="position: absolute; inset: 0; margin: auto; font-size: 2rem; color: rgba(255,255,255,0.1); width: fit-content; height: fit-content;"></i>
+                @endif
+            </div>
+            <div style="flex: 1; padding: 1rem 1.25rem; display: flex; flex-direction: column; justify-content: center;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary);">إداري</span>
+                    @if($isOwner)
+                    <div style="display: flex; gap: 0.4rem;">
+                        <a href="{{ route('teacher.announcements.edit', $annId) }}"
+                           style="padding: 0.25rem 0.5rem; border-radius: 0.4rem; background: #eff6ff; color: #1d4ed8; font-size: 0.7rem; text-decoration: none;">
+                            <i class="fa-solid fa-pen"></i>
+                        </a>
+                        <form action="{{ route('teacher.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin: 0;">
+                            @csrf
+                            <button type="submit" style="padding: 0.25rem 0.5rem; border-radius: 0.4rem; background: #fef2f2; color: #dc2626; font-size: 0.7rem; border: none; cursor: pointer;">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
                     @endif
                 </div>
-                <div class="announce-compact-body">
-                    <span class="announce-tag">{{ $ann->category ?? 'إعلان' }}</span>
-                    <h4 class="announce-compact-title">{{ $ann->title }}</h4>
-                    <div class="announce-meta" style="margin-bottom: 0;">
-                        <span>{{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
-                    </div>
-                </div>
+                <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.3rem;">{{ $ann->title }}</h4>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.3rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ $ann->content }}</p>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">{{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
             </div>
+        </div>
         @endif
     @empty
         <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
@@ -232,138 +268,7 @@
 </div>
 
 
-@if(isset($advisorCourse) && $advisorCourse)
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; margin-top: 3rem;">
-        <h3 style="font-weight: 800; font-size: 1.25rem;">
-            <i class="fa-solid fa-star" style="color: #ca8a04; margin-left: 0.5rem;"></i>
-            أدوات مربي الدورة: {{ $advisorCourse->title }}
-        </h3>
-    </div>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-        <button onclick="openModal('advisor-attendance-modal')" style="background: var(--bg-secondary); border: 2px solid var(--border-color); border-radius: 1rem; padding: 1.5rem; text-align: right; cursor: pointer; transition: all 0.2s;">
-            <i class="fa-solid fa-clipboard-user" style="font-size: 2rem; color: var(--accent-color); margin-bottom: 1rem;"></i>
-            <h4 style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary);">الحضور اليومي للقاعة</h4>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">تسجيل حضور طلاب هذه القاعة فقط</p>
-        </button>
-        
-        <button onclick="openModal('advisor-report-modal')" style="background: var(--bg-secondary); border: 2px solid var(--border-color); border-radius: 1rem; padding: 1.5rem; text-align: right; cursor: pointer; transition: all 0.2s;">
-            <i class="fa-solid fa-file-signature" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></i>
-            <h4 style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary);">كتابة تقرير سلوكي</h4>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">إرسال تقرير سلوكي عن طالب لرئيس القسم</p>
-        </button>
-    </div>
 
-    @if($parentReportRequests->count() > 0)
-    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem;">
-        <h4 style="color: #991b1b; font-weight: 800; font-size: 1.1rem; margin-bottom: 1rem;">
-            <i class="fa-solid fa-bell"></i> طلبات تقارير سلوكية من أولياء الأمور ({{ $parentReportRequests->count() }})
-        </h4>
-        <div style="display: flex; flex-direction: column; gap: 1rem;">
-            @foreach($parentReportRequests as $req)
-            <div style="background: white; padding: 1rem; border-radius: 0.75rem; border: 1px solid #fca5a5; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong style="color: var(--text-primary);">للطالب: {{ $req->student_name }}</strong>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">بطلب من: {{ $req->parent_name }} | {{ \Carbon\Carbon::parse($req->created_at)->diffForHumans() }}</p>
-                    <small style="color: #ef4444; display: block; margin-top: 0.25rem;">{{ $req->notes }}</small>
-                </div>
-                <button onclick="openReportModalWithRequest({{ $req->student_id }}, {{ $req->request_id }})" class="btn" style="background-color: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
-                    استجابة للطلب وكتابة التقرير
-                </button>
-            </div>
-            @endforeach
-        </div>
-    </div>
-    @endif
-    
-    <!-- Advisor Attendance Modal -->
-    <div id="advisor-attendance-modal" class="modal-overlay">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h3 style="font-weight: 800; font-size: 1.1rem;">
-                    <i class="fa-solid fa-clipboard-user" style="color: var(--accent-color);"></i>
-                    الحضور اليومي ({{ $advisorCourse->title }})
-                </h3>
-                <button class="modal-close" onclick="closeModal('advisor-attendance-modal')">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <form action="{{ route('teacher.advisor.attendance') }}" method="POST">
-                    @csrf
-                    <input type="hidden" name="course_id" value="{{ $advisorCourse->course_id }}">
-                    <input type="hidden" name="date" value="{{ date('Y-m-d') }}">
-                    
-                    <table style="width: 100%; text-align: right; border-collapse: collapse; margin-bottom: 1rem;">
-                        <thead>
-                            <tr style="border-bottom: 1px solid var(--border-color);">
-                                <th style="padding: 0.75rem;">الطالب</th>
-                                <th style="padding: 0.75rem;">حاضر</th>
-                                <th style="padding: 0.75rem;">غائب</th>
-                                <th style="padding: 0.75rem;">متأخر</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($advisorStudents as $student)
-                            <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 0.75rem;">{{ $student->full_name }}<br><small style="color: var(--text-secondary);">{{ $student->student_code }}</small></td>
-                                <td style="padding: 0.75rem;"><input type="radio" name="attendance[{{ $student->student_id }}]" value="present" required checked></td>
-                                <td style="padding: 0.75rem;"><input type="radio" name="attendance[{{ $student->student_id }}]" value="absent" required></td>
-                                <td style="padding: 0.75rem;"><input type="radio" name="attendance[{{ $student->student_id }}]" value="late" required></td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="4" style="text-align: center; padding: 1rem; color: var(--text-secondary);">لا يوجد طلاب مسجلين في هذه الدورة.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                    
-                    <button type="submit" class="btn btn-primary" style="width: 100%; border-radius: 0.75rem; font-weight: 700; padding: 0.75rem;">حفظ الحضور اليومي</button>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Advisor Report Modal -->
-    <div id="advisor-report-modal" class="modal-overlay">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h3 style="font-weight: 800; font-size: 1.1rem;">
-                    <i class="fa-solid fa-file-signature" style="color: #ef4444;"></i>
-                    كتابة تقرير سلوكي
-                </h3>
-                <button class="modal-close" onclick="closeModal('advisor-report-modal')">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form action="{{ route('teacher.advisor.report') }}" method="POST">
-                    @csrf
-                    <input type="hidden" name="course_id" value="{{ $advisorCourse->course_id }}">
-                    <input type="hidden" name="request_id" id="report-request-id" value="">
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">اختر الطالب</label>
-                        <select name="student_id" id="report-student-id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
-                            <option value="">-- اختر طالباً --</option>
-                            @foreach($advisorStudents as $student)
-                                <option value="{{ $student->student_id }}">{{ $student->full_name }} ({{ $student->student_code }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">تفاصيل التقرير السلوكي</label>
-                        <textarea name="report_content" rows="4" required placeholder="اكتب ملاحظاتك عن سلوك الطالب هنا..." style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); resize: vertical;"></textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary" style="width: 100%; border-radius: 0.75rem; font-weight: 700; padding: 0.75rem; background-color: #ef4444; color: white;">إرسال التقرير لرئيس القسم</button>
-                </form>
-            </div>
-        </div>
-    </div>
-@endif
 
 {{-- ================================================================ --}}
 {{--  MODAL: قائمة المواد الدراسية                                    --}}
@@ -390,7 +295,7 @@
                             <i class="fa-solid fa-layer-group"></i> {{ $c->level }}
                         @endif
                         @if($c->credits ?? false)
-                            &nbsp; · &nbsp; {{ $c->credits }} ساعة
+                            &nbsp; Â· &nbsp; {{ $c->credits }} ساعة
                         @endif
                     </div>
                 </div>
@@ -441,10 +346,10 @@
                     </div>
                     <div class="list-item-sub">
                         <i class="fa-solid fa-book"></i> {{ $a->course_title }}
-                        &nbsp;·&nbsp;
+                        &nbsp;Â·&nbsp;
                         <i class="fa-solid fa-calendar"></i> {{ \Carbon\Carbon::parse($a->due_date)->format('Y-m-d') }}
                         @if(isset($a->submissions_count))
-                            &nbsp;·&nbsp;
+                            &nbsp;Â·&nbsp;
                             <i class="fa-solid fa-users"></i> {{ $a->submissions_count }} تسليم
                         @endif
                     </div>
@@ -477,35 +382,21 @@
 
 @push('scripts')
 <script>
-    function openModal(id) {
-        document.getElementById(id).classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
-        document.body.style.overflow = '';
-        if (modalId === 'advisor-report-modal') {
-            document.getElementById('report-request-id').value = '';
-            document.getElementById('report-student-id').value = '';
-            document.getElementById('report-student-id').disabled = false;
-        }
-    }
-
-    function openReportModalWithRequest(studentId, requestId) {
-        document.getElementById('report-request-id').value = requestId;
-        let select = document.getElementById('report-student-id');
-        select.value = studentId;
-        // select.disabled = true; // Optional: disable changing student if it's for a specific request
-        openModal('advisor-report-modal');
-    }
-
-    // Close on backdrop click
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', function(e) {
-            if (e.target === this) closeModal(this.id);
-        });
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+    document.body.style.overflow = '';
+}
+// Close on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
     });
 });
 </script>
 @endpush
+
+

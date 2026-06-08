@@ -6,21 +6,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class Notification extends Model
 {
-    protected $fillable = [
-        'user_id',
-        'title',
-        'message',
-        'type',
-        'is_read'
-    ];
+    protected $guarded = [];
 
     protected $casts = [
         'is_read' => 'boolean',
     ];
 
-    // العلاقة مع المستخدم
+    // علاقة لجلب بيانات الشخص المستلم للإشعار (الطالب)
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+
+    // علاقة لجلب بيانات الشخص المرسل للإشعار (المدرب، الإدارة..)
+    public function sender()
+    {
+        return $this->belongsTo(User::class, 'sender_id', 'user_id');
     }
 }
