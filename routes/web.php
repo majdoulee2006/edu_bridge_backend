@@ -72,6 +72,7 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::post('/profile/verify-otp', [TeacherWebController::class, 'verifyOTP'])->name('teacher.profile.verify_otp');
     
     // أدوات مربي الدورة (Advisor Tools)
+    Route::get('/advisor', [TeacherWebController::class, 'advisorTools'])->name('teacher.advisor');
     Route::post('/advisor/attendance', [TeacherWebController::class, 'storeAdvisorAttendance'])->name('teacher.advisor.attendance');
     Route::post('/advisor/report', [TeacherWebController::class, 'storeAdvisorReport'])->name('teacher.advisor.report');
     Route::post('/profile/password', [TeacherWebController::class, 'updatePassword'])->name('teacher.profile.password');

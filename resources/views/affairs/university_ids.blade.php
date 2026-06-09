@@ -67,7 +67,7 @@ tr:last-child td { border-bottom:none; }
             @forelse($ids as $uid)
             <tr>
                 <td><strong>{{ $uid->university_id }}</strong></td>
-                <td>{{ $uid->full_name }}</td>
+                <td>{{ $uid->first_name }} {{ $uid->last_name }}</td>
                 <td>
                     @if($uid->is_used)
                         <span class="badge-used">مستخدم</span>
@@ -112,16 +112,34 @@ tr:last-child td { border-bottom:none; }
         </div>
         <form method="POST" action="{{ route('affairs.university_ids.store') }}">
             @csrf
-            <div class="form-group">
-                <label>الرقم الجامعي</label>
-                <input type="text" name="university_id" class="form-control" placeholder="مثال: 2024001" required>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>الاسم الأول</label>
+                    <input type="text" name="first_name" class="form-control" placeholder="الاسم الأول" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>الاسم الثاني (الكنية)</label>
+                    <input type="text" name="last_name" class="form-control" placeholder="الكنية" required>
+                </div>
             </div>
+            
             <div class="form-group">
-                <label>اسم الطالب</label>
-                <input type="text" name="full_name" class="form-control" placeholder="الاسم الكامل" required>
+                <label>الرقم الشخصي (الوطني)</label>
+                <input type="text" name="national_id" class="form-control" placeholder="يجب أن يتكون من 10 أرقام" required pattern="\d{10}" title="يجب أن يتكون من 10 أرقام">
             </div>
+
+            <div class="form-group">
+                <label>تاريخ الميلاد</label>
+                <input type="date" name="birth_date" class="form-control" required max="{{ now()->subYears(18)->format('Y-m-d') }}" title="يجب أن يكون العمر 18 سنة على الأقل">
+            </div>
+
+            <div class="form-group">
+                <label>كلمة المرور المبدئية</label>
+                <input type="password" name="default_password" class="form-control" placeholder="كلمة المرور للطالب" required minlength="6">
+            </div>
+
             <button type="submit" class="btn-save">
-                <i class="fa-solid fa-floppy-disk"></i> حفظ
+                <i class="fa-solid fa-floppy-disk"></i> إنشاء الحساب
             </button>
         </form>
     </div>

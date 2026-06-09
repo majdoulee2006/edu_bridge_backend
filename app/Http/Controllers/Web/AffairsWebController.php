@@ -254,18 +254,41 @@ class AffairsWebController extends Controller
     public function storeUniversityId(Request $request)
     {
         $request->validate([
-            'university_id' => 'required|string|unique:university_ids,university_id',
-            'full_name'     => 'required|string|max:255',
-        ], ['university_id.unique' => 'هذا الرقم الجامعي مسجّل مسبقاً.']);
+            'first_name'       => 'required|string|max:100',
+            'last_name'        => 'required|string|max:100',
+            'birth_date'       => 'required|date|before_or_equal:' . now()->subYears(18)->format('Y-m-d'),
+            'national_id'      => 'required|digits:10',
+            'default_password' => 'required|string|min:6',
+        ], [
+            'birth_date.before_or_equal' => 'يجب أن يكون عمر الطالب 18 سنة على الأقل.',
+            'national_id.digits'         => 'الرقم الشخصي يجب أن يتكون من 10 أرقام بالضبط.'
+        ]);
+
+        $year = date('Y');
+        $lastId = DB::table('university_ids')
+            ->where('university_id', 'like', $year . '%')
+            ->orderBy('university_id', 'desc')
+            ->value('university_id');
+
+        if ($lastId) {
+            $increment = intval(substr($lastId, 4)) + 1;
+            $newId = $year . str_pad($increment, 2, '0', STR_PAD_LEFT);
+        } else {
+            $newId = $year . '01';
+        }
 
         DB::table('university_ids')->insert([
-            'university_id' => $request->university_id,
-            'full_name'     => $request->full_name,
-            'role'          => 'student',
-            'is_used'       => false,
-            'created_by'    => Auth::id(),
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'university_id'    => $newId,
+            'first_name'       => $request->first_name,
+            'last_name'        => $request->last_name,
+            'birth_date'       => $request->birth_date,
+            'national_id'      => $request->national_id,
+            'default_password' => bcrypt($request->default_password),
+            'role'             => 'student',
+            'is_used'          => false,
+            'created_by'       => Auth::id(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         return back()->with('success', 'تم إضافة الرقم الجامعي بنجاح.');

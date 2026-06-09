@@ -943,6 +943,100 @@ class TeacherWebController extends Controller
     //  ADVISOR TOOLS (أدوات المربي)
     // ────────────────────────────────────────────────────────────
 
+    public function advisorTools()
+    {
+        $teacher = $this->getTeacher();
+        
+        $advisorCourses = DB::table('course_teachers')
+            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+            ->where('course_teachers.teacher_id', $teacher->teacher_id)
+            ->where('course_teachers.role', 'advisor')
+            ->select('courses.course_id', 'courses.title')
+            ->get();
+            
+        $students = [];
+        if ($advisorCourses->count() > 0) {
+            $courseIds = $advisorCourses->pluck('course_id');
+            $students = DB::table('enrollments')
+                ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->whereIn('enrollments.course_id', $courseIds)
+                ->where('enrollments.status', 'active')
+                ->select('students.student_id', 'users.full_name', 'users.university_id')
+                ->distinct()
+                ->get();
+        }
+
+        return view('teacher.advisor', compact('advisorCourses', 'students'));
+    }
+
+    public function storeAdvisorReport(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,student_id',
+            'behavioral_notes' => 'required|string|max:2000'
+        ]);
+
+        $teacher = $this->getTeacher();
+
+        // 1. Create a simulated report request to tie it to
+        $requestId = DB::table('report_requests')->insertGetId([
+            'student_id' => $request->student_id,
+            'teacher_id' => $teacher->teacher_id,
+            'report_type' => 'behavioral',
+            'status' => 'completed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // 2. Insert performance report
+        DB::table('performance_reports')->insert([
+            'report_request_id' => $requestId,
+            'student_id'        => $request->student_id,
+            'report_type'       => 'behavioral',
+            'recommendations'   => $request->behavioral_notes,
+            'generated_at'      => now(),
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        // 3. Notify parents
+        $studentName = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $request->student_id)
+            ->value('users.full_name') ?? 'الطالب';
+
+        $parentRows = DB::table('parent_students')
+            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+            ->where('parent_students.student_id', $request->student_id)
+            ->pluck('parents.user_id');
+
+        $notifTitle = 'تقرير سلوكي جديد';
+        $notifBody  = 'تم إضافة تقرير سلوكي جديد عن ابنك/ابنتك ' . $studentName . ' من قبل مربي الدورة.';
+
+        foreach ($parentRows as $parentUserId) {
+            DB::table('notifications')->insert([
+                'user_id'    => $parentUserId,
+                'sender_id'  => auth()->id(),
+                'title'      => $notifTitle,
+                'message'    => $notifBody,
+                'type'       => 'report',
+                'related_id' => $requestId,
+                'category'   => 'academic',
+                'is_read'    => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser($parentUserId, $notifTitle, $notifBody, [
+                'type'       => 'behavioral_report',
+                'student_id' => (string) $request->student_id,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'تم رفع التقرير السلوكي وإشعار ولي الأمر بنجاح!');
+    }
+
     public function storeAdvisorAttendance(Request $request)
     {
         $teacher = $this->getTeacher();
@@ -1152,10 +1246,28 @@ class TeacherWebController extends Controller
                 'student_id' => (string) $studentId,
             ]);
         }
+        }
+
+        // إشعار رئيس القسم
+        $headId = \Illuminate\Support\Facades\DB::table('users')->where('role', 'head')->value('user_id');
+        if ($headId) {
+            \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                'user_id'    => $headId,
+                'sender_id'  => auth()->id(),
+                'title'      => $notifTitle,
+                'message'    => 'تم رفع تقرير عن الطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
+                'type'       => 'report',
+                'related_id' => $id,
+                'category'   => 'academic',
+                'is_read'    => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         $msg = $isBehavioral
-            ? 'تم إرسال التقرير السلوكي وإشعار ولي الأمر بنجاح!'
-            : 'تم توليد التقرير الأكاديمي وإشعار ولي الأمر بنجاح!';
+            ? 'تم إرسال التقرير السلوكي وإشعار ولي الأمر ورئيس القسم بنجاح!'
+            : 'تم توليد التقرير الأكاديمي وإشعار ولي الأمر ورئيس القسم بنجاح!';
 
         return redirect()->back()->with('success', $msg);
     }

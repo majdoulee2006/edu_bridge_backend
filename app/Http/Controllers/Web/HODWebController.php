@@ -360,7 +360,7 @@ class HODWebController extends Controller
             ->get();
             
         // 3. جلب كل الدورات لتعيين المربي
-        $all_courses = DB::table('courses')->select('course_id', 'title')->get();
+        $all_courses = DB::table('courses')->select('course_id', 'title', 'level')->get();
 
         // 3. الأهل
         $parents = DB::table('parents')

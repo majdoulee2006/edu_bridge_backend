@@ -174,11 +174,20 @@
             <div class="chips-container">
                 @if($teacher->email)<span class="chip">{{ $teacher->email }}</span>@endif
                 @if($teacher->phone)<span class="chip">{{ $teacher->phone }}</span>@endif
+                @if($teacher->is_advisor)
+                    <span class="chip" style="background:#fdf4ff;color:#9333ea;border:1px solid #f3e8ff;font-weight:700;"><i class="fa-solid fa-star"></i> مربي دورة: {{ $teacher->advisor_course_title }}</span>
+                @endif
                 @forelse($teacher->courses ?? [] as $course)
                     <span class="chip chip-accent">{{ $course }}</span>
                 @empty
                     <span class="chip" style="border:1px dashed var(--border-color);background:transparent;">لا توجد مواد مسندة</span>
                 @endforelse
+            </div>
+            
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border-color); display: flex; gap: 0.5rem;">
+                <button onclick="openAdvisorModal({{ $teacher->teacher_id }}, '{{ $teacher->full_name }}', {{ $teacher->is_advisor ? 'true' : 'false' }})" style="background: var(--bg-primary); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 0.5rem; font-family: inherit; font-weight: 700; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
+                    <i class="fa-solid fa-user-tie"></i> إدارة مربي الدورة
+                </button>
             </div>
         </div>
         @empty
@@ -441,6 +450,61 @@
         </div>
     </div>
 
+    {{-- Modal: Assign Advisor --}}
+    <div id="advisor-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">إدارة مربي الدورة لـ <span id="advisor-teacher-name" style="color:var(--accent-color);"></span></h4>
+            <form action="{{ route('hod.accounts.advisor') }}" method="POST">
+                @csrf
+                <input type="hidden" name="teacher_id" id="advisor-teacher-id">
+                
+                <div class="form-group">
+                    <label class="form-label">الإجراء <span style="color:#ef4444">*</span></label>
+                    <select name="action" id="advisor-action" required class="form-input" onchange="toggleAdvisorAction(this.value)">
+                        <option value="assign">تعيين كمربي دورة</option>
+                        <option value="remove">إزالة صفة المربي</option>
+                    </select>
+                </div>
+
+                <div id="advisor-assign-fields">
+                    <div class="form-group">
+                        <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
+                        <select id="advisor-department-select" class="form-input">
+                            <option value="" disabled selected>اختر القسم</option>
+                            @foreach($departments as $dept)
+                                <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">السنة الدراسية <span style="color:#ef4444">*</span></label>
+                        <select id="advisor-year-select" class="form-input">
+                            <option value="" disabled selected>اختر السنة الدراسية</option>
+                            <option value="السنة الأولى">السنة الأولى</option>
+                            <option value="السنة الثانية">السنة الثانية</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">الدورة <span style="color:#ef4444">*</span></label>
+                        <select name="course_id" id="advisor-course-id" class="form-input">
+                            <option value="" disabled selected>اختر الدورة</option>
+                            @foreach($all_courses as $course)
+                                <option value="{{ $course->course_id }}">{{ $course->title }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+                    <button type="submit" class="btn-save" style="background:#9333ea;color:#fff;">حفظ التغييرات</button>
+                    <button type="button" onclick="closeModal('advisor-modal')" class="btn-cancel">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -465,6 +529,36 @@
 
     function openModal(id)  { document.getElementById(id).classList.add('active'); }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // ===== Advisor Modal =====
+    function openAdvisorModal(teacherId, teacherName, isAdvisor) {
+        document.getElementById('advisor-teacher-id').value = teacherId;
+        document.getElementById('advisor-teacher-name').innerText = teacherName;
+        
+        const actionSelect = document.getElementById('advisor-action');
+        if (isAdvisor) {
+            actionSelect.value = 'remove';
+        } else {
+            actionSelect.value = 'assign';
+        }
+        toggleAdvisorAction(actionSelect.value);
+        openModal('advisor-modal');
+    }
+
+    function toggleAdvisorAction(action) {
+        const assignFields = document.getElementById('advisor-assign-fields');
+        const courseSelect = document.getElementById('advisor-course-id');
+        const yearSelect = document.getElementById('advisor-year-select');
+        if (action === 'assign') {
+            assignFields.style.display = 'block';
+            courseSelect.required = true;
+            yearSelect.required = true;
+        } else {
+            assignFields.style.display = 'none';
+            courseSelect.required = false;
+            yearSelect.required = false;
+        }
+    }
 
     // ===== Children Fields (Parent Modal) =====
     const ordinals = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر'];
