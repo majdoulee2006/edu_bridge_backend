@@ -493,15 +493,16 @@ class HODWebController extends Controller
     public function storeStudent(Request $request)
     {
         $request->validate([
-            'full_name'     => 'required|string|max:255',
-            'university_id' => 'required|string|unique:users,university_id|max:255',
-            'email'         => 'required|email|unique:users,email|max:255',
-            'phone'         => 'nullable|string|max:20',
-            'department'    => 'required|string|max:255',
-            'level'         => 'required|string|max:255',
-            'birth_date'    => 'required|date',
-            'gender'        => 'required|in:ذكر,أنثى',
-            'password'      => 'required|string|min:6|confirmed',
+            'full_name'        => 'required|string|max:255',
+            'university_id'    => 'required|string|unique:users,university_id|max:255',
+            'email'            => 'required|email|unique:users,email|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'telegram_chat_id' => 'nullable|string|max:100',
+            'department'       => 'required|string|max:255',
+            'level'            => 'required|string|max:255',
+            'birth_date'       => 'required|date',
+            'gender'           => 'required|in:ذكر,أنثى',
+            'password'         => 'required|string|min:6|confirmed',
         ], [
             'university_id.unique' => 'الرقم الجامعي مستخدم بالفعل.',
             'email.unique'         => 'البريد الإلكتروني مستخدم بالفعل.',
@@ -509,21 +510,49 @@ class HODWebController extends Controller
         ]);
 
         $userId = DB::table('users')->insertGetId([
-            'role_id'       => 3,
-            'full_name'     => $request->full_name,
-            'username'      => $request->university_id,
-            'university_id' => $request->university_id,
-            'email'         => $request->email,
-            'phone'         => $request->phone,
-            'department'    => $request->department,
-            'gender'        => $request->gender,
-            'birth_date'    => $request->birth_date,
-            'academic_year' => $request->level,
-            'password'      => bcrypt($request->password),
-            'status'        => 'active',
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'role_id'          => 3,
+            'full_name'        => $request->full_name,
+            'username'         => $request->university_id,
+            'university_id'    => $request->university_id,
+            'email'            => $request->email,
+            'phone'            => $request->phone,
+            'telegram_chat_id' => $request->telegram_chat_id,
+            'department'       => $request->department,
+            'gender'           => $request->gender,
+            'birth_date'       => $request->birth_date,
+            'academic_year'    => $request->level,
+            'password'         => bcrypt($request->password),
+            'status'           => 'active',
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
+
+        // إرسال بيانات الطالب عبر تليجرام مباشرة
+        if ($request->filled('telegram_chat_id')) {
+            try {
+                $botToken = '8729068851:AAHILif3EtFWGKaTLgYxm7ZPuw6uqXV0A2k';
+                $message = "🎓 <b>مرحباً بك في جامعة Edu-Bridge!</b> 🎉\n\n"
+                         . "تم إنشاء حساب الطالب الخاص بك بنجاح. إليك كافة التفاصيل والمعلومات:\n\n"
+                         . "👤 <b>الاسم الكامل:</b> {$request->full_name}\n"
+                         . "🔑 <b>الرقم الجامعي (اسم المستخدم):</b> <code>{$request->university_id}</code>\n"
+                         . "🔒 <b>كلمة المرور:</b> <code>{$request->password}</code>\n"
+                         . "📧 <b>البريد الإلكتروني:</b> <code>{$request->email}</code>\n"
+                         . "📞 <b>رقم الهاتف:</b> <code>" . ($request->phone ?? '—') . "</code>\n"
+                         . "🏢 <b>القسم:</b> <code>{$request->department}</code>\n"
+                         . "📚 <b>المستوى الدراسي:</b> <code>{$request->level}</code>\n"
+                         . "📅 <b>تاريخ الميلاد:</b> <code>{$request->birth_date}</code>\n"
+                         . "🚻 <b>الجنس:</b> <code>{$request->gender}</code>\n\n"
+                         . "📲 يمكنك الآن تسجيل الدخول مباشرة إلى تطبيق الجامعة باستخدام رقمك الجامعي وكلمة المرور أعلاه.";
+
+                \Illuminate\Support\Facades\Http::timeout(5)->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                    'chat_id' => $request->telegram_chat_id,
+                    'text'    => $message,
+                    'parse_mode' => 'HTML',
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Telegram Bot Error: ' . $e->getMessage());
+            }
+        }
 
         DB::table('students')->insert([
             'user_id'      => $userId,

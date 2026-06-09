@@ -644,9 +644,9 @@ class TeacherController extends Controller
                     'course_name'     => $assignment->course->title ?? '',
                     'due_date'        => $assignment->due_date->format('Y-m-d H:i:s'),
                     'max_points'      => $assignment->max_points,
-                    'attachment_path' => $assignment->attachment_path,
-                    'file_url'        => $assignment->attachment_path ? storageUrl($assignment->attachment_path) : null,
-                    'file_name'       => $assignment->attachment_path ? basename($assignment->attachment_path) : null,
+                    'attachment_path' => $assignment->attachment_path ?? $assignment->file_path,
+                    'file_url'        => ($assignment->attachment_path ?? $assignment->file_path) ? storageUrl($assignment->attachment_path ?? $assignment->file_path) : null,
+                    'file_name'       => $assignment->file_name ?? (($assignment->attachment_path ?? $assignment->file_path) ? basename($assignment->attachment_path ?? $assignment->file_path) : null),
                     'submissions_count' => $submissionsCount,
                     'status'          => $status,
                 ];
@@ -704,6 +704,8 @@ class TeacherController extends Controller
             'due_date'        => $request->due_date,
             'max_points'      => $request->max_points,
             'attachment_path' => $attachmentPath,
+            'file_path'       => $attachmentPath,
+            'file_name'       => $attachmentPath ? basename($attachmentPath) : null,
         ]);
 
         // إشعار ا�ط�اب ا��&سج��`�  ��` ا��&ادة
@@ -792,12 +794,18 @@ class TeacherController extends Controller
             if ($assignment->attachment_path) {
                 Storage::disk('public')->delete($assignment->attachment_path);
             }
+            if ($assignment->file_path) {
+                Storage::disk('public')->delete($assignment->file_path);
+            }
             $file = $request->file('attachment');
-            $data['attachment_path'] = $file->storeAs(
+            $attachmentPath = $file->storeAs(
                 'assignments',
                 time() . '_' . $file->getClientOriginalName(),
                 'public'
             );
+            $data['attachment_path'] = $attachmentPath;
+            $data['file_path']       = $attachmentPath;
+            $data['file_name']       = basename($attachmentPath);
         }
 
         $assignment->update($data);

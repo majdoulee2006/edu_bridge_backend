@@ -396,22 +396,25 @@ class TeacherWebController extends Controller
             $filePath = $file->store($folder, 'public');
         }
 
+        $teacher = $this->getTeacher();
+
         $assignmentId = DB::table('assignments')->insertGetId([
-            'course_id'   => $request->course_id,
-            'title'       => $request->title,
-            'description' => $request->description,
-            'due_date'    => $request->due_date,
-            'max_points'  => $request->max_points,
-            'file_path'   => $filePath,
-            'file_name'   => $fileName,
-            'file_type'   => $fileType,
-            'created_at'  => now(),
-            'updated_at'  => now(),
+            'course_id'       => $request->course_id,
+            'teacher_id'      => $teacher->teacher_id,
+            'title'           => $request->title,
+            'description'     => $request->description,
+            'due_date'        => $request->due_date,
+            'max_points'      => $request->max_points,
+            'file_path'       => $filePath,
+            'attachment_path' => $filePath,
+            'file_name'       => $fileName,
+            'file_type'       => $fileType,
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
 
         // ── إشعار الطلاب المسجلين في المادة ─────────────────────────
         $course       = DB::table('courses')->where('course_id', $request->course_id)->first();
-        $teacher      = $this->getTeacher();
         $teacherUser  = DB::table('users')->where('user_id', $teacher->user_id)->first();
         $courseName   = $course->title ?? $course->name ?? 'المادة';
         $fcmTitle     = 'واجب جديد — ' . $courseName;

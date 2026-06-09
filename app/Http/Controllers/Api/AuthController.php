@@ -208,6 +208,10 @@ class AuthController extends Controller
             ? trim($request->telegram_username)
             : null;
 
+        if (!$telegramId && $request->role === 'student' && isset($uid) && !empty($uid->telegram_chat_id)) {
+            $telegramId = $uid->telegram_chat_id;
+        }
+
         $user = User::create([
             'full_name'        => $request->full_name,
             'first_name'       => $request->first_name,
