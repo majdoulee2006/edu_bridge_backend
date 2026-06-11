@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
@@ -1293,7 +1294,7 @@ class HODWebController extends Controller
                         ]
                     );
                 } catch (\Exception $e) {
-                    \Log::error("FCM failed: " . $e->getMessage());
+                    Log::error("FCM failed: " . $e->getMessage());
                 }
             }
         }

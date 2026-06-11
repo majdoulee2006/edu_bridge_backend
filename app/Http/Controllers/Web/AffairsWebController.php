@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Notification;
 use App\Models\Message;
@@ -468,7 +469,7 @@ class AffairsWebController extends Controller
                       . "📲 يمكنك الآن فتح التطبيق وتسجيل الدخول مباشرة.";
                 $telegram->sendMessage((int) $user->telegram_chat_id, $text);
             } catch (\Exception $e) {
-                \Log::error('Telegram approveAccount notification error: ' . $e->getMessage());
+                Log::error('Telegram approveAccount notification error: ' . $e->getMessage());
             }
         }
 
@@ -489,7 +490,7 @@ class AffairsWebController extends Controller
                       . "يرجى مراجعة شؤون الطلاب لمزيد من التفاصيل.";
                 $telegram->sendMessage((int) $user->telegram_chat_id, $text);
             } catch (\Exception $e) {
-                \Log::error('Telegram rejectAccount notification error: ' . $e->getMessage());
+                Log::error('Telegram rejectAccount notification error: ' . $e->getMessage());
             }
         }
 
