@@ -15,6 +15,7 @@ use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\CalendarEvent;
 use App\Models\Announcement;
+use App\Services\TelegramService;
 
 class AffairsWebController extends Controller
 {
@@ -359,17 +360,20 @@ class AffairsWebController extends Controller
             $newId = $year . '01';
         }
 
+        $telegramChatId = $request->telegram_chat_id ? trim($request->telegram_chat_id) : null;
+
         DB::table('university_ids')->insert([
             'university_id'    => $newId,
             'full_name'        => $request->full_name,
             'role'             => 'student',
             'is_used'          => false,
+            'telegram_chat_id' => $telegramChatId,
             'created_by'       => Auth::id(),
             'created_at'       => now(),
             'updated_at'       => now(),
         ]);
 
-        return back()->with('success', 'تم إضافة الرقم الجامعي بنجاح.');
+        return back()->with('success', 'تم إضافة الرقم الجامعي بنجاح وتوليد الرقم: ' . $newId);
     }
 
     public function updateUniversityId(Request $request, $id)
@@ -454,12 +458,41 @@ class AffairsWebController extends Controller
         ]);
         \App\Services\FcmService::sendToUser($user->user_id, $notifTitle, $notifMsg, ['type' => 'administrative']);
 
+        // إرسال إشعار تليجرام للموافقة والتفعيل
+        if ($user->telegram_chat_id) {
+            try {
+                $telegram = new TelegramService();
+                $text = "🎓 <b>تفعيل الحساب - Edu Bridge</b>\n\n"
+                      . "مرحباً <b>{$user->full_name}</b>،\n\n"
+                      . "🎉 لقد تم <b>الموافقة وتفعيل حسابك بنجاح</b> من قِبل إدارة شؤون الطلاب!\n\n"
+                      . "📲 يمكنك الآن فتح التطبيق وتسجيل الدخول مباشرة.";
+                $telegram->sendMessage((int) $user->telegram_chat_id, $text);
+            } catch (\Exception $e) {
+                \Log::error('Telegram approveAccount notification error: ' . $e->getMessage());
+            }
+        }
+
         return back()->with('success', 'تم تفعيل الحساب.');
     }
 
     public function rejectAccount($id)
     {
         $user = User::findOrFail($id);
+
+        // إرسال إشعار تليجرام للرفض قبل الحذف
+        if ($user->telegram_chat_id) {
+            try {
+                $telegram = new TelegramService();
+                $text = "🎓 <b>طلب التسجيل - Edu Bridge</b>\n\n"
+                      . "مرحباً <b>{$user->full_name}</b>،\n\n"
+                      . "⚠️ نأسف لإعلامك بأنه تم <b>رفض طلب إنشاء وتفعيل حسابك</b> من قِبل إدارة شؤون الطلاب.\n\n"
+                      . "يرجى مراجعة شؤون الطلاب لمزيد من التفاصيل.";
+                $telegram->sendMessage((int) $user->telegram_chat_id, $text);
+            } catch (\Exception $e) {
+                \Log::error('Telegram rejectAccount notification error: ' . $e->getMessage());
+            }
+        }
+
         if ($user->university_id) {
             DB::table('university_ids')
                 ->where('university_id', $user->university_id)

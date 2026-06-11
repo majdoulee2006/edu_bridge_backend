@@ -603,8 +603,8 @@ class StudentController extends Controller
                 }
             }
 
-            $attachmentPath = $assignment->attachment_path ?? null;
-            $attachmentName = $attachmentPath ? basename($attachmentPath) : null;
+            $attachmentPath = $assignment->attachment_path ?? $assignment->file_path ?? null;
+            $attachmentName = $attachmentPath ? ($assignment->file_name ?? basename($attachmentPath)) : null;
 
             $formattedAssignments[] = [
                 'id'            => $assignment->assignment_id,

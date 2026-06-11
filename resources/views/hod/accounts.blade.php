@@ -357,6 +357,11 @@
                     <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
                     <input type="email" name="email" required placeholder="student@university.edu" dir="ltr" class="form-input">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Telegram Chat ID (اختياري)</label>
+                    <input type="text" name="telegram_chat_id" placeholder="مثال: 123456789" dir="ltr" class="form-input" value="7650604064" title="احصل عليه من بوت الجامعة لإرسال الإشعارات وبيانات الدخول فوراً">
+                    <small style="color: #6b7280; font-size: 0.8rem;">قم بإدخاله إذا كنت تريد إرسال بيانات الدخول للطالب فور إنشاء الحساب</small>
+                </div>
                 <div class="form-row">
                     <div>
                         <label class="form-label">القسم <span style="color:#ef4444">*</span></label>

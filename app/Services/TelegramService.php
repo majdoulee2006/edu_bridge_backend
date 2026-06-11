@@ -81,4 +81,49 @@ class TelegramService
             return false;
         }
     }
+
+    public function sendCredentials(int $chatId, string $universityId, string $defaultPassword, string $name = '', string $nationalId = '', string $birthDate = ''): bool
+    {
+        $nameText = $name ? "👤 <b>الاسم الكامل:</b> {$name}\n" : '';
+        $nationalText = $nationalId ? "🪪 <b>الرقم الشخصي (الوطني):</b> <code>{$nationalId}</code>\n" : '';
+        $birthText = $birthDate ? "📅 <b>تاريخ الميلاد:</b> <code>{$birthDate}</code>\n" : '';
+
+        $text = "🎓 <b>مرحباً بك في جامعة Edu-Bridge!</b> 🎉\n\n"
+              . "تم توليد رقمك الجامعي بنجاح من قِبل موظف الشؤون. إليك تفاصيل حسابك المعرف:\n\n"
+              . $nameText
+              . $nationalText
+              . $birthText
+              . "🔑 <b>الرقم الجامعي (اسم المستخدم):</b> <code>{$universityId}</code>\n"
+              . "🔒 <b>كلمة المرور الافتراضية:</b> <code>{$defaultPassword}</code>\n\n"
+              . "📲 يمكنك الآن تحميل وفتح تطبيق الجامعة لتسجيل الدخول وتفعيل حسابك باستخدام هذه البيانات.";
+
+        try {
+            $response = Http::timeout(10)->post("{$this->apiUrl}/sendMessage", [
+                'chat_id'    => $chatId,
+                'text'       => $text,
+                'parse_mode' => 'HTML',
+            ]);
+
+            return $response->successful() && $response->json('ok') === true;
+        } catch (\Exception $e) {
+            Log::error('Telegram sendCredentials error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function sendMessage(int $chatId, string $text): bool
+    {
+        try {
+            $response = Http::timeout(10)->post("{$this->apiUrl}/sendMessage", [
+                'chat_id'    => $chatId,
+                'text'       => $text,
+                'parse_mode' => 'HTML',
+            ]);
+
+            return $response->successful() && $response->json('ok') === true;
+        } catch (\Exception $e) {
+            Log::error('Telegram sendMessage error: ' . $e->getMessage());
+            return false;
+        }
+    }
 }

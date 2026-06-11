@@ -58,6 +58,7 @@ tr:last-child td { border-bottom:none; }
             <tr>
                 <th>الرقم الجامعي</th>
                 <th>الاسم</th>
+                <th>معرّف تليجرام</th>
                 <th>الحالة</th>
                 <th>تاريخ الإضافة</th>
                 <th>إجراء</th>
@@ -68,6 +69,13 @@ tr:last-child td { border-bottom:none; }
             <tr>
                 <td><strong>{{ $uid->university_id }}</strong></td>
                 <td>{{ $uid->full_name }}</td>
+                <td>
+                    @if($uid->telegram_chat_id)
+                        <code>{{ $uid->telegram_chat_id }}</code>
+                    @else
+                        <span style="color:var(--text-secondary);">—</span>
+                    @endif
+                </td>
                 <td>
                     @if($uid->is_used)
                         <span class="badge-used">مستخدم</span>
@@ -94,7 +102,7 @@ tr:last-child td { border-bottom:none; }
             </tr>
             @empty
             <tr>
-                <td colspan="5" style="text-align:center; padding:3rem; color:var(--text-secondary);">
+                <td colspan="6" style="text-align:center; padding:3rem; color:var(--text-secondary);">
                     <i class="fa-solid fa-inbox" style="font-size:2rem; opacity:0.4; display:block; margin-bottom:0.75rem;"></i>
                     لا توجد أرقام جامعية مضافة بعد
                 </td>
@@ -119,6 +127,11 @@ tr:last-child td { border-bottom:none; }
             <div class="form-group">
                 <label>الاسم الكامل</label>
                 <input type="text" name="full_name" class="form-control" placeholder="الاسم الكامل للطالب" required>
+            </div>
+
+            <div class="form-group">
+                <label>معرّف التليجرام (Telegram Chat ID - اختياري)</label>
+                <input type="text" name="telegram_chat_id" class="form-control" placeholder="مثال: 7650604064" value="7650604064">
             </div>
 
             <button type="submit" class="btn-save">
