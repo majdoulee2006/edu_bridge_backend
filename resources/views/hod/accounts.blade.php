@@ -127,11 +127,21 @@
 @section('content')
     <p class="page-subtitle">إدارة المستخدمين والصلاحيات</p>
 
-    @if(session('success'))
-        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div style="background:#fef2f2;color:#dc2626;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('error') }}</div>
+
+    @if($errors->any())
+        <div style="background:#fef2f2;color:#dc2626;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">
+            <ul style="margin:0; padding-right:1.5rem;">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        <script>
+            // Open the parent modal automatically if we just submitted the parent form and it failed
+            document.addEventListener('DOMContentLoaded', function() {
+                // If there's an error, and the URL has #parent, we could open it, or just show the errors
+            });
+        </script>
     @endif
 
     {{-- Tab Switcher --}}
@@ -158,7 +168,8 @@
         @forelse($teachers as $index => $teacher)
         @php $colorClass = ['avatar-blue','avatar-purple','avatar-orange','avatar-green'][$index % 4]; @endphp
         <div class="account-card">
-            <div class="delete-btn-wrap">
+            <div class="delete-btn-wrap" style="display:flex; gap:0.5rem;">
+                <button type="button" onclick="openEditModal({{ $teacher->user_id }}, '{{ addslashes($teacher->full_name) }}', '{{ addslashes($teacher->email) }}', '{{ addslashes($teacher->phone) }}', 'teacher', {{ json_encode($teacher->course_ids) }})" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-pen"></i></button>
                 <form action="{{ route('hod.accounts.delete', $teacher->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
                     @csrf
                     <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
@@ -200,7 +211,8 @@
         @forelse($students as $index => $student)
         @php $colorClass = ['avatar-blue','avatar-purple','avatar-orange','avatar-green'][$index % 4]; @endphp
         <div class="account-card">
-            <div class="delete-btn-wrap">
+            <div class="delete-btn-wrap" style="display:flex; gap:0.5rem;">
+                <button type="button" onclick="openEditModal({{ $student->user_id }}, '{{ addslashes($student->full_name) }}', '{{ addslashes($student->email) }}', '{{ addslashes($student->phone) }}')" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-pen"></i></button>
                 <form action="{{ route('hod.accounts.delete', $student->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
                     @csrf
                     <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
@@ -231,7 +243,8 @@
         @forelse($parents as $index => $parent)
         @php $colorClass = ['avatar-green','avatar-blue','avatar-purple','avatar-orange'][$index % 4]; @endphp
         <div class="account-card">
-            <div class="delete-btn-wrap">
+            <div class="delete-btn-wrap" style="display:flex; gap:0.5rem;">
+                <button type="button" onclick="openEditModal({{ $parent->user_id }}, '{{ addslashes($parent->full_name) }}', '{{ addslashes($parent->email) }}', '{{ addslashes($parent->phone) }}')" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-pen"></i></button>
                 <form action="{{ route('hod.accounts.delete', $parent->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
                     @csrf
                     <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
@@ -281,30 +294,25 @@
                         <input type="email" name="email" required placeholder="teacher@domain.com" dir="ltr" class="form-input">
                     </div>
                 </div>
-                <div class="form-row">
-                    <div>
-                        <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
-                        <select name="department" required class="form-input">
-                            <option value="" disabled selected>اختر القسم</option>
-                            @foreach($departments as $dept)
-                                <option value="{{ $dept->name }}">{{ $dept->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label">التخصص <span style="color:#ef4444">*</span></label>
-                        <input type="text" name="specialization" required placeholder="مثال: هندسة برمجيات" class="form-input">
+                <div class="form-group">
+                    <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
+                    <input type="text" name="department" value="{{ Auth::user()->department }}" readonly class="form-input" style="background-color: var(--bg-primary); cursor: not-allowed; color: var(--text-secondary);">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">التخصصات (الفروع) <span style="color:#ef4444">*</span></label>
+                    <div class="courses-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+                        @foreach($branches as $branch)
+                            <label class="course-check">
+                                <input type="checkbox" name="specializations[]" value="{{ $branch->name }}" class="branch-checkbox" onchange="filterTeacherCourses()">
+                                <span>{{ $branch->name }}</span>
+                            </label>
+                        @endforeach
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">المواد التي يدرسها</label>
-                    <div class="courses-grid">
-                        @foreach($courses as $course)
-                        <label class="course-check">
-                            <input type="checkbox" name="courses[]" value="{{ $course->course_id }}">
-                            <span>{{ $course->title }}</span>
-                        </label>
-                        @endforeach
+                    <div class="courses-grid" id="teacher-courses-grid">
+                        <span style="color:var(--text-secondary); font-size:0.9rem;">يرجى اختيار الفرع لعرض المواد المتاحة.</span>
                     </div>
                 </div>
                 <div class="form-row">
@@ -352,13 +360,19 @@
                 <div class="form-row">
                     <div>
                         <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
-                        <select name="department" required class="form-input">
-                            <option value="" disabled selected>اختر القسم</option>
-                            @foreach($departments as $dept)
-                                <option value="{{ $dept->name }}">{{ $dept->name }}</option>
+                        <input type="text" name="department" value="{{ Auth::user()->department }}" readonly class="form-input" style="background-color: var(--bg-primary); cursor: not-allowed; color: var(--text-secondary);">
+                    </div>
+                    <div>
+                        <label class="form-label">التخصص (الفرع) <span style="color:#ef4444">*</span></label>
+                        <select name="program_id" required class="form-input">
+                            <option value="" disabled selected>اختر الفرع</option>
+                            @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                             @endforeach
                         </select>
                     </div>
+                </div>
+                <div class="form-row">
                     <div>
                         <label class="form-label">السنة الدراسية <span style="color:#ef4444">*</span></label>
                         <select name="level" required class="form-input">
@@ -468,18 +482,18 @@
 
                 <div id="advisor-assign-fields">
                     <div class="form-group">
-                        <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
-                        <select id="advisor-department-select" class="form-input">
-                            <option value="" disabled selected>اختر القسم</option>
-                            @foreach($departments as $dept)
-                                <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
+                        <label class="form-label">الفرع <span style="color:#ef4444">*</span></label>
+                        <select name="branch" id="advisor-branch-select" class="form-input">
+                            <option value="" disabled selected>اختر الفرع</option>
+                            @foreach($branches as $branch)
+                                <option value="{{ $branch->name }}">{{ $branch->name }}</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">السنة الدراسية <span style="color:#ef4444">*</span></label>
-                        <select id="advisor-year-select" class="form-input">
+                        <select name="year" id="advisor-year-select" class="form-input">
                             <option value="" disabled selected>اختر السنة الدراسية</option>
                             <option value="السنة الأولى">السنة الأولى</option>
                             <option value="السنة الثانية">السنة الثانية</option>
@@ -487,12 +501,12 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">الدورة <span style="color:#ef4444">*</span></label>
-                        <select name="course_id" id="advisor-course-id" class="form-input">
-                            <option value="" disabled selected>اختر الدورة</option>
-                            @foreach($all_courses as $course)
-                                <option value="{{ $course->course_id }}">{{ $course->title }}</option>
-                            @endforeach
+                        <label class="form-label">الشعبة (اختياري)</label>
+                        <select name="section" id="advisor-section-select" class="form-input">
+                            <option value="">لا يوجد شعبة محددة</option>
+                            <option value="شعبة 1">شعبة 1</option>
+                            <option value="شعبة 2">شعبة 2</option>
+                            <option value="شعبة 3">شعبة 3</option>
                         </select>
                     </div>
                 </div>
@@ -505,11 +519,99 @@
         </div>
     </div>
 
+    {{-- Modal: Edit Account --}}
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">تعديل بيانات الحساب</h4>
+            <form id="edit-account-form" method="POST">
+                @csrf
+                <div class="form-group">
+                    <label class="form-label">الاسم الكامل <span style="color:#ef4444">*</span></label>
+                    <input type="text" id="edit_full_name" name="full_name" required class="form-input">
+                </div>
+                <div class="form-row">
+                    <div>
+                        <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                        <input type="email" id="edit_email" name="email" required dir="ltr" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">رقم الهاتف</label>
+                        <input type="tel" id="edit_phone" name="phone" dir="ltr" class="form-input">
+                    </div>
+                </div>
+                
+                <div class="form-group" id="edit_teacher_courses" style="display:none; margin-top: 1rem;">
+                    <label class="form-label">المواد التي يدرسها (للتعديل) <span style="color:#ef4444">*</span></label>
+                    <div class="courses-grid">
+                        @foreach($all_courses as $course)
+                            <label class="course-check edit-course-label" data-assigned="{{ $course->is_assigned ? 'true' : 'false' }}">
+                                <input type="checkbox" name="courses[]" value="{{ $course->course_id }}" class="edit-course-checkbox">
+                                <span>{{ $course->title }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">كلمة المرور <span style="color:#94a3b8; font-size:0.8rem;">(اختياري - اتركها فارغة إذا لم ترد التغيير)</span></label>
+                    <input type="password" name="password" minlength="6" placeholder="••••••••" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">تأكيد كلمة المرور</label>
+                    <input type="password" name="password_confirmation" placeholder="••••••••" class="form-input">
+                </div>
+                <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+                    <button type="submit" class="btn-save">حفظ التعديلات</button>
+                    <button type="button" onclick="closeModal('edit-modal')" class="btn-cancel">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
 <script>
     let activeTab = 'teachers';
+
+    const coursesByBranch = @json($coursesByBranch ?? []);
+
+    function filterTeacherCourses() {
+        const checkboxes = document.querySelectorAll('.branch-checkbox:checked');
+        const selectedBranches = Array.from(checkboxes).map(cb => cb.value);
+        const grid = document.getElementById('teacher-courses-grid');
+        grid.innerHTML = ''; // Clear current
+
+        if (selectedBranches.length === 0) {
+            grid.innerHTML = '<span style="color:var(--text-secondary); font-size:0.9rem;">يرجى اختيار فرع أو أكثر لعرض المواد المتاحة.</span>';
+            return;
+        }
+
+        const uniqueCourses = new Map();
+
+        selectedBranches.forEach(branchName => {
+            if (coursesByBranch[branchName]) {
+                coursesByBranch[branchName].forEach(course => {
+                    uniqueCourses.set(course.id, course.title);
+                });
+            }
+        });
+
+        if (uniqueCourses.size === 0) {
+            grid.innerHTML = '<span style="color:var(--text-secondary); font-size:0.9rem;">لا توجد مواد لهذه الفروع.</span>';
+            return;
+        }
+
+        uniqueCourses.forEach((title, id) => {
+            const label = document.createElement('label');
+            label.className = 'course-check';
+            label.innerHTML = `
+                <input type="checkbox" name="courses[]" value="${id}">
+                <span>${title}</span>
+            `;
+            grid.appendChild(label);
+        });
+    }
 
     function switchTab(tab) {
         activeTab = tab;
@@ -547,15 +649,15 @@
 
     function toggleAdvisorAction(action) {
         const assignFields = document.getElementById('advisor-assign-fields');
-        const courseSelect = document.getElementById('advisor-course-id');
+        const branchSelect = document.getElementById('advisor-branch-select');
         const yearSelect = document.getElementById('advisor-year-select');
         if (action === 'assign') {
             assignFields.style.display = 'block';
-            courseSelect.required = true;
+            branchSelect.required = true;
             yearSelect.required = true;
         } else {
             assignFields.style.display = 'none';
-            courseSelect.required = false;
+            branchSelect.required = false;
             yearSelect.required = false;
         }
     }
@@ -563,6 +665,42 @@
     // ===== Children Fields (Parent Modal) =====
     const ordinals = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر'];
     let lookupTimers = {};
+
+    function openEditModal(userId, fullName, email, phone, role = '', courseIds = []) {
+        const form = document.getElementById('edit-account-form');
+        form.action = `/hod/accounts/update/${userId}`;
+        document.getElementById('edit_full_name').value = fullName;
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_phone').value = phone || '';
+        
+        const coursesSection = document.getElementById('edit_teacher_courses');
+        if (role === 'teacher') {
+            coursesSection.style.display = 'block';
+            const numCourseIds = (courseIds || []).map(id => parseInt(id));
+            
+            document.querySelectorAll('.edit-course-checkbox').forEach(cb => {
+                cb.checked = false;
+                const isAssigned = cb.parentElement.getAttribute('data-assigned') === 'true';
+                const isCurrentTeacherCourse = numCourseIds.includes(parseInt(cb.value));
+                
+                if (isAssigned && !isCurrentTeacherCourse) {
+                    cb.parentElement.style.display = 'none';
+                } else {
+                    cb.parentElement.style.display = '';
+                }
+            });
+            if (courseIds && courseIds.length) {
+                courseIds.forEach(id => {
+                    const cb = document.querySelector(`.edit-course-checkbox[value="${id}"]`);
+                    if (cb) cb.checked = true;
+                });
+            }
+        } else {
+            coursesSection.style.display = 'none';
+        }
+        
+        openModal('edit-modal');
+    }
 
     function updateChildrenFields(count) {
         count = Math.max(1, Math.min(count, 10));

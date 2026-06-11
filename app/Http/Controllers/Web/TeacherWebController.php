@@ -183,7 +183,9 @@ class TeacherWebController extends Controller
             ->limit(10)
             ->get();
 
-        return view('teacher.attendance', compact('courses', 'recentSessions'));
+        $isAdvisor = !empty($teacher->advisor_branch) && !empty($teacher->advisor_year);
+
+        return view('teacher.attendance', compact('courses', 'recentSessions', 'isAdvisor', 'teacher'));
     }
 
     public function storeAttendanceSession(Request $request)
@@ -225,6 +227,88 @@ class TeacherWebController extends Controller
         return redirect()->back()->with('success', 'تم بدء جلسة الحضور بنجاح لمدة 10 دقائق!');
     }
 
+    public function endSession($id)
+    {
+        $session = DB::table('attendance_sessions')->where('id', $id)->first();
+        if (!$session) {
+            return redirect()->back()->with('error', 'الجلسة غير موجودة');
+        }
+
+        DB::table('attendance_sessions')
+            ->where('id', $id)
+            ->update([
+                'is_active' => 0,
+                'expires_at' => now(), // إنهاء الصلاحية فوراً
+                'closed_at' => now(),
+                'updated_at' => now()
+            ]);
+
+        // ==========================================
+        // إضافة سجل "غائب" لجميع الطلاب الذين لم يحضروا
+        // ==========================================
+        $sessionData = DB::table('attendance_sessions')
+            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
+            ->where('attendance_sessions.id', $id)
+            ->select('attendance_sessions.*', 'lessons.course_id', 'lessons.lesson_id')
+            ->first();
+
+        if ($sessionData) {
+            $course = DB::table('courses')->where('course_id', $sessionData->course_id)->first();
+            $coursePrograms = DB::table('course_program')->where('course_id', $sessionData->course_id)->pluck('program_id')->toArray();
+            $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+            $courseYearStr = $yearMap[$course->year] ?? null;
+
+            // جلب كل الطلاب المطابقين للمادة
+            $students = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('enrollments', function($join) use ($sessionData) {
+                    $join->on('students.student_id', '=', 'enrollments.student_id')
+                         ->where('enrollments.course_id', '=', $sessionData->course_id);
+                })
+                ->where(function($query) use ($coursePrograms, $courseYearStr) {
+                    $query->whereNotNull('enrollments.enrollment_id');
+                    if (!empty($coursePrograms) && $courseYearStr) {
+                        $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
+                            $q->whereIn('students.program_id', $coursePrograms)
+                              ->where('users.academic_year', $courseYearStr);
+                        });
+                    }
+                })
+                ->pluck('students.student_id')
+                ->toArray();
+
+            // جلب الطلاب اللي حضروا فعلاً
+            $attendedStudents = DB::table('attendance')
+                ->where('lesson_id', $sessionData->lesson_id)
+                ->pluck('student_id')
+                ->toArray();
+
+            // الطلاب الغائبين = كل الطلاب - اللي حضروا
+            $absentStudents = array_diff($students, $attendedStudents);
+
+            $absentRecords = [];
+            $now = now();
+            $sessionDate = \Carbon\Carbon::parse($sessionData->created_at)->format('Y-m-d');
+
+            foreach ($absentStudents as $absentId) {
+                $absentRecords[] = [
+                    'student_id' => $absentId,
+                    'lesson_id' => $sessionData->lesson_id,
+                    'status' => 'absent',
+                    'attendance_date' => $sessionDate,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            if (!empty($absentRecords)) {
+                DB::table('attendance')->insert($absentRecords);
+            }
+        }
+
+        return redirect()->back()->with('success', 'تم إيقاف الجلسة بنجاح! وتم تسجيل غياب الطلاب المتخلفين عن الحضور.');
+    }
+
     public function exportAttendance($sessionId)
     {
         $session = DB::table('attendance_sessions')
@@ -236,16 +320,34 @@ class TeacherWebController extends Controller
 
         if (!$session) abort(404);
 
-        $students = DB::table('enrollments')
-            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+        $course = DB::table('courses')->where('course_id', $session->course_id)->first();
+        $coursePrograms = DB::table('course_program')->where('course_id', $session->course_id)->pluck('program_id')->toArray();
+        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+        $courseYearStr = $yearMap[$course->year] ?? null;
+
+        $students = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->where('enrollments.course_id', $session->course_id)
-            ->select('students.student_id', 'users.full_name', 'students.level')
+            ->leftJoin('enrollments', function($join) use ($session) {
+                $join->on('students.student_id', '=', 'enrollments.student_id')
+                     ->where('enrollments.course_id', '=', $session->course_id);
+            })
+            ->where(function($query) use ($coursePrograms, $courseYearStr) {
+                $query->whereNotNull('enrollments.enrollment_id');
+                if (!empty($coursePrograms) && $courseYearStr) {
+                    $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
+                        $q->whereIn('students.program_id', $coursePrograms)
+                          ->where('users.academic_year', $courseYearStr);
+                    });
+                }
+            })
+            ->select('students.student_id', 'users.full_name', 'users.academic_year as level')
+            ->distinct()
             ->get();
 
         $attendances = DB::table('attendance')
             ->where('lesson_id', $session->lesson_id)
-            ->pluck('status', 'student_id');
+            ->get(['student_id', 'status', 'created_at'])
+            ->keyBy('student_id');
 
         $csvData = "
         <html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" xmlns=\"http://www.w3.org/TR/REC-html40\">
@@ -263,22 +365,22 @@ class TeacherWebController extends Controller
                     <th>اسم الطالب</th>
                     <th>القسم/السنة</th>
                     <th>حالة الحضور</th>
-                    <th>التاريخ</th>
+                    <th>تاريخ ووقت التسجيل</th>
                 </tr>";
 
-        $date = \Carbon\Carbon::parse($session->created_at)->format('Y-m-d');
-
         foreach ($students as $student) {
-            $statusRaw = $attendances->get($student->student_id);
+            $att = $attendances->get($student->student_id);
+            $statusRaw = $att ? $att->status : 'absent';
             $statusText = ($statusRaw === 'present') ? 'حاضر' : 'غائب';
             $color = ($statusRaw === 'present') ? '#166534' : '#b91c1c';
+            $timeText = ($statusRaw === 'present') ? \Carbon\Carbon::parse($att->created_at)->format('Y-m-d H:i') : '-';
             
             $csvData .= "
                 <tr>
                     <td>{$student->full_name}</td>
                     <td>{$student->level}</td>
                     <td style=\"color: {$color}; font-weight: bold;\">{$statusText}</td>
-                    <td>{$date}</td>
+                    <td>{$timeText}</td>
                 </tr>";
         }
 
@@ -287,11 +389,196 @@ class TeacherWebController extends Controller
         </body>
         </html>";
 
+        $date = \Carbon\Carbon::parse($session->created_at)->format('Y-m-d');
         $fileName = "attendance_{$session->course_id}_{$date}.xls";
         
         return response("\xEF\xBB\xBF" . $csvData)
             ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
             ->header('Content-Disposition', "attachment; filename=\"$fileName\"");
+    }
+
+    public function exportFilteredAttendance(Request $request)
+    {
+        $teacher = $this->getTeacher();
+        
+        $scope = $request->input('scope', 'my_courses');
+        $courseId = $request->input('course_id');
+        $period = $request->input('period', 'today');
+
+        $startDate = null;
+        $endDate = null;
+
+        if ($period === 'today') {
+            $startDate = now()->startOfDay();
+            $endDate = now()->endOfDay();
+        } elseif ($period === 'week') {
+            $startDate = now()->startOfWeek();
+            $endDate = now()->endOfWeek();
+        } elseif ($period === 'semester') {
+            $startDate = null;
+            $endDate = null;
+        }
+
+        $sessionQuery = DB::table('attendance_sessions')
+            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
+            ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
+            ->select('attendance_sessions.*', 'courses.course_id', 'courses.title as course_title', 'courses.year as course_year', 'lessons.lesson_id');
+
+        if ($startDate && $endDate) {
+            $sessionQuery->whereBetween('attendance_sessions.created_at', [$startDate, $endDate]);
+        }
+
+        if ($scope === 'my_courses') {
+            $myCourseIds = DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id')->toArray();
+            if ($courseId) {
+                if (!in_array($courseId, $myCourseIds)) {
+                    abort(403, 'ليس لديك صلاحية على هذه المادة');
+                }
+                $sessionQuery->where('courses.course_id', $courseId);
+            } else {
+                $sessionQuery->whereIn('courses.course_id', $myCourseIds);
+            }
+        } elseif ($scope === 'advisor_class') {
+            $advisorBranch = $teacher->advisor_branch;
+            $advisorYear = $teacher->advisor_year;
+            
+            if (!$advisorBranch || !$advisorYear) {
+                abort(403, 'لست مربياً لأي دورة');
+            }
+
+            // للمربي، يتم جلب الجلسات المتعلقة بالمواد التي تخص فرع وسنة الدورة
+            $programIds = DB::table('programs')->where('name', $advisorBranch)->pluck('id')->toArray();
+            
+            $yearMapRev = ['السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5];
+            $courseYearNum = $yearMapRev[$advisorYear] ?? null;
+
+            if ($courseId) {
+                $sessionQuery->where('courses.course_id', $courseId);
+            } else {
+                // نفلتر المواد اللي بتخص الفرع والسنة الخاصة بالمربي
+                $validCourses = DB::table('courses')
+                    ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                    ->whereIn('course_program.program_id', $programIds)
+                    ->where('courses.year', $courseYearNum)
+                    ->pluck('courses.course_id')->toArray();
+                
+                $sessionQuery->whereIn('courses.course_id', $validCourses);
+            }
+        }
+
+        $sessions = $sessionQuery->orderBy('attendance_sessions.created_at')->get();
+
+        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+
+        $allStudents = []; // student_id => ['name' => ..., 'level' => ...]
+        $matrix = []; // student_id => [lesson_id => 'حاضر/غائب']
+
+        foreach ($sessions as $session) {
+            $coursePrograms = DB::table('course_program')->where('course_id', $session->course_id)->pluck('program_id')->toArray();
+            $courseYearStr = $yearMap[$session->course_year] ?? null;
+
+            $students = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('enrollments', function($join) use ($session) {
+                    $join->on('students.student_id', '=', 'enrollments.student_id')
+                         ->where('enrollments.course_id', '=', $session->course_id);
+                })
+                ->where(function($query) use ($coursePrograms, $courseYearStr) {
+                    $query->whereNotNull('enrollments.enrollment_id');
+                    if (!empty($coursePrograms) && $courseYearStr) {
+                        $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
+                            $q->whereIn('students.program_id', $coursePrograms)
+                              ->where('users.academic_year', $courseYearStr);
+                        });
+                    }
+                })
+                ->select('students.student_id', 'users.full_name', 'users.academic_year', 'programs.name as branch_name')
+                ->distinct()
+                ->get();
+
+            $attendances = DB::table('attendance')
+                ->where('lesson_id', $session->lesson_id)
+                ->get(['student_id', 'status'])
+                ->keyBy('student_id');
+
+            foreach ($students as $student) {
+                if (!isset($allStudents[$student->student_id])) {
+                    $allStudents[$student->student_id] = [
+                        'name' => $student->full_name,
+                        'branch' => $student->branch_name ?? 'عام',
+                        'year' => $student->academic_year,
+                    ];
+                }
+
+                $att = $attendances->get($student->student_id);
+                $statusRaw = $att ? $att->status : 'absent';
+                
+                $matrix[$student->student_id][$session->lesson_id] = $statusRaw;
+            }
+        }
+
+        $exportType = $request->input('export_type', 'excel');
+        $dateStr = now()->format('Y-m-d');
+        
+        if ($exportType === 'pdf') {
+            // Sort students alphabetically
+            uasort($allStudents, function($a, $b) {
+                return strcmp($a['name'], $b['name']);
+            });
+
+            // Prepare Daily Summary Data
+            $daysMap = [];
+            foreach ($sessions as $session) {
+                $dateObj = \Carbon\Carbon::parse($session->created_at)->locale('ar');
+                $dateString = $dateObj->format('Y-m-d');
+                $daysMap[$dateString] = $dateObj->translatedFormat('l');
+            }
+            ksort($daysMap);
+
+            $dailyStatus = [];
+            foreach ($allStudents as $studentId => $info) {
+                foreach ($sessions as $session) {
+                    $dateString = \Carbon\Carbon::parse($session->created_at)->format('Y-m-d');
+                    $status = $matrix[$studentId][$session->lesson_id] ?? null;
+                    if ($status !== null) {
+                        if (!isset($dailyStatus[$studentId][$dateString])) {
+                            $dailyStatus[$studentId][$dateString] = 'absent';
+                        }
+                        if ($status === 'present') {
+                            $dailyStatus[$studentId][$dateString] = 'present';
+                        }
+                    }
+                }
+            }
+
+            // Prepare Course Sheets Data
+            $courseSessions = [];
+            foreach ($sessions as $session) {
+                $courseSessions[$session->course_id][] = $session;
+            }
+
+            $pdf = \Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::loadView('exports.attendance_pdf', compact(
+                'allStudents', 'matrix', 'sessions', 'daysMap', 'dailyStatus', 'courseSessions'
+            ), [], [
+                'mode' => 'utf-8',
+                'format' => 'A4',
+                'orientation' => 'P',
+                'autoScriptToLang' => true,
+                'autoLangToFont' => true,
+            ]);
+
+            return $pdf->download("filtered_attendance_report_{$dateStr}.pdf");
+        }
+
+        // Excel Export
+        $fileName = "filtered_attendance_report_{$dateStr}.xlsx";
+        $isAdvisor = ($scope === 'advisor_class');
+        
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\FilteredAttendanceExport($sessions, $allStudents, $matrix, $isAdvisor),
+            $fileName
+        );
     }
 
     public function getAbsentees($sessionId)
@@ -304,11 +591,32 @@ class TeacherWebController extends Controller
 
         if (!$session) return response()->json([]);
 
-        $students = DB::table('enrollments')
-            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+        // Course details
+        $course = DB::table('courses')->where('course_id', $session->course_id)->first();
+        $coursePrograms = DB::table('course_program')->where('course_id', $session->course_id)->pluck('program_id')->toArray();
+
+        // Convert course year to string
+        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+        $courseYearStr = $yearMap[$course->year] ?? null;
+
+        // Get students either explicitly enrolled OR matching the program and year
+        $studentsQuery = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->where('enrollments.course_id', $session->course_id)
-            ->select('students.student_id', 'users.full_name', 'students.level')
+            ->leftJoin('enrollments', function($join) use ($session) {
+                $join->on('students.student_id', '=', 'enrollments.student_id')
+                     ->where('enrollments.course_id', '=', $session->course_id);
+            })
+            ->where(function($query) use ($coursePrograms, $courseYearStr) {
+                $query->whereNotNull('enrollments.enrollment_id'); // explicitly enrolled
+                if (!empty($coursePrograms) && $courseYearStr) {
+                    $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
+                        $q->whereIn('students.program_id', $coursePrograms)
+                          ->where('users.academic_year', $courseYearStr);
+                    });
+                }
+            })
+            ->select('students.student_id', 'users.full_name', 'users.academic_year as level')
+            ->distinct()
             ->get();
 
         $attendances = DB::table('attendance')
@@ -317,7 +625,7 @@ class TeacherWebController extends Controller
             ->pluck('student_id')->toArray();
 
         $absentees = [];
-        foreach ($students as $student) {
+        foreach ($studentsQuery as $student) {
             if (!in_array($student->student_id, $attendances)) {
                 $absentees[] = $student;
             }
@@ -947,22 +1255,44 @@ class TeacherWebController extends Controller
     {
         $teacher = $this->getTeacher();
         
-        $advisorCourses = DB::table('course_teachers')
-            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
-            ->where('course_teachers.teacher_id', $teacher->teacher_id)
-            ->where('course_teachers.role', 'advisor')
-            ->select('courses.course_id', 'courses.title')
-            ->get();
-            
         $students = [];
-        if ($advisorCourses->count() > 0) {
-            $courseIds = $advisorCourses->pluck('course_id');
-            $students = DB::table('enrollments')
-                ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+        $isAdvisor = !empty($teacher->advisor_branch) && !empty($teacher->advisor_year);
+        
+        // Create a dummy collection so the view doesn't break if it expects $advisorCourses
+        $advisorCourses = collect();
+        
+        if ($isAdvisor) {
+            $courseTitle = "{$teacher->advisor_branch} - {$teacher->advisor_year}" . ($teacher->advisor_section ? " - {$teacher->advisor_section}" : "");
+            
+            // Check if this dummy course exists, if not create it to satisfy foreign key constraints
+            $dummyCourse = DB::table('courses')->where('title', 'سجل المربي: ' . $courseTitle)->first();
+            if (!$dummyCourse) {
+                $dummyCourseId = DB::table('courses')->insertGetId([
+                    'title' => 'سجل المربي: ' . $courseTitle,
+                    'level' => $teacher->advisor_year,
+                    'hours' => 0,
+                    'year' => 1,
+                    'semester_id' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } else {
+                $dummyCourseId = $dummyCourse->course_id;
+            }
+
+            $advisorCourses->push((object)[
+                'course_id' => $dummyCourseId, 
+                'title' => $courseTitle
+            ]);
+            
+            $query = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->whereIn('enrollments.course_id', $courseIds)
-                ->where('enrollments.status', 'active')
-                ->select('students.student_id', 'users.full_name', 'users.university_id')
+                ->where('users.department', $teacher->advisor_branch)
+                ->where('students.level', $teacher->advisor_year);
+                
+            // If section is implemented in students, we would filter here.
+            
+            $students = $query->select('students.student_id', 'users.full_name', 'users.university_id')
                 ->distinct()
                 ->get();
         }
@@ -1051,11 +1381,7 @@ class TeacherWebController extends Controller
         $date = $request->input('date');
         $attendances = $request->input('attendance');
 
-        $isAdvisor = DB::table('course_teachers')
-            ->where('teacher_id', $teacher->teacher_id)
-            ->where('course_id', $courseId)
-            ->where('role', 'advisor')
-            ->exists();
+        $isAdvisor = !empty($teacher->advisor_branch) && !empty($teacher->advisor_year);
 
         if (!$isAdvisor) {
             return back()->with('error', 'ليس لديك صلاحية مربي لهذه الدورة.');
@@ -1071,7 +1397,7 @@ class TeacherWebController extends Controller
                 'course_id' => $courseId,
                 'title' => 'الحضور اليومي للقاعة',
                 'description' => 'سجل خاص بتفقد المربي',
-                'content' => 'يومي',
+                'content_url' => 'يومي',
                 'teacher_id' => $teacher->teacher_id,
                 'department_id' => 1,
                 'created_at' => now(),
@@ -1125,11 +1451,14 @@ class TeacherWebController extends Controller
             ->where('report_requests.teacher_id', $teacher->teacher_id)
             ->join('students', 'report_requests.student_id', '=', 'students.student_id')
             ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->leftJoin('users as requesters', 'report_requests.head_id', '=', 'requesters.user_id')
             ->leftJoin('performance_reports', 'performance_reports.report_request_id', '=', 'report_requests.id')
             ->select(
                 'report_requests.*',
                 'su.full_name as student_name',
                 'students.student_code',
+                'requesters.full_name as requester_name',
+                'requesters.role_id as requester_role_id',
                 'performance_reports.attendance_rate',
                 'performance_reports.average_grade',
                 'performance_reports.recommendations as submitted_notes',
@@ -1198,8 +1527,8 @@ class TeacherWebController extends Controller
             'report_request_id' => $id,
             'student_id'        => $studentId,
             'report_type'       => $reportRequest->report_type,
-            'attendance_rate'   => $attendanceRate,
-            'average_grade'     => $avgGrade,
+            'attendance_rate'   => $attendanceRate ?? 0,
+            'average_grade'     => $avgGrade ?? 0,
             'recommendations'   => $recommendations,
             'generated_at'      => now(),
             'created_at'        => now(),
@@ -1211,13 +1540,15 @@ class TeacherWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        // ===== إشعار الأهل (FCM + داخلي) =====
         $studentName = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->where('students.student_id', $studentId)
             ->value('users.full_name') ?? 'الطالب';
 
         $notifTitle = $isBehavioral ? 'تقرير سلوكي جديد' : 'تقرير أكاديمي جديد';
+
+        // ===== إشعار الأهل (تم تعطيله ليرسل فقط عندما يوافق رئيس القسم) =====
+        /*
         $notifBody  = 'تم إرسال تقرير ' . ($isBehavioral ? 'سلوكي' : 'أكاديمي') . ' عن ابنك/ابنتك ' . $studentName;
 
         $parentRows = DB::table('parent_students')
@@ -1246,28 +1577,40 @@ class TeacherWebController extends Controller
                 'student_id' => (string) $studentId,
             ]);
         }
-        }
+        */
 
-        // إشعار رئيس القسم
-        $headId = \Illuminate\Support\Facades\DB::table('users')->where('role', 'head')->value('user_id');
-        if ($headId) {
-            \Illuminate\Support\Facades\DB::table('notifications')->insert([
-                'user_id'    => $headId,
-                'sender_id'  => auth()->id(),
-                'title'      => $notifTitle,
-                'message'    => 'تم رفع تقرير عن الطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
-                'type'       => 'report',
-                'related_id' => $id,
-                'category'   => 'academic',
-                'is_read'    => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        // إشعار رئيس القسم الخاص بالطالب
+        $studentData = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $studentId)
+            ->select('users.department')
+            ->first();
+
+        if ($studentData && $studentData->department) {
+            $headId = DB::table('users')
+                ->where('role_id', 5) // HOD
+                ->where('department', $studentData->department)
+                ->value('user_id');
+
+            if ($headId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $headId,
+                    'sender_id'  => auth()->id(),
+                    'title'      => $notifTitle,
+                    'message'    => 'تم رفع تقرير عن الطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
+                    'type'       => 'report',
+                    'related_id' => $id,
+                    'category'   => 'academic',
+                    'is_read'    => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         $msg = $isBehavioral
-            ? 'تم إرسال التقرير السلوكي وإشعار ولي الأمر ورئيس القسم بنجاح!'
-            : 'تم توليد التقرير الأكاديمي وإشعار ولي الأمر ورئيس القسم بنجاح!';
+            ? 'تم إرسال التقرير السلوكي بنجاح!'
+            : 'تم توليد التقرير الأكاديمي بنجاح!';
 
         return redirect()->back()->with('success', $msg);
     }

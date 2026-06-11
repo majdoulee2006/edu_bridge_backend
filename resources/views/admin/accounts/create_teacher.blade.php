@@ -53,11 +53,11 @@
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">القسم</label>
                 <div class="relative group">
-                    <select required name="department"
+                    <select required name="department" id="department-select" onchange="filterDeptData()"
                             class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">
                         <option disabled selected value="">اختر القسم</option>
                         @foreach($departments as $dept)
-                            <option value="{{ $dept->name }}" {{ old('department') == $dept->name ? 'selected' : '' }}>{{ $dept->name }}</option>
+                            <option value="{{ $dept->name }}" data-id="{{ $dept->department_id }}" {{ old('department') == $dept->name ? 'selected' : '' }}>{{ $dept->name }}</option>
                         @endforeach
                     </select>
                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
@@ -65,9 +65,14 @@
                 @error('department')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
             <div class="space-y-1.5">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">التخصص</label>
-                <input required name="specialization" value="{{ old('specialization') }}" type="text" placeholder="مثال: هندسة برمجيات"
-                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">التخصص (الفرع)</label>
+                <div class="relative group">
+                    <select required name="specialization" id="spec-select"
+                            class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">
+                        <option disabled selected value="">اختر القسم أولاً</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+                </div>
                 @error('specialization')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
         </div>
@@ -76,15 +81,8 @@
         <div class="space-y-2">
             <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">المواد التي يدرسها</label>
             <div class="bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl p-4 shadow-sm">
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    @foreach($courses as $course)
-                    <label class="cursor-pointer flex items-center gap-2.5 p-2.5 rounded-xl border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/10">
-                        <input type="checkbox" name="courses[]" value="{{ $course->course_id }}"
-                               class="w-4 h-4 accent-primary cursor-pointer flex-shrink-0"
-                               {{ in_array($course->course_id, old('courses', [])) ? 'checked' : '' }}>
-                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-tight">{{ $course->title }}</span>
-                    </label>
-                    @endforeach
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2" id="courses-container">
+                    <div class="text-xs text-slate-500">الرجاء اختيار القسم أولاً</div>
                 </div>
             </div>
             @error('courses')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
@@ -129,5 +127,59 @@ function togglePasswordVisibility(btn) {
     input.type = input.type === 'password' ? 'text' : 'password';
     btn.textContent = input.type === 'password' ? 'visibility_off' : 'visibility';
 }
+
+const deptCourses = @json($deptCourses ?? []);
+const deptBranches = @json($deptBranches ?? []);
+
+function filterDeptData() {
+    const select = document.getElementById('department-select');
+    const selectedOption = select.options[select.selectedIndex];
+    const deptId = selectedOption ? selectedOption.getAttribute('data-id') : null;
+    
+    const specSelect = document.getElementById('spec-select');
+    const coursesContainer = document.getElementById('courses-container');
+    
+    specSelect.innerHTML = '';
+    coursesContainer.innerHTML = '';
+    
+    if (!deptId) {
+        specSelect.innerHTML = '<option disabled selected value="">اختر القسم أولاً</option>';
+        coursesContainer.innerHTML = '<div class="text-xs text-slate-500">الرجاء اختيار القسم أولاً</div>';
+        return;
+    }
+    
+    // Fill Branches
+    const branches = deptBranches[deptId] || [];
+    if (branches.length === 0) {
+        specSelect.innerHTML = '<option disabled selected value="">لا توجد أفرع لهذا القسم</option>';
+    } else {
+        specSelect.innerHTML = '<option disabled selected value="">اختر الفرع</option>';
+        branches.forEach(b => {
+            specSelect.innerHTML += `<option value="${b.name}">${b.name}</option>`;
+        });
+    }
+    
+    // Fill Courses
+    const courses = deptCourses[deptId] || [];
+    if (courses.length === 0) {
+        coursesContainer.innerHTML = '<div class="text-xs text-slate-500">لا توجد مواد لهذا القسم</div>';
+    } else {
+        courses.forEach(c => {
+            coursesContainer.innerHTML += `
+            <label class="cursor-pointer flex items-center gap-2.5 p-2.5 rounded-xl border border-transparent hover:border-primary/30 hover:bg-primary/5 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+                <input type="checkbox" name="courses[]" value="${c.id}" class="w-4 h-4 accent-primary cursor-pointer flex-shrink-0">
+                <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-tight">${c.title}</span>
+            </label>`;
+        });
+    }
+}
+
+// Trigger initial filter if old value exists
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('department-select').value) {
+        filterDeptData();
+        // optionally, we would need to re-select old('specialization') and old('courses') here...
+    }
+});
 </script>
 @endpush

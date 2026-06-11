@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        // إرسال ملخص الحضور اليومي للمربين في نهاية كل يوم
+        $schedule->command('attendance:daily-summary')->dailyAt('22:00');
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role'    => \App\Http\Middleware\RoleMiddleware::class,

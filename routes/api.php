@@ -171,10 +171,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // الجدول الدراسي
         Route::get('/schedule', [TeacherController::class, 'getSchedule']);
 
-        // طلبات التقارير من رئيس القسم
-        Route::get('/report-requests', [TeacherController::class, 'getReportRequests']);
-        Route::get('/report-requests/{id}/stats', [TeacherController::class, 'getStudentAcademicStats']);
-        Route::post('/report-requests/{id}/evaluate', [TeacherController::class, 'submitEvaluation']);
 
         // المحاضرات
         Route::get('/lessons', [TeacherController::class, 'getLessons']);
@@ -187,6 +183,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/attendance/generate-qr', [TeacherController::class, 'generateQrSession']);
         Route::get('/attendance/session/{sessionId}/list', [TeacherController::class, 'getSessionAttendance']);
         Route::post('/attendance/session/{sessionId}/end', [TeacherController::class, 'endSession']);
+        Route::get('/attendance/export', [TeacherController::class, 'exportAttendance']);
+        Route::get('/attendance/export-pdf', [TeacherController::class, 'exportFilteredPdf']);
+        Route::get('/attendance/advisor-export', [TeacherController::class, 'advisorExportAttendance']);
         Route::get('/attendance/{courseId}', [TeacherController::class, 'getAttendance']);
 
         // طلبات الغياب
@@ -259,6 +258,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teachers',        [DepartmentHeadController::class, 'getTeachers']);
         Route::get('/report-requests',  [DepartmentHeadController::class, 'getReportRequests']);
         Route::post('/report-requests', [DepartmentHeadController::class, 'createReportRequest']);
+        Route::post('/report-requests/{id}/send-to-parent', [DepartmentHeadController::class, 'sendReportToParent']);
+        Route::delete('/report-requests/{id}', [DepartmentHeadController::class, 'deleteReportRequest']);
 
         // Schedule
         Route::get('/schedule',       [DepartmentHeadController::class, 'getSchedule']);

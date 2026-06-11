@@ -95,6 +95,13 @@
                             <button class="action-btn btn-qr" onclick="showQRModal('{{ $session->qr_token }}')">
                                 <i class="fa-solid fa-qrcode"></i> عرض QR
                             </button>
+                            
+                            <form action="{{ route('teacher.attendance.end', $session->id) }}" method="POST" style="display: inline;">
+                                @csrf
+                                <button type="submit" class="action-btn" style="background: #fef2f2; color: #b91c1c;" onclick="return confirm('هل أنت متأكد من إيقاف جلسة الحضور هذه؟ لن يتمكن الطلاب من تسجيل حضورهم بعدها.')">
+                                    <i class="fa-solid fa-stop"></i> إيقاف الجلسة
+                                </button>
+                            </form>
                         @endif
                         
                         <button class="action-btn btn-absentees" onclick="showAbsenteesModal('{{ $session->id }}')">
@@ -113,6 +120,55 @@
                 </div>
             @endforelse
         </div>
+    </div>
+
+    <!-- Advanced Filter & Export Section -->
+    <div style="margin-top: 2rem; background: var(--bg-secondary); border-radius: 1.5rem; padding: 1.75rem; box-shadow: var(--shadow);">
+        <h3 style="font-weight: 800; margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-primary);">
+            <i class="fa-solid fa-filter" style="color: var(--accent-color);"></i>
+            فلترة متقدمة وتصدير شامل
+        </h3>
+        <form action="{{ route('teacher.attendance.filtered_export') }}" method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end;">
+            
+            <div>
+                <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">نطاق التقرير</label>
+                <select name="scope" class="select-field" id="report_scope" onchange="toggleCourseOptions()">
+                    <option value="my_courses">المواد الخاصة بي</option>
+                    @if($isAdvisor)
+                        <option value="advisor_class">كافة مواد دورتي الإشرافية (مربي الدورة)</option>
+                    @endif
+                </select>
+            </div>
+
+            <div>
+                <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة (اختياري)</label>
+                <select name="course_id" class="select-field" id="report_course">
+                    <option value="">جميع المواد</option>
+                    @foreach($courses as $c)
+                        <option value="{{ $c->course_id }}" class="my-course-option">{{ $c->title }}</option>
+                    @endforeach
+                </select>
+                <small id="advisor_hint" style="display:none; color: var(--text-secondary); margin-top: 5px;">في حال بقاء (جميع المواد)، سيتم تصدير الحضور لكافة مواد الفرع والسنة الخاصة بك كمربي.</small>
+            </div>
+
+            <div>
+                <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">الفترة الزمنية</label>
+                <select name="period" class="select-field">
+                    <option value="today">اليوم</option>
+                    <option value="week">هذا الأسبوع</option>
+                    <option value="semester">منذ بداية الفصل</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" name="export_type" value="excel" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                    <i class="fa-solid fa-file-excel"></i> إكسيل
+                </button>
+                <button type="submit" name="export_type" value="pdf" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </button>
+            </div>
+        </form>
     </div>
 
     <!-- QR Code Modal -->
@@ -168,6 +224,21 @@
             hint.style.display = 'block';
         } else {
             hint.style.display = 'none';
+        }
+    }
+
+    function toggleCourseOptions() {
+        const scope = document.getElementById('report_scope').value;
+        const hint = document.getElementById('advisor_hint');
+        const courseSelect = document.getElementById('report_course');
+        
+        if (scope === 'advisor_class') {
+            hint.style.display = 'block';
+            courseSelect.querySelectorAll('.my-course-option').forEach(el => el.style.display = 'none');
+            courseSelect.value = "";
+        } else {
+            hint.style.display = 'none';
+            courseSelect.querySelectorAll('.my-course-option').forEach(el => el.style.display = 'block');
         }
     }
 

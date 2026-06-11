@@ -1,4 +1,4 @@
-﻿@extends('layouts.hod')
+@extends('layouts.hod')
 
 @section('title', 'الرئيسية')
 
@@ -150,7 +150,7 @@
     <div class="welcome-header">
         <div class="welcome-text">
             <h2>Edu-Bridge</h2>
-            <p>مرحباً، {{ auth()->user()->full_name ?? 'رئيس القسم' }}</p>
+            <p>مرحباً، رئيس القسم{{ auth()->user()->department ? ' ' . auth()->user()->department : '' }}</p>
         </div>
     </div>
 

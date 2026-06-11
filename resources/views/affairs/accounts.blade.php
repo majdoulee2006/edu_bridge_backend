@@ -199,6 +199,9 @@
     .modal-content {
         background: var(--bg-secondary);
         width: 90%; max-width: 500px;
+        max-height: 90vh; /* Make sure it doesn't exceed screen height */
+        display: flex;
+        flex-direction: column;
         border-radius: 1.5rem;
         padding: 2rem;
         transform: translateY(-20px);
@@ -206,7 +209,8 @@
         box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     }
     .modal-overlay.active .modal-content { transform: translateY(0); }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-shrink: 0; }
+    .modal-body { overflow-y: auto; padding-right: 0.5rem; flex: 1; margin-bottom: 1rem; }
     .modal-header h3 { margin: 0; font-size: 1.4rem; color: var(--text-primary); }
     .close-modal { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; }
     
@@ -274,6 +278,7 @@
                     'student'      => 'طالب',
                     'teacher'      => 'معلم',
                     'hod'          => 'رئيس قسم',
+                    'head'         => 'رئيس قسم',
                     'parent'       => 'ولي أمر',
                     'affairs'      => 'موظف شؤون',
                     'admin'        => 'مدير',
@@ -283,6 +288,7 @@
                     'student'  => 'fa-user-graduate',
                     'teacher'  => 'fa-chalkboard-user',
                     'hod'      => 'fa-user-tie',
+                    'head'     => 'fa-user-tie',
                     'parent'   => 'fa-users',
                     'admin'    => 'fa-shield-halved',
                     default    => 'fa-user',
@@ -293,10 +299,18 @@
                 <div class="status-dot {{ $isActive ? 'status-active' : 'status-inactive' }}" title="{{ $isActive ? 'نشط' : 'موقوف' }}"></div>
                 <div class="account-avatar"><i class="fa-solid {{ $roleIcon }}"></i></div>
                 <div class="account-name">{{ $user->full_name }}</div>
-                <div class="account-role">{{ $roleLabel }}</div>
-                <div class="account-email">{{ $user->email }}</div>
+                <div class="account-role">
+                    {{ $roleLabel }}
+                    @if(in_array($roleName, ['hod', 'head']) && !empty($user->department))
+                        - {{ $user->department }}
+                    @endif
+                </div>
+                <div class="account-email" style="margin-bottom: 0.25rem;">{{ $user->email }}</div>
+                <div class="account-email" style="margin-bottom: 1.5rem; font-weight: 600; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem;">
+                    <i class="fa-solid fa-user-tag" style="opacity: 0.7;"></i> {{ $user->username }}
+                </div>
                 <div class="card-actions">
-                    <button class="btn-icon" title="تعديل" onclick="openModal('تعديل الحساب')">
+                    <button class="btn-icon" title="تعديل" onclick="openEditModal({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ addslashes($user->email) }}', '{{ addslashes($user->phone) }}')">
                         <i class="fa-solid fa-pen"></i>
                     </button>
                     <form method="POST" action="{{ route('affairs.accounts.toggle', $user->user_id) }}" style="flex:1;">
@@ -361,7 +375,7 @@
             <h3 id="modalTitle">إنشاء حساب جديد</h3>
             <button class="close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <form method="POST" action="{{ route('affairs.accounts.store') }}">
+        <form action="{{ route('affairs.accounts.store') }}" method="POST" style="display:flex; flex-direction:column; flex:1; min-height:0;">
             @csrf
             <div class="modal-body">
                 <div class="form-group">
@@ -373,19 +387,84 @@
                     <input type="email" name="email" class="form-control" placeholder="example@edu-bridge.com" required>
                 </div>
                 <div class="form-group">
+                    <label>رقم الهاتف</label>
+                    <input type="tel" name="phone" class="form-control" placeholder="09xxxxxxxx">
+                </div>
+                <div class="form-group">
                     <label>نوع الحساب (الدور)</label>
-                    <select name="role_id" class="form-control" required>
+                    <select name="role_id" id="role-select" class="form-control" required onchange="toggleExtraFields()">
                         <option value="">-- اختر الدور --</option>
                         <option value="2">معلم</option>
                         <option value="5">رئيس قسم</option>
                     </select>
                 </div>
+
+                <div class="form-group" id="dept-group" style="display:none;">
+                    <label>القسم</label>
+                    <select name="department_id" id="department-select" class="form-control" onchange="filterCoursesByDept()">
+                        <option value="">-- اختر القسم --</option>
+                        @foreach($departments as $dept)
+                            <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="form-group" id="spec-group" style="display:none;">
+                    <label>الاختصاص (الفرع)</label>
+                    <select name="specialization" id="spec-select" class="form-control">
+                        <option value="">الرجاء اختيار القسم أولاً</option>
+                    </select>
+                </div>
+                <div class="form-group" id="courses-group" style="display:none;">
+                    <label>الدورات (المواد)</label>
+                    <select name="courses[]" id="courses-select" class="form-control" multiple style="height: 100px;">
+                        @foreach($courses as $course)
+                            <option value="{{ $course->course_id }}">{{ $course->title }}</option>
+                        @endforeach
+                    </select>
+                    <small style="color:var(--text-secondary); display:block; margin-top:0.3rem;">يمكنك تحديد أكثر من مادة بالضغط على Ctrl (أو Cmd في الماك)</small>
+                </div>
                 <div class="form-group">
                     <label>كلمة المرور المؤقتة</label>
                     <input type="password" name="password" class="form-control" placeholder="على الأقل 6 أحرف" required>
                 </div>
-                <button type="submit" class="btn-save">حفظ الحساب</button>
+            </div> <!-- End modal-body -->
+            <button type="submit" class="btn-save" style="flex-shrink:0;">حفظ الحساب</button>
+        </form>
+    </div>
+</div>
+
+{{-- Modal: Edit Account --}}
+<div id="edit-account-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>تعديل بيانات الحساب</h3>
+            <button class="close-modal" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="edit-account-form" method="POST" style="display:flex; flex-direction:column; flex:1; min-height:0;">
+            @csrf
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>الاسم الكامل <span style="color:#ef4444">*</span></label>
+                    <input type="text" id="edit_full_name" name="full_name" required class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                    <input type="email" id="edit_email" name="email" required dir="ltr" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>رقم الهاتف</label>
+                    <input type="tel" id="edit_phone" name="phone" dir="ltr" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور <span style="color:#94a3b8; font-size:0.8rem;">(اختياري - اتركها فارغة إذا لم ترد التغيير)</span></label>
+                    <input type="password" name="password" minlength="6" placeholder="••••••••" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>تأكيد كلمة المرور</label>
+                    <input type="password" name="password_confirmation" placeholder="••••••••" class="form-control">
+                </div>
             </div>
+            <button type="submit" class="btn-save" style="flex-shrink:0;">حفظ التعديلات</button>
         </form>
     </div>
 </div>
@@ -410,9 +489,115 @@
         modal.classList.remove('active');
     }
 
+    const editModal = document.getElementById('edit-account-modal');
+    function openEditModal(userId, fullName, email, phone) {
+        const form = document.getElementById('edit-account-form');
+        form.action = `/affairs/accounts/update/${userId}`;
+        document.getElementById('edit_full_name').value = fullName;
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_phone').value = phone || '';
+        editModal.classList.add('active');
+    }
+
+    function closeEditModal() {
+        editModal.classList.remove('active');
+    }
+
     modal.addEventListener('click', (e) => {
         if(e.target === modal) closeModal();
     });
+    
+    editModal.addEventListener('click', (e) => {
+        if(e.target === editModal) closeEditModal();
+    });
+
+    // Data from backend for filtering
+    const deptCourses = @json($deptCourses ?? []);
+    const deptBranches = @json($deptBranches ?? []);
+
+    function filterCoursesByDept() {
+        const deptId = document.getElementById('department-select').value;
+        const coursesSelect = document.getElementById('courses-select');
+        const specSelect = document.getElementById('spec-select');
+        
+        // Clear current options
+        coursesSelect.innerHTML = '';
+        specSelect.innerHTML = '';
+        
+        if (!deptId) {
+            const optCourse = document.createElement('option');
+            optCourse.value = ""; optCourse.text = "الرجاء اختيار القسم أولاً";
+            optCourse.disabled = true; optCourse.selected = true;
+            coursesSelect.appendChild(optCourse);
+
+            const optSpec = document.createElement('option');
+            optSpec.value = ""; optSpec.text = "الرجاء اختيار القسم أولاً";
+            optSpec.disabled = true; optSpec.selected = true;
+            specSelect.appendChild(optSpec);
+            return;
+        }
+
+        // Add matching courses
+        const courses = deptCourses[deptId] || [];
+        if(courses.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = ""; opt.text = "لا توجد مواد لهذا القسم";
+            opt.disabled = true; opt.selected = true;
+            coursesSelect.appendChild(opt);
+        } else {
+            courses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.id;
+                option.text = course.title;
+                coursesSelect.appendChild(option);
+            });
+        }
+
+        // Add matching branches
+        const branches = deptBranches[deptId] || [];
+        if(branches.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = ""; opt.text = "لا توجد أفرع لهذا القسم";
+            opt.disabled = true; opt.selected = true;
+            specSelect.appendChild(opt);
+        } else {
+            branches.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch.name;
+                option.text = branch.name;
+                specSelect.appendChild(option);
+            });
+        }
+    }
+
+    // Toggle extra fields based on role
+    function toggleExtraFields() {
+        const role = document.getElementById('role-select').value;
+        const deptGroup = document.getElementById('dept-group');
+        const specGroup = document.getElementById('spec-group');
+        const coursesGroup = document.getElementById('courses-group');
+        const deptSelect = document.getElementById('department-select');
+        const specInput = document.getElementById('spec-select');
+
+        // Reset
+        deptGroup.style.display = 'none';
+        specGroup.style.display = 'none';
+        coursesGroup.style.display = 'none';
+        deptSelect.required = false;
+        specInput.required = false;
+
+        if (role === '5') { // HOD
+            deptGroup.style.display = 'block';
+            deptSelect.required = true;
+        } else if (role === '2') { // Teacher
+            deptGroup.style.display = 'block';
+            specGroup.style.display = 'block';
+            coursesGroup.style.display = 'block';
+            deptSelect.required = true;
+            specInput.required = true;
+            filterCoursesByDept(); // Refresh courses list based on currently selected dept
+        }
+    }
 
     // Search + Filter Logic
     const filterChips = document.querySelectorAll('.filter-chip');

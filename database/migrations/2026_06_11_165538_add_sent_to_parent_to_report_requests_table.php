@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('performance_reports', function (Blueprint $table) {
-            if (!Schema::hasColumn('performance_reports', 'report_request_id')) {
-                $table->unsignedBigInteger('report_request_id')->nullable()->after('report_id');
+        Schema::table('report_requests', function (Blueprint $table) {
+            if (!Schema::hasColumn('report_requests', 'sent_to_parent')) {
+                $table->boolean('sent_to_parent')->default(false)->after('status');
             }
         });
     }
@@ -23,8 +23,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('performance_reports', function (Blueprint $table) {
-            $table->dropColumn('report_request_id');
+        Schema::table('report_requests', function (Blueprint $table) {
+            $table->dropColumn('sent_to_parent');
         });
     }
 };

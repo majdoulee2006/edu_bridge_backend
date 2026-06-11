@@ -395,6 +395,33 @@ class AdminWebController extends Controller
             ->where('user_id', $id)
             ->update(['status' => 'active', 'updated_at' => now()]);
 
+        // ---- إضافة ربط الأبناء بولي الأمر عند الموافقة ----
+        $user = DB::table('users')->where('user_id', $id)->first();
+        if ($user && $user->role_id == 4 && !empty($user->children_ids)) {
+            $childrenIds = is_string($user->children_ids) ? json_decode($user->children_ids, true) : $user->children_ids;
+            if (is_array($childrenIds)) {
+                $parent = DB::table('parents')->where('user_id', $id)->first();
+                if ($parent) {
+                    foreach ($childrenIds as $universityId) {
+                        $student = DB::table('students')
+                            ->where('student_code', $universityId)
+                            ->select('student_id')
+                            ->first();
+                        if ($student) {
+                            DB::table('parent_students')->insertOrIgnore([
+                                'parent_id'    => $parent->parent_id,
+                                'student_id'   => $student->student_id,
+                                'relationship' => 'والد / ولي أمر',
+                                'created_at'   => now(),
+                                'updated_at'   => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+        // ---------------------------------------------------
+
         // Add welcome notification
         DB::table('notifications')->insert([
             'user_id'    => $id,
@@ -565,7 +592,7 @@ class AdminWebController extends Controller
                 DB::table('parent_students')->insert([
                     'parent_id'    => $parentId,
                     'student_id'   => $studentId,
-                    'relationship' => 'والد / ولي أمر',
+                    'relationship' => 'guardian',
                     'created_at'   => now(),
                     'updated_at'   => now(),
                 ]);
@@ -579,8 +606,27 @@ class AdminWebController extends Controller
     public function createTeacher()
     {
         $departments = DB::table('departments')->orderBy('name')->get();
+        
+        $coursesList = DB::table('courses')
+            ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->select('courses.course_id', 'courses.title', 'programs.department_id')
+            ->distinct()
+            ->get();
+            
+        $deptCourses = [];
+        foreach ($coursesList as $c) {
+            $deptCourses[$c->department_id][] = ['id' => $c->course_id, 'title' => $c->title];
+        }
+        
+        $branchesList = DB::table('programs')->select('id', 'name', 'department_id')->get();
+        $deptBranches = [];
+        foreach ($branchesList as $b) {
+            $deptBranches[$b->department_id][] = ['id' => $b->id, 'name' => $b->name];
+        }
+        
         $courses     = DB::table('courses')->orderBy('title')->get();
-        return view('admin.accounts.create_teacher', compact('departments', 'courses'));
+        return view('admin.accounts.create_teacher', compact('departments', 'courses', 'deptCourses', 'deptBranches'));
     }
 
     public function storeTeacher(Request $request)
@@ -1057,8 +1103,10 @@ class AdminWebController extends Controller
             $coursePrograms = DB::table('course_program')
                 ->join('programs', 'course_program.program_id', '=', 'programs.id')
                 ->where('course_program.course_id', $course->course_id)
-                ->select('programs.department_id')
+                ->select('programs.department_id', 'programs.id as program_id')
                 ->get();
+
+            $course->program_id = $coursePrograms->first()->program_id ?? null;
 
             $deptIds     = $coursePrograms->pluck('department_id')->unique();
             $courseDepts = DB::table('departments')
@@ -1349,7 +1397,6 @@ tr:nth-child(even) td{background:#f8fafc}
             'level'       => 'required|string',
             'year'        => 'required|integer|in:1,2',
             'semester_id' => 'required|integer',
-            'teacher_id'  => 'required|integer',
             'program_id'  => 'required|integer',
             'hours'       => 'required|integer|min:1',
         ]);
@@ -1364,14 +1411,6 @@ tr:nth-child(even) td{background:#f8fafc}
             'hours'       => $request->hours,
             'created_at'  => now(),
             'updated_at'  => now(),
-        ]);
-
-        // ربط المعلم
-        DB::table('course_teachers')->insert([
-            'course_id'  => $courseId,
-            'teacher_id' => $request->teacher_id,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         // ربط الدورة (البرنامج)
@@ -1413,5 +1452,41 @@ tr:nth-child(even) td{background:#f8fafc}
         }
 
         return back()->with('success', 'تم إضافة المادة وتسجيل ' . $students->count() . ' طالب تلقائياً!');
+    }
+
+    public function updateSubject(Request $request, $id)
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'level'       => 'required|string',
+            'year'        => 'required|integer|in:1,2',
+            'semester_id' => 'required|integer',
+            'program_id'  => 'required|integer',
+            'hours'       => 'required|integer|min:1',
+        ]);
+
+        DB::table('courses')->where('course_id', $id)->update([
+            'title'       => $request->title,
+            'description' => $request->description,
+            'level'       => $request->level,
+            'year'        => $request->year,
+            'semester_id' => $request->semester_id,
+            'hours'       => $request->hours,
+            'updated_at'  => now(),
+        ]);
+
+        DB::table('course_program')->where('course_id', $id)->update([
+            'program_id' => $request->program_id,
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'تم تحديث المادة بنجاح!');
+    }
+
+    public function deleteSubject($id)
+    {
+        DB::table('courses')->where('course_id', $id)->delete();
+        return back()->with('success', 'تم حذف المادة بنجاح!');
     }
 }

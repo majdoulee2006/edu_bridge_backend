@@ -67,7 +67,7 @@ tr:last-child td { border-bottom:none; }
             @forelse($ids as $uid)
             <tr>
                 <td><strong>{{ $uid->university_id }}</strong></td>
-                <td>{{ $uid->first_name }} {{ $uid->last_name }}</td>
+                <td>{{ $uid->full_name }}</td>
                 <td>
                     @if($uid->is_used)
                         <span class="badge-used">مستخدم</span>
@@ -78,11 +78,15 @@ tr:last-child td { border-bottom:none; }
                 <td>{{ \Carbon\Carbon::parse($uid->created_at)->format('Y-m-d') }}</td>
                 <td>
                     @if(!$uid->is_used)
-                    <form method="POST" action="{{ route('affairs.university_ids.delete', $uid->id) }}"
-                          onsubmit="return confirm('حذف هذا الرقم؟')">
-                        @csrf
-                        <button type="submit" class="btn-delete"><i class="fa-solid fa-trash"></i> حذف</button>
-                    </form>
+                    <div style="display:flex; gap:0.5rem; justify-content:center;">
+                        <button type="button" onclick="openEditModal({{ $uid->id }}, '{{ addslashes($uid->full_name) }}')" class="btn-delete" style="background:transparent; border:1px solid #3b82f6; color:#3b82f6;">
+                            <i class="fa-solid fa-pen"></i> تعديل
+                        </button>
+                        <form method="POST" action="{{ route('affairs.university_ids.delete', $uid->id) }}" onsubmit="return confirm('حذف هذا الرقم؟')">
+                            @csrf
+                            <button type="submit" class="btn-delete"><i class="fa-solid fa-trash"></i> حذف</button>
+                        </form>
+                    </div>>
                     @else
                         <span style="color:var(--text-secondary); font-size:0.85rem;">—</span>
                     @endif
@@ -112,34 +116,37 @@ tr:last-child td { border-bottom:none; }
         </div>
         <form method="POST" action="{{ route('affairs.university_ids.store') }}">
             @csrf
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>الاسم الأول</label>
-                    <input type="text" name="first_name" class="form-control" placeholder="الاسم الأول" required>
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>الاسم الثاني (الكنية)</label>
-                    <input type="text" name="last_name" class="form-control" placeholder="الكنية" required>
-                </div>
-            </div>
-            
             <div class="form-group">
-                <label>الرقم الشخصي (الوطني)</label>
-                <input type="text" name="national_id" class="form-control" placeholder="يجب أن يتكون من 10 أرقام" required pattern="\d{10}" title="يجب أن يتكون من 10 أرقام">
-            </div>
-
-            <div class="form-group">
-                <label>تاريخ الميلاد</label>
-                <input type="date" name="birth_date" class="form-control" required max="{{ now()->subYears(18)->format('Y-m-d') }}" title="يجب أن يكون العمر 18 سنة على الأقل">
-            </div>
-
-            <div class="form-group">
-                <label>كلمة المرور المبدئية</label>
-                <input type="password" name="default_password" class="form-control" placeholder="كلمة المرور للطالب" required minlength="6">
+                <label>الاسم الكامل</label>
+                <input type="text" name="full_name" class="form-control" placeholder="الاسم الكامل للطالب" required>
             </div>
 
             <button type="submit" class="btn-save">
                 <i class="fa-solid fa-floppy-disk"></i> إنشاء الحساب
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h3><i class="fa-solid fa-pen" style="color:var(--accent-color); margin-left:0.5rem;"></i> تعديل الاسم الكامل</h3>
+            <button onclick="document.getElementById('editModal').classList.remove('active')"
+                    style="background:none; border:none; color:var(--text-secondary); font-size:1.3rem; cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="editForm" method="POST">
+            @csrf
+            <div class="form-group">
+                <label>الاسم الكامل</label>
+                <input type="text" id="edit_full_name" name="full_name" class="form-control" placeholder="الاسم الكامل للطالب" required>
+            </div>
+
+            <button type="submit" class="btn-save">
+                <i class="fa-solid fa-floppy-disk"></i> حفظ التعديل
             </button>
         </form>
     </div>
@@ -151,5 +158,16 @@ tr:last-child td { border-bottom:none; }
 document.getElementById('addModal').addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('active');
 });
+
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+});
+
+function openEditModal(id, fullName) {
+    const form = document.getElementById('editForm');
+    form.action = `/affairs/university-ids/update/${id}`;
+    document.getElementById('edit_full_name').value = fullName;
+    document.getElementById('editModal').classList.add('active');
+}
 </script>
 @endpush

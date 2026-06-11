@@ -387,36 +387,101 @@ class ParentController extends Controller
             return response()->json(['success' => false, 'message' => 'الطفل غير موجود أو غير مرتبط بحسابك'], 404);
         }
 
-        // إيجاد المربي أو الأستاذ
-        $advisorCourseTeacher = \Illuminate\Support\Facades\DB::table('enrollments')
-            ->join('course_teachers', 'enrollments.course_id', '=', 'course_teachers.course_id')
-            ->where('enrollments.student_id', $child->student_id)
-            ->where('course_teachers.role', 'advisor')
-            ->select('course_teachers.teacher_id')
+        // إيجاد المربي المخصص لهذا الطالب بناءً على الفرع والسنة
+        $studentData = \Illuminate\Support\Facades\DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->where('students.student_id', $child->student_id)
+            ->select('users.academic_year', 'programs.name as branch_name')
             ->first();
 
-        if (!$advisorCourseTeacher) {
-            return response()->json(['success' => false, 'message' => 'لم يتم تعيين مربي دائم لهذا الطالب بعد.'], 404);
+        $advisorTeacher = null;
+        if ($studentData && $studentData->branch_name && $studentData->academic_year) {
+            $advisorTeacher = \Illuminate\Support\Facades\DB::table('teachers')
+                ->where('advisor_branch', $studentData->branch_name)
+                ->where('advisor_year', $studentData->academic_year)
+                ->first();
         }
 
-        // تحقق من عدم وجود طلب معلق من نفس النوع لنفس الطالب خلال آخر 15 يوم
-        $recentRequest = \Illuminate\Support\Facades\DB::table('report_requests')
+        // تحقق من التقرير الأكاديمي إذا كان مطلوباً
+        if ($reportType === 'academic') {
+            // تحقق من الـ 7 أيام للتقرير الأكاديمي
+            $recentAcademic = \Illuminate\Support\Facades\DB::table('report_requests')
+                ->where('head_id', $request->user()->user_id)
+                ->where('student_id', $child->student_id)
+                ->where('report_type', 'academic')
+                ->where('created_at', '>', now()->subDays(7))
+                ->first();
+
+            if ($recentAcademic) {
+                return response()->json(['success' => false, 'message' => 'لا يمكنك طلب تقرير أكاديمي أكثر من مرة خلال 7 أيام.'], 400);
+            }
+
+            // حساب نسبة الحضور
+            $attendances = Attendance::where('student_id', $child->student_id)->get();
+            $attendanceRate = $attendances->count() > 0
+                ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
+                : 0;
+
+            // حساب المعدل
+            $averageGrade = round(Grade::where('student_id', $child->student_id)->avg('score') ?? 0, 1);
+
+            // إنشاء الطلب بحالة مكتمل
+            $requestId = \Illuminate\Support\Facades\DB::table('report_requests')->insertGetId([
+                'head_id' => $request->user()->user_id,
+                'teacher_id' => $advisorTeacher ? $advisorTeacher->teacher_id : null,
+                'student_id' => $child->student_id,
+                'report_type' => 'academic',
+                'notes' => 'طلب تقرير أكاديمي من النظام تلقائياً',
+                'status' => 'completed',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // إنشاء التقرير فوراً
+            \Illuminate\Support\Facades\DB::table('performance_reports')->insert([
+                'student_id' => $child->student_id,
+                'report_type' => 'academic',
+                'attendance_rate' => $attendanceRate,
+                'average_grade' => $averageGrade,
+                'recommendations' => 'تم إصدار هذا التقرير الأكاديمي آلياً من النظام بناءً على أحدث علامات وحضور للطالب.',
+                'generated_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'تم إصدار التقرير الأكاديمي بنجاح.',
+                'request_id' => $requestId
+            ], 200);
+        }
+
+        // ==========================================
+        // إذا كان التقرير سلوكياً (Behavioral)
+        // ==========================================
+        if (!$advisorTeacher) {
+            return response()->json(['success' => false, 'message' => 'لم يتم تعيين مربي دائم لهذا الطالب بعد لطلب تقرير سلوكي.'], 404);
+        }
+
+        // تحقق من الـ 15 يوماً للتقرير السلوكي
+        $recentBehavioral = \Illuminate\Support\Facades\DB::table('report_requests')
             ->where('head_id', $request->user()->user_id)
             ->where('student_id', $child->student_id)
-            ->where('report_type', $reportType)
+            ->where('report_type', 'behavioral')
             ->where('created_at', '>', now()->subDays(15))
             ->first();
 
-        if ($recentRequest) {
-            return response()->json(['success' => false, 'message' => 'لا يمكنك طلب نفس التقرير أكثر من مرة خلال 15 يوماً.'], 400);
+        if ($recentBehavioral) {
+            return response()->json(['success' => false, 'message' => 'لا يمكنك طلب تقرير سلوكي أكثر من مرة خلال 15 يوماً.'], 400);
         }
 
         $requestId = \Illuminate\Support\Facades\DB::table('report_requests')->insertGetId([
             'head_id' => $request->user()->user_id, // Parent's User ID
-            'teacher_id' => $advisorCourseTeacher->teacher_id,
+            'teacher_id' => $advisorTeacher->teacher_id,
             'student_id' => $child->student_id,
-            'report_type' => $reportType,
-            'notes' => 'طلب تقرير ' . ($reportType == 'academic' ? 'أكاديمي' : 'سلوكي') . ' من ولي الأمر',
+            'report_type' => 'behavioral',
+            'notes' => 'طلب تقرير سلوكي من ولي الأمر',
             'status' => 'pending',
             'created_at' => now(),
             'updated_at' => now(),

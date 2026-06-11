@@ -329,10 +329,14 @@ class HODWebController extends Controller
      */
     public function accounts(Request $request)
     {
-        // 1. المدربين
+        $hodDept = Auth::user()->department;
+        $departmentId = DB::table('departments')->where('name', $hodDept)->value('department_id');
+
+        // 1. المدربين (فقط في قسم رئيس القسم)
         $teachers = DB::table('teachers')
             ->join('users', 'teachers.user_id', '=', 'users.user_id')
-            ->select('teachers.teacher_id', 'teachers.specialization', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone', 'users.department')
+            ->where('users.department', $hodDept)
+            ->select('teachers.teacher_id', 'teachers.specialization', 'teachers.advisor_branch', 'teachers.advisor_year', 'teachers.advisor_section', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone', 'users.department')
             ->get();
 
         foreach ($teachers as $teacher) {
@@ -341,30 +345,53 @@ class HODWebController extends Controller
                 ->where('course_teachers.teacher_id', $teacher->teacher_id)
                 ->pluck('courses.title');
                 
-            // Check if teacher is an advisor
-            $advisorCourse = DB::table('course_teachers')
-                ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
-                ->where('course_teachers.teacher_id', $teacher->teacher_id)
-                ->where('course_teachers.role', 'advisor')
-                ->select('courses.course_id', 'courses.title')
-                ->first();
+            $teacher->course_ids = DB::table('course_teachers')
+                ->where('teacher_id', $teacher->teacher_id)
+                ->pluck('course_id')->toArray();
                 
-            $teacher->is_advisor = $advisorCourse ? true : false;
-            $teacher->advisor_course_title = $advisorCourse ? $advisorCourse->title : null;
+            $teacher->is_advisor = !empty($teacher->advisor_branch);
+            $teacher->advisor_course_title = $teacher->is_advisor 
+                ? "{$teacher->advisor_branch} - {$teacher->advisor_year}" . ($teacher->advisor_section ? " - {$teacher->advisor_section}" : "")
+                : null;
         }
 
-        // 2. الطلاب
+        // 2. الطلاب (فقط في قسم رئيس القسم)
         $students = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('users.department', $hodDept)
             ->select('students.student_id', 'students.student_code', 'students.level', 'students.birth_date', 'users.user_id', 'users.full_name', 'users.university_id', 'users.email', 'users.phone', 'users.department', 'users.gender')
             ->get();
             
-        // 3. جلب كل الدورات لتعيين المربي
-        $all_courses = DB::table('courses')->select('course_id', 'title', 'level')->get();
+        $allAssignedCourseIds = DB::table('course_teachers')->pluck('course_id')->toArray();
 
-        // 3. الأهل
+        // 3. جلب كل الدورات لتعيين المربي (للقسم الحالي فقط)
+        if ($departmentId) {
+            $all_courses = DB::table('courses')
+                ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                ->where('programs.department_id', $departmentId)
+                ->select('courses.course_id', 'courses.title', 'courses.level')
+                ->distinct()
+                ->get();
+        } else {
+            $all_courses = DB::table('courses')->select('course_id', 'title', 'level')->get();
+        }
+
+        foreach ($all_courses as $c) {
+            $c->is_assigned = in_array($c->course_id, $allAssignedCourseIds);
+        }
+
+        // 4. الأهل (الآباء الذين لديهم أبناء في هذا القسم)
         $parents = DB::table('parents')
             ->join('users', 'parents.user_id', '=', 'users.user_id')
+            ->whereExists(function ($query) use ($hodDept) {
+                $query->select(DB::raw(1))
+                      ->from('parent_students')
+                      ->join('students', 'parent_students.student_id', '=', 'students.student_id')
+                      ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+                      ->whereColumn('parent_students.parent_id', 'parents.parent_id')
+                      ->where('student_users.department', $hodDept);
+            })
             ->select('parents.parent_id', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone')
             ->get();
 
@@ -376,11 +403,49 @@ class HODWebController extends Controller
                 ->pluck('users.full_name');
         }
 
-        // 4. بيانات النماذج
+        // 5. بيانات النماذج
         $departments = DB::table('departments')->orderBy('name')->get();
-        $courses     = DB::table('courses')->orderBy('title')->get();
+        $branches = [];
+        
+        if ($departmentId) {
+            $branches = DB::table('programs')->where('department_id', $departmentId)->orderBy('name')->get();
+            
+            $courses = DB::table('courses')
+                ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                ->where('programs.department_id', $departmentId)
+                ->select('courses.*')
+                ->distinct()
+                ->orderBy('courses.title')
+                ->get();
+        } else {
+            $courses = DB::table('courses')->orderBy('title')->get();
+            $branches = DB::table('programs')->orderBy('name')->get();
+        }
 
-        return view('hod.accounts', compact('teachers', 'students', 'parents', 'departments', 'courses', 'all_courses'));
+        $coursesByBranch = [];
+        if ($departmentId) {
+            $branchCoursesQuery = DB::table('course_program')
+                ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
+                ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                ->where('programs.department_id', $departmentId)
+                ->select('programs.name as branch_name', 'courses.course_id', 'courses.title');
+
+            if (!empty($allAssignedCourseIds)) {
+                $branchCoursesQuery->whereNotIn('courses.course_id', $allAssignedCourseIds);
+            }
+
+            $branchCourses = $branchCoursesQuery->get();
+
+            foreach ($branchCourses as $bc) {
+                $coursesByBranch[$bc->branch_name][] = [
+                    'id' => $bc->course_id,
+                    'title' => $bc->title,
+                ];
+            }
+        }
+
+        return view('hod.accounts', compact('teachers', 'students', 'parents', 'departments', 'courses', 'all_courses', 'branches', 'coursesByBranch'));
     }
 
     /**
@@ -389,13 +454,13 @@ class HODWebController extends Controller
     public function storeTeacher(Request $request)
     {
         $request->validate([
-            'full_name'      => 'required|string|max:255',
-            'phone'          => 'nullable|string|max:20',
-            'email'          => 'required|email|unique:users,email|max:255',
-            'department'     => 'required|string|max:255',
-            'specialization' => 'required|string|max:255',
-            'password'       => 'required|string|min:6|confirmed',
-            'courses'        => 'nullable|array',
+            'full_name'       => 'required|string|max:255',
+            'phone'           => 'nullable|string|max:20',
+            'email'           => 'required|email|unique:users,email|max:255',
+            'department'      => 'required|string|max:255',
+            'specializations' => 'required|array',
+            'password'        => 'required|string|min:6|confirmed',
+            'courses'         => 'nullable|array',
         ], [
             'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
@@ -422,9 +487,11 @@ class HODWebController extends Controller
             'updated_at'     => now(),
         ]);
 
+        $specializationString = implode(' - ', $request->specializations);
+
         $teacherId = DB::table('teachers')->insertGetId([
             'user_id'        => $userId,
-            'specialization' => $request->specialization,
+            'specialization' => $specializationString,
             'created_at'     => now(),
             'updated_at'     => now(),
         ]);
@@ -447,42 +514,43 @@ class HODWebController extends Controller
     {
         $request->validate([
             'teacher_id' => 'required|exists:teachers,teacher_id',
-            'course_id' => 'nullable|exists:courses,course_id',
-            'action' => 'required|in:assign,remove'
+            'branch'     => 'nullable|string',
+            'year'       => 'nullable|string',
+            'section'    => 'nullable|string',
+            'action'     => 'required|in:assign,remove'
         ]);
 
         $teacherId = $request->input('teacher_id');
-        $action = $request->input('action');
-
-        // Remove any existing advisor role for this teacher
-        DB::table('course_teachers')
-            ->where('teacher_id', $teacherId)
-            ->where('role', 'advisor')
-            ->delete();
+        $action    = $request->input('action');
 
         if ($action === 'assign') {
-            $courseId = $request->input('course_id');
-            if (!$courseId) {
-                return back()->with('error', 'الرجاء اختيار الدورة لتفعيل المربي.');
+            if (!$request->branch || !$request->year) {
+                return back()->with('error', 'الرجاء اختيار الفرع والسنة لتفعيل المربي.');
             }
 
-            // Also ensure no one else is advisor for this course (1-to-1 rule)
-            DB::table('course_teachers')
-                ->where('course_id', $courseId)
-                ->where('role', 'advisor')
-                ->delete();
-
-            // Insert new advisor role
-            DB::table('course_teachers')->insert([
-                'course_id' => $courseId,
-                'teacher_id' => $teacherId,
-                'role' => 'advisor',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // Remove advisor role from anyone else who has the same branch and year (and section)
+            // Or just update this teacher
+            DB::table('teachers')
+                ->where('teacher_id', $teacherId)
+                ->update([
+                    'advisor_branch'  => $request->branch,
+                    'advisor_year'    => $request->year,
+                    'advisor_section' => $request->section,
+                    'updated_at'      => now(),
+                ]);
 
             return back()->with('success', 'تم تعيين المربي بنجاح.');
         }
+
+        // Action is remove
+        DB::table('teachers')
+            ->where('teacher_id', $teacherId)
+            ->update([
+                'advisor_branch'  => null,
+                'advisor_year'    => null,
+                'advisor_section' => null,
+                'updated_at'      => now(),
+            ]);
 
         return back()->with('success', 'تم إزالة صفة المربي عن المعلم.');
     }
@@ -498,6 +566,7 @@ class HODWebController extends Controller
             'email'         => 'required|email|unique:users,email|max:255',
             'phone'         => 'nullable|string|max:20',
             'department'    => 'required|string|max:255',
+            'program_id'    => 'required|exists:programs,id',
             'level'         => 'required|string|max:255',
             'birth_date'    => 'required|date',
             'gender'        => 'required|in:ذكر,أنثى',
@@ -506,6 +575,8 @@ class HODWebController extends Controller
             'university_id.unique' => 'الرقم الجامعي مستخدم بالفعل.',
             'email.unique'         => 'البريد الإلكتروني مستخدم بالفعل.',
             'password.confirmed'   => 'تأكيد كلمة المرور غير متطابق.',
+            'program_id.required'  => 'يرجى اختيار التخصص (الفرع).',
+            'program_id.exists'    => 'التخصص المختار غير موجود.'
         ]);
 
         $userId = DB::table('users')->insertGetId([
@@ -530,6 +601,7 @@ class HODWebController extends Controller
             'student_code' => $request->university_id,
             'level'        => $request->level,
             'birth_date'   => $request->birth_date,
+            'program_id'   => $request->program_id,
             'created_at'   => now(),
             'updated_at'   => now(),
         ]);
@@ -584,7 +656,7 @@ class HODWebController extends Controller
                 DB::table('parent_students')->insert([
                     'parent_id'    => $parentId,
                     'student_id'   => $student->student_id,
-                    'relationship' => 'والد / ولي أمر',
+                    'relationship' => 'guardian',
                     'created_at'   => now(),
                     'updated_at'   => now(),
                 ]);
@@ -592,6 +664,64 @@ class HODWebController extends Controller
         }
 
         return redirect()->back()->with('success', 'تمت إضافة حساب ولي الأمر بنجاح!');
+    }
+
+    /**
+     * تعديل حساب مستخدم
+     */
+    public function updateAccount(Request $request, $id)
+    {
+        $user = DB::table('users')->where('user_id', $id)->first();
+        if (!$user) {
+            return redirect()->back()->with('error', 'المستخدم غير موجود.');
+        }
+
+        $request->validate([
+            'full_name' => 'required|string|max:255',
+            'phone'     => 'nullable|string|max:20',
+            'email'     => 'required|email|max:255|unique:users,email,' . $id . ',user_id',
+            'password'  => 'nullable|string|min:6|confirmed',
+        ], [
+            'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
+        ]);
+
+        $updates = [
+            'full_name'  => $request->full_name,
+            'email'      => $request->email,
+            'phone'      => $request->phone,
+            'updated_at' => now(),
+        ];
+
+        if ($request->filled('password')) {
+            $updates['password'] = bcrypt($request->password);
+        }
+
+        DB::table('users')->where('user_id', $id)->update($updates);
+
+        if ($user->role_id == 2) {
+            $teacher = DB::table('teachers')->where('user_id', $id)->first();
+            if ($teacher) {
+                // Remove all existing courses
+                DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->delete();
+                
+                // Add new courses
+                if ($request->has('courses') && is_array($request->courses)) {
+                    $courseInserts = [];
+                    foreach ($request->courses as $courseId) {
+                        $courseInserts[] = [
+                            'teacher_id' => $teacher->teacher_id,
+                            'course_id'  => $courseId,
+                        ];
+                    }
+                    if (count($courseInserts) > 0) {
+                        DB::table('course_teachers')->insert($courseInserts);
+                    }
+                }
+            }
+        }
+
+        return redirect()->back()->with('success', 'تم تحديث بيانات الحساب بنجاح!');
     }
 
     /**
@@ -611,7 +741,8 @@ class HODWebController extends Controller
         // 1. جلب الجدول الدراسي الأسبوعي
         $schedules = DB::table('schedules')
             ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
-            ->leftJoin('teachers', 'schedules.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('course_teachers', 'courses.course_id', '=', 'course_teachers.course_id')
+            ->leftJoin('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
             ->leftJoin('users', 'teachers.user_id', '=', 'users.user_id')
             ->select('schedules.*', 'courses.title as course_title', 'users.full_name as teacher_name')
             ->orderByRaw("CASE day WHEN 'Sunday' THEN 1 WHEN 'Monday' THEN 2 WHEN 'Tuesday' THEN 3 WHEN 'Wednesday' THEN 4 WHEN 'Thursday' THEN 5 WHEN 'Friday' THEN 6 WHEN 'Saturday' THEN 7 ELSE 8 END")
@@ -625,14 +756,36 @@ class HODWebController extends Controller
             ->orderBy('exam_date')
             ->get();
 
-        // 3. جلب المدربين والكورسات لملء نماذج الإضافة
-        $courses = DB::table('courses')->select('course_id', 'title')->get();
-        $teachers = DB::table('teachers')
-            ->join('users', 'teachers.user_id', '=', 'users.user_id')
-            ->select('teachers.teacher_id', 'users.full_name')
+        // 3. جلب المواد مجمّعة حسب الفرع (program) والسنة للفلترة في JavaScript
+        $allCourses = DB::table('courses')
+            ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->select('courses.course_id', 'courses.title', 'programs.name as branch_name', 'courses.year', 'courses.semester_id')
+            ->orderBy('courses.title')
             ->get();
 
-        return view('hod.organization', compact('schedules', 'exams', 'courses', 'teachers'));
+        // 4. جلب المدربين مجمّعين حسب الفرع والسنة للفلترة في JavaScript
+        $allTeachers = DB::table('teachers')
+            ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->join('course_teachers', 'teachers.teacher_id', '=', 'course_teachers.teacher_id')
+            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+            ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->select(
+                'teachers.teacher_id', 
+                'users.full_name', 
+                'programs.name as branch_name', 
+                'courses.year'
+            )
+            ->distinct()
+            ->orderBy('users.full_name')
+            ->get();
+
+        // للتوافق مع نماذج الإضافة القديمة (fallback)
+        $courses  = $allCourses;
+        $teachers = $allTeachers;
+
+        return view('hod.organization', compact('schedules', 'exams', 'courses', 'teachers', 'allCourses', 'allTeachers'));
     }
 
     /**
@@ -751,13 +904,15 @@ class HODWebController extends Controller
     {
         $request->validate([
             'course_id' => 'required|exists:courses,course_id',
-            'teacher_id' => 'nullable|exists:teachers,teacher_id',
             'day' => 'required|string',
             'period' => 'required|integer|between:1,5',
             'department' => 'required|string',
             'year' => 'required|string',
             'room' => 'required|string',
         ]);
+
+        // جلب الأستاذ تلقائياً بناءً على المادة المختارة
+        $teacherId = DB::table('course_teachers')->where('course_id', $request->course_id)->value('teacher_id');
 
         // تعيين أوقات الحصص بناءً على الرقم
         $periods = [
@@ -775,9 +930,9 @@ class HODWebController extends Controller
         $classGroup = $request->department . ' - ' . $request->year;
 
         // التحقق من تضارب المواعيد للمدرب (لا يمكن إضافة نفس الأستاذ بنفس الوقت)
-        if ($request->teacher_id) {
+        if ($teacherId) {
             $conflict = DB::table('schedules')
-                ->where('teacher_id', $request->teacher_id)
+                ->where('teacher_id', $teacherId)
                 ->where('day', $request->day)
                 ->where('start_time', 'like', $startTime . '%')
                 ->first();
@@ -789,7 +944,7 @@ class HODWebController extends Controller
 
         DB::table('schedules')->insert([
             'course_id' => $request->course_id,
-            'teacher_id' => $request->teacher_id,
+            'teacher_id' => $teacherId,
             'day' => $request->day,
             'start_time' => $startTime,
             'end_time' => $endTime,
@@ -917,13 +1072,17 @@ class HODWebController extends Controller
      */
     public function createReport()
     {
+        $departmentName = auth()->user()->department;
+
         $teachers = DB::table('teachers')
             ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->where('users.department', $departmentName)
             ->select('teachers.teacher_id', 'users.full_name')
             ->get();
 
         $students = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('users.department', $departmentName)
             ->select('students.student_id', 'users.full_name')
             ->get();
 
@@ -932,26 +1091,47 @@ class HODWebController extends Controller
 
     public function reports()
     {
-        // جلب قائمة المدربين والطلاب لإنشاء تقرير
+        $departmentName = auth()->user()->department;
+
+        // جلب قائمة المدربين والطلاب التابعين للقسم
         $teachers = DB::table('teachers')
             ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->where('users.department', $departmentName)
             ->select('teachers.teacher_id', 'users.full_name')
             ->get();
 
         $students = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('users.department', $departmentName)
             ->select('students.student_id', 'users.full_name')
             ->get();
 
-        // جلب التقارير المنشأة لعرضها في جدول
-        $reports = DB::table('performance_reports')
+        // جلب ردود طلباتي (التي أرسلها رئيس القسم أو بدون طلب)
+        $myRequestsReports = DB::table('performance_reports')
             ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
             ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
-            ->select('performance_reports.*', 'student_users.full_name as student_name')
+            ->leftJoin('report_requests', 'performance_reports.report_request_id', '=', 'report_requests.id')
+            ->where('student_users.department', $departmentName)
+            ->where(function($query) {
+                $query->where('report_requests.head_id', auth()->id())
+                      ->orWhereNull('performance_reports.report_request_id');
+            })
+            ->select('performance_reports.*', 'student_users.full_name as student_name', 'report_requests.sent_to_parent')
             ->orderBy('performance_reports.created_at', 'desc')
             ->get();
 
-        return view('hod.reports', compact('teachers', 'students', 'reports'));
+        // جلب طلبات المربي (التي طلبها الأهل ورد عليها المربي)
+        $advisorReports = DB::table('performance_reports')
+            ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
+            ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+            ->join('report_requests', 'performance_reports.report_request_id', '=', 'report_requests.id')
+            ->where('student_users.department', $departmentName)
+            ->where('report_requests.head_id', '!=', auth()->id())
+            ->select('performance_reports.*', 'student_users.full_name as student_name', 'report_requests.sent_to_parent')
+            ->orderBy('performance_reports.created_at', 'desc')
+            ->get();
+
+        return view('hod.reports', compact('teachers', 'students', 'myRequestsReports', 'advisorReports'));
     }
 
     /**
@@ -973,7 +1153,7 @@ class HODWebController extends Controller
             ?? DB::table('teachers')->value('teacher_id');
 
         $requestId = DB::table('report_requests')->insertGetId([
-            'head_id'     => $head->id ?? null,
+            'head_id'     => auth()->id(),
             'teacher_id'  => $teacherId,
             'student_id'  => $request->student_id,
             'report_type' => $request->report_type,
@@ -1024,5 +1204,127 @@ class HODWebController extends Controller
     {
         DB::table('performance_reports')->where('report_id', $id)->delete();
         return redirect()->back()->with('success', 'تم حذف التقرير بنجاح.');
+    }
+
+    /**
+     * إرسال التقرير لولي الأمر
+     */
+    public function sendReportToParent(Request $request, $id)
+    {
+        $report = DB::table('performance_reports')->where('report_id', $id)->first();
+        if (!$report) {
+            return redirect()->back()->with('error', 'التقرير غير موجود.');
+        }
+
+        $studentRow = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $report->student_id)
+            ->first(['users.full_name as name']);
+        $studentName = $studentRow->name ?? 'الطالب';
+
+        // تحديث حالة طلب التقرير إذا كانت موجودة
+        if ($report->report_request_id) {
+            DB::table('report_requests')
+                ->where('id', $report->report_request_id)
+                ->update([
+                    'sent_to_parent' => true,
+                    'updated_at' => now()
+                ]);
+        }
+
+        $parentIds = DB::table('parent_students')
+            ->where('student_id', $report->student_id)
+            ->pluck('parent_id');
+
+        $notificationMessage = $report->recommendations ?? 'تم إرسال تقرير أداء جديد.';
+
+        foreach ($parentIds as $parentId) {
+            $parentUserId = DB::table('parents')->where('parent_id', $parentId)->value('user_id');
+            if ($parentUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $parentUserId,
+                    'sender_id'  => auth()->id(),
+                    'title'      => 'تقرير أداء للطالب ' . $studentName,
+                    'message'    => $notificationMessage,
+                    'type'       => 'report',
+                    'related_id' => $report->report_request_id ?? $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                try {
+                    \App\Services\FcmService::sendToUser(
+                        $parentUserId, 
+                        'تقرير أداء للطالب ' . $studentName, 
+                        $notificationMessage, 
+                        [
+                            'type' => 'report', 
+                            'related_id' => (string)($report->report_request_id ?? $id)
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    \Log::error("FCM failed: " . $e->getMessage());
+                }
+            }
+        }
+
+        return redirect()->back()->with('success', 'تم إرسال التقرير للأهل بنجاح.');
+    }
+
+    /**
+     * تنزيل التقرير بصيغة إكسل مبسطة
+     */
+    public function downloadReport($id)
+    {
+        $report = DB::table('performance_reports')
+            ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
+            ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+            ->where('performance_reports.report_id', $id)
+            ->select('performance_reports.*', 'student_users.full_name as student_name', 'student_users.username as student_code')
+            ->first();
+
+        if (!$report) {
+            return redirect()->back()->with('error', 'التقرير غير موجود.');
+        }
+
+        $isAcademic = $report->report_type === 'academic';
+        $reportTypeLabel = $isAcademic ? 'تقرير أكاديمي' : 'تقرير سلوكي';
+        $filename = "تقرير_{$report->student_name}_{$report->report_id}.xls";
+
+        $html = "<html xmlns:o='urn:schemas-microsoft-com:office:office'
+                      xmlns:x='urn:schemas-microsoft-com:office:excel'
+                      xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+<style>
+body{font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl}
+table{border-collapse:collapse;width:100%}
+th{background:#1e293b;color:#f2f20d;font-weight:bold;border:1px solid #ccc;padding:8px;text-align:right}
+td{border:1px solid #ddd;padding:7px;text-align:right}
+tr:nth-child(even) td{background:#f8fafc}
+.hdr td{background:#0f172a;color:#ffffff;font-size:16px;font-weight:bold;padding:12px;text-align:center}
+.inf td{background:#f1f5f9;color:#334155;font-size:11px;padding:6px}
+</style></head><body>
+<table>
+<tr class='hdr'><td colspan='2'>{$reportTypeLabel} للطالب: {$report->student_name}</td></tr>
+<tr class='inf'><td>الرقم الجامعي: {$report->student_code}</td><td>تاريخ التوليد: " . \Carbon\Carbon::parse($report->generated_at ?? $report->created_at)->format('Y-m-d H:i') . "</td></tr>
+";
+
+        if ($isAcademic) {
+            $html .= "
+<tr><th>نسبة الحضور</th><td>{$report->attendance_rate}%</td></tr>
+<tr><th>المعدل الدراسي</th><td>{$report->average_grade}</td></tr>
+";
+        }
+
+        $html .= "
+<tr><th>التوصيات والملاحظات</th><td>" . nl2br($report->recommendations) . "</td></tr>
+</table></body></html>";
+
+        return response("\xEF\xBB\xBF" . $html)
+            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->header('Pragma', 'no-cache')
+            ->header('Cache-Control', 'must-revalidate');
     }
 }

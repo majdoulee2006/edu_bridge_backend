@@ -118,26 +118,107 @@ class DepartmentHeadController extends Controller
     }
 
     // ─── Users – Trainers / Students / Parents ────────────────────
-    public function getTrainers()
+    public function getTrainers(Request $request)
     {
-        $teachers = DB::table('teachers')
-            ->join('users', 'teachers.user_id', '=', 'users.user_id')
-            ->select(
-                'teachers.teacher_id as id',
-                'users.full_name',
-                'users.email',
-                'users.phone',
-                'teachers.specialization'
-            )
-            ->get();
+        $studentId = $request->query('student_id');
+        $teachers = collect();
+
+        if ($studentId) {
+            $courseIds = DB::table('enrollments')
+                ->where('student_id', $studentId)
+                ->pluck('course_id');
+
+            if ($courseIds->isNotEmpty()) {
+                $teachers = DB::table('teachers')
+                    ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                    ->join('course_teachers', 'teachers.teacher_id', '=', 'course_teachers.teacher_id')
+                    ->whereIn('course_teachers.course_id', $courseIds)
+                    ->select(
+                        'teachers.teacher_id as id',
+                        'users.full_name',
+                        'users.email',
+                        'users.phone',
+                        'teachers.specialization'
+                    )
+                    ->distinct()
+                    ->get();
+            }
+        }
+
+        // Fallback: If no student selected or no teachers found for this student, return all department teachers
+        if ($teachers->isEmpty()) {
+            $head = DB::table('heads')->where('user_id', auth()->user()->user_id)->first();
+            if ($head) {
+                $courseIds = DB::table('course_program')
+                    ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                    ->where('programs.department_id', $head->department_id)
+                    ->pluck('course_program.course_id');
+
+                $teachers = DB::table('teachers')
+                    ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                    ->join('course_teachers', 'teachers.teacher_id', '=', 'course_teachers.teacher_id')
+                    ->whereIn('course_teachers.course_id', $courseIds)
+                    ->select(
+                        'teachers.teacher_id as id',
+                        'users.full_name',
+                        'users.email',
+                        'users.phone',
+                        'teachers.specialization'
+                    )
+                    ->distinct()
+                    ->get();
+            }
+        }
+
+        // Ultimate fallback: If still empty, return all teachers
+        if ($teachers->isEmpty()) {
+            $teachers = DB::table('teachers')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->select(
+                    'teachers.teacher_id as id',
+                    'users.full_name',
+                    'users.email',
+                    'users.phone',
+                    'teachers.specialization'
+                )
+                ->get();
+        }
 
         return response()->json(['success' => true, 'data' => $teachers]);
     }
 
-    public function getStudents()
+    public function getStudents(Request $request)
     {
+        $head = DB::table('heads')->where('user_id', $request->user()->user_id)->first();
+        if (!$head) {
+            return response()->json(['success' => false, 'message' => 'HOD not found'], 404);
+        }
+
+        $programIds = DB::table('programs')
+            ->where('department_id', $head->department_id)
+            ->pluck('id');
+
+        $deptName = DB::table('departments')
+            ->where('department_id', $head->department_id)
+            ->value('name');
+
+        $courseIds = DB::table('course_program')
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->where('programs.department_id', $head->department_id)
+            ->pluck('course_program.course_id');
+
         $students = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('enrollments', 'students.student_id', '=', 'enrollments.student_id')
+            ->where(function ($query) use ($programIds, $deptName, $courseIds) {
+                $query->whereIn('students.program_id', $programIds);
+                if ($deptName) {
+                    $query->orWhere('users.department', $deptName);
+                }
+                if ($courseIds->isNotEmpty()) {
+                    $query->orWhereIn('enrollments.course_id', $courseIds);
+                }
+            })
             ->select(
                 'students.student_id as id',
                 'users.full_name',
@@ -145,6 +226,7 @@ class DepartmentHeadController extends Controller
                 'students.student_code',
                 'students.level'
             )
+            ->distinct()
             ->get();
 
         return response()->json(['success' => true, 'data' => $students]);
@@ -391,11 +473,24 @@ class DepartmentHeadController extends Controller
     }
 
     // ─── Teachers list (for report dropdown) ─────────────────────
-    public function getTeachers()
+    public function getTeachers(Request $request)
     {
-        $teachers = DB::table('teachers')
+        $head = DB::table('heads')->where('user_id', $request->user()->user_id)->first();
+        if (!$head) {
+            return response()->json(['success' => false, 'message' => 'HOD not found'], 404);
+        }
+
+        $courseIds = DB::table('course_program')
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->where('programs.department_id', $head->department_id)
+            ->pluck('course_program.course_id');
+
+        $teachers = DB::table('course_teachers')
+            ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
             ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->whereIn('course_teachers.course_id', $courseIds)
             ->select('teachers.teacher_id as id', 'users.full_name as name', 'teachers.specialization')
+            ->distinct()
             ->get();
 
         return response()->json(['success' => true, 'data' => $teachers]);
@@ -423,18 +518,31 @@ class DepartmentHeadController extends Controller
     // ─── Students by Course ───────────────────────────────────────
     public function getStudentsByCourse($courseId)
     {
-        $students = DB::table('enrollments')
-            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
-            ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->where('enrollments.course_id', $courseId)
-            ->where('enrollments.status', 'active')
-            ->get(['students.student_id as id', 'users.full_name', 'students.student_code', 'students.level']);
+        $head = DB::table('heads')->where('user_id', auth()->user()->user_id)->first();
+        
+        if ($head) {
+            $courseIds = DB::table('course_program')
+                ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                ->where('programs.department_id', $head->department_id)
+                ->pluck('course_program.course_id');
 
-        // fallback: if no enrollments, return all students
+            $students = DB::table('enrollments')
+                ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->whereIn('enrollments.course_id', $courseIds)
+                ->select('students.student_id as id', 'users.full_name', 'students.student_code', 'students.level')
+                ->distinct()
+                ->get();
+        } else {
+            $students = collect();
+        }
+
+        // fallback: if no students found in department, return all students in system
         if ($students->isEmpty()) {
             $students = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->get(['students.student_id as id', 'users.full_name', 'students.student_code', 'students.level']);
+                ->select('students.student_id as id', 'users.full_name', 'students.student_code', 'students.level')
+                ->get();
         }
 
         return response()->json(['success' => true, 'data' => $students]);
@@ -443,19 +551,49 @@ class DepartmentHeadController extends Controller
     // ─── Report Requests ──────────────────────────────────────────
     public function getReportRequests(Request $request)
     {
-        $requests = DB::table('report_requests')
-            ->join('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
-            ->join('users as tu', 'teachers.user_id', '=', 'tu.user_id')
+        $head = DB::table('heads')->where('user_id', $request->user()->user_id)->first();
+        $departmentId = $head ? $head->department_id : null;
+
+        $type = $request->query('type'); // 'my' or 'advisor'
+
+        $query = DB::table('report_requests')
+            ->leftJoin('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as tu', 'teachers.user_id', '=', 'tu.user_id')
             ->join('students', 'report_requests.student_id', '=', 'students.student_id')
             ->join('users as su', 'students.user_id', '=', 'su.user_id')
             ->leftJoin('courses', 'report_requests.course_id', '=', 'courses.course_id')
-            ->where('report_requests.head_id', $request->user()->user_id)
-            ->orderBy('report_requests.created_at', 'desc')
+            ->join('users as ru', 'report_requests.head_id', '=', 'ru.user_id')
+            ->leftJoin('performance_reports', 'report_requests.id', '=', 'performance_reports.report_request_id');
+
+        if ($type === 'advisor') {
+            $query->where('report_requests.head_id', '!=', $request->user()->user_id);
+            if ($departmentId) {
+                $programIds = DB::table('programs')
+                    ->where('department_id', $departmentId)
+                    ->pluck('id');
+                $deptName = DB::table('departments')->where('department_id', $departmentId)->value('name')
+                    ?? $request->user()->department;
+
+                $query->where(function ($q) use ($programIds, $deptName) {
+                    if ($programIds->isNotEmpty()) {
+                        $q->whereIn('students.program_id', $programIds);
+                    }
+                    if ($deptName) {
+                        $q->orWhere('su.department', $deptName);
+                    }
+                });
+            }
+        } else {
+            $query->where('report_requests.head_id', $request->user()->user_id);
+        }
+
+        $requests = $query->orderBy('report_requests.created_at', 'desc')
             ->get([
                 'report_requests.id',
                 'report_requests.report_type',
-                'report_requests.notes',
+                DB::raw("CASE WHEN report_requests.status = 'completed' THEN COALESCE(performance_reports.recommendations, '') ELSE COALESCE(report_requests.notes, '') END as notes"),
                 'report_requests.status',
+                'report_requests.sent_to_parent',
                 'report_requests.year',
                 'report_requests.created_at',
                 'tu.full_name as teacher_name',
@@ -527,29 +665,12 @@ class DepartmentHeadController extends Controller
                 'year'        => $request->year,
                 'notes'       => $notes,
                 'status'      => 'completed',
+                'sent_to_parent' => false,
                 'created_at'  => now(),
                 'updated_at'  => now(),
             ]);
 
-            // إشعار لأولياء الأمر
-            $parentIds = DB::table('parent_students')
-                ->where('student_id', $studentId)->pluck('parent_id');
-            foreach ($parentIds as $parentId) {
-                $parentUserId = DB::table('parents')->where('parent_id', $parentId)->value('user_id');
-                if ($parentUserId) {
-                    DB::table('notifications')->insert([
-                        'user_id'    => $parentUserId,
-                        'title'      => 'تقرير أكاديمي للطالب ' . $studentName,
-                        'message'    => $notes,
-                        'type'       => 'report',
-                        'is_read'    => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-            }
-
-            return response()->json(['success' => true, 'message' => 'تم توليد التقرير الأكاديمي وإرساله للأهل']);
+            return response()->json(['success' => true, 'message' => 'تم توليد التقرير الأكاديمي بنجاح بقسم سجل التقارير']);
         }
 
         // ─── سلوكي: أرسل للمعلم ──────────────────────────────────
@@ -562,6 +683,7 @@ class DepartmentHeadController extends Controller
             'year'        => $request->year,
             'notes'       => $request->notes ?? '',
             'status'      => 'pending',
+            'sent_to_parent' => false,
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
@@ -582,6 +704,71 @@ class DepartmentHeadController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'تم إرسال طلب التقرير السلوكي للمدرب']);
+    }
+
+    public function sendReportToParent(Request $request, $id)
+    {
+        $requestRow = DB::table('report_requests')->where('id', $id)->first();
+        if (!$requestRow) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        if ($requestRow->status !== 'completed') {
+            return response()->json(['success' => false, 'message' => 'التقرير لم يتم إتمامه بعد من قبل المدرب'], 400);
+        }
+
+        $studentRow = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $requestRow->student_id)
+            ->first(['users.full_name as name']);
+        $studentName = $studentRow->name ?? 'الطالب';
+
+        DB::table('report_requests')
+            ->where('id', $id)
+            ->update([
+                'sent_to_parent' => true,
+                'updated_at' => now()
+            ]);
+
+        $parentIds = DB::table('parent_students')
+            ->where('student_id', $requestRow->student_id)
+            ->pluck('parent_id');
+
+        $performanceReport = DB::table('performance_reports')->where('report_request_id', $id)->first();
+        $notificationMessage = $performanceReport ? $performanceReport->recommendations : $requestRow->notes;
+
+        foreach ($parentIds as $parentId) {
+            $parentUserId = DB::table('parents')->where('parent_id', $parentId)->value('user_id');
+            if ($parentUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $parentUserId,
+                    'title'      => 'تقرير أداء للطالب ' . $studentName,
+                    'message'    => $notificationMessage,
+                    'type'       => 'report',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                try {
+                    \App\Services\FcmService::sendToUser($parentUserId, 'تقرير أداء للطالب ' . $studentName, $notificationMessage, ['type' => 'report', 'related_id' => (string)$id]);
+                } catch (\Exception $e) {
+                    \Log::error("FCM failed: " . $e->getMessage());
+                }
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال التقرير للأهل بنجاح']);
+    }
+
+    public function deleteReportRequest(Request $request, $id)
+    {
+        $deleted = DB::table('report_requests')->where('id', $id)->delete();
+        if ($deleted) {
+            return response()->json(['success' => true, 'message' => 'تم حذف طلب التقرير بنجاح']);
+        }
+        return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
     }
 
     // ─── Announcements ────────────────────────────────────────────

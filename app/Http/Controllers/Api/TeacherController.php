@@ -496,7 +496,10 @@ class TeacherController extends Controller
             }
         }
 
-        $session->update(['is_active' => false]);
+        $session->update([
+            'is_active' => false,
+            'closed_at' => now(),
+        ]);
 
         return response()->json([
             'success' => true,
@@ -1141,17 +1144,35 @@ class TeacherController extends Controller
             ->with('course')
             ->get()
             ->groupBy('day')
-            ->map(function($items) {
-                return $items->map(function($item) {
+            ->mapWithKeys(function($items, $day) {
+                // ترجمة الأيام إلى العربية
+                $dayMap = [
+                    'Sunday'    => 'الأحد',
+                    'Monday'    => 'الاثنين',
+                    'Tuesday'   => 'الثلاثاء',
+                    'Wednesday' => 'الأربعاء',
+                    'Thursday'  => 'الخميس',
+                    'Friday'    => 'الجمعة',
+                    'Saturday'  => 'السبت',
+                ];
+                $translatedDay = $dayMap[$day] ?? $day;
+
+                $mappedItems = $items->map(function($item) {
+                    $subtitle = $item->room;
+                    if ($item->class_group) {
+                        $subtitle .= ' — ' . $item->class_group;
+                    }
                     return [
                         'id'          => $item->schedule_id,
                         'course_id'   => $item->course_id,
                         'course_name' => $item->course->title,
                         'start_time'  => $item->start_time,
                         'end_time'    => $item->end_time,
-                        'room'        => $item->room,
+                        'room'        => $subtitle, // دمج القاعة مع اسم الفرع/السنة
                     ];
                 });
+
+                return [$translatedDay => $mappedItems];
             });
 
         return response()->json(['success' => true, 'data' => $schedules], 200);
@@ -1686,6 +1707,385 @@ class TeacherController extends Controller
         ]);
 
         return response()->json(['success' => true, 'message' => 'تم الرد على الطلب بنجاح'], 200);
+    }
+
+    // ============================================================
+    // تصدير كشف الحضور (للمعلم — مواده فقط)
+    // ============================================================
+    // GET /teacher/attendance/export?course_id=X&period=today|week|semester&format=json|excel|pdf
+    public function exportAttendance(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $courseId = $request->input('course_id');
+        $period   = $request->input('period', 'today'); // today | week | semester
+        $format   = $request->input('format', 'json');  // json | excel | pdf
+
+        // التحقق أن المادة تخص هذا المعلم
+        $courseIds = $teacher->courses()->pluck('courses.course_id')->toArray();
+        if ($courseId && !in_array((int)$courseId, $courseIds)) {
+            return response()->json(['success' => false, 'message' => 'المادة غير مرتبطة بك'], 403);
+        }
+
+        [$startDate, $endDate] = $this->resolvePeriod($period);
+
+        $query = DB::table('attendance')
+            ->join('students', 'attendance.student_id', '=', 'students.student_id')
+            ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->join('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
+            ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
+            ->whereIn('lessons.teacher_id', [$teacher->teacher_id])
+            ->whereBetween('attendance.attendance_date', [$startDate, $endDate])
+            ->select(
+                'su.full_name as student_name',
+                'courses.title as course_name',
+                'attendance.attendance_date',
+                'attendance.status'
+            )
+            ->orderBy('attendance.attendance_date', 'desc')
+            ->orderBy('courses.title');
+
+        if ($courseId) {
+            $query->where('courses.course_id', $courseId);
+        }
+
+        $rows = $query->get();
+
+        if ($format === 'json') {
+            return response()->json(['success' => true, 'data' => $rows]);
+        }
+
+        return $this->buildAttendanceFile($rows, $format, 'attendance_report');
+    }
+
+    // ============================================================
+    // تصدير كشف الحضور (للمربي — جميع مواد فرعه أو مادة محددة)
+    // ============================================================
+    // GET /teacher/attendance/advisor-export?course_id=X|all&period=today|week|semester&format=json|excel|pdf
+    public function advisorExportAttendance(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher || !$teacher->advisor_branch) {
+            return response()->json(['success' => false, 'message' => 'أنت لست مربي دورة'], 403);
+        }
+
+        $courseId = $request->input('course_id'); // null = all
+        $period   = $request->input('period', 'today');
+        $format   = $request->input('format', 'json');
+
+        [$startDate, $endDate] = $this->resolvePeriod($period);
+
+        // جلب الطلاب التابعين للمربي (نفس الفرع + السنة)
+        $studentIds = DB::table('students')
+            ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->where('programs.name', $teacher->advisor_branch)
+            ->where('su.academic_year', $teacher->advisor_year)
+            ->pluck('students.student_id')
+            ->toArray();
+
+        if (empty($studentIds)) {
+            return response()->json(['success' => false, 'message' => 'لا يوجد طلاب مرتبطون بك كمربي'], 404);
+        }
+
+        $query = DB::table('attendance')
+            ->join('students', 'attendance.student_id', '=', 'students.student_id')
+            ->join('users as su', 'students.user_id', '=', 'su.user_id')
+            ->join('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
+            ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
+            ->whereIn('attendance.student_id', $studentIds)
+            ->whereBetween('attendance.attendance_date', [$startDate, $endDate])
+            ->select(
+                'su.full_name as student_name',
+                'courses.title as course_name',
+                'attendance.attendance_date',
+                'attendance.status'
+            )
+            ->orderBy('attendance.attendance_date', 'desc')
+            ->orderBy('su.full_name');
+
+        if ($courseId) {
+            $query->where('courses.course_id', $courseId);
+        }
+
+        $rows = $query->get();
+
+        if ($format === 'json') {
+            return response()->json(['success' => true, 'data' => $rows]);
+        }
+
+        return $this->buildAttendanceFile($rows, $format, 'advisor_attendance_report');
+    }
+
+    // ============================================================
+    // مساعد: تحديد نطاق التاريخ حسب الفترة المختارة
+    // ============================================================
+    private function resolvePeriod(string $period): array
+    {
+        return match ($period) {
+            'today'    => [\Carbon\Carbon::today()->toDateString(), \Carbon\Carbon::today()->toDateString()],
+            'week'     => [\Carbon\Carbon::now()->startOfWeek()->toDateString(), \Carbon\Carbon::now()->toDateString()],
+            'semester' => $this->getActiveSemesterRange(),
+            default    => [\Carbon\Carbon::today()->toDateString(), \Carbon\Carbon::today()->toDateString()],
+        };
+    }
+
+    private function getActiveSemesterRange(): array
+    {
+        $semester = DB::table('semesters')->where('is_active', true)->first();
+        if ($semester) {
+            return [$semester->start_date, $semester->end_date];
+        }
+        // fallback: آخر 6 أشهر إذا ما فيه فصل نشط
+        return [\Carbon\Carbon::now()->subMonths(6)->toDateString(), \Carbon\Carbon::now()->toDateString()];
+    }
+
+    // ============================================================
+    // مساعد: بناء ملف Excel أو PDF
+    // ============================================================
+    private function buildAttendanceFile($rows, string $format, string $filename)
+    {
+        if ($format === 'excel') {
+            // بناء CSV بسيط (متوافق مع Excel)
+            $csv = "\xEF\xBB\xBF"; // BOM للعربية
+            $csv .= "اسم الطالب,المادة,التاريخ,الحالة\n";
+            foreach ($rows as $row) {
+                $status = match($row->status) {
+                    'present' => 'حاضر',
+                    'absent'  => 'غائب',
+                    'late'    => 'متأخر',
+                    default   => $row->status,
+                };
+                $csv .= "\"{$row->student_name}\",\"{$row->course_name}\",\"{$row->attendance_date}\",\"{$status}\"\n";
+            }
+            return response($csv, 200, [
+                'Content-Type'        => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}_" . now()->format('Y-m-d') . ".csv\"",
+            ]);
+        }
+
+        if ($format === 'pdf') {
+            // HTML بسيط يطبع كـ PDF من المتصفح (أو يمكن لاحقاً استخدام مكتبة PDF)
+            $html = '<html dir="rtl"><head><meta charset="UTF-8"><style>
+                body{font-family:Arial,sans-serif;font-size:13px;}
+                table{width:100%;border-collapse:collapse;}
+                th,td{border:1px solid #ccc;padding:6px 10px;text-align:right;}
+                th{background:#f0f0f0;}
+            </style></head><body>';
+            $html .= '<h2>كشف الحضور والغياب — ' . now()->format('Y-m-d') . '</h2>';
+            $html .= '<table><thead><tr><th>اسم الطالب</th><th>المادة</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>';
+            foreach ($rows as $row) {
+                $status = match($row->status) {
+                    'present' => 'حاضر',
+                    'absent'  => 'غائب',
+                    'late'    => 'متأخر',
+                    default   => $row->status,
+                };
+                $color = $row->status === 'present' ? '#16a34a' : ($row->status === 'absent' ? '#dc2626' : '#d97706');
+                $html .= "<tr><td>{$row->student_name}</td><td>{$row->course_name}</td><td>{$row->attendance_date}</td><td style='color:{$color};font-weight:bold'>{$status}</td></tr>";
+            }
+            $html .= '</tbody></table></body></html>';
+
+            return response($html, 200, [
+                'Content-Type'        => 'text/html; charset=UTF-8',
+                'Content-Disposition' => "inline; filename=\"{$filename}_" . now()->format('Y-m-d') . ".html\"",
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'صيغة غير مدعومة'], 400);
+    }
+
+    public function exportFilteredPdf(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $scope = $request->input('scope', 'my_courses');
+        $courseId = $request->input('course_id');
+        $period = $request->input('period', 'today');
+
+        // Resolve dates
+        $startDate = \Carbon\Carbon::today()->toDateString();
+        $endDate = \Carbon\Carbon::today()->toDateString();
+        if ($period === 'week') {
+            $startDate = \Carbon\Carbon::now()->startOfWeek()->toDateString();
+        } elseif ($period === 'semester') {
+            $semester = DB::table('semesters')->where('is_active', true)->first();
+            if ($semester) {
+                $startDate = $semester->start_date;
+                $endDate = $semester->end_date;
+            } else {
+                $startDate = \Carbon\Carbon::now()->subMonths(6)->toDateString();
+            }
+        }
+
+        $sessionsQuery = DB::table('attendance_sessions')
+            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
+            ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
+            ->select(
+                'attendance_sessions.*',
+                'courses.course_id',
+                'courses.title as course_title',
+                'courses.year as course_year',
+                'lessons.lesson_id'
+            )
+            ->whereBetween('attendance_sessions.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if ($scope === 'advisor_class') {
+            if (!$teacher->advisor_branch || !$teacher->advisor_year) {
+                return response()->json(['success' => false, 'message' => 'أنت لست مربي دورة لأي فرع'], 403);
+            }
+            $targetProgram = DB::table('programs')->where('name', $teacher->advisor_branch)->first();
+            if (!$targetProgram) {
+                return response()->json(['success' => false, 'message' => 'لم يتم العثور على الفرع'], 404);
+            }
+            
+            $validCourseIds = DB::table('course_program')
+                ->where('program_id', $targetProgram->id)
+                ->pluck('course_id')
+                ->toArray();
+                
+            $map = ['السنة الأولى'=>1, 'السنة الثانية'=>2, 'السنة الثالثة'=>3, 'السنة الرابعة'=>4, 'السنة الخامسة'=>5];
+            $yearInt = $map[$teacher->advisor_year] ?? 0;
+            $validCoursesInYear = DB::table('courses')
+                ->whereIn('course_id', $validCourseIds)
+                ->where('year', $yearInt)
+                ->pluck('course_id')
+                ->toArray();
+                
+            $sessionsQuery->whereIn('courses.course_id', $validCoursesInYear);
+            
+            if ($courseId) {
+                $sessionsQuery->where('courses.course_id', $courseId);
+            }
+        } else {
+            $myCourseIds = DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id')->toArray();
+            if (empty($myCourseIds)) {
+                return response()->json(['success' => false, 'message' => 'لا يوجد مواد مسندة إليك'], 404);
+            }
+            if ($courseId && in_array($courseId, $myCourseIds)) {
+                $sessionsQuery->where('courses.course_id', $courseId);
+            } else {
+                $sessionsQuery->whereIn('courses.course_id', $myCourseIds);
+                if ($request->has('program_id')) {
+                    $programCourseIds = DB::table('course_program')
+                        ->where('program_id', $request->input('program_id'))
+                        ->pluck('course_id')->toArray();
+                    $sessionsQuery->whereIn('courses.course_id', $programCourseIds);
+                }
+                if ($request->has('year')) {
+                    $sessionsQuery->where('courses.year', $request->input('year'));
+                }
+            }
+        }
+
+        $sessions = $sessionsQuery->orderBy('attendance_sessions.created_at')->get();
+
+        if ($sessions->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'لا توجد جلسات حضور في هذه الفترة'], 404);
+        }
+
+        $allStudents = [];
+        $matrix = [];
+        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+
+        foreach ($sessions as $session) {
+            $attendances = DB::table('attendance')
+                ->where('lesson_id', $session->lesson_id)
+                ->get()
+                ->keyBy('student_id');
+
+            $coursePrograms = DB::table('course_program')->where('course_id', $session->course_id)->pluck('program_id')->toArray();
+            $courseYearStr = $yearMap[$session->course_year] ?? null;
+
+            $enrolledStudents = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('enrollments', function($join) use ($session) {
+                    $join->on('students.student_id', '=', 'enrollments.student_id')
+                         ->where('enrollments.course_id', '=', $session->course_id);
+                })
+                ->where(function($query) use ($coursePrograms, $courseYearStr) {
+                    $query->whereNotNull('enrollments.enrollment_id');
+                    if (!empty($coursePrograms) && $courseYearStr) {
+                        $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
+                            $q->whereIn('students.program_id', $coursePrograms)
+                              ->where('users.academic_year', $courseYearStr);
+                        });
+                    }
+                })
+                ->select('students.student_id', 'users.full_name', 'users.academic_year', 'programs.name as branch_name')
+                ->distinct()
+                ->get();
+
+            foreach ($enrolledStudents as $student) {
+                if (!isset($allStudents[$student->student_id])) {
+                    $allStudents[$student->student_id] = [
+                        'name' => $student->full_name,
+                        'branch' => $student->branch_name ?? 'عام',
+                        'year' => $student->academic_year,
+                    ];
+                }
+
+                $att = $attendances->get($student->student_id);
+                $statusRaw = $att ? $att->status : 'absent';
+                
+                $matrix[$student->student_id][$session->lesson_id] = $statusRaw;
+            }
+        }
+
+        uasort($allStudents, function($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
+
+        $daysMap = [];
+        foreach ($sessions as $session) {
+            $dateObj = \Carbon\Carbon::parse($session->created_at)->locale('ar');
+            $dateString = $dateObj->format('Y-m-d');
+            $daysMap[$dateString] = $dateObj->translatedFormat('l');
+        }
+        ksort($daysMap);
+
+        $dailyStatus = [];
+        foreach ($allStudents as $studentId => $info) {
+            foreach ($sessions as $session) {
+                $dateString = \Carbon\Carbon::parse($session->created_at)->format('Y-m-d');
+                $status = $matrix[$studentId][$session->lesson_id] ?? null;
+                if ($status !== null) {
+                    if (!isset($dailyStatus[$studentId][$dateString])) {
+                        $dailyStatus[$studentId][$dateString] = 'absent';
+                    }
+                    if ($status === 'present') {
+                        $dailyStatus[$studentId][$dateString] = 'present';
+                    }
+                }
+            }
+        }
+
+        $courseSessions = [];
+        foreach ($sessions as $session) {
+            $courseSessions[$session->course_id][] = $session;
+        }
+
+        $pdf = \Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::loadView('exports.attendance_pdf', compact(
+            'allStudents', 'matrix', 'sessions', 'daysMap', 'dailyStatus', 'courseSessions'
+        ), [], [
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'orientation' => 'P',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+        ]);
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="filtered_attendance_report_' . now()->format('Y-m-d') . '.pdf"',
+        ]);
     }
 }
 

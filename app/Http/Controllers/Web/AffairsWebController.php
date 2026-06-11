@@ -184,8 +184,29 @@ class AffairsWebController extends Controller
     // ─────────────────────────── Accounts (معلم + رئيس قسم فقط) ────
     public function accounts()
     {
-        $users = User::whereIn('role_id', [2, 3, 5])->with('student')->latest()->get();
-        return view('affairs.accounts', compact('users'));
+        $users = User::whereIn('role_id', [2, 3, 4, 5, 6])->with('student')->latest()->get();
+        $departments = DB::table('departments')->orderBy('name')->get();
+        
+        $coursesList = DB::table('courses')
+            ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->select('courses.course_id', 'courses.title', 'programs.department_id')
+            ->distinct()
+            ->get();
+            
+        $deptCourses = [];
+        foreach ($coursesList as $c) {
+            $deptCourses[$c->department_id][] = ['id' => $c->course_id, 'title' => $c->title];
+        }
+        
+        $branchesList = DB::table('programs')->select('id', 'name', 'department_id')->get();
+        $deptBranches = [];
+        foreach ($branchesList as $b) {
+            $deptBranches[$b->department_id][] = ['id' => $b->id, 'name' => $b->name];
+        }
+        
+        $courses = DB::table('courses')->orderBy('title')->get();
+        return view('affairs.accounts', compact('users', 'departments', 'courses', 'deptCourses', 'deptBranches'));
     }
 
     public function resetStudentDevice(Request $request, int $studentId)
@@ -204,6 +225,39 @@ class AffairsWebController extends Controller
         return back()->with('success', 'تم إعادة تسجيل الجهاز بنجاح. يمكن للطالب الآن تسجيل الدخول من جهاز جديد.');
     }
 
+    public function updateAccount(Request $request, $id)
+    {
+        $user = DB::table('users')->where('user_id', $id)->first();
+        if (!$user) {
+            return redirect()->back()->with('error', 'المستخدم غير موجود.');
+        }
+
+        $request->validate([
+            'full_name' => 'required|string|max:255',
+            'phone'     => 'nullable|string|max:20',
+            'email'     => 'required|email|max:255|unique:users,email,' . $id . ',user_id',
+            'password'  => 'nullable|string|min:6|confirmed',
+        ], [
+            'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
+            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
+        ]);
+
+        $updates = [
+            'full_name'  => $request->full_name,
+            'email'      => $request->email,
+            'phone'      => $request->phone,
+            'updated_at' => now(),
+        ];
+
+        if ($request->filled('password')) {
+            $updates['password'] = bcrypt($request->password);
+        }
+
+        DB::table('users')->where('user_id', $id)->update($updates);
+
+        return redirect()->back()->with('success', 'تم تحديث بيانات الحساب بنجاح!');
+    }
+
     public function storeAccount(Request $request)
     {
         $request->validate([
@@ -211,10 +265,23 @@ class AffairsWebController extends Controller
             'email'     => 'required|email|unique:users,email',
             'role_id'   => 'required|integer|in:2,5', // معلم أو رئيس قسم فقط
             'password'  => 'required|min:6',
+            'phone'     => 'nullable|string|max:20',
         ], [
             'email.unique' => 'البريد الإلكتروني مستخدم بالفعل.',
             'role_id.in'   => 'يمكن إنشاء حسابات للمعلمين ورؤساء الأقسام فقط.',
         ]);
+
+        if ($request->role_id == 5) {
+            $request->validate([
+                'department_id' => 'required|exists:departments,department_id'
+            ]);
+        } elseif ($request->role_id == 2) {
+            $request->validate([
+                'department_id'  => 'required|exists:departments,department_id',
+                'specialization' => 'required|string|max:255',
+                'courses'        => 'nullable|array'
+            ]);
+        }
 
         $baseUsername = explode('@', $request->email)[0];
         $username = $baseUsername;
@@ -223,21 +290,43 @@ class AffairsWebController extends Controller
             $username = $baseUsername . $counter++;
         }
 
+        $dept = DB::table('departments')->where('department_id', $request->department_id)->first();
+
         $user = User::create([
-            'full_name' => $request->full_name,
-            'email'     => $request->email,
-            'role_id'   => $request->role_id,
-            'password'  => Hash::make($request->password),
-            'status'    => 'active',
-            'username'  => $username,
+            'full_name'  => $request->full_name,
+            'email'      => $request->email,
+            'phone'      => $request->phone,
+            'role_id'    => $request->role_id,
+            'department' => $dept ? $dept->name : null,
+            'password'   => Hash::make($request->password),
+            'status'     => 'active',
+            'username'   => $username,
         ]);
 
         if ((int) $request->role_id === 2) {
-            DB::table('teachers')->insert([
+            $teacherId = DB::table('teachers')->insertGetId([
                 'user_id'        => $user->user_id,
-                'specialization' => 'عام',
+                'specialization' => $request->specialization ?? 'عام',
                 'created_at'     => now(),
                 'updated_at'     => now(),
+            ]);
+
+            if ($request->filled('courses')) {
+                foreach ($request->courses as $courseId) {
+                    DB::table('course_teachers')->insertOrIgnore([
+                        'teacher_id' => $teacherId,
+                        'course_id'  => $courseId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        } elseif ((int) $request->role_id === 5) {
+            DB::table('heads')->insert([
+                'user_id'       => $user->user_id,
+                'department_id' => $request->department_id,
+                'created_at'    => now(),
+                'updated_at'    => now(),
             ]);
         }
 
@@ -254,14 +343,7 @@ class AffairsWebController extends Controller
     public function storeUniversityId(Request $request)
     {
         $request->validate([
-            'first_name'       => 'required|string|max:100',
-            'last_name'        => 'required|string|max:100',
-            'birth_date'       => 'required|date|before_or_equal:' . now()->subYears(18)->format('Y-m-d'),
-            'national_id'      => 'required|digits:10',
-            'default_password' => 'required|string|min:6',
-        ], [
-            'birth_date.before_or_equal' => 'يجب أن يكون عمر الطالب 18 سنة على الأقل.',
-            'national_id.digits'         => 'الرقم الشخصي يجب أن يتكون من 10 أرقام بالضبط.'
+            'full_name' => 'required|string|max:255',
         ]);
 
         $year = date('Y');
@@ -279,11 +361,7 @@ class AffairsWebController extends Controller
 
         DB::table('university_ids')->insert([
             'university_id'    => $newId,
-            'first_name'       => $request->first_name,
-            'last_name'        => $request->last_name,
-            'birth_date'       => $request->birth_date,
-            'national_id'      => $request->national_id,
-            'default_password' => bcrypt($request->default_password),
+            'full_name'        => $request->full_name,
             'role'             => 'student',
             'is_used'          => false,
             'created_by'       => Auth::id(),
@@ -292,6 +370,25 @@ class AffairsWebController extends Controller
         ]);
 
         return back()->with('success', 'تم إضافة الرقم الجامعي بنجاح.');
+    }
+
+    public function updateUniversityId(Request $request, $id)
+    {
+        $request->validate([
+            'full_name' => 'required|string|max:255',
+        ]);
+
+        $uid = DB::table('university_ids')->where('id', $id)->first();
+        if (!$uid) {
+            return back()->with('error', 'الرقم الجامعي غير موجود.');
+        }
+
+        DB::table('university_ids')->where('id', $id)->update([
+            'full_name' => $request->full_name,
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'تم تحديث الاسم بنجاح.');
     }
 
     public function deleteUniversityId($id)
@@ -318,6 +415,29 @@ class AffairsWebController extends Controller
     {
         $user = User::findOrFail($id);
         $user->update(['status' => 'active']);
+
+        // ---- إضافة ربط الأبناء بولي الأمر عند الموافقة ----
+        if ($user->role_id == 4 && !empty($user->children_ids)) {
+            $parent = DB::table('parents')->where('user_id', $user->user_id)->first();
+            if ($parent) {
+                foreach ($user->children_ids as $universityId) {
+                    $student = DB::table('students')
+                        ->where('student_code', $universityId)
+                        ->select('student_id')
+                        ->first();
+                    if ($student) {
+                        DB::table('parent_students')->insertOrIgnore([
+                            'parent_id'    => $parent->parent_id,
+                            'student_id'   => $student->student_id,
+                            'relationship' => 'والد / ولي أمر',
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+                    }
+                }
+            }
+        }
+        // ---------------------------------------------------
 
         $notifTitle = 'تم تفعيل حسابك ✓';
         $notifMsg   = 'مرحباً ' . $user->full_name . '! تم تفعيل حسابك. يمكنك الآن تسجيل الدخول.';

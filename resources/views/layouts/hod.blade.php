@@ -34,7 +34,7 @@
                     {{ mb_substr(auth()->user()->full_name ?? 'ر', 0, 1) }}
                 </div>
                 <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? 'رئيس القسم' }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">رئيس القسم</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">رئيس القسم{{ auth()->user()->department ? ' ' . auth()->user()->department : '' }}</div>
             </div>
             
             <nav class="nav-menu">
@@ -101,12 +101,12 @@
             </header>
 
             @if (session('success'))
-                <div style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                <div id="hod-success-alert" style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.5s;">
                     <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
                 </div>
             @endif
             @if (session('error'))
-                <div style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                <div id="hod-error-alert" style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.5s;">
                     <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
                 </div>
             @endif
@@ -119,6 +119,26 @@
 
     <!-- Custom JS -->
     <script src="{{ asset('js/hod-settings.js') }}"></script>
+    <script>
+        // Auto-hide alerts after 6 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const successAlert = document.getElementById('hod-success-alert');
+            const errorAlert = document.getElementById('hod-error-alert');
+            
+            if (successAlert) {
+                setTimeout(() => {
+                    successAlert.style.opacity = '0';
+                    setTimeout(() => successAlert.style.display = 'none', 500);
+                }, 6000);
+            }
+            if (errorAlert) {
+                setTimeout(() => {
+                    errorAlert.style.opacity = '0';
+                    setTimeout(() => errorAlert.style.display = 'none', 500);
+                }, 6000);
+            }
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>
