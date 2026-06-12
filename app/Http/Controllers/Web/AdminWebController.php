@@ -395,6 +395,33 @@ class AdminWebController extends Controller
             ->where('user_id', $id)
             ->update(['status' => 'active', 'updated_at' => now()]);
 
+        // ---- إضافة ربط الأبناء بولي الأمر عند الموافقة ----
+        $user = DB::table('users')->where('user_id', $id)->first();
+        if ($user && $user->role_id == 4 && !empty($user->children_ids)) {
+            $childrenIds = is_string($user->children_ids) ? json_decode($user->children_ids, true) : $user->children_ids;
+            if (is_array($childrenIds)) {
+                $parent = DB::table('parents')->where('user_id', $id)->first();
+                if ($parent) {
+                    foreach ($childrenIds as $universityId) {
+                        $student = DB::table('students')
+                            ->where('student_code', $universityId)
+                            ->select('student_id')
+                            ->first();
+                        if ($student) {
+                            DB::table('parent_students')->insertOrIgnore([
+                                'parent_id'    => $parent->parent_id,
+                                'student_id'   => $student->student_id,
+                                'relationship' => 'والد / ولي أمر',
+                                'created_at'   => now(),
+                                'updated_at'   => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+        // ---------------------------------------------------
+
         // Add welcome notification
         DB::table('notifications')->insert([
             'user_id'    => $id,
@@ -444,16 +471,17 @@ class AdminWebController extends Controller
     public function storeStudent(Request $request)
     {
         $request->validate([
-            'full_name'     => 'required|string|max:255',
-            'university_id' => 'required|string|unique:users,university_id|max:255',
-            'email'         => 'required|email|unique:users,email|max:255',
-            'phone'         => 'nullable|string|max:20',
-            'department'    => 'required|string|max:255',
-            'program_id'    => 'required|integer|exists:programs,id',
-            'level'         => 'required|string|max:255',
-            'birth_date'    => 'required|date',
-            'gender'        => 'required|in:ذكر,أنثى',
-            'password'      => 'required|string|min:6|confirmed',
+            'full_name'        => 'required|string|max:255',
+            'university_id'    => 'required|string|unique:users,university_id|max:255',
+            'email'            => 'required|email|unique:users,email|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'telegram_chat_id' => 'nullable|string|max:100',
+            'department'       => 'required|string|max:255',
+            'program_id'       => 'required|integer|exists:programs,id',
+            'level'            => 'required|string|max:255',
+            'birth_date'       => 'required|date',
+            'gender'           => 'required|in:ذكر,أنثى',
+            'password'         => 'required|string|min:6|confirmed',
         ], [
             'university_id.unique' => 'الرقم الجامعي مستخدم بالفعل لحساب آخر.',
             'email.unique'         => 'البريد الإلكتروني مستخدم بالفعل لحساب آخر.',
@@ -461,21 +489,51 @@ class AdminWebController extends Controller
         ]);
 
         $userId = DB::table('users')->insertGetId([
-            'role_id'       => 3,
-            'full_name'     => $request->full_name,
-            'username'      => $request->university_id,
-            'university_id' => $request->university_id,
-            'email'         => $request->email,
-            'phone'         => $request->phone,
-            'password'      => bcrypt($request->password),
-            'department'    => $request->department,
-            'gender'        => $request->gender,
-            'birth_date'    => $request->birth_date,
-            'academic_year' => $request->level,
-            'status'        => 'active',
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'role_id'          => 3,
+            'full_name'        => $request->full_name,
+            'username'         => $request->university_id,
+            'university_id'    => $request->university_id,
+            'email'            => $request->email,
+            'phone'            => $request->phone,
+            'telegram_chat_id' => $request->telegram_chat_id,
+            'password'         => bcrypt($request->password),
+            'department'       => $request->department,
+            'gender'           => $request->gender,
+            'birth_date'       => $request->birth_date,
+            'academic_year'    => $request->level,
+            'status'           => 'active',
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
+
+        // إرسال بيانات الطالب عبر تليجرام مباشرة
+        if ($request->filled('telegram_chat_id')) {
+            try {
+                $botToken = '8729068851:AAHILif3EtFWGKaTLgYxm7ZPuw6uqXV0A2k';
+                $programName = DB::table('programs')->where('id', $request->program_id)->value('name') ?? $request->program_id;
+                $message = "🎓 <b>مرحباً بك في جامعة Edu-Bridge!</b> 🎉\n\n"
+                         . "تم إنشاء حساب الطالب الخاص بك بنجاح. إليك كافة التفاصيل والمعلومات:\n\n"
+                         . "👤 <b>الاسم الكامل:</b> {$request->full_name}\n"
+                         . "🔑 <b>الرقم الجامعي (اسم المستخدم):</b> <code>{$request->university_id}</code>\n"
+                         . "🔒 <b>كلمة المرور:</b> <code>{$request->password}</code>\n"
+                         . "📧 <b>البريد الإلكتروني:</b> <code>{$request->email}</code>\n"
+                         . "📞 <b>رقم الهاتف:</b> <code>" . ($request->phone ?? '—') . "</code>\n"
+                         . "🏢 <b>القسم:</b> <code>{$request->department}</code>\n"
+                         . "💻 <b>البرنامج الدراسي:</b> <code>{$programName}</code>\n"
+                         . "📚 <b>المستوى الدراسي:</b> <code>{$request->level}</code>\n"
+                         . "📅 <b>تاريخ الميلاد:</b> <code>{$request->birth_date}</code>\n"
+                         . "🚻 <b>الجنس:</b> <code>{$request->gender}</code>\n\n"
+                         . "📲 يمكنك الآن تسجيل الدخول مباشرة إلى تطبيق الجامعة باستخدام رقمك الجامعي وكلمة المرور أعلاه.";
+
+                \Illuminate\Support\Facades\Http::timeout(5)->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                    'chat_id' => $request->telegram_chat_id,
+                    'text'    => $message,
+                    'parse_mode' => 'HTML',
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Telegram Bot Error: ' . $e->getMessage());
+            }
+        }
 
         $studentId = DB::table('students')->insertGetId([
             'user_id'      => $userId,
@@ -565,7 +623,7 @@ class AdminWebController extends Controller
                 DB::table('parent_students')->insert([
                     'parent_id'    => $parentId,
                     'student_id'   => $studentId,
-                    'relationship' => 'والد / ولي أمر',
+                    'relationship' => 'guardian',
                     'created_at'   => now(),
                     'updated_at'   => now(),
                 ]);
@@ -579,8 +637,27 @@ class AdminWebController extends Controller
     public function createTeacher()
     {
         $departments = DB::table('departments')->orderBy('name')->get();
+        
+        $coursesList = DB::table('courses')
+            ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->select('courses.course_id', 'courses.title', 'programs.department_id')
+            ->distinct()
+            ->get();
+            
+        $deptCourses = [];
+        foreach ($coursesList as $c) {
+            $deptCourses[$c->department_id][] = ['id' => $c->course_id, 'title' => $c->title];
+        }
+        
+        $branchesList = DB::table('programs')->select('id', 'name', 'department_id')->get();
+        $deptBranches = [];
+        foreach ($branchesList as $b) {
+            $deptBranches[$b->department_id][] = ['id' => $b->id, 'name' => $b->name];
+        }
+        
         $courses     = DB::table('courses')->orderBy('title')->get();
-        return view('admin.accounts.create_teacher', compact('departments', 'courses'));
+        return view('admin.accounts.create_teacher', compact('departments', 'courses', 'deptCourses', 'deptBranches'));
     }
 
     public function storeTeacher(Request $request)
@@ -1057,8 +1134,10 @@ class AdminWebController extends Controller
             $coursePrograms = DB::table('course_program')
                 ->join('programs', 'course_program.program_id', '=', 'programs.id')
                 ->where('course_program.course_id', $course->course_id)
-                ->select('programs.department_id')
+                ->select('programs.department_id', 'programs.id as program_id')
                 ->get();
+
+            $course->program_id = $coursePrograms->first()->program_id ?? null;
 
             $deptIds     = $coursePrograms->pluck('department_id')->unique();
             $courseDepts = DB::table('departments')
@@ -1349,7 +1428,6 @@ tr:nth-child(even) td{background:#f8fafc}
             'level'       => 'required|string',
             'year'        => 'required|integer|in:1,2',
             'semester_id' => 'required|integer',
-            'teacher_id'  => 'required|integer',
             'program_id'  => 'required|integer',
             'hours'       => 'required|integer|min:1',
         ]);
@@ -1364,14 +1442,6 @@ tr:nth-child(even) td{background:#f8fafc}
             'hours'       => $request->hours,
             'created_at'  => now(),
             'updated_at'  => now(),
-        ]);
-
-        // ربط المعلم
-        DB::table('course_teachers')->insert([
-            'course_id'  => $courseId,
-            'teacher_id' => $request->teacher_id,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         // ربط الدورة (البرنامج)
@@ -1413,5 +1483,41 @@ tr:nth-child(even) td{background:#f8fafc}
         }
 
         return back()->with('success', 'تم إضافة المادة وتسجيل ' . $students->count() . ' طالب تلقائياً!');
+    }
+
+    public function updateSubject(Request $request, $id)
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'level'       => 'required|string',
+            'year'        => 'required|integer|in:1,2',
+            'semester_id' => 'required|integer',
+            'program_id'  => 'required|integer',
+            'hours'       => 'required|integer|min:1',
+        ]);
+
+        DB::table('courses')->where('course_id', $id)->update([
+            'title'       => $request->title,
+            'description' => $request->description,
+            'level'       => $request->level,
+            'year'        => $request->year,
+            'semester_id' => $request->semester_id,
+            'hours'       => $request->hours,
+            'updated_at'  => now(),
+        ]);
+
+        DB::table('course_program')->where('course_id', $id)->update([
+            'program_id' => $request->program_id,
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'تم تحديث المادة بنجاح!');
+    }
+
+    public function deleteSubject($id)
+    {
+        DB::table('courses')->where('course_id', $id)->delete();
+        return back()->with('success', 'تم حذف المادة بنجاح!');
     }
 }

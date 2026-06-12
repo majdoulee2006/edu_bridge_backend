@@ -65,6 +65,19 @@
             @enderror
         </div>
 
+        <!-- Telegram Chat ID -->
+        <div class="space-y-1.5">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">Telegram Chat ID (اختياري)</label>
+            <div class="relative group">
+                <input name="telegram_chat_id" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm" dir="ltr" placeholder="مثال: 123456789" type="text" value="{{ old('telegram_chat_id', '7650604064') }}" title="احصل عليه من بوت الجامعة لإرسال الإشعارات وبيانات الدخول فوراً"/>
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">send</span>
+            </div>
+            <p class="text-xs text-slate-500 mr-1 mt-1">قم بإدخاله إذا كنت تريد إرسال بيانات الدخول للطالب فور إنشاء الحساب</p>
+            @error('telegram_chat_id')
+                <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
+            @enderror
+        </div>
+
         <!-- Department & Level & Program -->
         <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1.5">

@@ -27,6 +27,15 @@
                 <i class="fa-solid fa-graduation-cap" style="color: var(--accent-color);"></i>
                 Edu-Bridge
             </div>
+
+            <!-- HOD Info -->
+            <div style="text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
+                    {{ mb_substr(auth()->user()->full_name ?? 'ر', 0, 1) }}
+                </div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? 'رئيس القسم' }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">رئيس القسم{{ auth()->user()->department ? ' ' . auth()->user()->department : '' }}</div>
+            </div>
             
             <nav class="nav-menu">
                 <a href="{{ url('/hod/dashboard') }}" class="nav-item {{ Request::is('hod/dashboard') ? 'active' : '' }}">
@@ -77,11 +86,30 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
-                <h1 class="page-title">@yield('title')</h1>
-                <div class="header-actions">
-                    <!-- Profile snippet or anything else can go here -->
+                <div>
+                    <h1 class="page-title">@yield('title')</h1>
+                    @hasSection('subtitle')
+                        <p class="page-subtitle" style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.25rem;">@yield('subtitle')</p>
+                    @endif
+                </div>
+                <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
+                    <!-- Dark Mode Toggle -->
+                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
+                        <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
+                    </button>
                 </div>
             </header>
+
+            @if (session('success'))
+                <div id="hod-success-alert" style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.5s;">
+                    <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
+                </div>
+            @endif
+            @if (session('error'))
+                <div id="hod-error-alert" style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.5s;">
+                    <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
+                </div>
+            @endif
 
             <div class="content-body">
                 @yield('content')
@@ -91,6 +119,26 @@
 
     <!-- Custom JS -->
     <script src="{{ asset('js/hod-settings.js') }}"></script>
+    <script>
+        // Auto-hide alerts after 6 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const successAlert = document.getElementById('hod-success-alert');
+            const errorAlert = document.getElementById('hod-error-alert');
+            
+            if (successAlert) {
+                setTimeout(() => {
+                    successAlert.style.opacity = '0';
+                    setTimeout(() => successAlert.style.display = 'none', 500);
+                }, 6000);
+            }
+            if (errorAlert) {
+                setTimeout(() => {
+                    errorAlert.style.opacity = '0';
+                    setTimeout(() => errorAlert.style.display = 'none', 500);
+                }, 6000);
+            }
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>

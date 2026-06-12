@@ -8,6 +8,11 @@ use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\TeacherController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\HODController;
+use App\Http\Controllers\Api\ScheduleController;
+use App\Http\Controllers\Api\ExamScheduleController;
+use App\Http\Controllers\Api\TeacherReportController;
+use App\Http\Controllers\Api\ParentController;
 use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
@@ -167,10 +172,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // الجدول الدراسي
         Route::get('/schedule', [TeacherController::class, 'getSchedule']);
 
-        // طلبات التقارير من رئيس القسم
-        Route::get('/report-requests', [TeacherController::class, 'getReportRequests']);
-        Route::get('/report-requests/{id}/stats', [TeacherController::class, 'getStudentAcademicStats']);
-        Route::post('/report-requests/{id}/evaluate', [TeacherController::class, 'submitEvaluation']);
 
         // المحاضرات
         Route::get('/lessons', [TeacherController::class, 'getLessons']);
@@ -183,6 +184,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/attendance/generate-qr', [TeacherController::class, 'generateQrSession']);
         Route::get('/attendance/session/{sessionId}/list', [TeacherController::class, 'getSessionAttendance']);
         Route::post('/attendance/session/{sessionId}/end', [TeacherController::class, 'endSession']);
+        Route::get('/attendance/export', [TeacherController::class, 'exportAttendance']);
+        Route::get('/attendance/export-pdf', [TeacherController::class, 'exportFilteredPdf']);
+        Route::get('/attendance/advisor-export', [TeacherController::class, 'advisorExportAttendance']);
         Route::get('/attendance/{courseId}', [TeacherController::class, 'getAttendance']);
 
         // طلبات الغياب
@@ -255,6 +259,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teachers',        [DepartmentHeadController::class, 'getTeachers']);
         Route::get('/report-requests',  [DepartmentHeadController::class, 'getReportRequests']);
         Route::post('/report-requests', [DepartmentHeadController::class, 'createReportRequest']);
+        Route::post('/report-requests/{id}/send-to-parent', [DepartmentHeadController::class, 'sendReportToParent']);
+        Route::delete('/report-requests/{id}', [DepartmentHeadController::class, 'deleteReportRequest']);
 
         // Schedule
         Route::get('/schedule',       [DepartmentHeadController::class, 'getSchedule']);
@@ -282,6 +288,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/users/{id}', [AdminController::class, 'updateUser']);
         Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
     });
+
+    // ========== Parent Routes ==========
+    Route::prefix('parent')->middleware('role:parent')->group(function () {
+        Route::get('/dashboard', [ParentController::class, 'dashboard']);
+        Route::get('/children', [ParentController::class, 'getChildren']);
+        Route::post('/add-student', [ParentController::class, 'linkStudent']);
+        Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
+        Route::get('/children/{id}/details', [ParentController::class, 'getChildDetails']);
+        Route::get('/children/{id}/attendance', [ParentController::class, 'getChildAttendance']);
+        Route::get('/children/{id}/grades', [ParentController::class, 'getChildGrades']);
+        Route::get('/children/{id}/schedule', [ParentController::class, 'getChildSchedule']);
+        Route::get('/children/{id}/assignments', [ParentController::class, 'getChildAssignments']);
+        Route::post('/request-report', [ParentController::class, 'requestReport']);
+        Route::get('/reports/history', [ParentController::class, 'getReportsHistory']);
+    });
+
 });
 
 // -----------------------------------------------------------

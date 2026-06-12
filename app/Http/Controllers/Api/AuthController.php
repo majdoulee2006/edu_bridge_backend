@@ -93,6 +93,17 @@ class AuthController extends Controller
             $parentId = $parent?->parent_id;
         }
 
+        $isAdvisor = false;
+        if ($user->role_id == 2) {
+            $teacher = DB::table('teachers')->where('user_id', $user->user_id)->first();
+            if ($teacher) {
+                $isAdvisor = DB::table('course_teachers')
+                    ->where('teacher_id', $teacher->teacher_id)
+                    ->where('role', 'advisor')
+                    ->exists();
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'تم تسجيل الدخول بنجاح',
@@ -105,6 +116,7 @@ class AuthController extends Controller
                 'role'             => $user->role ?? 'student',
                 'role_id'          => $user->role_id,
                 'parent_id'        => $parentId,
+                'is_advisor'       => $isAdvisor,
                 'telegram_chat_id' => $user->telegram_chat_id,
             ],
         ], 200);
@@ -209,8 +221,27 @@ class AuthController extends Controller
             ? trim($request->telegram_username)
             : null;
 
+        $childrenIds = $request->children_ids;
+        if (is_array($childrenIds)) {
+            $childrenIds = array_filter($childrenIds, fn($val) => !empty($val));
+        }
+
+        if (empty($childrenIds) && $request->filled('child_university_id')) {
+            $childrenIds = [$request->child_university_id];
+        } else if (empty($childrenIds)) {
+            $childrenIds = null;
+        } else {
+            $childrenIds = array_values($childrenIds);
+        }
+
+        if (!$telegramId && $request->role === 'student' && isset($uid) && !empty($uid->telegram_chat_id)) {
+            $telegramId = $uid->telegram_chat_id;
+        }
+
         $user = User::create([
             'full_name'        => $request->full_name,
+            'first_name'       => $request->first_name,
+            'last_name'        => $request->last_name,
             'username'         => $username,
             'email'            => $request->email,
             'phone'            => $request->phone,
@@ -224,7 +255,7 @@ class AuthController extends Controller
             'academic_year'    => $request->academic_year,
             'department'       => $request->department,
             'branch'           => $request->branch,
-            'children_ids'     => $request->children_ids,
+            'children_ids'     => $childrenIds,
             'device_token'     => $request->fcm_token,
         ]);
 
@@ -433,7 +464,18 @@ class AuthController extends Controller
     {
         $user = $request->user()->load(['role', 'student', 'teacher', 'parent']);
 
-        return response()->json(['success' => true, 'data' => $user], 200);
+        $isAdvisor = false;
+        if ($user->role_id == 2 && $user->teacher) {
+            $isAdvisor = DB::table('course_teachers')
+                ->where('teacher_id', $user->teacher->teacher_id)
+                ->where('role', 'advisor')
+                ->exists();
+        }
+
+        $userData = $user->toArray();
+        $userData['is_advisor'] = $isAdvisor;
+
+        return response()->json(['success' => true, 'data' => $userData], 200);
     }
 
     public function updateProfile(Request $request)
@@ -678,6 +720,17 @@ class AuthController extends Controller
             $parentId = $parent?->parent_id;
         }
 
+        $isAdvisor = false;
+        if ($user->role_id == 2) {
+            $teacher = DB::table('teachers')->where('user_id', $user->user_id)->first();
+            if ($teacher) {
+                $isAdvisor = DB::table('course_teachers')
+                    ->where('teacher_id', $teacher->teacher_id)
+                    ->where('role', 'advisor')
+                    ->exists();
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'تم تسجيل الدخول بنجاح',
@@ -690,6 +743,7 @@ class AuthController extends Controller
                 'role'      => $user->role ?? 'student',
                 'role_id'   => $user->role_id,
                 'parent_id' => $parentId,
+                'is_advisor'=> $isAdvisor,
             ],
         ], 200);
     }

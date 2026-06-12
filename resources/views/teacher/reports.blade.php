@@ -72,7 +72,7 @@
 @endpush
 
 @section('content')
-    <p class="page-subtitle">طلبات التقارير الواردة من رئيس القسم</p>
+    <p class="page-subtitle">طلبات التقارير الواردة (من الإدارة أو أولياء الأمور)</p>
 
     @if(session('success'))
         <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('success') }}</div>
@@ -101,7 +101,11 @@
     {{-- === Tab: Pending === --}}
     <div id="tab-pending">
         @forelse($pending as $req)
-        @php $isBehavioral = $req->report_type === 'behavioral'; @endphp
+        @php 
+            $isBehavioral = $req->report_type === 'behavioral'; 
+            $requesterType = $req->requester_role_id == 4 ? 'ولي الأمر' : 'رئيس القسم';
+            $requesterName = $req->requester_name ?? 'غير معروف';
+        @endphp
         <div class="request-card">
             <div class="request-header">
                 <div class="student-avatar {{ $isBehavioral ? 'behavioral' : '' }}">
@@ -110,6 +114,10 @@
                 <div class="request-info" style="flex:1;">
                     <h5>{{ $req->student_name }}</h5>
                     <p>{{ $req->student_code }} &bull; {{ \Carbon\Carbon::parse($req->created_at)->format('d/m/Y') }}</p>
+                    <p style="margin-top: 0.2rem; font-weight: bold; color: var(--text-primary);">
+                        <i class="fa-solid fa-user-tag" style="color: var(--accent-color);"></i> 
+                        طُلب بواسطة: {{ $requesterName }} ({{ $requesterType }})
+                    </p>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;">
                     <span class="badge badge-pending">بانتظار الرد</span>
@@ -121,7 +129,7 @@
 
             @if($req->notes)
             <div class="notes-box">
-                <strong>ملاحظات رئيس القسم:</strong> {{ $req->notes }}
+                <strong>ملاحظات الطلب:</strong> {{ $req->notes }}
             </div>
             @endif
 
@@ -134,7 +142,7 @@
                     <textarea name="behavioral_notes" required class="form-textarea"
                               placeholder="اكتب تقرير سلوكي عن الطالب {{ $req->student_name }}..."></textarea>
                     <button type="submit" class="btn-submit">
-                        <i class="fa-solid fa-paper-plane"></i> إرسال التقرير وإشعار ولي الأمر
+                        <i class="fa-solid fa-paper-plane"></i> إرسال التقرير
                     </button>
                 </form>
             </div>
@@ -149,7 +157,7 @@
                     @csrf
                     <input type="hidden" name="behavioral_notes" value="تم إنشاء التقرير الأكاديمي تلقائياً.">
                     <button type="submit" class="btn-submit" style="background:#eff6ff;color:#1d4ed8;">
-                        <i class="fa-solid fa-check"></i> تأكيد إرسال التقرير الأكاديمي
+                        <i class="fa-solid fa-check"></i> إرسال التقرير الأكاديمي
                     </button>
                 </form>
             </div>

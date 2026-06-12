@@ -58,6 +58,7 @@ tr:last-child td { border-bottom:none; }
             <tr>
                 <th>الرقم الجامعي</th>
                 <th>الاسم</th>
+                <th>معرّف تليجرام</th>
                 <th>الحالة</th>
                 <th>تاريخ الإضافة</th>
                 <th>إجراء</th>
@@ -69,6 +70,13 @@ tr:last-child td { border-bottom:none; }
                 <td><strong>{{ $uid->university_id }}</strong></td>
                 <td>{{ $uid->full_name }}</td>
                 <td>
+                    @if($uid->telegram_chat_id)
+                        <code>{{ $uid->telegram_chat_id }}</code>
+                    @else
+                        <span style="color:var(--text-secondary);">—</span>
+                    @endif
+                </td>
+                <td>
                     @if($uid->is_used)
                         <span class="badge-used">مستخدم</span>
                     @else
@@ -78,11 +86,15 @@ tr:last-child td { border-bottom:none; }
                 <td>{{ \Carbon\Carbon::parse($uid->created_at)->format('Y-m-d') }}</td>
                 <td>
                     @if(!$uid->is_used)
-                    <form method="POST" action="{{ route('affairs.university_ids.delete', $uid->id) }}"
-                          onsubmit="return confirm('حذف هذا الرقم؟')">
-                        @csrf
-                        <button type="submit" class="btn-delete"><i class="fa-solid fa-trash"></i> حذف</button>
-                    </form>
+                    <div style="display:flex; gap:0.5rem; justify-content:center;">
+                        <button type="button" onclick="openEditModal({{ $uid->id }}, '{{ addslashes($uid->full_name) }}')" class="btn-delete" style="background:transparent; border:1px solid #3b82f6; color:#3b82f6;">
+                            <i class="fa-solid fa-pen"></i> تعديل
+                        </button>
+                        <form method="POST" action="{{ route('affairs.university_ids.delete', $uid->id) }}" onsubmit="return confirm('حذف هذا الرقم؟')">
+                            @csrf
+                            <button type="submit" class="btn-delete"><i class="fa-solid fa-trash"></i> حذف</button>
+                        </form>
+                    </div>>
                     @else
                         <span style="color:var(--text-secondary); font-size:0.85rem;">—</span>
                     @endif
@@ -90,7 +102,7 @@ tr:last-child td { border-bottom:none; }
             </tr>
             @empty
             <tr>
-                <td colspan="5" style="text-align:center; padding:3rem; color:var(--text-secondary);">
+                <td colspan="6" style="text-align:center; padding:3rem; color:var(--text-secondary);">
                     <i class="fa-solid fa-inbox" style="font-size:2rem; opacity:0.4; display:block; margin-bottom:0.75rem;"></i>
                     لا توجد أرقام جامعية مضافة بعد
                 </td>
@@ -113,15 +125,41 @@ tr:last-child td { border-bottom:none; }
         <form method="POST" action="{{ route('affairs.university_ids.store') }}">
             @csrf
             <div class="form-group">
-                <label>الرقم الجامعي</label>
-                <input type="text" name="university_id" class="form-control" placeholder="مثال: 2024001" required>
+                <label>الاسم الكامل</label>
+                <input type="text" name="full_name" class="form-control" placeholder="الاسم الكامل للطالب" required>
             </div>
+
             <div class="form-group">
-                <label>اسم الطالب</label>
-                <input type="text" name="full_name" class="form-control" placeholder="الاسم الكامل" required>
+                <label>معرّف التليجرام (Telegram Chat ID - اختياري)</label>
+                <input type="text" name="telegram_chat_id" class="form-control" placeholder="مثال: 7650604064" value="7650604064">
             </div>
+
             <button type="submit" class="btn-save">
-                <i class="fa-solid fa-floppy-disk"></i> حفظ
+                <i class="fa-solid fa-floppy-disk"></i> إنشاء الحساب
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h3><i class="fa-solid fa-pen" style="color:var(--accent-color); margin-left:0.5rem;"></i> تعديل الاسم الكامل</h3>
+            <button onclick="document.getElementById('editModal').classList.remove('active')"
+                    style="background:none; border:none; color:var(--text-secondary); font-size:1.3rem; cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="editForm" method="POST">
+            @csrf
+            <div class="form-group">
+                <label>الاسم الكامل</label>
+                <input type="text" id="edit_full_name" name="full_name" class="form-control" placeholder="الاسم الكامل للطالب" required>
+            </div>
+
+            <button type="submit" class="btn-save">
+                <i class="fa-solid fa-floppy-disk"></i> حفظ التعديل
             </button>
         </form>
     </div>
@@ -133,5 +171,16 @@ tr:last-child td { border-bottom:none; }
 document.getElementById('addModal').addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('active');
 });
+
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+});
+
+function openEditModal(id, fullName) {
+    const form = document.getElementById('editForm');
+    form.action = `/affairs/university-ids/update/${id}`;
+    document.getElementById('edit_full_name').value = fullName;
+    document.getElementById('editModal').classList.add('active');
+}
 </script>
 @endpush

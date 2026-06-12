@@ -105,7 +105,7 @@
             </div>
 
             <!-- Navigation Links -->
-            <nav class="flex-1 px-4 py-3 flex flex-col gap-1 overflow-y-auto hide-scrollbar">
+            <nav class="flex-1 min-h-0 px-4 py-3 flex flex-col gap-1 overflow-y-auto hide-scrollbar">
                 {{-- Dashboard --}}
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/dashboard') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
                     <i class="fa-solid fa-house text-base"></i>

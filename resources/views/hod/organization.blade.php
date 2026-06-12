@@ -285,20 +285,16 @@
                 @csrf
                 <div class="form-group" style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">المادة الدراسية</label>
-                    <select name="course_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        @foreach($courses as $c)
-                            <option value="{{ $c->course_id }}">{{ $c->title }}</option>
-                        @endforeach
+                    <select id="modal-course-select" name="course_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                        <option value="">-- اختر المادة --</option>
                     </select>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">المدرب (الأستاذ)</label>
-                    <select name="teacher_id" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        <option value="">غير محدد</option>
-                        @foreach($teachers as $t)
-                            <option value="{{ $t->teacher_id }}">{{ $t->full_name }}</option>
-                        @endforeach
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الفصل الدراسي</label>
+                    <select id="modal-semester-select" name="semester" onchange="populateScheduleModal()" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                        <option value="1">الفصل الأول</option>
+                        <option value="2">الفصل الثاني</option>
                     </select>
                 </div>
 
@@ -446,6 +442,8 @@
 @push('scripts')
 <script>
     const allSchedules = @json($schedules);
+    const allCoursesData  = @json($allCourses);   // [{course_id, title, branch_name}]
+    const allTeachersData = @json($allTeachers);  // [{teacher_id, full_name, department}]
     const csrfToken = '{{ csrf_token() }}';
 
     let currentDept = 'اتصالات';
@@ -611,7 +609,31 @@
         }
     }
 
+    function populateScheduleModal() {
+        // === فلترة المواد حسب الفرع والسنة والفصل المختار ===
+        const courseSelect = document.getElementById('modal-course-select');
+        const semesterSelect = document.getElementById('modal-semester-select');
+
+        courseSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+
+        // تحويل السنة إلى رقم (حسب قاعدة البيانات)
+        const yearInt = currentYear === 'سنة أولى' ? 1 : (currentYear === 'سنة ثانية' ? 2 : 3);
+        const semesterInt = parseInt(semesterSelect.value);
+
+        // المواد المرتبطة بالفرع والسنة والفصل
+        const filteredCourses = allCoursesData.filter(c => c.branch_name === currentDept && c.year == yearInt && c.semester_id == semesterInt);
+        filteredCourses.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.course_id;
+            opt.textContent = c.title;
+            courseSelect.appendChild(opt);
+        });
+    }
+
     function openModal(modalId) {
+        if (modalId === 'schedule-modal') {
+            populateScheduleModal();
+        }
         document.getElementById(modalId).classList.add('active');
     }
 

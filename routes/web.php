@@ -30,7 +30,9 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     // الحضور
     Route::get('/attendance', [TeacherWebController::class, 'attendance'])->name('teacher.attendance');
     Route::post('/attendance', [TeacherWebController::class, 'storeAttendanceSession'])->name('teacher.attendance.store');
+    Route::post('/attendance/end/{id}', [TeacherWebController::class, 'endSession'])->name('teacher.attendance.end');
     Route::get('/attendance/export/{id}', [TeacherWebController::class, 'exportAttendance'])->name('teacher.attendance.export');
+    Route::get('/attendance/filtered-export', [TeacherWebController::class, 'exportFilteredAttendance'])->name('teacher.attendance.filtered_export');
     Route::get('/attendance/absentees/{id}', [TeacherWebController::class, 'getAbsentees'])->name('teacher.attendance.absentees');
 
     // الواجبات
@@ -70,6 +72,11 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::post('/profile', [TeacherWebController::class, 'updateProfile'])->name('teacher.profile.update');
     Route::post('/profile/send-otp', [TeacherWebController::class, 'sendOTP'])->name('teacher.profile.send_otp');
     Route::post('/profile/verify-otp', [TeacherWebController::class, 'verifyOTP'])->name('teacher.profile.verify_otp');
+    
+    // أدوات مربي الدورة (Advisor Tools)
+    Route::get('/advisor', [TeacherWebController::class, 'advisorTools'])->name('teacher.advisor');
+    Route::post('/advisor/attendance', [TeacherWebController::class, 'storeAdvisorAttendance'])->name('teacher.advisor.attendance');
+    Route::post('/advisor/report', [TeacherWebController::class, 'storeAdvisorReport'])->name('teacher.advisor.report');
     Route::post('/profile/password', [TeacherWebController::class, 'updatePassword'])->name('teacher.profile.password');
 });
 
@@ -109,7 +116,9 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/accounts', [HODWebController::class, 'accounts']);
     Route::post('/accounts/teacher', [HODWebController::class, 'storeTeacher'])->name('hod.accounts.store_teacher');
     Route::post('/accounts/student', [HODWebController::class, 'storeStudent'])->name('hod.accounts.store_student');
+    Route::post('/accounts/advisor', [HODWebController::class, 'assignAdvisor'])->name('hod.accounts.advisor');
     Route::post('/accounts/parent', [HODWebController::class, 'storeParent'])->name('hod.accounts.store_parent');
+    Route::post('/accounts/update/{id}', [HODWebController::class, 'updateAccount'])->name('hod.accounts.update');
     Route::post('/accounts/delete/{id}', [HODWebController::class, 'deleteAccount'])->name('hod.accounts.delete');
     Route::get('/organization', [HODWebController::class, 'organization']);
     Route::post('/organization/schedule', [HODWebController::class, 'storeSchedule'])->name('hod.organization.store_schedule');
@@ -123,6 +132,8 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/reports/create', [HODWebController::class, 'createReport'])->name('hod.reports.create');
     Route::post('/reports', [HODWebController::class, 'storeReport'])->name('hod.reports.store');
     Route::post('/reports/delete/{id}', [HODWebController::class, 'deleteReport'])->name('hod.reports.delete');
+    Route::post('/reports/{id}/send-to-parent', [HODWebController::class, 'sendReportToParent'])->name('hod.reports.send_to_parent');
+    Route::get('/reports/{id}/download', [HODWebController::class, 'downloadReport'])->name('hod.reports.download');
     
     // واجهات الـ Mockup القديمة
     Route::get('/notifications', [HODWebController::class, 'notifications'])->name('hod.notifications');
@@ -157,6 +168,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     // الحسابات
     Route::get('/accounts', [AffairsWebController::class, 'accounts'])->name('affairs.accounts');
     Route::post('/accounts', [AffairsWebController::class, 'storeAccount'])->name('affairs.accounts.store');
+    Route::post('/accounts/update/{id}', [AffairsWebController::class, 'updateAccount'])->name('affairs.accounts.update');
     Route::post('/accounts/{id}/toggle', [AffairsWebController::class, 'toggleAccountStatus'])->name('affairs.accounts.toggle');
     Route::post('/accounts/{id}/delete', [AffairsWebController::class, 'deleteAccount'])->name('affairs.accounts.delete');
     Route::post('/students/{id}/reset-device', [AffairsWebController::class, 'resetStudentDevice'])->name('affairs.students.reset-device');
@@ -187,6 +199,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     // الأرقام الجامعية
     Route::get('/university-ids', [AffairsWebController::class, 'universityIds'])->name('affairs.university_ids');
     Route::post('/university-ids', [AffairsWebController::class, 'storeUniversityId'])->name('affairs.university_ids.store');
+    Route::post('/university-ids/update/{id}', [AffairsWebController::class, 'updateUniversityId'])->name('affairs.university_ids.update');
     Route::post('/university-ids/{id}/delete', [AffairsWebController::class, 'deleteUniversityId'])->name('affairs.university_ids.delete');
 
     // طلبات الحسابات المعلّقة
@@ -262,6 +275,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     // الفصول والمواد
     Route::get('/semesters-subjects', [AdminWebController::class, 'semestersSubjects'])->name('admin.semesters-subjects');
     Route::post('/semesters-subjects', [AdminWebController::class, 'storeSubject'])->name('admin.semesters-subjects.store');
+    Route::post('/semesters-subjects/update/{id}', [AdminWebController::class, 'updateSubject'])->name('admin.semesters-subjects.update');
+    Route::post('/semesters-subjects/delete/{id}', [AdminWebController::class, 'deleteSubject'])->name('admin.semesters-subjects.delete');
 
     // التقارير
     Route::get('/reports', [AdminWebController::class, 'reports'])->name('admin.reports');

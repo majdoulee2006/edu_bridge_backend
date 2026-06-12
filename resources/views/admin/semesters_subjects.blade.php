@@ -150,6 +150,18 @@
                 <!-- Hover bar -->
                 <div class="absolute right-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-[#f2f20d] transition-colors"></div>
 
+                <div class="absolute top-4 left-4 flex flex-col gap-1 z-10">
+                    <button type="button" onclick="event.stopPropagation(); openEditSubjectModal({{ json_encode($course) }})" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all">
+                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                    <form action="{{ route('admin.semesters-subjects.delete', $course->course_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه المادة؟')" onclick="event.stopPropagation()">
+                        @csrf
+                        <button type="submit" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                    </form>
+                </div>
+
                 <div class="flex items-start gap-4">
                     <div class="w-12 h-12 rounded-2xl {{ $sColor }} flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-300 shadow-sm">
                         <span class="material-symbols-outlined text-[24px]">{{ $sIcon }}</span>
@@ -367,21 +379,83 @@
                     </select>
                 </div>
 
-                {{-- Teacher --}}
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الأستاذ / المعلم المسؤول</label>
-                    <select name="teacher_id" required
-                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
-                        <option value="" disabled selected>اختر المعلم...</option>
-                        @foreach($teachers as $teacher)
-                            <option value="{{ $teacher->teacher_id }}">{{ $teacher->full_name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+
 
                 {{-- Action Button --}}
                 <button type="submit" class="w-full py-4 mt-2 bg-[#f2f20d] text-slate-900 text-sm font-bold rounded-2xl shadow-glow hover:scale-[1.02] active:scale-95 transition-all">
                     تأكيد وإضافة المادة الدراسية
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {{-- ===== Edit Subject Modal ===== --}}
+    <div id="edit-subject-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden opacity-0 transition-all duration-300">
+        <div class="bg-white dark:bg-surface-dark w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 scale-95 transition-all duration-300 flex flex-col" id="edit-modal-card">
+            <div class="p-6 pb-4 flex items-start justify-between border-b border-slate-100 dark:border-slate-800/85">
+                <div class="flex items-center gap-3 font-Cairo">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center shadow-sm">
+                        <span class="material-symbols-outlined text-[24px]">edit</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <h3 class="text-lg font-bold text-slate-850 dark:text-white leading-tight">تعديل المادة الدراسية</h3>
+                        <span class="text-xs font-bold text-slate-400 mt-1">تحديث بيانات المادة الدراسية</span>
+                    </div>
+                </div>
+                <button onclick="closeEditSubjectModal()" class="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+
+            <form id="edit-subject-form" method="POST" class="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh] hide-scrollbar font-Cairo">
+                @csrf
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">اسم المادة الدراسية</label>
+                    <input type="text" id="edit-title" name="title" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none animate-input" />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">وصف المادة</label>
+                    <textarea id="edit-description" name="description" rows="3" class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-855 dark:text-white transition-all outline-none resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">المستوى</label>
+                        <select id="edit-level" name="level" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                            <option value="مبتدئ">مبتدئ</option>
+                            <option value="متوسط">متوسط</option>
+                            <option value="متقدم">متقدم</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">عدد الساعات المخصصة</label>
+                        <input type="number" id="edit-hours" name="hours" min="1" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">السنة الدراسية</label>
+                    <select id="edit-year" name="year" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                        <option value="1">السنة الأولى</option>
+                        <option value="2">السنة الثانية</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">المسار الأكاديمي</label>
+                    <select id="edit-program" name="program_id" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                        @foreach($programs as $prog)
+                            <option value="{{ $prog->id }}">{{ $prog->name }} ({{ $prog->department_name ?? 'بدون قسم' }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الفصل الدراسي</label>
+                    <select id="edit-semester" name="semester_id" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                        @foreach($semesters as $sem)
+                            <option value="{{ $sem->semester_id }}">{{ $sem->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-4 mt-2 bg-[#f2f20d] text-slate-900 text-sm font-bold rounded-2xl shadow-glow hover:scale-[1.02] active:scale-95 transition-all">
+                    حفظ التعديلات
                 </button>
             </form>
         </div>
@@ -497,6 +571,46 @@
         }, 300);
     }
 
+    function openEditSubjectModal(course) {
+        const modal = document.getElementById('edit-subject-modal');
+        const modalCard = document.getElementById('edit-modal-card');
+        
+        document.getElementById('edit-subject-form').action = `/admin/semesters-subjects/update/${course.course_id}`;
+        document.getElementById('edit-title').value = course.title || '';
+        document.getElementById('edit-description').value = course.description || '';
+        document.getElementById('edit-level').value = course.level || 'مبتدئ';
+        document.getElementById('edit-hours').value = course.hours || '40';
+        document.getElementById('edit-year').value = course.year || '1';
+        document.getElementById('edit-semester').value = course.semester_id || '';
+        
+        // Find program ID based on course departments_list or something similar.
+        // Wait, course_program relationship isn't easily returned in course object.
+        // We'll set what we can. Ideally we'd have course.program_id
+        if(course.program_id) {
+            document.getElementById('edit-program').value = course.program_id;
+        }
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.add('opacity-100');
+            modalCard.classList.remove('scale-95');
+            modalCard.classList.add('scale-100');
+        }, 20);
+    }
+
+    function closeEditSubjectModal() {
+        const modal = document.getElementById('edit-subject-modal');
+        const modalCard = document.getElementById('edit-modal-card');
+        
+        modal.classList.remove('opacity-100');
+        modalCard.classList.remove('scale-100');
+        modalCard.classList.add('scale-95');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+
     // ===== فلترة الدورات حسب القسم =====
     function filterPrograms(deptId) {
         const sel = document.getElementById('program-select');
@@ -543,6 +657,12 @@
     document.getElementById('add-subject-modal').addEventListener('click', function(e) {
         if (e.target === this) {
             closeAddSubjectModal();
+        }
+    });
+
+    document.getElementById('edit-subject-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEditSubjectModal();
         }
     });
 </script>

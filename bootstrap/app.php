@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../app/helpers.php';
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        // إرسال ملخص الحضور اليومي للمربين في نهاية كل يوم
+        $schedule->command('attendance:daily-summary')->dailyAt('22:00');
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role'    => \App\Http\Middleware\RoleMiddleware::class,
@@ -19,6 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'teacher' => \App\Http\Middleware\CheckTeacherRole::class,
             'affairs' => \App\Http\Middleware\CheckAffairsRole::class,
             'admin'   => \App\Http\Middleware\CheckAdminRole::class,
+        ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'affairs/accounts',
+            'affairs/accounts/*',
         ]);
 
         // منع التحويل لـ api/login عند استخدام auth middleware

@@ -46,8 +46,6 @@ class Student extends Model
         return $this->hasMany(Attendance::class, 'student_id', 'student_id');
     }
 
-
-
     public function parentStudents() {
     return $this->hasMany(StudentParent::class, 'student_id');
 }

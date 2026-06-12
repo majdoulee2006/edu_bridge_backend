@@ -69,10 +69,17 @@ class StudentController extends Controller
             });
 
         // 3. جلب المحاضرة القادمة
+        $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? '');
+        $branchName = \Illuminate\Support\Facades\DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
+        $classGroup = $branchName . ' - ' . $academicYearStr;
+
         $nextLecture = null;
         $today = now()->format('l');
 
-        $schedule = Schedule::whereIn('course_id', $enrolledCourseIds)
+        $schedule = Schedule::where(function($q) use ($enrolledCourseIds, $classGroup) {
+                $q->whereIn('course_id', $enrolledCourseIds)
+                  ->orWhere('class_group', $classGroup);
+            })
             ->where('day', $today)
             ->where('start_time', '>', now()->format('H:i:s'))
             ->orderBy('start_time', 'asc')
@@ -355,12 +362,24 @@ class StudentController extends Controller
      */
     public function getMySchedule(Request $request)
     {
-        $student = $request->user()->student;
+        $user = $request->user();
+        $student = $user->student;
+        
+        // بناء اسم المجموعة لتطابق الجداول المضافة من رئيس القسم
+        // مثال: "معلوماتية" و "السنة الثانية" -> "معلوماتية - سنة ثانية"
+        $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? '');
+        $branchName = \Illuminate\Support\Facades\DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
+        $classGroup = $branchName . ' - ' . $academicYearStr;
 
-        $schedules = Schedule::whereHas('course', function($query) use ($student) {
-                $query->whereHas('students', function($q) use ($student) {
-                    $q->where('enrollments.student_id', $student->student_id);
-                });
+        $schedules = Schedule::where(function($query) use ($student, $classGroup) {
+                // الخيار 1: مسجل في المادة بشكل مباشر
+                $query->whereHas('course', function($qCourse) use ($student) {
+                    $qCourse->whereHas('students', function($qEnrolled) use ($student) {
+                        $qEnrolled->where('enrollments.student_id', $student->student_id);
+                    });
+                })
+                // الخيار 2: الجدول مخصص لنفس الفرع والسنة (class_group)
+                ->orWhere('class_group', $classGroup);
             })
            ->with(['course', 'course.teachers.user']) // 💡 السحر هنا لجلب اليوزر مع المدرس
             ->orderBy('day')
@@ -368,8 +387,20 @@ class StudentController extends Controller
             ->get()
             ->groupBy('day')
             ->map(function($items, $day) {
+                // ترجمة الأيام إلى العربية إذا كانت بالإنجليزية (لتتوافق مع تطبيق الموبايل)
+                $dayMap = [
+                    'Sunday'    => 'الأحد',
+                    'Monday'    => 'الاثنين',
+                    'Tuesday'   => 'الثلاثاء',
+                    'Wednesday' => 'الأربعاء',
+                    'Thursday'  => 'الخميس',
+                    'Friday'    => 'الجمعة',
+                    'Saturday'  => 'السبت',
+                ];
+                $translatedDay = $dayMap[$day] ?? $day;
+
                 return [
-                    'day' => $day,
+                    'day' => $translatedDay,
                     'lectures' => $items->map(function($item) {
                         return [
                             // 💡 2. التعديل: استخدمنا title بدل course_name
@@ -572,8 +603,8 @@ class StudentController extends Controller
                 }
             }
 
-            $attachmentPath = $assignment->attachment_path ?? null;
-            $attachmentName = $attachmentPath ? basename($attachmentPath) : null;
+            $attachmentPath = $assignment->attachment_path ?? $assignment->file_path ?? null;
+            $attachmentName = $attachmentPath ? ($assignment->file_name ?? basename($attachmentPath)) : null;
 
             $formattedAssignments[] = [
                 'id'            => $assignment->assignment_id,
@@ -910,7 +941,17 @@ class StudentController extends Controller
         $longitude = $request->longitude;
 
         // ─── 1. التحقق من صلاحية الـ QR ──────────────────────────────────
-        $session = AttendanceSession::where('qr_token', $request->qr_token)
+        $token = $request->qr_token;
+        
+        // محاولة استخراج التوكن إذا كان مدمجاً في رابط أو JSON
+        if (str_starts_with($token, 'edu-bridge://attendance?token=')) {
+            $token = str_replace('edu-bridge://attendance?token=', '', $token);
+        } elseif (json_decode($token)) {
+            $json = json_decode($token, true);
+            $token = $json['token'] ?? $json['qr_token'] ?? $token;
+        }
+
+        $session = AttendanceSession::where('qr_token', $token)
             ->where('is_active', true)
             ->where('expires_at', '>', now())
             ->first();
