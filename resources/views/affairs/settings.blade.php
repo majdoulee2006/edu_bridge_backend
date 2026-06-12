@@ -144,7 +144,14 @@
         </div>
         <div class="info-row">
             <span class="info-label">اللغة</span>
-            <span class="info-value">العربية</span>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span id="lang-setting-status" style="color: var(--text-secondary); font-size: 0.9rem;">العربية</span>
+                <label class="switch">
+                    <input type="checkbox" id="langSettingToggle" onchange="toggleLanguage()">
+                    <span class="slider"></span>
+                </label>
+                <span style="font-size: 0.85rem; color: var(--text-secondary);">EN</span>
+            </div>
         </div>
         <div class="info-row">
             <span class="info-label">المنطقة الزمنية</span>

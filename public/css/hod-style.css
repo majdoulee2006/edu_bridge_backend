@@ -435,3 +435,50 @@ input:checked + .slider:before {
 .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
 .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem; }
 .stat-hint  { font-size: 0.75rem; color: var(--accent-color); margin-top: 0.3rem; font-weight: 600; }
+
+/* Mobile Responsiveness */
+.mobile-menu-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.mobile-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 900;
+    display: none;
+    backdrop-filter: blur(2px);
+}
+.mobile-overlay.active {
+    display: block;
+}
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(100%);
+    }
+    [dir="ltr"] .sidebar {
+        transform: translateX(-100%);
+    }
+    .sidebar.active {
+        transform: translateX(0);
+        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    }
+    .main-content {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        padding: 1rem;
+    }
+    .mobile-menu-btn {
+        display: block;
+    }
+    .header {
+        margin-bottom: 1rem;
+    }
+    .page-title {
+        font-size: 1.25rem;
+    }
+}

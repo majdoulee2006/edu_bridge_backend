@@ -17,7 +17,6 @@ use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\Api\ParentController;
 
 // خدمة ملفات التخزين (بديل الـ symlink على Windows)
 Route::get('/file/{path}', function (string $path) {

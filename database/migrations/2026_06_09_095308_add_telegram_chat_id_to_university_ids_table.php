@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('university_ids', function (Blueprint $table) {
-            $table->string('telegram_chat_id')->nullable()->after('default_password');
-        });
+        if (!Schema::hasColumn('university_ids', 'telegram_chat_id')) {
+            Schema::table('university_ids', function (Blueprint $table) {
+                $table->string('telegram_chat_id')->nullable()->after('role');
+            });
+        }
     }
 
     /**

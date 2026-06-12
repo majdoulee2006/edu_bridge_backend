@@ -72,9 +72,6 @@
         }
 
         @media (max-width: 768px) {
-            .sidebar {
-                display: none;
-            }
             .main-content {
                 margin-right: 0 !important;
                 margin-left: 0 !important;
@@ -179,10 +176,16 @@
             </nav>
         </aside>
 
+        <!-- Mobile Overlay -->
+        <div id="mobile-overlay" class="mobile-overlay" onclick="toggleMobileMenu()"></div>
+
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
                 <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
                     <!-- Settings button for top left usually, but we are RTL so top right depending on layout -->
                     <a href="{{ route('affairs.settings') }}" class="settings-btn" title="الإعدادات">
                         <i class="fa-solid fa-gear"></i>
@@ -195,6 +198,11 @@
                     <!-- Dark Mode Toggle -->
                     <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
+                    </button>
+                    <!-- Language Toggle -->
+                    <button onclick="toggleLanguage()" title="تبديل اللغة" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 2rem; height: 40px; padding: 0 1rem; cursor: pointer; color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; font-family: inherit;">
+                        <i class="fa-solid fa-globe"></i>
+                        <span id="lang-btn-text">EN</span>
                     </button>
                 </div>
             </header>
@@ -226,7 +234,7 @@
                 <span>الملف الشخصي</span>
             </a>
             
-            <div class="center-btn" onclick="document.querySelector('.sidebar').style.display = 'flex'; document.querySelector('.sidebar').style.position = 'fixed'; document.querySelector('.sidebar').style.width = '100%'; document.querySelector('.sidebar').style.zIndex = '9999';">
+            <div class="center-btn" onclick="toggleMobileMenu()">
                 <i class="fa-solid fa-border-all"></i>
             </div>
             
@@ -245,17 +253,19 @@
     <!-- Shared JS -->
     <script src="{{ asset('js/hod-settings.js') }}"></script>
     <script>
-        // Simple script to close full-width mobile sidebar if clicked outside
-        document.addEventListener('click', function(e) {
+        function toggleMobileMenu() {
             const sidebar = document.querySelector('.sidebar');
-            const centerBtn = document.querySelector('.center-btn');
+            const overlay = document.getElementById('mobile-overlay');
             
-            if (window.innerWidth <= 768 && sidebar.style.display === 'flex') {
-                if (!sidebar.contains(e.target) && !centerBtn.contains(e.target)) {
-                    sidebar.style.display = 'none';
-                }
-            }
-        });
+            // Remove any inline styles that might conflict with our CSS classes
+            sidebar.style.display = '';
+            sidebar.style.position = '';
+            sidebar.style.width = '';
+            sidebar.style.zIndex = '';
+            
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
     </script>
     @stack('scripts')
 </body>

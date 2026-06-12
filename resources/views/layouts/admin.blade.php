@@ -86,8 +86,11 @@
 <body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 min-h-screen overflow-x-hidden selection:bg-primary selection:text-primary-content font-display transition-colors duration-300">
 
     <div class="flex min-h-screen">
-        {{-- ======= SIDEBAR (DESKTOP) ======= --}}
-        <aside class="w-72 bg-white dark:bg-[#101924] text-slate-800 dark:text-white flex flex-col fixed top-0 bottom-0 right-0 z-30 transition-all duration-300 border-l border-slate-200 dark:border-slate-800">
+        <!-- Mobile Sidebar Overlay -->
+        <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+
+        {{-- ======= SIDEBAR ======= --}}
+        <aside id="sidebar" class="w-72 bg-white dark:bg-[#101924] text-slate-800 dark:text-white flex flex-col fixed top-0 bottom-0 right-0 z-50 transition-transform duration-300 border-l border-slate-200 dark:border-slate-800 translate-x-full md:translate-x-0">
             <!-- Brand Logo -->
             <div class="pt-8 pb-4 px-6 flex items-center justify-center gap-2">
                 <span class="text-2xl font-black text-slate-800 dark:text-white tracking-wide">Edu-Bridge</span>
@@ -194,11 +197,14 @@
         </aside>
 
         {{-- ======= MAIN CONTENT AREA ======= --}}
-        <div class="flex-1 mr-72 flex flex-col min-h-screen">
+        <div class="flex-1 mr-0 md:mr-72 flex flex-col min-h-screen transition-all duration-300">
             <!-- Top Bar Header -->
-            <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-8 py-4 flex items-center justify-between sticky top-0 z-20 transition-colors">
-                <div>
-                    <h1 class="text-lg font-bold text-slate-800 dark:text-white">
+            <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20 transition-colors">
+                <div class="flex items-center gap-3">
+                    <button id="mobile-menu-btn" class="md:hidden flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <h1 class="text-base md:text-lg font-bold text-slate-800 dark:text-white truncate max-w-[200px] md:max-w-none">
                         أهلاً، {{ Auth::user()->full_name ?? 'المدير العام' }} 👋
                     </h1>
                 </div>
@@ -208,6 +214,12 @@
                     <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all">
                         <i class="fa-solid fa-moon text-base dark:hidden"></i>
                         <i class="fa-solid fa-sun text-base hidden dark:inline"></i>
+                    </button>
+
+                    <!-- Language Toggle -->
+                    <button onclick="toggleAdminLanguage()" class="h-10 px-3 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all text-xs font-bold">
+                        <i class="fa-solid fa-globe text-sm"></i>
+                        <span id="admin-lang-btn-text">EN</span>
                     </button>
 
                     {{-- Profile Avatar info --}}
@@ -275,6 +287,25 @@
         // Theme toggle logic
         const themeToggleBtn = document.getElementById('theme-toggle');
 
+        // Mobile Sidebar Toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobile-overlay');
+
+        if(mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                sidebar.classList.remove('translate-x-full');
+                mobileOverlay.classList.remove('hidden');
+            });
+        }
+
+        if(mobileOverlay) {
+            mobileOverlay.addEventListener('click', () => {
+                sidebar.classList.add('translate-x-full');
+                mobileOverlay.classList.add('hidden');
+            });
+        }
+
         themeToggleBtn.addEventListener('click', function() {
             if (document.documentElement.classList.contains('dark')) {
                 document.documentElement.classList.remove('dark');
@@ -286,6 +317,26 @@
                 localStorage.setItem('color-theme', 'dark');
             }
         });
+
+        // Language Toggle for Admin
+        function toggleAdminLanguage() {
+            const currentLang = localStorage.getItem('app-lang') || 'ar';
+            const newLang = currentLang === 'ar' ? 'en' : 'ar';
+            localStorage.setItem('app-lang', newLang);
+            document.documentElement.setAttribute('dir', newLang === 'ar' ? 'rtl' : 'ltr');
+            document.documentElement.setAttribute('lang', newLang);
+            const btn = document.getElementById('admin-lang-btn-text');
+            if (btn) btn.textContent = newLang === 'ar' ? 'EN' : 'عر';
+        }
+
+        // Restore language state on load
+        (function() {
+            const savedLang = localStorage.getItem('app-lang') || 'ar';
+            document.documentElement.setAttribute('dir', savedLang === 'ar' ? 'rtl' : 'ltr');
+            document.documentElement.setAttribute('lang', savedLang);
+            const btn = document.getElementById('admin-lang-btn-text');
+            if (btn) btn.textContent = savedLang === 'ar' ? 'EN' : 'عر';
+        })();
     </script>
 </body>
 </html>

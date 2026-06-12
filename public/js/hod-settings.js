@@ -107,4 +107,36 @@ document.addEventListener('DOMContentLoaded', () => {
             darkModeToggle.checked = newTheme === 'dark';
         }
     };
+
+    // Global Language Toggle
+    window.toggleLanguage = () => {
+        const settings = JSON.parse(localStorage.getItem('hodSettings')) || defaultSettings;
+        const newLang = settings.lang === 'ar' ? 'en' : 'ar';
+        saveSettings('lang', newLang);
+        updateLangUI(newLang);
+        if (langToggle && langToggle.type === 'checkbox') {
+            langToggle.checked = newLang === 'en';
+        }
+    };
+
+    const updateLangUI = (lang) => {
+        // Update header lang button text/icon
+        const langBtnText = document.getElementById('lang-btn-text');
+        if (langBtnText) {
+            langBtnText.textContent = lang === 'ar' ? 'EN' : 'عر';
+        }
+        // Update settings page toggle if present
+        const langSettingStatus = document.getElementById('lang-setting-status');
+        if (langSettingStatus) {
+            langSettingStatus.textContent = lang === 'ar' ? 'العربية' : 'English';
+        }
+        const langSettingToggle = document.getElementById('langSettingToggle');
+        if (langSettingToggle) {
+            langSettingToggle.checked = lang === 'en';
+        }
+    };
+
+    // Call updateLangUI on load
+    const settings = JSON.parse(localStorage.getItem('hodSettings')) || defaultSettings;
+    updateLangUI(settings.lang);
 });

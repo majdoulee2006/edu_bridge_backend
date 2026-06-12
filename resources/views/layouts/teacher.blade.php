@@ -102,11 +102,18 @@
             </nav>
         </aside>
 
+        <!-- Mobile Overlay -->
+        <div id="mobile-overlay" class="mobile-overlay" onclick="toggleMobileMenu()"></div>
+
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
-                <div>
-                    <h1 class="page-title">@yield('title')</h1>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div>
+                        <h1 class="page-title">@yield('title')</h1>
                     @hasSection('subtitle')
                         <p class="page-subtitle" style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.25rem;">@yield('subtitle')</p>
                     @endif
@@ -115,6 +122,11 @@
                     <!-- Dark Mode Toggle -->
                     <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
+                    </button>
+                    <!-- Language Toggle -->
+                    <button onclick="toggleLanguage()" title="تبديل اللغة" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 2rem; height: 40px; padding: 0 1rem; cursor: pointer; color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; font-family: inherit;">
+                        <i class="fa-solid fa-globe"></i>
+                        <span id="lang-btn-text">EN</span>
                     </button>
                 </div>
             </header>
@@ -138,6 +150,14 @@
 
     <!-- Shared JS -->
     <script src="{{ asset('js/hod-settings.js') }}"></script>
+    <script>
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+    </script>
     @stack('scripts')
 </body>
 </html>
