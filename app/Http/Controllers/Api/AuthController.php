@@ -9,6 +9,7 @@ use App\Services\TelegramService;
 use App\Models\Parents;
 use App\Models\Role;
 use App\Models\Student;
+use App\Models\StudentParent;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -258,7 +259,32 @@ class AuthController extends Controller
                 }
             }
         } elseif ($request->role === 'parent') {
-            Parents::create(['user_id' => $user->user_id]);
+            $parent = Parents::create(['user_id' => $user->user_id]);
+
+            // ── ربط الابن تلقائياً إذا أُدخل رقمه الجامعي عند التسجيل ──
+            if ($request->filled('child_university_id')) {
+                $childUniversityId = $request->child_university_id;
+
+                // البحث عن الطالب بالرقم الجامعي (student_code أو university_id في users)
+                $childStudent = \App\Models\Student::where('student_code', $childUniversityId)->first();
+
+                if (!$childStudent) {
+                    // بحث بديل عبر جدول users
+                    $childUser = User::where('university_id', $childUniversityId)->where('role_id', 3)->first();
+                    if ($childUser) {
+                        $childStudent = \App\Models\Student::where('user_id', $childUser->user_id)->first();
+                    }
+                }
+
+                if ($childStudent) {
+                    StudentParent::firstOrCreate([
+                        'parent_id'  => $parent->parent_id,
+                        'student_id' => $childStudent->student_id,
+                    ], [
+                        'relationship' => 'father', // يجب أن يكون father, mother, guardian حسب الـ ENUM في الداتا بيز
+                    ]);
+                }
+            }
         }
 
         // علّم الرقم الجامعي كمستخدم

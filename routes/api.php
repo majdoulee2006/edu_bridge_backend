@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Api\ParentController;
 
 // خدمة ملفات التخزين (بديل الـ symlink على Windows)
 Route::get('/file/{path}', function (string $path) {
@@ -146,7 +147,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/parent/student/{studentId}/permissions', [StudentParentController::class, 'getPermissions']);
     Route::post('/parent/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
     Route::get('/parent/notifications', [NotificationController::class, 'getNotifications']);
-    Route::post('/parent/add-student', [StudentController::class, 'linkStudent']);
+    Route::post('/parent/add-student', [ParentController::class, 'linkStudent']);
     Route::get('/parent/leave-requests', [StudentParentController::class, 'getLeaveRequests']);
     Route::post('/parent/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);
     Route::post('/parent/leave-requests/submit', [StudentParentController::class, 'submitParentLeaveRequest']);

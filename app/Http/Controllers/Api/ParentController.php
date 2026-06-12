@@ -33,14 +33,17 @@ class ParentController extends Controller
                 $attendances = $student->attendances;
 
                 return [
-                    'id' => $student->user_id,
-                    'name' => $student->user->full_name,
-                    'student_code' => $student->student_code ?? '',
-                    'level' => $student->level ?? '',
-                    'total_courses' => $student->courses->count(),
+                    'id'              => $student->user_id,
+                    'student_id'      => $student->student_id,
+                    'name'            => $student->user->full_name,
+                    'full_name'       => $student->user->full_name,
+                    'student_code'    => $student->student_code ?? '',
+                    'level'           => $student->level ?? '',
+                    'total_courses'   => $student->courses->count(),
                     'attendance_rate' => $attendances->count() > 0
                         ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
                         : 0,
+                    'average_grade'   => round($student->grades()->avg('score') ?? 0, 1),
                 ];
             });
 
@@ -289,6 +292,28 @@ class ParentController extends Controller
             return response()->json(['success' => false, 'message' => 'الكود الجامعي غير صحيح'], 404);
         }
 
+        // ── التحقق من تطابق الاسم الأخير (lastname) بين الوالد والطالب ──
+        $parentUser  = $request->user();
+        $studentUser = User::find($student->user_id);
+
+        // جلب الكنية من عمود last_name إذا كان موجوداً، وإلا أخذ آخر كلمة من full_name
+        $parentParts = preg_split('/\s+/', trim($parentUser->full_name ?? ''));
+        $studentParts = preg_split('/\s+/', trim($studentUser->full_name ?? ''));
+
+        $parentLastName  = $parentUser->last_name ?? end($parentParts);
+        $studentLastName = $studentUser->last_name ?? end($studentParts);
+
+        // تجاهل المسافات وحالة الأحرف
+        $parentLastName  = mb_strtolower(trim($parentLastName), 'UTF-8');
+        $studentLastName = mb_strtolower(trim($studentLastName), 'UTF-8');
+
+        if (empty($studentLastName) || $parentLastName !== $studentLastName) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يمكن ربط هذا الطالب. اسم العائلة لا يتطابق مع اسم عائلتك.',
+            ], 403);
+        }
+
         // التأكد من عدم وجود الرابط مسبقاً
         $exists = StudentParent::where('parent_id', $parent->parent_id)
             ->where('student_id', $student->student_id)
@@ -299,8 +324,8 @@ class ParentController extends Controller
         }
 
         StudentParent::create([
-            'parent_id' => $parent->parent_id,
-            'student_id' => $student->student_id,
+            'parent_id'    => $parent->parent_id,
+            'student_id'   => $student->student_id,
             'relationship' => $request->input('relationship', 'father'),
         ]);
 
@@ -308,8 +333,8 @@ class ParentController extends Controller
             'success' => true,
             'message' => 'تم ربط الطالب بنجاح',
             'data' => [
-                'id' => $student->user->user_id,
-                'name' => $student->user->full_name,
+                'id'           => $studentUser->user_id,
+                'name'         => $studentUser->full_name,
                 'student_code' => $student->student_code,
             ]
         ], 200);
