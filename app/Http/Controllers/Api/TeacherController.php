@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -261,9 +261,7 @@ class TeacherController extends Controller
         ], 200);
     }
 
-    /**
-     * تسج�™Å Ã™ ا�™حض�™�ر �™�ا�™غ�™`اب
-     */
+    /**     */
     public function markAttendance(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -1952,12 +1950,12 @@ class TeacherController extends Controller
             if (!$targetProgram) {
                 return response()->json(['success' => false, 'message' => 'لم يتم العثور على الفرع'], 404);
             }
-            
+
             $validCourseIds = DB::table('course_program')
                 ->where('program_id', $targetProgram->id)
                 ->pluck('course_id')
                 ->toArray();
-                
+
             $map = ['السنة الأولى'=>1, 'السنة الثانية'=>2, 'السنة الثالثة'=>3, 'السنة الرابعة'=>4, 'السنة الخامسة'=>5];
             $yearInt = $map[$teacher->advisor_year] ?? 0;
             $validCoursesInYear = DB::table('courses')
@@ -1965,9 +1963,9 @@ class TeacherController extends Controller
                 ->where('year', $yearInt)
                 ->pluck('course_id')
                 ->toArray();
-                
+
             $sessionsQuery->whereIn('courses.course_id', $validCoursesInYear);
-            
+
             if ($courseId) {
                 $sessionsQuery->where('courses.course_id', $courseId);
             }
@@ -2042,7 +2040,7 @@ class TeacherController extends Controller
 
                 $att = $attendances->get($student->student_id);
                 $statusRaw = $att ? $att->status : 'absent';
-                
+
                 $matrix[$student->student_id][$session->lesson_id] = $statusRaw;
             }
         }
