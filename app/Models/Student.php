@@ -17,6 +17,13 @@ class Student extends Model
         'student_code',
         'level',
         'birth_date',
+        'face_embedding',
+        'requires_face_reset',
+    ];
+
+    protected $casts = [
+        'face_embedding'      => 'array',
+        'requires_face_reset' => 'boolean',
     ];
 
     // علاقة الطالب بالحساب الأساسي (User)

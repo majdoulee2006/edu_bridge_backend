@@ -14,12 +14,14 @@ class AttendanceSession extends Model
         'qr_token',
         'expires_at',
         'is_active',
+        'session_expires_at',
     ];
 
     // عشان يسهل علينا التعامل مع الوقت
     protected $casts = [
-        'expires_at' => 'datetime',
-        'is_active' => 'boolean',
+        'expires_at'         => 'datetime',
+        'session_expires_at' => 'datetime',
+        'is_active'          => 'boolean',
     ];
 
     public function lesson()

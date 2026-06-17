@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -394,22 +394,69 @@ class TeacherController extends Controller
         $token = \Illuminate\Support\Str::random(32);
 
         $session = \App\Models\AttendanceSession::create([
-            'lesson_id' => $lesson->lesson_id,
-            'qr_token'  => $token,
-            'expires_at' => now()->addMinutes(60),
-            'is_active' => true,
+            'lesson_id'          => $lesson->lesson_id,
+            'qr_token'           => $token,
+            'expires_at'         => now()->addSeconds(30),
+            'session_expires_at' => now()->addMinutes(10),
+            'is_active'          => true,
         ]);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'session_id' => $session->id,
-                'qr_token'  => $token,
-                'expires_at' => $session->expires_at,
-                'lesson_id' => $lesson->lesson_id,
-                'course_name' => $course->title,
+                'session_id'          => $session->id,
+                'qr_token'            => $token,
+                'expires_at'          => $session->expires_at,
+                'session_expires_at'  => $session->session_expires_at,
+                'expires_in_seconds'  => 30,
+                'lesson_id'           => $lesson->lesson_id,
+                'course_name'         => $course->title,
             ]
         ], 200);
+    }
+
+    public function refreshQrToken(Request $request, $sessionId)
+    {
+        $session = \App\Models\AttendanceSession::find($sessionId);
+
+        if (!$session || !$session->is_active) {
+            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة أو منتهية'], 404);
+        }
+
+        if ($session->session_expires_at && now()->gt($session->session_expires_at)) {
+            $session->update(['is_active' => false]);
+            return response()->json(['success' => false, 'message' => 'انتهت مدة الجلسة (10 دقائق)', 'session_ended' => true], 200);
+        }
+
+        $newToken = \Illuminate\Support\Str::random(32);
+        $session->update([
+            'qr_token'   => $newToken,
+            'expires_at' => now()->addSeconds(30),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'qr_token'   => $newToken,
+                'expires_at' => $session->expires_at,
+                'expires_in_seconds' => 30,
+            ]
+        ], 200);
+    }
+
+    public function resetStudentFace(Request $request, $studentId)
+    {
+        $student = \App\Models\Student::find($studentId);
+        if (!$student) {
+            return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
+        }
+
+        $student->update([
+            'face_embedding'      => null,
+            'requires_face_reset' => false,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم إعادة تعيين صورة الوجه. سيتم التسجيل من جديد عند أول حضور.']);
     }
 
     /**

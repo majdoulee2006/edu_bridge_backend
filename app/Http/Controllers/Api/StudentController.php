@@ -929,10 +929,12 @@ class StudentController extends Controller
     public function scanAttendanceQr(Request $request)
     {
         $request->validate([
-            'qr_token'  => 'required|string',
-            'device_id' => 'nullable|string|max:255',
-            'latitude'  => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'qr_token'       => 'required|string',
+            'device_id'      => 'nullable|string|max:255',
+            'latitude'       => 'nullable|numeric|between:-90,90',
+            'longitude'      => 'nullable|numeric|between:-180,180',
+            'face_embedding' => 'nullable|array',
+            'face_image'     => 'nullable|string',
         ]);
 
         $student   = $request->user()->student;
@@ -1008,7 +1010,92 @@ class StudentController extends Controller
             }
         }
 
-        // ─── 5. تسجيل الحضور ─────────────────────────────────────────────
+        // ─── 5. التحقق من الوجه ──────────────────────────────────────────
+        $faceEmbedding  = $request->face_embedding;
+        $faceImage      = $request->face_image;
+        $faceStatus     = null;
+        $faceScore      = null;
+        $attendanceStatus = 'present';
+        $rejectReason   = null;
+
+        // حفظ صورة الوجه إن وُجدت
+        $savedFaceImagePath = null;
+        if ($faceImage) {
+            try {
+                $imgData = base64_decode($faceImage);
+                $filename = 'face_' . $student->student_id . '_' . time() . '.jpg';
+                $path = public_path('uploads/faces/' . $filename);
+                if (!is_dir(public_path('uploads/faces'))) {
+                    mkdir(public_path('uploads/faces'), 0755, true);
+                }
+                file_put_contents($path, $imgData);
+                $savedFaceImagePath = 'uploads/faces/' . $filename;
+            } catch (\Exception $e) {}
+        }
+
+        if ($faceEmbedding && count($faceEmbedding) > 0) {
+            $storedEmbedding = $student->face_embedding ?? [];
+            // إذا اختلف عدد القيم (تغيّر الـ format) → نعيد التسجيل تلقائياً
+            $formatChanged = !empty($storedEmbedding) && count($storedEmbedding) !== count($faceEmbedding);
+
+            if (empty($storedEmbedding) || $student->requires_face_reset || $formatChanged) {
+                // أول مرة — نحفظ الـ embedding كمرجع
+                $student->update([
+                    'face_embedding'      => $faceEmbedding,
+                    'requires_face_reset' => false,
+                ]);
+                $faceStatus = 'first_time';
+                $faceScore  = 100.0;
+
+                // إشعار للمعلم
+                $this->notifyTeacherFace($session, $student, 'first_time', 100.0);
+            } else {
+                // مقارنة الـ embedding مع المرجع
+                $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
+
+                if ($faceScore >= 72) {
+                    $faceStatus = 'verified';
+                    // تحديث تدريجي للمرجع (10%) للتكيف مع التغيرات الطبيعية
+                    $updated = [];
+                    foreach ($student->face_embedding as $i => $v) {
+                        $updated[$i] = $v * 0.9 + ($faceEmbedding[$i] ?? $v) * 0.1;
+                    }
+                    $student->update(['face_embedding' => $updated]);
+                } elseif ($faceScore >= 55) {
+                    $faceStatus = 'suspicious';
+                    $this->notifyTeacherFace($session, $student, 'suspicious', $faceScore);
+                } else {
+                    $faceStatus = 'rejected';
+                    $attendanceStatus = 'absent';
+                    $rejectReason     = 'face_mismatch';
+                    $this->notifyTeacherFace($session, $student, 'rejected', $faceScore);
+
+                    Attendance::updateOrCreate(
+                        [
+                            'student_id'      => $student->student_id,
+                            'lesson_id'       => $session->lesson_id,
+                            'attendance_date' => now()->toDateString(),
+                        ],
+                        [
+                            'status'        => 'absent',
+                            'excuse_status' => 'none',
+                            'face_image'    => $savedFaceImagePath,
+                            'face_score'    => $faceScore,
+                            'face_status'   => 'rejected',
+                            'reject_reason' => 'face_mismatch',
+                        ]
+                    );
+
+                    return response()->json([
+                        'success'    => false,
+                        'message'    => 'تحقق الوجه فشل. الرجاء المحاولة في ضوء أفضل أو التواصل مع المعلم.',
+                        'face_score' => $faceScore,
+                    ], 403);
+                }
+            }
+        }
+
+        // ─── 6. تسجيل الحضور ─────────────────────────────────────────────
         $attendance = Attendance::updateOrCreate(
             [
                 'student_id'      => $student->student_id,
@@ -1016,20 +1103,83 @@ class StudentController extends Controller
                 'attendance_date' => now()->toDateString(),
             ],
             [
-                'status'        => 'present',
+                'status'        => $attendanceStatus,
                 'excuse_status' => 'none',
                 'device_id'     => $deviceId,
                 'latitude'      => $latitude,
                 'longitude'     => $longitude,
-                'reject_reason' => null,
+                'reject_reason' => $rejectReason,
+                'face_image'    => $faceImage,
+                'face_score'    => $faceScore,
+                'face_status'   => $faceStatus,
             ]
         );
 
+        $message = match($faceStatus) {
+            'first_time'  => 'تم تسجيل حضورك وحفظ بيانات وجهك كمرجع ✅',
+            'suspicious'  => 'تم تسجيل حضورك ⚠️ (تم إبلاغ المعلم)',
+            default       => 'تم تسجيل حضورك بنجاح! ✅',
+        };
+
         return response()->json([
-            'success' => true,
-            'message' => 'تم تسجيل حضورك بنجاح!',
-            'data'    => $attendance,
+            'success'     => true,
+            'message'     => $message,
+            'face_status' => $faceStatus,
+            'face_score'  => $faceScore,
         ], 200);
+    }
+
+    private function calculateFaceSimilarity(array $stored, array $current): float
+    {
+        $len = min(count($stored), count($current));
+        if ($len === 0) return 0.0;
+
+        $dot = 0.0; $normA = 0.0; $normB = 0.0;
+        for ($i = 0; $i < $len; $i++) {
+            $dot   += $stored[$i]  * $current[$i];
+            $normA += $stored[$i]  * $stored[$i];
+            $normB += $current[$i] * $current[$i];
+        }
+
+        $denom = sqrt($normA) * sqrt($normB);
+        if ($denom == 0) return 0.0;
+
+        $similarity = $dot / $denom; // [-1, 1]
+        return round(max(0, $similarity * 100), 1); // [0, 100]
+    }
+
+    private function notifyTeacherFace($session, $student, string $status, float $score): void
+    {
+        try {
+            $lesson  = $session->lesson;
+            $teacher = $lesson->teacher ?? null;
+            if (!$teacher) return;
+
+            $studentName = $student->user->full_name ?? 'طالب';
+            $courseName  = $lesson->course->title ?? 'مادة';
+
+            $titles = [
+                'first_time'  => "📋 تسجيل وجه جديد",
+                'suspicious'  => "⚠️ حضور مشبوه",
+                'rejected'    => "❌ رفض تحقق الوجه",
+            ];
+            $bodies = [
+                'first_time'  => "الطالب $studentName سجّل حضوره لأول مرة في $courseName (تم حفظ صورته كمرجع).",
+                'suspicious'  => "الطالب $studentName — تطابق الوجه $score% في مادة $courseName.",
+                'rejected'    => "الطالب $studentName — فشل تحقق الوجه ($score%) في مادة $courseName.",
+            ];
+
+            \App\Models\Notification::create([
+                'user_id'    => $teacher->user_id,
+                'sender_id'  => $student->user_id,
+                'title'      => $titles[$status] ?? 'إشعار حضور',
+                'body'       => $bodies[$status]  ?? '',
+                'type'       => 'face_verification',
+                'is_read'    => false,
+            ]);
+        } catch (\Exception $e) {
+            // لا نوقف العملية إذا فشل الإشعار
+        }
     }
 
     /**

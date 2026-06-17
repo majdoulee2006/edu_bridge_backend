@@ -21,6 +21,13 @@ class Attendance extends Model
         'excuse_text',
         'excuse_attachment',
         'excuse_status',
+        'device_id',
+        'latitude',
+        'longitude',
+        'reject_reason',
+        'face_image',
+        'face_score',
+        'face_status',
     ];
 
     protected $casts = [

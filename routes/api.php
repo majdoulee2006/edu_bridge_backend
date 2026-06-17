@@ -158,21 +158,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/parent/leave-requests/submit', [StudentParentController::class, 'submitParentLeaveRequest']);
     Route::get('/parent/reports/history', [StudentParentController::class, 'getReportHistory']);
 
-    #=========روابط واجهات الطالب ==========
-     Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
-     Route::get('/student/profile', [\App\Http\Controllers\Api\StudentController::class, 'getProfileData']);
-     Route::post('/student/profile/update', [StudentController::class, 'updateProfile']);
-     Route::get('/student/notifications', [StudentController::class, 'getNotifications']);
-     Route::get('/student/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
-     Route::get('/student/my-schedule', [StudentController::class, 'getMySchedule']); // جدول الحصص
-     Route::get('/student/my-exams', [StudentController::class, 'getMyExams']); // جدول الامتحانات
-     Route::get('/student/my-exams/pdf', [StudentController::class, 'exportExamsPdf']); // تصدير الـ PDF
-     Route::get('/student/my-exams/excel', [StudentController::class, 'exportExamsExcel']);
-     Route::get('/student/assignments', [StudentController::class, 'getMyAssignments']);
-     Route::post('/student/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
-     Route::get('/student/lectures', [StudentController::class, 'getMyLectures']);
-
-
     #========= روابط واجهات المعلم ==========
     Route::prefix('teacher')->middleware('role:teacher')->group(function () {
 
@@ -200,19 +185,15 @@ Route::middleware('auth:sanctum')->group(function () {
         // الحضور والغياب (الروابط الثابتة قبل الـ wildcards)
         Route::post('/attendance', [TeacherController::class, 'markAttendance']);
         Route::post('/attendance/generate-qr', [TeacherController::class, 'generateQrSession']);
+        Route::post('/attendance/session/{sessionId}/refresh-qr', [TeacherController::class, 'refreshQrToken']);
         Route::get('/attendance/session/{sessionId}/list', [TeacherController::class, 'getSessionAttendance']);
         Route::post('/attendance/session/{sessionId}/end', [TeacherController::class, 'endSession']);
+        Route::post('/students/{studentId}/reset-face', [TeacherController::class, 'resetStudentFace']);
         Route::get('/attendance/export', [TeacherController::class, 'exportAttendance']);
         Route::get('/attendance/export-pdf', [TeacherController::class, 'exportFilteredPdf']);
         Route::get('/attendance/advisor-export', [TeacherController::class, 'advisorExportAttendance']);
 
-        // المحاضرات
-        Route::get('/lessons', [TeacherController::class, 'getLessons']);
-        Route::post('/lessons', [TeacherController::class, 'createLesson']);
-        Route::delete('/lessons/{lessonId}', [TeacherController::class, 'deleteLesson']);
-
         // الحضور والغياب
-        Route::post('/attendance', [TeacherController::class, 'markAttendance']);
         Route::get('/attendance/{courseId}', [TeacherController::class, 'getAttendance']);
 
         // طلبات الغياب
