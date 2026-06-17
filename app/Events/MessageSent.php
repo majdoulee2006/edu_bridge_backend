@@ -24,7 +24,7 @@ class MessageSent implements ShouldBroadcast
     public function broadcastOn(): Channel
     {
         // رح نبعتها لقناة خاصة بالمستقبل (عشان كل طالب يوصله إشعاراته بس)
-        return new Channel('chat.' . $this->message->receiver_id);
+        return new \Illuminate\Broadcasting\PrivateChannel('chat.' . $this->message->receiver_id);
     }
 
     // البيانات اللي رح توصل للفلاتر

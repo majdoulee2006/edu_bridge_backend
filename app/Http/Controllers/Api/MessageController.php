@@ -24,7 +24,7 @@ class MessageController extends Controller
             $query->where('sender_id', $receiver_id)
                   ->where('receiver_id', $userId);
         })
-        ->orderBy('created_at', 'asc')
+        ->orderBy('created_at', 'desc')
         ->get();
 
         // تحضير البيانات لتناسب الموديل اللي عملناه بالفلاتر (MessageModel)

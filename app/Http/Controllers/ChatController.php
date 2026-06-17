@@ -9,6 +9,71 @@ use Illuminate\Http\Request;
 
 class ChatController extends Controller
 {
+    public function getContacts(Request $request)
+    {
+        $user = $request->user();
+        $myRoleId = $user->role_id;
+
+        $roleAdmin   = 1; // الإدارة
+        $roleTeacher = 2; // المدرب
+        $roleStudent = 3; // الطالب
+        $roleParent  = 4; // الأهل
+        $roleHead    = 5; // رئيس القسم
+        $roleAffairs = 6; // موظف الشؤون
+
+        $allowedRoles = [];
+
+        switch ($myRoleId) {
+            case $roleTeacher:
+                $allowedRoles = [$roleStudent, $roleTeacher, $roleHead];
+                break;
+            case $roleStudent:
+                $allowedRoles = [$roleTeacher, $roleHead];
+                break;
+            case $roleParent:
+                $allowedRoles = [$roleAdmin, $roleHead];
+                break;
+            case $roleHead:
+                $allowedRoles = [$roleStudent, $roleTeacher, $roleParent, $roleAdmin];
+                break;
+            case $roleAdmin:
+                $allowedRoles = [$roleHead, $roleAffairs, $roleTeacher];
+                break;
+            case $roleAffairs:
+                $allowedRoles = [$roleAdmin];
+                break;
+        }
+
+        if (empty($allowedRoles)) {
+            return response()->json(['status' => 'success', 'data' => []]);
+        }
+
+        $contacts = \App\Models\User::whereIn('role_id', $allowedRoles)
+            ->where('user_id', '!=', $user->user_id)
+            ->get()
+            ->map(function ($contact) {
+                $roleName = 'User';
+                switch ($contact->role_id) {
+                    case 1: $roleName = 'Administration'; break;
+                    case 2: $roleName = 'Teacher'; break;
+                    case 3: $roleName = 'Student'; break;
+                    case 4: $roleName = 'Parent'; break;
+                    case 5: $roleName = 'Head of Department'; break;
+                    case 6: $roleName = 'Affairs Officer'; break;
+                }
+
+                return [
+                    'id' => (string) $contact->user_id,
+                    'name' => $contact->full_name ?? $contact->name ?? 'Unknown',
+                    'role' => $roleName,
+                    'unread' => 0, 
+                    'image' => $contact->avatar ? asset('storage/' . $contact->avatar) : null,
+                ];
+            });
+
+        return response()->json(['status' => 'success', 'data' => $contacts]);
+    }
+
  public function sendMessage(Request $request)
 {
     // 1. التحقق (بدون تغيير، شلنا القيود الصارمة عشان نمرر الـ form-data)
@@ -70,7 +135,7 @@ class ChatController extends Controller
             $q->where('sender_id', $myId)->where('receiver_id', $otherUserId);
         })->orWhere(function ($q) use ($myId, $otherUserId) {
             $q->where('sender_id', $otherUserId)->where('receiver_id', $myId);
-        })->orderBy('created_at', 'asc')->get(); // ترتيب من الأقدم للأحدث
+        })->orderBy('created_at', 'desc')->get(); // ترتيب من الأحدث للأقدم
 
         // 3. نرجع الداتا للموبايل
         return response()->json([
@@ -168,7 +233,7 @@ public function searchMessages(Request $request, $otherUserId)
         });
     })
     ->where('message', 'like', '%' . $keyword . '%') // وبعدين طبقنا البحث عليهم كلهم
-    ->orderBy('created_at', 'asc')
+    ->orderBy('created_at', 'desc')
     ->get();
 
     return response()->json(['status' => 'success', 'data' => $messages]);
@@ -293,7 +358,7 @@ public function getGroupMessages(Request $request, $groupId)
 
     // 2. جلب رسائل الجروب مرتبة من الأقدم للأحدث
     $messages = \App\Models\Message::where('group_id', $groupId)
-        ->orderBy('created_at', 'asc')
+        ->orderBy('created_at', 'desc')
         ->get();
 
     return response()->json([

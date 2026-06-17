@@ -70,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     #========= روابط الدردشة المشتركة ==========
+    Route::get('/contacts', [ChatController::class, 'getContacts']);
     Route::post('/send-message', [ChatController::class, 'sendMessage']);
     Route::get('/messages/unread-count', [ChatController::class, 'getUnreadCount']);
     Route::get('/messages/{otherUserId}', [ChatController::class, 'getMessages']);
