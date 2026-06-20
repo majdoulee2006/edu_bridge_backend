@@ -1293,8 +1293,7 @@ class TeacherWebController extends Controller
                 ->where('users.department', $teacher->advisor_branch)
                 ->where('students.level', $teacher->advisor_year);
                 
-            // If section is implemented in students, we would filter here.
-            
+            // If section is implemented in students, we
             $students = $query->select('students.student_id', 'users.full_name', 'users.university_id')
                 ->distinct()
                 ->get();

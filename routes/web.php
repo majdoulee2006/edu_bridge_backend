@@ -286,3 +286,42 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     // التقويم والأحداث
     Route::post('/calendar/events', [AdminWebController::class, 'storeCalendarEvent'])->name('admin.calendar.store');
 });
+
+// ===== مسارات الطالب (Student) =====
+use App\Http\Controllers\Web\StudentWebController;
+
+Route::get('/student/login', [StudentWebController::class, 'showLoginForm'])->name('student.login');
+Route::post('/student/login', [StudentWebController::class, 'login'])->name('student.login.post');
+Route::post('/student/logout', [StudentWebController::class, 'logout'])->name('student.logout');
+
+Route::prefix('student')->middleware(['student'])->group(function () {
+    Route::get('/', fn() => redirect('/student/dashboard'));
+    Route::get('/dashboard', [StudentWebController::class, 'dashboard'])->name('student.dashboard');
+
+    // الجدول
+    Route::get('/schedule', [StudentWebController::class, 'schedule'])->name('student.schedule');
+
+    // المواد
+    Route::get('/courses', [StudentWebController::class, 'courses'])->name('student.courses');
+    Route::get('/courses/{courseId}/materials', [StudentWebController::class, 'courseMaterials'])->name('student.course.materials');
+
+    // الواجبات
+    Route::get('/assignments', [StudentWebController::class, 'assignments'])->name('student.assignments');
+    Route::post('/assignments/{id}/submit', [StudentWebController::class, 'submitAssignment'])->name('student.assignments.submit');
+
+    // الدرجات
+    Route::get('/grades', [StudentWebController::class, 'grades'])->name('student.grades');
+
+
+
+
+    // طلبات الإذن
+    Route::get('/leave-requests', [StudentWebController::class, 'leaveRequests'])->name('student.leave_requests');
+    Route::post('/leave-requests', [StudentWebController::class, 'storeLeaveRequest'])->name('student.leave_requests.store');
+
+
+    Route::get('/profile', [StudentWebController::class, 'profile'])->name('student.profile');
+    Route::post('/profile', [StudentWebController::class, 'updateProfile'])->name('student.profile.update');
+    Route::post('/profile/password', [StudentWebController::class, 'updatePassword'])->name('student.profile.password');
+});
+
