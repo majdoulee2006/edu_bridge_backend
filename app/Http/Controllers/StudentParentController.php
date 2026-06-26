@@ -136,20 +136,52 @@ class StudentParentController extends Controller
 
     public function getFullPerformance($studentId)
     {
-        $gradesRaw = DB::table('grades')
+        // بيانات العلامات من النظام الجديد (grade_entries + grade_events)
+        // $studentId هنا هو students.student_id (يأتي من /parent/children)
+        $student = DB::table('students')->where('student_id', $studentId)->first();
+        $internalStudentId = $student?->student_id ?? $studentId;
+
+        $newGrades = $internalStudentId
+            ? DB::table('grade_entries')
+                ->join('grade_events', 'grade_entries.grade_event_id', '=', 'grade_events.id')
+                ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+                ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
+
+                ->where('grade_entries.student_id', $internalStudentId)
+                ->whereNotNull('grade_entries.score')
+                ->select(
+                    DB::raw("COALESCE(courses.title, programs.name, 'تقييم شفهي') as course_name"),
+                    'courses.course_id',
+                    DB::raw("CASE
+                        WHEN grade_events.type = 'exam'  THEN CONCAT('امتحان: ', grade_events.title)
+                        WHEN grade_events.type = 'quiz'  THEN CONCAT('مذاكرة: ', grade_events.title)
+                        WHEN grade_events.type = 'oral'  THEN CONCAT('شفهي: ',   grade_events.title)
+                        ELSE grade_events.title
+                    END as exam_name"),
+                    'grade_events.max_score',
+                    'grade_entries.score',
+                    'grade_entries.notes'
+                )
+                ->get()
+            : collect();
+
+        // بيانات العلامات من النظام القديم (grades + exams)
+        $oldGrades = DB::table('grades')
             ->leftJoin('exams', 'grades.exam_id', '=', 'exams.exam_id')
             ->leftJoin('courses', 'exams.course_id', '=', 'courses.course_id')
             ->where('grades.student_id', $studentId)
             ->select(
                 DB::raw('COALESCE(courses.title, "مادة غير محددة") as course_name'),
                 'courses.course_id',
-                'exams.exam_name',
+                DB::raw('COALESCE(exams.exam_name, "اختبار") as exam_name'),
                 DB::raw('COALESCE(exams.max_score, 100) as max_score'),
                 'grades.score'
             )
             ->get();
 
-        // Group grades by course with exam breakdown
+        $gradesRaw = $newGrades->merge($oldGrades);
+
+        // تجميع حسب المادة
         $grouped = [];
         foreach ($gradesRaw as $g) {
             $key = $g->course_id ?? ('unknown_' . $g->course_name);
@@ -157,11 +189,12 @@ class StudentParentController extends Controller
                 $grouped[$key] = ['name' => $g->course_name, 'exams' => [], 'total' => 0, 'count' => 0];
             }
             $grouped[$key]['exams'][] = [
-                'exam_name' => $g->exam_name ?? 'اختبار',
+                'exam_name' => $g->exam_name,
                 'score'     => (float) $g->score,
-                'max_score' => (int) $g->max_score,
+                'max_score' => (float) ($g->max_score ?? 100),
             ];
-            $grouped[$key]['total'] += (float) $g->score;
+            $maxSc = (float) ($g->max_score ?? 100);
+            $grouped[$key]['total'] += $maxSc > 0 ? ((float) $g->score / $maxSc) * 100 : 0;
             $grouped[$key]['count']++;
         }
 

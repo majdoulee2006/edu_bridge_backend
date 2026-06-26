@@ -2140,5 +2140,468 @@ class TeacherController extends Controller
             'Content-Disposition' => 'attachment; filename="filtered_attendance_report_' . now()->format('Y-m-d') . '.pdf"',
         ]);
     }
+
+    // ============================================================
+    // العلامات
+    // ============================================================
+
+    public function getGradeEvents(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+
+        $events = DB::table('grade_events')
+            ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+            ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
+            ->where('grade_events.teacher_id', $teacher->teacher_id)
+            ->select(
+                'grade_events.id',
+                'grade_events.type',
+                'grade_events.title',
+                'grade_events.max_score',
+                'grade_events.date',
+                'grade_events.notes',
+                'grade_events.program_id',
+                'grade_events.year_level',
+                DB::raw("COALESCE(courses.title, CONCAT(programs.name, ' - سنة ', grade_events.year_level)) as course_title"),
+                'grade_events.course_id'
+            )
+            ->orderByDesc('grade_events.date')
+            ->get()
+            ->map(function ($event) {
+                $total   = DB::table('grade_entries')->where('grade_event_id', $event->id)->count();
+                $graded  = DB::table('grade_entries')->where('grade_event_id', $event->id)->whereNotNull('score')->count();
+                $event->total_count  = $total;
+                $event->graded_count = $graded;
+                return $event;
+            });
+
+        return response()->json(['success' => true, 'data' => $events]);
+    }
+
+    public function createGradeEvent(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+
+        $type = $request->input('type');
+
+        if ($type === 'oral') {
+            return $this->_createOralEvent($request, $teacher);
+        }
+
+        $validated = $request->validate([
+            'course_id' => 'required|exists:courses,course_id',
+            'type'      => 'required|in:exam,quiz',
+            'title'     => 'required|string|max:255',
+            'max_score' => 'required|numeric|min:1',
+            'date'      => 'required|date',
+            'notes'     => 'nullable|string|max:500',
+        ]);
+
+        $assigned = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->where('course_id', $validated['course_id'])
+            ->exists();
+
+        if (!$assigned) return response()->json(['success' => false, 'message' => 'هذه المادة غير مسندة إليك'], 403);
+
+        $duplicate = DB::table('grade_events')
+            ->where('course_id', $validated['course_id'])
+            ->where('type', '!=', 'oral')
+            ->where('date', $validated['date'])
+            ->exists();
+
+        if ($duplicate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يوجد تقييم آخر لهذه المادة في نفس اليوم، يرجى اختيار يوم مختلف.',
+            ], 422);
+        }
+
+        $id = DB::table('grade_events')->insertGetId([
+            'teacher_id' => $teacher->teacher_id,
+            'course_id'  => $validated['course_id'],
+            'type'       => $validated['type'],
+            'title'      => $validated['title'],
+            'max_score'  => $validated['max_score'],
+            'notes'      => $validated['notes'] ?? null,
+            'date'       => $validated['date'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $students = DB::table('enrollments')
+            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+            ->where('enrollments.course_id', $validated['course_id'])
+            ->pluck('students.student_id');
+
+        if ($request->filled('student_id')) {
+            $students = $students->filter(fn($sid) => $sid == $request->student_id);
+        }
+
+        $entries = $students->map(fn($sid) => [
+            'grade_event_id' => $id,
+            'student_id'     => $sid,
+            'score'          => null,
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ])->values()->toArray();
+
+        if (!empty($entries)) DB::table('grade_entries')->insert($entries);
+
+        return response()->json(['success' => true, 'message' => 'تم إنشاء التقييم', 'id' => $id]);
+    }
+
+    private function _createOralEvent(Request $request, $teacher)
+    {
+        $validated = $request->validate([
+            'program_id' => 'required|exists:programs,id',
+            'year_level' => 'required|integer|min:1|max:5',
+            'title'      => 'required|string|max:255',
+            'date'       => 'required|date',
+            'notes'      => 'nullable|string|max:500',
+            'student_id' => 'nullable|exists:students,student_id',
+        ]);
+
+        $id = DB::table('grade_events')->insertGetId([
+            'teacher_id' => $teacher->teacher_id,
+            'course_id'  => null,
+            'program_id' => $validated['program_id'],
+            'year_level' => $validated['year_level'],
+            'type'       => 'oral',
+            'title'      => $validated['title'],
+            'max_score'  => 25,
+            'notes'      => $validated['notes'] ?? null,
+            'date'       => $validated['date'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // جلب الطلاب: كل طلاب البرنامج/السنة أو طالب محدد
+        if (!empty($validated['student_id'])) {
+            $studentIds = collect([$validated['student_id']]);
+        } else {
+            // الطلاب المسجلين في مواد البرنامج في هذه السنة
+            $courseIds = DB::table('course_program')
+                ->where('program_id', $validated['program_id'])
+                ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
+                ->where('courses.year', $validated['year_level'])
+                ->pluck('course_program.course_id');
+
+            $studentIds = DB::table('enrollments')
+                ->whereIn('course_id', $courseIds)
+                ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+                ->pluck('students.student_id')
+                ->unique();
+        }
+
+        $entries = $studentIds->map(fn($sid) => [
+            'grade_event_id' => $id,
+            'student_id'     => $sid,
+            'score'          => null,
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ])->values()->toArray();
+
+        if (!empty($entries)) DB::table('grade_entries')->insert($entries);
+
+        return response()->json(['success' => true, 'message' => 'تم إنشاء التقييم الشفهي', 'id' => $id]);
+    }
+
+    public function getProgramStudents(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) return response()->json(['success' => false], 403);
+
+        $programId = $request->query('program_id');
+        $yearLevel = $request->query('year_level');
+
+        $courseIds = DB::table('course_program')
+            ->where('program_id', $programId)
+            ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
+            ->when($yearLevel, fn($q) => $q->where('courses.year', $yearLevel))
+            ->pluck('course_program.course_id');
+
+        $students = DB::table('enrollments')
+            ->whereIn('course_id', $courseIds)
+            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select('students.student_id', 'users.full_name', 'users.university_id')
+            ->distinct()
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $students]);
+    }
+
+    public function getTeacherPrograms(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) return response()->json(['success' => false], 403);
+
+        $courseIds = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->pluck('course_id');
+
+        $programs = DB::table('course_program')
+            ->whereIn('course_id', $courseIds)
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->select('programs.id', 'programs.name')
+            ->distinct()
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $programs]);
+    }
+
+    public function getGradeEntries(Request $request, $id)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+
+        $event = DB::table('grade_events')->where('id', $id)->where('teacher_id', $teacher->teacher_id)->first();
+        if (!$event) return response()->json(['success' => false, 'message' => 'غير موجود'], 404);
+
+        $entries = DB::table('grade_entries')
+            ->join('students', 'grade_entries.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('grade_entries.grade_event_id', $id)
+            ->select(
+                'grade_entries.id',
+                'grade_entries.student_id',
+                'grade_entries.score',
+                'grade_entries.notes',
+                'users.first_name',
+                'users.last_name',
+                'users.university_id'
+            )
+            ->orderBy('users.first_name')
+            ->get();
+
+        return response()->json(['success' => true, 'event' => $event, 'entries' => $entries]);
+    }
+
+    public function saveGradeEntries(Request $request, $id)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+
+        $event = DB::table('grade_events')->where('id', $id)->where('teacher_id', $teacher->teacher_id)->first();
+        if (!$event) return response()->json(['success' => false, 'message' => 'غير موجود'], 404);
+
+        // اسم المادة أو البرنامج (للشفهي course_id = null)
+        if ($event->course_id) {
+            $course      = DB::table('courses')->where('course_id', $event->course_id)->first();
+            $courseTitle = $course?->title ?? 'المادة';
+        } else {
+            $program     = DB::table('programs')->where('id', $event->program_id)->first();
+            $courseTitle = $program?->name ?? 'تقييم شفهي';
+        }
+        $eventType = match($event->type) {
+            'exam' => 'امتحان',
+            'quiz' => 'مذاكرة',
+            'oral' => 'شفهي',
+            default => 'تقييم',
+        };
+        $maxScore = $event->max_score ?? 100;
+
+        $entries = $request->input('entries', []);
+        foreach ($entries as $entry) {
+            $score = $entry['score'] ?? null;
+
+            DB::table('grade_entries')
+                ->where('grade_event_id', $id)
+                ->where('student_id', $entry['student_id'])
+                ->update([
+                    'score'      => $score,
+                    'notes'      => $entry['notes'] ?? null,
+                    'updated_at' => now(),
+                ]);
+
+            if ($score === null) continue;
+
+            // جلب الطالب وuser_id الخاص به
+            $student = DB::table('students')
+                ->where('student_id', $entry['student_id'])
+                ->first();
+            if (!$student) continue;
+
+            $studentUserId = $student->user_id;
+            $studentName   = DB::table('users')->where('user_id', $studentUserId)->value('full_name') ?? 'الطالب';
+
+            $msgStudent = "علامتك في $eventType «{$event->title}» - $courseTitle: $score / $maxScore";
+            $msgParent  = "علامة $studentName في $eventType «{$event->title}» - $courseTitle: $score / $maxScore";
+
+            // إشعار داخلي للطالب
+            DB::table('notifications')->insert([
+                'user_id'    => $studentUserId,
+                'title'      => "نتيجة $eventType",
+                'message'    => $msgStudent,
+                'type'       => 'grade',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // FCM للطالب
+            \App\Services\FcmService::sendToUser(
+                $studentUserId,
+                "نتيجة $eventType",
+                $msgStudent,
+                ['type' => 'grade', 'event_id' => (string) $id, 'course_title' => $courseTitle]
+            );
+
+            // إشعار لأولياء أمور الطالب — parent_students.student_id = students.student_id
+            $parentUserIds = DB::table('parent_students')
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                ->where('parent_students.student_id', $entry['student_id'])
+                ->pluck('parents.user_id');
+
+            foreach ($parentUserIds as $parentUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $parentUserId,
+                    'title'      => "نتيجة $eventType",
+                    'message'    => $msgParent,
+                    'type'       => 'grade',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                \App\Services\FcmService::sendToUser(
+                    $parentUserId,
+                    "نتيجة $eventType",
+                    $msgParent,
+                    ['type' => 'grade', 'event_id' => (string) $id, 'course_title' => $courseTitle]
+                );
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم حفظ العلامات']);
+    }
+
+    public function deleteGradeEvent(Request $request, $id)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+
+        $deleted = DB::table('grade_events')
+            ->where('id', $id)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->delete();
+
+        if (!$deleted) return response()->json(['success' => false, 'message' => 'غير موجود'], 404);
+
+        return response()->json(['success' => true, 'message' => 'تم الحذف']);
+    }
+
+    // ─── تقارير العلامات المطلوبة من رئيس القسم ─────────────────
+
+    public function completeGradeReport(Request $request, $id)
+    {
+        $teacher = $request->user();
+
+        $req = DB::table('grade_report_requests')
+            ->where('id', $id)
+            ->where('teacher_user_id', $teacher->user_id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$req) return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+
+        DB::table('grade_report_requests')->where('id', $id)->update([
+            'status'     => 'completed',
+            'updated_at' => now(),
+        ]);
+
+        $course      = DB::table('courses')->where('course_id', $req->course_id)->first();
+        $courseTitle = $course?->title ?? 'المادة';
+
+        // بناء ملخص التفصيلي لكل طالب
+        $rows = DB::table('grade_events')
+            ->join('grade_entries',  'grade_events.id',            '=', 'grade_entries.grade_event_id')
+            ->join('students',       'grade_entries.student_id',   '=', 'students.student_id')
+            ->join('users as u',     'students.user_id',           '=', 'u.user_id')
+            ->where('grade_events.course_id', $req->course_id)
+            ->whereNotNull('grade_entries.score')
+            ->select('u.full_name as name', 'grade_events.type', 'grade_events.max_score', 'grade_entries.score', 'students.student_id')
+            ->get();
+
+        $grouped = [];
+        foreach ($rows as $r) {
+            $sid = $r->student_id;
+            if (!isset($grouped[$sid])) $grouped[$sid] = ['name' => $r->name, 'quiz' => null, 'quiz_max' => null, 'exam' => null, 'exam_max' => null, 'oral' => null, 'oral_max' => null];
+            if ($r->type === 'quiz') { $grouped[$sid]['quiz'] = ($grouped[$sid]['quiz'] ?? 0) + (float)$r->score; $grouped[$sid]['quiz_max'] = ($grouped[$sid]['quiz_max'] ?? 0) + (float)$r->max_score; }
+            elseif ($r->type === 'exam') { $grouped[$sid]['exam'] = ($grouped[$sid]['exam'] ?? 0) + (float)$r->score; $grouped[$sid]['exam_max'] = ($grouped[$sid]['exam_max'] ?? 0) + (float)$r->max_score; }
+            elseif ($r->type === 'oral') { $grouped[$sid]['oral'] = ($grouped[$sid]['oral'] ?? 0) + (float)$r->score; $grouped[$sid]['oral_max'] = ($grouped[$sid]['oral_max'] ?? 0) + (float)$r->max_score; }
+        }
+
+        $summaryLines = [];
+        $passCount = 0;
+        $total = count($grouped);
+        foreach ($grouped as $s) {
+            $totalScore = ($s['quiz'] ?? 0) + ($s['exam'] ?? 0) + ($s['oral'] ?? 0);
+            $totalMax   = ($s['quiz_max'] ?? 0) + ($s['exam_max'] ?? 0) + ($s['oral_max'] ?? 0);
+            $avg        = $totalMax > 0 ? round($totalScore / $totalMax * 100, 1) : 0;
+            $pass       = $avg >= 50;
+            if ($pass) $passCount++;
+            $quiz = $s['quiz'] !== null ? "م:{$s['quiz']}/{$s['quiz_max']}" : '';
+            $exam = $s['exam'] !== null ? "ا:{$s['exam']}/{$s['exam_max']}" : '';
+            $oral = $s['oral'] !== null ? "ش:{$s['oral']}/{$s['oral_max']}" : '';
+            $parts = array_filter([$quiz, $exam, $oral]);
+            $summaryLines[] = "• {$s['name']}: " . implode(' | ', $parts) . " ← {$avg}% " . ($pass ? '✓' : '✗');
+        }
+
+        $detailMsg = "تقرير علامات مادة: $courseTitle\n"
+                   . "الناجحون: $passCount / $total\n\n"
+                   . implode("\n", $summaryLines);
+
+        DB::table('notifications')->insert([
+            'user_id'    => $req->boss_user_id,
+            'title'      => "تقرير علامات جاهز: $courseTitle",
+            'message'    => $detailMsg,
+            'type'       => 'grade_report_ready',
+            'related_id' => $req->course_id,
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \App\Services\FcmService::sendToUser(
+            $req->boss_user_id,
+            "تقرير علامات جاهز ✅",
+            "مادة: $courseTitle — ناجح $passCount من $total طالب. اضغط لعرض التفاصيل.",
+            [
+                'type'         => 'grade_report_ready',
+                'course_id'    => (string) $req->course_id,
+                'course_title' => $courseTitle,
+                'request_id'   => (string) $id,
+            ]
+        );
+
+        return response()->json(['success' => true, 'message' => 'تم إشعار رئيس القسم']);
+    }
+
+    public function getPendingGradeReportRequests(Request $request)
+    {
+        $teacher = $request->user();
+
+        $requests = DB::table('grade_report_requests')
+            ->join('courses', 'grade_report_requests.course_id', '=', 'courses.course_id')
+            ->where('grade_report_requests.teacher_user_id', $teacher->user_id)
+            ->where('grade_report_requests.status', 'pending')
+            ->select(
+                'grade_report_requests.id',
+                'grade_report_requests.course_id',
+                'grade_report_requests.notes',
+                'grade_report_requests.created_at',
+                'courses.title as course_title',
+            )
+            ->orderByDesc('grade_report_requests.created_at')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $requests]);
+    }
 }
 

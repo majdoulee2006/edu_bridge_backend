@@ -503,13 +503,12 @@ class DepartmentHeadController extends Controller
             ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
             ->join('users', 'teachers.user_id', '=', 'users.user_id')
             ->where('course_teachers.course_id', $courseId)
-            ->get(['teachers.teacher_id as id', 'users.full_name as name']);
+            ->get(['teachers.teacher_id as id', 'users.user_id', 'users.full_name as name', 'users.full_name']);
 
-        // fallback: if no teachers assigned to this course, return all
         if ($teachers->isEmpty()) {
             $teachers = DB::table('teachers')
                 ->join('users', 'teachers.user_id', '=', 'users.user_id')
-                ->get(['teachers.teacher_id as id', 'users.full_name as name']);
+                ->get(['teachers.teacher_id as id', 'users.user_id', 'users.full_name as name', 'users.full_name']);
         }
 
         return response()->json(['success' => true, 'data' => $teachers]);
@@ -633,7 +632,7 @@ class DepartmentHeadController extends Controller
             $avgGrade = $grades !== null ? round($grades, 1) : null;
 
             // نسبة الحضور
-            $attQ  = DB::table('attendances')->where('student_id', $studentId);
+            $attQ  = DB::table('attendance')->where('student_id', $studentId);
             if ($courseId) $attQ->where('course_id', $courseId);
             $att     = $attQ->get(['status']);
             $total   = $att->count();
@@ -1112,5 +1111,204 @@ class DepartmentHeadController extends Controller
             ->update(['content' => $request->content, 'updated_at' => now()]);
 
         return response()->json(['success' => true, 'message' => 'تم التحديث بنجاح']);
+    }
+
+    // ─── طلبات تقارير العلامات ───────────────────────────────────
+
+    public function requestGradeReport(Request $request)
+    {
+        $validated = $request->validate([
+            'course_id'   => 'required|integer|exists:courses,course_id',
+            'teacher_user_id' => 'required|integer|exists:users,user_id',
+            'notes'       => 'nullable|string|max:500',
+        ]);
+
+        $boss = $request->user();
+
+        // تحقق أن بيانات العلامات موجودة مسبقاً
+        $hasEntries = DB::table('grade_events')
+            ->join('grade_entries', 'grade_events.id', '=', 'grade_entries.grade_event_id')
+            ->where('grade_events.course_id', $validated['course_id'])
+            ->whereNotNull('grade_entries.score')
+            ->exists();
+
+        $course      = DB::table('courses')->where('course_id', $validated['course_id'])->first();
+        $courseTitle = $course?->title ?? 'المادة';
+
+        // احفظ الطلب دائماً
+        $status = $hasEntries ? 'completed' : 'pending';
+        $reqId  = DB::table('grade_report_requests')->insertGetId([
+            'boss_user_id'    => $boss->user_id,
+            'teacher_user_id' => $validated['teacher_user_id'],
+            'course_id'       => $validated['course_id'],
+            'notes'           => $validated['notes'] ?? null,
+            'status'          => $status,
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        if ($hasEntries) {
+            // البيانات موجودة — أبلغ المسؤول مباشرة
+            return response()->json([
+                'success'           => true,
+                'already_available' => true,
+                'message'           => 'البيانات موجودة، يمكنك الاطلاع على التقرير مباشرة.',
+                'course_id'         => $validated['course_id'],
+            ]);
+        }
+
+        // لا توجد بيانات — أرسل إشعاراً للمعلم
+        $notifMsg = "رئيس القسم يطلب إدخال علامات مادة: $courseTitle\n"
+                  . "المطلوب: مذاكرة + امتحان + شفهي لكل طالب";
+
+        DB::table('notifications')->insert([
+            'user_id'    => $validated['teacher_user_id'],
+            'title'      => "طلب إدخال علامات: $courseTitle",
+            'message'    => $notifMsg,
+            'type'       => 'grade_report_request',
+            'related_id' => $reqId,
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \App\Services\FcmService::sendToUser(
+            $validated['teacher_user_id'],
+            "طلب إدخال علامات: $courseTitle",
+            "رئيس القسم يطلب: مذاكرة + امتحان + شفهي لمادة $courseTitle",
+            [
+                'type'         => 'grade_report_request',
+                'request_id'   => (string) $reqId,
+                'course_id'    => (string) $validated['course_id'],
+                'course_title' => $courseTitle,
+            ]
+        );
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال الطلب للمعلم']);
+    }
+
+    public function getGradeReports(Request $request)
+    {
+        $boss = $request->user();
+
+        $requests = DB::table('grade_report_requests')
+            ->join('courses', 'grade_report_requests.course_id', '=', 'courses.course_id')
+            ->join('users', 'grade_report_requests.teacher_user_id', '=', 'users.user_id')
+            ->where('grade_report_requests.boss_user_id', $boss->user_id)
+            ->select(
+                'grade_report_requests.id',
+                'grade_report_requests.status',
+                'grade_report_requests.notes',
+                'grade_report_requests.created_at',
+                'courses.course_id',
+                'courses.title as course_title',
+                'users.full_name as teacher_name',
+                'grade_report_requests.teacher_user_id',
+            )
+            ->orderByDesc('grade_report_requests.created_at')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $requests]);
+    }
+
+    public function remindTeacher(Request $request, $courseId)
+    {
+        $boss = $request->user();
+
+        $req = DB::table('grade_report_requests')
+            ->where('course_id', $courseId)
+            ->where('boss_user_id', $boss->user_id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if (!$req) return response()->json(['success' => false, 'message' => 'لا يوجد طلب معلق'], 404);
+
+        $course      = DB::table('courses')->where('course_id', $courseId)->first();
+        $courseTitle = $course?->title ?? 'المادة';
+
+        $notifMsg = "تذكير: رئيس القسم ينتظر إدخال علامات مادة: $courseTitle\n"
+                  . "المطلوب: مذاكرة + امتحان + شفهي لكل طالب";
+
+        DB::table('notifications')->insert([
+            'user_id'    => $req->teacher_user_id,
+            'title'      => "تذكير: علامات $courseTitle",
+            'message'    => $notifMsg,
+            'type'       => 'grade_report_request',
+            'related_id' => $req->id,
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \App\Services\FcmService::sendToUser(
+            $req->teacher_user_id,
+            "تذكير: علامات $courseTitle",
+            "رئيس القسم ينتظر: مذاكرة + امتحان + شفهي لمادة $courseTitle",
+            ['type' => 'grade_report_request', 'course_id' => (string)$courseId, 'course_title' => $courseTitle]
+        );
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال التذكير للمعلم']);
+    }
+
+    public function getCourseGradeEntries(Request $request, $courseId)
+    {
+        $rows = DB::table('grade_events')
+            ->join('grade_entries',  'grade_events.id',       '=', 'grade_entries.grade_event_id')
+            ->join('students',       'grade_entries.student_id', '=', 'students.student_id')
+            ->join('users as u',     'students.user_id',      '=', 'u.user_id')
+            ->where('grade_events.course_id', $courseId)
+            ->whereNotNull('grade_entries.score')
+            ->select(
+                'students.student_id',
+                'u.full_name as student_name',
+                'u.university_id',
+                'grade_events.type',
+                'grade_events.max_score',
+                'grade_entries.score'
+            )
+            ->get();
+
+        // تجميع حسب الطالب
+        $grouped = [];
+        foreach ($rows as $row) {
+            $sid = $row->student_id;
+            if (!isset($grouped[$sid])) {
+                $grouped[$sid] = [
+                    'student_id'    => $sid,
+                    'student_name'  => $row->student_name,
+                    'university_id' => $row->university_id,
+                    'quiz'      => null, 'quiz_max'  => null,
+                    'exam'      => null, 'exam_max'  => null,
+                    'oral'      => null, 'oral_max'  => null,
+                ];
+            }
+            $score = (float) $row->score;
+            $max   = (float) $row->max_score;
+            if ($row->type === 'quiz') {
+                $grouped[$sid]['quiz']     = ($grouped[$sid]['quiz']     ?? 0) + $score;
+                $grouped[$sid]['quiz_max'] = ($grouped[$sid]['quiz_max'] ?? 0) + $max;
+            } elseif ($row->type === 'exam') {
+                $grouped[$sid]['exam']     = ($grouped[$sid]['exam']     ?? 0) + $score;
+                $grouped[$sid]['exam_max'] = ($grouped[$sid]['exam_max'] ?? 0) + $max;
+            } elseif ($row->type === 'oral') {
+                $grouped[$sid]['oral']     = ($grouped[$sid]['oral']     ?? 0) + $score;
+                $grouped[$sid]['oral_max'] = ($grouped[$sid]['oral_max'] ?? 0) + $max;
+            }
+        }
+
+        $result = array_values(array_map(function ($s) {
+            $totalScore = ($s['quiz'] ?? 0) + ($s['exam'] ?? 0) + ($s['oral'] ?? 0);
+            $totalMax   = ($s['quiz_max'] ?? 0) + ($s['exam_max'] ?? 0) + ($s['oral_max'] ?? 0);
+            $s['total_score'] = $totalScore;
+            $s['total_max']   = $totalMax;
+            $s['average']     = $totalMax > 0 ? round($totalScore / $totalMax * 100, 1) : null;
+            $s['pass']        = $s['average'] !== null && $s['average'] >= 50;
+            return $s;
+        }, $grouped));
+
+        usort($result, fn($a, $b) => strcmp($a['student_name'], $b['student_name']));
+
+        return response()->json(['success' => true, 'data' => $result]);
     }
 }

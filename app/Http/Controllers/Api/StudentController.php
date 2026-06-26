@@ -431,35 +431,125 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
-        // نجلب الامتحانات للمواد التي يدرسها الطالب فقط (مع تجنب الغموض في student_id)
-        $exams = Exam::whereHas('course', function($query) use ($student) {
+        // امتحانات النظام القديم
+        $oldExams = Exam::whereHas('course', function($query) use ($student) {
                 $query->whereHas('students', function($q) use ($student) {
                     $q->where('enrollments.student_id', $student->student_id);
                 });
             })
             ->with('course')
-            ->orderBy('exam_date') // ترتيب من الأقرب للأبعد
+            ->orderBy('exam_date')
             ->get()
             ->map(function($exam) {
                 $date = Carbon::parse($exam->exam_date);
                 return [
-                    'exam_id'  => $exam->exam_id,
-                    // استخدمنا title بدل course_name
-                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان مادة'),
-                    'day_num'  => $date->format('d'),
-                    'month'    => $date->translatedFormat('F'), // مثال: يونيو
-                    'day_name' => $date->translatedFormat('l'), // مثال: الأحد
-                    'time'     => $date->format('h:i A'),
-                    'duration' => 'ساعتان', // يمكنك جعلها ديناميكية لاحقاً
-                    'room'     => 'القاعة الامتحانية',
-                    'type'     => 'نهائي'
+                    'exam_id'    => $exam->exam_id,
+                    'event_id'   => null,
+                    'source'     => 'exam',
+                    'subject'    => $exam->exam_name ?? ($exam->course->title ?? 'امتحان مادة'),
+                    'type_label' => 'نهائي',
+                    'title'      => $exam->exam_name ?? 'امتحان',
+                    'day_num'    => $date->format('d'),
+                    'month'      => $date->translatedFormat('F'),
+                    'day_name'   => $date->translatedFormat('l'),
+                    'time'       => $date->format('h:i A'),
+                    'duration'   => 'ساعتان',
+                    'room'       => 'القاعة الامتحانية',
+                    'max_score'  => null,
+                    'score'      => null,
                 ];
             });
 
+        // تقييمات النظام الجديد (امتحان ومذاكرة) المرتبطة بهذا الطالب
+        $gradeEvents = DB::table('grade_events')
+            ->join('grade_entries', function ($join) use ($student) {
+                $join->on('grade_entries.grade_event_id', '=', 'grade_events.id')
+                     ->where('grade_entries.student_id', $student->student_id);
+            })
+            ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+            ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
+            ->whereIn('grade_events.type', ['exam', 'quiz'])
+            ->whereNotNull('grade_events.date')
+            ->select(
+                'grade_events.id as event_id',
+                'grade_events.type as event_type',
+                'grade_events.title',
+                'grade_events.date',
+                'grade_events.max_score',
+                'grade_entries.score',
+                DB::raw("COALESCE(courses.title, programs.name, 'تقييم') as course_title")
+            )
+            ->get()
+            ->map(function ($e) {
+                $date       = Carbon::parse($e->date);
+                $typeLabel  = $e->event_type === 'exam' ? 'امتحان' : 'مذاكرة';
+                return [
+                    'exam_id'    => null,
+                    'event_id'   => $e->event_id,
+                    'source'     => 'grade_event',
+                    'subject'    => $e->course_title,
+                    'type_label' => $typeLabel,
+                    'title'      => $e->title,
+                    'day_num'    => $date->format('d'),
+                    'month'      => $date->translatedFormat('F'),
+                    'day_name'   => $date->translatedFormat('l'),
+                    'time'       => $date->format('h:i A'),
+                    'duration'   => $e->event_type === 'exam' ? 'ساعتان' : 'ساعة',
+                    'room'       => 'القاعة الدراسية',
+                    'max_score'  => $e->max_score,
+                    'score'      => $e->score,
+                ];
+            });
+
+        $all = $oldExams->merge($gradeEvents)->sortBy('day_num')->values();
+
+        return response()->json(['success' => true, 'data' => $all], 200);
+    }
+
+    public function getGradeEventForStudent(Request $request, $id)
+    {
+        $student = $request->user()->student;
+        $event   = DB::table('grade_events')
+            ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+            ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
+            ->where('grade_events.id', $id)
+            ->select(
+                'grade_events.id',
+                'grade_events.type',
+                'grade_events.title',
+                'grade_events.max_score',
+                'grade_events.date',
+                DB::raw("COALESCE(courses.title, programs.name, 'تقييم') as course_title")
+            )
+            ->first();
+
+        if (!$event) return response()->json(['success' => false], 404);
+
+        $entry = DB::table('grade_entries')
+            ->where('grade_event_id', $id)
+            ->where('student_id', $student->student_id)
+            ->first();
+
+        $typeLabel = match($event->type) {
+            'exam'  => 'امتحان',
+            'quiz'  => 'مذاكرة',
+            'oral'  => 'شفهي',
+            default => 'تقييم',
+        };
+
         return response()->json([
-            'success' => true,
-            'data'   => $exams
-        ], 200);
+            'success'     => true,
+            'event_id'    => $event->id,
+            'type'        => $event->type,
+            'type_label'  => $typeLabel,
+            'title'       => $event->title,
+            'course'      => $event->course_title,
+            'max_score'   => $event->max_score,
+            'date'        => $event->date,
+            'score'       => $entry?->score,
+            'graded'      => $entry && $entry->score !== null,
+            'notes'       => $entry?->notes,
+        ]);
     }
     /**
      * تصدير جدول الامتحانات (PDF) — يرجع البيانات كـ JSON

@@ -90,6 +90,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student/my-exams', [StudentController::class, 'getMyExams']);
     Route::get('/student/my-exams/pdf', [StudentController::class, 'exportExamsPdf']);
     Route::get('/student/my-exams/excel', [StudentController::class, 'exportExamsExcel']);
+    Route::get('/student/grade-event/{id}', [StudentController::class, 'getGradeEventForStudent']);
     Route::get('/student/assignments', [StudentController::class, 'getMyAssignments']);
     Route::post('/student/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
     Route::get('/student/lectures', [StudentController::class, 'getMyLectures']);
@@ -193,6 +194,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/attendance/export-pdf', [TeacherController::class, 'exportFilteredPdf']);
         Route::get('/attendance/advisor-export', [TeacherController::class, 'advisorExportAttendance']);
 
+        // العلامات
+        Route::get('/grades/events',              [TeacherController::class, 'getGradeEvents']);
+        Route::post('/grades/events',             [TeacherController::class, 'createGradeEvent']);
+        Route::get('/grades/events/{id}/entries', [TeacherController::class, 'getGradeEntries']);
+        Route::post('/grades/events/{id}/entries',[TeacherController::class, 'saveGradeEntries']);
+        Route::delete('/grades/events/{id}',      [TeacherController::class, 'deleteGradeEvent']);
+        Route::get('/grades/programs',            [TeacherController::class, 'getTeacherPrograms']);
+        Route::get('/grades/program-students',    [TeacherController::class, 'getProgramStudents']);
+        Route::get('/grade-report-requests/pending',        [TeacherController::class, 'getPendingGradeReportRequests']);
+        Route::post('/grade-report-requests/{id}/complete', [TeacherController::class, 'completeGradeReport']);
+
         // الحضور والغياب
         Route::get('/attendance/{courseId}', [TeacherController::class, 'getAttendance']);
 
@@ -269,6 +281,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/report-requests', [DepartmentHeadController::class, 'createReportRequest']);
         Route::post('/report-requests/{id}/send-to-parent', [DepartmentHeadController::class, 'sendReportToParent']);
         Route::delete('/report-requests/{id}', [DepartmentHeadController::class, 'deleteReportRequest']);
+
+        // تقارير العلامات
+        Route::post('/grade-report-requests',              [DepartmentHeadController::class, 'requestGradeReport']);
+        Route::get('/grade-report-requests',               [DepartmentHeadController::class, 'getGradeReports']);
+        Route::get('/grade-report-requests/{courseId}/entries', [DepartmentHeadController::class, 'getCourseGradeEntries']);
+        Route::post('/grade-report-requests/{courseId}/remind-teacher', [DepartmentHeadController::class, 'remindTeacher']);
 
         // Schedule
         Route::get('/schedule',       [DepartmentHeadController::class, 'getSchedule']);
