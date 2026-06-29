@@ -163,6 +163,51 @@
     </div>
 
     <div class="settings-group">
+        <div class="settings-group-title">إعدادات الحضور والغياب</div>
+        
+        <form action="{{ route('hod.settings.attendance_policy') }}" method="POST" style="margin-top: 1rem;">
+            @csrf
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; margin-bottom: 0.5rem;">
+                    اختر سياسة مزامنة الحضور للطلاب الذين يسجلون حضورهم بدون إنترنت (Offline Sync):
+                </p>
+                
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+                        <input type="radio" name="offline_sync_policy" value="anytime" 
+                               {{ ($department && $department->offline_sync_policy === 'anytime') || !$department ? 'checked' : '' }}
+                               style="margin-top: 0.25rem; scale: 1.2; accent-color: var(--accent-color);">
+                        <div>
+                            <span style="font-weight: 700; color: var(--text-primary);">مفتوح (في أي وقت)</span>
+                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                يتم قبول الحضور ومزامنته فور اتصال الطالب بالإنترنت، حتى بعد مضي عدة أيام على المحاضرة.
+                            </p>
+                        </div>
+                    </label>
+                    
+                    <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+                        <input type="radio" name="offline_sync_policy" value="same_day" 
+                               {{ $department && $department->offline_sync_policy === 'same_day' ? 'checked' : '' }}
+                               style="margin-top: 0.25rem; scale: 1.2; accent-color: var(--accent-color);">
+                        <div>
+                            <span style="font-weight: 700; color: var(--text-primary);">محدد (نهاية نفس اليوم)</span>
+                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                يجب مزامنة الحضور قبل نهاية اليوم الدراسي الفعلي للمحاضرة (قبل الساعة 11:59 مساءً من نفس اليوم)، وإلا يعتبر الطالب غائباً بشكل نهائي.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.6rem 1.5rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer; transition: opacity 0.2s;">
+                        حفظ الإعدادات
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="settings-group">
         <div class="settings-group-title">اللغة والمنطقة</div>
 
         <div class="setting-item">

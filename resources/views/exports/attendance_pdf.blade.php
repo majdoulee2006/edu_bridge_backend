@@ -42,6 +42,10 @@
             color: #B71C1C;
             font-weight: bold;
         }
+        .pending {
+            color: #d97706;
+            font-weight: bold;
+        }
         .dash {
             color: #999;
         }
@@ -90,6 +94,8 @@
                         <td class="present">حاضر</td>
                     @elseif($status === 'absent')
                         <td class="absent">غائب</td>
+                    @elseif($status === 'pending')
+                        <td class="pending">قيد الانتظار</td>
                     @else
                         <td class="dash">-</td>
                     @endif
@@ -156,6 +162,8 @@
                                     <td class="present">حاضر</td>
                                 @elseif($st === 'absent')
                                     <td class="absent">غائب</td>
+                                @elseif($st === 'pending')
+                                    <td class="pending">قيد الانتظار</td>
                                 @else
                                     <td class="dash">-</td>
                                 @endif

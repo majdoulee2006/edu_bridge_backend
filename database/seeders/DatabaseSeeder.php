@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
         'full_name' => 'إدارة المعهد التقني',
         'username' => 'admin_main', // 👈 ضروري جداً
         'email' => 'admin@edu-bridge.com',
-        'password' => Hash::make('password123'),
+        'password' => Hash::make('12345678'),
         'role_id' =>1,
         'status' => 'active',
        ]);

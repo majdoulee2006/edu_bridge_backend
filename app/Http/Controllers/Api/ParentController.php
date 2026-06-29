@@ -27,10 +27,26 @@ class ParentController extends Controller
         }
 
         $children = $parent->students()
-            ->with('user')
+            ->with(['user', 'attendances', 'grades'])
             ->get()
             ->map(function($student) {
                 $attendances = $student->attendances;
+                
+                $total = $attendances->count();
+                $present = $attendances->where('status', 'present')->count();
+                
+                $pending = 0;
+                foreach ($attendances as $att) {
+                    $isToday = \Carbon\Carbon::parse($att->attendance_date)->isToday();
+                    if ($att->status === 'absent' && $isToday) {
+                        $pending++;
+                    }
+                }
+                
+                $effectiveTotal = $total - $pending;
+                $attendanceRate = $effectiveTotal > 0
+                    ? round(($present / $effectiveTotal) * 100, 1)
+                    : 100;
 
                 return [
                     'id'              => $student->user_id,
@@ -39,11 +55,8 @@ class ParentController extends Controller
                     'full_name'       => $student->user->full_name,
                     'student_code'    => $student->student_code ?? '',
                     'level'           => $student->level ?? '',
-                    'average_grade'   => round($student->grades->avg('score') ?? 0, 1),
                     'total_courses'   => $student->courses->count(),
-                    'attendance_rate' => $attendances->count() > 0
-                        ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
-                        : 0,
+                    'attendance_rate' => $attendanceRate,
                     'average_grade'   => round($student->grades()->avg('score') ?? 0, 1),
                 ];
             });
@@ -98,11 +111,24 @@ class ParentController extends Controller
             ->orderBy('attendance_date', 'desc')
             ->get()
             ->map(function($attendance) {
+                $isToday = \Carbon\Carbon::parse($attendance->attendance_date)->isToday();
+                $status = $attendance->status;
+                if ($status === 'absent' && $isToday) {
+                    $status = 'pending';
+                    $statusText = 'قيد الانتظار';
+                } else {
+                    $statusText = $attendance->status == 'present' ? 'حاضر' : ($attendance->status == 'absent' ? 'غائب' : 'متأخر');
+                }
+                
+                $dateFormatted = $attendance->attendance_date instanceof \Carbon\Carbon 
+                    ? $attendance->attendance_date->format('Y-m-d')
+                    : \Carbon\Carbon::parse($attendance->attendance_date)->format('Y-m-d');
+                    
                 return [
                     'id' => $attendance->attendance_id,
-                    'date' => $attendance->attendance_date->format('Y-m-d'),
-                    'status' => $attendance->status,
-                    'status_text' => $attendance->status == 'present' ? 'حاضر' : ($attendance->status == 'absent' ? 'غائب' : 'متأخر'),
+                    'date' => $dateFormatted,
+                    'status' => $status,
+                    'status_text' => $statusText,
                     'course_name' => $attendance->lesson->course->title ?? '',
                     'lesson_title' => $attendance->lesson->title ?? '',
                 ];
@@ -358,7 +384,14 @@ class ParentController extends Controller
 
         foreach ($children as $child) {
             $attendances = $child->attendances;
-            $totalAbsences += $attendances->where('status', 'absent')->count();
+            $absentCount = 0;
+            foreach ($attendances as $att) {
+                $isToday = \Carbon\Carbon::parse($att->attendance_date)->isToday();
+                if ($att->status === 'absent' && !$isToday) {
+                    $absentCount++;
+                }
+            }
+            $totalAbsences += $absentCount;
             $totalLate += $attendances->where('status', 'late')->count();
             $averageGrades[] = $child->grades->avg('score') ?? 0;
         }
@@ -381,12 +414,27 @@ class ParentController extends Controller
                 'recent_announcements' => $recentAnnouncements,
                 'children' => $children->map(function($child) {
                     $attendances = $child->attendances;
+                    
+                    $total = $attendances->count();
+                    $present = $attendances->where('status', 'present')->count();
+                    
+                    $pending = 0;
+                    foreach ($attendances as $att) {
+                        $isToday = \Carbon\Carbon::parse($att->attendance_date)->isToday();
+                        if ($att->status === 'absent' && $isToday) {
+                            $pending++;
+                        }
+                    }
+                    
+                    $effectiveTotal = $total - $pending;
+                    $attendanceRate = $effectiveTotal > 0
+                        ? round(($present / $effectiveTotal) * 100, 1)
+                        : 100;
+                        
                     return [
                         'student_id' => $child->student_id,
                         'full_name' => $child->user->full_name,
-                        'attendance_rate' => $attendances->count() > 0
-                            ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
-                            : 0,
+                        'attendance_rate' => $attendanceRate,
                         'average_grade' => round($child->grades->avg('score') ?? 0, 1),
                         'level' => $child->level ?? 'غير محدد'
                     ];

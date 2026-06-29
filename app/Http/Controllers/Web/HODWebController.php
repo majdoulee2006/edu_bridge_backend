@@ -32,7 +32,7 @@ class HODWebController extends Controller
             'password' => 'required',
         ]);
 
-        $login_type = filter_var($request->input('login'), FILTER_VALIDATE_EMAIL ) 
+        $login_type = str_contains($request->input('login'), '@') 
             ? 'email' 
             : 'username';
 
@@ -1356,5 +1356,38 @@ tr:nth-child(even) td{background:#f8fafc}
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
             ->header('Pragma', 'no-cache')
             ->header('Cache-Control', 'must-revalidate');
+    }
+
+    public function settings()
+    {
+        $user = Auth::user();
+        $headInfo = DB::table('heads')->where('user_id', $user->user_id)->first();
+        $department = null;
+        if ($headInfo) {
+            $department = DB::table('departments')->where('department_id', $headInfo->department_id)->first();
+        }
+        return view('hod.settings', compact('department'));
+    }
+
+    public function updateAttendancePolicy(Request $request)
+    {
+        $request->validate([
+            'offline_sync_policy' => 'required|in:anytime,same_day',
+        ]);
+
+        $user = Auth::user();
+        $headInfo = DB::table('heads')->where('user_id', $user->user_id)->first();
+
+        if ($headInfo) {
+            DB::table('departments')
+                ->where('department_id', $headInfo->department_id)
+                ->update([
+                    'offline_sync_policy' => $request->offline_sync_policy,
+                    'updated_at' => now(),
+                ]);
+            return redirect()->back()->with('success', 'تم تحديث سياسة الحضور بدون إنترنت بنجاح!');
+        }
+
+        return redirect()->back()->with('error', 'حدث خطأ، لا يوجد قسم مرتبط بك.');
     }
 }

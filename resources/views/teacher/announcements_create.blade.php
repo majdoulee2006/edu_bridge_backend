@@ -40,7 +40,7 @@
                     <p style="color: var(--text-secondary); font-size: 0.85rem;">اسحب أو اضغط لاختيار صورة</p>
                 </div>
                 <div id="img-preview" style="display: none;">
-                    <img id="preview-img" src="" style="max-height: 150px; border-radius: 0.5rem; object-fit: cover;">
+                    <img id="preview-img" src="" style="max-height: 150px; border-radius: 0.5rem; object-fit: fill;">
                     <p id="preview-name" style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.5rem;"></p>
                 </div>
             </div>

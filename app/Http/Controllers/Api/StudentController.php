@@ -867,12 +867,20 @@ class StudentController extends Controller
             ->orderBy('attendance_date', 'desc')
             ->get()
             ->map(function($attendance) {
+                $isToday = \Carbon\Carbon::parse($attendance->attendance_date)->isToday();
+                $status = $attendance->status;
+                if ($status === 'absent' && $isToday) {
+                    $status = 'pending';
+                    $statusText = 'قيد الانتظار';
+                } else {
+                    $statusText = $attendance->status == 'present' ? 'حاضر' : ($attendance->status == 'absent' ? 'غائب' : 'متأخر');
+                }
                 return [
                     'id' => $attendance->attendance_id,
-                    'date' => Carbon::parse($attendance->attendance_date)->translatedFormat('d F، l'),
-                    'time' => $attendance->created_at ? Carbon::parse($attendance->created_at)->format('h:i A') : null,
-                    'status' => $attendance->status,
-                    'status_text' => $attendance->status == 'present' ? 'حاضر' : ($attendance->status == 'absent' ? 'غائب' : 'متأخر'),
+                    'date' => \Carbon\Carbon::parse($attendance->attendance_date)->translatedFormat('d F، l'),
+                    'time' => $attendance->created_at ? \Carbon\Carbon::parse($attendance->created_at)->format('h:i A') : null,
+                    'status' => $status,
+                    'status_text' => $statusText,
                     'course_name' => $attendance->lesson->course->title ?? 'غير محدد',
                     // بيانات العذر للواجهة
                     'excuse_status' => $attendance->excuse_status,
@@ -1025,12 +1033,15 @@ class StudentController extends Controller
             'longitude'      => 'nullable|numeric|between:-180,180',
             'face_embedding' => 'nullable|array',
             'face_image'     => 'nullable|string',
+            'scanned_at'     => 'nullable|date', // الحقل الجديد للتحضير بدون إنترنت
         ]);
 
         $student   = $request->user()->student;
         $deviceId  = $request->device_id;
         $latitude  = $request->latitude;
         $longitude = $request->longitude;
+        // جلب وقت المسح الفعلي من الموبايل أو اعتماد وقت السيرفر الحالي
+        $scannedAt = $request->scanned_at ? Carbon::parse($request->scanned_at) : now();
 
         // ─── 1. التحقق من صلاحية الـ QR ──────────────────────────────────
         $token = $request->qr_token;
@@ -1043,15 +1054,43 @@ class StudentController extends Controller
             $token = $json['token'] ?? $json['qr_token'] ?? $token;
         }
 
-        $session = AttendanceSession::where('qr_token', $token)
-            ->where('is_active', true)
-            ->where('expires_at', '>', now())
-            ->first();
+        $session = AttendanceSession::where('qr_token', $token)->first();
 
         if (!$session) {
             return response()->json([
                 'success'       => false,
-                'message'       => 'رمز QR غير صالح أو انتهت صلاحيته',
+                'message'       => 'رمز QR غير صالح',
+                'reject_reason' => 'expired_qr',
+            ], 400);
+        }
+
+        // التحقق من سياسة المزامنة بدون إنترنت لقسم الطالب
+        $studentUser = $request->user();
+        $studentDeptName = $studentUser->department;
+        $department = DB::table('departments')->where('name', $studentDeptName)->first();
+        $policy = $department ? $department->offline_sync_policy : 'anytime';
+
+        if ($policy === 'same_day') {
+            $sessionDate = Carbon::parse($session->created_at)->toDateString();
+            $todayDate = now()->toDateString();
+            
+            if ($todayDate !== $sessionDate) {
+                return response()->json([
+                    'success'       => false,
+                    'message'       => 'انتهت المهلة المحددة لمزامنة الحضور لهذه الجلسة (يجب المزامنة في نفس اليوم)',
+                    'reject_reason' => 'sync_timeout',
+                ], 400);
+            }
+        }
+
+        // مقارنة وقت المسح الفعلي مع وقت بداية ونهاية الجلسة
+        $sessionStart = $session->created_at;
+        $sessionEnd   = Carbon::parse($session->expires_at);
+
+        if ($scannedAt->greaterThan($sessionEnd) || $scannedAt->lessThan($sessionStart)) {
+            return response()->json([
+                'success'       => false,
+                'message'       => 'لم يتم تسجيل الحضور، لقد قرأت الرمز خارج الوقت المحدد للجلسة',
                 'reject_reason' => 'expired_qr',
             ], 400);
         }
@@ -1190,7 +1229,7 @@ class StudentController extends Controller
             [
                 'student_id'      => $student->student_id,
                 'lesson_id'       => $session->lesson_id,
-                'attendance_date' => now()->toDateString(),
+                'attendance_date' => $scannedAt->toDateString(),
             ],
             [
                 'status'        => $attendanceStatus,
@@ -1199,11 +1238,15 @@ class StudentController extends Controller
                 'latitude'      => $latitude,
                 'longitude'     => $longitude,
                 'reject_reason' => $rejectReason,
-                'face_image'    => $faceImage,
+                'face_image'    => $savedFaceImagePath,
                 'face_score'    => $faceScore,
                 'face_status'   => $faceStatus,
             ]
         );
+
+        // تعيين تاريخ وساعة التسجيل الفعلي محلياً لتسجيل دقيق في قاعدة البيانات
+        $attendance->created_at = $scannedAt;
+        $attendance->save();
 
         $message = match($faceStatus) {
             'first_time'  => 'تم تسجيل حضورك وحفظ بيانات وجهك كمرجع ✅',

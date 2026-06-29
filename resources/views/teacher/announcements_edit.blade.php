@@ -30,7 +30,7 @@
         <div>
             <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">الصورة (اترك فارغاً للإبقاء على الحالية)</label>
             @if($announcement->image)
-                <img src="{{ asset('storage/' . $announcement->image) }}" style="height: 80px; border-radius: 0.5rem; object-fit: cover; margin-bottom: 0.5rem;">
+                <img src="{{ asset('storage/' . $announcement->image) }}" style="height: 80px; border-radius: 0.5rem; object-fit: fill; margin-bottom: 0.5rem;">
             @endif
             <div onclick="document.getElementById('imgInput').click()"
                  style="border: 2px dashed var(--border-color); border-radius: 0.75rem; padding: 1.25rem; text-align: center; cursor: pointer; background: var(--bg-primary);">

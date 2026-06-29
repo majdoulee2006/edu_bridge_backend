@@ -208,20 +208,32 @@ class StudentParentController extends Controller
 
         $totalDays      = DB::table('attendance')->where('student_id', $studentId)->count();
         $presentDays    = DB::table('attendance')->where('student_id', $studentId)->where('status', 'present')->count();
-        $attendanceRate = ($totalDays > 0) ? round(($presentDays / $totalDays) * 100) : 0;
 
         $attendanceLogs = DB::table('attendance')
             ->leftJoin('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
             ->leftJoin('courses', 'lessons.course_id', '=', 'courses.course_id')
             ->where('attendance.student_id', $studentId)
             ->select(DB::raw('COALESCE(courses.title, "درس") as name'), 'attendance.status', 'attendance.attendance_date')
-            ->get();
+            ->get()
+            ->map(function($att) {
+                $isToday = \Carbon\Carbon::parse($att->attendance_date)->isToday();
+                if ($att->status === 'absent' && $isToday) {
+                    $att->status = 'pending';
+                }
+                return $att;
+            });
+
+        $pendingDays = $attendanceLogs->where('status', 'pending')->count();
+        $absentDays  = $attendanceLogs->where('status', 'absent')->count();
+        
+        $effectiveTotal = $totalDays - $pendingDays;
+        $attendanceRate = ($effectiveTotal > 0) ? round(($presentDays / $effectiveTotal) * 100) : 100;
 
         return response()->json([
             'gpa'             => count($grades) > 0 ? round((array_sum(array_column($grades, 'score')) / count($grades) / 100) * 4, 2) : 0,
             'attendance_rate' => $attendanceRate,
             'present_count'   => $presentDays,
-            'absent_count'    => $totalDays - $presentDays,
+            'absent_count'    => $absentDays,
             'grades'          => $grades,
             'attendance_logs' => $attendanceLogs,
         ]);

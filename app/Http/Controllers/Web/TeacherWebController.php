@@ -37,7 +37,7 @@ class TeacherWebController extends Controller
 
         // يدعم: email أو phone أو username
         $input = $request->login;
-        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
+        if (str_contains($input, '@')) {
             $loginField = 'email';
         } elseif (preg_match('/^\+?[0-9]{7,15}$/', $input)) {
             $loginField = 'phone';
@@ -197,23 +197,13 @@ class TeacherWebController extends Controller
 
         $teacher = $this->getTeacher();
 
-        // نجلب أو ننشئ lesson مؤقت لهذه الجلسة
-        $lesson = DB::table('lessons')
-            ->where('course_id', $request->course_id)
-            ->where('teacher_id', $teacher->teacher_id)
-            ->first();
-
-        if (!$lesson) {
-            $lessonId = DB::table('lessons')->insertGetId([
-                'course_id'   => $request->course_id,
-                'teacher_id'  => $teacher->teacher_id,
-                'title'       => 'جلسة حضور - ' . now()->format('Y-m-d'),
-                'created_at'  => now(),
-                'updated_at'  => now(),
-            ]);
-        } else {
-            $lessonId = $lesson->lesson_id;
-        }
+        $lessonId = DB::table('lessons')->insertGetId([
+            'course_id'   => $request->course_id,
+            'teacher_id'  => $teacher->teacher_id,
+            'title'       => 'جلسة حضور - ' . now()->format('Y-m-d H:i'),
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
 
         DB::table('attendance_sessions')->insert([
             'lesson_id'  => $lessonId,
@@ -368,11 +358,19 @@ class TeacherWebController extends Controller
                     <th>تاريخ ووقت التسجيل</th>
                 </tr>";
 
+        $isToday = \Carbon\Carbon::parse($session->created_at)->isToday();
         foreach ($students as $student) {
             $att = $attendances->get($student->student_id);
             $statusRaw = $att ? $att->status : 'absent';
-            $statusText = ($statusRaw === 'present') ? 'حاضر' : 'غائب';
-            $color = ($statusRaw === 'present') ? '#166534' : '#b91c1c';
+            
+            if ($statusRaw === 'absent' && $isToday) {
+                $statusText = 'قيد الانتظار';
+                $color = '#d97706';
+            } else {
+                $statusText = ($statusRaw === 'present') ? 'حاضر' : 'غائب';
+                $color = ($statusRaw === 'present') ? '#166534' : '#b91c1c';
+            }
+            
             $timeText = ($statusRaw === 'present') ? \Carbon\Carbon::parse($att->created_at)->format('Y-m-d H:i') : '-';
             
             $csvData .= "
@@ -390,11 +388,15 @@ class TeacherWebController extends Controller
         </html>";
 
         $date = \Carbon\Carbon::parse($session->created_at)->format('Y-m-d');
-        $fileName = "attendance_{$session->course_id}_{$date}.xls";
+        $timestamp = now()->format('H-i-s');
+        $fileName = "attendance_{$session->course_id}_{$date}_{$timestamp}.xls";
         
         return response("\xEF\xBB\xBF" . $csvData)
             ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
-            ->header('Content-Disposition', "attachment; filename=\"$fileName\"");
+            ->header('Content-Disposition', "attachment; filename=\"$fileName\"")
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', 'Sat, 26 Jul 1997 05:00:00 GMT');
     }
 
     public function exportFilteredAttendance(Request $request)
@@ -514,12 +516,17 @@ class TeacherWebController extends Controller
                 $att = $attendances->get($student->student_id);
                 $statusRaw = $att ? $att->status : 'absent';
                 
+                $isToday = \Carbon\Carbon::parse($session->created_at)->isToday();
+                if ($statusRaw === 'absent' && $isToday) {
+                    $statusRaw = 'pending';
+                }
+                
                 $matrix[$student->student_id][$session->lesson_id] = $statusRaw;
             }
         }
 
         $exportType = $request->input('export_type', 'excel');
-        $dateStr = now()->format('Y-m-d');
+        $dateStr = now()->format('Y-m-d_H-i-s');
         
         if ($exportType === 'pdf') {
             // Sort students alphabetically
@@ -542,11 +549,13 @@ class TeacherWebController extends Controller
                     $dateString = \Carbon\Carbon::parse($session->created_at)->format('Y-m-d');
                     $status = $matrix[$studentId][$session->lesson_id] ?? null;
                     if ($status !== null) {
-                        if (!isset($dailyStatus[$studentId][$dateString])) {
-                            $dailyStatus[$studentId][$dateString] = 'absent';
-                        }
-                        if ($status === 'present') {
-                            $dailyStatus[$studentId][$dateString] = 'present';
+                        $currentDaily = $dailyStatus[$studentId][$dateString] ?? null;
+                        if ($currentDaily === null || $currentDaily === 'absent') {
+                            $dailyStatus[$studentId][$dateString] = $status;
+                        } elseif ($currentDaily === 'pending' && ($status === 'present' || $status === 'late')) {
+                            $dailyStatus[$studentId][$dateString] = $status;
+                        } elseif ($currentDaily === 'late' && $status === 'present') {
+                            $dailyStatus[$studentId][$dateString] = $status;
                         }
                     }
                 }
@@ -568,17 +577,29 @@ class TeacherWebController extends Controller
                 'autoLangToFont' => true,
             ]);
 
-            return $pdf->download("filtered_attendance_report_{$dateStr}.pdf");
+            return response($pdf->output())
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', "attachment; filename=\"filtered_attendance_report_{$dateStr}.pdf\"")
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', 'Sat, 26 Jul 1997 05:00:00 GMT');
         }
 
         // Excel Export
         $fileName = "filtered_attendance_report_{$dateStr}.xlsx";
         $isAdvisor = ($scope === 'advisor_class');
         
-        return \Maatwebsite\Excel\Facades\Excel::download(
+        $fileContent = \Maatwebsite\Excel\Facades\Excel::raw(
             new \App\Exports\FilteredAttendanceExport($sessions, $allStudents, $matrix, $isAdvisor),
-            $fileName
+            \Maatwebsite\Excel\Excel::XLSX
         );
+
+        return response($fileContent)
+            ->header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->header('Content-Disposition', "attachment; filename=\"$fileName\"")
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', 'Sat, 26 Jul 1997 05:00:00 GMT');
     }
 
     public function getAbsentees($sessionId)

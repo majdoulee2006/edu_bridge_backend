@@ -1906,9 +1906,10 @@ class TeacherController extends Controller
             $csv = "\xEF\xBB\xBF"; // BOM للعربية
             $csv .= "اسم الطالب,المادة,التاريخ,الحالة\n";
             foreach ($rows as $row) {
+                $isToday = \Carbon\Carbon::parse($row->attendance_date)->isToday();
                 $status = match($row->status) {
                     'present' => 'حاضر',
-                    'absent'  => 'غائب',
+                    'absent'  => ($isToday ? 'قيد الانتظار' : 'غائب'),
                     'late'    => 'متأخر',
                     default   => $row->status,
                 };
@@ -1917,6 +1918,9 @@ class TeacherController extends Controller
             return response($csv, 200, [
                 'Content-Type'        => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => "attachment; filename=\"{$filename}_" . now()->format('Y-m-d') . ".csv\"",
+                'Cache-Control'       => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma'              => 'no-cache',
+                'Expires'             => 'Sat, 26 Jul 1997 05:00:00 GMT',
             ]);
         }
 
@@ -1931,13 +1935,14 @@ class TeacherController extends Controller
             $html .= '<h2>كشف الحضور والغياب — ' . now()->format('Y-m-d') . '</h2>';
             $html .= '<table><thead><tr><th>اسم الطالب</th><th>المادة</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>';
             foreach ($rows as $row) {
+                $isToday = \Carbon\Carbon::parse($row->attendance_date)->isToday();
                 $status = match($row->status) {
                     'present' => 'حاضر',
-                    'absent'  => 'غائب',
+                    'absent'  => ($isToday ? 'قيد الانتظار' : 'غائب'),
                     'late'    => 'متأخر',
                     default   => $row->status,
                 };
-                $color = $row->status === 'present' ? '#16a34a' : ($row->status === 'absent' ? '#dc2626' : '#d97706');
+                $color = $row->status === 'present' ? '#16a34a' : ($row->status === 'absent' ? ($isToday ? '#d97706' : '#dc2626') : '#d97706');
                 $html .= "<tr><td>{$row->student_name}</td><td>{$row->course_name}</td><td>{$row->attendance_date}</td><td style='color:{$color};font-weight:bold'>{$status}</td></tr>";
             }
             $html .= '</tbody></table></body></html>';
@@ -1945,6 +1950,9 @@ class TeacherController extends Controller
             return response($html, 200, [
                 'Content-Type'        => 'text/html; charset=UTF-8',
                 'Content-Disposition' => "inline; filename=\"{$filename}_" . now()->format('Y-m-d') . ".html\"",
+                'Cache-Control'       => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma'              => 'no-cache',
+                'Expires'             => 'Sat, 26 Jul 1997 05:00:00 GMT',
             ]);
         }
 
@@ -2087,7 +2095,10 @@ class TeacherController extends Controller
 
                 $att = $attendances->get($student->student_id);
                 $statusRaw = $att ? $att->status : 'absent';
-
+                $isToday = \Carbon\Carbon::parse($session->created_at)->isToday();
+                if ($statusRaw === 'absent' && $isToday) {
+                    $statusRaw = 'pending';
+                }
                 $matrix[$student->student_id][$session->lesson_id] = $statusRaw;
             }
         }
@@ -2110,11 +2121,13 @@ class TeacherController extends Controller
                 $dateString = \Carbon\Carbon::parse($session->created_at)->format('Y-m-d');
                 $status = $matrix[$studentId][$session->lesson_id] ?? null;
                 if ($status !== null) {
-                    if (!isset($dailyStatus[$studentId][$dateString])) {
-                        $dailyStatus[$studentId][$dateString] = 'absent';
-                    }
-                    if ($status === 'present') {
-                        $dailyStatus[$studentId][$dateString] = 'present';
+                    $currentDaily = $dailyStatus[$studentId][$dateString] ?? null;
+                    if ($currentDaily === null || $currentDaily === 'absent') {
+                        $dailyStatus[$studentId][$dateString] = $status;
+                    } elseif ($currentDaily === 'pending' && ($status === 'present' || $status === 'late')) {
+                        $dailyStatus[$studentId][$dateString] = $status;
+                    } elseif ($currentDaily === 'late' && $status === 'present') {
+                        $dailyStatus[$studentId][$dateString] = $status;
                     }
                 }
             }
@@ -2138,6 +2151,9 @@ class TeacherController extends Controller
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="filtered_attendance_report_' . now()->format('Y-m-d') . '.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Sat, 26 Jul 1997 05:00:00 GMT',
         ]);
     }
 

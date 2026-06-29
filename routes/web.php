@@ -138,7 +138,8 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     // واجهات الـ Mockup القديمة
     Route::get('/notifications', [HODWebController::class, 'notifications'])->name('hod.notifications');
     Route::post('/notifications/send', [HODWebController::class, 'sendNotification'])->name('hod.notifications.send');
-    Route::get('/settings', function () { return view('hod.settings'); });
+    Route::get('/settings', [HODWebController::class, 'settings'])->name('hod.settings');
+    Route::post('/settings/attendance-policy', [HODWebController::class, 'updateAttendancePolicy'])->name('hod.settings.attendance_policy');
     // إعلانات رئيس القسم
     Route::get('/announcements/create', [HODWebController::class, 'showCreateAnnouncementForm'])
         ->name('hod.announcements.create');

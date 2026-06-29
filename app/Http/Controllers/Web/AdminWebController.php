@@ -35,8 +35,8 @@ class AdminWebController extends Controller
             'password.min'      => 'يجب ألا تقل كلمة المرور عن 6 أحرف.',
         ]);
 
-        // Support login via email or username
-        $loginField = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        // Support login via email or username (using str_contains to support domains with underscores)
+        $loginField = str_contains($request->login, '@') ? 'email' : 'username';
 
         if (Auth::attempt([$loginField => $request->login, 'password' => $request->password])) {
             $user = Auth::user();

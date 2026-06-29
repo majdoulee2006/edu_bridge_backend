@@ -30,7 +30,7 @@
         <div>
             <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">الصورة (اترك فارغاً للإبقاء)</label>
             @if($announcement->image)
-                <img src="{{ asset('storage/' . $announcement->image) }}" style="height: 80px; border-radius: 0.5rem; object-fit: cover; margin-bottom: 0.5rem; display: block;">
+                <img src="{{ asset('storage/' . $announcement->image) }}" style="height: 80px; border-radius: 0.5rem; object-fit: fill; margin-bottom: 0.5rem; display: block;">
             @endif
             <input type="file" name="image" accept="image/*"
                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); cursor: pointer;">

@@ -69,7 +69,7 @@
         display: flex; align-items: center; justify-content: center;
         color: #ca8a04; position: relative;
     }
-    .announce-image-area img { width: 100%; height: 160px; object-fit: cover; }
+    .announce-image-area img { width: 100%; height: 160px; object-fit: fill; }
     .announce-badge {
         position: absolute; top: 0.75rem; right: 0.75rem;
         background-color: var(--accent-color); color: #1a1a1a;
@@ -184,7 +184,7 @@
             <div style="width: 38%; flex-shrink: 0; background: #1e293b; position: relative; overflow: hidden;">
                 @if($imgUrl)
                     <a href="{{ $imgUrl }}" target="_blank" download style="display: block; position: absolute; inset: 0;">
-                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: fill;">
                         <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0); transition: background 0.2s;"
                              onmouseover="this.style.background='rgba(0,0,0,0.35)'"
                              onmouseout="this.style.background='rgba(0,0,0,0)'">
@@ -229,7 +229,7 @@
             <div style="width: 150px; flex-shrink: 0; background: #1e293b; position: relative; overflow: hidden;">
                 @if($imgUrl)
                     <a href="{{ $imgUrl }}" target="_blank" download style="display: block; position: absolute; inset: 0;">
-                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: fill;">
                     </a>
                 @else
                     <i class="fa-solid fa-bullhorn" style="position: absolute; inset: 0; margin: auto; font-size: 2rem; color: rgba(255,255,255,0.1); width: fit-content; height: fit-content;"></i>
