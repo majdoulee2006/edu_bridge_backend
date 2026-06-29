@@ -144,7 +144,7 @@
             <tr>
                 <th>الوقت</th>
                 @foreach($days as $dayEn => $dayAr)
-                    @if(isset($grouped[$dayEn]))
+                    @if($dayEn !== 'Friday' && $dayEn !== 'Saturday')
                         <th>{{ $dayAr }}</th>
                     @endif
                 @endforeach
@@ -161,10 +161,11 @@
                     <div style="font-weight:400; font-size:0.72rem; opacity:0.7;">{{ $slotEnd }}</div>
                 </td>
                 @foreach($days as $dayEn => $dayAr)
-                    @if(isset($grouped[$dayEn]))
+                    @if($dayEn !== 'Friday' && $dayEn !== 'Saturday')
                     <td class="day-cell">
                         @php
-                            $match = $grouped[$dayEn]->first(function($s) use($slotStart){
+                            $daySchedules = $grouped->get($dayEn) ?? $grouped->get($dayAr) ?? collect();
+                            $match = $daySchedules->first(function($s) use($slotStart){
                                 return \Carbon\Carbon::parse($s->start_time)->format('H:i') === $slotStart;
                             });
                         @endphp

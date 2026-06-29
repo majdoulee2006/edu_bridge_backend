@@ -326,3 +326,46 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::post('/profile/password', [StudentWebController::class, 'updatePassword'])->name('student.profile.password');
 });
 
+// ==========================================
+// Parent Web Routes (ولي الأمر)
+// ==========================================
+use App\Http\Controllers\Web\ParentWebController;
+
+// تسجيل الدخول
+Route::get('/parent/login', [ParentWebController::class, 'showLoginForm'])->name('parent.login');
+Route::post('/parent/login', [ParentWebController::class, 'login'])->name('parent.login.post');
+Route::post('/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
+
+// العمليات المحمية
+Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
+    Route::get('/', fn() => redirect('/parent/dashboard'));
+    Route::get('/dashboard', [ParentWebController::class, 'dashboard'])->name('parent.dashboard');
+    Route::post('/select-child', [ParentWebController::class, 'selectChild'])->name('parent.select_child');
+    
+    // الأبناء
+    Route::get('/children', [ParentWebController::class, 'children'])->name('parent.children');
+    Route::post('/children/link', [ParentWebController::class, 'linkStudent'])->name('parent.children.link');
+    
+    // الجدول الدراسي
+    Route::get('/schedule', [ParentWebController::class, 'schedule'])->name('parent.schedule');
+    
+    // الواجبات
+    Route::get('/assignments', [ParentWebController::class, 'assignments'])->name('parent.assignments');
+    
+    // الدرجات والتقييمات
+    Route::get('/grades', [ParentWebController::class, 'grades'])->name('parent.grades');
+    
+    // الأذونات والطلبات
+    Route::get('/permissions', [ParentWebController::class, 'permissions'])->name('parent.permissions');
+    Route::post('/permissions/{id}/respond', [ParentWebController::class, 'respondPermission'])->name('parent.permissions.respond');
+    Route::post('/permissions/submit', [ParentWebController::class, 'submitLeaveRequest'])->name('parent.permissions.submit');
+    
+    // تقارير الأداء
+    Route::get('/reports', [ParentWebController::class, 'reports'])->name('parent.reports');
+    Route::post('/reports/request', [ParentWebController::class, 'requestReport'])->name('parent.reports.request');
+    
+    // الملف الشخصي
+    Route::get('/profile', [ParentWebController::class, 'profile'])->name('parent.profile');
+    Route::post('/profile/update', [ParentWebController::class, 'updateProfile'])->name('parent.profile.update');
+    Route::post('/profile/password', [ParentWebController::class, 'updatePassword'])->name('parent.profile.password');
+});

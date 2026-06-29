@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'affairs' => \App\Http\Middleware\CheckAffairsRole::class,
             'admin'   => \App\Http\Middleware\CheckAdminRole::class,
             'student' => \App\Http\Middleware\CheckStudentRole::class,
+            'parent'  => \App\Http\Middleware\CheckParentRole::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
