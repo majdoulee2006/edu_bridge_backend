@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\OtpMail;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -659,6 +661,11 @@ class ParentWebController extends Controller
     public function updatePassword(Request $request)
     {
         $user = auth()->user();
+
+        if (!session('parent_otp_verified')) {
+            return back()->withErrors(['current_password' => 'يرجى التحقق من هويتك أولاً عبر رمز التحقق (OTP).']);
+        }
+
         $request->validate([
             'current_password' => 'required',
             'password'         => 'required|min:6|confirmed',
@@ -678,6 +685,59 @@ class ParentWebController extends Controller
             'updated_at' => now()
         ]);
 
+        session()->forget('parent_otp_verified');
+
         return back()->with('success', 'تم تغيير كلمة المرور بنجاح!');
+    }
+
+    public function sendOTP(Request $request)
+    {
+        $user = auth()->user();
+        $otp = (string)rand(1000, 9999);
+        
+        session([
+            'parent_profile_otp' => $otp,
+            'parent_otp_expiry' => now()->addMinutes(15)
+        ]);
+
+        try {
+            Mail::to($user->email)->send(new OtpMail($otp, $user->full_name));
+        } catch (\Exception $e) {
+            logger('Parent OTP mail failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل إرسال البريد الإلكتروني. يرجى المحاولة لاحقاً.'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى بريدك الإلكتروني.'
+        ]);
+    }
+
+    public function verifyOTP(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|numeric'
+        ]);
+
+        $sessionOtp = session('parent_profile_otp');
+        $expiry = session('parent_otp_expiry');
+
+        if ($sessionOtp && $expiry && now()->lessThan($expiry) && $sessionOtp == $request->otp) {
+            session(['parent_otp_verified' => true]);
+            session()->forget(['parent_profile_otp', 'parent_otp_expiry']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم التحقق بنجاح!'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'رمز التحقق غير صحيح أو منتهي الصلاحية.'
+        ]);
     }
 }

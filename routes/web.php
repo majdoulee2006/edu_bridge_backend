@@ -368,4 +368,6 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::get('/profile', [ParentWebController::class, 'profile'])->name('parent.profile');
     Route::post('/profile/update', [ParentWebController::class, 'updateProfile'])->name('parent.profile.update');
     Route::post('/profile/password', [ParentWebController::class, 'updatePassword'])->name('parent.profile.password');
+    Route::post('/profile/send-otp', [ParentWebController::class, 'sendOTP'])->name('parent.profile.send_otp');
+    Route::post('/profile/verify-otp', [ParentWebController::class, 'verifyOTP'])->name('parent.profile.verify_otp');
 });

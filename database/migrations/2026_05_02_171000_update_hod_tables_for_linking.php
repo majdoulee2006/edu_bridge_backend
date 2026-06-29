@@ -22,7 +22,7 @@ return new class extends Migration
         Schema::create('report_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('head_id')->constrained('users', 'user_id')->onDelete('cascade'); // رئيس القسم
-            $table->foreignId('teacher_id')->constrained('teachers', 'teacher_id')->onDelete('cascade'); // المدرب المطلوب منه
+            $table->foreignId('teacher_id')->nullable()->constrained('teachers', 'teacher_id')->onDelete('cascade'); // المدرب المطلوب منه
             $table->foreignId('student_id')->constrained('students', 'student_id')->onDelete('cascade'); // الطالب المعني
             $table->enum('report_type', ['academic', 'behavioral']);
             $table->text('notes')->nullable();
