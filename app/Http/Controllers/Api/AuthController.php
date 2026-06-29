@@ -190,17 +190,42 @@ class AuthController extends Controller
             }
         }
 
-        // تحقق من رقم الابن لولي الأمر
-        if ($request->role === 'parent' && $request->child_university_id) {
-            $childUid = \DB::table('university_ids')
-                ->where('university_id', $request->child_university_id)
-                ->where('role', 'student')
-                ->first();
-            if (!$childUid) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'الرقم الجامعي للطفل غير موجود.',
-                ], 422);
+        // تحقق من أرقام الأبناء لولي الأمر
+        if ($request->role === 'parent') {
+            $parentLastName = mb_strtolower(trim($request->last_name ?? ''));
+            $idsToCheck = array_filter((array) ($request->children_ids ?? []), fn($v) => !empty($v));
+
+            foreach ($idsToCheck as $childId) {
+                // ابحث عن الطالب بالرقم الجامعي
+                $childUser = User::where('university_id', $childId)->first();
+
+                if (!$childUser) {
+                    // جرب جدول university_ids
+                    $uid = \DB::table('university_ids')->where('university_id', $childId)->first();
+                    if (!$uid) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "الرقم الجامعي ({$childId}) غير موجود.",
+                        ], 422);
+                    }
+                    $childUser = User::find($uid->user_id);
+                }
+
+                if (!$childUser) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "الرقم الجامعي ({$childId}) غير مرتبط بطالب.",
+                    ], 422);
+                }
+
+                // تحقق من تطابق الاسم الأخير
+                $childLastName = mb_strtolower(trim($childUser->last_name ?? ''));
+                if ($parentLastName && $childLastName && $childLastName !== $parentLastName) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "الرقم الجامعي ({$childId}) لا ينتمي لأحد أبنائك — الاسم الأخير غير متطابق.",
+                    ], 422);
+                }
             }
         }
 
@@ -260,11 +285,15 @@ class AuthController extends Controller
         ]);
 
         if ($request->role === 'student') {
+            // نقل صورة الطالب المرجعية من جدول university_ids (اللي رفعها موظف الشؤون)
+            $referencePhoto = isset($uid) && !empty($uid->photo) ? $uid->photo : null;
+
             $student = Student::create([
-                'user_id'      => $user->user_id,
-                'student_code' => $request->university_id,
-                'level'        => $request->academic_year ?? 'السنة الأولى',
-                'birth_date'   => $request->birth_date,
+                'user_id'         => $user->user_id,
+                'student_code'    => $request->university_id,
+                'level'           => $request->academic_year ?? 'السنة الأولى',
+                'birth_date'      => $request->birth_date,
+                'reference_photo' => $referencePhoto,
             ]);
 
             // Auto-enroll: سجّل الطالب بكل مواد برنامجه بناءً على الفرع/التخصص

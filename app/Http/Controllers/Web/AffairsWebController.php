@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\Notification;
 use App\Models\Message;
@@ -345,7 +346,12 @@ class AffairsWebController extends Controller
     public function storeUniversityId(Request $request)
     {
         $request->validate([
-            'full_name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name'  => 'required|string|max:255',
+            'date_of_birth' => 'nullable|date',
+            'phone'      => 'nullable|string|max:20',
+            'telegram_chat_id' => 'nullable|string|max:50',
+            'photo'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
 
         $year = date('Y');
@@ -361,11 +367,22 @@ class AffairsWebController extends Controller
             $newId = $year . '01';
         }
 
+        $fullName = trim($request->first_name . ' ' . $request->last_name);
         $telegramChatId = $request->telegram_chat_id ? trim($request->telegram_chat_id) : null;
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('student_photos', 'public');
+        }
 
         DB::table('university_ids')->insert([
             'university_id'    => $newId,
-            'full_name'        => $request->full_name,
+            'full_name'        => $fullName,
+            'first_name'       => $request->first_name,
+            'last_name'        => $request->last_name,
+            'date_of_birth'    => $request->date_of_birth,
+            'phone'            => $request->phone,
+            'photo'            => $photoPath,
             'role'             => 'student',
             'is_used'          => false,
             'telegram_chat_id' => $telegramChatId,
@@ -374,13 +391,36 @@ class AffairsWebController extends Controller
             'updated_at'       => now(),
         ]);
 
+        // ── إرسال رسالة تليجرام للطالب بمعلومات الرقم الجامعي ──
+        if ($telegramChatId) {
+            try {
+                $telegram = new TelegramService();
+                $defaultPassword = $newId; // كلمة المرور الافتراضية = الرقم الجامعي
+                $telegram->sendCredentials(
+                    (int) $telegramChatId,
+                    $newId,
+                    $defaultPassword,
+                    $fullName,
+                    '',
+                    $request->date_of_birth ?? ''
+                );
+            } catch (\Exception $e) {
+                Log::error('Telegram sendCredentials error: ' . $e->getMessage());
+            }
+        }
+
         return back()->with('success', 'تم إضافة الرقم الجامعي بنجاح وتوليد الرقم: ' . $newId);
     }
 
     public function updateUniversityId(Request $request, $id)
     {
         $request->validate([
-            'full_name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name'  => 'required|string|max:255',
+            'date_of_birth' => 'nullable|date',
+            'phone'      => 'nullable|string|max:20',
+            'telegram_chat_id' => 'nullable|string|max:50',
+            'photo'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
 
         $uid = DB::table('university_ids')->where('id', $id)->first();
@@ -388,12 +428,29 @@ class AffairsWebController extends Controller
             return back()->with('error', 'الرقم الجامعي غير موجود.');
         }
 
-        DB::table('university_ids')->where('id', $id)->update([
-            'full_name' => $request->full_name,
-            'updated_at' => now(),
-        ]);
+        $fullName = trim($request->first_name . ' ' . $request->last_name);
 
-        return back()->with('success', 'تم تحديث الاسم بنجاح.');
+        $updates = [
+            'full_name'        => $fullName,
+            'first_name'       => $request->first_name,
+            'last_name'        => $request->last_name,
+            'date_of_birth'    => $request->date_of_birth,
+            'phone'            => $request->phone,
+            'telegram_chat_id' => $request->telegram_chat_id ? trim($request->telegram_chat_id) : null,
+            'updated_at'       => now(),
+        ];
+
+        if ($request->hasFile('photo')) {
+            // حذف الصورة القديمة إذا موجودة
+            if ($uid->photo) {
+                Storage::disk('public')->delete($uid->photo);
+            }
+            $updates['photo'] = $request->file('photo')->store('student_photos', 'public');
+        }
+
+        DB::table('university_ids')->where('id', $id)->update($updates);
+
+        return back()->with('success', 'تم تحديث البيانات بنجاح.');
     }
 
     public function deleteUniversityId($id)

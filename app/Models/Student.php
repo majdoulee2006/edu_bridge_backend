@@ -19,6 +19,7 @@ class Student extends Model
         'birth_date',
         'face_embedding',
         'requires_face_reset',
+        'reference_photo',
     ];
 
     protected $casts = [

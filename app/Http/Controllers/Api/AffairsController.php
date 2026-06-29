@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class AffairsController extends Controller
@@ -14,29 +15,70 @@ class AffairsController extends Controller
     // ── الأرقام الجامعية ──────────────────────────────────────────
     public function listUniversityIds(Request $request)
     {
-        $ids = DB::table('university_ids')->orderByDesc('created_at')->get();
+        $ids = DB::table('university_ids')->orderByDesc('created_at')->get()->map(function ($item) {
+            $item->photo_url = $item->photo ? url('storage/' . $item->photo) : null;
+            return $item;
+        });
         return response()->json(['success' => true, 'data' => $ids]);
     }
 
     public function addUniversityId(Request $request)
     {
         $v = Validator::make($request->all(), [
-            'university_id' => 'required|string|unique:university_ids,university_id',
-            'full_name'     => 'required|string|max:255',
+            'university_id'    => 'required|string|unique:university_ids,university_id',
+            'full_name'        => 'nullable|string|max:255',
+            'first_name'       => 'nullable|string|max:255',
+            'last_name'        => 'nullable|string|max:255',
+            'date_of_birth'    => 'nullable|date',
+            'phone'            => 'nullable|string|max:20',
+            'telegram_chat_id' => 'nullable|string|max:50',
+            'photo'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
         ]);
         if ($v->fails()) {
             return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
         }
 
+        $fullName = $request->full_name ?? trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('student_photos', 'public');
+        }
+
+        $telegramChatId = $request->telegram_chat_id ? trim($request->telegram_chat_id) : null;
+
         DB::table('university_ids')->insert([
-            'university_id' => $request->university_id,
-            'full_name'     => $request->full_name,
-            'role'          => 'student',
-            'is_used'       => false,
-            'created_by'    => $request->user()->user_id,
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'university_id'    => $request->university_id,
+            'full_name'        => $fullName,
+            'first_name'       => $request->first_name,
+            'last_name'        => $request->last_name,
+            'date_of_birth'    => $request->date_of_birth,
+            'phone'            => $request->phone,
+            'photo'            => $photoPath,
+            'telegram_chat_id' => $telegramChatId,
+            'role'             => 'student',
+            'is_used'          => false,
+            'created_by'       => $request->user()->user_id,
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
+
+        // إرسال رسالة تليجرام
+        if ($telegramChatId) {
+            try {
+                $telegram = new \App\Services\TelegramService();
+                $telegram->sendCredentials(
+                    (int) $telegramChatId,
+                    $request->university_id,
+                    $request->university_id,
+                    $fullName,
+                    '',
+                    $request->date_of_birth ?? ''
+                );
+            } catch (\Exception $e) {
+                \Log::error('Telegram sendCredentials error: ' . $e->getMessage());
+            }
+        }
 
         return response()->json(['success' => true, 'message' => 'تم إضافة الرقم الجامعي بنجاح']);
     }
