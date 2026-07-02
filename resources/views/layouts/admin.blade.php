@@ -5,6 +5,7 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Edu-Bridge | @yield('title', 'الإدارة')</title>
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 
     <!-- Google Fonts: Cairo -->
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -139,13 +140,23 @@
                     التقارير
                 </a>
 
-                {{-- Notifications (merged with messages) --}}
-                <a href="{{ route('admin.notifications') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/notifications*') || Request::is('admin/messages*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                {{-- Notifications --}}
+                <a href="{{ route('admin.notifications') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/notifications*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
                     <i class="fa-solid fa-bell text-base"></i>
                     الإشعارات
                     @php $unread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unread > 0)
                         <span class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-black">{{ $unread }}</span>
+                    @endif
+                </a>
+
+                {{-- Messages --}}
+                <a href="{{ route('admin.messages') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/messages*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                    <i class="fa-solid fa-comments text-base"></i>
+                    الرسائل
+                    @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
+                    @if($unreadMessages > 0)
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-black">{{ $unreadMessages }}</span>
                     @endif
                 </a>
 

@@ -370,4 +370,11 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::post('/profile/password', [ParentWebController::class, 'updatePassword'])->name('parent.profile.password');
     Route::post('/profile/send-otp', [ParentWebController::class, 'sendOTP'])->name('parent.profile.send_otp');
     Route::post('/profile/verify-otp', [ParentWebController::class, 'verifyOTP'])->name('parent.profile.verify_otp');
+Route::middleware(['auth'])->group(function () {
+    Route::get('/chat/contacts', [App\Http\Controllers\ChatController::class, 'getContacts'])->name('chat.contacts');
+    Route::post('/chat/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');
+    Route::get('/chat/messages/{otherUserId}', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::put('/chat/messages/{otherUserId}/mark-read', [App\Http\Controllers\ChatController::class, 'markAsRead'])->name('chat.mark-read');
+    Route::get('/chat/messages/unread-count', [App\Http\Controllers\ChatController::class, 'getUnreadCount'])->name('chat.unread-count');
+});
 });

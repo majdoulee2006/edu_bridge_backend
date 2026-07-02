@@ -18,9 +18,13 @@ use App\Models\StudentParent;
 
 class ParentController extends Controller
 {
-    public function getChildren(Request $request)
+    public function getChildren(Request $request, $parentId = null)
     {
-        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+        if ($parentId) {
+            $parent = Parents::find($parentId);
+        } else {
+            $parent = Parents::where('user_id', $request->user()->user_id)->first();
+        }
 
         if (!$parent) {
             return response()->json(['success' => false, 'message' => 'هذه الخدمة متاحة فقط لأولياء الأمور'], 403);

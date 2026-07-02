@@ -7,6 +7,7 @@ Broadcast::channel('chat.{id}', function ($user, $id) {
     // هون بنشيك: هل الـ ID اللي عم يحاول يفتح القناة هو نفسه الـ ID تبع اليوزر اللي مسجل دخول؟
     return (int) $user->user_id === (int) $id;
 });
+
 // قناة لمعرفة المتصلين (Presence Channel)
 Broadcast::channel('presence-online', function ($user) {
     if ($user) {

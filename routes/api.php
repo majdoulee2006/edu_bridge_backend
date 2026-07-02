@@ -83,51 +83,41 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/groups/{groupId}/messages', [ChatController::class, 'getGroupMessages']);
 
     #========= روابط واجهات الطالب ==========
-    Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
-    Route::get('/student/profile', [StudentController::class, 'getProfileData']);
-    Route::post('/student/profile/update', [StudentController::class, 'updateProfile']);
-    Route::get('/student/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
-    Route::get('/student/my-schedule', [StudentController::class, 'getMySchedule']);
-    Route::get('/student/my-exams', [StudentController::class, 'getMyExams']);
-    Route::get('/student/my-exams/pdf', [StudentController::class, 'exportExamsPdf']);
-    Route::get('/student/my-exams/excel', [StudentController::class, 'exportExamsExcel']);
-    Route::get('/student/grade-event/{id}', [StudentController::class, 'getGradeEventForStudent']);
-    Route::get('/student/assignments', [StudentController::class, 'getMyAssignments']);
-    Route::post('/student/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
-    Route::get('/student/lectures', [StudentController::class, 'getMyLectures']);
-    Route::get('/student/courses', [StudentController::class, 'getMyCourses']);
-    Route::get('/student/grades', [StudentController::class, 'getMyGrades']);
-    Route::get('/student/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
+#========= روابط واجهات الطالب ==========
+    Route::prefix('student')->middleware('role:student')->group(function () {
+        Route::get('/dashboard', [StudentController::class, 'getDashboardData']);
+        Route::get('/profile', [StudentController::class, 'getProfileData']);
+        Route::post('/profile/update', [StudentController::class, 'updateProfile']);
+        Route::get('/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
+        Route::get('/my-schedule', [StudentController::class, 'getMySchedule']);
+        Route::get('/my-exams', [StudentController::class, 'getMyExams']);
+        Route::get('/my-exams/pdf', [StudentController::class, 'exportExamsPdf']);
+        Route::get('/my-exams/excel', [StudentController::class, 'exportExamsExcel']);
+        
+        // المسار الخاص بك الذي تم إضافته للمجموعة
+        Route::get('/grade-event/{id}', [StudentController::class, 'getGradeEventForStudent']); 
+        
+        Route::get('/assignments', [StudentController::class, 'getMyAssignments']);
+        Route::post('/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
+        Route::get('/lectures', [StudentController::class, 'getMyLectures']);
+        Route::get('/courses', [StudentController::class, 'getMyCourses']);
+        Route::get('/grades', [StudentController::class, 'getMyGrades']);
+        Route::get('/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
+    });
 
-    // مسارات الحضور والإجازات
-    Route::get('/student/attendance', [StudentController::class, 'getMyAttendance']);
-    Route::post('/student/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
-    Route::post('/student/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
-    Route::get('/student/leave-requests', [StudentController::class, 'getMyAbsenceRequests']);
-    Route::post('/student/leave-requests', [StudentController::class, 'requestAbsence']);
 
-    // مسارات الإشعارات للطالب
-    Route::get('/student/notifications', [StudentController::class, 'getNotifications']);
-    Route::put('/student/notifications/{id}/read', [StudentController::class, 'markNotificationAsRead']);
-    Route::put('/student/notifications/read-all', [StudentController::class, 'markAllNotificationsAsRead']);
 
-    #========= روابط واجهات ولي الأمر ==========
-    Route::get('/parent/children', function (Request $request) {
-        $parent = \App\Models\Parents::where('user_id', $request->user()->user_id)->first();
-        if (!$parent) return response()->json(['success' => true, 'data' => []]);
-        $children = $parent->students()->with(['user', 'attendances', 'grades'])->get()->map(function ($student) {
-            $att = $student->attendances;
-            return [
-                'student_id'      => $student->student_id,
-                'full_name'       => $student->user->full_name ?? '',
-                'level'           => $student->level ?? '',
-                'attendance_rate' => $att->count() > 0
-                    ? round(($att->where('status', 'present')->count() / $att->count()) * 100, 1)
-                    : 0,
-                'average_grade'   => round($student->grades->avg('score') ?? 0, 1),
-            ];
-        });
-        return response()->json(['success' => true, 'data' => $children]);
+        // مسارات الحضور والإجازات
+        Route::get('/attendance', [StudentController::class, 'getMyAttendance']);
+        Route::post('/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
+        Route::post('/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
+        Route::get('/leave-requests', [StudentController::class, 'getMyAbsenceRequests']);
+        Route::post('/leave-requests', [StudentController::class, 'requestAbsence']);
+
+        // مسارات الإشعارات للطالب
+        Route::get('/notifications', [StudentController::class, 'getNotifications']);
+        Route::put('/notifications/{id}/read', [StudentController::class, 'markNotificationAsRead']);
+        Route::put('/notifications/read-all', [StudentController::class, 'markAllNotificationsAsRead']);
     });
     Route::get('/parent/announcements', function () {
         $announcements = \DB::table('announcements')
@@ -319,7 +309,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ========== Parent Routes ==========
     Route::prefix('parent')->middleware('role:parent')->group(function () {
         Route::get('/dashboard', [ParentController::class, 'dashboard']);
-        Route::get('/children', [ParentController::class, 'getChildren']);
+        Route::get('/children/{parent_id}', [ParentController::class, 'getChildren']);
         Route::post('/add-student', [ParentController::class, 'linkStudent']);
         Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
         Route::get('/children/{id}/details', [ParentController::class, 'getChildDetails']);
@@ -331,7 +321,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/history', [ParentController::class, 'getReportsHistory']);
     });
 
-});
+    Route::get('/student/info/{id}', function ($id) {
+        return DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $id)
+            ->select('users.full_name', 'users.branch as department', 'students.level', 'students.student_code')
+            ->first();
+    })->middleware('role:student,parent');
+
+
 
 // -----------------------------------------------------------
 // روابط ولي الأمر العامة (بدون توكن)
@@ -347,16 +345,6 @@ Route::get('/parent/info/{user_id}', function ($user_id) {
         ]);
     }
     return response()->json(['message' => 'المستخدم غير موجود'], 404);
-});
-
-Route::get('/parent/children/{parent_id}', function ($parent_id) {
-    $children = DB::table('parent_students')
-        ->join('students', 'parent_students.student_id', '=', 'students.student_id')
-        ->join('users', 'students.user_id', '=', 'users.user_id')
-        ->where('parent_students.parent_id', $parent_id)
-        ->select('students.student_id', 'users.full_name', 'students.level')
-        ->get();
-    return response()->json($children);
 });
 
 Route::post('/parent/link-student', function (Request $request) {
@@ -395,13 +383,7 @@ Route::get('/user/profile/{id}', function ($id) {
         ->first();
 });
 
-Route::get('/student/info/{id}', function ($id) {
-    return DB::table('students')
-        ->join('users', 'students.user_id', '=', 'users.user_id')
-        ->where('students.student_id', $id)
-        ->select('users.full_name', 'users.branch as department', 'students.level', 'students.student_code')
-        ->first();
-});
+
 
 Route::get('/parent/notifications/{id}', function ($id) {
     return DB::table('notifications')

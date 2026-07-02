@@ -48,10 +48,83 @@ class ChatController extends Controller
             return response()->json(['status' => 'success', 'data' => []]);
         }
 
-        $contacts = \App\Models\User::whereIn('role_id', $allowedRoles)
-            ->where('user_id', '!=', $user->user_id)
-            ->get()
-            ->map(function ($contact) {
+        // Get department information for filtering
+        $userDeptName = $user->department;
+        $deptId = null;
+
+        if ($myRoleId == 5) { // HOD
+            $myHead = \DB::table('heads')->where('user_id', $user->user_id)->first();
+            if ($myHead) {
+                $deptId = $myHead->department_id;
+                $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
+            }
+        } else {
+            $dept = $userDeptName ? \DB::table('departments')->where('name', $userDeptName)->first() : null;
+            $deptId = $dept ? $dept->department_id : null;
+        }
+
+        $contactsQuery = \App\Models\User::whereIn('role_id', $allowedRoles)
+            ->where('user_id', '!=', $user->user_id);
+
+        if ($myRoleId == 4) { // Parent
+            // Get child departments
+            $childDepartments = collect();
+            $parentRecord = \DB::table('parents')->where('user_id', $user->user_id)->first();
+            if ($parentRecord) {
+                $studentIds = \DB::table('parent_students')->where('parent_id', $parentRecord->parent_id)->pluck('student_id');
+                $childUserIds = \DB::table('students')->whereIn('student_id', $studentIds)->pluck('user_id');
+                $childDepts = \App\Models\User::whereIn('user_id', $childUserIds)->pluck('department')->filter()->unique();
+                $childDepartments = $childDepartments->merge($childDepts);
+            }
+            if (!empty($user->children_ids)) {
+                $childDepts = \App\Models\User::whereIn('user_id', $user->children_ids)->pluck('department')->filter()->unique();
+                $childDepartments = $childDepartments->merge($childDepts);
+            }
+            $childDepartments = $childDepartments->unique()->values();
+
+            $deptIds = \DB::table('departments')
+                ->whereIn('name', $childDepartments)
+                ->pluck('department_id');
+
+            // Parent should only see HODs of their children's departments OR Manager/Admin
+            $contactsQuery->where(function ($q) use ($deptIds) {
+                $q->where(function ($subQ) use ($deptIds) {
+                    $subQ->where('role_id', 5) // HOD role
+                      ->whereIn('user_id', function ($sub) use ($deptIds) {
+                          $sub->select('user_id')
+                              ->from('heads')
+                              ->whereIn('department_id', $deptIds);
+                      });
+                })->orWhere('role_id', 1); // Manager/Admin role
+            });
+        } elseif ($userDeptName) {
+            // Filter by department for students, teachers, and department heads
+            $contactsQuery->where(function ($query) use ($userDeptName, $deptId) {
+                // Students and Teachers matching the department name string
+                $query->where(function ($q) use ($userDeptName) {
+                    $q->whereIn('role_id', [2, 3])
+                      ->where('department', $userDeptName);
+                });
+                
+                // Department Heads matching the department_id in heads table
+                if ($deptId) {
+                    $query->orWhere(function ($q) use ($deptId) {
+                        $q->where('role_id', 5)
+                          ->whereIn('user_id', function ($sub) use ($deptId) {
+                              $sub->select('user_id')
+                                  ->from('heads')
+                                  ->where('department_id', $deptId);
+                          });
+                    });
+                }
+                
+                // Allow other roles without department restriction
+                $query->orWhereNotIn('role_id', [2, 3, 5]);
+            });
+        }
+
+        $contacts = $contactsQuery->get()
+            ->map(function ($contact) use ($user) {
                 $roleName = 'User';
                 switch ($contact->role_id) {
                     case 1: $roleName = 'Administration'; break;
@@ -62,14 +135,47 @@ class ChatController extends Controller
                     case 6: $roleName = 'Affairs Officer'; break;
                 }
 
+                // Get the latest message between user and contact
+                $latestMessage = \App\Models\Message::where(function ($q) use ($user, $contact) {
+                    $q->where('sender_id', $user->user_id)->where('receiver_id', $contact->user_id);
+                })->orWhere(function ($q) use ($user, $contact) {
+                    $q->where('sender_id', $contact->user_id)->where('receiver_id', $user->user_id);
+                })->latest('created_at')->first();
+
+                // Unread messages count from this contact to the user
+                $unreadCount = \App\Models\Message::where('sender_id', $contact->user_id)
+                    ->where('receiver_id', $user->user_id)
+                    ->where('is_read', 0)
+                    ->count();
+
+                // Format time for the UI
+                $timeStr = null;
+                if ($latestMessage) {
+                    $createdAt = $latestMessage->created_at;
+                    if ($createdAt->isToday()) {
+                        $timeStr = $createdAt->format('h:i A');
+                        $timeStr = str_replace(['AM', 'PM'], ['ص', 'م'], $timeStr);
+                    } elseif ($createdAt->isYesterday()) {
+                        $timeStr = 'أمس';
+                    } else {
+                        $timeStr = $createdAt->format('Y-m-d');
+                    }
+                }
+
                 return [
                     'id' => (string) $contact->user_id,
                     'name' => $contact->full_name ?? $contact->name ?? 'Unknown',
                     'role' => $roleName,
-                    'unread' => 0, 
+                    'unread' => $unreadCount,
                     'image' => $contact->avatar ? asset('storage/' . $contact->avatar) : null,
+                    'last_message' => $latestMessage ? $latestMessage->message : null,
+                    'last_message_time' => $latestMessage ? $latestMessage->created_at->toIso8601String() : null,
+                    'time' => $timeStr,
                 ];
             });
+
+        // Sort by latest message time, keeping contacts with no messages at the bottom
+        $contacts = $contacts->sortByDesc('last_message_time')->values();
 
         return response()->json(['status' => 'success', 'data' => $contacts]);
     }
@@ -81,7 +187,7 @@ class ChatController extends Controller
         'sender_id'   => 'required',
         'receiver_id' => 'required',
         'message'     => 'nullable|string',
-        'attachment'  => 'nullable|file|mimes:jpeg,png,jpg,pdf,doc,docx,mp3,wav,ogg,webm,m4a|max:10240',
+        'attachment'  => 'nullable|file|max:51200', // Supports all media and voice notes up to 50MB
         'reply_to_message_id' => 'nullable|exists:messages,id',
     ]);
 
@@ -144,7 +250,7 @@ class ChatController extends Controller
         ]);
     }
 
-   // 🛡️ دالة التحقق من الصلاحيات
+    // 🛡️ دالة التحقق من الصلاحيات
     private function canChat($senderRoleId, $receiverRoleId)
     {
         $roleAdmin   = 1; // الإدارة
@@ -152,7 +258,7 @@ class ChatController extends Controller
         $roleStudent = 3; // الطالب
         $roleParent  = 4; // الأهل
         $roleHead    = 5; // رئيس القسم
-        $roleAffairs = 6; // 👈 تم التعديل إلى 6 (موظف الشؤون)
+        $roleAffairs = 6; // موظف الشؤون
 
         switch ($senderRoleId) {
             case $roleTeacher:
@@ -168,16 +274,16 @@ class ChatController extends Controller
                 return in_array($receiverRoleId, [$roleAdmin, $roleHead]);
 
             case $roleHead:
-                // رئيس القسم يحكي مع: أهل، مدربين، طلاب، إدارة، شؤون
-                return in_array($receiverRoleId, [$roleParent, $roleTeacher, $roleStudent, $roleAdmin, $roleAffairs]);
+                // رئيس القسم يحكي مع: أهل، مدربين، طلاب، إدارة
+                return in_array($receiverRoleId, [$roleParent, $roleTeacher, $roleStudent, $roleAdmin]);
 
             case $roleAdmin:
                 // الإدارة تحكي مع: رئيس قسم، شؤون، مدربين
                 return in_array($receiverRoleId, [$roleHead, $roleAffairs, $roleTeacher]);
 
             case $roleAffairs:
-                // الشؤون ترد على: الإدارة، رئيس القسم
-                return in_array($receiverRoleId, [$roleAdmin, $roleHead]);
+                // الشؤون ترد على: الإدارة فقط
+                return in_array($receiverRoleId, [$roleAdmin]);
 
             default:
                 return false;
@@ -189,19 +295,17 @@ class ChatController extends Controller
         $myId = $request->user()->user_id;
 
         // تحديث كل الرسائل اللي بعتها الشخص التاني إلي، وكانت غير مقروءة (0) لتصير مقروءة (1)
-        \App\Models\Message::where('sender_id', $otherUserId)
+        $updatedCount = \App\Models\Message::where('sender_id', $otherUserId)
             ->where('receiver_id', $myId)
             ->where('is_read', 0)
             ->update(['is_read' => 1]);
+
+        broadcast(new \App\Events\MessagesMarkedAsRead($myId, $otherUserId))->toOthers();
 
         return response()->json([
             'status' => 'success',
             'message' => 'تم تحديث حالة الرسائل إلى مقروءة'
         ]);
-        // بعد سطر التحديث $updatedCount = ...
-      if ($updatedCount > 0) {
-           broadcast(new \App\Events\MessagesMarkedAsRead($myId, $otherUserId))->toOthers();
-        }
     }
 public function getUnreadCount(Request $request)
 {

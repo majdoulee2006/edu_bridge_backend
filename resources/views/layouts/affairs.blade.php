@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edu-Bridge | موظف الشؤون</title>
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     
     <!-- Google Fonts: Cairo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -100,6 +101,12 @@
     </style>
 
     @stack('styles')
+    <script>
+        const savedSettings = JSON.parse(localStorage.getItem('hodSettings'));
+        if (savedSettings && savedSettings.theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
 </head>
 <body>
     <div class="app-wrapper">
@@ -148,8 +155,12 @@
                 <a href="{{ url('/affairs/reports') }}" class="nav-item {{ Request::is('affairs/reports') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-lines"></i> التقارير
                 </a>
-                <a href="{{ url('/affairs/messages') }}" class="nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}">
-                    <i class="fa-solid fa-envelope"></i> الرسائل
+                <a href="{{ url('/affairs/messages') }}" class="nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}" style="position: relative;">
+                    <i class="fa-solid fa-comments"></i> الرسائل
+                    @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
+                    @if($unreadMessages > 0)
+                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
+                    @endif
                 </a>
                 <a href="{{ url('/affairs/notifications') }}" class="nav-item {{ Request::is('affairs/notifications') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-bell"></i> الإشعارات
