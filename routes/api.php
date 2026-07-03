@@ -121,6 +121,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [StudentController::class, 'getProfileData']);
         Route::post('/profile/update', [StudentController::class, 'updateProfile']);
         Route::post('/profile/initialize-face', [StudentController::class, 'initializeFaceFromPhoto']);
+        Route::post('/photo-change-request', [StudentController::class, 'requestPhotoChange']);
+        Route::get('/photo-change-request/status', [StudentController::class, 'myPhotoChangeStatus']);
         Route::get('/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
         Route::get('/my-schedule', [StudentController::class, 'getMySchedule']);
         Route::get('/my-exams', [StudentController::class, 'getMyExams']);
@@ -373,6 +375,7 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(fu
     Route::get('/dashboard',                             [AffairsController::class, 'getDashboardStats']);
 
     // Predefined IDs
+    Route::get('/university-ids/next-id',                [AffairsController::class, 'nextUniversityId']);
     Route::get('/university-ids',                        [AffairsController::class, 'listUniversityIds']);
     Route::post('/university-ids',                       [AffairsController::class, 'addUniversityId']);
     Route::post('/university-ids/{id}/update',           [AffairsController::class, 'updateUniversityId']);
@@ -418,6 +421,10 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(fu
     Route::get('/profile',                               [AffairsController::class, 'getProfile']);
     Route::post('/profile/update',                       [AffairsController::class, 'updateProfile']);
     Route::post('/profile/password',                     [AffairsController::class, 'updatePassword']);
+
+    Route::get('/photo-change-requests',                 [AffairsController::class, 'listPhotoChangeRequests']);
+    Route::post('/photo-change-requests/{id}/approve',   [AffairsController::class, 'approvePhotoChange']);
+    Route::post('/photo-change-requests/{id}/reject',    [AffairsController::class, 'rejectPhotoChange']);
 });
 
 Route::get('/user/profile/{id}', function ($id) {

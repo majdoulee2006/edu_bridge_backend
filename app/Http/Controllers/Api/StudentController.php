@@ -1204,17 +1204,27 @@ class StudentController extends Controller
             // إذا اختلف عدد القيم (تغيّر الـ format) → نعيد التسجيل تلقائياً
             $formatChanged = !empty($storedEmbedding) && count($storedEmbedding) !== count($faceEmbedding);
 
+            // كشف الـ embedding الفاسد (كل القيم متساوية = صورة موحدة اللون)
+            $isDegenerateEmbedding = !empty($storedEmbedding) &&
+                count(array_unique(array_map(fn($v) => round($v, 4), $storedEmbedding))) <= 3;
+
             if (empty($storedEmbedding) || $student->requires_face_reset || $formatChanged) {
                 return response()->json([
                     'success'       => false,
                     'message'       => 'بصمة الوجه الخاصة بك غير مهيأة، يرجى تهيئتها أولاً.',
                     'reject_reason' => 'face_not_initialized',
                 ], 400);
+            } elseif ($isDegenerateEmbedding) {
+                // الصورة المرجعية غير صالحة → تجاوز التحقق ومنح الحضور
+                $faceStatus = 'verified';
+                $faceScore  = 100.0;
+                // إعادة تعيين الـ embedding بالقيمة الحية
+                $student->update(['face_embedding' => $faceEmbedding]);
             } else {
                 // مقارنة الـ embedding مع المرجع
                 $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
 
-                if ($faceScore >= 72) {
+                if ($faceScore >= 55) {
                     $faceStatus = 'verified';
                     // تحديث تدريجي للمرجع (10%) للتكيف مع التغيرات الطبيعية
                     $updated = [];
@@ -1222,36 +1232,13 @@ class StudentController extends Controller
                         $updated[$i] = $v * 0.9 + ($faceEmbedding[$i] ?? $v) * 0.1;
                     }
                     $student->update(['face_embedding' => $updated]);
-                } elseif ($faceScore >= 55) {
+                } elseif ($faceScore >= 25) {
                     $faceStatus = 'suspicious';
                     $this->notifyTeacherFace($session, $student, 'suspicious', $faceScore);
                 } else {
-                    $faceStatus = 'rejected';
-                    $attendanceStatus = 'absent';
-                    $rejectReason     = 'face_mismatch';
-                    $this->notifyTeacherFace($session, $student, 'rejected', $faceScore);
-
-                    Attendance::updateOrCreate(
-                        [
-                            'student_id'      => $student->student_id,
-                            'lesson_id'       => $session->lesson_id,
-                            'attendance_date' => now()->toDateString(),
-                        ],
-                        [
-                            'status'        => 'absent',
-                            'excuse_status' => 'none',
-                            'face_image'    => $savedFaceImagePath,
-                            'face_score'    => $faceScore,
-                            'face_status'   => 'rejected',
-                            'reject_reason' => 'face_mismatch',
-                        ]
-                    );
-
-                    return response()->json([
-                        'success'    => false,
-                        'message'    => 'تحقق الوجه فشل. الرجاء المحاولة في ضوء أفضل أو التواصل مع المعلم.',
-                        'face_score' => $faceScore,
-                    ], 403);
+                    // درجة منخفضة جداً → نسجل الحضور كـ suspicious بدل الرفض
+                    $faceStatus = 'suspicious';
+                    $this->notifyTeacherFace($session, $student, 'suspicious', $faceScore);
                 }
             }
         }
@@ -1489,6 +1476,53 @@ class StudentController extends Controller
         ]);
 
         return response()->json(['message' => 'تم ربط الطالب بنجاح'], 200);
+    }
+
+    // ── طلب تغيير الصورة الشخصية ────────────────────────────────────
+    public function requestPhotoChange(Request $request)
+    {
+        $request->validate(['photo' => 'required|image|mimes:jpeg,png,jpg|max:5120']);
+        $user = $request->user();
+
+        // حذف الطلب المعلق القديم إن وجد
+        $old = DB::table('photo_change_requests')
+            ->where('user_id', $user->user_id)
+            ->where('status', 'pending')
+            ->first();
+        if ($old) {
+            Storage::disk('public')->delete($old->new_photo);
+            DB::table('photo_change_requests')->where('id', $old->id)->delete();
+        }
+
+        $newPath = $request->file('photo')->store('photo_requests', 'public');
+
+        DB::table('photo_change_requests')->insert([
+            'user_id'    => $user->user_id,
+            'old_photo'  => $user->avatar,
+            'new_photo'  => $newPath,
+            'status'     => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تم إرسال طلب تغيير الصورة بنجاح، في انتظار موافقة موظف الشؤون']);
+    }
+
+    public function myPhotoChangeStatus(Request $request)
+    {
+        $user = $request->user();
+        $req = DB::table('photo_change_requests')
+            ->where('user_id', $user->user_id)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$req) return response()->json(['success' => true, 'status' => null]);
+
+        return response()->json([
+            'success' => true,
+            'status'  => $req->status,
+            'created_at' => $req->created_at,
+        ]);
     }
 }
 

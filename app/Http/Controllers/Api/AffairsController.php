@@ -34,12 +34,13 @@ class AffairsController extends Controller
             ->take(6)
             ->get()
             ->map(fn($p) => [
-                'id' => $p->id,
-                'title' => $p->title,
-                'content' => $p->content,
-                'type' => $p->type,
+                'id'        => $p->id,
+                'title'     => $p->title,
+                'content'   => $p->content,
+                'type'      => $p->type,
                 'user_name' => $p->user?->full_name ?? 'المدير',
-                'created_at' => $p->created_at?->format('Y-m-d H:i'),
+                'created_at'=> $p->created_at?->format('Y-m-d H:i'),
+                'image_url' => $p->image ? url('storage/' . $p->image) : null,
             ]);
 
         return response()->json([
@@ -55,6 +56,19 @@ class AffairsController extends Controller
                 'posts' => $posts,
             ]
         ]);
+    }
+
+    // ── توليد رقم جامعي تلقائي ────────────────────────────────────
+    public function nextUniversityId()
+    {
+        $base = 2026100;
+        $last = DB::table('university_ids')
+            ->whereRaw("CAST(university_id AS UNSIGNED) >= ? AND CAST(university_id AS UNSIGNED) <= 9999999", [$base])
+            ->orderByDesc(DB::raw('CAST(university_id AS UNSIGNED)'))
+            ->value('university_id');
+
+        $nextId = $last ? ((int)$last + 1) : $base;
+        return response()->json(['success' => true, 'university_id' => (string)$nextId]);
     }
 
     // ── الأرقام الجامعية ──────────────────────────────────────────
@@ -737,5 +751,56 @@ class AffairsController extends Controller
 
         $user->update(['password' => Hash::make($request->password)]);
         return response()->json(['success' => true, 'message' => 'تم تغيير كلمة المرور بنجاح.']);
+    }
+
+    // ── طلبات تغيير الصورة ────────────────────────────────────────
+    public function listPhotoChangeRequests()
+    {
+        $requests = DB::table('photo_change_requests')
+            ->join('users', 'photo_change_requests.user_id', '=', 'users.user_id')
+            ->where('photo_change_requests.status', 'pending')
+            ->select(
+                'photo_change_requests.id',
+                'photo_change_requests.user_id',
+                'photo_change_requests.old_photo',
+                'photo_change_requests.new_photo',
+                'photo_change_requests.status',
+                'photo_change_requests.created_at',
+                'users.full_name',
+                'users.user_id as student_code'
+            )
+            ->orderByDesc('photo_change_requests.created_at')
+            ->get()
+            ->map(function ($r) {
+                $r->old_photo_url = $r->old_photo ? url('storage/' . $r->old_photo) : null;
+                $r->new_photo_url = $r->new_photo ? url('storage/' . $r->new_photo) : null;
+                return $r;
+            });
+
+        return response()->json(['success' => true, 'data' => $requests]);
+    }
+
+    public function approvePhotoChange($id)
+    {
+        $req = DB::table('photo_change_requests')->where('id', $id)->where('status', 'pending')->first();
+        if (!$req) return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+
+        // حذف الصورة القديمة وتحديث الـ avatar
+        if ($req->old_photo) Storage::disk('public')->delete($req->old_photo);
+        DB::table('users')->where('user_id', $req->user_id)->update(['avatar' => $req->new_photo]);
+        DB::table('photo_change_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
+
+        return response()->json(['success' => true, 'message' => 'تمت الموافقة على تغيير الصورة']);
+    }
+
+    public function rejectPhotoChange($id)
+    {
+        $req = DB::table('photo_change_requests')->where('id', $id)->where('status', 'pending')->first();
+        if (!$req) return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+
+        Storage::disk('public')->delete($req->new_photo);
+        DB::table('photo_change_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => now()]);
+
+        return response()->json(['success' => true, 'message' => 'تم رفض طلب تغيير الصورة']);
     }
 }
