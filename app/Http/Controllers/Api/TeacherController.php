@@ -1125,13 +1125,19 @@ class TeacherController extends Controller
             if ($parentUserId) {
                 DB::table('notifications')->insert([
                     'user_id'    => $parentUserId,
-                    'title'      => 'ت�ر�`ر ا�طا�ب جا�!ز',
-                    'message'    => 'أرس� ا��&ع��& ا�ت�ر�`ر ا�س���ْ�` ��طا�ب ' . ($studentName ?? '') . '�R �`�&ْ� ْ ا�اط�اع ع��`�! ا�آ� .',
+                    'title'      => 'تقرير الطالب جاهز',
+                    'message'    => 'أرسل المعلم التقرير السلوكي للطالب ' . ($studentName ?? '') . '، يرجى الاطلاع عليه.',
                     'type'       => 'report',
                     'is_read'    => 0,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                \App\Services\FcmService::sendToUser(
+                    $parentUserId,
+                    'تقرير الطالب جاهز',
+                    'أرسل المعلم التقرير السلوكي للطالب ' . ($studentName ?? '') . '، يرجى الاطلاع عليه.',
+                    ['type' => 'report']
+                );
             }
         } catch (\Exception $e) {
             \Log::warning('submitEvaluation side-effects failed: ' . $e->getMessage());

@@ -227,6 +227,13 @@ class ChatController extends Controller
 
     broadcast(new MessageSent($message))->toOthers();
 
+    // إرسال إشعار FCM للمستلم
+    $msgBody = $message->message ?: 'أرسل لك ملفاً مرفقاً';
+    \App\Services\FcmService::sendToUser($receiverId, $sender->full_name ?? 'رسالة جديدة', $msgBody, [
+        'type' => 'message',
+        'sender_id' => (string) $senderId,
+    ]);
+
     return response()->json(['status' => 'success', 'data' => $message], 201);
 }
     // 📩 دالة جلب المحادثة السابقة بين شخصين

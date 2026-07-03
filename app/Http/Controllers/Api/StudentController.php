@@ -999,6 +999,12 @@ class StudentController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                    \App\Services\FcmService::sendToUser(
+                        $parent->user_id,
+                        'طلب إجازة يحتاج موافقتك',
+                        'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
+                        ['type' => 'leave_request', 'related_id' => (string)$leaveRequest->id]
+                    );
                 }
             }
         }
@@ -1448,6 +1454,12 @@ class StudentController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser(
+                $headUserId,
+                'تبرير غياب جديد',
+                'قدّم الطالب ' . $studentName . ' تبريراً لغيابه بتاريخ ' . ($attendance->date ?? now()->toDateString()),
+                ['type' => 'attendance', 'related_id' => (string)$attendance->attendance_id]
+            );
         }
 
         return response()->json([

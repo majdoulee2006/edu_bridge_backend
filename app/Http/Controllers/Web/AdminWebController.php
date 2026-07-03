@@ -432,6 +432,12 @@ class AdminWebController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        \App\Services\FcmService::sendToUser(
+            $id,
+            'تم تفعيل الحساب',
+            'تهانينا! قامت الإدارة بتفعيل حسابك بنجاح. يمكنك الآن استخدام كافة الميزات.',
+            ['type' => 'system']
+        );
 
         return redirect()->back()->with('success', 'تم قبول وتفعيل حساب المستخدم بنجاح!');
     }
@@ -1052,6 +1058,12 @@ class AdminWebController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        \App\Services\FcmService::sendToUser(
+            $request->user_id,
+            'تعيين رئيس قسم',
+            'تم تعيينك رئيساً لقسم ' . $dept->name . '. مبارك!',
+            ['type' => 'system']
+        );
 
         return redirect()->route('admin.courses')->with('success', 'تم تعيين ' . $user->full_name . ' رئيساً لقسم ' . $dept->name . ' بنجاح!');
     }

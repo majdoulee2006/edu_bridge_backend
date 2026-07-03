@@ -174,6 +174,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/parent/student/{studentId}/permissions', [StudentParentController::class, 'getPermissions']);
     Route::post('/parent/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
     Route::get('/parent/notifications', [NotificationController::class, 'getNotifications']);
+    Route::put('/parent/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::put('/parent/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/parent/add-student', [ParentController::class, 'linkStudent']);
     Route::get('/parent/leave-requests', [StudentParentController::class, 'getLeaveRequests']);
     Route::post('/parent/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);

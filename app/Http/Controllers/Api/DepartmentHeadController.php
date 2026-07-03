@@ -700,6 +700,12 @@ class DepartmentHeadController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser(
+                $teacher->user_id,
+                'طلب تقرير سلوكي',
+                'طُلب منك تقرير سلوكي عن الطالب ' . $studentName,
+                ['type' => 'report']
+            );
         }
 
         return response()->json(['success' => true, 'message' => 'تم إرسال طلب التقرير السلوكي للمدرب']);

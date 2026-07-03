@@ -397,6 +397,12 @@ class ParentWebController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                \App\Services\FcmService::sendToUser(
+                    $headUserId,
+                    'طلب إجازة بانتظار موافقتك',
+                    'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
+                    ['type' => 'leave_request', 'related_id' => (string)$id]
+                );
             }
             return back()->with('success', 'تمت الموافقة على الإجازة وإحالتها لرئيس القسم.');
         } else {
@@ -415,6 +421,12 @@ class ParentWebController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                \App\Services\FcmService::sendToUser(
+                    $leaveRequest->student_id,
+                    'تم رفض طلب الإجازة',
+                    'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
+                    ['type' => 'leave_request']
+                );
             }
             return back()->with('success', 'تم رفض طلب الإجازة بنجاح.');
         }
@@ -471,6 +483,12 @@ class ParentWebController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser(
+                $headUserId,
+                'طلب إجازة من ولي الأمر',
+                'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
+                ['type' => 'leave_request', 'related_id' => (string)$leaveId]
+            );
         }
 
         return back()->with('success', 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.');
@@ -622,6 +640,12 @@ class ParentWebController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser(
+                $teacherUserId,
+                'طلب تقرير سلوكي جديد',
+                'طلب ولي أمر الطالب ' . $student->student_name . ' تقريراً سلوكياً، يرجى تعبئته.',
+                ['type' => 'report', 'related_id' => (string)$requestId]
+            );
         }
 
         return back()->with('success', 'تم إرسال طلب التقرير السلوكي للمربي بنجاح. سيظهر بالجدول فور تعبئته.');

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -179,9 +179,8 @@
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form action="{{ route('affairs.logout') }}" method="POST">
                         @csrf
-                        <button type="submit" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
-                        </button>
+                        <button type="button" onclick="showLogoutModal(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج</button>
                     </form>
                 </div>
             </nav>
@@ -279,5 +278,48 @@
         }
     </script>
     @stack('scripts')
-</body>
+
+<!-- Logout Confirmation Modal -->
+<div id="logoutModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; font-family:'Cairo',sans-serif;">
+    <div style="background:#fff; border-radius:20px; padding:2rem; max-width:380px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.2); animation:fadeIn 0.2s ease;">
+        <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+            <i class="fa-solid fa-arrow-right-from-bracket" style="font-size:1.5rem;color:#ef4444;"></i>
+        </div>
+        <h3 style="font-size:1.2rem;font-weight:800;color:#1a2633;margin-bottom:0.5rem;">تسجيل الخروج</h3>
+        <p style="color:#888;font-size:0.9rem;margin-bottom:1.5rem;">هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟</p>
+        <div style="display:flex;gap:0.8rem;justify-content:center;">
+            <button onclick="closeLogoutModal()" style="flex:1;padding:0.8rem;border-radius:12px;border:2px solid #e5e7eb;background:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;color:#555;font-family:'Cairo',sans-serif;">
+                لا، تراجع
+            </button>
+            <button onclick="confirmLogout()" style="flex:1;padding:0.8rem;border-radius:12px;border:none;background:#ef4444;color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:'Cairo',sans-serif;">
+                نعم، خروج
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var _logoutForm = null;
+
+    function showLogoutModal(form) {
+        _logoutForm = form;
+        var modal = document.getElementById('logoutModal');
+        modal.style.display = 'flex';
+    }
+
+    function closeLogoutModal() {
+        document.getElementById('logoutModal').style.display = 'none';
+        _logoutForm = null;
+    }
+
+    function confirmLogout() {
+        if (_logoutForm) _logoutForm.submit();
+    }
+
+    // Close on backdrop click
+    document.getElementById('logoutModal').addEventListener('click', function(e) {
+        if (e.target === this) closeLogoutModal();
+    });
+</script></body>
 </html>
+

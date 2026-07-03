@@ -30,4 +30,28 @@ class NotificationController extends Controller
 
       return response()->json($notifications);
   }
+
+  public function markAsRead(Request $request, $id)
+  {
+      $updated = DB::table('notifications')
+          ->where('id', $id)
+          ->where('user_id', auth()->id())
+          ->update(['is_read' => true]);
+
+      if (!$updated) {
+          return response()->json(['success' => false, 'message' => 'الإشعار غير موجود'], 404);
+      }
+
+      return response()->json(['success' => true, 'message' => 'تم تحديد الإشعار كمقروء']);
+  }
+
+  public function markAllAsRead(Request $request)
+  {
+      DB::table('notifications')
+          ->where('user_id', auth()->id())
+          ->where('is_read', false)
+          ->update(['is_read' => true]);
+
+      return response()->json(['success' => true, 'message' => 'تم تحديد جميع الإشعارات كمقروءة']);
+  }
 }

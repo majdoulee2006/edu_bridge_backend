@@ -45,7 +45,7 @@ class TeacherWebController extends Controller
             $loginField = 'username';
         }
 
-        if (Auth::attempt([$loginField => $input, 'password' => $request->password])) {
+        if (Auth::attempt([$loginField => $input, 'password' => $request->password], true)) {
             $teacher = Teacher::where('user_id', Auth::user()->getKey())->first();
             if (!$teacher) {
                 Auth::logout();
@@ -1109,6 +1109,12 @@ class TeacherWebController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        \App\Services\FcmService::sendToUser(
+            $request->receiver_id,
+            'رسالة جديدة',
+            'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            ['type' => 'message']
+        );
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => clone $message]);
@@ -1628,6 +1634,12 @@ class TeacherWebController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                \App\Services\FcmService::sendToUser(
+                    $headId,
+                    $notifTitle,
+                    'تم رفع تقرير عن الطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
+                    ['type' => 'report', 'related_id' => (string)$id]
+                );
             }
         }
 
