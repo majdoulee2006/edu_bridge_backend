@@ -123,8 +123,40 @@ class ChatController extends Controller
             });
         }
 
-        $contacts = $contactsQuery->get()
-            ->map(function ($contact) use ($user) {
+        $contactsList = $contactsQuery->get();
+        $contactIds = $contactsList->pluck('user_id')->toArray();
+
+        // Batch-fetch latest messages (avoids N+1: was 1 query per contact)
+        $latestMessages = collect();
+        $unreadCounts = collect();
+
+        if (!empty($contactIds)) {
+            $latestMessageIds = \DB::table('messages')
+                ->select(\DB::raw('MAX(id) as max_id'))
+                ->where(function ($q) use ($user, $contactIds) {
+                    $q->where('sender_id', $user->user_id)->whereIn('receiver_id', $contactIds);
+                })->orWhere(function ($q) use ($user, $contactIds) {
+                    $q->whereIn('sender_id', $contactIds)->where('receiver_id', $user->user_id);
+                })
+                ->groupBy(\DB::raw('LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id)'))
+                ->pluck('max_id');
+
+            $latestMessages = \App\Models\Message::whereIn('id', $latestMessageIds)
+                ->get()
+                ->keyBy(function ($msg) use ($user) {
+                    return $msg->sender_id == $user->user_id ? $msg->receiver_id : $msg->sender_id;
+                });
+
+            $unreadCounts = \App\Models\Message::whereIn('sender_id', $contactIds)
+                ->where('receiver_id', $user->user_id)
+                ->where('is_read', 0)
+                ->select('sender_id', \DB::raw('COUNT(*) as unread_count'))
+                ->groupBy('sender_id')
+                ->get()
+                ->keyBy('sender_id');
+        }
+
+        $contacts = $contactsList->map(function ($contact) use ($user, $latestMessages, $unreadCounts) {
                 $roleName = 'User';
                 switch ($contact->role_id) {
                     case 1: $roleName = 'Administration'; break;
@@ -135,18 +167,10 @@ class ChatController extends Controller
                     case 6: $roleName = 'Affairs Officer'; break;
                 }
 
-                // Get the latest message between user and contact
-                $latestMessage = \App\Models\Message::where(function ($q) use ($user, $contact) {
-                    $q->where('sender_id', $user->user_id)->where('receiver_id', $contact->user_id);
-                })->orWhere(function ($q) use ($user, $contact) {
-                    $q->where('sender_id', $contact->user_id)->where('receiver_id', $user->user_id);
-                })->latest('created_at')->first();
-
-                // Unread messages count from this contact to the user
-                $unreadCount = \App\Models\Message::where('sender_id', $contact->user_id)
-                    ->where('receiver_id', $user->user_id)
-                    ->where('is_read', 0)
-                    ->count();
+                $latestMessage = $latestMessages->get($contact->user_id);
+                $unreadCount = $unreadCounts->has($contact->user_id)
+                    ? $unreadCounts->get($contact->user_id)->unread_count
+                    : 0;
 
                 // Format time for the UI
                 $timeStr = null;
