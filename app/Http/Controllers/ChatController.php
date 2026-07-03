@@ -206,24 +206,21 @@ class ChatController extends Controller
 
  public function sendMessage(Request $request)
 {
-    // 1. التحقق (بدون تغيير، شلنا القيود الصارمة عشان نمرر الـ form-data)
     $request->validate([
-        'sender_id'   => 'required',
         'receiver_id' => 'required',
         'message'     => 'nullable|string',
-        'attachment'  => 'nullable|file|max:51200', // Supports all media and voice notes up to 50MB
+        'attachment'  => 'nullable|file|max:51200',
         'reply_to_message_id' => 'nullable|exists:messages,id',
     ]);
 
-    // السحر هون: تحويل المدخلات لأرقام (Integer) بغض النظر عن مصدرها
-    $senderId   = (int) $request->input('sender_id');
+    // sender is always the authenticated user — never trust the client's sender_id
+    $sender     = $request->user();
+    $senderId   = $sender->user_id;
     $receiverId = (int) $request->input('receiver_id');
 
-    // 2. استخدام القيم بعد التحويل
-    $sender = User::find($senderId);
     $receiver = User::find($receiverId);
 
-    if (!$sender || !$receiver) {
+    if (!$receiver) {
         return response()->json(['error' => 'المستخدم غير موجود'], 404);
     }
 

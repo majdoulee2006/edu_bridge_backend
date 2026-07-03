@@ -293,6 +293,7 @@ class ParentController extends Controller
                 'title' => $announcement->title,
                 'content' => $announcement->content,
                 'type' => $announcement->type,
+                'image_url' => $announcement->image ? url('storage/' . $announcement->image) : null,
                 'created_at' => $announcement->created_at ? $announcement->created_at->format('Y-m-d H:i') : null,
                 'time_ago' => $announcement->created_at ? $announcement->created_at->diffForHumans() : 'منذ قليل',
             ];
