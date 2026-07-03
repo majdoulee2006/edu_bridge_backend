@@ -120,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [StudentController::class, 'getDashboardData']);
         Route::get('/profile', [StudentController::class, 'getProfileData']);
         Route::post('/profile/update', [StudentController::class, 'updateProfile']);
+        Route::post('/profile/initialize-face', [StudentController::class, 'initializeFaceFromPhoto']);
         Route::get('/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
         Route::get('/my-schedule', [StudentController::class, 'getMySchedule']);
         Route::get('/my-exams', [StudentController::class, 'getMyExams']);

@@ -136,6 +136,8 @@ class StudentController extends Controller
                 'level' => $student->level ?? 'غير محدد',
                 // 🌟 إضافة رابط الصورة (إذا مافي صورة بنرجع null)
                 'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
+                'reference_photo_url' => $student->reference_photo ? url('storage/' . $student->reference_photo) : null,
+                'has_face_embedding' => (!empty($student->face_embedding) && !$student->requires_face_reset),
             ]
         ], 200);
     }
@@ -192,6 +194,35 @@ class StudentController extends Controller
         ]
     ], 200);
 }
+
+    /**
+     * تهيئة بصمة الوجه للطالب بناءً على الصورة المرفوعة من موظف الشؤون
+     */
+    public function initializeFaceFromPhoto(Request $request)
+    {
+        $request->validate([
+            'face_embedding' => 'required|array',
+        ]);
+
+        $student = $request->user()->student;
+
+        if (!$student->reference_photo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا توجد صورة مرجعية مرفوعة من الشؤون لك، يرجى مراجعة إدارة شؤون الطلاب.',
+            ], 400);
+        }
+
+        $student->update([
+            'face_embedding'      => $request->face_embedding,
+            'requires_face_reset' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تهيئة بصمة وجهك بنجاح من صورتك الرسمية ✅',
+        ], 200);
+    }
 
     /**
      * جلب الإشعارات الخاصة بالطالب (معدلة لتناسب الهيكل الجديد)
@@ -1168,16 +1199,11 @@ class StudentController extends Controller
             $formatChanged = !empty($storedEmbedding) && count($storedEmbedding) !== count($faceEmbedding);
 
             if (empty($storedEmbedding) || $student->requires_face_reset || $formatChanged) {
-                // أول مرة — نحفظ الـ embedding كمرجع
-                $student->update([
-                    'face_embedding'      => $faceEmbedding,
-                    'requires_face_reset' => false,
-                ]);
-                $faceStatus = 'first_time';
-                $faceScore  = 100.0;
-
-                // إشعار للمعلم
-                $this->notifyTeacherFace($session, $student, 'first_time', 100.0);
+                return response()->json([
+                    'success'       => false,
+                    'message'       => 'بصمة الوجه الخاصة بك غير مهيأة، يرجى تهيئتها أولاً.',
+                    'reject_reason' => 'face_not_initialized',
+                ], 400);
             } else {
                 // مقارنة الـ embedding مع المرجع
                 $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
