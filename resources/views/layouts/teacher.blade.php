@@ -64,6 +64,10 @@
                     <i class="fa-solid fa-chalkboard-teacher"></i>
                     المحاضرات
                 </a>
+                <a href="{{ url('/teacher/grade-events') }}" class="nav-item {{ Request::is('teacher/grade-events*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-file-pen"></i>
+                    الاختبارات
+                </a>
                 <a href="{{ url('/teacher/reports') }}" class="nav-item {{ Request::is('teacher/reports') ? 'active' : '' }}" style="position:relative;">
                     <i class="fa-solid fa-file-lines"></i> التقارير
                     @php $pendingReports = \Illuminate\Support\Facades\DB::table('report_requests')->join('teachers','report_requests.teacher_id','=','teachers.teacher_id')->where('teachers.user_id', auth()->id())->where('report_requests.status','pending')->count(); @endphp
