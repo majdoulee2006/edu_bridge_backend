@@ -73,13 +73,28 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">صورة مرفقة (اختياري)</label>
-                <input type="file" name="image" class="form-control" accept="image/*"
-                       data-crop="true" data-simple-preview="hod-create-img-preview"
-                       style="padding: 0.5rem; cursor:pointer;">
-                <img id="hod-create-img-preview" src="" alt="" style="display:none;">
-                <small style="color:#6b7280;">JPG / PNG / WebP — حتى 5MB</small>
-                @error('image') <p class="text-red-600 mt-1">{{ $message }}</p> @enderror
+                <label class="form-label">صورة مرفقة <span style="font-weight:400; color:#9ca3af;">(اختياري)</span></label>
+                <div id="hod-upload-zone"
+                     onclick="document.getElementById('hod-img-input').click()"
+                     style="border:2px dashed #d1d5db; border-radius:0.75rem; padding:1.5rem 1rem; text-align:center; cursor:pointer; background:#f9fafb; transition:border-color .2s, background .2s;"
+                     onmouseover="this.style.borderColor='#6366f1'; this.style.background='#f0f0ff';"
+                     onmouseout="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';"
+                     ondragover="event.preventDefault(); this.style.borderColor='#6366f1'; this.style.background='#f0f0ff';"
+                     ondragleave="this.style.borderColor='#d1d5db'; this.style.background='#f9fafb';">
+                    <input type="file" name="image" id="hod-img-input" accept="image/*"
+                           data-crop="true" data-preview-img="hod-prev-img" data-preview-wrap="hod-prev-wrap" data-placeholder="hod-prev-placeholder"
+                           style="display:none;">
+                    <div id="hod-prev-placeholder">
+                        <div style="font-size:2rem; margin-bottom:0.4rem;">🖼️</div>
+                        <p style="font-weight:600; color:#374151; font-size:0.9rem; margin:0 0 0.25rem;">اسحب الصورة هنا أو اضغط للاختيار</p>
+                        <p style="font-size:0.78rem; color:#9ca3af; margin:0;">JPG / PNG / WebP — حتى 5MB</p>
+                    </div>
+                    <div id="hod-prev-wrap" style="display:none;">
+                        <img id="hod-prev-img" src="" alt="" style="max-height:150px; border-radius:0.5rem; object-fit:cover; margin:0 auto; display:block;">
+                        <p style="margin-top:0.5rem; font-size:0.78rem; color:#6b7280;">اضغط مجدداً لتغيير الصورة</p>
+                    </div>
+                </div>
+                @error('image') <p class="text-red-600 mt-1" style="font-size:0.875rem;">{{ $message }}</p> @enderror
             </div>
 
             <div class="form-group">

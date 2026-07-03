@@ -28,14 +28,32 @@
         </div>
 
         <div>
-            <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">الصورة (اترك فارغاً للإبقاء)</label>
-            @if($announcement->image)
-                <img src="{{ asset('storage/' . $announcement->image) }}" style="height: 80px; border-radius: 0.5rem; object-fit: fill; margin-bottom: 0.5rem; display: block;">
-            @endif
-            <input type="file" name="image" accept="image/*"
-                   data-crop="true" data-simple-preview="hod-edit-img-preview"
-                   style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); cursor: pointer;">
-            <img id="hod-edit-img-preview" src="" alt="" style="display:none;">
+            <label style="display:block; font-weight:700; font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-secondary);">
+                الصورة <span style="font-weight:400;">(اترك فارغاً للإبقاء على الحالية)</span>
+            </label>
+            <div onclick="document.getElementById('hod-edit-img-input').click()"
+                 style="border:2px dashed var(--border-color); border-radius:0.75rem; padding:1.25rem 1rem; text-align:center; cursor:pointer; background:var(--bg-primary); transition:border-color .2s;"
+                 onmouseover="this.style.borderColor='var(--accent-color)'"
+                 onmouseout="this.style.borderColor='var(--border-color)'">
+                <input type="file" name="image" id="hod-edit-img-input" accept="image/*"
+                       data-crop="true" data-preview-img="hod-edit-prev-img" data-preview-wrap="hod-edit-prev-wrap" data-placeholder="hod-edit-placeholder"
+                       style="display:none;">
+                <div id="hod-edit-placeholder">
+                    @if($announcement->image)
+                        <img src="{{ asset('storage/' . $announcement->image) }}"
+                             style="max-height:130px; border-radius:0.5rem; object-fit:cover; margin:0 auto; display:block; margin-bottom:0.5rem;">
+                        <p style="font-size:0.78rem; color:var(--text-secondary); margin:0;">اضغط لتغيير الصورة</p>
+                    @else
+                        <div style="font-size:1.75rem; margin-bottom:0.35rem;">🖼️</div>
+                        <p style="font-weight:600; color:var(--text-secondary); font-size:0.88rem; margin:0 0 0.2rem;">اضغط لإضافة صورة</p>
+                        <p style="font-size:0.75rem; color:var(--text-secondary); opacity:.7; margin:0;">JPG / PNG / WebP</p>
+                    @endif
+                </div>
+                <div id="hod-edit-prev-wrap" style="display:none;">
+                    <img id="hod-edit-prev-img" src="" alt="" style="max-height:140px; border-radius:0.5rem; object-fit:cover; margin:0 auto; display:block;">
+                    <p style="margin-top:0.4rem; font-size:0.75rem; color:var(--text-secondary);">اضغط مجدداً لتغيير الصورة</p>
+                </div>
+            </div>
         </div>
 
         <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
