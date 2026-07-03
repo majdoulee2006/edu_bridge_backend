@@ -740,4 +740,75 @@ class ParentWebController extends Controller
             'message' => 'رمز التحقق غير صحيح أو منتهي الصلاحية.'
         ]);
     }
+
+    // ────────────────────────────────────────────────────────────
+    //  MESSAGES / CHAT SYSTEM
+    // ────────────────────────────────────────────────────────────
+    public function messages()
+    {
+        $currentUserId = Auth::id();
+
+        $conversations = \App\Models\Message::where('sender_id', $currentUserId)
+            ->orWhere('receiver_id', $currentUserId)
+            ->latest()
+            ->get()
+            ->map(function ($msg) use ($currentUserId) {
+                return ($msg->sender_id == $currentUserId) ? $msg->receiver_id : $msg->sender_id;
+            })
+            ->unique()
+            ->values();
+
+        $contacts = \App\Models\User::whereIn('user_id', $conversations)->get();
+        $allUsers = \App\Models\User::where('user_id', '!=', $currentUserId)->get();
+
+        return $this->parentView('parent.messages', compact('contacts', 'allUsers'));
+    }
+
+    public function getConversation($userId)
+    {
+        $currentUserId = Auth::id();
+        $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where(function ($q) use ($currentUserId, $userId) {
+                $q->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+            })
+            ->orWhere(function ($q) use ($currentUserId, $userId) {
+                $q->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+            })
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        \App\Models\Message::where('sender_id', $userId)
+            ->where('receiver_id', $currentUserId)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json($messages);
+    }
+
+    public function sendMessage(Request $request)
+    {
+        $request->validate([
+            'receiver_id' => 'required',
+            'message'     => 'nullable|string',
+            'attachment'  => 'nullable|file|max:51200',
+        ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $path = $request->file('attachment')->store('chat_attachments', 'public');
+            $attachmentPath = asset('storage/' . $path);
+        }
+
+        $message = \App\Models\Message::create([
+            'sender_id'   => Auth::id(),
+            'receiver_id' => $request->receiver_id,
+            'message'     => $request->message,
+            'attachment'  => $attachmentPath,
+            'is_read'     => 0,
+        ]);
+
+        broadcast(new \App\Events\MessageSent($message))->toOthers();
+
+        return response()->json(['status' => 'success', 'data' => $message], 201);
+    }
 }

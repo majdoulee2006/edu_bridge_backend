@@ -324,6 +324,11 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::get('/profile', [StudentWebController::class, 'profile'])->name('student.profile');
     Route::post('/profile', [StudentWebController::class, 'updateProfile'])->name('student.profile.update');
     Route::post('/profile/password', [StudentWebController::class, 'updatePassword'])->name('student.profile.password');
+
+    // الرسائل
+    Route::get('/messages', [StudentWebController::class, 'messages'])->name('student.messages');
+    Route::post('/messages', [StudentWebController::class, 'sendMessage'])->name('student.messages.send');
+    Route::get('/messages/conversation/{userId}', [StudentWebController::class, 'getConversation'])->name('student.messages.conversation');
 });
 
 // ==========================================
@@ -370,6 +375,11 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::post('/profile/password', [ParentWebController::class, 'updatePassword'])->name('parent.profile.password');
     Route::post('/profile/send-otp', [ParentWebController::class, 'sendOTP'])->name('parent.profile.send_otp');
     Route::post('/profile/verify-otp', [ParentWebController::class, 'verifyOTP'])->name('parent.profile.verify_otp');
+
+    // الرسائل
+    Route::get('/messages', [ParentWebController::class, 'messages'])->name('parent.messages');
+    Route::post('/messages', [ParentWebController::class, 'sendMessage'])->name('parent.messages.send');
+    Route::get('/messages/conversation/{userId}', [ParentWebController::class, 'getConversation'])->name('parent.messages.conversation');
 Route::middleware(['auth'])->group(function () {
     Route::get('/chat/contacts', [App\Http\Controllers\ChatController::class, 'getContacts'])->name('chat.contacts');
     Route::post('/chat/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');

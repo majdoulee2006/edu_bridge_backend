@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Api\AffairsController;
 
 // خدمة ملفات التخزين (بديل الـ symlink على Windows)
 Route::get('/file/{path}', function (string $path) {
@@ -35,6 +36,37 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
 Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
+
+// -----------------------------------------------------------
+// روابط ولي الأمر العامة (بدون توكن)
+// -----------------------------------------------------------
+Route::get('/parent/info/{user_id}', function ($user_id) {
+    $user = DB::table('users')->where('user_id', $user_id)->first();
+    if ($user) {
+        return response()->json([
+            'full_name' => $user->full_name,
+            'phone'     => $user->phone ?? 'لا يوجد رقم',
+            'role'      => $user->role,
+        ]);
+    }
+    return response()->json(['message' => 'المستخدم غير موجود'], 404);
+});
+
+Route::post('/parent/link-student', function (Request $request) {
+    $student = DB::table('students')->where('student_code', $request->student_code)->first();
+    if (!$student) {
+        return response()->json(['message' => 'كود الطالب غير موجود'], 404);
+    }
+    $parent = DB::table('parents')->where('user_id', $request->user_id)->first();
+    if (!$parent) {
+        return response()->json(['message' => 'سجل الأب غير موجود'], 404);
+    }
+    DB::table('parent_students')->updateOrInsert([
+        'parent_id'  => $parent->parent_id,
+        'student_id' => $student->student_id,
+    ]);
+    return response()->json(['message' => 'تم الربط بنجاح'], 200);
+});
 
 // روابط محمية (تحتاج توكن)
 Route::middleware('auth:sanctum')->group(function () {
@@ -103,9 +135,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/courses', [StudentController::class, 'getMyCourses']);
         Route::get('/grades', [StudentController::class, 'getMyGrades']);
         Route::get('/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
-    });
-
-
 
         // مسارات الحضور والإجازات
         Route::get('/attendance', [StudentController::class, 'getMyAttendance']);
@@ -331,49 +360,61 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-// -----------------------------------------------------------
-// روابط ولي الأمر العامة (بدون توكن)
-// -----------------------------------------------------------
 
-Route::get('/parent/info/{user_id}', function ($user_id) {
-    $user = DB::table('users')->where('user_id', $user_id)->first();
-    if ($user) {
-        return response()->json([
-            'full_name' => $user->full_name,
-            'phone'     => $user->phone ?? 'لا يوجد رقم',
-            'role'      => $user->role,
-        ]);
-    }
-    return response()->json(['message' => 'المستخدم غير موجود'], 404);
-});
-
-Route::post('/parent/link-student', function (Request $request) {
-    $student = DB::table('students')->where('student_code', $request->student_code)->first();
-    if (!$student) {
-        return response()->json(['message' => 'كود الطالب غير موجود'], 404);
-    }
-    $parent = DB::table('parents')->where('user_id', $request->user_id)->first();
-    if (!$parent) {
-        return response()->json(['message' => 'سجل الأب غير موجود'], 404);
-    }
-    DB::table('parent_students')->updateOrInsert([
-        'parent_id'  => $parent->parent_id,
-        'student_id' => $student->student_id,
-    ]);
-    return response()->json(['message' => 'تم الربط بنجاح'], 200);
-});
 
 // ── Affairs API ────────────────────────────────────────────────────
-use App\Http\Controllers\Api\AffairsController;
+
 
 Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(function () {
+    // Dashboard Stats
+    Route::get('/dashboard',                             [AffairsController::class, 'getDashboardStats']);
+
+    // Predefined IDs
     Route::get('/university-ids',                        [AffairsController::class, 'listUniversityIds']);
     Route::post('/university-ids',                       [AffairsController::class, 'addUniversityId']);
+    Route::post('/university-ids/{id}/update',           [AffairsController::class, 'updateUniversityId']);
     Route::delete('/university-ids/{id}',                [AffairsController::class, 'deleteUniversityId']);
+
+    // Pending Accounts
     Route::get('/pending-accounts',                      [AffairsController::class, 'pendingAccounts']);
     Route::post('/accounts/{userId}/approve',            [AffairsController::class, 'approveAccount']);
     Route::post('/accounts/{userId}/reject',             [AffairsController::class, 'rejectAccount']);
+
+    // Accounts Management
+    Route::get('/accounts',                              [AffairsController::class, 'listAccounts']);
+    Route::post('/accounts/create',                      [AffairsController::class, 'createAccount']);
+    Route::post('/accounts/{id}/update',                 [AffairsController::class, 'updateAccount']);
+    Route::post('/accounts/{id}/toggle',                 [AffairsController::class, 'toggleAccountStatus']);
+    Route::delete('/accounts/{id}',                      [AffairsController::class, 'deleteAccount']);
     Route::post('/students/{id}/reset-device',           [AffairsController::class, 'resetDevice']);
+
+    // Metadata (departments, courses) for creating accounts
+    Route::get('/metadata',                              [AffairsController::class, 'getMetadata']);
+
+    // Leaves / Vacations
+    Route::get('/leaves',                                [AffairsController::class, 'listLeaves']);
+    Route::post('/leaves/{id}/status',                   [AffairsController::class, 'updateLeaveStatus']);
+
+    // Calendar
+    Route::get('/calendar',                              [AffairsController::class, 'listCalendarEvents']);
+    Route::post('/calendar/events',                      [AffairsController::class, 'storeCalendarEvent']);
+    Route::post('/calendar/events/update/{id}',          [AffairsController::class, 'updateCalendarEvent']);
+    Route::post('/calendar/events/delete/{id}',          [AffairsController::class, 'deleteCalendarEvent']);
+
+    // Messages
+    Route::get('/messages',                              [AffairsController::class, 'listMessages']);
+    Route::get('/messages/conversation/{userId}',        [AffairsController::class, 'getConversation']);
+    Route::post('/messages',                             [AffairsController::class, 'sendMessage']);
+
+    // Notifications
+    Route::get('/notifications',                         [AffairsController::class, 'listNotifications']);
+    Route::post('/notifications/{id}/read',              [AffairsController::class, 'markNotificationRead']);
+    Route::post('/notifications/read-all',               [AffairsController::class, 'markAllNotificationsRead']);
+
+    // Profile
+    Route::get('/profile',                               [AffairsController::class, 'getProfile']);
+    Route::post('/profile/update',                       [AffairsController::class, 'updateProfile']);
+    Route::post('/profile/password',                     [AffairsController::class, 'updatePassword']);
 });
 
 Route::get('/user/profile/{id}', function ($id) {
@@ -392,5 +433,7 @@ Route::get('/parent/notifications/{id}', function ($id) {
         ->get();
 
     });
+});
+
 
 
