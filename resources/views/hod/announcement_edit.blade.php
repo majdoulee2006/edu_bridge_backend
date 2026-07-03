@@ -33,7 +33,9 @@
                 <img src="{{ asset('storage/' . $announcement->image) }}" style="height: 80px; border-radius: 0.5rem; object-fit: fill; margin-bottom: 0.5rem; display: block;">
             @endif
             <input type="file" name="image" accept="image/*"
+                   data-crop="true" data-simple-preview="hod-edit-img-preview"
                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); cursor: pointer;">
+            <img id="hod-edit-img-preview" src="" alt="" style="display:none;">
         </div>
 
         <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
@@ -48,4 +50,6 @@
         </div>
     </form>
 </div>
+
+@include('partials.image_cropper')
 @endsection

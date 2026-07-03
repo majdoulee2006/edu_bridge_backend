@@ -75,7 +75,9 @@
             <div class="form-group">
                 <label class="form-label">صورة مرفقة (اختياري)</label>
                 <input type="file" name="image" class="form-control" accept="image/*"
+                       data-crop="true" data-simple-preview="hod-create-img-preview"
                        style="padding: 0.5rem; cursor:pointer;">
+                <img id="hod-create-img-preview" src="" alt="" style="display:none;">
                 <small style="color:#6b7280;">JPG / PNG / WebP — حتى 5MB</small>
                 @error('image') <p class="text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
@@ -96,15 +98,14 @@
 </div>
 
 <script>
-    // إظهار/إخفاء اختيار الدورة حسب نوع الإعلان
     const typeSelect = document.getElementById('typeSelect');
     const courseDiv = document.getElementById('courseDiv');
-
     function toggleCourseDiv() {
         courseDiv.style.display = typeSelect.value === 'course_specific' ? 'block' : 'none';
     }
-
     typeSelect.addEventListener('change', toggleCourseDiv);
     document.addEventListener('DOMContentLoaded', toggleCourseDiv);
 </script>
+
+@include('partials.image_cropper')
 @endsection
