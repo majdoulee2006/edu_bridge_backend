@@ -53,13 +53,24 @@
 
     <script>
         // Immediately set the theme to avoid flicker
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            document.documentElement.classList.remove('light');
-        } else {
-            document.documentElement.classList.add('light');
-            document.documentElement.classList.remove('dark');
-        }
+        // Resolve theme: check both keys so all layouts share the preference
+        (function() {
+            var colorTheme  = localStorage.getItem('color-theme');
+            var hodRaw      = localStorage.getItem('hodSettings');
+            var hodTheme    = hodRaw ? (JSON.parse(hodRaw).theme || null) : null;
+            // hodSettings wins if color-theme is absent
+            var resolved    = colorTheme || hodTheme;
+            var isDark      = resolved === 'dark' || (!resolved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            var theme       = isDark ? 'dark' : 'light';
+            // Ensure both keys agree
+            localStorage.setItem('color-theme', theme);
+            if (hodRaw) {
+                var h = JSON.parse(hodRaw); h.theme = theme;
+                localStorage.setItem('hodSettings', JSON.stringify(h));
+            }
+            document.documentElement.classList.toggle('dark',  isDark);
+            document.documentElement.classList.toggle('light', !isDark);
+        })();
 
         // Immediately load custom font size to prevent layout shift
         const savedFontSize = localStorage.getItem('app-font-size');
@@ -318,15 +329,16 @@
         }
 
         themeToggleBtn.addEventListener('click', function() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-                localStorage.setItem('color-theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark');
-                document.documentElement.classList.remove('light');
-                localStorage.setItem('color-theme', 'dark');
-            }
+            var isDark  = document.documentElement.classList.contains('dark');
+            var newTheme = isDark ? 'light' : 'dark';
+            document.documentElement.classList.toggle('dark',  !isDark);
+            document.documentElement.classList.toggle('light',  isDark);
+            // Save to both keys so HOD/teacher/other layouts pick it up
+            localStorage.setItem('color-theme', newTheme);
+            var hodRaw = localStorage.getItem('hodSettings');
+            var hod = hodRaw ? JSON.parse(hodRaw) : { theme: 'light', lang: 'ar', fontSize: '16' };
+            hod.theme = newTheme;
+            localStorage.setItem('hodSettings', JSON.stringify(hod));
         });
 
         // Language Toggle for Admin

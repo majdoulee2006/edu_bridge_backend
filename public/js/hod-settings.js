@@ -13,6 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load Settings from LocalStorage
     const loadSettings = () => {
+        // Sync from admin's color-theme if present and hodSettings is missing/default
+        const colorTheme = localStorage.getItem('color-theme');
+        const rawHod = localStorage.getItem('hodSettings');
+        if (colorTheme && !rawHod) {
+            const s = Object.assign({}, defaultSettings, { theme: colorTheme });
+            localStorage.setItem('hodSettings', JSON.stringify(s));
+        } else if (colorTheme && rawHod) {
+            const parsed = JSON.parse(rawHod);
+            if (parsed.theme !== colorTheme) {
+                parsed.theme = colorTheme;
+                localStorage.setItem('hodSettings', JSON.stringify(parsed));
+            }
+        }
+
         const settings = JSON.parse(localStorage.getItem('hodSettings')) || defaultSettings;
         applySettings(settings);
 
@@ -60,6 +74,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const settings = JSON.parse(localStorage.getItem('hodSettings')) || defaultSettings;
         settings[key] = value;
         localStorage.setItem('hodSettings', JSON.stringify(settings));
+        // Sync with admin's color-theme key so all layouts share the preference
+        if (key === 'theme') {
+            localStorage.setItem('color-theme', value);
+            if (value === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+            }
+        }
         applySettings(settings);
     };
 
