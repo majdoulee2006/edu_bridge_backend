@@ -181,13 +181,15 @@ class HODController extends Controller
                     'updated_at' => now(),
                 ]);
             } elseif ($request->role === 'student') {
-                DB::table('students')->insert([
+                $studentId = DB::table('students')->insertGetId([
                     'user_id' => $userId,
                     'student_code' => $request->student_code,
                     'level' => $request->level,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                \App\Models\Student::autoAssignAdvisor($studentId);
             } elseif ($request->role === 'parent') {
                 DB::table('parents')->insert([
                     'user_id' => $userId,

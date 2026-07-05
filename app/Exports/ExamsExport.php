@@ -37,13 +37,41 @@ class ExamsExport implements FromCollection, WithHeadings, WithMapping
     // 💡 ترتيب البيانات جوا الأعمدة
     public function map($exam): array
     {
-        $date = Carbon::parse($exam->exam_date);
+        if (is_array($exam)) {
+            $exam = (object)$exam;
+        }
+
+        $dateStr = $exam->date ?? $exam->exam_date ?? now();
+        $date = Carbon::parse($dateStr);
+
+        $title = $exam->title ?? $exam->exam_name ?? null;
+        $courseTitle = $exam->course_title ?? ($exam->course->title ?? null);
+        
+        $subject = $courseTitle;
+        if ($title && $courseTitle) {
+            $subject = $courseTitle . ' (' . $title . ')';
+        } elseif ($title) {
+            $subject = $title;
+        } else {
+            $subject = 'مادة غير معروفة';
+        }
+
+        $type = 'نهائي';
+        if (isset($exam->event_type)) {
+            $type = $exam->event_type === 'exam' ? 'امتحان' : 'مذاكرة';
+        }
+
+        $duration = 'ساعتان';
+        if (isset($exam->event_type) && $exam->event_type === 'quiz') {
+            $duration = 'ساعة';
+        }
+
         return [
-            $exam->exam_name ?? ($exam->course->title ?? 'مادة غير معروفة'),
+            $subject,
             $date->format('Y-m-d'),
             $date->format('h:i A'),
-            'ساعتان',
-            'نهائي'
+            $duration,
+            $type
         ];
     }
 }

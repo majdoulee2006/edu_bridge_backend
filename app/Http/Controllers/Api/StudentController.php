@@ -358,15 +358,33 @@ class StudentController extends Controller
         $courses = $student->courses()
             ->with(['teachers.user', 'lessons'])
             ->get()
+            ->unique('course_id')
+            ->values()
             ->map(function ($course) {
+                $filteredLessons = $course->lessons->filter(function ($lesson) {
+                    $title = mb_strtolower($lesson->title);
+                    $url = mb_strtolower($lesson->content_url ?? '');
+                    $type = mb_strtolower($lesson->type ?? '');
+
+                    if (str_contains($title, 'حضور') || 
+                        str_contains($title, 'غياب') || 
+                        str_contains($title, 'تفقد') || 
+                        str_contains($title, 'حصة') ||
+                        str_contains($url, 'attendance') || 
+                        $type === 'session') {
+                        return false;
+                    }
+                    return true;
+                })->values();
+
                 return [
                     'course_id' => $course->course_id,
                     'course_name' => $course->title,
                     // التعديل 2: جلبنا أول دكتور من مصفوفة الدكاترة
                     'teacher_name' => $course->teachers->first()?->user->full_name ?? 'مدرس غير محدد',
-                    'total_files' => $course->lessons->count(),
+                    'total_files' => $filteredLessons->count(),
 
-                    'lessons' => $course->lessons->map(function ($lesson) {
+                    'lessons' => $filteredLessons->map(function ($lesson) {
                         return [
                             'id' => $lesson->lesson_id,
                             'title' => $lesson->title,
@@ -462,38 +480,25 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
-        // امتحانات النظام القديم
-        $oldExams = Exam::whereHas('course', function($query) use ($student) {
-                $query->whereHas('students', function($q) use ($student) {
-                    $q->where('enrollments.student_id', $student->student_id);
-                });
-            })
-            ->with('course')
-            ->orderBy('exam_date')
-            ->get()
-            ->map(function($exam) {
-                $date = Carbon::parse($exam->exam_date);
-                return [
-                    'exam_id'    => $exam->exam_id,
-                    'event_id'   => null,
-                    'source'     => 'exam',
-                    'subject'    => $exam->exam_name ?? ($exam->course->title ?? 'امتحان مادة'),
-                    'type_label' => 'نهائي',
-                    'title'      => $exam->exam_name ?? 'امتحان',
-                    'day_num'    => $date->format('d'),
-                    'month'      => $date->translatedFormat('F'),
-                    'day_name'   => $date->translatedFormat('l'),
-                    'time'       => $date->format('h:i A'),
-                    'duration'   => 'ساعتان',
-                    'room'       => 'القاعة الامتحانية',
-                    'max_score'  => null,
-                    'score'      => null,
-                ];
-            });
+        // جلب معرفات المواد التي سجل فيها الطالب
+        $myCourseIds = DB::table('enrollments')
+            ->where('student_id', $student->student_id)
+            ->pluck('course_id')
+            ->toArray();
+
+        // تحديد السنة الدراسية كرقم
+        $map = [
+            'السنة الأولى' => 1,
+            'السنة الثانية' => 2,
+            'السنة الثالثة' => 3,
+            'السنة الرابعة' => 4,
+            'السنة الخامسة' => 5
+        ];
+        $yearInt = $map[$student->level] ?? 0;
 
         // تقييمات النظام الجديد (امتحان ومذاكرة) المرتبطة بهذا الطالب
         $gradeEvents = DB::table('grade_events')
-            ->join('grade_entries', function ($join) use ($student) {
+            ->leftJoin('grade_entries', function ($join) use ($student) {
                 $join->on('grade_entries.grade_event_id', '=', 'grade_events.id')
                      ->where('grade_entries.student_id', $student->student_id);
             })
@@ -501,11 +506,25 @@ class StudentController extends Controller
             ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
             ->whereIn('grade_events.type', ['exam', 'quiz'])
             ->whereNotNull('grade_events.date')
+            ->where(function ($q) use ($myCourseIds, $student, $yearInt) {
+                // إما أن يكون التقييم لمادة مسجل بها الطالب
+                $q->whereIn('grade_events.course_id', $myCourseIds);
+                
+                // أو أن يكون لبرنامج الطالب وسنته الدراسية
+                if ($student->program_id && $yearInt > 0) {
+                    $q->orWhere(function ($q2) use ($student, $yearInt) {
+                        $q2->where('grade_events.program_id', $student->program_id)
+                           ->where('grade_events.year_level', $yearInt);
+                    });
+                }
+            })
             ->select(
                 'grade_events.id as event_id',
                 'grade_events.type as event_type',
                 'grade_events.title',
                 'grade_events.date',
+                'grade_events.time',
+                'grade_events.duration',
                 'grade_events.max_score',
                 'grade_entries.score',
                 DB::raw("COALESCE(courses.title, programs.name, 'تقييم') as course_title")
@@ -524,15 +543,16 @@ class StudentController extends Controller
                     'day_num'    => $date->format('d'),
                     'month'      => $date->translatedFormat('F'),
                     'day_name'   => $date->translatedFormat('l'),
-                    'time'       => $date->format('h:i A'),
-                    'duration'   => $e->event_type === 'exam' ? 'ساعتان' : 'ساعة',
+                    'time'       => $e->time ?? $date->format('h:i A'),
+                    'duration'   => $e->duration ?? ($e->event_type === 'exam' ? 'ساعتان' : 'ساعة'),
                     'room'       => 'القاعة الدراسية',
                     'max_score'  => $e->max_score,
                     'score'      => $e->score,
                 ];
             });
 
-        $all = $oldExams->merge($gradeEvents)->sortBy('day_num')->values();
+        // ترتيب حسب تاريخ التقييم
+        $all = $gradeEvents->sortBy('date')->values();
 
         return response()->json(['success' => true, 'data' => $all], 200);
     }
@@ -589,27 +609,70 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
-        $exams = Exam::whereHas('course', function($query) use ($student) {
-                $query->whereHas('students', function($q) use ($student) {
-                    $q->where('enrollments.student_id', $student->student_id);
-                });
+        // جلب معرفات المواد التي سجل فيها الطالب
+        $myCourseIds = DB::table('enrollments')
+            ->where('student_id', $student->student_id)
+            ->pluck('course_id')
+            ->toArray();
+
+        // تحديد السنة الدراسية كرقم
+        $map = [
+            'السنة الأولى' => 1,
+            'السنة الثانية' => 2,
+            'السنة الثالثة' => 3,
+            'السنة الرابعة' => 4,
+            'السنة الخامسة' => 5
+        ];
+        $yearInt = $map[$student->level] ?? 0;
+
+        $exams = DB::table('grade_events')
+            ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+            ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
+            ->whereIn('grade_events.type', ['exam', 'quiz'])
+            ->whereNotNull('grade_events.date')
+            ->where(function ($q) use ($myCourseIds, $student, $yearInt) {
+                $q->whereIn('grade_events.course_id', $myCourseIds);
+                if ($student->program_id && $yearInt > 0) {
+                    $q->orWhere(function ($q2) use ($student, $yearInt) {
+                        $q2->where('grade_events.program_id', $student->program_id)
+                           ->where('grade_events.year_level', $yearInt);
+                    });
+                }
             })
-            ->with('course')
-            ->orderBy('exam_date')
-            ->get()
-            ->map(function($exam) {
-                $date = Carbon::parse($exam->exam_date);
-                return [
-                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان'),
-                    'date'     => $date->translatedFormat('d F Y'),
-                    'day'      => $date->translatedFormat('l'),
-                    'time'     => $date->format('h:i A'),
-                ];
-            });
+            ->select(
+                'grade_events.id as event_id',
+                'grade_events.type as event_type',
+                'grade_events.title',
+                'grade_events.date',
+                'grade_events.time',
+                'grade_events.duration',
+                'grade_events.max_score',
+                DB::raw("COALESCE(courses.title, programs.name, 'تقييم') as course_title")
+            )
+            ->orderBy('grade_events.date')
+            ->get();
+
+        $pdf = \Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::loadView('exports.exams_pdf', compact('exams', 'student'), [], [
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'orientation' => 'P',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+        ]);
+
+        $fileName = 'exams_' . $student->student_id . '_' . time() . '.pdf';
+        $directory = public_path('exports');
+        if (!file_exists($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        $filePath = $directory . '/' . $fileName;
+        file_put_contents($filePath, $pdf->output());
+
+        $pdfUrl = url('exports/' . $fileName);
 
         return response()->json([
             'success'  => true,
-            'pdf_url'  => null,
+            'pdf_url'  => $pdfUrl,
             'data'     => $exams,
         ], 200);
     }
@@ -621,26 +684,64 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
-        $exams = Exam::whereHas('course', function($query) use ($student) {
-                $query->whereHas('students', function($q) use ($student) {
-                    $q->where('enrollments.student_id', $student->student_id);
-                });
+        // جلب معرفات المواد التي سجل فيها الطالب
+        $myCourseIds = DB::table('enrollments')
+            ->where('student_id', $student->student_id)
+            ->pluck('course_id')
+            ->toArray();
+
+        // تحديد السنة الدراسية كرقم
+        $map = [
+            'السنة الأولى' => 1,
+            'السنة الثانية' => 2,
+            'السنة الثالثة' => 3,
+            'السنة الرابعة' => 4,
+            'السنة الخامسة' => 5
+        ];
+        $yearInt = $map[$student->level] ?? 0;
+
+        $exams = DB::table('grade_events')
+            ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+            ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
+            ->whereIn('grade_events.type', ['exam', 'quiz'])
+            ->whereNotNull('grade_events.date')
+            ->where(function ($q) use ($myCourseIds, $student, $yearInt) {
+                $q->whereIn('grade_events.course_id', $myCourseIds);
+                if ($student->program_id && $yearInt > 0) {
+                    $q->orWhere(function ($q2) use ($student, $yearInt) {
+                        $q2->where('grade_events.program_id', $student->program_id)
+                           ->where('grade_events.year_level', $yearInt);
+                    });
+                }
             })
-            ->with('course')
-            ->orderBy('exam_date')
-            ->get()
-            ->map(function($exam) {
-                $date = Carbon::parse($exam->exam_date);
-                return [
-                    'subject'  => $exam->exam_name ?? ($exam->course->title ?? 'امتحان'),
-                    'date'     => $date->format('Y-m-d'),
-                    'time'     => $date->format('h:i A'),
-                ];
-            });
+            ->select(
+                'grade_events.id as event_id',
+                'grade_events.type as event_type',
+                'grade_events.title',
+                'grade_events.date',
+                'grade_events.time',
+                'grade_events.duration',
+                'grade_events.max_score',
+                DB::raw("COALESCE(courses.title, programs.name, 'تقييم') as course_title")
+            )
+            ->orderBy('grade_events.date')
+            ->get();
+
+        $fileContent = \Maatwebsite\Excel\Facades\Excel::raw(new \App\Exports\ExamsExport($exams), \Maatwebsite\Excel\Excel::XLSX);
+
+        $fileName = 'exams_' . $student->student_id . '_' . time() . '.xlsx';
+        $directory = public_path('exports');
+        if (!file_exists($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        $filePath = $directory . '/' . $fileName;
+        file_put_contents($filePath, $fileContent);
+
+        $excelUrl = url('exports/' . $fileName);
 
         return response()->json([
             'success'    => true,
-            'excel_url'  => null,
+            'excel_url'  => $excelUrl,
             'data'       => $exams,
         ], 200);
     }
@@ -850,7 +951,7 @@ class StudentController extends Controller
         $student = $request->user()->student;
 
         // التأكد أن الطالب مسجل في هذه الدورة
-        $isEnrolled = $student->courses()->where('course_id', $courseId)->exists();
+        $isEnrolled = $student->courses()->where('courses.course_id', $courseId)->exists();
 
         if (!$isEnrolled) {
             return response()->json([

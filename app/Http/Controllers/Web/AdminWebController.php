@@ -551,6 +551,8 @@ class AdminWebController extends Controller
             'updated_at'   => now(),
         ]);
 
+        \App\Models\Student::autoAssignAdvisor($studentId);
+
         // تسجيل تلقائي بكل مواد الدورة والسنة
         $yearNum = $request->level === 'السنة الأولى' ? 1 : 2;
         $courseIds = DB::table('course_program')

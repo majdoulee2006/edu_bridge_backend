@@ -207,7 +207,7 @@ class TeacherController extends Controller
         $teacher = $request->user()->teacher;
 
         // ا�™تأ�™�د أ�™â€  Ã™!ذ�™! ا�™د�™�رة تخص ا�™â€žÃ™&درس
-        $course = $teacher->courses()->where('course_id', $courseId)->first();
+        $course = $teacher->courses()->where('courses.course_id', $courseId)->first();
 
         if (!$course) {
             return response()->json([
@@ -283,7 +283,7 @@ class TeacherController extends Controller
         $teacher = $request->user()->teacher;
 
         // ا�™تأ�™�د أ�™â€  Ã™!ذ�™! ا�™د�™�رة تخص ا�™â€žÃ™&درس
-        $course = $teacher->courses()->where('course_id', $request->course_id)->first();
+        $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
 
         if (!$course) {
             return response()->json([
@@ -320,7 +320,7 @@ class TeacherController extends Controller
     {
         $teacher = $request->user()->teacher;
 
-        $course = $teacher->courses()->where('course_id', $courseId)->first();
+        $course = $teacher->courses()->where('courses.course_id', $courseId)->first();
 
         if (!$course) {
             return response()->json([
@@ -617,7 +617,7 @@ class TeacherController extends Controller
     {
         $teacher = $request->user()->teacher;
 
-        $course = $teacher->courses()->where('course_id', $courseId)->first();
+        $course = $teacher->courses()->where('courses.course_id', $courseId)->first();
 
         if (!$course) {
             return response()->json([
@@ -810,7 +810,7 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        $course = $teacher->courses()->where('course_id', $assignment->course_id)->first();
+        $course = $teacher->courses()->where('courses.course_id', $assignment->course_id)->first();
 
         if (!$course) {
             return response()->json(['success' => false, 'message' => 'لا يمكن تعديل هذا الواجب'], 403);
@@ -832,7 +832,7 @@ class TeacherController extends Controller
         $data = $request->only(['title', 'description', 'due_date', 'max_points']);
 
         if ($request->filled('course_id')) {
-            $newCourse = $teacher->courses()->where('course_id', $request->course_id)->first();
+            $newCourse = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
             if ($newCourse) {
                 $data['course_id'] = $request->course_id;
             }
@@ -881,7 +881,7 @@ class TeacherController extends Controller
 
         $teacher = $request->user()->teacher;
 
-        $course = $teacher->courses()->where('course_id', $assignment->course_id)->first();
+        $course = $teacher->courses()->where('courses.course_id', $assignment->course_id)->first();
 
         if (!$course) {
             return response()->json([
@@ -890,11 +890,38 @@ class TeacherController extends Controller
             ], 403);
         }
 
-        $assignment->delete();
+        DB::transaction(function () use ($assignment) {
+            // حذف ملفات تسليمات الطلاب
+            $submissions = DB::table('assignment_submissions')
+                ->where('assignment_id', $assignment->assignment_id)
+                ->get();
+
+            foreach ($submissions as $sub) {
+                if ($sub->file_path) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($sub->file_path);
+                }
+            }
+
+            // حذف تسليمات الطلاب من قاعدة البيانات
+            DB::table('assignment_submissions')
+                ->where('assignment_id', $assignment->assignment_id)
+                ->delete();
+
+            // حذف ملفات الواجب نفسه
+            if ($assignment->file_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($assignment->file_path);
+            }
+            if ($assignment->attachment_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($assignment->attachment_path);
+            }
+
+            // حذف الواجب نفسه
+            $assignment->delete();
+        });
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الواجب بنجاح'
+            'message' => 'تم حذف الواجب بنجاح'
         ], 200);
     }
 
@@ -985,7 +1012,7 @@ class TeacherController extends Controller
 
         // إذا �™�ا�™  ا�™إع�™ا�™  خاص بد�™�رة�R تأ�™�د أ�™  ا�™د�™�رة تخص ا�™â€žÃ™&درس
         if ($request->type == 'course_specific' && $request->course_id) {
-            $course = $teacher->courses()->where('course_id', $request->course_id)->first();
+            $course = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
             if (!$course) {
                 return response()->json([
                     'success' => false,
@@ -1249,6 +1276,22 @@ class TeacherController extends Controller
             ->with('course')
             ->latest()
             ->get()
+            ->filter(function ($lesson) {
+                $title = mb_strtolower($lesson->title);
+                $url = mb_strtolower($lesson->content_url ?? '');
+                $type = mb_strtolower($lesson->type ?? '');
+
+                if (str_contains($title, 'حضور') || 
+                    str_contains($title, 'غياب') || 
+                    str_contains($title, 'تفقد') || 
+                    str_contains($title, 'حصة') ||
+                    str_contains($url, 'attendance') || 
+                    $type === 'session') {
+                    return false;
+                }
+                return true;
+            })
+            ->values()
             ->map(function($lesson) {
                 return [
                     'id'          => $lesson->lesson_id,
@@ -1501,7 +1544,7 @@ class TeacherController extends Controller
                     'assignment_title' => $sub->assignment->title ?? '',
                     'course_name'      => $sub->assignment->course->title ?? '',
                     'student_notes'    => $sub->notes ?? '',
-                    'file_path'        => $sub->file_path,
+                    'file_path'        => $sub->file_path ? storageUrl($sub->file_path) : null,
                     'grade'            => $sub->grade,
                     'feedback'         => $sub->feedback,
                     'max_points'       => $sub->assignment->max_points ?? 100,
@@ -1538,7 +1581,7 @@ class TeacherController extends Controller
                     'assignment_title' => $assignment->title,
                     'course_name'      => $assignment->course->title ?? '',
                     'max_points'       => $assignment->max_points,
-                    'file_path'        => $sub->file_path,
+                    'file_path'        => $sub->file_path ? storageUrl($sub->file_path) : null,
                     'student_notes'    => $sub->notes ?? '',
                     'grade'            => $sub->grade,
                     'feedback'         => $sub->feedback,
@@ -1596,7 +1639,7 @@ class TeacherController extends Controller
         }
 
         $teacher = $request->user()->teacher;
-        $course  = $teacher->courses()->where('course_id', $request->course_id)->first();
+        $course  = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
 
         if (!$course) {
             return response()->json(['success' => false, 'message' => 'هذه الدورة غير مرتبطة بك'], 403);
@@ -2204,6 +2247,8 @@ class TeacherController extends Controller
                 'grade_events.title',
                 'grade_events.max_score',
                 'grade_events.date',
+                'grade_events.time',
+                'grade_events.duration',
                 'grade_events.notes',
                 'grade_events.program_id',
                 'grade_events.year_level',
@@ -2241,6 +2286,8 @@ class TeacherController extends Controller
             'max_score' => 'required|numeric|min:1',
             'date'      => 'required|date',
             'notes'     => 'nullable|string|max:500',
+            'time'      => 'nullable|string|max:255',
+            'duration'  => 'nullable|string|max:255',
         ]);
 
         $assigned = DB::table('course_teachers')
@@ -2271,6 +2318,8 @@ class TeacherController extends Controller
             'max_score'  => $validated['max_score'],
             'notes'      => $validated['notes'] ?? null,
             'date'       => $validated['date'],
+            'time'       => $validated['time'] ?? null,
+            'duration'   => $validated['duration'] ?? null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

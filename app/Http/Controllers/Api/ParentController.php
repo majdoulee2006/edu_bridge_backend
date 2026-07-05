@@ -475,9 +475,22 @@ class ParentController extends Controller
 
         $advisorTeacher = null;
         if ($studentData && $studentData->branch_name && $studentData->academic_year) {
+            $academicYear = trim($studentData->academic_year);
+            if ($academicYear === 'أولى' || $academicYear === 'السنة الأولى' || $academicYear === '1') {
+                $academicYear = 'السنة الأولى';
+            } elseif ($academicYear === 'ثانية' || $academicYear === 'السنة الثانية' || $academicYear === '2') {
+                $academicYear = 'السنة الثانية';
+            } elseif ($academicYear === 'ثالثة' || $academicYear === 'السنة الثالثة' || $academicYear === '3') {
+                $academicYear = 'السنة الثالثة';
+            } elseif ($academicYear === 'رابعة' || $academicYear === 'السنة الرابعة' || $academicYear === '4') {
+                $academicYear = 'السنة الرابعة';
+            } elseif ($academicYear === 'خامسة' || $academicYear === 'السنة الخامسة' || $academicYear === '5') {
+                $academicYear = 'السنة الخامسة';
+            }
+
             $advisorTeacher = \Illuminate\Support\Facades\DB::table('teachers')
                 ->where('advisor_branch', $studentData->branch_name)
-                ->where('advisor_year', $studentData->academic_year)
+                ->where('advisor_year', $academicYear)
                 ->first();
         }
 

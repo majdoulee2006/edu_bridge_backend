@@ -783,13 +783,58 @@ class TeacherWebController extends Controller
 
     public function deleteAssignment($id)
     {
-        // حذف الملف المرفق إن وُجد
-        $assignment = DB::table('assignments')->where('assignment_id', $id)->first();
-        if ($assignment && $assignment->file_path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($assignment->file_path);
+        $teacher = $this->getTeacher();
+        
+        $assignment = DB::table('assignments')
+            ->where('assignment_id', $id)
+            ->first();
+
+        if (!$assignment) {
+            return redirect()->back()->with('error', 'الواجب غير موجود.');
         }
-        DB::table('assignments')->where('assignment_id', $id)->delete();
-        return redirect()->back()->with('success', 'تم حذف الواجب.');
+
+        // التأكد من أن المادة تتبع للمعلم
+        $assigned = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->where('course_id', $assignment->course_id)
+            ->exists();
+
+        if (!$assigned) {
+            return redirect()->back()->with('error', 'غير مصرح لك بحذف هذا الواجب.');
+        }
+
+        DB::transaction(function () use ($id, $assignment) {
+            // حذف ملفات تسليمات الطلاب
+            $submissions = DB::table('assignment_submissions')
+                ->where('assignment_id', $id)
+                ->get();
+
+            foreach ($submissions as $sub) {
+                if ($sub->file_path) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($sub->file_path);
+                }
+            }
+
+            // حذف تسليمات الطلاب من قاعدة البيانات
+            DB::table('assignment_submissions')
+                ->where('assignment_id', $id)
+                ->delete();
+
+            // حذف الملف المرفق بالواجب إن وُجد
+            if ($assignment->file_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($assignment->file_path);
+            }
+            if (isset($assignment->attachment_path) && $assignment->attachment_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($assignment->attachment_path);
+            }
+
+            // حذف الواجب نفسه
+            DB::table('assignments')
+                ->where('assignment_id', $id)
+                ->delete();
+        });
+
+        return redirect()->back()->with('success', 'تم حذف الواجب بنجاح.');
     }
 
     // عرض تفاصيل التسليمات لواجب معين
@@ -870,6 +915,15 @@ class TeacherWebController extends Controller
         $lectures = DB::table('lessons')
             ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
             ->whereIn('lessons.course_id', $courseIds)
+            ->where('lessons.type', '!=', 'session')
+            ->where('lessons.title', 'not like', '%حضور%')
+            ->where('lessons.title', 'not like', '%غياب%')
+            ->where('lessons.title', 'not like', '%تفقد%')
+            ->where('lessons.title', 'not like', '%حصة%')
+            ->where(function($query) {
+                $query->whereNull('lessons.content_url')
+                      ->orWhere('lessons.content_url', 'not like', '%attendance%');
+            })
             ->select('lessons.*', 'courses.title as course_title')
             ->orderByDesc('lessons.created_at')
             ->get();
@@ -1682,6 +1736,8 @@ class TeacherWebController extends Controller
             'title'     => 'required|string|max:255',
             'max_score' => 'required|numeric|min:1',
             'date'      => 'required|date',
+            'time'      => 'nullable|string|max:255',
+            'duration'  => 'nullable|string|max:255',
             'notes'     => 'nullable|string|max:500',
         ]);
 
@@ -1694,6 +1750,8 @@ class TeacherWebController extends Controller
             'title'      => $request->title,
             'max_score'  => $request->max_score,
             'date'       => $request->date,
+            'time'       => $request->time,
+            'duration'   => $request->duration,
             'notes'      => $request->notes,
             'created_at' => now(),
             'updated_at' => now(),

@@ -281,6 +281,8 @@ class DepartmentHeadController extends Controller
                 'updated_at'   => now(),
             ]);
 
+            \App\Models\Student::autoAssignAdvisor($studentId);
+
             // Auto-enroll: سجّل الطالب بكل مواد قسم الرئيس
             $head = DB::table('heads')->where('user_id', $request->user()->user_id)->first();
             if ($head) {

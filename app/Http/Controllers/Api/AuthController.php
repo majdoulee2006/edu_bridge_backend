@@ -152,7 +152,7 @@ class AuthController extends Controller
             'password'         => 'required|string|min:6',
             'role'             => 'required|in:student,parent',
             'university_id'    => 'required_if:role,student|string|unique:users,university_id',
-            'child_university_id' => 'required_if:role,parent|string',
+            'child_university_id' => 'nullable|string',
             'gender'           => 'nullable|in:ذكر,أنثى',
             'birth_date'       => 'nullable|date',
             'academic_year'    => 'nullable|string',
@@ -194,6 +194,17 @@ class AuthController extends Controller
         if ($request->role === 'parent') {
             $parentLastName = mb_strtolower(trim($request->last_name ?? ''));
             $idsToCheck = array_filter((array) ($request->children_ids ?? []), fn($v) => !empty($v));
+
+            if (empty($idsToCheck) && $request->filled('child_university_id')) {
+                $idsToCheck = [$request->child_university_id];
+            }
+
+            if (empty($idsToCheck)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الرقم الجامعي للابن مطلوب.',
+                ], 422);
+            }
 
             foreach ($idsToCheck as $childId) {
                 // ابحث عن الطالب بالرقم الجامعي
@@ -303,6 +314,8 @@ class AuthController extends Controller
                     ->where('name', 'LIKE', '%' . $branch . '%')
                     ->first();
                 if ($program) {
+                    $student->update(['program_id' => $program->id]);
+                    
                     $courseIds = \DB::table('course_program')
                         ->where('program_id', $program->id)
                         ->pluck('course_id');
@@ -318,6 +331,8 @@ class AuthController extends Controller
                     }
                 }
             }
+            // Auto assign advisor
+            Student::autoAssignAdvisor($student->student_id);
         } elseif ($request->role === 'parent') {
             $parent = Parents::create(['user_id' => $user->user_id]);
 

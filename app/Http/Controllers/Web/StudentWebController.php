@@ -180,18 +180,22 @@ class StudentWebController extends Controller
 
         $courses = DB::table('enrollments')
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
-            ->leftJoin('course_teachers', function($join) {
-                $join->on('courses.course_id', '=', 'course_teachers.course_id');
-            })
-            ->leftJoin('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
-            ->leftJoin('users as teacher_users', 'teachers.user_id', '=', 'teacher_users.user_id')
             ->where('enrollments.student_id', $student->student_id)
-            ->select('courses.*', 'teacher_users.full_name as teacher_name',
+            ->select('courses.*',
                 DB::raw('(SELECT COUNT(*) FROM lessons WHERE lessons.course_id = courses.course_id) as lessons_count'),
                 DB::raw('(SELECT COUNT(*) FROM assignments WHERE assignments.course_id = courses.course_id) as assignments_count')
             )
-            ->distinct()
             ->get();
+
+        foreach ($courses as $course) {
+            $teacherName = DB::table('course_teachers')
+                ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->where('course_teachers.course_id', $course->course_id)
+                ->value('users.full_name');
+
+            $course->teacher_name = $teacherName ?? 'مدرس غير محدد';
+        }
 
         return view('student.courses', compact('courses'));
     }
@@ -213,6 +217,15 @@ class StudentWebController extends Controller
 
         $materials = DB::table('lessons')
             ->where('course_id', $courseId)
+            ->where('type', '!=', 'session')
+            ->where('title', 'not like', '%حضور%')
+            ->where('title', 'not like', '%غياب%')
+            ->where('title', 'not like', '%تفقد%')
+            ->where('title', 'not like', '%حصة%')
+            ->where(function($query) {
+                $query->whereNull('content_url')
+                      ->orWhere('content_url', 'not like', '%attendance%');
+            })
             ->orderByDesc('created_at')
             ->get();
 

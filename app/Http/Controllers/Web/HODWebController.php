@@ -632,7 +632,7 @@ class HODWebController extends Controller
             }
         }
 
-        DB::table('students')->insert([
+        $studentId = DB::table('students')->insertGetId([
             'user_id'      => $userId,
             'student_code' => $request->university_id,
             'level'        => $request->level,
@@ -641,6 +641,8 @@ class HODWebController extends Controller
             'created_at'   => now(),
             'updated_at'   => now(),
         ]);
+
+        \App\Models\Student::autoAssignAdvisor($studentId);
 
         return redirect()->back()->with('success', 'تمت إضافة حساب الطالب بنجاح!');
     }

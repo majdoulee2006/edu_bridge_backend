@@ -99,11 +99,12 @@ class AdminController extends Controller
         ]);
 
         if ($request->role == 'student') {
-            Student::create([
+            $student = Student::create([
                 'user_id' => $user->user_id,
                 'student_code' => $request->username,
                 'level' => $request->academic_year,
             ]);
+            Student::autoAssignAdvisor($student->student_id);
         } elseif ($request->role == 'teacher') {
             Teacher::create([
                 'user_id' => $user->user_id,

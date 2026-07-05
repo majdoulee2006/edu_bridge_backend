@@ -53,6 +53,12 @@
             <span><i class="fa-solid fa-book"></i> {{ $event->course_title ?? '—' }}</span>
             <span><i class="fa-solid fa-star"></i> {{ $event->max_score }} علامة</span>
             <span><i class="fa-solid fa-calendar"></i> {{ \Carbon\Carbon::parse($event->date)->format('Y-m-d') }}</span>
+            @if(isset($event->time) && $event->time)
+                <span><i class="fa-solid fa-clock"></i> {{ $event->time }}</span>
+            @endif
+            @if(isset($event->duration) && $event->duration)
+                <span><i class="fa-solid fa-hourglass-half"></i> {{ $event->duration }}</span>
+            @endif
             @if($event->notes)
                 <span><i class="fa-solid fa-note-sticky"></i> {{ Str::limit($event->notes, 50) }}</span>
             @endif
@@ -127,6 +133,18 @@
                     <div>
                         <label class="form-label">التاريخ *</label>
                         <input type="date" name="date" class="form-input" required>
+                    </div>
+                </div>
+
+                {{-- Time + Duration --}}
+                <div class="row-2">
+                    <div>
+                        <label class="form-label">ساعة الامتحان (اختياري)</label>
+                        <input type="time" name="time" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">مدة الامتحان (دقائق - اختياري)</label>
+                        <input type="text" name="duration" class="form-input" placeholder="مثال: 90 دقيقة">
                     </div>
                 </div>
 
