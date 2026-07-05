@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html class="light" dir="rtl" lang="ar">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Edu-Bridge | @yield('title', 'الإدارة')</title>
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 
     <!-- Google Fonts: Cairo -->
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -52,13 +53,24 @@
 
     <script>
         // Immediately set the theme to avoid flicker
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            document.documentElement.classList.remove('light');
-        } else {
-            document.documentElement.classList.add('light');
-            document.documentElement.classList.remove('dark');
-        }
+        // Resolve theme: check both keys so all layouts share the preference
+        (function() {
+            var colorTheme  = localStorage.getItem('color-theme');
+            var hodRaw      = localStorage.getItem('hodSettings');
+            var hodTheme    = hodRaw ? (JSON.parse(hodRaw).theme || null) : null;
+            // hodSettings wins if color-theme is absent
+            var resolved    = colorTheme || hodTheme;
+            var isDark      = resolved === 'dark' || (!resolved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            var theme       = isDark ? 'dark' : 'light';
+            // Ensure both keys agree
+            localStorage.setItem('color-theme', theme);
+            if (hodRaw) {
+                var h = JSON.parse(hodRaw); h.theme = theme;
+                localStorage.setItem('hodSettings', JSON.stringify(h));
+            }
+            document.documentElement.classList.toggle('dark',  isDark);
+            document.documentElement.classList.toggle('light', !isDark);
+        })();
 
         // Immediately load custom font size to prevent layout shift
         const savedFontSize = localStorage.getItem('app-font-size');
@@ -139,13 +151,23 @@
                     التقارير
                 </a>
 
-                {{-- Notifications (merged with messages) --}}
-                <a href="{{ route('admin.notifications') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/notifications*') || Request::is('admin/messages*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                {{-- Notifications --}}
+                <a href="{{ route('admin.notifications') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/notifications*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
                     <i class="fa-solid fa-bell text-base"></i>
                     الإشعارات
                     @php $unread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unread > 0)
                         <span class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-black">{{ $unread }}</span>
+                    @endif
+                </a>
+
+                {{-- Messages --}}
+                <a href="{{ route('admin.messages') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/messages*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                    <i class="fa-solid fa-comments text-base"></i>
+                    الرسائل
+                    @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
+                    @if($unreadMessages > 0)
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-black">{{ $unreadMessages }}</span>
                     @endif
                 </a>
 
@@ -307,15 +329,16 @@
         }
 
         themeToggleBtn.addEventListener('click', function() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-                localStorage.setItem('color-theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark');
-                document.documentElement.classList.remove('light');
-                localStorage.setItem('color-theme', 'dark');
-            }
+            var isDark  = document.documentElement.classList.contains('dark');
+            var newTheme = isDark ? 'light' : 'dark';
+            document.documentElement.classList.toggle('dark',  !isDark);
+            document.documentElement.classList.toggle('light',  isDark);
+            // Save to both keys so HOD/teacher/other layouts pick it up
+            localStorage.setItem('color-theme', newTheme);
+            var hodRaw = localStorage.getItem('hodSettings');
+            var hod = hodRaw ? JSON.parse(hodRaw) : { theme: 'light', lang: 'ar', fontSize: '16' };
+            hod.theme = newTheme;
+            localStorage.setItem('hodSettings', JSON.stringify(hod));
         });
 
         // Language Toggle for Admin
@@ -338,5 +361,48 @@
             if (btn) btn.textContent = savedLang === 'ar' ? 'EN' : 'عر';
         })();
     </script>
-</body>
+
+<!-- Logout Confirmation Modal -->
+<div id="logoutModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; font-family:'Cairo',sans-serif;">
+    <div style="background:#fff; border-radius:20px; padding:2rem; max-width:380px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.2); animation:fadeIn 0.2s ease;">
+        <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+            <i class="fa-solid fa-arrow-right-from-bracket" style="font-size:1.5rem;color:#ef4444;"></i>
+        </div>
+        <h3 style="font-size:1.2rem;font-weight:800;color:#1a2633;margin-bottom:0.5rem;">تسجيل الخروج</h3>
+        <p style="color:#888;font-size:0.9rem;margin-bottom:1.5rem;">هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟</p>
+        <div style="display:flex;gap:0.8rem;justify-content:center;">
+            <button onclick="closeLogoutModal()" style="flex:1;padding:0.8rem;border-radius:12px;border:2px solid #e5e7eb;background:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;color:#555;font-family:'Cairo',sans-serif;">
+                لا، تراجع
+            </button>
+            <button onclick="confirmLogout()" style="flex:1;padding:0.8rem;border-radius:12px;border:none;background:#ef4444;color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:'Cairo',sans-serif;">
+                نعم، خروج
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var _logoutForm = null;
+
+    function showLogoutModal(form) {
+        _logoutForm = form;
+        var modal = document.getElementById('logoutModal');
+        modal.style.display = 'flex';
+    }
+
+    function closeLogoutModal() {
+        document.getElementById('logoutModal').style.display = 'none';
+        _logoutForm = null;
+    }
+
+    function confirmLogout() {
+        if (_logoutForm) _logoutForm.submit();
+    }
+
+    // Close on backdrop click
+    document.getElementById('logoutModal').addEventListener('click', function(e) {
+        if (e.target === this) closeLogoutModal();
+    });
+</script></body>
 </html>
+

@@ -5,14 +5,15 @@
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
-    body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-    .card { background: #fff; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; }
-    .form-control { border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem; width: 100%; margin-bottom: 1rem; }
-    .btn-primary { background: hsl(220, 90%, 56%); border: none; color: #fff; padding: 0.75rem 1.5rem; border-radius: 0.5rem; transition: background 0.2s; cursor: pointer; }
-    .btn-primary:hover { background: hsl(220, 90%, 48%); }
+    body { font-family: 'Cairo', sans-serif; background: var(--bg-primary); color: var(--text-primary); }
+    .card { background: var(--bg-secondary); border-radius: 0.75rem; box-shadow: var(--shadow); padding: 2rem; border: 1px solid var(--border-color); }
+    .form-control { border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.75rem; width: 100%; margin-bottom: 1rem; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; }
+    .form-control:focus { outline: none; border-color: var(--accent-color); }
+    .btn-primary { background: var(--accent-color); border: none; color: #1a1a1a; padding: 0.75rem 1.5rem; border-radius: 0.5rem; transition: opacity .2s; cursor: pointer; font-weight: 700; font-family: inherit; }
+    .btn-primary:hover { opacity: .85; }
     .alert-success { background: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
     .form-group { margin-bottom: 1rem; }
-    .form-label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151; }
+    .form-label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary); }
     .text-red-600 { color: #dc2626; font-size: 0.875rem; }
 </style>
 @endpush
@@ -73,11 +74,28 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">صورة مرفقة (اختياري)</label>
-                <input type="file" name="image" class="form-control" accept="image/*"
-                       style="padding: 0.5rem; cursor:pointer;">
-                <small style="color:#6b7280;">JPG / PNG / WebP — حتى 5MB</small>
-                @error('image') <p class="text-red-600 mt-1">{{ $message }}</p> @enderror
+                <label class="form-label">صورة مرفقة <span style="font-weight:400; color:#9ca3af;">(اختياري)</span></label>
+                <div id="hod-upload-zone"
+                     onclick="document.getElementById('hod-img-input').click()"
+                     style="border:2px dashed var(--border-color); border-radius:0.75rem; padding:1.5rem 1rem; text-align:center; cursor:pointer; background:var(--bg-primary); transition:border-color .2s;"
+                     onmouseover="this.style.borderColor='var(--accent-color)'"
+                     onmouseout="this.style.borderColor='var(--border-color)'"
+                     ondragover="event.preventDefault(); this.style.borderColor='var(--accent-color)'"
+                     ondragleave="this.style.borderColor='var(--border-color)'">
+                    <input type="file" name="image" id="hod-img-input" accept="image/*"
+                           data-crop="true" data-preview-img="hod-prev-img" data-preview-wrap="hod-prev-wrap" data-placeholder="hod-prev-placeholder"
+                           style="display:none;">
+                    <div id="hod-prev-placeholder">
+                        <div style="font-size:2rem; margin-bottom:0.4rem;">🖼️</div>
+                        <p style="font-weight:600; color:var(--text-primary); font-size:0.9rem; margin:0 0 0.25rem;">اسحب الصورة هنا أو اضغط للاختيار</p>
+                        <p style="font-size:0.78rem; color:var(--text-secondary); margin:0;">JPG / PNG / WebP — حتى 5MB</p>
+                    </div>
+                    <div id="hod-prev-wrap" style="display:none;">
+                        <img id="hod-prev-img" src="" alt="" style="max-height:150px; border-radius:0.5rem; object-fit:cover; margin:0 auto; display:block;">
+                        <p style="margin-top:0.5rem; font-size:0.78rem; color:var(--text-secondary);">اضغط مجدداً لتغيير الصورة</p>
+                    </div>
+                </div>
+                @error('image') <p class="text-red-600 mt-1" style="font-size:0.875rem;">{{ $message }}</p> @enderror
             </div>
 
             <div class="form-group">
@@ -96,15 +114,14 @@
 </div>
 
 <script>
-    // إظهار/إخفاء اختيار الدورة حسب نوع الإعلان
     const typeSelect = document.getElementById('typeSelect');
     const courseDiv = document.getElementById('courseDiv');
-
     function toggleCourseDiv() {
         courseDiv.style.display = typeSelect.value === 'course_specific' ? 'block' : 'none';
     }
-
     typeSelect.addEventListener('change', toggleCourseDiv);
     document.addEventListener('DOMContentLoaded', toggleCourseDiv);
 </script>
+
+@include('partials.image_cropper')
 @endsection

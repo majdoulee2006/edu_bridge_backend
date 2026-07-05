@@ -1125,13 +1125,19 @@ class TeacherController extends Controller
             if ($parentUserId) {
                 DB::table('notifications')->insert([
                     'user_id'    => $parentUserId,
-                    'title'      => 'ت�ر�`ر ا�طا�ب جا�!ز',
-                    'message'    => 'أرس� ا��&ع��& ا�ت�ر�`ر ا�س���ْ�` ��طا�ب ' . ($studentName ?? '') . '�R �`�&ْ� ْ ا�اط�اع ع��`�! ا�آ� .',
+                    'title'      => 'تقرير الطالب جاهز',
+                    'message'    => 'أرسل المعلم التقرير السلوكي للطالب ' . ($studentName ?? '') . '، يرجى الاطلاع عليه.',
                     'type'       => 'report',
                     'is_read'    => 0,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                \App\Services\FcmService::sendToUser(
+                    $parentUserId,
+                    'تقرير الطالب جاهز',
+                    'أرسل المعلم التقرير السلوكي للطالب ' . ($studentName ?? '') . '، يرجى الاطلاع عليه.',
+                    ['type' => 'report']
+                );
             }
         } catch (\Exception $e) {
             \Log::warning('submitEvaluation side-effects failed: ' . $e->getMessage());
@@ -1264,11 +1270,16 @@ class TeacherController extends Controller
             'title'        => 'required|string|max:255',
             'course_id'    => 'required|exists:courses,course_id',
             'description'  => 'nullable|string',
-            'content_file' => 'required|file|mimes:pdf,mp4,mov,avi,mkv|max:102400',
+            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv|max:204800',
+            'video_url'    => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        if (!$request->hasFile('content_file') && !$request->filled('video_url')) {
+            return response()->json(['success' => false, 'errors' => ['content' => ['يرجى رفع ملف أو إدخال رابط فيديو']]], 422);
         }
 
         $teacher = $request->user()->teacher;
@@ -1278,15 +1289,24 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'هذه الدورة غير مرتبطة بك'], 403);
         }
 
-        $file     = $request->file('content_file');
-        $filePath = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
+        if ($request->hasFile('content_file')) {
+            $file     = $request->file('content_file');
+            $filePath = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
+            $ext      = strtolower($file->getClientOriginalExtension());
+            $type     = in_array($ext, ['mp4', 'mov', 'avi', 'mkv']) ? 'video' : 'pdf';
+            $contentUrl = $filePath;
+        } else {
+            $type       = 'link';
+            $contentUrl = $request->video_url;
+        }
 
         $lesson = Lesson::create([
             'title'       => $request->title,
             'course_id'   => $request->course_id,
             'teacher_id'  => $teacher->teacher_id,
             'description' => $request->description,
-            'content_url' => $filePath,
+            'content_url' => $contentUrl,
+            'type'        => $type,
         ]);
 
         // notify students of new lecture
@@ -1336,7 +1356,8 @@ class TeacherController extends Controller
             'title'        => 'required|string|max:255',
             'course_id'    => 'required|exists:courses,course_id',
             'description'  => 'nullable|string',
-            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv|max:102400',
+            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv|max:204800',
+            'video_url'    => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
@@ -1348,9 +1369,16 @@ class TeacherController extends Controller
         $lesson->description = $request->description;
 
         if ($request->hasFile('content_file')) {
-            if ($lesson->content_url) Storage::disk('public')->delete($lesson->content_url);
+            if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                Storage::disk('public')->delete($lesson->content_url);
+            }
             $file = $request->file('content_file');
+            $ext  = strtolower($file->getClientOriginalExtension());
             $lesson->content_url = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
+            $lesson->type        = in_array($ext, ['mp4', 'mov', 'avi', 'mkv']) ? 'video' : 'pdf';
+        } elseif ($request->filled('video_url')) {
+            $lesson->content_url = $request->video_url;
+            $lesson->type        = 'link';
         }
 
         $lesson->save();

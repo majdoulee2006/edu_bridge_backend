@@ -320,6 +320,12 @@ class HODWebController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser(
+                $leaveRequest->student_id,
+                $title,
+                $message,
+                ['type' => 'leave_request', 'related_id' => (string)$id]
+            );
         }
 
         return redirect()->back()->with('success', 'تم تحديث حالة الإجازة بنجاح.');
@@ -1084,6 +1090,12 @@ class HODWebController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        \App\Services\FcmService::sendToUser(
+            $request->receiver_id,
+            'رسالة جديدة',
+            'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            ['type' => 'message']
+        );
 
         return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
     }

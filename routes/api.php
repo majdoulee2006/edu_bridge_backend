@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\Api\AffairsController;
 
 // خدمة ملفات التخزين (بديل الـ symlink على Windows)
 Route::get('/file/{path}', function (string $path) {
@@ -35,6 +36,37 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
 Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
+
+// -----------------------------------------------------------
+// روابط ولي الأمر العامة (بدون توكن)
+// -----------------------------------------------------------
+Route::get('/parent/info/{user_id}', function ($user_id) {
+    $user = DB::table('users')->where('user_id', $user_id)->first();
+    if ($user) {
+        return response()->json([
+            'full_name' => $user->full_name,
+            'phone'     => $user->phone ?? 'لا يوجد رقم',
+            'role'      => $user->role,
+        ]);
+    }
+    return response()->json(['message' => 'المستخدم غير موجود'], 404);
+});
+
+Route::post('/parent/link-student', function (Request $request) {
+    $student = DB::table('students')->where('student_code', $request->student_code)->first();
+    if (!$student) {
+        return response()->json(['message' => 'كود الطالب غير موجود'], 404);
+    }
+    $parent = DB::table('parents')->where('user_id', $request->user_id)->first();
+    if (!$parent) {
+        return response()->json(['message' => 'سجل الأب غير موجود'], 404);
+    }
+    DB::table('parent_students')->updateOrInsert([
+        'parent_id'  => $parent->parent_id,
+        'student_id' => $student->student_id,
+    ]);
+    return response()->json(['message' => 'تم الربط بنجاح'], 200);
+});
 
 // روابط محمية (تحتاج توكن)
 Route::middleware('auth:sanctum')->group(function () {
@@ -70,6 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     #========= روابط الدردشة المشتركة ==========
+    Route::get('/contacts', [ChatController::class, 'getContacts']);
     Route::post('/send-message', [ChatController::class, 'sendMessage']);
     Route::get('/messages/unread-count', [ChatController::class, 'getUnreadCount']);
     Route::get('/messages/{otherUserId}', [ChatController::class, 'getMessages']);
@@ -82,51 +115,41 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/groups/{groupId}/messages', [ChatController::class, 'getGroupMessages']);
 
     #========= روابط واجهات الطالب ==========
-    Route::get('/student/dashboard', [StudentController::class, 'getDashboardData']);
-    Route::get('/student/profile', [StudentController::class, 'getProfileData']);
-    Route::post('/student/profile/update', [StudentController::class, 'updateProfile']);
-    Route::get('/student/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
-    Route::get('/student/my-schedule', [StudentController::class, 'getMySchedule']);
-    Route::get('/student/my-exams', [StudentController::class, 'getMyExams']);
-    Route::get('/student/my-exams/pdf', [StudentController::class, 'exportExamsPdf']);
-    Route::get('/student/my-exams/excel', [StudentController::class, 'exportExamsExcel']);
-    Route::get('/student/grade-event/{id}', [StudentController::class, 'getGradeEventForStudent']);
-    Route::get('/student/assignments', [StudentController::class, 'getMyAssignments']);
-    Route::post('/student/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
-    Route::get('/student/lectures', [StudentController::class, 'getMyLectures']);
-    Route::get('/student/courses', [StudentController::class, 'getMyCourses']);
-    Route::get('/student/grades', [StudentController::class, 'getMyGrades']);
-    Route::get('/student/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
+#========= روابط واجهات الطالب ==========
+    Route::prefix('student')->middleware('role:student')->group(function () {
+        Route::get('/dashboard', [StudentController::class, 'getDashboardData']);
+        Route::get('/profile', [StudentController::class, 'getProfileData']);
+        Route::post('/profile/update', [StudentController::class, 'updateProfile']);
+        Route::post('/profile/initialize-face', [StudentController::class, 'initializeFaceFromPhoto']);
+        Route::post('/photo-change-request', [StudentController::class, 'requestPhotoChange']);
+        Route::get('/photo-change-request/status', [StudentController::class, 'myPhotoChangeStatus']);
+        Route::get('/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
+        Route::get('/my-schedule', [StudentController::class, 'getMySchedule']);
+        Route::get('/my-exams', [StudentController::class, 'getMyExams']);
+        Route::get('/my-exams/pdf', [StudentController::class, 'exportExamsPdf']);
+        Route::get('/my-exams/excel', [StudentController::class, 'exportExamsExcel']);
+        
+        // المسار الخاص بك الذي تم إضافته للمجموعة
+        Route::get('/grade-event/{id}', [StudentController::class, 'getGradeEventForStudent']); 
+        
+        Route::get('/assignments', [StudentController::class, 'getMyAssignments']);
+        Route::post('/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
+        Route::get('/lectures', [StudentController::class, 'getMyLectures']);
+        Route::get('/courses', [StudentController::class, 'getMyCourses']);
+        Route::get('/grades', [StudentController::class, 'getMyGrades']);
+        Route::get('/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
 
-    // مسارات الحضور والإجازات
-    Route::get('/student/attendance', [StudentController::class, 'getMyAttendance']);
-    Route::post('/student/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
-    Route::post('/student/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
-    Route::get('/student/leave-requests', [StudentController::class, 'getMyAbsenceRequests']);
-    Route::post('/student/leave-requests', [StudentController::class, 'requestAbsence']);
+        // مسارات الحضور والإجازات
+        Route::get('/attendance', [StudentController::class, 'getMyAttendance']);
+        Route::post('/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
+        Route::post('/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
+        Route::get('/leave-requests', [StudentController::class, 'getMyAbsenceRequests']);
+        Route::post('/leave-requests', [StudentController::class, 'requestAbsence']);
 
-    // مسارات الإشعارات للطالب
-    Route::get('/student/notifications', [StudentController::class, 'getNotifications']);
-    Route::put('/student/notifications/{id}/read', [StudentController::class, 'markNotificationAsRead']);
-    Route::put('/student/notifications/read-all', [StudentController::class, 'markAllNotificationsAsRead']);
-
-    #========= روابط واجهات ولي الأمر ==========
-    Route::get('/parent/children', function (Request $request) {
-        $parent = \App\Models\Parents::where('user_id', $request->user()->user_id)->first();
-        if (!$parent) return response()->json(['success' => true, 'data' => []]);
-        $children = $parent->students()->with(['user', 'attendances', 'grades'])->get()->map(function ($student) {
-            $att = $student->attendances;
-            return [
-                'student_id'      => $student->student_id,
-                'full_name'       => $student->user->full_name ?? '',
-                'level'           => $student->level ?? '',
-                'attendance_rate' => $att->count() > 0
-                    ? round(($att->where('status', 'present')->count() / $att->count()) * 100, 1)
-                    : 0,
-                'average_grade'   => round($student->grades->avg('score') ?? 0, 1),
-            ];
-        });
-        return response()->json(['success' => true, 'data' => $children]);
+        // مسارات الإشعارات للطالب
+        Route::get('/notifications', [StudentController::class, 'getNotifications']);
+        Route::put('/notifications/{id}/read', [StudentController::class, 'markNotificationAsRead']);
+        Route::put('/notifications/read-all', [StudentController::class, 'markAllNotificationsAsRead']);
     });
     Route::get('/parent/announcements', function () {
         $announcements = \DB::table('announcements')
@@ -153,6 +176,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/parent/student/{studentId}/permissions', [StudentParentController::class, 'getPermissions']);
     Route::post('/parent/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
     Route::get('/parent/notifications', [NotificationController::class, 'getNotifications']);
+    Route::put('/parent/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::put('/parent/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/parent/add-student', [ParentController::class, 'linkStudent']);
     Route::get('/parent/leave-requests', [StudentParentController::class, 'getLeaveRequests']);
     Route::post('/parent/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);
@@ -318,7 +343,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ========== Parent Routes ==========
     Route::prefix('parent')->middleware('role:parent')->group(function () {
         Route::get('/dashboard', [ParentController::class, 'dashboard']);
-        Route::get('/children', [ParentController::class, 'getChildren']);
+        Route::get('/children/{parent_id}', [ParentController::class, 'getChildren']);
         Route::post('/add-student', [ParentController::class, 'linkStudent']);
         Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
         Route::get('/children/{id}/details', [ParentController::class, 'getChildDetails']);
@@ -330,61 +355,76 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/history', [ParentController::class, 'getReportsHistory']);
     });
 
-});
+    Route::get('/student/info/{id}', function ($id) {
+        return DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $id)
+            ->select('users.full_name', 'users.branch as department', 'students.level', 'students.student_code')
+            ->first();
+    })->middleware('role:student,parent');
 
-// -----------------------------------------------------------
-// روابط ولي الأمر العامة (بدون توكن)
-// -----------------------------------------------------------
 
-Route::get('/parent/info/{user_id}', function ($user_id) {
-    $user = DB::table('users')->where('user_id', $user_id)->first();
-    if ($user) {
-        return response()->json([
-            'full_name' => $user->full_name,
-            'phone'     => $user->phone ?? 'لا يوجد رقم',
-            'role'      => $user->role,
-        ]);
-    }
-    return response()->json(['message' => 'المستخدم غير موجود'], 404);
-});
 
-Route::get('/parent/children/{parent_id}', function ($parent_id) {
-    $children = DB::table('parent_students')
-        ->join('students', 'parent_students.student_id', '=', 'students.student_id')
-        ->join('users', 'students.user_id', '=', 'users.user_id')
-        ->where('parent_students.parent_id', $parent_id)
-        ->select('students.student_id', 'users.full_name', 'students.level')
-        ->get();
-    return response()->json($children);
-});
 
-Route::post('/parent/link-student', function (Request $request) {
-    $student = DB::table('students')->where('student_code', $request->student_code)->first();
-    if (!$student) {
-        return response()->json(['message' => 'كود الطالب غير موجود'], 404);
-    }
-    $parent = DB::table('parents')->where('user_id', $request->user_id)->first();
-    if (!$parent) {
-        return response()->json(['message' => 'سجل الأب غير موجود'], 404);
-    }
-    DB::table('parent_students')->updateOrInsert([
-        'parent_id'  => $parent->parent_id,
-        'student_id' => $student->student_id,
-    ]);
-    return response()->json(['message' => 'تم الربط بنجاح'], 200);
-});
 
 // ── Affairs API ────────────────────────────────────────────────────
-use App\Http\Controllers\Api\AffairsController;
+
 
 Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(function () {
+    // Dashboard Stats
+    Route::get('/dashboard',                             [AffairsController::class, 'getDashboardStats']);
+
+    // Predefined IDs
+    Route::get('/university-ids/next-id',                [AffairsController::class, 'nextUniversityId']);
     Route::get('/university-ids',                        [AffairsController::class, 'listUniversityIds']);
     Route::post('/university-ids',                       [AffairsController::class, 'addUniversityId']);
+    Route::post('/university-ids/{id}/update',           [AffairsController::class, 'updateUniversityId']);
     Route::delete('/university-ids/{id}',                [AffairsController::class, 'deleteUniversityId']);
+
+    // Pending Accounts
     Route::get('/pending-accounts',                      [AffairsController::class, 'pendingAccounts']);
     Route::post('/accounts/{userId}/approve',            [AffairsController::class, 'approveAccount']);
     Route::post('/accounts/{userId}/reject',             [AffairsController::class, 'rejectAccount']);
+
+    // Accounts Management
+    Route::get('/accounts',                              [AffairsController::class, 'listAccounts']);
+    Route::post('/accounts/create',                      [AffairsController::class, 'createAccount']);
+    Route::post('/accounts/{id}/update',                 [AffairsController::class, 'updateAccount']);
+    Route::post('/accounts/{id}/toggle',                 [AffairsController::class, 'toggleAccountStatus']);
+    Route::delete('/accounts/{id}',                      [AffairsController::class, 'deleteAccount']);
     Route::post('/students/{id}/reset-device',           [AffairsController::class, 'resetDevice']);
+
+    // Metadata (departments, courses) for creating accounts
+    Route::get('/metadata',                              [AffairsController::class, 'getMetadata']);
+
+    // Leaves / Vacations
+    Route::get('/leaves',                                [AffairsController::class, 'listLeaves']);
+    Route::post('/leaves/{id}/status',                   [AffairsController::class, 'updateLeaveStatus']);
+
+    // Calendar
+    Route::get('/calendar',                              [AffairsController::class, 'listCalendarEvents']);
+    Route::post('/calendar/events',                      [AffairsController::class, 'storeCalendarEvent']);
+    Route::post('/calendar/events/update/{id}',          [AffairsController::class, 'updateCalendarEvent']);
+    Route::post('/calendar/events/delete/{id}',          [AffairsController::class, 'deleteCalendarEvent']);
+
+    // Messages
+    Route::get('/messages',                              [AffairsController::class, 'listMessages']);
+    Route::get('/messages/conversation/{userId}',        [AffairsController::class, 'getConversation']);
+    Route::post('/messages',                             [AffairsController::class, 'sendMessage']);
+
+    // Notifications
+    Route::get('/notifications',                         [AffairsController::class, 'listNotifications']);
+    Route::post('/notifications/{id}/read',              [AffairsController::class, 'markNotificationRead']);
+    Route::post('/notifications/read-all',               [AffairsController::class, 'markAllNotificationsRead']);
+
+    // Profile
+    Route::get('/profile',                               [AffairsController::class, 'getProfile']);
+    Route::post('/profile/update',                       [AffairsController::class, 'updateProfile']);
+    Route::post('/profile/password',                     [AffairsController::class, 'updatePassword']);
+
+    Route::get('/photo-change-requests',                 [AffairsController::class, 'listPhotoChangeRequests']);
+    Route::post('/photo-change-requests/{id}/approve',   [AffairsController::class, 'approvePhotoChange']);
+    Route::post('/photo-change-requests/{id}/reject',    [AffairsController::class, 'rejectPhotoChange']);
 });
 
 Route::get('/user/profile/{id}', function ($id) {
@@ -394,13 +434,7 @@ Route::get('/user/profile/{id}', function ($id) {
         ->first();
 });
 
-Route::get('/student/info/{id}', function ($id) {
-    return DB::table('students')
-        ->join('users', 'students.user_id', '=', 'users.user_id')
-        ->where('students.student_id', $id)
-        ->select('users.full_name', 'users.branch as department', 'students.level', 'students.student_code')
-        ->first();
-});
+
 
 Route::get('/parent/notifications/{id}', function ($id) {
     return DB::table('notifications')
@@ -409,5 +443,7 @@ Route::get('/parent/notifications/{id}', function ($id) {
         ->get();
 
     });
+});
+
 
 

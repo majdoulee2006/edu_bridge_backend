@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل الدخول | رئيس القسم</title>
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -98,6 +99,31 @@
             box-shadow: 0 5px 15px rgba(242, 242, 13, 0.2);
         }
 
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-left: 3rem;
+        }
+
+        .toggle-password {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            padding: 0;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .toggle-password:hover { color: var(--primary-dark); }
+
         .btn-login {
             width: 100%;
             padding: 1.2rem;
@@ -150,12 +176,30 @@
 
                 <div class="input-group">
                     <label>كلمة المرور</label>
-                    <input type="password" name="password" placeholder="••••••••" required>
+                    <div class="password-wrapper">
+                        <input type="password" name="password" id="passwordField" placeholder="••••••••" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword()">
+                            <i class="fa-regular fa-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-login">تسجيل الدخول</button>
             </form>
         </div>
     </div>
+    <script>
+        function togglePassword() {
+            const field = document.getElementById('passwordField');
+            const icon  = document.getElementById('eyeIcon');
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                field.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+    </script>
 </body>
 </html>

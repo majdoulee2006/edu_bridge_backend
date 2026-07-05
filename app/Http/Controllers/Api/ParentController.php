@@ -18,9 +18,13 @@ use App\Models\StudentParent;
 
 class ParentController extends Controller
 {
-    public function getChildren(Request $request)
+    public function getChildren(Request $request, $parentId = null)
     {
-        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+        if ($parentId) {
+            $parent = Parents::find($parentId);
+        } else {
+            $parent = Parents::where('user_id', $request->user()->user_id)->first();
+        }
 
         if (!$parent) {
             return response()->json(['success' => false, 'message' => 'هذه الخدمة متاحة فقط لأولياء الأمور'], 403);
@@ -289,6 +293,7 @@ class ParentController extends Controller
                 'title' => $announcement->title,
                 'content' => $announcement->content,
                 'type' => $announcement->type,
+                'image_url' => $announcement->image ? url('storage/' . $announcement->image) : null,
                 'created_at' => $announcement->created_at ? $announcement->created_at->format('Y-m-d H:i') : null,
                 'time_ago' => $announcement->created_at ? $announcement->created_at->diffForHumans() : 'منذ قليل',
             ];

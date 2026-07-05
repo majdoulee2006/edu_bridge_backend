@@ -18,7 +18,7 @@ class DummyDataSeeder extends Seeder
                 'full_name' => 'أحمد الطالب',
                 'email' => 'student@test.com',
                 'password' => bcrypt('123456'),
-                'role' => 'student',
+                'role_id' => 3,
                 'status' => 'active',
                 'department' => 'هندسة حاسوب',
             ]
@@ -37,8 +37,10 @@ class DummyDataSeeder extends Seeder
         // --- Link to first parent automatically for testing ---
         $parent = \DB::table('parents')->first();
         if ($parent) {
-            $student->parent_id = $parent->parent_id;
-            $student->save();
+            \DB::table('parent_students')->updateOrInsert([
+                'parent_id' => $parent->parent_id,
+                'student_id' => $student->student_id,
+            ]);
         }
         // -----------------------------------------------------
 
@@ -131,15 +133,7 @@ class DummyDataSeeder extends Seeder
             ]
         ]);
         
-        // 6. Create subjects, exams and grades
-        $subjectId = DB::table('subjects')->insertGetId([
-            'name' => 'برمجة ويب',
-            'doctor_name' => 'د. أحمد',
-            'room' => 'A1',
-            'time' => '10:00',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // 6. Create exams and grades
         
         $examId = DB::table('exams')->insertGetId([
             'course_id' => $courseId,

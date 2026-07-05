@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edu-Bridge | المعلم</title>
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     
     <!-- Google Fonts: Cairo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,6 +18,12 @@
     <link rel="stylesheet" href="{{ asset('css/hod-style.css') }}">
 
     @stack('styles')
+    <script>
+        const savedSettings = JSON.parse(localStorage.getItem('hodSettings'));
+        if (savedSettings && savedSettings.theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
 </head>
 <body>
     <div class="app-wrapper">
@@ -57,6 +64,10 @@
                     <i class="fa-solid fa-chalkboard-teacher"></i>
                     المحاضرات
                 </a>
+                <a href="{{ url('/teacher/grade-events') }}" class="nav-item {{ Request::is('teacher/grade-events*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-file-pen"></i>
+                    الاختبارات
+                </a>
                 <a href="{{ url('/teacher/reports') }}" class="nav-item {{ Request::is('teacher/reports') ? 'active' : '' }}" style="position:relative;">
                     <i class="fa-solid fa-file-lines"></i> التقارير
                     @php $pendingReports = \Illuminate\Support\Facades\DB::table('report_requests')->join('teachers','report_requests.teacher_id','=','teachers.teacher_id')->where('teachers.user_id', auth()->id())->where('report_requests.status','pending')->count(); @endphp
@@ -85,6 +96,13 @@
                         <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadCount }}</span>
                     @endif
                 </a>
+                <a href="{{ url('/teacher/messages') }}" class="nav-item {{ Request::is('teacher/messages') ? 'active' : '' }}" style="position: relative;">
+                    <i class="fa-solid fa-comments"></i> الرسائل
+                    @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
+                    @if($unreadMessages > 0)
+                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
+                    @endif
+                </a>
                 <a href="{{ url('/teacher/profile') }}" class="nav-item {{ Request::is('teacher/profile') ? 'active' : '' }}">
                     <i class="fa-solid fa-user"></i>
                     الملف الشخصي
@@ -93,10 +111,8 @@
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form action="{{ route('teacher.logout') }}" method="POST">
                         @csrf
-                        <button type="submit" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                            تسجيل الخروج
-                        </button>
+                        <button type="button" onclick="showLogoutModal(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج</button>
                     </form>
                 </div>
             </nav>
@@ -159,5 +175,48 @@
         }
     </script>
     @stack('scripts')
-</body>
+
+<!-- Logout Confirmation Modal -->
+<div id="logoutModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; font-family:'Cairo',sans-serif;">
+    <div style="background:#fff; border-radius:20px; padding:2rem; max-width:380px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.2); animation:fadeIn 0.2s ease;">
+        <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+            <i class="fa-solid fa-arrow-right-from-bracket" style="font-size:1.5rem;color:#ef4444;"></i>
+        </div>
+        <h3 style="font-size:1.2rem;font-weight:800;color:#1a2633;margin-bottom:0.5rem;">تسجيل الخروج</h3>
+        <p style="color:#888;font-size:0.9rem;margin-bottom:1.5rem;">هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟</p>
+        <div style="display:flex;gap:0.8rem;justify-content:center;">
+            <button onclick="closeLogoutModal()" style="flex:1;padding:0.8rem;border-radius:12px;border:2px solid #e5e7eb;background:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;color:#555;font-family:'Cairo',sans-serif;">
+                لا، تراجع
+            </button>
+            <button onclick="confirmLogout()" style="flex:1;padding:0.8rem;border-radius:12px;border:none;background:#ef4444;color:#fff;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:'Cairo',sans-serif;">
+                نعم، خروج
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    var _logoutForm = null;
+
+    function showLogoutModal(form) {
+        _logoutForm = form;
+        var modal = document.getElementById('logoutModal');
+        modal.style.display = 'flex';
+    }
+
+    function closeLogoutModal() {
+        document.getElementById('logoutModal').style.display = 'none';
+        _logoutForm = null;
+    }
+
+    function confirmLogout() {
+        if (_logoutForm) _logoutForm.submit();
+    }
+
+    // Close on backdrop click
+    document.getElementById('logoutModal').addEventListener('click', function(e) {
+        if (e.target === this) closeLogoutModal();
+    });
+</script></body>
 </html>
+

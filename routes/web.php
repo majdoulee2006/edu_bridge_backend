@@ -48,6 +48,11 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::post('/lectures/update/{id}', [TeacherWebController::class, 'updateLecture'])->name('teacher.lectures.update');
     Route::post('/lectures/delete/{id}', [TeacherWebController::class, 'deleteLecture'])->name('teacher.lectures.delete');
 
+    // الاختبارات والتقييمات
+    Route::get('/grade-events', [TeacherWebController::class, 'gradeEvents'])->name('teacher.grade_events');
+    Route::post('/grade-events', [TeacherWebController::class, 'storeGradeEvent'])->name('teacher.grade_events.store');
+    Route::post('/grade-events/{id}/delete', [TeacherWebController::class, 'deleteGradeEvent'])->name('teacher.grade_events.delete');
+
     // الرسائل
     Route::get('/messages', [TeacherWebController::class, 'messages'])->name('teacher.messages');
     Route::post('/messages', [TeacherWebController::class, 'sendMessage'])->name('teacher.messages.send');
@@ -324,5 +329,67 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::get('/profile', [StudentWebController::class, 'profile'])->name('student.profile');
     Route::post('/profile', [StudentWebController::class, 'updateProfile'])->name('student.profile.update');
     Route::post('/profile/password', [StudentWebController::class, 'updatePassword'])->name('student.profile.password');
+
+    // الرسائل
+    Route::get('/messages', [StudentWebController::class, 'messages'])->name('student.messages');
+    Route::post('/messages', [StudentWebController::class, 'sendMessage'])->name('student.messages.send');
+    Route::get('/messages/conversation/{userId}', [StudentWebController::class, 'getConversation'])->name('student.messages.conversation');
 });
 
+// ==========================================
+// Parent Web Routes (ولي الأمر)
+// ==========================================
+use App\Http\Controllers\Web\ParentWebController;
+
+// تسجيل الدخول
+Route::get('/parent/login', [ParentWebController::class, 'showLoginForm'])->name('parent.login');
+Route::post('/parent/login', [ParentWebController::class, 'login'])->name('parent.login.post');
+Route::post('/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
+
+// العمليات المحمية
+Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
+    Route::get('/', fn() => redirect('/parent/dashboard'));
+    Route::get('/dashboard', [ParentWebController::class, 'dashboard'])->name('parent.dashboard');
+    Route::post('/select-child', [ParentWebController::class, 'selectChild'])->name('parent.select_child');
+    
+    // الأبناء
+    Route::get('/children', [ParentWebController::class, 'children'])->name('parent.children');
+    Route::post('/children/link', [ParentWebController::class, 'linkStudent'])->name('parent.children.link');
+    
+    // الجدول الدراسي
+    Route::get('/schedule', [ParentWebController::class, 'schedule'])->name('parent.schedule');
+    
+    // الواجبات
+    Route::get('/assignments', [ParentWebController::class, 'assignments'])->name('parent.assignments');
+    
+    // الدرجات والتقييمات
+    Route::get('/grades', [ParentWebController::class, 'grades'])->name('parent.grades');
+    
+    // الأذونات والطلبات
+    Route::get('/permissions', [ParentWebController::class, 'permissions'])->name('parent.permissions');
+    Route::post('/permissions/{id}/respond', [ParentWebController::class, 'respondPermission'])->name('parent.permissions.respond');
+    Route::post('/permissions/submit', [ParentWebController::class, 'submitLeaveRequest'])->name('parent.permissions.submit');
+    
+    // تقارير الأداء
+    Route::get('/reports', [ParentWebController::class, 'reports'])->name('parent.reports');
+    Route::post('/reports/request', [ParentWebController::class, 'requestReport'])->name('parent.reports.request');
+    
+    // الملف الشخصي
+    Route::get('/profile', [ParentWebController::class, 'profile'])->name('parent.profile');
+    Route::post('/profile/update', [ParentWebController::class, 'updateProfile'])->name('parent.profile.update');
+    Route::post('/profile/password', [ParentWebController::class, 'updatePassword'])->name('parent.profile.password');
+    Route::post('/profile/send-otp', [ParentWebController::class, 'sendOTP'])->name('parent.profile.send_otp');
+    Route::post('/profile/verify-otp', [ParentWebController::class, 'verifyOTP'])->name('parent.profile.verify_otp');
+
+    // الرسائل
+    Route::get('/messages', [ParentWebController::class, 'messages'])->name('parent.messages');
+    Route::post('/messages', [ParentWebController::class, 'sendMessage'])->name('parent.messages.send');
+    Route::get('/messages/conversation/{userId}', [ParentWebController::class, 'getConversation'])->name('parent.messages.conversation');
+Route::middleware(['auth'])->group(function () {
+    Route::get('/chat/contacts', [App\Http\Controllers\ChatController::class, 'getContacts'])->name('chat.contacts');
+    Route::post('/chat/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');
+    Route::get('/chat/messages/{otherUserId}', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::put('/chat/messages/{otherUserId}/mark-read', [App\Http\Controllers\ChatController::class, 'markAsRead'])->name('chat.mark-read');
+    Route::get('/chat/messages/unread-count', [App\Http\Controllers\ChatController::class, 'getUnreadCount'])->name('chat.unread-count');
+});
+});

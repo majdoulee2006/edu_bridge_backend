@@ -81,7 +81,12 @@
                          onclick="document.getElementById('imgInput').click()"
                          ondragover="event.preventDefault(); this.classList.add('border-primary')"
                          ondragleave="this.classList.remove('border-primary')">
-                        <input type="file" name="image" id="imgInput" accept="image/*" class="hidden" onchange="previewImage(this)">
+                        <input type="file" name="image" id="imgInput" accept="image/*" class="hidden"
+                               data-crop="true"
+                               data-preview-img="preview-img"
+                               data-preview-wrap="img-preview"
+                               data-placeholder="upload-placeholder"
+                               data-preview-name="preview-name">
                         <div id="upload-placeholder" class="flex flex-col items-center">
                             <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">add_photo_alternate</span>
                             <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">اسحب أو اضغط للاختيار</p>
@@ -144,4 +149,5 @@ function previewImage(input) {
     reader.readAsDataURL(file);
 }
 </script>
+@include('partials.image_cropper')
 @endpush

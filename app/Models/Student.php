@@ -20,6 +20,8 @@ class Student extends Model
         'face_embedding',
         'requires_face_reset',
         'reference_photo',
+        'device_id',
+        'is_device_locked',
     ];
 
     protected $casts = [

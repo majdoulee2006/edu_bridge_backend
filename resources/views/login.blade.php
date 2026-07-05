@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -131,7 +131,31 @@
             background: var(--primary-yellow);
             opacity: 0.1;
         }
-    </style>
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-left: 3rem !important;
+        }
+
+        .toggle-password {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #888;
+            font-size: 1.1rem;
+            padding: 0;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .toggle-password:hover { color: #1a2633; }    </style>
 </head>
 <body>
     <div class="circle" style="width: 300px; height: 300px; top: -100px; left: -100px;"></div>
@@ -159,7 +183,7 @@
 
                 <div class="input-group">
                     <label>كلمة المرور</label>
-                    <input type="password" name="password" placeholder="••••••••" required>
+                    <div class="password-wrapper"><input type="password" name="password" id="passwordField" placeholder="••••••••" required><button type="button" class="toggle-password" onclick="togglePassword()"><i class="fa-regular fa-eye" id="eyeIcon"></i></button></div>
                 </div>
 
 
@@ -167,5 +191,19 @@
             </form>
         </div>
     </div>
-</body>
+
+    <script>
+        function togglePassword() {
+            const field = document.getElementById('passwordField');
+            const icon  = document.getElementById('eyeIcon');
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                field.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+    </script></body>
 </html>
+

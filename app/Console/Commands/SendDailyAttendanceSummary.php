@@ -103,6 +103,12 @@ class SendDailyAttendanceSummary extends Command
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser(
+                $advisor->advisor_user_id,
+                'ملخص حضور اليوم',
+                $message,
+                ['type' => 'attendance_summary']
+            );
 
             $this->info("✅ أُرسل الملخص للمربي: {$advisor->advisor_name}");
         }

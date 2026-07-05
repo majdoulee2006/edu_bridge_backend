@@ -45,7 +45,7 @@ class TeacherWebController extends Controller
             $loginField = 'username';
         }
 
-        if (Auth::attempt([$loginField => $input, 'password' => $request->password])) {
+        if (Auth::attempt([$loginField => $input, 'password' => $request->password], true)) {
             $teacher = Teacher::where('user_id', Auth::user()->getKey())->first();
             if (!$teacher) {
                 Auth::logout();
@@ -1109,6 +1109,12 @@ class TeacherWebController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        \App\Services\FcmService::sendToUser(
+            $request->receiver_id,
+            'رسالة جديدة',
+            'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            ['type' => 'message']
+        );
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => clone $message]);
@@ -1628,6 +1634,12 @@ class TeacherWebController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                \App\Services\FcmService::sendToUser(
+                    $headId,
+                    $notifTitle,
+                    'تم رفع تقرير عن الطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
+                    ['type' => 'report', 'related_id' => (string)$id]
+                );
             }
         }
 
@@ -1636,5 +1648,207 @@ class TeacherWebController extends Controller
             : 'تم توليد التقرير الأكاديمي بنجاح!';
 
         return redirect()->back()->with('success', $msg);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    //  GRADE EVENTS (الاختبارات والتقييمات)
+    // ────────────────────────────────────────────────────────────
+
+    public function gradeEvents()
+    {
+        $teacher = $this->getTeacher();
+
+        $events = DB::table('grade_events')
+            ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+            ->where('grade_events.teacher_id', $teacher->teacher_id)
+            ->select('grade_events.*', 'courses.title as course_title')
+            ->orderByDesc('grade_events.date')
+            ->get();
+
+        $courses = DB::table('course_teachers')
+            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+            ->where('course_teachers.teacher_id', $teacher->teacher_id)
+            ->select('courses.course_id', 'courses.title')
+            ->get();
+
+        return view('teacher.grade_events', compact('events', 'courses'));
+    }
+
+    public function storeGradeEvent(Request $request)
+    {
+        $request->validate([
+            'type'      => 'required|in:exam,quiz,oral',
+            'course_id' => 'required|exists:courses,course_id',
+            'title'     => 'required|string|max:255',
+            'max_score' => 'required|numeric|min:1',
+            'date'      => 'required|date',
+            'notes'     => 'nullable|string|max:500',
+        ]);
+
+        $teacher = $this->getTeacher();
+
+        DB::table('grade_events')->insert([
+            'teacher_id' => $teacher->teacher_id,
+            'course_id'  => $request->course_id,
+            'type'       => $request->type,
+            'title'      => $request->title,
+            'max_score'  => $request->max_score,
+            'date'       => $request->date,
+            'notes'      => $request->notes,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'تمت إضافة التقييم بنجاح!');
+    }
+
+    public function deleteGradeEvent($id)
+    {
+        $teacher = $this->getTeacher();
+
+        DB::table('grade_events')
+            ->where('id', $id)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->delete();
+
+        return redirect()->back()->with('success', 'تم حذف التقييم.');
+    }
+
+    // ────────────────────────────────────────────────────────────
+    //  QUIZZES
+    // ────────────────────────────────────────────────────────────
+
+    public function quizzes()
+    {
+        $teacher = $this->getTeacher();
+        $quizzes = \App\Models\Quiz::where('teacher_id', $teacher->teacher_id)
+            ->with('course')
+            ->withCount('questions')
+            ->latest()
+            ->get();
+
+        $courses = DB::table('course_teachers')
+            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+            ->where('course_teachers.teacher_id', $teacher->teacher_id)
+            ->select('courses.course_id', 'courses.title')
+            ->get();
+
+        return view('teacher.quizzes', compact('quizzes', 'courses'));
+    }
+
+    public function storeQuiz(Request $request)
+    {
+        $request->validate([
+            'title'            => 'required|string|max:255',
+            'course_id'        => 'required|exists:courses,course_id',
+            'description'      => 'nullable|string',
+            'duration_minutes' => 'required|integer|min:1|max:300',
+            'total_marks'      => 'required|integer|min:1',
+            'start_at'         => 'nullable|date',
+            'end_at'           => 'nullable|date|after_or_equal:start_at',
+        ]);
+
+        $teacher = $this->getTeacher();
+        $quiz = \App\Models\Quiz::create([
+            'teacher_id'       => $teacher->teacher_id,
+            'course_id'        => $request->course_id,
+            'title'            => $request->title,
+            'description'      => $request->description,
+            'duration_minutes' => $request->duration_minutes,
+            'total_marks'      => $request->total_marks,
+            'start_at'         => $request->start_at,
+            'end_at'           => $request->end_at,
+            'is_published'     => false,
+        ]);
+
+        return redirect()->route('teacher.quizzes.builder', $quiz->id)
+            ->with('success', 'تم إنشاء الاختبار، أضف الأسئلة الآن');
+    }
+
+    public function quizBuilder($id)
+    {
+        $teacher = $this->getTeacher();
+        $quiz = \App\Models\Quiz::where('id', $id)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->with(['questions.options', 'course'])
+            ->firstOrFail();
+
+        return view('teacher.quiz_builder', compact('quiz'));
+    }
+
+    public function storeQuestion(Request $request, $quizId)
+    {
+        $teacher = $this->getTeacher();
+        $quiz = \App\Models\Quiz::where('id', $quizId)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->firstOrFail();
+
+        $request->validate([
+            'question_text' => 'required|string',
+            'type'          => 'required|in:mcq,text',
+            'marks'         => 'required|integer|min:1',
+            'options'       => 'required_if:type,mcq|array|min:2',
+            'options.*'     => 'required_if:type,mcq|string',
+            'correct'       => 'required_if:type,mcq|integer',
+        ]);
+
+        $order = $quiz->questions()->count() + 1;
+
+        $question = $quiz->questions()->create([
+            'question_text' => $request->question_text,
+            'type'          => $request->type,
+            'marks'         => $request->marks,
+            'order_num'     => $order,
+        ]);
+
+        if ($request->type === 'mcq' && $request->has('options')) {
+            foreach ($request->options as $i => $opt) {
+                if (trim($opt) === '') continue;
+                $question->options()->create([
+                    'option_text' => $opt,
+                    'is_correct'  => ($request->correct == $i),
+                ]);
+            }
+        }
+
+        return redirect()->route('teacher.quizzes.builder', $quizId)
+            ->with('success', 'تمت إضافة السؤال');
+    }
+
+    public function deleteQuestion($quizId, $questionId)
+    {
+        $teacher = $this->getTeacher();
+        $quiz = \App\Models\Quiz::where('id', $quizId)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->firstOrFail();
+
+        $quiz->questions()->where('id', $questionId)->delete();
+
+        return redirect()->route('teacher.quizzes.builder', $quizId)
+            ->with('success', 'تم حذف السؤال');
+    }
+
+    public function publishQuiz($id)
+    {
+        $teacher = $this->getTeacher();
+        $quiz = \App\Models\Quiz::where('id', $id)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->firstOrFail();
+
+        $quiz->update(['is_published' => !$quiz->is_published]);
+
+        return redirect()->route('teacher.quizzes')
+            ->with('success', $quiz->is_published ? 'تم نشر الاختبار' : 'تم إلغاء نشر الاختبار');
+    }
+
+    public function deleteQuiz($id)
+    {
+        $teacher = $this->getTeacher();
+        $quiz = \App\Models\Quiz::where('id', $id)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->firstOrFail();
+
+        $quiz->delete();
+        return redirect()->route('teacher.quizzes')->with('success', 'تم حذف الاختبار');
     }
 }

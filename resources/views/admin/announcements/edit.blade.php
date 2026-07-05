@@ -47,7 +47,12 @@
                 <div id="upload-zone"
                      class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-center cursor-pointer hover:border-primary/50 transition-all bg-slate-50 dark:bg-slate-900/30 min-h-[100px] flex flex-col items-center justify-center"
                      onclick="document.getElementById('imgInput').click()">
-                    <input type="file" name="image" id="imgInput" accept="image/*" class="hidden" onchange="previewImage(this)">
+                    <input type="file" name="image" id="imgInput" accept="image/*" class="hidden"
+                           data-crop="true"
+                           data-preview-img="preview-img"
+                           data-preview-wrap="img-preview"
+                           data-placeholder="upload-placeholder"
+                           data-preview-name="preview-name">
                     <div id="upload-placeholder" class="flex flex-col items-center">
                         <span class="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-600 mb-1">add_photo_alternate</span>
                         <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">اضغط لاستبدال الصورة</p>
@@ -90,4 +95,5 @@ function previewImage(input) {
     reader.readAsDataURL(input.files[0]);
 }
 </script>
+@include('partials.image_cropper')
 @endpush

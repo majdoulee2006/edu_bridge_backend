@@ -74,74 +74,31 @@
         margin-bottom: 1.5rem;
     }
     
-    .news-image {
-        width: 100%;
-        height: 220px;
-        object-fit: fill;
-        display: block;
-        transition: transform 0.3s ease;
-    }
-    .news-card:hover .news-image { transform: scale(1.02); }
-    .news-img-wrap {
-        overflow: hidden;
-        position: relative;
-        max-height: 220px;
-    }
-    .news-placeholder {
-        width: 100%;
-        height: 120px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #fef9c3, #fde68a);
-        color: #ca8a04;
-    }
-    .news-content { padding: 1.25rem 1.5rem 1.5rem; }
-    .news-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        margin-bottom: 0.75rem;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-    }
-    .audience-badge {
-        background: #fef3c7;
-        color: #92400e;
-        padding: 0.2rem 0.6rem;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .news-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        line-height: 1.4;
-    }
-    .news-excerpt {
-        color: var(--text-secondary);
-        line-height: 1.7;
-        font-size: 0.9rem;
-        margin-bottom: 0.75rem;
-    }
-    .news-link-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        background: var(--accent-color);
-        color: #1a1a1a;
-        padding: 0.45rem 1rem;
-        border-radius: 0.5rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: opacity 0.2s;
-        margin-top: 0.5rem;
-    }
-    .news-link-btn:hover { opacity: 0.85; }
+    /* ── Announcement Cards ── */
+    .ann-hero { border-radius: 1.5rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 1rem; display: flex; flex-direction: column; }
+    .ann-hero-img { position: relative; width: 100%; height: 240px; overflow: hidden; background: #1e293b; flex-shrink: 0; }
+    .ann-hero-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s ease; }
+    .ann-hero:hover .ann-hero-img img { transform: scale(1.04); }
+    .ann-hero-img-grad { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 55%); pointer-events: none; }
+    .ann-hero-img-badge { position: absolute; top: 0.85rem; right: 0.85rem; background: var(--accent-color); color: #1a1a1a; font-size: 0.72rem; font-weight: 800; padding: 0.25rem 0.75rem; border-radius: 2rem; }
+    .ann-hero-body { padding: 1.25rem 1.5rem 1.5rem; }
+    .ann-hero-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 0.4rem; line-height: 1.45; color: var(--text-primary); }
+    .ann-hero-excerpt { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.65; margin-bottom: 0.75rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+    .ann-hero-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+
+    .ann-row { display: flex; align-items: stretch; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 0.65rem; transition: box-shadow .2s; }
+    .ann-row:hover { box-shadow: 0 4px 20px rgba(0,0,0,.12); }
+    .ann-row-thumb { flex-shrink: 0; width: 120px; position: relative; overflow: hidden; background: #1e293b; }
+    .ann-row-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: absolute; inset: 0; transition: transform .4s ease; }
+    .ann-row:hover .ann-row-thumb img { transform: scale(1.07); }
+    .ann-row-body { flex: 1; padding: 0.85rem 1.1rem; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+    .ann-row-title { font-size: 0.88rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.3rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4; }
+    .ann-row-meta { font-size: 0.74rem; color: var(--text-secondary); display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+
+    .ann-no-img { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); display: flex; align-items: center; justify-content: center; }
+    .ann-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+    .btn-edit-sm  { padding: 0.3rem 0.65rem; border-radius: 0.5rem; background: #eff6ff; color: #1d4ed8; font-size: 0.72rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; }
+    .btn-del-sm   { padding: 0.3rem 0.65rem; border-radius: 0.5rem; background: #fef2f2; color: #dc2626; font-size: 0.72rem; font-weight: 700; border: none; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 0.25rem; }
 </style>
 @endpush
 
@@ -174,80 +131,67 @@
         @endphp
 
         @if($loop->first)
-        <div style="display:flex; flex-direction:row-reverse; border-radius:1.25rem; overflow:hidden; background:var(--bg-secondary); box-shadow:var(--shadow); margin-bottom:1.25rem; min-height:200px;">
-            <div style="width:38%; flex-shrink:0; background:#1e293b; position:relative; overflow:hidden;">
+        {{-- Hero card --}}
+        <div class="ann-hero">
+            <div class="ann-hero-img">
                 @if($imgUrl)
-                    <a href="{{ $imgUrl }}" target="_blank" download style="display:block; position:absolute; inset:0;">
-                        <img src="{{ $imgUrl }}" style="width:100%; height:100%; object-fit: fill;">
-                    </a>
+                    <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
                 @else
-                    <i class="fa-solid fa-bullhorn" style="position:absolute; inset:0; margin:auto; font-size:4rem; color:rgba(255,255,255,0.08); width:fit-content; height:fit-content;"></i>
-                @endif
-            </div>
-            <div style="flex:1; padding:1.5rem; display:flex; flex-direction:column; justify-content:space-between;">
-                <div>
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.75rem;">
-                        <span style="background:var(--accent-color); color:#1a1a1a; padding:0.2rem 0.75rem; border-radius:2rem; font-size:0.78rem; font-weight:700;">إعلان هام</span>
-                        @if($isOwner)
-                        <div style="display:flex; gap:0.5rem;">
-                            <a href="{{ route('hod.announcements.edit', $annId) }}"
-                               style="display:flex; align-items:center; gap:0.25rem; padding:0.3rem 0.6rem; border-radius:0.5rem; background:#eff6ff; color:#1d4ed8; font-size:0.75rem; font-weight:700; text-decoration:none;">
-                                <i class="fa-solid fa-pen" style="font-size:0.7rem;"></i> تعديل
-                            </a>
-                            <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف الإعلان؟')" style="margin:0;">
-                                @csrf
-                                <button type="submit" style="display:flex; align-items:center; gap:0.25rem; padding:0.3rem 0.6rem; border-radius:0.5rem; background:#fef2f2; color:#dc2626; font-size:0.75rem; font-weight:700; border:none; cursor:pointer; font-family:inherit;">
-                                    <i class="fa-solid fa-trash" style="font-size:0.7rem;"></i> حذف
-                                </button>
-                            </form>
-                        </div>
-                        @endif
+                    <div class="ann-no-img" style="width:100%; height:100%;">
+                        <i class="fa-solid fa-bullhorn" style="font-size:3.5rem; color:rgba(255,255,255,0.07);"></i>
                     </div>
-                    <h4 style="font-size:1.05rem; font-weight:800; margin-bottom:0.5rem; color:var(--text-primary);">{{ $ann->title }}</h4>
-                    <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.6;">{{ Str::limit($ann->content, 200) }}</p>
-                    @if(isset($ann->link_url) && $ann->link_url)
-                        <a href="{{ $ann->link_url }}" target="_blank" style="display:inline-flex; align-items:center; gap:0.3rem; margin-top:0.5rem; color:var(--accent-color); font-size:0.82rem; font-weight:700; text-decoration:none;">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i> فتح الرابط
-                        </a>
-                    @endif
-                </div>
-                <div style="margin-top:0.75rem; font-size:0.78rem; color:var(--text-secondary);">
-                    <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}
-                </div>
-            </div>
-        </div>
-        @else
-        <div style="display:flex; flex-direction:row-reverse; border-radius:1.25rem; overflow:hidden; background:var(--bg-secondary); box-shadow:var(--shadow); margin-bottom:0.75rem; min-height:110px;">
-            <div style="width:150px; flex-shrink:0; background:#1e293b; position:relative; overflow:hidden;">
-                @if($imgUrl)
-                    <a href="{{ $imgUrl }}" target="_blank" download style="display:block; position:absolute; inset:0;">
-                        <img src="{{ $imgUrl }}" style="width:100%; height:100%; object-fit: fill;">
-                    </a>
-                @else
-                    <i class="fa-solid fa-bullhorn" style="position:absolute; inset:0; margin:auto; font-size:2rem; color:rgba(255,255,255,0.1); width:fit-content; height:fit-content;"></i>
                 @endif
+                <div class="ann-hero-img-grad"></div>
+                <span class="ann-hero-img-badge">إعلان هام</span>
             </div>
-            <div style="flex:1; padding:1rem 1.25rem; display:flex; flex-direction:column; justify-content:center;">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem;">
-                    <span style="font-size:0.72rem; font-weight:700; color:var(--text-secondary);">إعلان</span>
+            <div class="ann-hero-body">
+                <div class="ann-hero-footer" style="margin-bottom:0.6rem;">
+                    <span style="font-size:0.75rem; color:var(--text-secondary);"><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
                     @if($isOwner)
-                    <div style="display:flex; gap:0.4rem;">
-                        <a href="{{ route('hod.announcements.edit', $annId) }}"
-                           style="padding:0.25rem 0.5rem; border-radius:0.4rem; background:#eff6ff; color:#1d4ed8; font-size:0.7rem; text-decoration:none;">
-                            <i class="fa-solid fa-pen"></i>
-                        </a>
-                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin:0;">
+                    <div class="ann-actions">
+                        <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i> تعديل</a>
+                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف الإعلان؟')" style="margin:0;">
                             @csrf
-                            <button type="submit" style="padding:0.25rem 0.5rem; border-radius:0.4rem; background:#fef2f2; color:#dc2626; font-size:0.7rem; border:none; cursor:pointer;">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
+                            <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i> حذف</button>
                         </form>
                     </div>
                     @endif
                 </div>
-                <h4 style="font-size:0.9rem; font-weight:700; color:var(--text-primary); margin-bottom:0.3rem;">{{ $ann->title }}</h4>
-                <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.3rem; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">{{ $ann->content }}</p>
-                <span style="font-size:0.75rem; color:var(--text-secondary);">{{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
+                <h4 class="ann-hero-title">{{ $ann->title }}</h4>
+                <p class="ann-hero-excerpt">{{ $ann->content }}</p>
+                @if(isset($ann->link_url) && $ann->link_url)
+                    <a href="{{ $ann->link_url }}" target="_blank" style="display:inline-flex; align-items:center; gap:0.3rem; color:var(--accent-color); font-size:0.82rem; font-weight:700; text-decoration:none;">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> فتح الرابط
+                    </a>
+                @endif
+            </div>
+        </div>
+        @else
+        {{-- Row card --}}
+        <div class="ann-row">
+            <div class="ann-row-thumb">
+                @if($imgUrl)
+                    <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
+                @else
+                    <div class="ann-no-img" style="width:100%; height:100%; position:absolute; inset:0;">
+                        <i class="fa-solid fa-bullhorn" style="font-size:1.75rem; color:rgba(255,255,255,0.12);"></i>
+                    </div>
+                @endif
+            </div>
+            <div class="ann-row-body">
+                <h4 class="ann-row-title">{{ $ann->title }}</h4>
+                <div class="ann-row-meta">
+                    <span><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
+                    @if($isOwner)
+                    <div class="ann-actions" style="margin-right:auto;">
+                        <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i></a>
+                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin:0;">
+                            @csrf
+                            <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i></button>
+                        </form>
+                    </div>
+                    @endif
+                </div>
             </div>
         </div>
         @endif

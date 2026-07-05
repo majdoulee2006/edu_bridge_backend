@@ -75,6 +75,12 @@ class StudentParentController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                    \App\Services\FcmService::sendToUser(
+                        $teacherUserId, 
+                        'طلب تقرير سلوكي', 
+                        'طلب ولي أمر الطالب ' . ($student->student_name ?? 'الطالب') . ' تقريراً سلوكياً، يُرجى المراجعة.', 
+                        ['type' => 'report']
+                    );
                 }
 
                 return response()->json([
@@ -122,6 +128,12 @@ class StudentParentController extends Controller
                 'is_read'    => 0,
                 'created_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser(
+                $currentUserId,
+                'تقرير أكاديمي جاهز',
+                'تم إصدار التقرير الأكاديمي للابن: ' . ($student->student_name ?? 'الطالب') . ' بمعدل ' . $averageGrade . '%',
+                ['type' => 'report', 'related_id' => (string)$reportId]
+            );
 
             return response()->json([
                 'success' => true,
@@ -364,6 +376,12 @@ class StudentParentController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                    \App\Services\FcmService::sendToUser(
+                        $headUserId,
+                        'طلب إجازة بانتظار موافقتك',
+                        'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
+                        ['type' => 'leave_request', 'related_id' => (string)$id]
+                    );
                 }
             }
         } else {
@@ -383,6 +401,12 @@ class StudentParentController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                \App\Services\FcmService::sendToUser(
+                    $leaveRequest->student_id,
+                    'تم رفض طلب الإجازة',
+                    'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
+                    ['type' => 'leave_request', 'related_id' => (string)$id]
+                );
             }
         }
 
@@ -502,6 +526,12 @@ class StudentParentController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            \App\Services\FcmService::sendToUser(
+                $headUserId,
+                'طلب إجازة من ولي الأمر',
+                'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
+                ['type' => 'leave_request', 'related_id' => (string)$leaveId]
+            );
         }
 
         return response()->json(['success' => true, 'message' => 'تم إرسال طلب الإجازة بنجاح، بانتظار موافقة رئيس القسم']);
