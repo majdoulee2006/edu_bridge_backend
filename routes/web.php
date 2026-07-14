@@ -240,6 +240,9 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
     Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
     Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
+    
+    // الخدمات الطلابية للإدارة
+    Route::get('/student-services', [AdminWebController::class, 'studentServices'])->name('admin.student_services');
     Route::get('/announcements/create', [AdminWebController::class, 'createAnnouncement'])->name('admin.announcements.create');
     Route::post('/announcements', [AdminWebController::class, 'storeAnnouncement'])->name('admin.announcements.store');
     Route::get('/announcements/{id}/edit', [AdminWebController::class, 'editAnnouncement'])->name('admin.announcements.edit');

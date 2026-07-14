@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" dir="rtl" lang="ar">
 <head>
     <meta charset="utf-8"/>
@@ -149,6 +149,12 @@
                 <a href="{{ route('admin.reports') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/reports*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
                     <i class="fa-solid fa-chart-simple text-base"></i>
                     التقارير
+                </a>
+
+                {{-- Student Services --}}
+                <a href="{{ route('admin.student_services') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/student-services*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                    <i class="fa-solid fa-boxes-stacked text-base"></i>
+                    الخدمات الطلابية
                 </a>
 
                 {{-- Notifications --}}

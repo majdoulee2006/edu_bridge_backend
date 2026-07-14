@@ -1534,4 +1534,12 @@ tr:nth-child(even) td{background:#f8fafc}
         DB::table('courses')->where('course_id', $id)->delete();
         return back()->with('success', 'تم حذف المادة بنجاح!');
     }
+
+    /**
+     * الخدمات الطلابية للإدارة
+     */
+    public function studentServices()
+    {
+        return view('admin.student-services');
+    }
 }
