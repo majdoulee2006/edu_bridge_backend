@@ -140,6 +140,9 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::post('/reports/{id}/send-to-parent', [HODWebController::class, 'sendReportToParent'])->name('hod.reports.send_to_parent');
     Route::get('/reports/{id}/download', [HODWebController::class, 'downloadReport'])->name('hod.reports.download');
     
+    // الخدمات الطلابية
+    Route::get('/student-services', [HODWebController::class, 'studentServices'])->name('hod.student_services');
+    
     // واجهات الـ Mockup القديمة
     Route::get('/notifications', [HODWebController::class, 'notifications'])->name('hod.notifications');
     Route::post('/notifications/send', [HODWebController::class, 'sendNotification'])->name('hod.notifications.send');
@@ -170,6 +173,9 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/calendar/events/update/{id}', [AffairsWebController::class, 'updateCalendarEvent'])->name('affairs.calendar.update');
     Route::post('/calendar/events/delete/{id}', [AffairsWebController::class, 'deleteCalendarEvent'])->name('affairs.calendar.delete');
     Route::get('/activities', [AffairsWebController::class, 'activities'])->name('affairs.activities');
+    
+    // الخدمات الطلابية
+    Route::get('/student-services', [AffairsWebController::class, 'studentServices'])->name('affairs.student_services');
 
     // الحسابات
     Route::get('/accounts', [AffairsWebController::class, 'accounts'])->name('affairs.accounts');

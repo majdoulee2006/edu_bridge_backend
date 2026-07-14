@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -154,6 +154,9 @@
                 </a>
                 <a href="{{ url('/affairs/reports') }}" class="nav-item {{ Request::is('affairs/reports') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-lines"></i> التقارير
+                </a>
+                <a href="{{ url('/affairs/student-services') }}" class="nav-item {{ Request::is('affairs/student-services*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-boxes-stacked"></i> الخدمات الطلابية
                 </a>
                 <a href="{{ url('/affairs/messages') }}" class="nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-comments"></i> الرسائل

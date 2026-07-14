@@ -184,6 +184,13 @@ class AffairsWebController extends Controller
         return view('affairs.activities', compact('events'));
     }
 
+    // ─────────────────────────── Student Services ───────────────────────────
+    public function studentServices()
+    {
+        // هنا سنجلب لاحقاً طلبات الاسترحام والإكمال من قاعدة البيانات
+        return view('affairs.student-services');
+    }
+
     // ─────────────────────────── Accounts (معلم + رئيس قسم فقط) ────
     public function accounts()
     {

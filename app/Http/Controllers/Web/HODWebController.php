@@ -1404,4 +1404,12 @@ tr:nth-child(even) td{background:#f8fafc}
 
         return redirect()->back()->with('error', 'حدث خطأ، لا يوجد قسم مرتبط بك.');
     }
+
+    /**
+     * الخدمات الطلابية
+     */
+    public function studentServices()
+    {
+        return view('hod.student-services');
+    }
 }
