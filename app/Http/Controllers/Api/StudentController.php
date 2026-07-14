@@ -347,6 +347,59 @@ class StudentController extends Controller
             'data' => $courses
         ], 200);
     }
+
+    /**
+     * جلب كافة مواد الاختصاص للطالب (للعامين)
+     */
+    public function getProgramCourses(Request $request)
+    {
+        $student = $request->user()->student;
+        $user = $request->user();
+
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الطالب غير موجود'
+            ], 404);
+        }
+
+        $program = null;
+        if ($student->program_id) {
+            $program = \App\Models\Program::with('courses')->find($student->program_id);
+        }
+
+        if (!$program) {
+            $branch = $user->branch ?? $user->department;
+            if ($branch) {
+                $program = \App\Models\Program::with('courses')
+                    ->where('name', 'LIKE', '%' . $branch . '%')
+                    ->first();
+            }
+        }
+
+        if (!$program) {
+            return response()->json([
+                'success' => true,
+                'data' => []
+            ], 200);
+        }
+
+        $courses = $program->courses->map(function ($course) {
+            return [
+                'id' => $course->course_id,
+                'title' => $course->title,
+                'description' => $course->description,
+                'level' => $course->level,
+                'year' => $course->year,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $courses
+        ], 200);
+    }
+
    /**
      * جلب المحاضرات (الدروس) المجمعة حسب المادة
      */

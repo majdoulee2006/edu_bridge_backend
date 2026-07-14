@@ -136,6 +136,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
         Route::get('/lectures', [StudentController::class, 'getMyLectures']);
         Route::get('/courses', [StudentController::class, 'getMyCourses']);
+        Route::get('/program-courses', [StudentController::class, 'getProgramCourses']);
         Route::get('/grades', [StudentController::class, 'getMyGrades']);
         Route::get('/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
 
