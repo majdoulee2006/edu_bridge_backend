@@ -187,8 +187,37 @@ class AffairsWebController extends Controller
     // ─────────────────────────── Student Services ───────────────────────────
     public function studentServices()
     {
-        // هنا سنجلب لاحقاً طلبات الاسترحام والإكمال من قاعدة البيانات
-        return view('affairs.student-services');
+        // الشؤون يرون كافة الطلبات 
+        // أو الطلبات التي في حالتهم ('pending_affairs') والطلبات التي قرروا فيها من قبل
+        $requests = \App\Models\StudentRequest::with(['student.user', 'student.program.department'])
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+        return view('affairs.student-services', compact('requests'));
+    }
+
+    public function processStudentService(Request $request, $id)
+    {
+        $studentReq = \App\Models\StudentRequest::findOrFail($id);
+
+        if ($studentReq->status !== 'pending_affairs') {
+            return back()->with('error', 'لقد قمت بإبداء رأيك وسحب صلاحية التعديل على هذا الطلب مسبقاً (مسموح برد واحد فقط).');
+        }
+
+        $request->validate([
+            'decision' => 'required|in:approved,rejected',
+            'notes' => 'required|string'
+        ]);
+        
+        // تحديث قرار الشؤون
+        $studentReq->affairs_decision = $request->decision;
+        $studentReq->affairs_notes = $request->notes;
+        
+        // الطلب ينتقل لرئيس القسم بغض النظر عن رأي الشؤون
+        $studentReq->status = 'pending_hod';
+        
+        $studentReq->save();
+
+        return back()->with('success', 'تم حفظ رأي الشؤون بنجاح وتحويل الطلب إلى رئيس القسم.');
     }
 
     // ─────────────────────────── Accounts (معلم + رئيس قسم فقط) ────

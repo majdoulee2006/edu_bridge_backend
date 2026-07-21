@@ -112,25 +112,25 @@ Route::post('/hod/logout', [HODWebController::class, 'logout'])->name('hod.logou
 Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->group(function () {
     Route::get('/', function() { return redirect('/hod/dashboard'); });
     Route::get('/dashboard', [HODWebController::class, 'dashboard'])->name('hod.dashboard');
-    Route::get('/profile', [HODWebController::class, 'profile']);
+    Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
     Route::post('/profile/send-otp', [HODWebController::class, 'sendOTP'])->name('hod.profile.send_otp');
     Route::post('/profile/verify-otp', [HODWebController::class, 'verifyOTP'])->name('hod.profile.verify_otp');
-    Route::get('/leaves', [HODWebController::class, 'leaves']);
+    Route::get('/leaves', [HODWebController::class, 'leaves'])->name('hod.leaves');
     Route::post('/leaves/{id}/status', [HODWebController::class, 'updateLeaveStatus'])->name('hod.leaves.status');
-    Route::get('/accounts', [HODWebController::class, 'accounts']);
+    Route::get('/accounts', [HODWebController::class, 'accounts'])->name('hod.accounts');
     Route::post('/accounts/teacher', [HODWebController::class, 'storeTeacher'])->name('hod.accounts.store_teacher');
     Route::post('/accounts/student', [HODWebController::class, 'storeStudent'])->name('hod.accounts.store_student');
     Route::post('/accounts/advisor', [HODWebController::class, 'assignAdvisor'])->name('hod.accounts.advisor');
     Route::post('/accounts/parent', [HODWebController::class, 'storeParent'])->name('hod.accounts.store_parent');
     Route::post('/accounts/update/{id}', [HODWebController::class, 'updateAccount'])->name('hod.accounts.update');
     Route::post('/accounts/delete/{id}', [HODWebController::class, 'deleteAccount'])->name('hod.accounts.delete');
-    Route::get('/organization', [HODWebController::class, 'organization']);
+    Route::get('/organization', [HODWebController::class, 'organization'])->name('hod.organization');
     Route::post('/organization/schedule', [HODWebController::class, 'storeSchedule'])->name('hod.organization.store_schedule');
     Route::post('/organization/schedule/delete/{id}', [HODWebController::class, 'deleteSchedule'])->name('hod.organization.delete_schedule');
     Route::post('/organization/exam', [HODWebController::class, 'storeExam'])->name('hod.organization.store_exam');
     Route::post('/organization/exam/delete/{id}', [HODWebController::class, 'deleteExam'])->name('hod.organization.delete_exam');
-    Route::get('/messages', [HODWebController::class, 'messages']);
+    Route::get('/messages', [HODWebController::class, 'messages'])->name('hod.messages');
     Route::post('/messages', [HODWebController::class, 'storeMessage'])->name('hod.messages.store');
     Route::post('/messages/delete/{id}', [HODWebController::class, 'deleteMessage'])->name('hod.messages.delete');
     Route::get('/reports', [HODWebController::class, 'reports'])->name('hod.reports');
@@ -142,6 +142,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     
     // الخدمات الطلابية
     Route::get('/student-services', [HODWebController::class, 'studentServices'])->name('hod.student_services');
+    Route::post('/student-services/{id}/process', [HODWebController::class, 'processStudentService'])->name('hod.student_services.process');
     
     // واجهات الـ Mockup القديمة
     Route::get('/notifications', [HODWebController::class, 'notifications'])->name('hod.notifications');
@@ -176,6 +177,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     
     // الخدمات الطلابية
     Route::get('/student-services', [AffairsWebController::class, 'studentServices'])->name('affairs.student_services');
+    Route::post('/student-services/{id}/process', [AffairsWebController::class, 'processStudentService'])->name('affairs.student_services.process');
 
     // الحسابات
     Route::get('/accounts', [AffairsWebController::class, 'accounts'])->name('affairs.accounts');
@@ -243,6 +245,7 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     
     // الخدمات الطلابية للإدارة
     Route::get('/student-services', [AdminWebController::class, 'studentServices'])->name('admin.student_services');
+    Route::post('/student-services/{id}/process', [AdminWebController::class, 'processStudentService'])->name('admin.student_services.process');
     Route::get('/announcements/create', [AdminWebController::class, 'createAnnouncement'])->name('admin.announcements.create');
     Route::post('/announcements', [AdminWebController::class, 'storeAnnouncement'])->name('admin.announcements.store');
     Route::get('/announcements/{id}/edit', [AdminWebController::class, 'editAnnouncement'])->name('admin.announcements.edit');

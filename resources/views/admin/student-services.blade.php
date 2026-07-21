@@ -271,13 +271,13 @@
 
     <!-- Tabs Navigation -->
     <div class="custom-tabs">
-        <button class="tab-btn active" onclick="switchTab('mercy')">
+        <button class="tab-btn active" onclick="switchTab(this, 'mercy')">
             <i class="fa-solid fa-gavel"></i> طلبات الاسترحام
         </button>
-        <button class="tab-btn" onclick="switchTab('documents')">
+        <button class="tab-btn" onclick="switchTab(this, 'documents')">
             <i class="fa-solid fa-file-invoice"></i> طلبات الوثائق
         </button>
-        <button class="tab-btn" onclick="switchTab('makeup')">
+        <button class="tab-btn" onclick="switchTab(this, 'makeup')">
             <i class="fa-solid fa-pen-to-square"></i> امتحانات الإكمال
         </button>
     </div>
@@ -298,24 +298,34 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @foreach($requests->where('type', 'mercy') as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:#f2f20d; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">أ</div>
-                                <span>أحمد محمد</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>202401</td>
-                        <td>2024-2025</td>
-                        <td>إعادة تقييم مقرر البرمجة</td>
-                        <td>2026-07-14</td>
-                        <td><span class="badge badge-admin-review">بانتظار الإدارة</span></td>
+                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
+                        <td>
+                            @if($req->status == 'pending_admin')
+                                <span class="badge badge-pending">بانتظار قرارك</span>
+                            @else
+                                <span class="badge badge-approved">منتهي</span>
+                            @endif</td>
                         <td>
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('استرحام', 'أحمد محمد', '202401', '2024-2025', 'الهندسة المعلوماتية', 'هندسة البرمجيات', 'إعادة تقييم مقرر البرمجة', 'الطالب يستحق إعادة التقييم نظراً لظروفه الصحية.', 'أوافق على إعادة التقييم، يرجى من الإدارة الاعتماد.')"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('mercy', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, {{ $req->id }})"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
+                    @endforeach
+                    @if($requests->where('type', 'mercy')->isEmpty())
+                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -337,24 +347,34 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @foreach($requests->where('type', 'document') as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:#f2f20d; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">س</div>
-                                <span>سارة خالد</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>202405</td>
-                        <td>2024-2025</td>
-                        <td>كشف علامات مفصل</td>
-                        <td>2026-07-13</td>
-                        <td><span class="badge badge-admin-review">بانتظار الإدارة</span></td>
+                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
+                        <td>
+                            @if($req->status == 'pending_admin')
+                                <span class="badge badge-pending">بانتظار قرارك</span>
+                            @else
+                                <span class="badge badge-approved">منتهي</span>
+                            @endif</td>
                         <td>
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('وثيقة', 'سارة خالد', '202405', '2024-2025', 'إدارة الأعمال', 'محاسبة', 'كشف علامات مفصل', 'تم التأكد من براءة ذمة الطالبة المالية.', 'لا مانع أكاديمياً من منحها كشف العلامات.')"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('document', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, {{ $req->id }})"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
+                    @endforeach
+                    @if($requests->where('type', 'document')->isEmpty())
+                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -376,24 +396,34 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @foreach($requests->where('type', 'makeup') as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:#f2f20d; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">م</div>
-                                <span>محمد العبدالله</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>202410</td>
-                        <td>2024-2025</td>
-                        <td>هندسة البرمجيات، قواعد البيانات</td>
-                        <td>2026-07-14</td>
-                        <td><span class="badge badge-admin-review">بانتظار الإدارة</span></td>
+                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
+                        <td>
+                            @if($req->status == 'pending_admin')
+                                <span class="badge badge-pending">بانتظار قرارك</span>
+                            @else
+                                <span class="badge badge-approved">منتهي</span>
+                            @endif</td>
                         <td>
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('امتحان إكمال', 'محمد العبدالله', '202410', '2024-2025', 'الهندسة المعلوماتية', 'الذكاء الاصطناعي', 'هندسة البرمجيات، قواعد البيانات', 'الطالب مسجل بشكل نظامي، نسبة الغياب ضمن المسموح.', 'يُسمح له بدخول الامتحان لمادة هندسة البرمجيات، أما قواعد البيانات فتحتاج استثناء إداري.')"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('makeup', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, {{ $req->id }})"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
+                    @endforeach
+                    @if($requests->where('type', 'makeup')->isEmpty())
+                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -401,7 +431,8 @@
 
 <!-- Request Details Modal -->
 <div id="requestModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
-    <div class="modal-content">
+    <form class="modal-content" id="decisionForm" method="POST" action="">
+        @csrf
         <div class="modal-header">
             <h3>تفاصيل الطلب (<span id="modal-request-type"></span>)</h3>
             <button class="btn-close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
@@ -456,29 +487,33 @@
             <!-- ملاحظات الإدارة (Mandatory) -->
             <div class="detail-row" style="margin-top: 1.5rem;">
                 <label><i class="fa-solid fa-pen-nib"></i> قرار وملاحظات الإدارة <span style="color: #ef4444;">(مطلوب إجبارياً)</span>:</label>
-                <textarea class="notes-area" id="modal-admin-notes" placeholder="اكتب قرار الإدارة النهائي أو أسباب الرفض/القبول ليتم اعتماده رسمياً وإشعار الطالب به..."></textarea>
+                <textarea class="notes-area" name="notes" id="modal-admin-notes" placeholder="اكتب قرار الإدارة النهائي أو أسباب الرفض/القبول ليتم اعتماده رسمياً وإشعار الطالب به..."></textarea>
+                <input type="hidden" name="decision" id="modal-decision" value="approved">
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn-modal-approve" onclick="submitDecision('approve')"><i class="fa-solid fa-check-double"></i> اعتماد نهائي (موافقة)</button>
-            <button class="btn-modal-reject" onclick="submitDecision('reject')"><i class="fa-solid fa-xmark"></i> رفض الطلب</button>
+            <button type="button" class="btn-modal-approve" onclick="submitDecision('approve')"><i class="fa-solid fa-check-double"></i> اعتماد نهائي (موافقة)</button>
+            <button type="button" class="btn-modal-reject" onclick="submitDecision('reject')"><i class="fa-solid fa-xmark"></i> رفض الطلب</button>
         </div>
-    </div>
+    </form>
 </div>
 
 @endsection
 
 @push('scripts')
 <script>
-    function switchTab(tabName) {
+    function switchTab(btnElement, tabName) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         
-        event.currentTarget.classList.add('active');
-        document.getElementById('tab-' + tabName).classList.add('active');
+        btnElement.classList.add('active');
+        const targetTab = document.getElementById('tab-' + tabName);
+        if (targetTab) {
+            targetTab.classList.add('active');
+        }
     }
 
-    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, hodNotes) {
+    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, hodNotes, reqId) {
         document.getElementById('modal-request-type').innerText = type;
         document.getElementById('modal-student-name').innerText = name;
         document.getElementById('modal-student-id').innerText = id;
@@ -488,6 +523,7 @@
         document.getElementById('modal-request-details').innerText = details;
         document.getElementById('modal-affairs-notes').innerText = affairsNotes;
         document.getElementById('modal-hod-notes-readonly').innerText = hodNotes;
+        document.getElementById('decisionForm').action = '/admin/student-services/' + reqId + '/process';
         
         const notesElement = document.getElementById('modal-admin-notes');
         notesElement.value = ''; // clear previous notes
@@ -515,7 +551,6 @@
     function submitDecision(decision) {
         const notesElement = document.getElementById('modal-admin-notes');
         const notes = notesElement.value.trim();
-        const studentName = document.getElementById('modal-student-name').innerText;
         
         // التحقق الإجباري من وجود الملاحظات
         if (notes === '') {
@@ -532,9 +567,8 @@
             return;
         }
         
-        const decisionText = decision === 'approve' ? 'الموافقة النهائية على' : 'رفض';
-        alert(`تم ${decisionText} طلب الطالب ${studentName} بنجاح!\nقرار الإدارة: ${notes}`);
-        closeModal();
+        document.getElementById('modal-decision').value = decision === 'approve' ? 'approved' : 'rejected';
+        document.getElementById('decisionForm').submit();
     }
 </script>
 @endpush

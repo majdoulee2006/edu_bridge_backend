@@ -132,6 +132,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // المسار الخاص بك الذي تم إضافته للمجموعة
         Route::get('/grade-event/{id}', [StudentController::class, 'getGradeEventForStudent']); 
         
+        // مسارات الخدمات الطلابية (الاسترحام، الوثائق، الإكمال)
+        Route::get('/services/requests', [StudentController::class, 'getMyRequests']);
+        Route::post('/services/requests', [StudentController::class, 'submitRequest']);
+        
         Route::get('/assignments', [StudentController::class, 'getMyAssignments']);
         Route::post('/assignments/{id}/submit', [StudentController::class, 'submitAssignment']);
         Route::get('/lectures', [StudentController::class, 'getMyLectures']);

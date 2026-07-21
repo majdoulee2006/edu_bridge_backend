@@ -1,5 +1,5 @@
 @extends('layouts.hod')
-@section('title', 'الخدمات الطلابية')
+@section('title', 'الخدمات الطلابية - رئيس القسم')
 
 @push('styles')
 <style>
@@ -20,6 +20,14 @@
         font-size: 1.8rem;
         font-weight: 800;
         color: var(--text-primary);
+    }
+    .dept-badge {
+        background: var(--accent-color);
+        color: #1a1a1a;
+        padding: 0.5rem 1.2rem;
+        border-radius: 2rem;
+        font-weight: 800;
+        font-size: 0.95rem;
     }
 
     /* Tabs Styling */
@@ -71,12 +79,34 @@
         display: block;
     }
 
-    /* Tables */
-    .table-container {
+    /* Branch Cards */
+    .branch-card {
         background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
         border-radius: 1.25rem;
         padding: 1.5rem;
+        margin-bottom: 2rem;
         box-shadow: var(--shadow);
+    }
+    .branch-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.2rem;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.8rem;
+    }
+    .branch-title {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    /* Tables */
+    .table-container {
         overflow-x: auto;
     }
     .custom-table {
@@ -86,7 +116,7 @@
     }
     .custom-table th {
         text-align: right;
-        padding: 1.2rem 1rem;
+        padding: 1rem;
         color: var(--text-secondary);
         font-weight: 800;
         border-bottom: 2px solid var(--border-color);
@@ -114,7 +144,7 @@
     .badge-pending { background: #fef08a; color: #854d0e; }
     .badge-approved { background: #bbf7d0; color: #166534; }
     .badge-rejected { background: #fecaca; color: #991b1b; }
-    .badge-hod-review { background: #bfdbfe; color: #1e3a8a; } /* بانتظار قرار رئيس القسم */
+    .badge-hod-review { background: #bfdbfe; color: #1e3a8a; }
 
     /* Action Buttons */
     .action-btns {
@@ -122,21 +152,24 @@
         gap: 0.5rem;
     }
     .btn-action {
-        width: 35px;
-        height: 35px;
-        border-radius: 50%;
+        padding: 0.4rem 0.9rem;
+        border-radius: 0.5rem;
         border: none;
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
+        gap: 0.4rem;
         cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 700;
+        font-family: inherit;
         transition: transform 0.2s;
         color: white;
     }
     .btn-action:hover {
-        transform: scale(1.1);
+        transform: scale(1.05);
     }
-    .btn-view { background: #3b82f6; }
+    .btn-view-active { background: #2563eb; }
+    .btn-view-readonly { background: #6b7280; }
 
     /* Modal Styling */
     .modal-overlay {
@@ -260,146 +293,119 @@
 <div class="services-container">
     <div class="page-header">
         <h2>الخدمات والطلبات الطلابية</h2>
+        <span class="dept-badge"><i class="fa-solid fa-building-columns"></i> قسم: {{ auth()->user()->department ?? 'قسم عام' }}</span>
     </div>
 
     <!-- Tabs Navigation -->
     <div class="custom-tabs">
-        <button class="tab-btn active" onclick="switchTab('mercy')">
+        <button class="tab-btn active" onclick="switchTab(this, 'mercy')">
             <i class="fa-solid fa-gavel"></i> طلبات الاسترحام
         </button>
-        <button class="tab-btn" onclick="switchTab('documents')">
+        <button class="tab-btn" onclick="switchTab(this, 'documents')">
             <i class="fa-solid fa-file-invoice"></i> طلبات الوثائق
         </button>
-        <button class="tab-btn" onclick="switchTab('makeup')">
+        <button class="tab-btn" onclick="switchTab(this, 'makeup')">
             <i class="fa-solid fa-pen-to-square"></i> امتحانات الإكمال
         </button>
     </div>
 
-    <!-- 1. Mercy Petitions Tab -->
-    <div id="tab-mercy" class="tab-content active">
-        <div class="table-container">
-            <table class="custom-table">
-                <thead>
-                    <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>موضوع الاسترحام</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">أ</div>
-                                <span>أحمد محمد</span>
-                            </div>
-                        </td>
-                        <td>202401</td>
-                        <td>2024-2025</td>
-                        <td>إعادة تقييم مقرر البرمجة</td>
-                        <td>2026-07-14</td>
-                        <td><span class="badge badge-hod-review">بانتظار قرارك</span></td>
-                        <td>
-                            <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('استرحام', 'أحمد محمد', '202401', '2024-2025', 'الهندسة المعلوماتية', 'هندسة البرمجيات', 'إعادة تقييم مقرر البرمجة', 'الطالب يستحق إعادة التقييم نظراً لظروفه الصحية المرفقة في الطلب. يرجى المراجعة.')"><i class="fa-solid fa-eye"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    @php
+        $types = [
+            'mercy' => 'طلبات الاسترحام',
+            'document' => 'طلبات الوثائق',
+            'makeup' => 'امتحانات الإكمال'
+        ];
+    @endphp
 
-    <!-- 2. Documents Requests Tab -->
-    <div id="tab-documents" class="tab-content">
-        <div class="table-container">
-            <table class="custom-table">
-                <thead>
-                    <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>نوع الوثيقة</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">س</div>
-                                <span>سارة خالد</span>
-                            </div>
-                        </td>
-                        <td>202405</td>
-                        <td>2024-2025</td>
-                        <td>كشف علامات مفصل</td>
-                        <td>2026-07-13</td>
-                        <td><span class="badge badge-hod-review">بانتظار قرارك</span></td>
-                        <td>
-                            <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('وثيقة', 'سارة خالد', '202405', '2024-2025', 'إدارة الأعمال', 'محاسبة', 'كشف علامات مفصل', 'تم التأكد من براءة ذمة الطالبة المالية، ننتظر الموافقة الأكاديمية.')"><i class="fa-solid fa-eye"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    @foreach(['mercy', 'document', 'makeup'] as $typeKey)
+    <div id="tab-{{ $typeKey }}" class="tab-content {{ $loop->first ? 'active' : '' }}">
+        @php $foundAny = false; @endphp
+        
+        @foreach($requestsByBranch as $branchName => $branchRequests)
+            @php $filtered = $branchRequests->where('type', $typeKey); @endphp
+            @if($filtered->isNotEmpty())
+                @php $foundAny = true; @endphp
+                <div class="branch-card">
+                    <div class="branch-header">
+                        <div class="branch-title">
+                            <i class="fa-solid fa-code-branch" style="color: var(--accent-color);"></i>
+                            تخصص / فرع: {{ $branchName }}
+                        </div>
+                        <span class="badge badge-hod-review">{{ $filtered->count() }} طلب(ات)</span>
+                    </div>
 
-    <!-- 3. Makeup Exams Tab -->
-    <div id="tab-makeup" class="tab-content">
-        <div class="table-container">
-            <table class="custom-table">
-                <thead>
-                    <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>المواد المطلوبة للإكمال</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">م</div>
-                                <span>محمد العبدالله</span>
-                            </div>
-                        </td>
-                        <td>202410</td>
-                        <td>2024-2025</td>
-                        <td>هندسة البرمجيات، قواعد البيانات</td>
-                        <td>2026-07-14</td>
-                        <td><span class="badge badge-hod-review">بانتظار قرارك</span></td>
-                        <td>
-                            <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('امتحان إكمال', 'محمد العبدالله', '202410', '2024-2025', 'الهندسة المعلوماتية', 'الذكاء الاصطناعي', 'هندسة البرمجيات، قواعد البيانات', 'الطالب مسجل بشكل نظامي، ولكن يرجى مراجعة إمكانية إجراء الامتحان في المادة الثانية بناءً على نسبة غيابه.')"><i class="fa-solid fa-eye"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                    <div class="table-container">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>الطالب</th>
+                                    <th>الرقم الجامعي</th>
+                                    <th>العام الدراسي</th>
+                                    <th>مضمون الطلب</th>
+                                    <th>تاريخ الطلب</th>
+                                    <th>الحالة</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($filtered as $req)
+                                <tr>
+                                    <td>
+                                        <div style="display:flex; align-items:center; gap:0.8rem;">
+                                            <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
+                                            <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
+                                        </div>
+                                    </td>
+                                    <td>{{ $req->student->student_code ?? 'N/A' }}</td>
+                                    <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                                    <td>{{ Str::limit($req->details, 30) }}</td>
+                                    <td>{{ $req->created_at->format('Y-m-d') }}</td>
+                                    <td>
+                                        @if($req->status == 'pending_hod')
+                                            <span class="badge badge-pending">بانتظار قرارك</span>
+                                        @else
+                                            <span class="badge badge-approved">تم إبداء رأيك وتحويله للإدارة</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $canRespond = ($req->status == 'pending_hod');
+                                        @endphp
+                                        <div class="action-btns">
+                                            @if($canRespond)
+                                                <button class="btn-action btn-view-active" title="إدخال القرار" onclick="openRequestModal('{{ $types[$typeKey] }}', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? ($req->student->user->department ?? 'غير محدد') }}', '{{ $req->student->program->name ?? ($req->student->user->branch ?? 'غير محدد') }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? 'لا توجد ملاحظات من الشؤون') }}`, `{{ addslashes($req->hod_notes ?? '') }}`, {{ $req->id }}, true)"><i class="fa-solid fa-pen-to-square"></i> إبداء القرار</button>
+                                            @else
+                                                <button class="btn-action btn-view-readonly" title="معاينة القرار (قراءة فقط)" onclick="openRequestModal('{{ $types[$typeKey] }}', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? ($req->student->user->department ?? 'غير محدد') }}', '{{ $req->student->program->name ?? ($req->student->user->branch ?? 'غير محدد') }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? 'لا توجد ملاحظات من الشؤون') }}`, `{{ addslashes($req->hod_notes ?? 'تم اتخاذ القرار مسبقاً') }}`, {{ $req->id }}, false)"><i class="fa-solid fa-eye"></i> معاينة (قراءة فقط)</button>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+        @endforeach
+
+        @if(!$foundAny)
+            <div class="branch-card" style="text-align: center; color: var(--text-secondary); padding: 3rem;">
+                <i class="fa-solid fa-folder-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <p>لا توجد طلبات مسجلة ضمن هذا التبويب لقسمك حالياً.</p>
+            </div>
+        @endif
     </div>
+    @endforeach
 
 </div>
 
 <!-- Request Details Modal -->
 <div id="requestModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
-    <div class="modal-content">
+    <form class="modal-content" id="decisionForm" method="POST" action="">
+        @csrf
         <div class="modal-header">
             <h3>تفاصيل الطلب (<span id="modal-request-type"></span>)</h3>
-            <button class="btn-close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="btn-close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
             <div class="modal-grid-2">
@@ -419,7 +425,7 @@
                     <div class="detail-value" id="modal-student-department"></div>
                 </div>
                 <div class="detail-row">
-                    <label>التخصص:</label>
+                    <label>التخصص / الفرع:</label>
                     <div class="detail-value" id="modal-student-specialization"></div>
                 </div>
             </div>
@@ -430,42 +436,51 @@
             </div>
 
             <div class="detail-row">
-                <label>تفاصيل الطلب:</label>
-                <div class="detail-value" id="modal-request-details"></div>
+                <label>مضمون/تفاصيل الطلب:</label>
+                <div class="detail-value" id="modal-request-details" style="background: var(--bg-secondary); padding: 0.8rem; border-radius: 8px; font-size: 0.95rem; line-height: 1.6;"></div>
             </div>
             
             <!-- ملاحظات الشؤون (Read-only) -->
-            <div class="detail-row" style="margin-top: 1.5rem; background: #fef08a; padding: 1rem; border-radius: 8px; border-right: 4px solid #ca8a04;">
-                <label style="color: #854d0e; font-size: 1rem;"><i class="fa-solid fa-clipboard-check"></i> ملاحظة موظف الشؤون:</label>
-                <div class="detail-value" id="modal-affairs-notes" style="color: #422006; font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.6;"></div>
+            <div class="detail-row" style="margin-top: 1.2rem; background: #fef08a; padding: 1rem; border-radius: 8px; border-right: 4px solid #ca8a04;">
+                <label style="color: #854d0e; font-size: 0.95rem;"><i class="fa-solid fa-clipboard-check"></i> رأي وملاحظات موظف الشؤون:</label>
+                <div class="detail-value" id="modal-affairs-notes" style="color: #422006; font-size: 0.95rem; margin-top: 0.4rem; line-height: 1.5;"></div>
             </div>
             
-            <!-- ملاحظات رئيس القسم (Mandatory) -->
-            <div class="detail-row" style="margin-top: 1.5rem;">
-                <label><i class="fa-solid fa-pen"></i> ملاحظات رئيس القسم <span style="color: #ef4444;">(مطلوب إجبارياً)</span>:</label>
-                <textarea class="notes-area" id="modal-hod-notes" placeholder="اكتب قرارك النهائي أو أسباب الرفض أو القبول هنا ليراها الطالب..."></textarea>
+            <!-- ملاحظات رئيس القسم -->
+            <div class="detail-row" style="margin-top: 1.2rem;">
+                <label><i class="fa-solid fa-pen"></i> ملاحظات وقرار رئيس القسم:</label>
+                <textarea class="notes-area" name="notes" id="modal-hod-notes" placeholder="اكتب قرارك النهائي وأسباب القبول أو الرفض ليتم تحويله للإدارة..."></textarea>
+                <input type="hidden" name="decision" id="modal-decision" value="approved">
+            </div>
+
+            <!-- تنبيه القفل لقراءة فقط -->
+            <div id="modal-readonly-badge" style="display: none; background: #e0e7ff; color: #3730a3; padding: 0.8rem; border-radius: 8px; font-weight: 700; text-align: center; margin-top: 1rem;">
+                <i class="fa-solid fa-lock"></i> تم إرسال رأيك للإدارة مسبقاً وتَم قفل التعديل (رد واحد فقط مسموح به).
             </div>
         </div>
-        <div class="modal-footer">
-            <button class="btn-modal-approve" onclick="submitDecision('approve')"><i class="fa-solid fa-check"></i> اعتماد وقبول</button>
-            <button class="btn-modal-reject" onclick="submitDecision('reject')"><i class="fa-solid fa-xmark"></i> رفض الطلب</button>
+        <div class="modal-footer" id="modal-footer-actions">
+            <button type="button" class="btn-modal-approve" onclick="submitDecision('approve')"><i class="fa-solid fa-check"></i> اعتماد وتحويل للإدارة</button>
+            <button type="button" class="btn-modal-reject" onclick="submitDecision('reject')"><i class="fa-solid fa-xmark"></i> رفض الطلب</button>
         </div>
-    </div>
+    </form>
 </div>
 
 @endsection
 
 @push('scripts')
 <script>
-    function switchTab(tabName) {
+    function switchTab(btnElement, tabName) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         
-        event.currentTarget.classList.add('active');
-        document.getElementById('tab-' + tabName).classList.add('active');
+        btnElement.classList.add('active');
+        const targetTab = document.getElementById('tab-' + tabName);
+        if (targetTab) {
+            targetTab.classList.add('active');
+        }
     }
 
-    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes) {
+    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, hodNotes, reqId, canRespond) {
         document.getElementById('modal-request-type').innerText = type;
         document.getElementById('modal-student-name').innerText = name;
         document.getElementById('modal-student-id').innerText = id;
@@ -474,14 +489,29 @@
         document.getElementById('modal-student-year').innerText = year;
         document.getElementById('modal-request-details').innerText = details;
         document.getElementById('modal-affairs-notes').innerText = affairsNotes;
+        document.getElementById('decisionForm').action = '/hod/student-services/' + reqId + '/process';
         
         const notesElement = document.getElementById('modal-hod-notes');
-        notesElement.value = ''; // clear previous notes
-        notesElement.style.borderColor = 'var(--border-color)'; // reset border color
+        const footerActions = document.getElementById('modal-footer-actions');
+        const readonlyBadge = document.getElementById('modal-readonly-badge');
+        
+        notesElement.value = hodNotes || '';
+        notesElement.style.borderColor = 'var(--border-color)';
+        
+        if (canRespond) {
+            notesElement.readOnly = false;
+            notesElement.style.background = 'var(--bg-secondary)';
+            footerActions.style.display = 'flex';
+            readonlyBadge.style.display = 'none';
+        } else {
+            notesElement.readOnly = true;
+            notesElement.style.background = '#f3f4f6';
+            footerActions.style.display = 'none';
+            readonlyBadge.style.display = 'block';
+        }
         
         const modal = document.getElementById('requestModal');
         modal.style.display = 'flex';
-        // Trigger animation after display flex
         setTimeout(() => modal.classList.add('active'), 10);
     }
 
@@ -501,14 +531,11 @@
     function submitDecision(decision) {
         const notesElement = document.getElementById('modal-hod-notes');
         const notes = notesElement.value.trim();
-        const studentName = document.getElementById('modal-student-name').innerText;
         
-        // التحقق الإجباري من وجود الملاحظات
         if (notes === '') {
-            notesElement.style.borderColor = '#ef4444'; // تلوين الحواف بالأحمر
+            notesElement.style.borderColor = '#ef4444';
             notesElement.focus();
             
-            // اهتزاز خفيف للفت الانتباه
             notesElement.style.transform = 'translateX(5px)';
             setTimeout(() => notesElement.style.transform = 'translateX(-5px)', 100);
             setTimeout(() => notesElement.style.transform = 'translateX(5px)', 200);
@@ -518,9 +545,8 @@
             return;
         }
         
-        const decisionText = decision === 'approve' ? 'الموافقة على' : 'رفض';
-        alert(`تم ${decisionText} طلب الطالب ${studentName} بنجاح!\nالقرار الصادر: ${notes}`);
-        closeModal();
+        document.getElementById('modal-decision').value = decision === 'approve' ? 'approved' : 'rejected';
+        document.getElementById('decisionForm').submit();
     }
 </script>
 @endpush
