@@ -2011,4 +2011,37 @@ class AdminWebController extends Controller
         DB::table('courses')->where('course_id', $id)->delete();
         return back()->with('success', 'تم حذف المادة بنجاح!');
     }
+
+    /**
+     * الخدمات الطلابية للإدارة
+     */
+    public function studentServices()
+    {
+        // جلب الطلبات التي وصلت للإدارة أو انتهت
+        $requests = \App\Models\StudentRequest::with(['student.user', 'student.program.department'])
+                    ->whereIn('status', ['pending_admin', 'completed'])
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+        return view('admin.student-services', compact('requests'));
+    }
+
+    public function processStudentService(Request $request, $id)
+    {
+        $request->validate([
+            'decision' => 'required|in:approved,rejected',
+            'notes' => 'required|string' // قرار الإدارة يجب أن يحوي ملاحظات
+        ]);
+
+        $studentReq = \App\Models\StudentRequest::findOrFail($id);
+        
+        $studentReq->admin_decision = $request->decision;
+        $studentReq->admin_notes = $request->notes;
+        
+        // قرار الإدارة هو النهائي
+        $studentReq->status = 'completed';
+        
+        $studentReq->save();
+
+        return back()->with('success', 'تم اتخاذ القرار النهائي بنجاح وتم إغلاق الطلب.');
+    }
 }

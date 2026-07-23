@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -80,6 +80,10 @@
                 <a href="{{ url('/hod/reports') }}" class="nav-item {{ Request::is('hod/reports') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-lines"></i>
                     طلب التقارير
+                </a>
+                <a href="{{ url('/hod/student-services') }}" class="nav-item {{ Request::is('hod/student-services*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    الخدمات الطلابية
                 </a>
                 <a href="{{ url('/hod/settings') }}" class="nav-item {{ Request::is('hod/settings') ? 'active' : '' }}">
                     <i class="fa-solid fa-gear"></i>

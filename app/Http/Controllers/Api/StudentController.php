@@ -22,6 +22,8 @@ use App\Models\Exam;
 use App\Models\Course;
 use App\Models\Schedule;
 use Carbon\Carbon;
+use App\Models\StudentRequest;
+
 class StudentController extends Controller
 {
   /**
@@ -347,6 +349,59 @@ class StudentController extends Controller
             'data' => $courses
         ], 200);
     }
+
+    /**
+     * جلب كافة مواد الاختصاص للطالب (للعامين)
+     */
+    public function getProgramCourses(Request $request)
+    {
+        $student = $request->user()->student;
+        $user = $request->user();
+
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الطالب غير موجود'
+            ], 404);
+        }
+
+        $program = null;
+        if ($student->program_id) {
+            $program = \App\Models\Program::with('courses')->find($student->program_id);
+        }
+
+        if (!$program) {
+            $branch = $user->branch ?? $user->department;
+            if ($branch) {
+                $program = \App\Models\Program::with('courses')
+                    ->where('name', 'LIKE', '%' . $branch . '%')
+                    ->first();
+            }
+        }
+
+        if (!$program) {
+            return response()->json([
+                'success' => true,
+                'data' => []
+            ], 200);
+        }
+
+        $courses = $program->courses->map(function ($course) {
+            return [
+                'id' => $course->course_id,
+                'title' => $course->title,
+                'description' => $course->description,
+                'level' => $course->level,
+                'year' => $course->year,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $courses
+        ], 200);
+    }
+
    /**
      * جلب المحاضرات (الدروس) المجمعة حسب المادة
      */
@@ -1623,6 +1678,75 @@ class StudentController extends Controller
             'success' => true,
             'status'  => $req->status,
             'created_at' => $req->created_at,
+        ]);
+    }
+
+    /**
+     * إرسال طلب جديد للخدمات الطلابية
+     */
+    public function submitRequest(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|in:mercy,document,makeup',
+            'details' => 'required|string|max:1000',
+        ]);
+
+        $user = $request->user();
+        if (!$user->student) {
+            return response()->json(['success' => false, 'message' => 'هذا الحساب ليس مسجلاً كطالب.'], 403);
+        }
+
+        $studentRequest = StudentRequest::create([
+            'student_id' => $user->student->student_id,
+            'type' => $request->type,
+            'details' => $request->details,
+            'status' => 'pending_affairs', // الحالة الافتراضية الأولى
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال الطلب بنجاح وهو الآن قيد المراجعة.',
+            'data' => $studentRequest
+        ]);
+    }
+
+    /**
+     * جلب كافة طلبات الطالب
+     */
+    public function getMyRequests(Request $request)
+    {
+        $user = $request->user();
+        if (!$user->student) {
+            return response()->json(['success' => false, 'message' => 'هذا الحساب ليس مسجلاً كطالب.'], 403);
+        }
+
+        // يمكن التصفية بناءً على النوع (type) إذا تم تمريره كمعامل
+        $type = $request->query('type');
+        
+        $query = StudentRequest::where('student_id', $user->student->student_id);
+        
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        $requests = $query->orderByDesc('created_at')->get()->map(function($req) {
+            return [
+                'id' => $req->id,
+                'type' => $req->type,
+                'details' => $req->details,
+                'status' => $req->status,
+                'affairs_decision' => $req->affairs_decision,
+                'hod_decision' => $req->hod_decision,
+                'admin_decision' => $req->admin_decision,
+                'admin_notes' => $req->admin_notes, // قد نعرض رسالة الإدارة النهائية للطالب لمعرفة السبب
+                'created_at' => $req->created_at->format('Y-m-d H:i:s'),
+                'created_at_human' => $req->created_at->diffForHumans()
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $requests
         ]);
     }
 }
