@@ -1236,15 +1236,18 @@ class TeacherWebController extends Controller
     public function sendOTP(Request $request)
     {
         $request->validate([
-            'full_name' => 'nullable|string|max:255',
-            'phone'     => 'nullable|string|max:20',
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'current_password' => 'nullable|string',
             'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
         ]);
 
+        $user = Auth::user();
+
         // If changing password, verify current password first
-        if ($request->has('current_password') && $request->current_password) {
-            $user = Auth::user();
+        if ($request->filled('current_password')) {
             if (!Hash::check($request->current_password, $user->password)) {
                 return response()->json([
                     'success' => false,
@@ -1253,17 +1256,26 @@ class TeacherWebController extends Controller
             }
         }
 
-        $otp = rand(1000, 9999);
+        $otp = (string) rand(100000, 999999);
         
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
         session([
             'teacher_profile_otp' => $otp,
-            'teacher_pending_profile_data' => $request->only(['full_name', 'phone', 'new_password'])
+            'teacher_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
         ]);
 
         return response()->json([
             'success' => true,
-            'otp' => $otp,
-            'message' => 'تم إرسال رمز التحقق بنجاح!'
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
         ]);
     }
 
@@ -1285,6 +1297,10 @@ class TeacherWebController extends Controller
 
             if (isset($data['phone'])) {
                 $updates['phone'] = $data['phone'];
+            }
+
+            if (isset($data['email']) && $data['email']) {
+                $updates['email'] = $data['email'];
             }
 
             if (isset($data['new_password']) && $data['new_password']) {

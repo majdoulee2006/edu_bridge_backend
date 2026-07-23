@@ -205,23 +205,34 @@ class HODWebController extends Controller
     public function sendOTP(Request $request)
     {
         $request->validate([
-            'phone' => 'nullable|string|max:20',
-            'birth_date' => 'nullable|date',
-            'email' => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
-            'password' => 'nullable|string|min:6',
+            'phone'            => 'nullable|string|max:20',
+            'birth_date'       => 'nullable|date',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
+            'password'         => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
         ]);
 
-        $otp = rand(1000, 9999);
-        
+        $user = Auth::user();
+        $otp  = (string) rand(100000, 999999);
+
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
         session([
-            'profile_otp' => $otp,
+            'profile_otp'          => $otp,
             'pending_profile_data' => $request->only(['phone', 'birth_date', 'email', 'password'])
         ]);
 
         return response()->json([
             'success' => true,
-            'otp' => $otp,
-            'message' => 'تم إرسال رمز التحقق بنجاح!'
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
         ]);
     }
 

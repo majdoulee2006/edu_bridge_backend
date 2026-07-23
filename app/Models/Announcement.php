@@ -22,7 +22,9 @@ class Announcement extends Model
         'department_id', 
         'academic_year',
         'category', // 👈 جديد من طلبات زميلك
-        'image'     // 👈 جديد من طلبات زميلك
+        'image',    // 👈 جديد من طلبات زميلك
+        'link_url',
+        'target_audience',
     ];
 
     // هاي الدالة هي اللي بتجيب بيانات صاحب الإعلان (شغلك القديم الممتاز)

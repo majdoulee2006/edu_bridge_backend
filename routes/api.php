@@ -332,18 +332,64 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     #========= روابط الأدمن ==========
-    Route::prefix('admin')->middleware('role:admin')->group(function () {
-        Route::get('/dashboard', [AdminController::class, 'dashboard']);
-        Route::get('/users', [AdminController::class, 'getUsers']);
-        Route::post('/users', [AdminController::class, 'createUser']);
-        Route::put('/users/{id}', [AdminController::class, 'updateUser']);
-        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
+    Route::prefix('admin')->group(function () {
+        Route::middleware('role:admin')->group(function () {
+            Route::get('/dashboard', [AdminController::class, 'dashboard']);
+            Route::get('/users', [AdminController::class, 'getUsers']);
+            Route::post('/users', [AdminController::class, 'createUser']);
+            Route::put('/users/{id}', [AdminController::class, 'updateUser']);
+            Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
+
+            // Courses & Semesters
+            Route::get('/courses', [AdminController::class, 'getCourses']);
+            Route::get('/courses/{id}', [AdminController::class, 'getCourse']);
+            Route::get('/semesters-subjects', [AdminController::class, 'getSemestersSubjects']);
+            Route::post('/courses', [AdminController::class, 'createCourse']);
+            Route::put('/courses/{id}', [AdminController::class, 'updateCourse']);
+            Route::delete('/courses/{id}', [AdminController::class, 'deleteCourse']);
+
+            // Assign HOD
+            Route::get('/assign-hod', [AdminController::class, 'getAssignHodData']);
+            Route::post('/assign-hod', [AdminController::class, 'assignHodExisting']);
+            Route::post('/assign-hod/new', [AdminController::class, 'assignHodNew']);
+
+            // Semesters
+            Route::get('/semesters', [AdminController::class, 'getSemesters']);
+            Route::post('/semesters', [AdminController::class, 'createSemester']);
+            Route::put('/semesters/{id}', [AdminController::class, 'updateSemester']);
+            Route::delete('/semesters/{id}', [AdminController::class, 'deleteSemester']);
+
+            // Departments
+            Route::get('/departments', [AdminController::class, 'getDepartments']);
+            Route::post('/departments', [AdminController::class, 'createDepartment']);
+            Route::put('/departments/{id}', [AdminController::class, 'updateDepartment']);
+            Route::delete('/departments/{id}', [AdminController::class, 'deleteDepartment']);
+
+            // Reports
+            Route::get('/reports/attendance', [AdminController::class, 'attendanceReport']);
+            Route::get('/reports/grades', [AdminController::class, 'gradesReport']);
+            Route::get('/reports/students', [AdminController::class, 'studentsReport']);
+            Route::get('/reports/log', [AdminController::class, 'getReportsLog']);
+            Route::get('/reports/export/{id}', [AdminController::class, 'exportReportById']);
+            Route::get('/reports/view/{id}', [AdminController::class, 'viewReportById']);
+
+            // Announcements
+            Route::post('/announcements', [AdminController::class, 'createAnnouncement']);
+            Route::post('/announcements/{id}', [AdminController::class, 'updateAnnouncement']);
+            Route::delete('/announcements/{id}', [AdminController::class, 'deleteAnnouncement']);
+            Route::post('/broadcast', [AdminController::class, 'sendBroadcast']);
+
+            // Pending Accounts Management
+            Route::get('/pending-accounts', [AdminController::class, 'getPendingAccounts']);
+            Route::post('/accounts/{id}/approve', [AdminController::class, 'approveAccount']);
+            Route::post('/accounts/{id}/reject', [AdminController::class, 'rejectAccount']);
+        });
     });
 
     // ========== Parent Routes ==========
     Route::prefix('parent')->middleware('role:parent')->group(function () {
         Route::get('/dashboard', [ParentController::class, 'dashboard']);
-        Route::get('/children/{parent_id}', [ParentController::class, 'getChildren']);
+        Route::get('/children/{parent_id?}', [ParentController::class, 'getChildren']);
         Route::post('/add-student', [ParentController::class, 'linkStudent']);
         Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
         Route::get('/children/{id}/details', [ParentController::class, 'getChildDetails']);
@@ -425,6 +471,11 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(fu
     Route::get('/photo-change-requests',                 [AffairsController::class, 'listPhotoChangeRequests']);
     Route::post('/photo-change-requests/{id}/approve',   [AffairsController::class, 'approvePhotoChange']);
     Route::post('/photo-change-requests/{id}/reject',    [AffairsController::class, 'rejectPhotoChange']);
+
+    // Broadcasting channel authorization for Sanctum
+    Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {
+        return \Illuminate\Support\Facades\Broadcast::auth($request);
+    });
 });
 
 Route::get('/user/profile/{id}', function ($id) {

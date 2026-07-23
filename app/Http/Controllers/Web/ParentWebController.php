@@ -729,27 +729,46 @@ class ParentWebController extends Controller
 
     public function sendOTP(Request $request)
     {
-        $user = auth()->user();
-        $otp = (string)rand(1000, 9999);
-        
-        session([
-            'parent_profile_otp' => $otp,
-            'parent_otp_expiry' => now()->addMinutes(15)
+        $request->validate([
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
+            'current_password' => 'nullable|string',
+            'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
         ]);
 
-        try {
-            Mail::to($user->email)->send(new OtpMail($otp, $user->full_name));
-        } catch (\Exception $e) {
-            logger('Parent OTP mail failed: ' . $e->getMessage());
+        $user = Auth::user();
+
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كلمة المرور الحالية غير صحيحة.'
+                ]);
+            }
+        }
+
+        $otp = (string) rand(100000, 999999);
+
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
             return response()->json([
                 'success' => false,
-                'message' => 'فشل إرسال البريد الإلكتروني. يرجى المحاولة لاحقاً.'
+                'message' => $telegramResult['message']
             ]);
         }
 
+        session([
+            'parent_profile_otp'          => $otp,
+            'parent_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+        ]);
+
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال رمز التحقق (OTP) إلى بريدك الإلكتروني.'
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
         ]);
     }
 
@@ -759,22 +778,40 @@ class ParentWebController extends Controller
             'otp' => 'required|numeric'
         ]);
 
-        $sessionOtp = session('parent_profile_otp');
-        $expiry = session('parent_otp_expiry');
+        if (session('parent_profile_otp') == $request->otp) {
+            $user = Auth::user();
+            $data = session('parent_pending_profile_data');
 
-        if ($sessionOtp && $expiry && now()->lessThan($expiry) && $sessionOtp == $request->otp) {
-            session(['parent_otp_verified' => true]);
-            session()->forget(['parent_profile_otp', 'parent_otp_expiry']);
+            $updates = ['updated_at' => now()];
+
+            if (!empty($data['full_name'])) {
+                $updates['full_name'] = $data['full_name'];
+            }
+            if (!empty($data['email'])) {
+                $updates['email'] = $data['email'];
+            }
+            if (!empty($data['phone'])) {
+                $updates['phone'] = $data['phone'];
+            }
+            if (!empty($data['new_password'])) {
+                $updates['password'] = Hash::make($data['new_password']);
+            }
+
+            DB::table('users')
+                ->where('user_id', $user->user_id)
+                ->update($updates);
+
+            session()->forget(['parent_profile_otp', 'parent_pending_profile_data']);
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم التحقق بنجاح!'
+                'message' => 'تم تحديث البيانات بنجاح!'
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'message' => 'رمز التحقق غير صحيح أو منتهي الصلاحية.'
+            'message' => 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.'
         ]);
     }
 

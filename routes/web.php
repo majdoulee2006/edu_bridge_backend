@@ -197,6 +197,8 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::get('/profile', [AffairsWebController::class, 'profile'])->name('affairs.profile');
     Route::post('/profile', [AffairsWebController::class, 'updateProfile'])->name('affairs.profile.update');
     Route::post('/profile/password', [AffairsWebController::class, 'updatePassword'])->name('affairs.profile.password');
+    Route::post('/profile/send-otp', [AffairsWebController::class, 'sendOTP'])->name('affairs.profile.send_otp');
+    Route::post('/profile/verify-otp', [AffairsWebController::class, 'verifyOTP'])->name('affairs.profile.verify_otp');
 
     Route::get('/settings', [AffairsWebController::class, 'settings'])->name('affairs.settings');
     Route::put('/settings/password', [AffairsWebController::class, 'updatePassword'])->name('affairs.settings.password');
@@ -231,6 +233,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/profile', [AdminWebController::class, 'profile'])->name('admin.profile');
     Route::post('/profile', [AdminWebController::class, 'updateProfile'])->name('admin.profile.update');
     Route::post('/profile/password', [AdminWebController::class, 'updatePassword'])->name('admin.profile.password');
+    Route::post('/profile/send-otp', [AdminWebController::class, 'sendOTP'])->name('admin.profile.send_otp');
+    Route::post('/profile/verify-otp', [AdminWebController::class, 'verifyOTP'])->name('admin.profile.verify_otp');
     Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
     Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
     Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
@@ -277,6 +281,7 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     // تخصيص رئيس قسم
     Route::get('/courses/assign-hod', [AdminWebController::class, 'assignHODForm'])->name('admin.courses.assign-hod');
     Route::post('/courses/assign-hod', [AdminWebController::class, 'assignHOD'])->name('admin.courses.assign-hod.store');
+    Route::post('/courses/assign-hod/store-new', [AdminWebController::class, 'storeNewHOD'])->name('admin.courses.assign-hod.store-new');
 
     // الفصول والمواد
     Route::get('/semesters-subjects', [AdminWebController::class, 'semestersSubjects'])->name('admin.semesters-subjects');
@@ -284,10 +289,14 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/semesters-subjects/update/{id}', [AdminWebController::class, 'updateSubject'])->name('admin.semesters-subjects.update');
     Route::post('/semesters-subjects/delete/{id}', [AdminWebController::class, 'deleteSubject'])->name('admin.semesters-subjects.delete');
 
+    // المحاضرات
+    Route::get('/lectures', [AdminWebController::class, 'lectures'])->name('admin.lectures');
+
     // التقارير
     Route::get('/reports', [AdminWebController::class, 'reports'])->name('admin.reports');
     Route::post('/reports/generate', [AdminWebController::class, 'generateReport'])->name('admin.reports.generate');
     Route::post('/reports/export', [AdminWebController::class, 'exportReport'])->name('admin.reports.export');
+    Route::delete('/reports/{id}', [AdminWebController::class, 'deleteReport'])->name('admin.reports.delete');
 
     // التقويم والأحداث
     Route::post('/calendar/events', [AdminWebController::class, 'storeCalendarEvent'])->name('admin.calendar.store');
@@ -329,6 +338,8 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::get('/profile', [StudentWebController::class, 'profile'])->name('student.profile');
     Route::post('/profile', [StudentWebController::class, 'updateProfile'])->name('student.profile.update');
     Route::post('/profile/password', [StudentWebController::class, 'updatePassword'])->name('student.profile.password');
+    Route::post('/profile/send-otp', [StudentWebController::class, 'sendOTP'])->name('student.profile.send_otp');
+    Route::post('/profile/verify-otp', [StudentWebController::class, 'verifyOTP'])->name('student.profile.verify_otp');
 
     // الرسائل
     Route::get('/messages', [StudentWebController::class, 'messages'])->name('student.messages');

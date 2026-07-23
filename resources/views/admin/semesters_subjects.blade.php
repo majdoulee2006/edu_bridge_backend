@@ -193,12 +193,8 @@
                         <span class="text-[10px] px-2.5 py-1 rounded-lg bg-primary/10 text-primary-dark dark:text-primary font-extrabold border border-primary/20">
                             {{ $course->hours ?? 0 }} ساعة مخصصة
                         </span>
-                        <span class="text-[10px] px-2.5 py-1 rounded-lg font-black
-                            @if(($course->level ?? 'مبتدئ') == 'مبتدئ') bg-blue-50 text-blue-650 dark:bg-blue-950/20 dark:text-blue-400
-                            @elseif(($course->level ?? 'مبتدئ') == 'متوسط') bg-orange-50 text-orange-650 dark:bg-orange-950/20 dark:text-orange-400
-                            @else bg-rose-50 text-rose-650 dark:bg-rose-950/20 dark:text-rose-400
-                            @endif">
-                            {{ $course->level ?? 'مبتدئ' }}
+                        <span class="text-[10px] px-2.5 py-1 rounded-lg font-black bg-blue-50 text-blue-650 dark:bg-blue-950/20 dark:text-blue-400">
+                            {{ $course->year == 2 ? 'السنة الثانية' : 'السنة الأولى' }}
                         </span>
                     </div>
                 </div>
@@ -247,9 +243,9 @@
                         </div>
                     </div>
                     <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl flex items-center gap-3 border border-slate-100/50 dark:border-slate-800/30">
-                        <span class="material-symbols-outlined text-amber-500 text-[22px]">bar_chart</span>
+                        <span class="material-symbols-outlined text-indigo-500 text-[22px]">school</span>
                         <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-400">مستوى الصعوبة</span>
+                            <span class="text-[10px] font-bold text-slate-400">السنة الدراسية</span>
                             <span id="modal-level" class="text-xs font-black text-slate-800 dark:text-white mt-0.5"></span>
                         </div>
                     </div>
@@ -276,12 +272,13 @@
                     </p>
                 </div>
 
-                <!-- Lectures / Lessons list -->
-                <div class="flex flex-col gap-3">
-                    <h4 class="text-xs font-bold text-slate-450 dark:text-slate-500">المحاضرات والدروس المقررة</h4>
-                    <div id="modal-lessons-list" class="flex flex-col gap-2.5">
-                        <!-- Dynamic lesson items -->
-                    </div>
+                <!-- Go to Lectures Page Button -->
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <a id="modal-lectures-btn" href="#" class="w-full py-3.5 px-5 rounded-2xl bg-primary text-slate-900 font-extrabold text-xs flex items-center justify-center gap-2.5 shadow-md hover:bg-primary-dark transition-all">
+                        <i class="fa-solid fa-chalkboard-user text-base"></i>
+                        <span>انتقال إلى سجل المحاضرات لهذه المادة</span>
+                        <i class="fa-solid fa-arrow-left text-xs mr-auto"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -324,45 +321,44 @@
                               class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-855 dark:text-white transition-all outline-none resize-none"></textarea>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    {{-- Level --}}
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">المستوى</label>
-                        <select name="level" required
-                                class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
-                            <option value="مبتدئ">مبتدئ</option>
-                            <option value="متوسط">متوسط</option>
-                            <option value="متقدم">متقدم</option>
-                        </select>
-                    </div>
-
-                    {{-- Hours --}}
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">عدد الساعات المخصصة</label>
-                        <input type="number" name="hours" min="1" required value="40"
-                               class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
-                    </div>
+                {{-- Hours --}}
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">عدد الساعات المخصصة</label>
+                    <input type="number" name="hours" min="1" required value="40"
+                           class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
                 </div>
 
                 {{-- Year --}}
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">السنة الدراسية</label>
                     <select name="year" required
-                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
                         <option value="" disabled selected>اختر السنة...</option>
                         <option value="1">السنة الأولى</option>
                         <option value="2">السنة الثانية</option>
                     </select>
                 </div>
 
-                {{-- Program --}}
+                {{-- Department --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">المسار الأكاديمي (الدورة / التخصص)</label>
-                    <select name="program_id" required
-                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
-                        <option value="" disabled selected>اختر المسار الأكاديمي...</option>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">القسم الأكاديمي</label>
+                    <select id="add-modal-dept-select" onchange="filterModalCourses(this.value, 'add-modal-program-select')" required
+                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
+                        <option value="" disabled selected>اختر القسم الأكاديمي أولاً...</option>
+                        @foreach($departments as $dept)
+                            <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Course / Program --}}
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الدورة</label>
+                    <select name="program_id" id="add-modal-program-select" required
+                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
+                        <option value="" disabled selected>اختر الدورة...</option>
                         @foreach($programs as $prog)
-                            <option value="{{ $prog->id }}">{{ $prog->name }} ({{ $prog->department_name ?? 'بدون قسم' }})</option>
+                            <option value="{{ $prog->id }}" data-dept="{{ $prog->department_id }}">{{ $prog->name }} ({{ $prog->department_name ?? 'بدون قسم' }})</option>
                         @endforeach
                     </select>
                 </div>
@@ -371,15 +367,16 @@
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الفصل الدراسي</label>
                     <select name="semester_id" required
-                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
                         <option value="" disabled selected>اختر الفصل الدراسي...</option>
                         @foreach($semesters as $sem)
-                            <option value="{{ $sem->semester_id }}">{{ $sem->name }}</option>
+                            @php
+                                $displaySemName = str_contains($sem->name, 'ثاني') ? 'فصل ثاني' : (str_contains($sem->name, 'أول') ? 'فصل أول' : $sem->name);
+                            @endphp
+                            <option value="{{ $sem->semester_id }}">{{ $displaySemName }}</option>
                         @endforeach
                     </select>
                 </div>
-
-
 
                 {{-- Action Button --}}
                 <button type="submit" class="w-full py-4 mt-2 bg-[#f2f20d] text-slate-900 text-sm font-bold rounded-2xl shadow-glow hover:scale-[1.02] active:scale-95 transition-all">
@@ -417,40 +414,43 @@
                     <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">وصف المادة</label>
                     <textarea id="edit-description" name="description" rows="3" class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-855 dark:text-white transition-all outline-none resize-none"></textarea>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">المستوى</label>
-                        <select id="edit-level" name="level" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
-                            <option value="مبتدئ">مبتدئ</option>
-                            <option value="متوسط">متوسط</option>
-                            <option value="متقدم">متقدم</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">عدد الساعات المخصصة</label>
-                        <input type="number" id="edit-hours" name="hours" min="1" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
-                    </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">عدد الساعات المخصصة</label>
+                    <input type="number" id="edit-hours" name="hours" min="1" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
                 </div>
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">السنة الدراسية</label>
-                    <select id="edit-year" name="year" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                    <select id="edit-year" name="year" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
                         <option value="1">السنة الأولى</option>
                         <option value="2">السنة الثانية</option>
                     </select>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">المسار الأكاديمي</label>
-                    <select id="edit-program" name="program_id" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">القسم الأكاديمي</label>
+                    <select id="edit-dept-select" onchange="filterModalCourses(this.value, 'edit-program')" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
+                        <option value="" disabled selected>اختر القسم الأكاديمي...</option>
+                        @foreach($departments as $dept)
+                            <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الدورة</label>
+                    <select id="edit-program" name="program_id" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
+                        <option value="" disabled selected>اختر الدورة...</option>
                         @foreach($programs as $prog)
-                            <option value="{{ $prog->id }}">{{ $prog->name }} ({{ $prog->department_name ?? 'بدون قسم' }})</option>
+                            <option value="{{ $prog->id }}" data-dept="{{ $prog->department_id }}">{{ $prog->name }} ({{ $prog->department_name ?? 'بدون قسم' }})</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الفصل الدراسي</label>
-                    <select id="edit-semester" name="semester_id" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
+                    <select id="edit-semester" name="semester_id" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
                         @foreach($semesters as $sem)
-                            <option value="{{ $sem->semester_id }}">{{ $sem->name }}</option>
+                            @php
+                                $displaySemName = str_contains($sem->name, 'ثاني') ? 'فصل ثاني' : (str_contains($sem->name, 'أول') ? 'فصل أول' : $sem->name);
+                            @endphp
+                            <option value="{{ $sem->semester_id }}">{{ $displaySemName }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -476,7 +476,8 @@
         document.getElementById('modal-title').textContent = course.title;
         document.getElementById('modal-semester').textContent = course.semester_name;
         document.getElementById('modal-teacher').textContent = course.teacher_name || 'لم يعين مدرس بعد';
-        document.getElementById('modal-level').textContent = course.level || 'مبتدئ';
+        document.getElementById('modal-level').textContent = course.year == 2 ? 'السنة الثانية' : 'السنة الأولى';
+        document.getElementById('modal-lectures-btn').href = '{{ route('admin.lectures') }}?course_id=' + course.course_id;
         
         // Departments and hours
         const depts = course.departments_list && course.departments_list.length > 0 
@@ -496,33 +497,6 @@
         const iconContainer = document.getElementById('modal-icon-container');
         iconContainer.className = 'w-12 h-12 rounded-2xl flex items-center justify-center ' + colorClass;
         document.getElementById('modal-icon').textContent = iconName;
-        
-        // Build lessons list
-        const lessonsList = document.getElementById('modal-lessons-list');
-        lessonsList.innerHTML = '';
-        
-        if (course.lessons_list && course.lessons_list.length > 0) {
-            course.lessons_list.forEach((lesson, index) => {
-                const item = document.createElement('div');
-                item.className = 'flex flex-col p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-800/30 gap-1';
-                item.innerHTML = `
-                    <div class="flex items-center justify-between font-Cairo">
-                        <div class="flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-primary/20 text-primary-dark dark:text-primary flex items-center justify-center text-[10px] font-black">${index + 1}</span>
-                            <span class="text-xs font-bold text-slate-850 dark:text-slate-200">${lesson.title}</span>
-                        </div>
-                    </div>
-                    ${lesson.description ? `<p class="text-[11px] text-slate-400 dark:text-slate-505 pr-8 font-Cairo">${lesson.description}</p>` : ''}
-                `;
-                lessonsList.appendChild(item);
-            });
-        } else {
-            lessonsList.innerHTML = `
-                <div class="text-center p-6 bg-slate-50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 text-xs font-bold font-Cairo">
-                    لا توجد محاضرات مدرجة لهذه المادة حالياً
-                </div>
-            `;
-        }
         
         // Show Modal with transition
         modal.classList.remove('hidden');
@@ -571,6 +545,30 @@
         }, 300);
     }
 
+    function filterModalCourses(deptId, targetSelectId) {
+        const sel = document.getElementById(targetSelectId);
+        if (!sel) return;
+
+        let selectedOptionStillVisible = false;
+
+        [...sel.options].forEach(opt => {
+            if (!opt.value) {
+                opt.style.display = '';
+                return;
+            }
+            const optDept = opt.getAttribute('data-dept');
+            const matches = !deptId || String(optDept) === String(deptId);
+            opt.style.display = matches ? '' : 'none';
+            if (matches && sel.value && opt.value === sel.value) {
+                selectedOptionStillVisible = true;
+            }
+        });
+
+        if (!selectedOptionStillVisible) {
+            sel.value = '';
+        }
+    }
+
     function openEditSubjectModal(course) {
         const modal = document.getElementById('edit-subject-modal');
         const modalCard = document.getElementById('edit-modal-card');
@@ -578,16 +576,27 @@
         document.getElementById('edit-subject-form').action = `/admin/semesters-subjects/update/${course.course_id}`;
         document.getElementById('edit-title').value = course.title || '';
         document.getElementById('edit-description').value = course.description || '';
-        document.getElementById('edit-level').value = course.level || 'مبتدئ';
+        if (document.getElementById('edit-level')) {
+            document.getElementById('edit-level').value = course.level || 'مبتدئ';
+        }
         document.getElementById('edit-hours').value = course.hours || '40';
         document.getElementById('edit-year').value = course.year || '1';
         document.getElementById('edit-semester').value = course.semester_id || '';
         
-        // Find program ID based on course departments_list or something similar.
-        // Wait, course_program relationship isn't easily returned in course object.
-        // We'll set what we can. Ideally we'd have course.program_id
-        if(course.program_id) {
-            document.getElementById('edit-program').value = course.program_id;
+        if (course.program_id) {
+            const editProgSel = document.getElementById('edit-program');
+            if (editProgSel) {
+                const opt = editProgSel.querySelector(`option[value="${course.program_id}"]`);
+                if (opt) {
+                    const deptId = opt.getAttribute('data-dept');
+                    if (deptId) {
+                        const editDeptSel = document.getElementById('edit-dept-select');
+                        if (editDeptSel) editDeptSel.value = deptId;
+                        filterModalCourses(deptId, 'edit-program');
+                    }
+                    editProgSel.value = course.program_id;
+                }
+            }
         }
 
         modal.classList.remove('hidden');

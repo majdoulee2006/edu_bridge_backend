@@ -18,19 +18,31 @@
     <form class="space-y-5 pb-10" action="{{ route('admin.accounts.store.parent') }}" method="POST">
         @csrf
 
-        <!-- الاسم الكامل -->
-        <div class="space-y-1.5">
-            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الاسم الكامل</label>
-            <div class="relative group">
-                <input required name="full_name" value="{{ old('full_name') }}" type="text" placeholder="مثال: يوسف الخالد"
-                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
-                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">person</span>
+        <!-- الاسم الأول + الاسم الثاني (النسبة / الكنية) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الاسم الأول</label>
+                <div class="relative group">
+                    <input required name="first_name" value="{{ old('first_name') }}" type="text" placeholder="مثال: يوسف"
+                           class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">person</span>
+                </div>
+                @error('first_name')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
-            @error('full_name')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+
+            <div class="space-y-1.5">
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الاسم الثاني / الكنية</label>
+                <div class="relative group">
+                    <input required name="last_name" value="{{ old('last_name') }}" type="text" placeholder="مثال: الخالد"
+                           class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">person_outline</span>
+                </div>
+                @error('last_name')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+            </div>
         </div>
 
         <!-- رقم الهاتف + اسم المستخدم -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">رقم الهاتف</label>
                 <input required name="phone" value="{{ old('phone') }}" type="tel" dir="ltr" placeholder="09xxxxxxxx"
@@ -45,15 +57,27 @@
             </div>
         </div>
 
-        <!-- البريد الإلكتروني -->
-        <div class="space-y-1.5">
-            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">البريد الإلكتروني</label>
-            <div class="relative group">
-                <input required name="email" value="{{ old('email') }}" type="email" dir="ltr" placeholder="parent@test.com"
-                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
-                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">mail</span>
+        <!-- البريد الإلكتروني ومعرف تليجرام -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">البريد الإلكتروني</label>
+                <div class="relative group">
+                    <input required name="email" value="{{ old('email') }}" type="email" dir="ltr" placeholder="parent@test.com"
+                           class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">mail</span>
+                </div>
+                @error('email')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
-            @error('email')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+
+            <div class="space-y-1.5">
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">معرف التليجرام (Telegram ID)</label>
+                <div class="relative group">
+                    <input name="telegram_id" value="{{ old('telegram_id') }}" type="text" dir="ltr" placeholder="@username أو Chat ID"
+                           class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">send</span>
+                </div>
+                @error('telegram_id')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+            </div>
         </div>
 
         <!-- عدد الأبناء -->
@@ -62,15 +86,16 @@
             <input type="number" name="children_count" id="children_count_input"
                    min="1" max="10" value="{{ old('children_count', 1) }}"
                    oninput="updateChildrenFields(parseInt(this.value) || 1)"
+                   onchange="updateChildrenFields(parseInt(this.value) || 1)"
                    class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm"
                    placeholder="أدخل عدد الأبناء..."/>
         </div>
 
-        <!-- حقول الأرقام الجامعية للأبناء — تتولّد ديناميكياً --}}
-        <div id="children-fields" class="space-y-3"></div>
+        <!-- حقول الأرقام الجامعية للأبناء (تتولّد ديناميكياً) -->
+        <div id="children-fields" class="space-y-4 pt-1"></div>
 
         <!-- كلمة المرور -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">كلمة المرور</label>
                 <div class="relative group">
@@ -114,25 +139,29 @@ const ordinals = ['الأول','الثاني','الثالث','الرابع','ا�
 function updateChildrenFields(count) {
     count = Math.max(1, Math.min(parseInt(count) || 1, 10));
     const container = document.getElementById('children-fields');
+    if (!container) return;
+    
     container.innerHTML = '';
     for (let i = 1; i <= count; i++) {
-        container.innerHTML += `
-        <div class="space-y-1.5">
-            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">
-                الرقم الجامعي للابن ${ordinals[i-1] || i}
+        const fieldHtml = `
+        <div class="space-y-1.5 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-700/50">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1 flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-primary/20 text-primary-dark dark:text-primary text-xs flex items-center justify-center font-bold">${i}</span>
+                الرقم الجامعي للابن ${ordinals[i-1] || i} (أو رمز الطالب)
             </label>
-            <div class="relative group">
+            <div class="relative group mt-1">
                 <input name="children_university_ids[]"
                        type="text" dir="ltr"
-                       placeholder="مثال: 2023xxxx"
+                       placeholder="مثال: 2023xxxx أو رمز الطالب"
                        id="uid-input-${i}"
                        oninput="lookupStudent(${i}, this.value)"
                        ${i === 1 ? 'required' : ''}
                        class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
                 <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" id="uid-icon-${i}">badge</span>
             </div>
-            <div id="uid-result-${i}" class="hidden text-xs px-3 py-2 rounded-xl font-semibold"></div>
+            <div id="uid-result-${i}" class="hidden text-xs px-3 py-2 rounded-xl font-semibold mt-1"></div>
         </div>`;
+        container.innerHTML += fieldHtml;
     }
 }
 
@@ -142,7 +171,10 @@ function lookupStudent(index, uid) {
     const icon = document.getElementById('uid-icon-' + index);
 
     clearTimeout(lookupTimers[index]);
-    if (!uid || uid.length < 4) { resultDiv.classList.add('hidden'); return; }
+    if (!uid || uid.length < 3) { 
+        if (resultDiv) resultDiv.classList.add('hidden'); 
+        return; 
+    }
 
     lookupTimers[index] = setTimeout(() => {
         fetch('/api/student/info/' + encodeURIComponent(uid))
@@ -152,29 +184,38 @@ function lookupStudent(index, uid) {
                     resultDiv.className = 'text-xs px-3 py-2 rounded-xl font-semibold bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800';
                     resultDiv.innerHTML = '✓ ' + data.full_name + ' — ' + (data.department || '') + ' — ' + (data.level || '');
                     resultDiv.classList.remove('hidden');
-                    icon.textContent = 'check_circle';
-                    icon.style.color = '#16a34a';
+                    if (icon) {
+                        icon.textContent = 'check_circle';
+                        icon.style.color = '#16a34a';
+                    }
                 } else {
                     resultDiv.className = 'text-xs px-3 py-2 rounded-xl font-semibold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800';
                     resultDiv.textContent = '✗ الرقم الجامعي غير موجود';
                     resultDiv.classList.remove('hidden');
-                    icon.textContent = 'error';
-                    icon.style.color = '#dc2626';
+                    if (icon) {
+                        icon.textContent = 'error';
+                        icon.style.color = '#dc2626';
+                    }
                 }
             })
             .catch(() => resetResult(index));
-    }, 500);
+    }, 400);
 }
 
 function resetResult(index) {
     const r = document.getElementById('uid-result-' + index);
-    r.classList.add('hidden');
+    if (r) r.classList.add('hidden');
     const icon = document.getElementById('uid-icon-' + index);
-    icon.textContent = 'badge';
-    icon.style.color = '';
+    if (icon) {
+        icon.textContent = 'badge';
+        icon.style.color = '';
+    }
 }
 
-// تهيئة العدد عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => updateChildrenFields({{ old('children_count', 1) }}));
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('children_count_input');
+    const initialVal = input ? (parseInt(input.value) || 1) : 1;
+    updateChildrenFields(initialVal);
+});
 </script>
 @endpush

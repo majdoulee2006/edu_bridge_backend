@@ -276,7 +276,9 @@ class StudentParentController extends Controller
                 'assignment_submissions.submission_id',
                 'assignment_submissions.grade',
                 'assignment_submissions.submitted_at',
+                'assignment_submissions.feedback',
                 DB::raw('CASE
+                    WHEN assignment_submissions.grade IS NOT NULL THEN "مصحح"
                     WHEN assignment_submissions.submission_id IS NOT NULL THEN "مكتملة"
                     WHEN assignments.due_date < NOW() THEN "فائتة"
                     ELSE "جاري"
