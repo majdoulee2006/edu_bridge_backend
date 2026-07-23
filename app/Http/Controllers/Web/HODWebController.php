@@ -45,6 +45,10 @@ class HODWebController extends Controller
             $user = Auth::user();
             // 5 represents Head of Department
             if ($user->role_id == 5) {
+                if ($user->status !== 'active') {
+                    Auth::logout();
+                    return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+                }
                 return redirect('/hod/dashboard');
             } else {
                 Auth::logout();

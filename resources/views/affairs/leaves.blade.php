@@ -249,7 +249,7 @@
 
         @forelse($leaves as $leave)
             @php
-                $userName = $leave->student->user->full_name ?? 'مستخدم غير معروف';
+                $userName = $leave->student_name ?? 'مستخدم غير معروف';
                 $statusClass = match($leave->status) {
                     'approved' => 'status-approved',
                     'rejected' => 'status-rejected',
@@ -261,7 +261,7 @@
                     default    => 'قيد الانتظار',
                 };
             @endphp
-            <div class="leave-card" data-status="{{ $leave->status == 'pending' ? 'pending' : ($leave->status == 'approved' ? 'approved' : 'rejected') }}">
+            <div class="leave-card" data-status="{{ in_array($leave->status, ['pending', 'pending_hod', 'pending_affairs']) ? 'pending' : ($leave->status == 'approved' ? 'approved' : 'rejected') }}">
                 <div class="card-header">
                     <div class="user-avatar"><i class="fa-solid fa-user-graduate"></i></div>
                     <div class="user-info">
@@ -272,19 +272,19 @@
                 </div>
                 <div class="leave-details">
                     <div class="detail-row"><i class="fa-solid fa-notes-medical"></i> <span>طلب غياب</span></div>
-                    <div class="detail-row"><i class="fa-solid fa-calendar-days"></i> <span>{{ $leave->date ? $leave->date->format('d M Y') : 'غير محدد' }}</span></div>
+                    <div class="detail-row"><i class="fa-solid fa-calendar-days"></i> <span>{{ $leave->date ? \Carbon\Carbon::parse($leave->date)->format('d M Y') : 'غير محدد' }}</span></div>
                     <div class="leave-reason">
                         <strong>السبب:</strong> {{ $leave->reason ?? 'لم يذكر سبب.' }}
                     </div>
                 </div>
                 <div class="card-actions">
-                    @if($leave->status === 'pending')
-                        <form method="POST" action="{{ route('affairs.leaves.status', $leave->request_id) }}" style="flex:1;">
+                    @if(in_array($leave->status, ['pending', 'pending_hod', 'pending_affairs']))
+                        <form method="POST" action="{{ route('affairs.leaves.status', $leave->id) }}" style="flex:1;">
                             @csrf
                             <input type="hidden" name="status" value="approved">
-                            <button type="submit" class="btn-action btn-approve" style="width:100%;"><i class="fa-solid fa-check"></i> موافقة</button>
+                            <button type="submit" class="btn-action btn-approve" style="width:100%;"><i class="fa-solid fa-check"></i> تسجيل المبرر</button>
                         </form>
-                        <form method="POST" action="{{ route('affairs.leaves.status', $leave->request_id) }}" style="flex:1;">
+                        <form method="POST" action="{{ route('affairs.leaves.status', $leave->id) }}" style="flex:1;">
                             @csrf
                             <input type="hidden" name="status" value="rejected">
                             <button type="submit" class="btn-action btn-reject" style="width:100%;"><i class="fa-solid fa-xmark"></i> رفض</button>

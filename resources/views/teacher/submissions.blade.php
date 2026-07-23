@@ -38,7 +38,7 @@
 
     <!-- Submissions List -->
     @forelse($submissions as $s)
-        <div class="submission-card" onclick="openGradeModal({{ $s->submission_id }}, '{{ addslashes($s->student_name) }}', {{ $s->grade ?? 'null' }}, '{{ addslashes($s->feedback ?? '') }}', '{{ addslashes($s->content ?? '') }}')">
+        <div class="submission-card" onclick="openGradeModal({{ $s->submission_id }}, '{{ addslashes($s->student_name) }}', {{ $s->grade ?? 'null' }}, '{{ addslashes($s->feedback ?? '') }}', '{{ addslashes($s->student_notes ?? '') }}', '{{ addslashes($s->file_path ?? '') }}')">
             <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
                 <div class="avatar">{{ mb_substr($s->student_name, 0, 1) }}</div>
                 <div>
@@ -79,10 +79,12 @@
                 </button>
             </div>
 
-            <!-- Student Answer -->
+            <!-- Student Answer & File -->
             <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1.25rem; margin-bottom: 1.25rem;">
-                <p style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;"><i class="fa-solid fa-quote-right" style="color: var(--accent-color);"></i> إجابة الطالب</p>
-                <p id="modal-content" style="font-size: 0.92rem; line-height: 1.6; color: var(--text-primary);"></p>
+                <p style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;"><i class="fa-solid fa-quote-right" style="color: var(--accent-color);"></i> إجابة الطالب / الملاحظات</p>
+                <p id="modal-content" style="font-size: 0.92rem; line-height: 1.6; color: var(--text-primary); margin-bottom: 1rem;"></p>
+                <p style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;"><i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i> الملف المرفق</p>
+                <div id="modal-file-container" style="font-size: 0.92rem;"></div>
             </div>
 
             <form id="grade-form" method="POST">
@@ -110,11 +112,19 @@
 
 @push('scripts')
 <script>
-function openGradeModal(submissionId, studentName, grade, feedback, content) {
+function openGradeModal(submissionId, studentName, grade, feedback, content, filePath) {
     document.getElementById('modal-student-name').textContent = studentName;
     document.getElementById('modal-grade').value = grade ?? '';
     document.getElementById('modal-feedback').value = feedback ?? '';
     document.getElementById('modal-content').textContent = content || 'لا يوجد نص مرفق.';
+    
+    const fileContainer = document.getElementById('modal-file-container');
+    if (filePath) {
+        fileContainer.innerHTML = `<a href="/storage/${filePath}" target="_blank" style="color: var(--accent-color); text-decoration: underline; font-weight: bold;"><i class="fa-solid fa-file-arrow-down"></i> اضغط هنا لعرض/تحميل الملف المرفق</a>`;
+    } else {
+        fileContainer.innerHTML = '<span style="color: var(--text-secondary);">لا يوجد ملف مرفق</span>';
+    }
+
     document.getElementById('grade-form').action = '/teacher/assignments/submissions/' + submissionId + '/grade';
     document.getElementById('grade-modal').classList.add('active');
 }

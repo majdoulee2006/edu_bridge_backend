@@ -51,6 +51,8 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     // الاختبارات والتقييمات
     Route::get('/grade-events', [TeacherWebController::class, 'gradeEvents'])->name('teacher.grade_events');
     Route::post('/grade-events', [TeacherWebController::class, 'storeGradeEvent'])->name('teacher.grade_events.store');
+    Route::get('/grade-events/{id}/students', [TeacherWebController::class, 'gradeEventStudents'])->name('teacher.grade_events.students');
+    Route::post('/grade-events/{id}/students', [TeacherWebController::class, 'saveGradeEntries'])->name('teacher.grade_events.save_entries');
     Route::post('/grade-events/{id}/delete', [TeacherWebController::class, 'deleteGradeEvent'])->name('teacher.grade_events.delete');
 
     // الرسائل

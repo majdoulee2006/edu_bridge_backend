@@ -49,6 +49,10 @@ class StudentWebController extends Controller
                 Auth::logout();
                 return back()->withErrors(['login' => 'هذا الحساب ليس حساب طالب.']);
             }
+            if (Auth::user()->status !== 'active') {
+                Auth::logout();
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+            }
             $request->session()->regenerate();
             return redirect('/student/dashboard');
         }

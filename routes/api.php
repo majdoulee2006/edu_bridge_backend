@@ -188,6 +188,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/parent/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);
     Route::post('/parent/leave-requests/submit', [StudentParentController::class, 'submitParentLeaveRequest']);
     Route::get('/parent/reports/history', [StudentParentController::class, 'getReportHistory']);
+    Route::get('/parent/children', [ParentController::class, 'getChildren']);
 
     #========= روابط واجهات المعلم ==========
     Route::prefix('teacher')->middleware('role:teacher')->group(function () {
@@ -410,7 +411,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->where('students.student_id', $id)
-            ->select('users.full_name', 'users.branch as department', 'students.level', 'students.student_code')
+            ->select('users.full_name', 'users.department', 'students.level', 'students.student_code')
             ->first();
     })->middleware('role:student,parent');
 

@@ -44,6 +44,10 @@ class AdminWebController extends Controller
                 Auth::logout();
                 return back()->withErrors(['login' => 'عذراً! هذا الحساب لا يملك صلاحيات الإدارة.']);
             }
+            if ($user->status !== 'active') {
+                Auth::logout();
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+            }
             $request->session()->regenerate();
             return redirect('/admin/dashboard');
         }

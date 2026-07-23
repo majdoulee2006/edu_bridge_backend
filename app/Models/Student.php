@@ -135,7 +135,6 @@ class Student extends Model
                     \DB::table('teachers')
                         ->where('teacher_id', $teacher->teacher_id)
                         ->update([
-                            'is_advisor' => 1,
                             'advisor_branch' => $branch,
                             'advisor_year' => $academicYear,
                             'updated_at' => now(),

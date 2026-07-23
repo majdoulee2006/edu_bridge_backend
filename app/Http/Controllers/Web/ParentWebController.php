@@ -101,6 +101,10 @@ class ParentWebController extends Controller
                 Auth::logout();
                 return back()->withErrors(['login' => 'هذا الحساب ليس حساب ولي أمر.']);
             }
+            if (Auth::user()->status !== 'active') {
+                Auth::logout();
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+            }
             $request->session()->regenerate();
             return redirect('/parent/dashboard');
         }
@@ -327,17 +331,56 @@ class ParentWebController extends Controller
             return $this->parentView('parent.grades', ['grades' => collect(), 'overallAverage' => 0]);
         }
 
-        $grades = DB::table('grades')
-            ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
-            ->join('courses', 'exams.course_id', '=', 'courses.course_id')
-            ->where('grades.student_id', $studentId)
-            ->select('grades.*', 'exams.exam_name', 'exams.max_score', 'courses.title as course_title', 'exams.exam_date')
-            ->orderBy('exams.exam_date', 'desc')
-            ->get()
-            ->groupBy('course_title');
+        $student = DB::table('students')->where('student_id', $studentId)->first();
+        $internalStudentId = $student?->student_id ?? $studentId;
 
-        $overallAverage = DB::table('grades')->where('student_id', $studentId)->avg('score');
-        $overallAverage = $overallAverage ? round($overallAverage, 1) : 0;
+        $newGrades = $internalStudentId
+            ? DB::table('grade_entries')
+                ->join('grade_events', 'grade_entries.grade_event_id', '=', 'grade_events.id')
+                ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+                ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
+                ->where('grade_entries.student_id', $internalStudentId)
+                ->whereNotNull('grade_entries.score')
+                ->select(
+                    DB::raw("COALESCE(courses.title, programs.name, 'تقييم عام') as course_title"),
+                    DB::raw("CASE
+                        WHEN grade_events.type = 'exam'  THEN CONCAT('امتحان: ', grade_events.title)
+                        WHEN grade_events.type = 'quiz'  THEN CONCAT('مذاكرة: ', grade_events.title)
+                        WHEN grade_events.type = 'oral'  THEN CONCAT('شفهي: ',   grade_events.title)
+                        ELSE grade_events.title
+                    END as exam_name"),
+                    'grade_events.max_score',
+                    'grade_entries.score',
+                    DB::raw("DATE(grade_entries.created_at) as exam_date")
+                )
+                ->get()
+            : collect();
+
+        $oldGrades = DB::table('grades')
+            ->leftJoin('exams', 'grades.exam_id', '=', 'exams.exam_id')
+            ->leftJoin('courses', 'exams.course_id', '=', 'courses.course_id')
+            ->where('grades.student_id', $studentId)
+            ->select(
+                DB::raw('COALESCE(courses.title, "مادة غير محددة") as course_title'),
+                DB::raw('COALESCE(exams.exam_name, "اختبار") as exam_name'),
+                DB::raw('COALESCE(exams.max_score, 100) as max_score'),
+                'grades.score',
+                'exams.exam_date'
+            )
+            ->get();
+
+        $allGrades = $newGrades->merge($oldGrades);
+
+        // Calculate average using percentage out of 4 GPA logic
+        $totalScores = 0;
+        $totalMax = 0;
+        foreach ($allGrades as $g) {
+            $totalScores += (float)$g->score;
+            $totalMax += (float)($g->max_score ?? 100);
+        }
+        $overallAverage = $totalMax > 0 ? round(($totalScores / $totalMax) * 100, 1) : 0;
+
+        $grades = $allGrades->groupBy('course_title');
 
         return $this->parentView('parent.grades', compact('grades', 'overallAverage'));
     }
