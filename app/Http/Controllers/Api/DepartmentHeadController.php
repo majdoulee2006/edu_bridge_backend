@@ -1319,4 +1319,65 @@ class DepartmentHeadController extends Controller
 
         return response()->json(['success' => true, 'data' => $result]);
     }
+
+    /**
+     * جلب طلبات الخدمات الطلابية
+     */
+    public function getStudentServiceRequests(Request $request)
+    {
+        $user = $request->user();
+        $hodDepartment = $user->department;
+
+        $type = $request->query('type');
+        
+        $query = \App\Models\StudentRequest::with('student.user')
+            ->whereIn('status', ['pending_hod', 'pending_admin', 'completed'])
+            ->whereHas('student.user', function($q) use ($hodDepartment) {
+                $q->where('department', $hodDepartment);
+            });
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        $requests = $query->orderByDesc('created_at')->get()->map(function($req) {
+            return [
+                'id' => $req->id,
+                'type' => $req->type,
+                'details' => $req->details,
+                'status' => $req->status,
+                'affairs_notes' => $req->affairs_notes,
+                'hod_decision' => $req->hod_decision,
+                'hod_notes' => $req->hod_notes,
+                'student_name' => $req->student->user->full_name ?? 'غير معروف',
+                'department' => $req->student->user->department ?? '',
+                'specialization' => $req->student->user->branch ?? $req->student->level ?? '',
+                'university_id' => $req->student->user->university_id ?? '',
+                'date' => $req->created_at->format('Y-m-d H:i'),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $requests
+        ]);
+    }
+
+    /**
+     * الرد على طلب الخدمة الطلابية
+     */
+    public function respondStudentServiceRequest(Request $request, $id)
+    {
+        $request->validate(['status' => 'required|in:approved,rejected']);
+        $req = \App\Models\StudentRequest::findOrFail($id);
+        
+        $req->hod_decision = $request->status;
+        $req->hod_notes = $request->notes ?? '';
+        
+        // ينتقل الطلب آلياً للإدارة بعد رد رئيس القسم
+        $req->status = 'pending_admin';
+        $req->save();
+
+        return response()->json(['success' => true]);
+    }
 }

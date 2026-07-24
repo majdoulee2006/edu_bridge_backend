@@ -1565,6 +1565,15 @@ tr:nth-child(even) td{background:#f8fafc}
         
         $studentReq->save();
 
-        return back()->with('success', 'تم اتخاذ القرار النهائي بنجاح وتم إغلاق الطلب.');
+        // إرسال إشعار فوري للطالب بالقرار
+        \App\Models\Notification::create([
+            'user_id' => $studentReq->student->user_id,
+            'title'   => 'تحديث حالة طلبك',
+            'message' => 'تم الرد على طلبك من قبل الإدارة بالقرار: ' . ($request->decision === 'approved' ? 'مقبول' : 'مرفوض') . '، يرجى مراجعة تفاصيل الطلب لمعرفة السبب.',
+            'type'    => 'system',
+            'is_read' => false,
+        ]);
+
+        return back()->with('success', 'تم اتخاذ القرار النهائي بنجاح وتم إغلاق الطلب وإرسال إشعار للطالب.');
     }
 }

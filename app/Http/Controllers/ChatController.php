@@ -195,6 +195,8 @@ class ChatController extends Controller
                     'last_message' => $latestMessage ? $latestMessage->message : null,
                     'last_message_time' => $latestMessage ? $latestMessage->created_at->toIso8601String() : null,
                     'time' => $timeStr,
+                    'is_read' => $latestMessage ? (bool) $latestMessage->is_read : false,
+                    'is_my_message' => $latestMessage ? ($latestMessage->sender_id == $user->user_id) : false,
                 ];
             });
 

@@ -305,6 +305,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/leave-requests',               [DepartmentHeadController::class, 'getLeaveRequests']);
         Route::put('/leave-requests/{id}/respond',  [DepartmentHeadController::class, 'respondLeaveRequest']);
 
+        // Student Service Requests (استرحام، وثائق، إكمال)
+        Route::get('/student-service-requests',               [DepartmentHeadController::class, 'getStudentServiceRequests']);
+        Route::put('/student-service-requests/{id}/respond',  [DepartmentHeadController::class, 'respondStudentServiceRequest']);
+
         // Teachers list & Report Requests
         Route::get('/teachers',        [DepartmentHeadController::class, 'getTeachers']);
         Route::get('/report-requests',  [DepartmentHeadController::class, 'getReportRequests']);
