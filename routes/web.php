@@ -430,13 +430,10 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
 
     // الرسائل
     Route::get('/messages', [ParentWebController::class, 'messages'])->name('parent.messages');
-    Route::post('/messages', [ParentWebController::class, 'sendMessage'])->name('parent.messages.send');
+    Route::get('/messages/contacts', [ParentWebController::class, 'getContacts'])->name('parent.messages.contacts');
     Route::get('/messages/conversation/{userId}', [ParentWebController::class, 'getConversation'])->name('parent.messages.conversation');
-Route::middleware(['auth'])->group(function () {
-    Route::get('/chat/contacts', [App\Http\Controllers\ChatController::class, 'getContacts'])->name('chat.contacts');
-    Route::post('/chat/send-message', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');
-    Route::get('/chat/messages/{otherUserId}', [App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
-    Route::put('/chat/messages/{otherUserId}/mark-read', [App\Http\Controllers\ChatController::class, 'markAsRead'])->name('chat.mark-read');
-    Route::get('/chat/messages/unread-count', [App\Http\Controllers\ChatController::class, 'getUnreadCount'])->name('chat.unread-count');
-});
+    Route::get('/messages/conversation/{userId}/search', [ParentWebController::class, 'searchMessages'])->name('parent.messages.search');
+    Route::post('/messages', [ParentWebController::class, 'sendMessage'])->name('parent.messages.send');
+    Route::put('/messages/{id}/edit', [ParentWebController::class, 'updateMessage'])->name('parent.messages.update');
+    Route::delete('/messages/{id}', [ParentWebController::class, 'deleteMessage'])->name('parent.messages.delete');
 });
