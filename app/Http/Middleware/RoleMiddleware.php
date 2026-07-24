@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, ...$roles): Response
     {
         $user = $request->user();
 
@@ -16,10 +16,10 @@ class RoleMiddleware
             return response()->json(['success' => false, 'message' => 'يجب تسجيل الدخول أولاً'], 401);
         }
 
-        $allowedRoles = explode(',', $role);
+        // If multiple roles are passed like role:student,parent, they will come as array elements in $roles
         $userRole = $user->role;
 
-        if (!$userRole || !in_array($userRole, $allowedRoles)) {
+        if (!$userRole || !in_array($userRole, $roles)) {
             return response()->json([
                 'success' => false,
                 'message' => 'غير مصرح لك بالوصول لهذه الخدمة'

@@ -64,11 +64,16 @@
             @endif
         </div>
     </div>
-    <form action="{{ route('teacher.grade_events.delete', $event->id) }}" method="POST"
-          onsubmit="return confirm('حذف هذا التقييم؟')">
-        @csrf
-        <button type="submit" class="btn-danger"><i class="fa-solid fa-trash"></i></button>
-    </form>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <a href="{{ route('teacher.grade_events.students', $event->id) }}" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; width: auto; background: var(--accent-color); color: #1a1a1a; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
+            <i class="fa-solid fa-list-check"></i> إدخال العلامات
+        </a>
+        <form action="{{ route('teacher.grade_events.delete', $event->id) }}" method="POST"
+              onsubmit="return confirm('حذف هذا التقييم؟')">
+            @csrf
+            <button type="submit" class="btn-danger"><i class="fa-solid fa-trash"></i></button>
+        </form>
+    </div>
 </div>
 @empty
 <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
@@ -132,7 +137,7 @@
                     </div>
                     <div>
                         <label class="form-label">التاريخ *</label>
-                        <input type="date" name="date" class="form-input" required>
+                        <input type="date" name="date" class="form-input" min="{{ date('Y-m-d') }}" required>
                     </div>
                 </div>
 

@@ -76,12 +76,14 @@ class AffairsWebController extends Controller
         $totalStudents = User::where('role_id', 3)->count();
         $totalTeachers = User::where('role_id', 2)->count();
         $totalStaff    = User::whereIn('role_id', [2, 5, 6])->count();
-        $pendingLeaves = AbsenceRequest::where('status', 'pending')->count();
+        $pendingLeaves = DB::table('leave_requests')->where('status', 'pending')->count();
         $totalUsers    = User::count();
 
         // آخر 5 طلبات إجازة
-        $recentLeaves = AbsenceRequest::with('student.user')
-            ->latest()
+        $recentLeaves = DB::table('leave_requests')
+            ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
+            ->select('leave_requests.*', 'users.full_name as student_name')
+            ->orderBy('leave_requests.created_at', 'desc')
             ->take(5)
             ->get();
 
@@ -615,11 +617,19 @@ class AffairsWebController extends Controller
     // ─────────────────────────── Leaves ───────────────────────────
     public function leaves()
     {
-        $leaves = AbsenceRequest::with('student.user')
-            ->latest()
+        $leaves = DB::table('leave_requests')
+            ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
+            ->leftJoin('students', 'students.user_id', '=', 'users.user_id')
+            ->select(
+                'leave_requests.*',
+                'users.full_name as student_name',
+                'students.level',
+                'students.student_code'
+            )
+            ->orderBy('leave_requests.created_at', 'desc')
             ->get();
 
-        $pendingCount  = $leaves->where('status', 'pending')->count();
+        $pendingCount  = $leaves->whereIn('status', ['pending', 'pending_hod', 'pending_affairs'])->count();
         $approvedCount = $leaves->where('status', 'approved')->count();
         $rejectedCount = $leaves->where('status', 'rejected')->count();
 
@@ -628,12 +638,85 @@ class AffairsWebController extends Controller
 
     public function updateLeaveStatus(Request $request, $id)
     {
-        $request->validate(['status' => 'required|in:approved,rejected']);
+        $request->validate(['status' => 'required|in:approved,rejected,recorded']);
+        $status = $request->status;
+        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
 
-        $leave = AbsenceRequest::findOrFail($id);
-        $leave->status      = $request->status;
-        $leave->reviewed_by = Auth::id();
-        $leave->save();
+        if (!$leaveRequest) {
+            return back()->with('error', 'الطلب غير موجود.');
+        }
+
+        DB::table('leave_requests')
+            ->where('id', $id)
+            ->update([
+                'status' => $status,
+                'updated_at' => now()
+            ]);
+
+        // إرسال إشعار للطالب
+        if ($leaveRequest->student_id) {
+            $title   = $status === 'approved' ? 'قبول المبرر' : 'رفض المبرر';
+            $message = $status === 'approved'
+                ? 'تم قبول المبرر الخاص بك (تاريخ ' . $leaveRequest->date . ') وتم تثبيته من قبل شؤون الطلاب.'
+                : 'نعتذر، تم رفض المبرر الخاص بك (تاريخ ' . $leaveRequest->date . ') من قبل شؤون الطلاب.';
+
+            DB::table('notifications')->insert([
+                'user_id'    => $leaveRequest->student_id,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'leave_request',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser(
+                $leaveRequest->student_id,
+                $title,
+                $message,
+                ['type' => 'leave_request', 'related_id' => (string) $id]
+            );
+
+            // إشعار لمربي الدورة (Advisor)
+            $studentInfo = DB::table('users')
+                ->join('students', 'users.user_id', '=', 'students.user_id')
+                ->where('users.user_id', $leaveRequest->student_id)
+                ->select('users.department', 'users.full_name', 'students.level')
+                ->first();
+            
+            if ($studentInfo) {
+                $advisor = DB::table('teachers')
+                    ->where('advisor_branch', $studentInfo->department)
+                    ->where('advisor_year', $studentInfo->level)
+                    ->first();
+                
+                if ($advisor) {
+                    $advisorTitle = 'تحديث حالة تبرير غياب';
+                    $advisorMessage = $status === 'approved'
+                        ? 'قامت شؤون الطلاب بقبول تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leaveRequest->date . ')'
+                        : 'قامت شؤون الطلاب برفض تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leaveRequest->date . ')';
+                    
+                    DB::table('notifications')->insert([
+                        'user_id'    => $advisor->user_id,
+                        'title'      => $advisorTitle,
+                        'message'    => $advisorMessage,
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    \App\Services\FcmService::sendToUser(
+                        $advisor->user_id,
+                        $advisorTitle,
+                        $advisorMessage,
+                        ['type' => 'leave_request', 'related_id' => (string) $id]
+                    );
+                }
+            }
+        }
 
         return back()->with('success', 'تم تحديث حالة طلب الإجازة.');
     }
@@ -643,25 +726,64 @@ class AffairsWebController extends Controller
     {
         $currentUserId = Auth::id();
 
-        // جلب كل المحادثات الفريدة
-        $conversations = Message::with(['sender', 'receiver'])
-            ->where('sender_id', $currentUserId)
+        // Affairs can chat with any other user
+        $allUsers = User::where('user_id', '!=', $currentUserId)->get();
+
+        return view('affairs.messages', compact('allUsers'));
+    }
+
+    public function getContacts()
+    {
+        $currentUserId = Auth::id();
+
+        $conversations = Message::where('sender_id', $currentUserId)
             ->orWhere('receiver_id', $currentUserId)
             ->latest()
             ->get()
             ->map(function ($msg) use ($currentUserId) {
-                $contactId = ($msg->sender_id == $currentUserId) ? $msg->receiver_id : $msg->sender_id;
-                return $contactId;
+                return ($msg->sender_id == $currentUserId) ? $msg->receiver_id : $msg->sender_id;
             })
             ->unique()
             ->values();
 
-        $contacts = User::whereIn('user_id', $conversations)->get();
+        $contactsRaw = User::whereIn('user_id', $conversations)->get();
 
-        // قائمة كل المستخدمين للرسالة الجديدة
-        $allUsers = User::where('user_id', '!=', $currentUserId)->get();
+        $contacts = [];
+        foreach ($contactsRaw as $c) {
+            $unread = Message::where('sender_id', $c->user_id)
+                ->where('receiver_id', $currentUserId)
+                ->where('is_read', false)
+                ->count();
 
-        return view('affairs.messages', compact('contacts', 'allUsers'));
+            $lastMsg = Message::where(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
+                })
+                ->orWhere(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+                })
+                ->latest()
+                ->first();
+
+            $contacts[] = [
+                'id' => $c->user_id,
+                'name' => $c->full_name,
+                'role' => $c->role,
+                'image' => $c->profile_picture ? asset('storage/' . $c->profile_picture) : null,
+                'unread' => $unread,
+                'last_message' => $lastMsg ? $lastMsg->message : '',
+                'time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : '',
+                'updated_at' => $lastMsg ? $lastMsg->created_at : now()
+            ];
+        }
+
+        usort($contacts, function($a, $b) {
+            return $b['updated_at'] <=> $a['updated_at'];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $contacts
+        ]);
     }
 
     public function getConversation($userId)
@@ -677,7 +799,6 @@ class AffairsWebController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // تحديد الرسائل كمقروءة
         Message::where('sender_id', $userId)
             ->where('receiver_id', $currentUserId)
             ->where('is_read', false)
@@ -686,33 +807,112 @@ class AffairsWebController extends Controller
         return response()->json($messages);
     }
 
+    public function searchMessages(Request $request, $userId)
+    {
+        $currentUserId = Auth::id();
+        $query = $request->query('q');
+
+        $messages = Message::with(['sender', 'receiver'])
+            ->where(function ($q) use ($currentUserId, $userId) {
+                $q->where(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+                })
+                ->orWhere(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                });
+            })
+            ->where('message', 'LIKE', '%' . $query . '%')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['status' => 'success', 'data' => $messages]);
+    }
+
     public function sendMessage(Request $request)
     {
         $request->validate([
             'receiver_id' => 'required|exists:users,user_id',
             'message'     => 'required|string|max:2000',
+            'attachment'  => 'nullable|file|max:51200',
         ]);
 
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $folder = 'chat_attachments';
+            
+            if ($request->message === '[Voice Note]' || strpos($file->getMimeType(), 'audio') !== false) {
+                $folder = 'chat_voice_notes';
+            }
+            
+            $attachmentPath = $file->store($folder, 'public');
+            $attachmentPath = asset('storage/' . $attachmentPath);
+        }
+
         $message = Message::create([
-            'sender_id'   => Auth::id(),
+            'sender_id'   => Auth::user()->user_id,
             'receiver_id' => $request->receiver_id,
             'message'     => $request->message,
+            'attachment'  => $attachmentPath,
             'is_read'     => false,
         ]);
 
-        Notification::create([
+        DB::table('notifications')->insert([
             'user_id' => $request->receiver_id,
             'title'   => 'رسالة جديدة',
             'message' => 'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
             'type'    => 'message',
             'is_read' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+        \App\Services\FcmService::sendToUser(
+            $request->receiver_id,
+            'رسالة جديدة',
+            'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            ['type' => 'message']
+        );
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => $message->load('sender')]);
+            return response()->json(['success' => true, 'message' => $message]);
         }
 
-        return back()->with('success', 'تم إرسال الرسالة.');
+        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+    }
+
+    public function updateMessage(Request $request, $id)
+    {
+        $message = Message::findOrFail($id);
+        
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        if ($message->attachment || $message->message === '[Voice Note]') {
+            return response()->json(['status' => 'error', 'message' => 'لا يمكن تعديل المرفقات'], 400);
+        }
+
+        $request->validate(['message' => 'required|string|max:2000']);
+        $message->update(['message' => $request->message]);
+
+        return response()->json(['status' => 'success', 'message' => $message]);
+    }
+
+    public function deleteMessage($id)
+    {
+        $message = Message::findOrFail($id);
+
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        if ($message->attachment) {
+            $path = str_replace(asset('storage/'), '', $message->attachment);
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+        }
+
+        $message->delete();
+        return response()->json(['status' => 'success']);
     }
 
     // ─────────────────────────── Notifications ───────────────────────────
@@ -750,7 +950,8 @@ class AffairsWebController extends Controller
         $user = Auth::user();
 
         // إحصائيات بسيطة
-        $reviewedLeaves = AbsenceRequest::where('reviewed_by', $user->user_id)->count();
+        // Assuming there isn't a reviewed_by column in leave_requests, we'll just show total recorded requests
+        $reviewedLeaves = DB::table('leave_requests')->whereIn('status', ['approved', 'rejected'])->count();
         $sentMessages   = Message::where('sender_id', $user->user_id)->count();
 
         return view('affairs.profile', compact('user', 'reviewedLeaves', 'sentMessages'));
@@ -789,6 +990,94 @@ class AffairsWebController extends Controller
 
         $user->update(['password' => Hash::make($request->password)]);
         return back()->with('success', 'تم تغيير كلمة المرور بنجاح.');
+    }
+
+    public function sendOTP(Request $request)
+    {
+        $request->validate([
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
+            'current_password' => 'nullable|string',
+            'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كلمة المرور الحالية غير صحيحة.'
+                ]);
+            }
+        }
+
+        $otp = (string) rand(100000, 999999);
+
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
+        session([
+            'affairs_profile_otp'          => $otp,
+            'affairs_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
+        ]);
+    }
+
+    public function verifyOTP(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|numeric'
+        ]);
+
+        if (session('affairs_profile_otp') == $request->otp) {
+            $user = Auth::user();
+            $data = session('affairs_pending_profile_data');
+
+            $updates = ['updated_at' => now()];
+
+            if (!empty($data['full_name'])) {
+                $updates['full_name'] = $data['full_name'];
+            }
+            if (!empty($data['email'])) {
+                $updates['email'] = $data['email'];
+            }
+            if (!empty($data['phone'])) {
+                $updates['phone'] = $data['phone'];
+            }
+            if (!empty($data['new_password'])) {
+                $updates['password'] = Hash::make($data['new_password']);
+            }
+
+            DB::table('users')
+                ->where('user_id', $user->user_id)
+                ->update($updates);
+
+            session()->forget(['affairs_profile_otp', 'affairs_pending_profile_data']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديث البيانات بنجاح!'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.'
+        ]);
     }
 
     // ─────────────────────────── Settings ───────────────────────────
@@ -848,7 +1137,7 @@ class AffairsWebController extends Controller
         ]);
 
         $requestId = DB::table('report_requests')->insertGetId([
-            'head_id'     => null,
+            'head_id'     => auth()->id(),
             'teacher_id'  => $request->teacher_id,
             'student_id'  => $request->student_id,
             'report_type' => $request->report_type,

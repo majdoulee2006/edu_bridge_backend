@@ -117,12 +117,11 @@
                     style="background: hsl(220,70%,95%); border: none; color: hsl(220,50%,40%); border-radius: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer;">
                     <i class="fa-solid fa-pen"></i>
                 </button>
-                <form action="{{ route('teacher.lectures.delete', $l->lesson_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه المحاضرة؟')">
-                    @csrf
-                    <button type="submit" style="background: hsl(0,70%,95%); border: none; color: hsl(0,50%,40%); border-radius: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer;">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </form>
+                <a href="{{ route('teacher.lectures.delete', $l->lesson_id) }}" 
+                   onclick="return confirm('هل أنت متأكد من حذف هذه المحاضرة؟')"
+                   style="background: hsl(0,70%,95%); border: none; color: hsl(0,50%,40%); border-radius: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center;">
+                    <i class="fa-solid fa-trash"></i>
+                </a>
             </div>
         </div>
     @empty

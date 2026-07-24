@@ -147,7 +147,7 @@
     <div class="stat-card stat-card-plain">
         <div class="stat-icon"><i class="fa-solid fa-chart-bar"></i></div>
         <div style="flex: 1;">
-            <div class="stat-value">{{ $avgGrade }}%</div>
+            <div class="stat-value">{{ $avgGrade !== null ? $avgGrade . '%' : 'غير متاح' }}</div>
             <div class="stat-label">متوسط الدرجات</div>
         </div>
     </div>
@@ -155,11 +155,13 @@
     <div class="stat-card stat-card-plain">
         <div class="stat-icon"><i class="fa-solid fa-clipboard-user"></i></div>
         <div style="flex: 1;">
-            <div class="stat-value">{{ $attendanceRate }}%</div>
+            <div class="stat-value">{{ $attendanceRate !== null ? $attendanceRate . '%' : 'غير متاح' }}</div>
             <div class="stat-label">نسبة الحضور</div>
+            @if($attendanceRate !== null)
             <div class="att-bar-wrap">
                 <div class="att-bar" style="width: {{ $attendanceRate }}%;"></div>
             </div>
+            @endif
         </div>
     </div>
 

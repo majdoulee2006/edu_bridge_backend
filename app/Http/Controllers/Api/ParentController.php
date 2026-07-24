@@ -34,23 +34,8 @@ class ParentController extends Controller
             ->with(['user', 'attendances', 'grades'])
             ->get()
             ->map(function($student) {
-                $attendances = $student->attendances;
-                
-                $total = $attendances->count();
-                $present = $attendances->where('status', 'present')->count();
-                
-                $pending = 0;
-                foreach ($attendances as $att) {
-                    $isToday = \Carbon\Carbon::parse($att->attendance_date)->isToday();
-                    if ($att->status === 'absent' && $isToday) {
-                        $pending++;
-                    }
-                }
-                
-                $effectiveTotal = $total - $pending;
-                $attendanceRate = $effectiveTotal > 0
-                    ? round(($present / $effectiveTotal) * 100, 1)
-                    : 100;
+                // استخدام نفس الميثود الخاصة بشاشة الأداء لضمان تطابق الأرقام في كل مكان
+                $performance = json_decode(app(\App\Http\Controllers\StudentParentController::class)->getFullPerformance($student->student_id)->getContent(), true);
 
                 return [
                     'id'              => $student->user_id,
@@ -60,8 +45,8 @@ class ParentController extends Controller
                     'student_code'    => $student->student_code ?? '',
                     'level'           => $student->level ?? '',
                     'total_courses'   => $student->courses->count(),
-                    'attendance_rate' => $attendanceRate,
-                    'average_grade'   => round($student->grades()->avg('score') ?? 0, 1),
+                    'attendance_rate' => $performance['attendance_rate'] ?? 100,
+                    'average_grade'   => $performance['gpa'] ?? 0,
                 ];
             });
 

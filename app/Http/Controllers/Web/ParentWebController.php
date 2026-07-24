@@ -101,6 +101,10 @@ class ParentWebController extends Controller
                 Auth::logout();
                 return back()->withErrors(['login' => 'هذا الحساب ليس حساب ولي أمر.']);
             }
+            if (Auth::user()->status !== 'active') {
+                Auth::logout();
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+            }
             $request->session()->regenerate();
             return redirect('/parent/dashboard');
         }
@@ -327,17 +331,56 @@ class ParentWebController extends Controller
             return $this->parentView('parent.grades', ['grades' => collect(), 'overallAverage' => 0]);
         }
 
-        $grades = DB::table('grades')
-            ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
-            ->join('courses', 'exams.course_id', '=', 'courses.course_id')
-            ->where('grades.student_id', $studentId)
-            ->select('grades.*', 'exams.exam_name', 'exams.max_score', 'courses.title as course_title', 'exams.exam_date')
-            ->orderBy('exams.exam_date', 'desc')
-            ->get()
-            ->groupBy('course_title');
+        $student = DB::table('students')->where('student_id', $studentId)->first();
+        $internalStudentId = $student?->student_id ?? $studentId;
 
-        $overallAverage = DB::table('grades')->where('student_id', $studentId)->avg('score');
-        $overallAverage = $overallAverage ? round($overallAverage, 1) : 0;
+        $newGrades = $internalStudentId
+            ? DB::table('grade_entries')
+                ->join('grade_events', 'grade_entries.grade_event_id', '=', 'grade_events.id')
+                ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+                ->leftJoin('programs', 'grade_events.program_id', '=', 'programs.id')
+                ->where('grade_entries.student_id', $internalStudentId)
+                ->whereNotNull('grade_entries.score')
+                ->select(
+                    DB::raw("COALESCE(courses.title, programs.name, 'تقييم عام') as course_title"),
+                    DB::raw("CASE
+                        WHEN grade_events.type = 'exam'  THEN CONCAT('امتحان: ', grade_events.title)
+                        WHEN grade_events.type = 'quiz'  THEN CONCAT('مذاكرة: ', grade_events.title)
+                        WHEN grade_events.type = 'oral'  THEN CONCAT('شفهي: ',   grade_events.title)
+                        ELSE grade_events.title
+                    END as exam_name"),
+                    'grade_events.max_score',
+                    'grade_entries.score',
+                    DB::raw("DATE(grade_entries.created_at) as exam_date")
+                )
+                ->get()
+            : collect();
+
+        $oldGrades = DB::table('grades')
+            ->leftJoin('exams', 'grades.exam_id', '=', 'exams.exam_id')
+            ->leftJoin('courses', 'exams.course_id', '=', 'courses.course_id')
+            ->where('grades.student_id', $studentId)
+            ->select(
+                DB::raw('COALESCE(courses.title, "مادة غير محددة") as course_title'),
+                DB::raw('COALESCE(exams.exam_name, "اختبار") as exam_name'),
+                DB::raw('COALESCE(exams.max_score, 100) as max_score'),
+                'grades.score',
+                'exams.exam_date'
+            )
+            ->get();
+
+        $allGrades = $newGrades->merge($oldGrades);
+
+        // Calculate average using percentage out of 4 GPA logic
+        $totalScores = 0;
+        $totalMax = 0;
+        foreach ($allGrades as $g) {
+            $totalScores += (float)$g->score;
+            $totalMax += (float)($g->max_score ?? 100);
+        }
+        $overallAverage = $totalMax > 0 ? round(($totalScores / $totalMax) * 100, 1) : 0;
+
+        $grades = $allGrades->groupBy('course_title');
 
         return $this->parentView('parent.grades', compact('grades', 'overallAverage'));
     }
@@ -355,11 +398,8 @@ class ParentWebController extends Controller
             return $this->parentView('parent.permissions', ['requests' => collect()]);
         }
 
-        // Get student's user record (leave_requests table uses user_id as student_id)
-        $studentUserId = DB::table('students')->where('student_id', $studentId)->value('user_id');
-
-        $requests = DB::table('leave_requests')
-            ->where('student_id', $studentUserId)
+        $requests = DB::table('absence_requests')
+            ->where('student_id', $studentId)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -370,66 +410,20 @@ class ParentWebController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
 
-        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
-        if (!$leaveRequest) {
+        $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
+        if (!$absenceRequest) {
             return back()->with('error', 'الطلب غير موجود.');
         }
 
-        if ($request->status === 'approved') {
-            DB::table('leave_requests')
-                ->where('id', $id)
-                ->update(['status' => 'pending_hod', 'updated_at' => now()]);
+        DB::table('absence_requests')
+            ->where('request_id', $id)
+            ->update([
+                'status'     => $request->status,
+                'updated_at' => now(),
+            ]);
 
-            $studentUser = DB::table('users')->where('user_id', $leaveRequest->student_id)->first();
-            $studentName = $studentUser->full_name ?? 'الطالب';
-
-            $headUserId = DB::table('heads')->value('user_id')
-                ?? DB::table('users')->where('role_id', 5)->value('user_id');
-                
-            if ($headUserId) {
-                DB::table('notifications')->insert([
-                    'user_id'    => $headUserId,
-                    'title'      => 'طلب إجازة بانتظار موافقتك',
-                    'message'    => 'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
-                    'type'       => 'leave_request',
-                    'related_id' => $id,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser(
-                    $headUserId,
-                    'طلب إجازة بانتظار موافقتك',
-                    'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
-                    ['type' => 'leave_request', 'related_id' => (string)$id]
-                );
-            }
-            return back()->with('success', 'تمت الموافقة على الإجازة وإحالتها لرئيس القسم.');
-        } else {
-            DB::table('leave_requests')
-                ->where('id', $id)
-                ->update(['status' => 'rejected', 'updated_at' => now()]);
-
-            if ($leaveRequest->student_id) {
-                $typeText = $leaveRequest->type === 'hourly' ? 'الساعية' : 'اليومية';
-                DB::table('notifications')->insert([
-                    'user_id'    => $leaveRequest->student_id,
-                    'title'      => 'تم رفض طلب الإجازة',
-                    'message'    => 'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
-                    'type'       => 'leave_request',
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser(
-                    $leaveRequest->student_id,
-                    'تم رفض طلب الإجازة',
-                    'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
-                    ['type' => 'leave_request']
-                );
-            }
-            return back()->with('success', 'تم رفض طلب الإجازة بنجاح.');
-        }
+        $msg = $request->status === 'approved' ? 'تمت الموافقة على طلب الإذن بنجاح.' : 'تم رفض طلب الإذن.';
+        return back()->with('success', $msg);
     }
 
     public function submitLeaveRequest(Request $request)
@@ -729,27 +723,46 @@ class ParentWebController extends Controller
 
     public function sendOTP(Request $request)
     {
-        $user = auth()->user();
-        $otp = (string)rand(1000, 9999);
-        
-        session([
-            'parent_profile_otp' => $otp,
-            'parent_otp_expiry' => now()->addMinutes(15)
+        $request->validate([
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
+            'current_password' => 'nullable|string',
+            'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
         ]);
 
-        try {
-            Mail::to($user->email)->send(new OtpMail($otp, $user->full_name));
-        } catch (\Exception $e) {
-            logger('Parent OTP mail failed: ' . $e->getMessage());
+        $user = Auth::user();
+
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كلمة المرور الحالية غير صحيحة.'
+                ]);
+            }
+        }
+
+        $otp = (string) rand(100000, 999999);
+
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
             return response()->json([
                 'success' => false,
-                'message' => 'فشل إرسال البريد الإلكتروني. يرجى المحاولة لاحقاً.'
+                'message' => $telegramResult['message']
             ]);
         }
 
+        session([
+            'parent_profile_otp'          => $otp,
+            'parent_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+        ]);
+
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال رمز التحقق (OTP) إلى بريدك الإلكتروني.'
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
         ]);
     }
 
@@ -759,22 +772,40 @@ class ParentWebController extends Controller
             'otp' => 'required|numeric'
         ]);
 
-        $sessionOtp = session('parent_profile_otp');
-        $expiry = session('parent_otp_expiry');
+        if (session('parent_profile_otp') == $request->otp) {
+            $user = Auth::user();
+            $data = session('parent_pending_profile_data');
 
-        if ($sessionOtp && $expiry && now()->lessThan($expiry) && $sessionOtp == $request->otp) {
-            session(['parent_otp_verified' => true]);
-            session()->forget(['parent_profile_otp', 'parent_otp_expiry']);
+            $updates = ['updated_at' => now()];
+
+            if (!empty($data['full_name'])) {
+                $updates['full_name'] = $data['full_name'];
+            }
+            if (!empty($data['email'])) {
+                $updates['email'] = $data['email'];
+            }
+            if (!empty($data['phone'])) {
+                $updates['phone'] = $data['phone'];
+            }
+            if (!empty($data['new_password'])) {
+                $updates['password'] = Hash::make($data['new_password']);
+            }
+
+            DB::table('users')
+                ->where('user_id', $user->user_id)
+                ->update($updates);
+
+            session()->forget(['parent_profile_otp', 'parent_pending_profile_data']);
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم التحقق بنجاح!'
+                'message' => 'تم تحديث البيانات بنجاح!'
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'message' => 'رمز التحقق غير صحيح أو منتهي الصلاحية.'
+            'message' => 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.'
         ]);
     }
 
@@ -782,6 +813,18 @@ class ParentWebController extends Controller
     //  MESSAGES / CHAT SYSTEM
     // ────────────────────────────────────────────────────────────
     public function messages()
+    {
+        $currentUserId = Auth::id();
+
+        // Allowed targets for parent: Admin (1), Teacher (2), Head (5), Affairs (6)
+        $allUsers = \App\Models\User::where('user_id', '!=', $currentUserId)
+            ->whereIn('role_id', [1, 2, 5, 6])
+            ->get();
+
+        return $this->parentView('parent.messages', compact('allUsers'));
+    }
+
+    public function getContacts()
     {
         $currentUserId = Auth::id();
 
@@ -795,10 +838,44 @@ class ParentWebController extends Controller
             ->unique()
             ->values();
 
-        $contacts = \App\Models\User::whereIn('user_id', $conversations)->get();
-        $allUsers = \App\Models\User::where('user_id', '!=', $currentUserId)->get();
+        $contactsRaw = \App\Models\User::whereIn('user_id', $conversations)->get();
 
-        return $this->parentView('parent.messages', compact('contacts', 'allUsers'));
+        $contacts = [];
+        foreach ($contactsRaw as $c) {
+            $unread = \App\Models\Message::where('sender_id', $c->user_id)
+                ->where('receiver_id', $currentUserId)
+                ->where('is_read', false)
+                ->count();
+
+            $lastMsg = \App\Models\Message::where(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
+                })
+                ->orWhere(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+                })
+                ->latest()
+                ->first();
+
+            $contacts[] = [
+                'id' => $c->user_id,
+                'name' => $c->full_name,
+                'role' => $c->role,
+                'image' => $c->profile_picture ? asset('storage/' . $c->profile_picture) : null,
+                'unread' => $unread,
+                'last_message' => $lastMsg ? $lastMsg->message : '',
+                'time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : '',
+                'updated_at' => $lastMsg ? $lastMsg->created_at : now()
+            ];
+        }
+
+        usort($contacts, function($a, $b) {
+            return $b['updated_at'] <=> $a['updated_at'];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $contacts
+        ]);
     }
 
     public function getConversation($userId)
@@ -822,30 +899,109 @@ class ParentWebController extends Controller
         return response()->json($messages);
     }
 
+    public function searchMessages(Request $request, $userId)
+    {
+        $currentUserId = Auth::id();
+        $query = $request->query('q');
+
+        $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where(function ($q) use ($currentUserId, $userId) {
+                $q->where(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+                })
+                ->orWhere(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                });
+            })
+            ->where('message', 'LIKE', '%' . $query . '%')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['status' => 'success', 'data' => $messages]);
+    }
+
     public function sendMessage(Request $request)
     {
         $request->validate([
-            'receiver_id' => 'required',
-            'message'     => 'nullable|string',
+            'receiver_id' => 'required|exists:users,user_id',
+            'message'     => 'required|string|max:2000',
             'attachment'  => 'nullable|file|max:51200',
         ]);
 
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('chat_attachments', 'public');
-            $attachmentPath = asset('storage/' . $path);
+            $file = $request->file('attachment');
+            $folder = 'chat_attachments';
+            
+            if ($request->message === '[Voice Note]' || strpos($file->getMimeType(), 'audio') !== false) {
+                $folder = 'chat_voice_notes';
+            }
+            
+            $attachmentPath = $file->store($folder, 'public');
+            $attachmentPath = asset('storage/' . $attachmentPath);
         }
 
         $message = \App\Models\Message::create([
-            'sender_id'   => Auth::id(),
+            'sender_id'   => Auth::user()->user_id,
             'receiver_id' => $request->receiver_id,
             'message'     => $request->message,
             'attachment'  => $attachmentPath,
-            'is_read'     => 0,
+            'is_read'     => false,
         ]);
 
-        broadcast(new \App\Events\MessageSent($message))->toOthers();
+        DB::table('notifications')->insert([
+            'user_id' => $request->receiver_id,
+            'title'   => 'رسالة جديدة',
+            'message' => 'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            'type'    => 'message',
+            'is_read' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
-        return response()->json(['status' => 'success', 'data' => $message], 201);
+        \App\Services\FcmService::sendToUser(
+            $request->receiver_id,
+            'رسالة جديدة',
+            'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            ['type' => 'message']
+        );
+
+        if ($request->expectsJson()) {
+            return response()->json(['status' => 'success', 'data' => $message], 201);
+        }
+
+        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+    }
+
+    public function updateMessage(Request $request, $id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+        
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        $request->validate([
+            'message' => 'required|string|max:2000',
+        ]);
+
+        $message->update([
+            'message' => $request->message,
+        ]);
+
+        return response()->json(['status' => 'success', 'data' => $message]);
+    }
+
+    public function deleteMessage($id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+        
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        $message->delete();
+
+        return response()->json(['status' => 'success', 'message' => 'تم حذف الرسالة بنجاح']);
     }
 }

@@ -80,7 +80,7 @@ tr:last-child td { border-bottom:none; }
             @forelse($ids as $uid)
             <tr>
                 <td>
-                    @if($uid->photo)
+                    @if(isset($uid->photo) && $uid->photo)
                         <img src="{{ asset('storage/' . $uid->photo) }}" alt="صورة" class="student-photo">
                     @else
                         <div class="student-photo-placeholder">

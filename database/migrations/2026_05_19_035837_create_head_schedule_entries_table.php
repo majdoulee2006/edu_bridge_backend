@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('head_schedule_entries', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('head_user_id');
-            $table->string('day');
-            $table->string('class_name');
-            $table->string('content');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('head_schedule_entries')) {
+            Schema::create('head_schedule_entries', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('head_user_id');
+                $table->string('day');
+                $table->string('class_name');
+                $table->string('content');
+                $table->timestamps();
+            });
+        }
     }
 
     /**

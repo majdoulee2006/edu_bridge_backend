@@ -34,7 +34,8 @@
             <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">صورة (اختياري)</label>
             <div id="upload-zone" onclick="document.getElementById('imgInput').click()"
                  style="border: 2px dashed var(--border-color); border-radius: 0.75rem; padding: 1.5rem; text-align: center; cursor: pointer; background: var(--bg-primary);">
-                <input type="file" name="image" id="imgInput" accept="image/*" class="hidden" onchange="previewImg(this)" style="display:none;">
+                <input type="file" name="image" id="imgInput" accept="image/*" class="hidden" style="display:none;"
+                       data-crop="true" data-preview-img="preview-img" data-preview-wrap="img-preview" data-placeholder="upload-placeholder" data-preview-name="preview-name">
                 <div id="upload-placeholder">
                     <i class="fa-solid fa-image" style="font-size: 2rem; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;"></i>
                     <p style="color: var(--text-secondary); font-size: 0.85rem;">اسحب أو اضغط لاختيار صورة</p>
@@ -58,20 +59,6 @@
         </div>
     </form>
 </div>
-@endsection
 
-@push('scripts')
-<script>
-function previewImg(input) {
-    if (!input.files || !input.files[0]) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        document.getElementById('preview-img').src = e.target.result;
-        document.getElementById('preview-name').textContent = input.files[0].name;
-        document.getElementById('upload-placeholder').style.display = 'none';
-        document.getElementById('img-preview').style.display = 'block';
-    };
-    reader.readAsDataURL(input.files[0]);
-}
-</script>
-@endpush
+@include('partials.image_cropper')
+@endsection

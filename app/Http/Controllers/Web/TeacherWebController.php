@@ -29,33 +29,46 @@ class TeacherWebController extends Controller
     {
         $request->validate([
             'login'    => 'required|string',
-            'password' => 'required|min:6',
+            'password' => 'required',
         ], [
-            'login.required'    => 'البريد الإلكتروني أو رقم الهاتف مطلوب.',
+            'login.required'    => 'اسم المستخدم أو البريد الإلكتروني مطلوب.',
             'password.required' => 'كلمة المرور مطلوبة.',
         ]);
 
-        // يدعم: email أو phone أو username
-        $input = $request->login;
-        if (str_contains($input, '@')) {
-            $loginField = 'email';
-        } elseif (preg_match('/^\+?[0-9]{7,15}$/', $input)) {
-            $loginField = 'phone';
-        } else {
-            $loginField = 'username';
+        $input = trim($request->login);
+
+        // محاولة الدخول بـ email أو username أو phone أو full_name
+        $fields = ['email', 'username', 'phone', 'full_name'];
+        $authenticated = false;
+
+        foreach ($fields as $field) {
+            if (Auth::attempt([$field => $input, 'password' => $request->password], true)) {
+                $authenticated = true;
+                break;
+            }
         }
 
-        if (Auth::attempt([$loginField => $input, 'password' => $request->password], true)) {
-            $teacher = Teacher::where('user_id', Auth::user()->getKey())->first();
+        if ($authenticated) {
+            $user = Auth::user();
+            $teacher = Teacher::where('user_id', $user->user_id)->first();
+            
             if (!$teacher) {
+                if ($user->role === 'teacher') {
+                    $teacher = Teacher::create(['user_id' => $user->user_id]);
+                } else {
+                    Auth::logout();
+                    return back()->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
+                }
+            }
+            if (Auth::user()->status !== 'active') {
                 Auth::logout();
-                return back()->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
             }
             $request->session()->regenerate();
             return redirect('/teacher/dashboard');
         }
 
-        return back()->withInput()->withErrors(['login' => 'البريد الإلكتروني/رقم الهاتف أو كلمة المرور غير صحيحة.']);
+        return back()->withInput()->withErrors(['login' => 'اسم المستخدم/البريد الإلكتروني أو كلمة المرور غير صحيحة.']);
     }
 
     public function logout(Request $request)
@@ -121,10 +134,25 @@ class TeacherWebController extends Controller
             ->limit(5)
             ->get();
 
+        // المحاضرات الخاصة بالمواد
+        $lectures = DB::table('lessons')
+            ->whereIn('course_id', $courseIds)
+            ->where('lessons.type', '!=', 'session')
+            ->where('lessons.title', 'not like', '%حضور%')
+            ->where('lessons.title', 'not like', '%غياب%')
+            ->where('lessons.title', 'not like', '%تفقد%')
+            ->where('lessons.title', 'not like', '%حصة%')
+            ->where(function($query) {
+                $query->whereNull('lessons.content_url')
+                      ->orWhere('lessons.content_url', 'not like', '%attendance%');
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
         return view('teacher.dashboard', compact(
             'teacher', 'courses',
             'recentAssignments', 'todayCount',
-            'announcements'
+            'announcements', 'lectures'
         ));
     }
 
@@ -201,20 +229,51 @@ class TeacherWebController extends Controller
             'course_id'   => $request->course_id,
             'teacher_id'  => $teacher->teacher_id,
             'title'       => 'جلسة حضور - ' . now()->format('Y-m-d H:i'),
+            'type'        => 'session',
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
 
         DB::table('attendance_sessions')->insert([
-            'lesson_id'  => $lessonId,
-            'qr_token'   => bin2hex(random_bytes(16)),
-            'expires_at' => now()->addMinutes(10), // صالحة لمدة 10 دقائق
-            'is_active'  => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'lesson_id'          => $lessonId,
+            'qr_token'           => \Illuminate\Support\Str::random(32),
+            'expires_at'         => now()->addSeconds(30),
+            'session_expires_at' => now()->addMinutes(10),
+            'is_active'          => 1,
+            'created_at'         => now(),
+            'updated_at'         => now(),
         ]);
 
         return redirect()->back()->with('success', 'تم بدء جلسة الحضور بنجاح لمدة 10 دقائق!');
+    }
+
+    public function refreshSessionQr($id)
+    {
+        $session = DB::table('attendance_sessions')->where('id', $id)->first();
+        if (!$session || !$session->is_active) {
+            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة أو منتهية'], 404);
+        }
+
+        if ($session->session_expires_at && now()->gt($session->session_expires_at)) {
+            DB::table('attendance_sessions')->where('id', $id)->update(['is_active' => 0]);
+            return response()->json(['success' => false, 'message' => 'انتهت مدة الجلسة (10 دقائق)', 'session_ended' => true], 200);
+        }
+
+        $newToken = \Illuminate\Support\Str::random(32);
+        
+        DB::table('attendance_sessions')
+            ->where('id', $id)
+            ->update([
+                'qr_token'   => $newToken,
+                'expires_at' => now()->addSeconds(30),
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'qr_token' => $newToken,
+            'expires_in_seconds' => 30,
+        ]);
     }
 
     public function endSession($id)
@@ -469,22 +528,54 @@ class TeacherWebController extends Controller
         }
 
         $sessions = $sessionQuery->orderBy('attendance_sessions.created_at')->get();
+        // Collect courses to get all relevant students
+        $relevantCourses = DB::table('courses')
+            ->whereIn('course_id', function($query) use ($sessionQuery) {
+                // Same base constraints as $sessionQuery but without the date filter
+                $query->select('courses.course_id')->from('courses');
+            })->get(); // Actually, we already applied the filters to $sessionQuery, but it's joining attendance_sessions.
 
-        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+        // Simpler: Just get the courses from the scope
+        $courseQuery = DB::table('courses');
+        if ($scope === 'my_courses') {
+            $myCourseIds = DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id')->toArray();
+            if ($courseId) {
+                $courseQuery->where('course_id', $courseId);
+            } else {
+                $courseQuery->whereIn('course_id', $myCourseIds);
+            }
+        } elseif ($scope === 'advisor_class') {
+            $programIds = DB::table('programs')->where('name', $teacher->advisor_branch)->pluck('id')->toArray();
+            $yearMapRev = ['السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5];
+            $courseYearNum = $yearMapRev[$teacher->advisor_year] ?? null;
+            
+            if ($courseId) {
+                $courseQuery->where('course_id', $courseId);
+            } else {
+                $courseQuery->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                    ->whereIn('course_program.program_id', $programIds)
+                    ->where('courses.year', $courseYearNum)
+                    ->select('courses.*')->distinct();
+            }
+        }
 
+        $coursesList = $courseQuery->get();
         $allStudents = []; // student_id => ['name' => ..., 'level' => ...]
         $matrix = []; // student_id => [lesson_id => 'حاضر/غائب']
 
-        foreach ($sessions as $session) {
-            $coursePrograms = DB::table('course_program')->where('course_id', $session->course_id)->pluck('program_id')->toArray();
-            $courseYearStr = $yearMap[$session->course_year] ?? null;
+        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+
+        // Populate students from all relevant courses
+        foreach ($coursesList as $c) {
+            $coursePrograms = DB::table('course_program')->where('course_id', $c->course_id)->pluck('program_id')->toArray();
+            $courseYearStr = $yearMap[$c->year] ?? null;
 
             $students = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
                 ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-                ->leftJoin('enrollments', function($join) use ($session) {
+                ->leftJoin('enrollments', function($join) use ($c) {
                     $join->on('students.student_id', '=', 'enrollments.student_id')
-                         ->where('enrollments.course_id', '=', $session->course_id);
+                         ->where('enrollments.course_id', '=', $c->course_id);
                 })
                 ->where(function($query) use ($coursePrograms, $courseYearStr) {
                     $query->whereNotNull('enrollments.enrollment_id');
@@ -499,11 +590,6 @@ class TeacherWebController extends Controller
                 ->distinct()
                 ->get();
 
-            $attendances = DB::table('attendance')
-                ->where('lesson_id', $session->lesson_id)
-                ->get(['student_id', 'status'])
-                ->keyBy('student_id');
-
             foreach ($students as $student) {
                 if (!isset($allStudents[$student->student_id])) {
                     $allStudents[$student->student_id] = [
@@ -512,8 +598,18 @@ class TeacherWebController extends Controller
                         'year' => $student->academic_year,
                     ];
                 }
+            }
+        }
 
-                $att = $attendances->get($student->student_id);
+        // Now process sessions for matrix
+        foreach ($sessions as $session) {
+            $attendances = DB::table('attendance')
+                ->where('lesson_id', $session->lesson_id)
+                ->get(['student_id', 'status'])
+                ->keyBy('student_id');
+
+            foreach ($allStudents as $studentId => $studentInfo) {
+                $att = $attendances->get($studentId);
                 $statusRaw = $att ? $att->status : 'absent';
                 
                 $isToday = \Carbon\Carbon::parse($session->created_at)->isToday();
@@ -521,82 +617,291 @@ class TeacherWebController extends Controller
                     $statusRaw = 'pending';
                 }
                 
-                $matrix[$student->student_id][$session->lesson_id] = $statusRaw;
+                $matrix[$studentId][$session->lesson_id] = $statusRaw;
             }
         }
 
         $exportType = $request->input('export_type', 'excel');
         $dateStr = now()->format('Y-m-d_H-i-s');
-        
-        if ($exportType === 'pdf') {
-            // Sort students alphabetically
-            uasort($allStudents, function($a, $b) {
-                return strcmp($a['name'], $b['name']);
-            });
 
-            // Prepare Daily Summary Data
-            $daysMap = [];
-            foreach ($sessions as $session) {
-                $dateObj = \Carbon\Carbon::parse($session->created_at)->locale('ar');
-                $dateString = $dateObj->format('Y-m-d');
-                $daysMap[$dateString] = $dateObj->translatedFormat('l');
-            }
-            ksort($daysMap);
+        // ── Build the HTML table used by both formats ──
+        $htmlStyle = '
+        <style>
+            body { direction: rtl; font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; padding: 20px; }
+            h2 { text-align: center; margin-bottom: 5px; }
+            .meta { text-align: center; color: #666; font-size: 13px; margin-bottom: 15px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { background: #2d3748; color: #fff; font-weight: bold; padding: 10px 8px; border: 1px solid #4a5568; font-size: 13px; }
+            td { border: 1px solid #ddd; padding: 8px; text-align: right; font-size: 12px; }
+            tr:nth-child(even) { background: #f7fafc; }
+            .present { color: #166534; font-weight: bold; }
+            .absent  { color: #b91c1c; font-weight: bold; }
+            .pending { color: #d97706; font-weight: bold; }
+            .late    { color: #7c3aed; font-weight: bold; }
+            .summary { margin-top: 10px; font-size: 13px; background: #f0f4f8; padding: 10px; border-radius: 8px; }
+            @media print { body { margin: 0; } .no-print { display: none; } }
+        </style>';
 
-            $dailyStatus = [];
-            foreach ($allStudents as $studentId => $info) {
-                foreach ($sessions as $session) {
-                    $dateString = \Carbon\Carbon::parse($session->created_at)->format('Y-m-d');
-                    $status = $matrix[$studentId][$session->lesson_id] ?? null;
-                    if ($status !== null) {
-                        $currentDaily = $dailyStatus[$studentId][$dateString] ?? null;
-                        if ($currentDaily === null || $currentDaily === 'absent') {
-                            $dailyStatus[$studentId][$dateString] = $status;
-                        } elseif ($currentDaily === 'pending' && ($status === 'present' || $status === 'late')) {
-                            $dailyStatus[$studentId][$dateString] = $status;
-                        } elseif ($currentDaily === 'late' && $status === 'present') {
-                            $dailyStatus[$studentId][$dateString] = $status;
-                        }
-                    }
-                }
-            }
+        // Sort students
+        uasort($allStudents, function($a, $b) {
+            return strcmp($a['name'], $b['name']);
+        });
 
-            // Prepare Course Sheets Data
-            $courseSessions = [];
-            foreach ($sessions as $session) {
-                $courseSessions[$session->course_id][] = $session;
-            }
-
-            $pdf = \Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::loadView('exports.attendance_pdf', compact(
-                'allStudents', 'matrix', 'sessions', 'daysMap', 'dailyStatus', 'courseSessions'
-            ), [], [
-                'mode' => 'utf-8',
-                'format' => 'A4',
-                'orientation' => 'P',
-                'autoScriptToLang' => true,
-                'autoLangToFont' => true,
-            ]);
-
-            return response($pdf->output())
-                ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', "attachment; filename=\"filtered_attendance_report_{$dateStr}.pdf\"")
-                ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-                ->header('Pragma', 'no-cache')
-                ->header('Expires', 'Sat, 26 Jul 1997 05:00:00 GMT');
+        // Build session columns
+        $sessionHeaders = '';
+        foreach ($sessions as $session) {
+            $d = \Carbon\Carbon::parse($session->created_at)->format('m/d H:i');
+            $sessionHeaders .= "<th>{$session->course_title}<br><small>{$d}</small></th>";
         }
 
-        // Excel Export
-        $fileName = "filtered_attendance_report_{$dateStr}.xlsx";
-        $isAdvisor = ($scope === 'advisor_class');
-        
-        $fileContent = \Maatwebsite\Excel\Facades\Excel::raw(
-            new \App\Exports\FilteredAttendanceExport($sessions, $allStudents, $matrix, $isAdvisor),
-            \Maatwebsite\Excel\Excel::XLSX
-        );
+        $rows = '';
+        $num = 0;
+        foreach ($allStudents as $studentId => $info) {
+            $num++;
+            $rows .= "<tr><td>{$num}</td><td>{$info['name']}</td><td>{$info['branch']}</td><td>{$info['year']}</td>";
+            $presentCount = 0;
+            $totalCount = 0;
+            foreach ($sessions as $session) {
+                $status = $matrix[$studentId][$session->lesson_id] ?? '-';
+                $totalCount++;
+                $class = '';
+                $text = '-';
+                if ($status === 'present') { $class = 'present'; $text = 'حاضر'; $presentCount++; }
+                elseif ($status === 'absent') { $class = 'absent'; $text = 'غائب'; }
+                elseif ($status === 'pending') { $class = 'pending'; $text = 'قيد الانتظار'; }
+                elseif ($status === 'late') { $class = 'late'; $text = 'متأخر'; $presentCount++; }
+                $rows .= "<td class=\"{$class}\">{$text}</td>";
+            }
+            $percentage = $totalCount > 0 ? round(($presentCount / $totalCount) * 100) : 0;
+            $rows .= "<td class=\"percentage-col\"><strong>{$percentage}%</strong></td></tr>";
+        }
 
-        return response($fileContent)
-            ->header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            ->header('Content-Disposition', "attachment; filename=\"$fileName\"")
+        // Summary
+        $totalStudents = count($allStudents);
+        $totalSessions = count($sessions);
+
+        $htmlBody = "
+        <h2>تقرير الحضور والغياب</h2>
+        <div class=\"meta\">تاريخ التصدير: " . now()->format('Y-m-d H:i') . " — عدد الطلاب: {$totalStudents} — عدد الجلسات: {$totalSessions}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم الطالب</th>
+                    <th>الفرع</th>
+                    <th>السنة</th>
+                    {$sessionHeaders}
+                    <th>نسبة الحضور</th>
+                </tr>
+            </thead>
+            <tbody>
+                {$rows}
+            </tbody>
+        </table>";
+
+        if ($exportType === 'pdf') {
+            // Return printable HTML page with auto-print dialog
+            // Return beautifully styled printable HTML page with auto-print dialog
+            $html = "
+            <!DOCTYPE html>
+            <html dir=\"rtl\" lang=\"ar\">
+            <head>
+                <meta charset=\"UTF-8\">
+                <title>تقرير الحضور</title>
+                <!-- Include Google Fonts for better typography -->
+                <link href=\"https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap\" rel=\"stylesheet\">
+                <style>
+                    :root {
+                        --primary: #facc15; /* Edu-Bridge yellow */
+                        --primary-dark: #eab308;
+                        --text-main: #1f2937;
+                        --text-muted: #4b5563;
+                        --border: #e5e7eb;
+                        --bg-light: #f9fafb;
+                    }
+                    body { 
+                        direction: rtl; 
+                        font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; 
+                        margin: 0; 
+                        padding: 0;
+                        color: var(--text-main);
+                        background: #f3f4f6;
+                    }
+                    .report-container {
+                        max-width: 297mm; /* A4 landscape */
+                        margin: 20px auto;
+                        background: #fff;
+                        padding: 40px;
+                        border-radius: 8px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        border-top: 5px solid var(--primary);
+                    }
+                    .report-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-end;
+                        border-bottom: 1px solid var(--border);
+                        padding-bottom: 15px;
+                        margin-bottom: 25px;
+                    }
+                    .header-title { margin: 0; }
+                    .header-title h2 { 
+                        margin: 0 0 5px 0; 
+                        color: #1a1a1a; 
+                        font-weight: 800;
+                        font-size: 24px;
+                    }
+                    .header-title p { 
+                        margin: 0; 
+                        color: var(--text-muted); 
+                        font-size: 14px;
+                        font-weight: 600;
+                    }
+                    .header-meta {
+                        text-align: left;
+                    }
+                    .header-meta div {
+                        font-size: 13px;
+                        color: var(--text-muted);
+                        margin-bottom: 4px;
+                    }
+                    .header-meta span { font-weight: 800; color: #1a1a1a; }
+                    
+                    table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-top: 10px;
+                    }
+                    th, td { 
+                        padding: 10px 8px; 
+                        text-align: right; 
+                        font-size: 13px;
+                        border-bottom: 1px solid var(--border);
+                    }
+                    th { 
+                        background: var(--bg-light); 
+                        color: #1a1a1a; 
+                        font-weight: 800; 
+                        border-bottom: 2px solid var(--border);
+                    }
+                    th small { color: var(--text-muted); font-weight: 600; display: block; margin-top: 2px; }
+                    
+                    /* Simple Badges */
+                    .present, .absent, .pending, .late {
+                        display: inline-block;
+                        padding: 3px 8px;
+                        border-radius: 4px;
+                        font-size: 11px;
+                        font-weight: 800;
+                        text-align: center;
+                        min-width: 50px;
+                    }
+                    .present { background: #dcfce7; color: #166534; }
+                    .absent  { background: #fee2e2; color: #991b1b; }
+                    .pending { background: #fef9c3; color: #854d0e; }
+                    .late    { background: #f3e8ff; color: #6b21a8; }
+                    
+                    .percentage-col {
+                        font-weight: 800;
+                        font-size: 14px;
+                        text-align: center !important;
+                    }
+                    
+                    @media print { 
+                        body { background: #fff; }
+                        .report-container { box-shadow: none; margin: 0; padding: 0; max-width: 100%; border-top: 3px solid var(--primary); }
+                        .no-print { display: none !important; }
+                        @page { size: A4 landscape; margin: 15mm; }
+                    }
+                    
+                    .no-print { 
+                        padding: 15px; 
+                        text-align: center; 
+                        background: #fff;
+                        border-bottom: 1px solid var(--border);
+                        margin-bottom: 20px;
+                    }
+                    .no-print button { 
+                        padding: 10px 25px; 
+                        background: var(--primary); 
+                        color: #1a1a1a; 
+                        border: none; 
+                        border-radius: 6px; 
+                        font-size: 14px; 
+                        font-weight: 800;
+                        cursor: pointer; 
+                        font-family: inherit; 
+                        margin: 0 10px;
+                        transition: background 0.2s;
+                    }
+                    .no-print button:hover { background: var(--primary-dark); }
+                    .no-print button.btn-secondary { background: #e5e7eb; color: #1f2937; }
+                    .no-print button.btn-secondary:hover { background: #d1d5db; }
+                </style>
+            </head>
+            <body>
+                <div class=\"no-print\">
+                    <button onclick=\"window.print()\">🖨️ طباعة / حفظ كـ PDF</button>
+                    <button class=\"btn-secondary\" onclick=\"window.close()\">إغلاق</button>
+                </div>
+                
+                <div class=\"report-container\">
+                    <div class=\"report-header\">
+                        <div class=\"header-title\">
+                            <h2>تقرير الحضور والغياب المجمع</h2>
+                            <p>نظام Edu-Bridge لإدارة الحضور</p>
+                        </div>
+                        <div class=\"header-meta\">
+                            <div>تاريخ التصدير: <span>" . now()->format('Y-m-d H:i') . "</span></div>
+                            <div>إجمالي الطلاب: <span>{$totalStudents}</span></div>
+                            <div>إجمالي الجلسات: <span>{$totalSessions}</span></div>
+                        </div>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>اسم الطالب</th>
+                                <th>الفرع</th>
+                                <th>السنة</th>
+                                {$sessionHeaders}
+                                <th style=\"text-align: center;\">نسبة الحضور</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {$rows}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <script>
+                    setTimeout(function() { window.print(); }, 800);
+                </script>
+            </body>
+            </html>";
+
+            return response($html)
+                ->header('Content-Type', 'text/html; charset=utf-8');
+        }
+
+        // ── Excel Export (HTML table based - opens natively in Excel) ──
+        $fileName = "filtered_attendance_report_{$dateStr}.xls";
+
+        $excelHtml = "
+        <html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:excel\" xmlns=\"http://www.w3.org/TR/REC-html40\">
+        <head>
+            <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">
+            {$htmlStyle}
+        </head>
+        <body>
+            {$htmlBody}
+        </body>
+        </html>";
+
+        return response("\xEF\xBB\xBF" . $excelHtml)
+            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
+            ->header('Content-Disposition', "attachment; filename=\"{$fileName}\"")
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache')
             ->header('Expires', 'Sat, 26 Jul 1997 05:00:00 GMT');
@@ -685,7 +990,25 @@ class TeacherWebController extends Controller
             ->select('courses.course_id', 'courses.title')
             ->get();
 
-        return view('teacher.assignments', compact('assignments', 'courses'));
+        $assignmentIds = $assignments->pluck('assignment_id');
+
+        $allSubmissions = DB::table('assignment_submissions')
+            ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+            ->join('courses', 'assignments.course_id', '=', 'courses.course_id')
+            ->join('students', 'assignment_submissions.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->whereIn('assignments.assignment_id', $assignmentIds)
+            ->select(
+                'assignment_submissions.*',
+                'users.full_name as student_name',
+                'assignments.title as assignment_title',
+                'assignments.max_points',
+                'courses.title as course_title'
+            )
+            ->orderByDesc('assignment_submissions.submitted_at')
+            ->get();
+
+        return view('teacher.assignments', compact('assignments', 'courses', 'allSubmissions'));
     }
 
     public function storeAssignment(Request $request)
@@ -694,10 +1017,11 @@ class TeacherWebController extends Controller
             'course_id'   => 'required|exists:courses,course_id',
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
-            'due_date'    => 'required|date',
+            'due_date'    => 'required|date|after_or_equal:today',
             'max_points'  => 'required|integer|min:1',
             'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,mkv,webm,pdf,doc,docx,ppt,pptx,xls,xlsx,txt,zip',
         ], [
+            'due_date.after_or_equal' => 'تاريخ التسليم يجب أن يكون اليوم أو في المستقبل.',
             'attachment.max'   => 'حجم الملف يجب ألا يتجاوز 50 ميجابايت.',
             'attachment.mimes' => 'نوع الملف غير مدعوم.',
         ]);
@@ -915,11 +1239,12 @@ class TeacherWebController extends Controller
         $lectures = DB::table('lessons')
             ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
             ->whereIn('lessons.course_id', $courseIds)
-            ->where('lessons.type', '!=', 'session')
+            ->where(function($q) {
+                $q->where('lessons.type', '!=', 'session')
+                  ->orWhereNull('lessons.type');
+            })
             ->where('lessons.title', 'not like', '%حضور%')
             ->where('lessons.title', 'not like', '%غياب%')
-            ->where('lessons.title', 'not like', '%تفقد%')
-            ->where('lessons.title', 'not like', '%حصة%')
             ->where(function($query) {
                 $query->whereNull('lessons.content_url')
                       ->orWhere('lessons.content_url', 'not like', '%attendance%');
@@ -943,9 +1268,9 @@ class TeacherWebController extends Controller
             'course_id'   => 'required|exists:courses,course_id',
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
-            'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,mkv,webm,pdf,doc,docx,ppt,pptx,xls,xlsx,txt,zip',
+            'attachment'  => 'nullable|file|max:2097152|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,mkv,webm,pdf,doc,docx,ppt,pptx,xls,xlsx,txt,zip',
         ], [
-            'attachment.max'   => 'حجم الملف يجب ألا يتجاوز 50 ميجابايت.',
+            'attachment.max'   => 'حجم الملف يجب ألا يتجاوز 2 جيجابايت.',
             'attachment.mimes' => 'نوع الملف غير مدعوم.',
         ]);
 
@@ -982,6 +1307,7 @@ class TeacherWebController extends Controller
             'file_path'   => $filePath,
             'file_name'   => $fileName,
             'file_type'   => $fileType,
+            'type'        => 'lecture',
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
@@ -1097,9 +1423,19 @@ class TeacherWebController extends Controller
     public function messages()
     {
         $currentUserId = Auth::id();
+        // Exclude parents (role_id = 4) from the list of users the teacher can start a chat with
+        $allUsers = User::where('user_id', '!=', $currentUserId)
+                        ->where('role_id', '!=', 4)
+                        ->get();
+        return view('teacher.messages', compact('allUsers'));
+    }
 
-        $conversations = \App\Models\Message::with(['sender', 'receiver'])
-            ->where('sender_id', $currentUserId)
+    public function getContacts()
+    {
+        $currentUserId = Auth::id();
+
+        // Get users we have conversations with
+        $conversations = \App\Models\Message::where('sender_id', $currentUserId)
             ->orWhere('receiver_id', $currentUserId)
             ->latest()
             ->get()
@@ -1109,12 +1445,47 @@ class TeacherWebController extends Controller
             ->unique()
             ->values();
 
-        $contacts = User::whereIn('user_id', $conversations)->get();
+        $contactsRaw = User::whereIn('user_id', $conversations)->get();
 
-        // قائمة كل المستخدمين للرسالة الجديدة
-        $allUsers = User::where('user_id', '!=', $currentUserId)->get();
+        $contacts = [];
+        foreach ($contactsRaw as $c) {
+            // Get unread count
+            $unread = \App\Models\Message::where('sender_id', $c->user_id)
+                ->where('receiver_id', $currentUserId)
+                ->where('is_read', false)
+                ->count();
 
-        return view('teacher.messages', compact('contacts', 'allUsers'));
+            // Get last message
+            $lastMsg = \App\Models\Message::where(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
+                })
+                ->orWhere(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+                })
+                ->latest()
+                ->first();
+
+            $contacts[] = [
+                'id' => $c->user_id,
+                'name' => $c->full_name,
+                'role' => $c->role,
+                'image' => $c->profile_picture ? asset('storage/' . $c->profile_picture) : null,
+                'unread' => $unread,
+                'last_message' => $lastMsg ? $lastMsg->message : '',
+                'time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : '',
+                'updated_at' => $lastMsg ? $lastMsg->created_at : now()
+            ];
+        }
+
+        // Sort by last message time
+        usort($contacts, function($a, $b) {
+            return $b['updated_at'] <=> $a['updated_at'];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $contacts
+        ]);
     }
 
     public function getConversation($userId)
@@ -1139,17 +1510,55 @@ class TeacherWebController extends Controller
         return response()->json($messages);
     }
 
+    public function searchMessages(Request $request, $userId)
+    {
+        $currentUserId = Auth::id();
+        $query = $request->query('q');
+
+        $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where(function ($q) use ($currentUserId, $userId) {
+                $q->where(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+                })
+                ->orWhere(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                });
+            })
+            ->where('message', 'LIKE', '%' . $query . '%')
+            ->orderBy('created_at', 'desc') // For search we might want recent matches
+            ->get();
+
+        return response()->json(['status' => 'success', 'data' => $messages]);
+    }
+
     public function sendMessage(Request $request)
     {
         $request->validate([
             'receiver_id' => 'required|exists:users,user_id',
             'message'     => 'required|string|max:2000',
+            'attachment'  => 'nullable|file|max:51200', // max 50MB
         ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $folder = 'chat_attachments';
+            
+            // If it's a voice note, save in a specific subfolder maybe
+            if ($request->message === '[Voice Note]' || strpos($file->getMimeType(), 'audio') !== false) {
+                $folder = 'chat_voice_notes';
+            }
+            
+            $attachmentPath = $file->store($folder, 'public');
+            // Usually we prepend the storage URL for easy frontend access
+            $attachmentPath = asset('storage/' . $attachmentPath);
+        }
 
         $message = \App\Models\Message::create([
             'sender_id'   => Auth::user()->user_id,
             'receiver_id' => $request->receiver_id,
             'message'     => $request->message,
+            'attachment'  => $attachmentPath,
             'is_read'     => false,
         ]);
 
@@ -1171,10 +1580,46 @@ class TeacherWebController extends Controller
         );
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => clone $message]);
+            return response()->json(['success' => true, 'message' => $message]);
         }
 
         return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+    }
+
+    public function updateMessage(Request $request, $id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+        
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        if ($message->attachment || $message->message === '[Voice Note]') {
+            return response()->json(['status' => 'error', 'message' => 'لا يمكن تعديل المرفقات'], 400);
+        }
+
+        $request->validate(['message' => 'required|string|max:2000']);
+        $message->update(['message' => $request->message]);
+
+        return response()->json(['status' => 'success', 'message' => $message]);
+    }
+
+    public function deleteMessage($id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        if ($message->attachment) {
+            // Remove full URL part if it exists
+            $path = str_replace(asset('storage/'), '', $message->attachment);
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+        }
+
+        $message->delete();
+        return response()->json(['status' => 'success']);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1236,15 +1681,18 @@ class TeacherWebController extends Controller
     public function sendOTP(Request $request)
     {
         $request->validate([
-            'full_name' => 'nullable|string|max:255',
-            'phone'     => 'nullable|string|max:20',
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'current_password' => 'nullable|string',
             'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
         ]);
 
+        $user = Auth::user();
+
         // If changing password, verify current password first
-        if ($request->has('current_password') && $request->current_password) {
-            $user = Auth::user();
+        if ($request->filled('current_password')) {
             if (!Hash::check($request->current_password, $user->password)) {
                 return response()->json([
                     'success' => false,
@@ -1253,17 +1701,26 @@ class TeacherWebController extends Controller
             }
         }
 
-        $otp = rand(1000, 9999);
+        $otp = (string) rand(100000, 999999);
         
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
         session([
             'teacher_profile_otp' => $otp,
-            'teacher_pending_profile_data' => $request->only(['full_name', 'phone', 'new_password'])
+            'teacher_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
         ]);
 
         return response()->json([
             'success' => true,
-            'otp' => $otp,
-            'message' => 'تم إرسال رمز التحقق بنجاح!'
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
         ]);
     }
 
@@ -1285,6 +1742,10 @@ class TeacherWebController extends Controller
 
             if (isset($data['phone'])) {
                 $updates['phone'] = $data['phone'];
+            }
+
+            if (isset($data['email']) && $data['email']) {
+                $updates['email'] = $data['email'];
             }
 
             if (isset($data['new_password']) && $data['new_password']) {
@@ -1662,7 +2123,34 @@ class TeacherWebController extends Controller
         }
         */
 
-        // إشعار رئيس القسم الخاص بالطالب
+        // إشعار صاحب الطلب (موظف الشؤون أو غيره) إذا كان موجوداً
+        $notifiedUsers = [];
+        if ($reportRequest->head_id) {
+            $requesterId = $reportRequest->head_id;
+            $notifiedUsers[] = $requesterId;
+            
+            DB::table('notifications')->insert([
+                'user_id'    => $requesterId,
+                'sender_id'  => auth()->id(),
+                'title'      => 'تقرير جاهز',
+                'message'    => 'تم رفع التقرير الخاص بالطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
+                'type'       => 'report',
+                'related_id' => $id,
+                'category'   => 'academic',
+                'is_read'    => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser(
+                $requesterId,
+                'تقرير جاهز',
+                'تم رفع التقرير الخاص بالطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
+                ['type' => 'report', 'related_id' => (string)$id]
+            );
+        }
+
+        // إشعار رئيس القسم الخاص بالطالب (في حال لم يكن هو صاحب الطلب)
         $studentData = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->where('students.student_id', $studentId)
@@ -1675,7 +2163,7 @@ class TeacherWebController extends Controller
                 ->where('department', $studentData->department)
                 ->value('user_id');
 
-            if ($headId) {
+            if ($headId && !in_array($headId, $notifiedUsers)) {
                 DB::table('notifications')->insert([
                     'user_id'    => $headId,
                     'sender_id'  => auth()->id(),
@@ -1735,7 +2223,7 @@ class TeacherWebController extends Controller
             'course_id' => 'required|exists:courses,course_id',
             'title'     => 'required|string|max:255',
             'max_score' => 'required|numeric|min:1',
-            'date'      => 'required|date',
+            'date'      => 'required|date|after_or_equal:today',
             'time'      => 'nullable|string|max:255',
             'duration'  => 'nullable|string|max:255',
             'notes'     => 'nullable|string|max:500',
@@ -1758,6 +2246,89 @@ class TeacherWebController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'تمت إضافة التقييم بنجاح!');
+    }
+
+    public function gradeEventStudents($id)
+    {
+        $teacher = $this->getTeacher();
+        
+        $event = DB::table('grade_events')
+            ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+            ->where('grade_events.id', $id)
+            ->where('grade_events.teacher_id', $teacher->teacher_id)
+            ->select('grade_events.*', 'courses.title as course_title')
+            ->first();
+
+        if (!$event) {
+            return back()->with('error', 'التقييم غير موجود أو لا تملك صلاحية الوصول إليه.');
+        }
+
+        // Get all students enrolled in this course
+        $enrolledStudentIds = DB::table('enrollments')
+            ->where('course_id', $event->course_id)
+            ->where('status', 'active')
+            ->pluck('student_id');
+
+        // Get students with their current grade entry if exists
+        $students = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('grade_entries', function ($join) use ($id) {
+                $join->on('students.student_id', '=', 'grade_entries.student_id')
+                     ->where('grade_entries.grade_event_id', '=', $id);
+            })
+            ->whereIn('students.student_id', $enrolledStudentIds)
+            ->select('students.student_id', 'users.full_name', 'students.student_code', 'grade_entries.score', 'grade_entries.notes', 'grade_entries.id as entry_id')
+            ->orderBy('users.full_name')
+            ->get();
+
+        return view('teacher.grade_event_students', compact('event', 'students'));
+    }
+
+    public function saveGradeEntries(Request $request, $id)
+    {
+        $teacher = $this->getTeacher();
+        
+        $event = DB::table('grade_events')
+            ->where('id', $id)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->first();
+
+        if (!$event) {
+            return back()->with('error', 'التقييم غير موجود.');
+        }
+
+        $scores = $request->input('scores', []);
+        $notes = $request->input('notes', []);
+
+        foreach ($scores as $studentId => $score) {
+            if ($score === null || $score === '') continue; // Skip empty inputs
+
+            $existing = DB::table('grade_entries')
+                ->where('grade_event_id', $id)
+                ->where('student_id', $studentId)
+                ->first();
+
+            $note = $notes[$studentId] ?? null;
+
+            if ($existing) {
+                DB::table('grade_entries')->where('id', $existing->id)->update([
+                    'score' => $score,
+                    'notes' => $note,
+                    'updated_at' => now(),
+                ]);
+            } else {
+                DB::table('grade_entries')->insert([
+                    'grade_event_id' => $id,
+                    'student_id' => $studentId,
+                    'score' => $score,
+                    'notes' => $note,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        return redirect()->route('teacher.grade_events')->with('success', 'تم حفظ الدرجات بنجاح!');
     }
 
     public function deleteGradeEvent($id)

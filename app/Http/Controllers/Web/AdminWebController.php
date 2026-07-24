@@ -44,6 +44,10 @@ class AdminWebController extends Controller
                 Auth::logout();
                 return back()->withErrors(['login' => 'عذراً! هذا الحساب لا يملك صلاحيات الإدارة.']);
             }
+            if ($user->status !== 'active') {
+                Auth::logout();
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+            }
             $request->session()->regenerate();
             return redirect('/admin/dashboard');
         }
@@ -146,6 +150,94 @@ class AdminWebController extends Controller
             ]);
 
         return redirect()->back()->with('success', 'تم تغيير كلمة المرور بنجاح!');
+    }
+
+    public function sendOTP(Request $request)
+    {
+        $request->validate([
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
+            'current_password' => 'nullable|string',
+            'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كلمة المرور الحالية غير صحيحة.'
+                ]);
+            }
+        }
+
+        $otp = (string) rand(100000, 999999);
+
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
+        session([
+            'admin_profile_otp'          => $otp,
+            'admin_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
+        ]);
+    }
+
+    public function verifyOTP(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|numeric'
+        ]);
+
+        if (session('admin_profile_otp') == $request->otp) {
+            $user = Auth::user();
+            $data = session('admin_pending_profile_data');
+
+            $updates = ['updated_at' => now()];
+
+            if (!empty($data['full_name'])) {
+                $updates['full_name'] = $data['full_name'];
+            }
+            if (!empty($data['email'])) {
+                $updates['email'] = $data['email'];
+            }
+            if (!empty($data['phone'])) {
+                $updates['phone'] = $data['phone'];
+            }
+            if (!empty($data['new_password'])) {
+                $updates['password'] = Hash::make($data['new_password']);
+            }
+
+            DB::table('users')
+                ->where('user_id', $user->user_id)
+                ->update($updates);
+
+            session()->forget(['admin_profile_otp', 'admin_pending_profile_data']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديث البيانات بنجاح!'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.'
+        ]);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -265,85 +357,195 @@ class AdminWebController extends Controller
 
     public function messages()
     {
-        $users = DB::table('users')
-            ->join('roles', 'users.role_id', '=', 'roles.role_id')
-            ->where('users.user_id', '!=', Auth::id())
-            ->select('users.*', 'roles.name as role_name')
+        $currentUserId = Auth::id();
+
+        // Admin can chat with all active users
+        $allUsers = \App\Models\User::where('user_id', '!=', $currentUserId)->get();
+
+        return view('admin.messages', compact('allUsers'));
+    }
+
+    public function getContacts()
+    {
+        $currentUserId = Auth::id();
+
+        $conversations = \App\Models\Message::where('sender_id', $currentUserId)
+            ->orWhere('receiver_id', $currentUserId)
+            ->latest()
+            ->get()
+            ->map(function ($msg) use ($currentUserId) {
+                return ($msg->sender_id == $currentUserId) ? $msg->receiver_id : $msg->sender_id;
+            })
+            ->unique()
+            ->values();
+
+        $contactsRaw = \App\Models\User::whereIn('user_id', $conversations)->get();
+
+        $contacts = [];
+        foreach ($contactsRaw as $c) {
+            $unread = \App\Models\Message::where('sender_id', $c->user_id)
+                ->where('receiver_id', $currentUserId)
+                ->where('is_read', false)
+                ->count();
+
+            $lastMsg = \App\Models\Message::where(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
+                })
+                ->orWhere(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+                })
+                ->latest()
+                ->first();
+
+            $contacts[] = [
+                'id' => $c->user_id,
+                'name' => $c->full_name,
+                'role' => $c->role,
+                'image' => $c->profile_picture ? asset('storage/' . $c->profile_picture) : null,
+                'unread' => $unread,
+                'last_message' => $lastMsg ? $lastMsg->message : '',
+                'time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : '',
+                'updated_at' => $lastMsg ? $lastMsg->created_at : now()
+            ];
+        }
+
+        usort($contacts, function($a, $b) {
+            return $b['updated_at'] <=> $a['updated_at'];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $contacts
+        ]);
+    }
+
+    public function getConversation($userId)
+    {
+        $currentUserId = Auth::id();
+        $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where(function ($q) use ($currentUserId, $userId) {
+                $q->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+            })
+            ->orWhere(function ($q) use ($currentUserId, $userId) {
+                $q->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+            })
+            ->orderBy('created_at', 'asc')
             ->get();
 
-        $departments = DB::table('departments')->get();
+        \App\Models\Message::where('sender_id', $userId)
+            ->where('receiver_id', $currentUserId)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
 
-        return view('admin.messages', compact('users', 'departments'));
+        return response()->json($messages);
+    }
+
+    public function searchMessages(Request $request, $userId)
+    {
+        $currentUserId = Auth::id();
+        $query = $request->query('q');
+
+        $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where(function ($q) use ($currentUserId, $userId) {
+                $q->where(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+                })
+                ->orWhere(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                });
+            })
+            ->where('message', 'LIKE', '%' . $query . '%')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['status' => 'success', 'data' => $messages]);
     }
 
     public function sendMessage(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,departments,individuals',
-            'subject'        => 'required|string|max:255',
-            'message'        => 'required|string',
-            'attachment'     => 'nullable|file|max:51200',
+            'receiver_id' => 'required|exists:users,user_id',
+            'message'     => 'required|string|max:2000',
+            'attachment'  => 'nullable|file|max:51200',
         ]);
 
-        $recipientType = $request->recipient_type;
-        $recipientsQuery = DB::table('users')->where('user_id', '!=', Auth::id());
-
-        if ($recipientType === 'departments') {
-            $request->validate([
-                'target_departments' => 'required|array',
-            ]);
-            // Fetch names of selected departments
-            $deptNames = DB::table('departments')
-                ->whereIn('department_id', $request->target_departments)
-                ->pluck('name')
-                ->toArray();
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $folder = 'chat_attachments';
             
-            $recipientsQuery->whereIn('department', $deptNames);
-        } elseif ($recipientType === 'individuals') {
-            $request->validate([
-                'target_users' => 'required|array',
-            ]);
-            $recipientsQuery->whereIn('user_id', $request->target_users);
+            if ($request->message === '[Voice Note]' || strpos($file->getMimeType(), 'audio') !== false) {
+                $folder = 'chat_voice_notes';
+            }
+            
+            $attachmentPath = $file->store($folder, 'public');
+            $attachmentPath = asset('storage/' . $attachmentPath);
         }
 
-        $recipientIds = $recipientsQuery->pluck('user_id')->toArray();
+        $message = \App\Models\Message::create([
+            'sender_id'   => Auth::user()->user_id,
+            'receiver_id' => $request->receiver_id,
+            'message'     => $request->message,
+            'attachment'  => $attachmentPath,
+            'is_read'     => false,
+        ]);
 
-        if (empty($recipientIds)) {
-            return redirect()->back()->with('error', 'لم يتم العثور على مستخدمين لإرسال الرسالة إليهم.');
+        DB::table('notifications')->insert([
+            'user_id' => $request->receiver_id,
+            'title'   => 'رسالة جديدة',
+            'message' => 'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            'type'    => 'message',
+            'is_read' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \App\Services\FcmService::sendToUser(
+            $request->receiver_id,
+            'رسالة جديدة',
+            'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            ['type' => 'message']
+        );
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
         }
 
-        $fullMessage = "📌 [ " . $request->subject . " ]\n\n" . $request->message;
+        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+    }
 
-        // Insert messages & notifications + FCM for all recipients
-        $notifTitle = 'تعميم إداري: ' . $request->subject;
-        $notifMsg   = 'تلقيت تعميماً إدارياً جديداً من الإدارة العامة.';
-
-        foreach ($recipientIds as $receiverId) {
-            DB::table('messages')->insert([
-                'sender_id'   => Auth::id(),
-                'receiver_id' => $receiverId,
-                'message'     => $fullMessage,
-                'is_read'     => false,
-                'created_at'  => now(),
-                'updated_at'  => now(),
-            ]);
-
-            DB::table('notifications')->insert([
-                'user_id'    => $receiverId,
-                'sender_id'  => Auth::id(),
-                'title'      => $notifTitle,
-                'message'    => $notifMsg,
-                'type'       => 'message',
-                'category'   => 'administrative',
-                'is_read'    => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            \App\Services\FcmService::sendToUser($receiverId, $notifTitle, $notifMsg, ['type' => 'message']);
+    public function updateMessage(Request $request, $id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+        
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
         }
 
-        return redirect()->back()->with('success', 'تم إرسال التعميم الإداري بنجاح إلى (' . count($recipientIds) . ') مستخدم!');
+        if ($message->attachment || $message->message === '[Voice Note]') {
+            return response()->json(['status' => 'error', 'message' => 'لا يمكن تعديل المرفقات'], 400);
+        }
+
+        $request->validate(['message' => 'required|string|max:2000']);
+        $message->update(['message' => $request->message]);
+
+        return response()->json(['status' => 'success', 'message' => $message]);
+    }
+
+    public function deleteMessage($id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        if ($message->attachment) {
+            $path = str_replace(asset('storage/'), '', $message->attachment);
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+        }
+
+        $message->delete();
+        return response()->json(['status' => 'success']);
     }
 
     public function notifications()
@@ -471,13 +673,21 @@ class AdminWebController extends Controller
     public function createStudent()
     {
         $departments = DB::table('departments')->get();
-        return view('admin.accounts.create_student', compact('departments'));
+        $programs = DB::table('programs')->get();
+        return view('admin.accounts.create_student', compact('departments', 'programs'));
     }
 
     public function storeStudent(Request $request)
     {
+        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
+        if (empty($fullName)) {
+            $fullName = $request->full_name ?? '';
+        }
+        $request->merge(['full_name' => $fullName]);
+
         $request->validate([
-            'full_name'        => 'required|string|max:255',
+            'first_name'       => 'required|string|max:100',
+            'last_name'        => 'required|string|max:100',
             'university_id'    => 'required|string|unique:users,university_id|max:255',
             'email'            => 'required|email|unique:users,email|max:255',
             'phone'            => 'nullable|string|max:20',
@@ -489,6 +699,8 @@ class AdminWebController extends Controller
             'gender'           => 'required|in:ذكر,أنثى',
             'password'         => 'required|string|min:6|confirmed',
         ], [
+            'first_name.required'  => 'الاسم الأول مطلوب.',
+            'last_name.required'   => 'الاسم الثاني مطلوب.',
             'university_id.unique' => 'الرقم الجامعي مستخدم بالفعل لحساب آخر.',
             'email.unique'         => 'البريد الإلكتروني مستخدم بالفعل لحساب آخر.',
             'password.confirmed'   => 'تأكيد كلمة المرور غير متطابق.',
@@ -496,7 +708,11 @@ class AdminWebController extends Controller
 
         $userId = DB::table('users')->insertGetId([
             'role_id'          => 3,
-            'full_name'        => $request->full_name,
+            'full_name'        => $fullName,
+            'first_name'       => $request->first_name,
+            'last_name'        => $request->last_name,
+            'username'         => $request->university_id,
+            'university_id'    => $request->university_id,
             'username'         => $request->university_id,
             'university_id'    => $request->university_id,
             'email'            => $request->email,
@@ -588,35 +804,51 @@ class AdminWebController extends Controller
 
     public function storeParent(Request $request)
     {
+        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
+        if (empty($fullName)) {
+            $fullName = $request->full_name ?? '';
+        }
+
+        $request->merge(['full_name' => $fullName]);
+
         $request->validate([
-            'full_name'               => 'required|string|max:255',
+            'first_name'              => 'required|string|max:100',
+            'last_name'               => 'required|string|max:100',
             'phone'                   => 'required|string|max:20',
             'username'                => 'required|string|unique:users,username|max:255',
             'email'                   => 'required|email|unique:users,email|max:255',
+            'telegram_id'             => 'nullable|string|max:255',
             'children_university_ids' => 'nullable|array',
             'password'                => 'required|string|min:6|confirmed',
         ], [
-            'username.unique'    => 'اسم المستخدم مستخدم بالفعل.',
-            'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
-            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
+            'first_name.required' => 'الاسم الأول مطلوب.',
+            'last_name.required'  => 'الاسم الثاني مطلوب.',
+            'username.unique'     => 'اسم المستخدم مستخدم بالفعل.',
+            'email.unique'        => 'البريد الإلكتروني مستخدم بالفعل.',
+            'password.confirmed'  => 'تأكيد كلمة المرور غير متطابق.',
         ]);
 
         $userId = DB::table('users')->insertGetId([
-            'role_id'    => 4, // parent
-            'full_name'  => $request->full_name,
-            'username'   => $request->username,
-            'email'      => $request->email,
-            'phone'      => $request->phone,
-            'password'   => bcrypt($request->password),
-            'status'     => 'active',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'role_id'          => 4, // parent
+            'full_name'        => $fullName,
+            'first_name'       => $request->first_name,
+            'last_name'        => $request->last_name,
+            'username'         => $request->username,
+            'email'            => $request->email,
+            'phone'            => $request->phone,
+            'telegram_id'      => $request->telegram_id,
+            'telegram_chat_id' => $request->telegram_id,
+            'password'         => bcrypt($request->password),
+            'status'           => 'active',
+            'created_at'       => now(),
+            'updated_at'       => now(),
         ]);
 
         $parentId = DB::table('parents')->insertGetId([
-            'user_id'    => $userId,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'user_id'     => $userId,
+            'telegram_id' => $request->telegram_id,
+            'created_at'  => now(),
+            'updated_at'  => now(),
         ]);
 
         if ($request->filled('children_university_ids')) {
@@ -624,6 +856,7 @@ class AdminWebController extends Controller
                 $student = DB::table('students')
                     ->join('users', 'students.user_id', '=', 'users.user_id')
                     ->where('students.student_code', $universityId)
+                    ->orWhere('users.username', $universityId)
                     ->select('students.student_id')
                     ->first();
                 if (!$student) continue;
@@ -670,8 +903,15 @@ class AdminWebController extends Controller
 
     public function storeTeacher(Request $request)
     {
+        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
+        if (empty($fullName)) {
+            $fullName = $request->full_name ?? '';
+        }
+        $request->merge(['full_name' => $fullName]);
+
         $request->validate([
-            'full_name'      => 'required|string|max:255',
+            'first_name'     => 'required|string|max:100',
+            'last_name'      => 'required|string|max:100',
             'phone'          => 'nullable|string|max:20',
             'email'          => 'required|email|unique:users,email|max:255',
             'department'     => 'required|string|max:255',
@@ -679,6 +919,8 @@ class AdminWebController extends Controller
             'password'       => 'required|string|min:6|confirmed',
             'courses'        => 'nullable|array',
         ], [
+            'first_name.required' => 'الاسم الأول مطلوب.',
+            'last_name.required'  => 'الاسم الثاني مطلوب.',
             'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
         ]);
@@ -693,7 +935,9 @@ class AdminWebController extends Controller
 
         $userId = DB::table('users')->insertGetId([
             'role_id'    => 2,
-            'full_name'  => $request->full_name,
+            'full_name'  => $fullName,
+            'first_name' => $request->first_name,
+            'last_name'  => $request->last_name,
             'username'   => $username,
             'email'      => $request->email,
             'phone'      => $request->phone,
@@ -902,15 +1146,17 @@ class AdminWebController extends Controller
         foreach ($userIds as $id) {
             // Delete dependent records first to maintain foreign key integrity
             if ($roleId == 3) {
-                DB::table('students')->where('user_id', $id)->delete();
-                DB::table('parent_students')->where('student_id', function($q) use ($id) {
-                    $q->select('student_id')->from('students')->where('user_id', $id);
-                })->delete();
+                $student = DB::table('students')->where('user_id', $id)->first();
+                if ($student) {
+                    DB::table('parent_students')->where('student_id', $student->student_id)->delete();
+                    DB::table('students')->where('student_id', $student->student_id)->delete();
+                }
             } elseif ($roleId == 2) {
-                DB::table('teachers')->where('user_id', $id)->delete();
-                DB::table('course_teachers')->where('teacher_id', function($q) use ($id) {
-                    $q->select('teacher_id')->from('teachers')->where('user_id', $id);
-                })->delete();
+                $teacher = DB::table('teachers')->where('user_id', $id)->first();
+                if ($teacher) {
+                    DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->delete();
+                    DB::table('teachers')->where('teacher_id', $teacher->teacher_id)->delete();
+                }
             } elseif ($roleId == 5) {
                 DB::table('heads')->where('user_id', $id)->delete();
             } elseif ($roleId == 4) {
@@ -921,7 +1167,7 @@ class AdminWebController extends Controller
                 }
             }
 
-            // Finally, delete user
+            // Finally, delete user from users table
             DB::table('users')->where('user_id', $id)->delete();
         }
 
@@ -934,6 +1180,8 @@ class AdminWebController extends Controller
 
     public function courses()
     {
+        $departments = DB::table('departments')->orderBy('name')->get();
+
         $programs = DB::table('programs')
             ->join('departments', 'programs.department_id', '=', 'departments.department_id')
             ->select('programs.*', 'departments.name as department_name')
@@ -953,7 +1201,7 @@ class AdminWebController extends Controller
             $program->courses_list = $coursesInProgram;
         }
 
-        return view('admin.courses', compact('programs'));
+        return view('admin.courses', compact('programs', 'departments'));
     }
 
     public function createCourse()
@@ -1000,6 +1248,16 @@ class AdminWebController extends Controller
     public function assignHODForm()
     {
         $departments = DB::table('departments')->get();
+        foreach ($departments as $dept) {
+            $head = DB::table('heads')
+                ->join('users', 'heads.user_id', '=', 'users.user_id')
+                ->where('heads.department_id', $dept->department_id)
+                ->select('users.user_id', 'users.full_name', 'users.email', 'users.phone')
+                ->first();
+
+            $dept->current_hod_name = $head ? $head->full_name : 'غير مخصص حالياً';
+            $dept->current_hod_user_id = $head ? $head->user_id : null;
+        }
 
         // Get users who could be HODs (teachers and existing HODs)
         $availableUsers = DB::table('users')
@@ -1067,7 +1325,76 @@ class AdminWebController extends Controller
             ['type' => 'system']
         );
 
-        return redirect()->route('admin.courses')->with('success', 'تم تعيين ' . $user->full_name . ' رئيساً لقسم ' . $dept->name . ' بنجاح!');
+        return redirect()->route('admin.courses.assign-hod')->with('success', 'تم تعيين ' . $user->full_name . ' رئيساً لقسم ' . $dept->name . ' بنجاح!');
+    }
+
+    public function storeNewHOD(Request $request)
+    {
+        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
+        if (empty($fullName)) {
+            $fullName = $request->full_name ?? '';
+        }
+        $request->merge(['full_name' => $fullName]);
+
+        $request->validate([
+            'department_id' => 'required|exists:departments,department_id',
+            'first_name'    => 'required|string|max:100',
+            'last_name'     => 'required|string|max:100',
+            'phone'         => 'required|string|max:20',
+            'email'         => 'required|email|unique:users,email|max:255',
+            'username'      => 'required|string|unique:users,username|max:255',
+            'password'      => 'required|string|min:6|confirmed',
+        ], [
+            'department_id.required' => 'يرجى اختيار القسم.',
+            'first_name.required'    => 'الاسم الأول مطلوب.',
+            'last_name.required'     => 'الاسم الثاني مطلوب.',
+            'phone.required'         => 'رقم الهاتف مطلوب.',
+            'email.required'         => 'البريد الإلكتروني مطلوب.',
+            'email.unique'           => 'البريد الإلكتروني مستخدم بالفعل.',
+            'username.required'      => 'اسم المستخدم مطلوب.',
+            'username.unique'        => 'اسم المستخدم مستخدم بالفعل.',
+            'password.required'      => 'كلمة المرور مطلوبة.',
+            'password.confirmed'     => 'تأكيد كلمة المرور غير متطابق.',
+        ]);
+
+        $dept = DB::table('departments')->where('department_id', $request->department_id)->first();
+
+        // Remove old HOD for this department if exists
+        $oldHead = DB::table('heads')->where('department_id', $request->department_id)->first();
+        if ($oldHead) {
+            DB::table('users')->where('user_id', $oldHead->user_id)->update([
+                'role_id'    => 2, // revert to teacher
+                'department' => null,
+                'updated_at' => now(),
+            ]);
+            DB::table('heads')->where('department_id', $request->department_id)->delete();
+        }
+
+        // Create new HOD user
+        $userId = DB::table('users')->insertGetId([
+            'role_id'    => 5, // HOD
+            'full_name'  => $fullName,
+            'first_name' => $request->first_name,
+            'last_name'  => $request->last_name,
+            'username'   => $request->username,
+            'email'      => $request->email,
+            'phone'      => $request->phone,
+            'password'   => bcrypt($request->password),
+            'department' => $dept->name,
+            'status'     => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Insert into heads table
+        DB::table('heads')->insert([
+            'user_id'       => $userId,
+            'department_id' => $request->department_id,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+
+        return redirect()->route('admin.courses.assign-hod')->with('success', 'تم إنشاء حساب رئيس القسم الجديد (' . $fullName . ') لقسم ' . $dept->name . ' وتعيينه بنجاح!');
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1136,7 +1463,7 @@ class AdminWebController extends Controller
         foreach ($courses as $course) {
             $lessons = DB::table('lessons')
                 ->where('course_id', $course->course_id)
-                ->select('title', 'description')
+                ->select('lesson_id', 'title', 'description', 'file_path', 'file_name', 'file_type', 'content_url', 'created_at')
                 ->get();
             $course->lessons_list = $lessons;
 
@@ -1168,97 +1495,269 @@ class AdminWebController extends Controller
     }
 
     // ────────────────────────────────────────────────────────────
+    //  LECTURES (محاضرات المعلمين)
+    // ────────────────────────────────────────────────────────────
+    public function lectures(Request $request)
+    {
+        $selectedDept    = $request->query('department_id');
+        $selectedProgram = $request->query('program_id');
+        $selectedYear    = $request->query('year');
+        $selectedCourse  = $request->query('course_id');
+
+        $departments = DB::table('departments')->get();
+
+        $programsQuery = DB::table('programs');
+        if ($selectedDept) {
+            $programsQuery->where('department_id', $selectedDept);
+        }
+        $programs = $programsQuery->get();
+
+        $coursesQuery = DB::table('courses');
+        if ($selectedYear) {
+            $coursesQuery->where('year', $selectedYear);
+        }
+        if ($selectedProgram) {
+            $cIds = DB::table('course_program')->where('program_id', $selectedProgram)->pluck('course_id');
+            $coursesQuery->whereIn('course_id', $cIds);
+        } elseif ($selectedDept) {
+            $pIds = DB::table('programs')->where('department_id', $selectedDept)->pluck('id');
+            $cIds = DB::table('course_program')->whereIn('program_id', $pIds)->pluck('course_id');
+            $coursesQuery->whereIn('course_id', $cIds);
+        }
+        $courses = $coursesQuery->get();
+
+        foreach ($courses as $c) {
+            $progs = DB::table('course_program')
+                ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                ->where('course_program.course_id', $c->course_id)
+                ->select('programs.id as program_id', 'programs.department_id')
+                ->get();
+
+            $c->program_ids = $progs->pluck('program_id')->toArray();
+            $c->department_ids = $progs->pluck('department_id')->unique()->toArray();
+
+            // Teachers assigned to this course
+            $teacherNames = DB::table('course_teachers')
+                ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->where('course_teachers.course_id', $c->course_id)
+                ->pluck('users.full_name')
+                ->toArray();
+
+            $c->teacher_names = implode('، ', $teacherNames);
+        }
+
+        $query = DB::table('lessons')
+            ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
+            ->leftJoin('teachers', 'lessons.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users', 'teachers.user_id', '=', 'users.user_id')
+            ->where(function($q) {
+                $q->whereNull('lessons.type')
+                  ->orWhere('lessons.type', '!=', 'session');
+            })
+            ->where('lessons.title', 'not like', '%حضور%')
+            ->where('lessons.title', 'not like', '%غياب%')
+            ->where('lessons.title', 'not like', '%تفقد%')
+            ->where('lessons.title', 'not like', '%حصة%')
+            ->where(function($q) {
+                $q->whereNull('lessons.content_url')
+                  ->orWhere('lessons.content_url', 'not like', '%attendance%');
+            });
+
+        if ($selectedCourse) {
+            $query->where('lessons.course_id', $selectedCourse);
+        } else {
+            if ($selectedYear) {
+                $query->where('courses.year', $selectedYear);
+            }
+
+            if ($selectedProgram) {
+                $courseIds = DB::table('course_program')
+                    ->where('program_id', $selectedProgram)
+                    ->pluck('course_id');
+                $query->whereIn('lessons.course_id', $courseIds);
+            } elseif ($selectedDept) {
+                $progIds = DB::table('programs')
+                    ->where('department_id', $selectedDept)
+                    ->pluck('id');
+                $courseIds = DB::table('course_program')
+                    ->whereIn('program_id', $progIds)
+                    ->pluck('course_id');
+                $query->whereIn('lessons.course_id', $courseIds);
+            }
+        }
+
+        $lectures = $query->select(
+            'lessons.*',
+            'courses.title as course_title',
+            'courses.year as course_year',
+            'users.full_name as teacher_name'
+        )
+        ->orderByDesc('lessons.created_at')
+        ->get();
+
+        // Get teacher info for selected course or filtered view
+        $assignedTeachers = [];
+        if ($selectedCourse) {
+            $assignedTeachers = DB::table('course_teachers')
+                ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->where('course_teachers.course_id', $selectedCourse)
+                ->pluck('users.full_name')
+                ->toArray();
+        }
+
+        return view('admin.lectures', compact(
+            'lectures', 'courses', 'departments', 'programs',
+            'selectedDept', 'selectedProgram', 'selectedYear', 'selectedCourse',
+            'assignedTeachers'
+        ));
+    }
+
+    // ────────────────────────────────────────────────────────────
     //  REPORTS
     // ────────────────────────────────────────────────────────────
 
-    public function reports()
+    public function reports(Request $request)
     {
         $departments = DB::table('departments')->get();
         $programs = DB::table('programs')->get();
         $semesters = DB::table('semesters')->orderByDesc('start_date')->get();
 
-        return view('admin.reports', compact('departments', 'programs', 'semesters'));
+        $savedReports = DB::table('admin_generated_reports')->orderByDesc('created_at')->get();
+
+        $previewReport = null;
+        $reportData = null;
+        $reportType = null;
+
+        if ($request->has('view_id')) {
+            $previewReport = DB::table('admin_generated_reports')->where('id', $request->view_id)->first();
+            if ($previewReport) {
+                $reportType = $previewReport->report_type;
+                $reportData = $this->fetchReportData($previewReport);
+            }
+        }
+
+        return view('admin.reports', compact('departments', 'programs', 'semesters', 'savedReports', 'previewReport', 'reportType', 'reportData'));
     }
 
     public function generateReport(Request $request)
     {
         $request->validate([
             'report_type' => 'required|in:attendance,performance',
+            'from_date'   => 'nullable|date|before_or_equal:today',
+            'to_date'     => 'nullable|date|before_or_equal:today|after_or_equal:from_date',
+        ], [
+            'from_date.before_or_equal' => 'تاريخ البداية لا يمكن أن يكون تاريخاً في المستقبل.',
+            'to_date.before_or_equal'   => 'تاريخ النهاية لا يمكن أن يكون تاريخاً في المستقبل.',
+            'to_date.after_or_equal'    => 'تاريخ النهاية يجب أن يكون بعد أو يطابق تاريخ البداية.',
         ]);
 
-        $departments = DB::table('departments')->get();
-        $programs = DB::table('programs')->get();
-        $semesters = DB::table('semesters')->orderByDesc('start_date')->get();
+        $deptName = $request->department_id ? (DB::table('departments')->where('department_id', $request->department_id)->value('name') ?? 'جميع الأقسام') : 'جميع الأقسام';
+        $progName = $request->program_id ? (DB::table('programs')->where('id', $request->program_id)->value('name') ?? 'جميع الدورات') : 'جميع الدورات';
+        $semName  = $request->semester_id ? (DB::table('semesters')->where('semester_id', $request->semester_id)->value('name') ?? 'جميع الفصول') : 'جميع الفصول';
 
-        $reportType = $request->report_type;
-        $reportData = [];
+        $typeName = $request->report_type === 'attendance' ? 'تقرير نسب الحضور والغياب' : 'تقرير أداء ودرجات الطلاب';
+        $title = $typeName . ' - قسم ' . $deptName;
 
-        if ($reportType === 'attendance') {
-            // Attendance report
+        DB::table('admin_generated_reports')->insert([
+            'title'           => $title,
+            'report_type'     => $request->report_type,
+            'department_id'   => $request->department_id,
+            'department_name' => $deptName,
+            'program_id'      => $request->program_id,
+            'program_name'    => $progName,
+            'semester_id'     => $request->semester_id,
+            'semester_name'   => $semName,
+            'from_date'       => $request->from_date,
+            'to_date'         => $request->to_date,
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        return redirect()->route('admin.reports')->with('success', 'تم إنشاء التقرير الإداري وإضافته إلى سجل التقارير بنجاح.');
+    }
+
+    public function deleteReport($id)
+    {
+        DB::table('admin_generated_reports')->where('id', $id)->delete();
+        return redirect()->route('admin.reports')->with('success', 'تم حذف التقرير من السجل بنجاح.');
+    }
+
+    private function fetchReportData($report)
+    {
+        if ($report->report_type === 'attendance') {
             $query = DB::table('attendance')
                 ->join('students', 'attendance.student_id', '=', 'students.student_id')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
                 ->join('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
                 ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
+                ->leftJoin('semesters', 'courses.semester_id', '=', 'semesters.semester_id')
                 ->select(
                     'users.full_name',
+                    DB::raw("COALESCE(departments.name, 'عام') as department_name"),
+                    DB::raw("COALESCE(programs.name, 'عام') as program_name"),
                     'courses.title as course_title',
+                    DB::raw("COALESCE(semesters.name, 'عام') as semester_name"),
                     DB::raw('COUNT(*) as total_sessions'),
                     DB::raw("SUM(CASE WHEN attendance.status = 'present' THEN 1 ELSE 0 END) as present_count"),
                     DB::raw("SUM(CASE WHEN attendance.status = 'absent' THEN 1 ELSE 0 END) as absent_count")
                 )
-                ->groupBy('users.full_name', 'courses.title');
+                ->groupBy('users.full_name', 'departments.name', 'programs.name', 'courses.title', 'semesters.name');
 
-            if ($request->from_date) {
-                $query->where('attendance.attendance_date', '>=', $request->from_date);
+            if ($report->from_date) {
+                $query->where('attendance.attendance_date', '>=', $report->from_date);
             }
-            if ($request->to_date) {
-                $query->where('attendance.attendance_date', '<=', $request->to_date);
+            if ($report->to_date) {
+                $query->where('attendance.attendance_date', '<=', $report->to_date);
             }
-            if ($request->semester_id) {
-                $query->where('courses.semester_id', $request->semester_id);
+            if ($report->semester_id) {
+                $query->where('courses.semester_id', $report->semester_id);
             }
-            if ($request->program_id) {
-                $courseIds = DB::table('course_program')->where('program_id', $request->program_id)->pluck('course_id');
+            if ($report->program_id) {
+                $courseIds = DB::table('course_program')->where('program_id', $report->program_id)->pluck('course_id');
                 $query->whereIn('lessons.course_id', $courseIds);
-            } elseif ($request->department_id) {
-                $programIds = DB::table('programs')->where('department_id', $request->department_id)->pluck('id');
+            } elseif ($report->department_id) {
+                $programIds = DB::table('programs')->where('department_id', $report->department_id)->pluck('id');
                 $courseIds = DB::table('course_program')->whereIn('program_id', $programIds)->pluck('course_id');
                 $query->whereIn('lessons.course_id', $courseIds);
             }
 
-            $reportData = $query->limit(50)->get();
+            return $query->limit(100)->get();
         } else {
-            // Performance report
             $query = DB::table('grades')
                 ->join('students', 'grades.student_id', '=', 'students.student_id')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
                 ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
                 ->join('courses', 'exams.course_id', '=', 'courses.course_id')
                 ->leftJoin('semesters', 'courses.semester_id', '=', 'semesters.semester_id')
                 ->select(
                     'users.full_name',
+                    DB::raw("COALESCE(departments.name, 'عام') as department_name"),
+                    DB::raw("COALESCE(programs.name, 'عام') as program_name"),
                     'courses.title as course_title',
                     'grades.score as grade',
-                    'semesters.name as semester'
+                    DB::raw("COALESCE(semesters.name, 'عام') as semester")
                 );
 
-            if ($request->semester_id) {
-                $query->where('courses.semester_id', $request->semester_id);
+            if ($report->semester_id) {
+                $query->where('courses.semester_id', $report->semester_id);
             }
-            if ($request->program_id) {
-                $courseIds = DB::table('course_program')->where('program_id', $request->program_id)->pluck('course_id');
+            if ($report->program_id) {
+                $courseIds = DB::table('course_program')->where('program_id', $report->program_id)->pluck('course_id');
                 $query->whereIn('exams.course_id', $courseIds);
-            } elseif ($request->department_id) {
-                $programIds = DB::table('programs')->where('department_id', $request->department_id)->pluck('id');
+            } elseif ($report->department_id) {
+                $programIds = DB::table('programs')->where('department_id', $report->department_id)->pluck('id');
                 $courseIds = DB::table('course_program')->whereIn('program_id', $programIds)->pluck('course_id');
                 $query->whereIn('exams.course_id', $courseIds);
             }
 
-            $reportData = $query->limit(50)->get();
+            return $query->limit(100)->get();
         }
-
-        return view('admin.reports', compact('departments', 'programs', 'semesters', 'reportType', 'reportData'));
     }
 
     public function exportReport(Request $request)
@@ -1266,149 +1765,241 @@ class AdminWebController extends Controller
         $request->validate(['report_type' => 'required|in:attendance,performance']);
 
         $reportType   = $request->report_type;
-        $deptName     = $request->department_id ? (DB::table('departments')->where('department_id', $request->department_id)->value('name') ?? 'كل الأقسام') : 'كل الأقسام';
-        $semesterName = $request->semester_id   ? (DB::table('semesters')->where('semester_id', $request->semester_id)->value('name') ?? 'كل الفصول') : 'كل الفصول';
-        $dateLabel    = date('Y-m-d');
+        $exportFormat = $request->input('export_format', 'excel');
+        $deptName     = $request->department_id ? (DB::table('departments')->where('department_id', $request->department_id)->value('name') ?? 'جميع الأقسام') : 'جميع الأقسام';
+        $progName     = $request->program_id    ? (DB::table('programs')->where('id', $request->program_id)->value('name') ?? 'جميع الدورات') : 'جميع الدورات';
+        $semesterName = $request->semester_id   ? (DB::table('semesters')->where('semester_id', $request->semester_id)->value('name') ?? 'جميع الفصول') : 'جميع الفصول';
+        $dateLabel    = date('Y-m-d H:i');
 
         if ($reportType === 'attendance') {
             $query = DB::table('attendance')
                 ->join('students', 'attendance.student_id', '=', 'students.student_id')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
                 ->join('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
                 ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
+                ->leftJoin('semesters', 'courses.semester_id', '=', 'semesters.semester_id')
                 ->select(
                     'users.full_name as student_name',
-                    'courses.title as course',
-                    DB::raw("COUNT(*) as total"),
-                    DB::raw("SUM(attendance.status='present') as present"),
-                    DB::raw("SUM(attendance.status='absent') as absent"),
-                    'attendance.attendance_date'
+                    DB::raw("COALESCE(departments.name, 'عام') as department_name"),
+                    DB::raw("COALESCE(programs.name, 'عام') as program_name"),
+                    'courses.title as course_title',
+                    DB::raw("COALESCE(semesters.name, 'عام') as semester_name"),
+                    DB::raw("COUNT(*) as total_sessions"),
+                    DB::raw("SUM(CASE WHEN attendance.status = 'present' THEN 1 ELSE 0 END) as present_count"),
+                    DB::raw("SUM(CASE WHEN attendance.status = 'absent' THEN 1 ELSE 0 END) as absent_count")
                 )
-                ->groupBy('users.full_name', 'courses.title', 'attendance.attendance_date');
+                ->groupBy('users.full_name', 'departments.name', 'programs.name', 'courses.title', 'semesters.name');
 
             if ($request->semester_id) $query->where('courses.semester_id', $request->semester_id);
             if ($request->from_date)   $query->where('attendance.attendance_date', '>=', $request->from_date);
             if ($request->to_date)     $query->where('attendance.attendance_date', '<=', $request->to_date);
-            if ($request->department_id) {
+            if ($request->program_id) {
+                $courseIds = DB::table('course_program')->where('program_id', $request->program_id)->pluck('course_id');
+                $query->whereIn('lessons.course_id', $courseIds);
+            } elseif ($request->department_id) {
                 $programIds = DB::table('programs')->where('department_id', $request->department_id)->pluck('id');
                 $courseIds  = DB::table('course_program')->whereIn('program_id', $programIds)->pluck('course_id');
                 $query->whereIn('lessons.course_id', $courseIds);
             }
 
-            $data     = $query->orderBy('courses.title')->orderBy('users.full_name')->get();
-            $filename = "حضور_{$dateLabel}.xls";
+            $currentYear = date('Y');
+            $data        = $query->orderBy('departments.name')->orderBy('users.full_name')->get();
+            $reportTitle = "تقرير حضور {$currentYear}";
+            $filename    = "{$reportTitle}_{$dateLabel}.xls";
 
-            $rows = '';
+            $rowsHtml = '';
+            $i = 1;
             foreach ($data as $row) {
-                $rate  = $row->total > 0 ? round(($row->present / $row->total) * 100) : 0;
-                $rows .= "<tr>
-                  <td>{$row->student_name}</td><td>{$row->course}</td>
-                  <td>{$row->attendance_date}</td>
-                  <td style='color:#166534;font-weight:bold'>{$row->present}</td>
-                  <td style='color:#b91c1c;font-weight:bold'>{$row->absent}</td>
-                  <td>{$row->total}</td><td>{$rate}%</td>
+                $rate = $row->total_sessions > 0 ? round(($row->present_count / $row->total_sessions) * 100) : 0;
+
+                $rowsHtml .= "<tr>
+                    <td style='text-align:center;'>{$i}</td>
+                    <td style='font-weight:bold;color:#0f172a;'>{$row->student_name}</td>
+                    <td style='color:#2563eb;font-weight:bold;'>{$row->department_name}</td>
+                    <td style='color:#475569;'>{$row->program_name}</td>
+                    <td style='color:#0f172a;'>{$row->course_title}</td>
+                    <td style='text-align:center;'>{$row->semester_name}</td>
+                    <td style='color:#15803d;font-weight:bold;text-align:center;'>{$row->present_count}</td>
+                    <td style='color:#b91c1c;font-weight:bold;text-align:center;'>{$row->absent_count}</td>
+                    <td style='text-align:center;font-weight:bold;'>{$row->total_sessions}</td>
+                    <td style='font-weight:bold;text-align:center;'>{$rate}%</td>
                 </tr>";
+                $i++;
             }
 
-            $html = "<html xmlns:o='urn:schemas-microsoft-com:office:office'
-                          xmlns:x='urn:schemas-microsoft-com:office:excel'
-                          xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
-<style>
-body{font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl}
-table{border-collapse:collapse;width:100%}
-th{background:#1e293b;color:#f2f20d;font-weight:bold;border:1px solid #ccc;padding:8px;text-align:right}
-td{border:1px solid #ddd;padding:7px;text-align:right}
-tr:nth-child(even) td{background:#f8fafc}
-.hdr td{background:#0f172a;color:#f2f20d;font-size:15px;font-weight:bold;padding:12px}
-.inf td{background:#f1f5f9;color:#334155;font-size:11px;padding:6px}
-</style></head><body>
-<table>
-<tr class='hdr'><td colspan='7'>تقرير الحضور والغياب</td></tr>
-<tr class='inf'><td>القسم: {$deptName}</td><td>الفصل: {$semesterName}</td><td colspan='5'>التاريخ: {$dateLabel}</td></tr>
-<tr><th>اسم الطالب</th><th>المادة</th><th>التاريخ</th><th>حاضر</th><th>غائب</th><th>الإجمالي</th><th>نسبة الحضور</th></tr>
-{$rows}
-</table></body></html>";
+            $headersHtml = "<tr>
+                <th style='width:40px;text-align:center;'>#</th>
+                <th>اسم الطالب</th>
+                <th>القسم</th>
+                <th>الدورة / البرنامج</th>
+                <th>المادة الدراسية</th>
+                <th style='text-align:center;'>الفصل</th>
+                <th style='text-align:center;'>حاضر</th>
+                <th style='text-align:center;'>غائب</th>
+                <th style='text-align:center;'>الإجمالي</th>
+                <th style='text-align:center;'>نسبة الحضور</th>
+            </tr>";
 
         } else {
             $query = DB::table('grades')
                 ->join('students', 'grades.student_id', '=', 'students.student_id')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
                 ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
                 ->join('courses', 'exams.course_id', '=', 'courses.course_id')
                 ->leftJoin('semesters', 'courses.semester_id', '=', 'semesters.semester_id')
                 ->select(
                     'users.full_name as student_name',
-                    'courses.title as course',
+                    DB::raw("COALESCE(departments.name, 'عام') as department_name"),
+                    DB::raw("COALESCE(programs.name, 'عام') as program_name"),
+                    'courses.title as course_title',
                     'grades.score as grade',
-                    'semesters.name as semester',
-                    DB::raw("COALESCE(courses.year,'') as academic_year")
+                    DB::raw("COALESCE(semesters.name, 'عام') as semester_name")
                 );
 
             if ($request->semester_id) $query->where('courses.semester_id', $request->semester_id);
-            if ($request->department_id) {
+            if ($request->program_id) {
+                $courseIds = DB::table('course_program')->where('program_id', $request->program_id)->pluck('course_id');
+                $query->whereIn('exams.course_id', $courseIds);
+            } elseif ($request->department_id) {
                 $programIds = DB::table('programs')->where('department_id', $request->department_id)->pluck('id');
                 $courseIds  = DB::table('course_program')->whereIn('program_id', $programIds)->pluck('course_id');
                 $query->whereIn('exams.course_id', $courseIds);
             }
 
-            $data          = $query->orderBy('courses.title')->orderBy('users.full_name')->get();
-            $courseSummary = $data->groupBy('course')->map(fn($rows) => [
-                'count' => $rows->count(),
-                'avg'   => round($rows->avg('grade'), 1),
-                'max'   => $rows->max('grade'),
-                'min'   => $rows->min('grade'),
-            ]);
-            $filename = "اداء_{$dateLabel}.xls";
+            $currentYear = date('Y');
+            $data        = $query->orderBy('departments.name')->orderBy('users.full_name')->get();
+            $reportTitle = "تقرير أداء {$currentYear}";
+            $filename    = "{$reportTitle}_{$dateLabel}.xls";
 
-            $rows = '';
+            $rowsHtml = '';
+            $i = 1;
             foreach ($data as $row) {
-                $sem = $row->semester ?? '-';
-                $yr  = $row->academic_year ?: '-';
-                $rows .= "<tr>
-                  <td>{$row->student_name}</td><td>{$row->course}</td>
-                  <td style='font-weight:bold;color:#1d4ed8'>{$row->grade}</td>
-                  <td>{$sem}</td><td>{$yr}</td>
+                $g = $row->grade;
+                if ($g >= 90) { $rating = 'ممتاز'; $pass = 'ناجح'; $bg = '#dcfce7'; $clr = '#15803d'; }
+                elseif ($g >= 80) { $rating = 'جيد جداً'; $pass = 'ناجح'; $bg = '#dbeafe'; $clr = '#1d4ed8'; }
+                elseif ($g >= 70) { $rating = 'جيد'; $pass = 'ناجح'; $bg = '#fef3c7'; $clr = '#b45309'; }
+                elseif ($g >= 60) { $rating = 'مقبول'; $pass = 'ناجح'; $bg = '#f3e8ff'; $clr = '#6b21a8'; }
+                else { $rating = 'راسب'; $pass = 'راسب'; $bg = '#fee2e2'; $clr = '#b91c1c'; }
+
+                $rowsHtml .= "<tr>
+                    <td style='text-align:center;'>{$i}</td>
+                    <td style='font-weight:bold;color:#0f172a;'>{$row->student_name}</td>
+                    <td style='color:#2563eb;font-weight:bold;'>{$row->department_name}</td>
+                    <td style='color:#475569;'>{$row->program_name}</td>
+                    <td style='color:#0f172a;'>{$row->course_title}</td>
+                    <td style='text-align:center;'>{$row->semester_name}</td>
+                    <td style='font-weight:bold;text-align:center;color:#0f172a;'>{$row->grade}</td>
+                    <td style='background:{$bg};color:{$clr};font-weight:bold;text-align:center;'>{$rating}</td>
+                    <td style='background:{$bg};color:{$clr};font-weight:bold;text-align:center;'>{$pass}</td>
                 </tr>";
+                $i++;
             }
 
-            $sumRows = '';
-            foreach ($courseSummary as $course => $s) {
-                $sumRows .= "<tr>
-                  <td>{$course}</td><td>{$s['count']}</td>
-                  <td style='color:#1d4ed8;font-weight:bold'>{$s['avg']}</td>
-                  <td style='color:#166534;font-weight:bold'>{$s['max']}</td>
-                  <td style='color:#b91c1c;font-weight:bold'>{$s['min']}</td>
-                </tr>";
-            }
-
-            $html = "<html xmlns:o='urn:schemas-microsoft-com:office:office'
-                          xmlns:x='urn:schemas-microsoft-com:office:excel'
-                          xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
-<style>
-body{font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl}
-table{border-collapse:collapse;width:100%}
-th{background:#1e293b;color:#f2f20d;font-weight:bold;border:1px solid #ccc;padding:8px;text-align:right}
-td{border:1px solid #ddd;padding:7px;text-align:right}
-tr:nth-child(even) td{background:#f8fafc}
-.hdr td{background:#0f172a;color:#f2f20d;font-size:15px;font-weight:bold;padding:12px}
-.inf td{background:#f1f5f9;color:#334155;font-size:11px;padding:6px}
-.sh th{background:#334155;color:#f2f20d}
-</style></head><body>
-<table>
-<tr class='hdr'><td colspan='5'>تقرير الأداء الأكاديمي</td></tr>
-<tr class='inf'><td>القسم: {$deptName}</td><td>الفصل: {$semesterName}</td><td colspan='3'>التاريخ: {$dateLabel}</td></tr>
-<tr><th>اسم الطالب</th><th>المادة</th><th>الدرجة</th><th>الفصل</th><th>السنة الدراسية</th></tr>
-{$rows}
-<tr><td colspan='5'></td></tr>
-<tr class='sh'><th colspan='5'>ملخص المواد</th></tr>
-<tr><th>المادة</th><th>عدد الطلاب</th><th>المعدل</th><th>أعلى درجة</th><th>أدنى درجة</th></tr>
-{$sumRows}
-</table></body></html>";
+            $headersHtml = "<tr>
+                <th style='width:40px;text-align:center;'>#</th>
+                <th>اسم الطالب</th>
+                <th>القسم</th>
+                <th>الدورة / البرنامج</th>
+                <th>المادة الدراسية</th>
+                <th style='text-align:center;'>الفصل</th>
+                <th style='text-align:center;'>الدرجة (/100)</th>
+                <th style='text-align:center;'>التقدير</th>
+                <th style='text-align:center;'>النتيجة</th>
+            </tr>";
         }
 
-        return response("\xEF\xBB\xBF" . $html)
+        if ($exportFormat === 'pdf') {
+            $pdfHtml = "
+            <!DOCTYPE html>
+            <html lang='ar' dir='rtl'>
+            <head>
+                <meta charset='UTF-8'>
+                <title>{$reportTitle}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 25px; color: #1e293b; background: #f8fafc; direction: rtl; }
+                    .page-wrapper { background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 30px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+                    .header-banner { text-align: center; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+                    .header-banner h1 { margin: 0; color: #0f172a; font-size: 22px; font-weight: 800; }
+                    .meta-grid { display: flex; justify-content: space-between; background: #edf2f7; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px 20px; margin-bottom: 20px; font-size: 12px; color: #334155; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #ffffff; border-radius: 8px; overflow: hidden; }
+                    th { background-color: #1e293b; color: #f8fafc; text-align: right; padding: 11px 12px; font-size: 12px; font-weight: bold; border: 1px solid #334155; }
+                    td { padding: 9px 12px; font-size: 11px; border: 1px solid #e2e8f0; text-align: right; color: #1e293b; }
+                    tr:nth-child(even) td { background-color: #f1f5f9; }
+                    tr:nth-child(odd) td { background-color: #ffffff; }
+                    .footer-note { margin-top: 30px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+                    @media print {
+                        body { background: #ffffff; padding: 0; }
+                        .page-wrapper { border: none; padding: 0; box-shadow: none; }
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class='no-print' style='margin-bottom: 18px; text-align: left;'>
+                    <button onclick='window.print()' style='background: #2563eb; color: #fff; border: none; padding: 10px 24px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px; box-shadow: 0 4px 12px rgba(37,99,235,0.2);'>طباعة / حفظ كـ PDF</button>
+                </div>
+                <div class='page-wrapper'>
+                    <div class='header-banner'>
+                        <h1>{$reportTitle}</h1>
+                    </div>
+                    <div class='meta-grid'>
+                        <span><strong>القسم:</strong> {$deptName}</span>
+                        <span><strong>الدورة:</strong> {$progName}</span>
+                        <span><strong>الفصل:</strong> {$semesterName}</span>
+                        <span><strong>تاريخ الإصدار:</strong> {$dateLabel}</span>
+                    </div>
+                    <table>
+                        <thead>{$headersHtml}</thead>
+                        <tbody>{$rowsHtml}</tbody>
+                    </table>
+                    <div class='footer-note'>تم استخراج التقرير بتاريخ {$dateLabel}</div>
+                </div>
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() { window.print(); }, 400);
+                    };
+                </script>
+            </body>
+            </html>";
+
+            return response($pdfHtml)->header('Content-Type', 'text/html; charset=utf-8');
+        }
+
+        // Excel Export formatting with eye-friendly tones (slate/soft gray)
+        $excelHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+        <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, sans-serif; direction: rtl; background: #f8fafc; }
+            table { border-collapse: collapse; width: 100%; }
+            .main-hdr { background: #1e293b; color: #f8fafc; font-size: 15px; font-weight: bold; text-align: center; padding: 14px; }
+            .info-hdr { background: #edf2f7; color: #1e293b; font-size: 11px; font-weight: bold; padding: 9px; border: 1px solid #cbd5e1; }
+            th { background: #334155; color: #ffffff; font-weight: bold; font-size: 12px; border: 1px solid #475569; padding: 10px; text-align: right; }
+            td { border: 1px solid #cbd5e1; padding: 8px; font-size: 11px; text-align: right; color: #1e293b; }
+            tr:nth-child(even) td { background: #f1f5f9; }
+            tr:nth-child(odd) td { background: #ffffff; }
+        </style>
+        </head>
+        <body>
+        <table>
+            <tr><td colspan='10' class='main-hdr'>{$reportTitle}</td></tr>
+            <tr>
+                <td colspan='3' class='info-hdr'><b>القسم المستهدف:</b> {$deptName}</td>
+                <td colspan='3' class='info-hdr'><b>الدورة / البرنامج:</b> {$progName}</td>
+                <td colspan='2' class='info-hdr'><b>الفصل الدراسي:</b> {$semesterName}</td>
+                <td colspan='2' class='info-hdr'><b>تاريخ الإصدار:</b> {$dateLabel}</td>
+            </tr>
+            {$headersHtml}
+            {$rowsHtml}
+        </table>
+        </body>
+        </html>";
+
+        return response("\xEF\xBB\xBF" . $excelHtml)
             ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
             ->header('Pragma', 'no-cache')
@@ -1439,7 +2030,7 @@ tr:nth-child(even) td{background:#f8fafc}
         $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
-            'level'       => 'required|string',
+            'level'       => 'nullable|string',
             'year'        => 'required|integer|in:1,2',
             'semester_id' => 'required|integer',
             'program_id'  => 'required|integer',
@@ -1450,7 +2041,7 @@ tr:nth-child(even) td{background:#f8fafc}
         $courseId = DB::table('courses')->insertGetId([
             'title'       => $request->title,
             'description' => $request->description,
-            'level'       => $request->level,
+            'level'       => $request->level ?? 'عام',
             'year'        => $request->year,
             'semester_id' => $request->semester_id,
             'hours'       => $request->hours,
@@ -1504,7 +2095,7 @@ tr:nth-child(even) td{background:#f8fafc}
         $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
-            'level'       => 'required|string',
+            'level'       => 'nullable|string',
             'year'        => 'required|integer|in:1,2',
             'semester_id' => 'required|integer',
             'program_id'  => 'required|integer',
@@ -1514,7 +2105,7 @@ tr:nth-child(even) td{background:#f8fafc}
         DB::table('courses')->where('course_id', $id)->update([
             'title'       => $request->title,
             'description' => $request->description,
-            'level'       => $request->level,
+            'level'       => $request->level ?? 'عام',
             'year'        => $request->year,
             'semester_id' => $request->semester_id,
             'hours'       => $request->hours,

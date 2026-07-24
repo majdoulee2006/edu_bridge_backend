@@ -1425,7 +1425,7 @@ class StudentController extends Controller
 
         $message = match($faceStatus) {
             'first_time'  => 'تم تسجيل حضورك وحفظ بيانات وجهك كمرجع ✅',
-            'suspicious'  => 'تم تسجيل حضورك ⚠️ (تم إبلاغ المعلم)',
+            'suspicious'  => 'تم تسجيل حضورك ⚠️ (نسبة التطابق منخفضة)',
             default       => 'تم تسجيل حضورك بنجاح! ✅',
         };
 

@@ -419,7 +419,7 @@
     <!-- Action Rows -->
     <p class="section-heading"><i class="fa-solid fa-sliders"></i> إعدادات الحساب</p>
     <div class="action-rows">
-        <button class="action-row" onclick="startPasswordChangeOTP()">
+        <button class="action-row" onclick="openPasswordModal()">
             <div class="action-row-inner">
                 <div class="action-row-icon" style="background: rgba(252,227,0,0.15); color: var(--accent-color);">
                     <i class="fa-solid fa-key"></i>
@@ -448,22 +448,30 @@
 <!-- Update Info Modal -->
 <div class="modal-overlay" id="editInfoModal">
     <div class="modal-card">
-        <h3 id="modalTitle" style="margin-bottom: 1.5rem; font-weight:800; color:var(--text-primary);">تعديل البيانات</h3>
-        <form id="profileUpdateForm" action="{{ route('parent.profile.update') }}" method="POST">
-            @csrf
-            <input type="hidden" name="full_name" value="{{ $user->full_name }}">
-            
+        <h3 id="editModalTitle" style="margin-bottom: 1.5rem; font-weight:800; color:var(--text-primary);">تعديل البيانات</h3>
+        <form id="profileUpdateForm" onsubmit="handleProfileSubmit(event)">
             <div id="phoneInputGroup" style="display: none; text-align: right; margin-bottom: 1.25rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--text-primary);">رقم الهاتف</label>
-                <input type="text" name="phone" class="form-control" value="{{ $user->phone }}">
+                <input type="text" id="edit_phone" class="form-control" value="{{ $user->phone ?? '' }}">
             </div>
 
             <div id="emailInputGroup" style="display: none; text-align: right; margin-bottom: 1.25rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--text-primary);">البريد الإلكتروني</label>
-                <input type="email" name="email" class="form-control" value="{{ $user->email }}">
+                <input type="email" id="edit_email" class="form-control" value="{{ $user->email ?? '' }}">
             </div>
 
-            <button type="submit" class="modal-confirm-btn">حفظ التغييرات</button>
+            <div id="telegramInputGroup" style="text-align: right; margin-bottom: 1.5rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--accent-color);">
+                    <i class="fa-brands fa-telegram"></i> معرف حساب تيليغرام (لإرسال OTP)
+                </label>
+                <input type="text" id="edit_telegram" class="form-control" placeholder="مثال: @username أو معرف الحساب">
+                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">اختياري إذا كان مسجلاً مسبقاً</small>
+            </div>
+
+            <div id="profile-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
+            <button type="submit" id="profile-btn" class="modal-confirm-btn">
+                <i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق
+            </button>
             <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
         </form>
     </div>
@@ -473,22 +481,32 @@
 <div class="modal-overlay" id="editPasswordModal">
     <div class="modal-card">
         <h3 style="margin-bottom: 1.5rem; font-weight:800; color:var(--text-primary);">تغيير كلمة المرور</h3>
-        <form action="{{ route('parent.profile.password') }}" method="POST" style="text-align: right;">
-            @csrf
+        <form id="password-form" onsubmit="handlePasswordSubmit(event)" style="text-align: right;">
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--text-primary);">كلمة المرور الحالية</label>
-                <input type="password" name="current_password" required class="form-control">
+                <input type="password" id="current_password" required class="form-control" placeholder="••••••••">
             </div>
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--text-primary);">كلمة المرور الجديدة</label>
-                <input type="password" name="password" required class="form-control">
+                <input type="password" id="new_password" required minlength="6" class="form-control" placeholder="••••••••">
             </div>
-            <div style="margin-bottom: 1.5rem;">
+            <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--text-primary);">تأكيد كلمة المرور الجديدة</label>
-                <input type="password" name="password_confirmation" required class="form-control">
+                <input type="password" id="new_password_confirmation" required minlength="6" class="form-control" placeholder="••••••••">
             </div>
 
-            <button type="submit" class="modal-confirm-btn">تغيير كلمة المرور</button>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--accent-color);">
+                    <i class="fa-brands fa-telegram"></i> معرف حساب تيليغرام (لإرسال OTP)
+                </label>
+                <input type="text" id="password_telegram" class="form-control" placeholder="مثال: @username أو معرف الحساب">
+                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">اختياري إذا كان مسجلاً مسبقاً</small>
+            </div>
+
+            <div id="password-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
+            <button type="submit" id="password-btn" class="modal-confirm-btn">
+                <i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق
+            </button>
             <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
         </form>
     </div>
@@ -497,16 +515,19 @@
 <!-- OTP Modal -->
 <div class="modal-overlay" id="otpModal">
     <div class="modal-card">
-        <div class="modal-icon"><i class="fa-solid fa-shield-halved"></i></div>
-        <h3 style="font-weight:800; color:var(--text-primary);">التحقق الأمني (OTP)</h3>
-        <p>أرسلنا رمزاً مؤلفاً من 4 أرقام لتأكيد هويتك إلى بريدك الإلكتروني. أدخله أدناه للمتابعة.</p>
+        <div class="modal-icon"><i class="fa-solid fa-paper-plane"></i></div>
+        <h3 style="font-weight:800; color:var(--text-primary);">التحقق عبر تيليغرام (OTP)</h3>
+        <p>تم إرسال رمز التحقق المكون من 6 أرقام إلى حسابك في بوت تيليغرام.</p>
         <div class="otp-input-row">
             <input class="otp-digit" type="text" maxlength="1">
             <input class="otp-digit" type="text" maxlength="1">
             <input class="otp-digit" type="text" maxlength="1">
             <input class="otp-digit" type="text" maxlength="1">
+            <input class="otp-digit" type="text" maxlength="1">
+            <input class="otp-digit" type="text" maxlength="1">
         </div>
-        <button type="button" class="modal-confirm-btn" onclick="verifyOTPAndShowPasswordModal()">تأكيد و تحقق</button>
+        <div id="otp-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
+        <button type="button" class="modal-confirm-btn" id="otp-btn" onclick="verifyOTP()">تأكيد و تحقق</button>
         <button type="button" class="modal-cancel-btn" onclick="closeOTPModal()">إلغاء</button>
     </div>
 </div>
@@ -515,22 +536,33 @@
 
 @push('scripts')
 <script>
+    const csrfToken = '{{ csrf_token() }}';
+    let currentEditField = null;
+
     function openEditModal(field) {
+        currentEditField = field;
         document.getElementById('editInfoModal').classList.add('active');
         document.getElementById('phoneInputGroup').style.display = 'none';
         document.getElementById('emailInputGroup').style.display = 'none';
+        document.getElementById('profile-error').style.display = 'none';
+        document.getElementById('edit_telegram').value = '';
 
         if (field === 'phone') {
-            document.getElementById('modalTitle').innerText = 'تعديل رقم الهاتف';
+            document.getElementById('editModalTitle').innerText = 'تعديل رقم الهاتف';
             document.getElementById('phoneInputGroup').style.display = 'block';
         } else if (field === 'email') {
-            document.getElementById('modalTitle').innerText = 'تعديل البريد الإلكتروني';
+            document.getElementById('editModalTitle').innerText = 'تعديل البريد الإلكتروني';
             document.getElementById('emailInputGroup').style.display = 'block';
         }
     }
 
     function openPasswordModal() {
         document.getElementById('editPasswordModal').classList.add('active');
+        document.getElementById('password-error').style.display = 'none';
+        document.getElementById('current_password').value = '';
+        document.getElementById('new_password').value = '';
+        document.getElementById('new_password_confirmation').value = '';
+        document.getElementById('password_telegram').value = '';
     }
 
     function closeModals() {
@@ -538,8 +570,10 @@
         document.getElementById('editPasswordModal').classList.remove('active');
     }
 
-    function openOTPModal() {
+    function showOTPModal() {
         document.getElementById('otpModal').classList.add('active');
+        document.querySelectorAll('.otp-digit').forEach(i => i.value = '');
+        document.getElementById('otp-error').style.display = 'none';
         document.querySelector('.otp-digit').focus();
     }
 
@@ -548,64 +582,138 @@
         document.querySelectorAll('.otp-digit').forEach(i => i.value = '');
     }
 
-    function startPasswordChangeOTP() {
-        const keyBtn = document.querySelector('.action-row');
-        keyBtn.style.pointerEvents = 'none';
-        keyBtn.style.opacity = '0.7';
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            closeModals();
+            closeOTPModal();
+        }
+    });
 
-        fetch("{{ route('parent.profile.send_otp') }}", {
+    function handleProfileSubmit(e) {
+        e.preventDefault();
+        const payload = {};
+        if (currentEditField === 'phone') payload.phone = document.getElementById('edit_phone').value;
+        if (currentEditField === 'email') payload.email = document.getElementById('edit_email').value;
+        
+        payload.telegram_chat_id = document.getElementById('edit_telegram').value;
+
+        const btn      = document.getElementById('profile-btn');
+        const errorDiv = document.getElementById('profile-error');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إرسال OTP...';
+        errorDiv.style.display = 'none';
+
+        fetch('{{ route("parent.profile.send_otp") }}', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify(payload)
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            keyBtn.style.pointerEvents = 'auto';
-            keyBtn.style.opacity = '1';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
             if (data.success) {
-                alert(data.message);
-                openOTPModal();
+                closeModals();
+                showOTPModal();
             } else {
-                alert(data.message || 'حدث خطأ أثناء إرسال الرمز.');
+                errorDiv.innerText = data.message || 'حدث خطأ';
+                errorDiv.style.display = 'block';
             }
         })
-        .catch(error => {
-            keyBtn.style.pointerEvents = 'auto';
-            keyBtn.style.opacity = '1';
-            console.error('Error:', error);
-            alert('حدث خطأ في الاتصال بالخادم.');
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
+            errorDiv.innerText = 'فشل الاتصال بالخادم';
+            errorDiv.style.display = 'block';
         });
     }
 
-    function verifyOTPAndShowPasswordModal() {
-        const code = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
-        if(code.length < 4) {
-            alert('يرجى إدخال الرمز كاملاً (4 أرقام)');
+    function handlePasswordSubmit(e) {
+        e.preventDefault();
+        const current = document.getElementById('current_password').value;
+        const newPw   = document.getElementById('new_password').value;
+        const confirm = document.getElementById('new_password_confirmation').value;
+        const telegramId = document.getElementById('password_telegram').value;
+        const btn     = document.getElementById('password-btn');
+        const errorDiv= document.getElementById('password-error');
+
+        if (newPw !== confirm) {
+            errorDiv.innerText = 'كلمة المرور الجديدة غير متطابقة';
+            errorDiv.style.display = 'block';
             return;
         }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إرسال OTP...';
+        errorDiv.style.display = 'none';
+
+        fetch('{{ route("parent.profile.send_otp") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify({ 
+                current_password: current, 
+                new_password: newPw,
+                telegram_chat_id: telegramId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
+            if (data.success) {
+                closeModals();
+                showOTPModal();
+            } else {
+                errorDiv.innerText = data.message || 'حدث خطأ';
+                errorDiv.style.display = 'block';
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
+            errorDiv.innerText = 'فشل الاتصال بالخادم';
+            errorDiv.style.display = 'block';
+        });
+    }
+
+    function verifyOTP() {
+        const code = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
+        if(code.length < 6) {
+            alert('يرجى إدخال الرمز كاملاً (6 أرقام)');
+            return;
+        }
+
+        const btn     = document.getElementById('otp-btn');
+        const errorDiv= document.getElementById('otp-error');
+        btn.disabled  = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+        errorDiv.style.display = 'none';
 
         fetch("{{ route('parent.profile.verify_otp') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': csrfToken
             },
             body: JSON.stringify({ otp: code })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                closeOTPModal();
-                openPasswordModal();
+                window.location.reload();
             } else {
-                alert(data.message || 'رمز التحقق غير صحيح.');
+                btn.disabled = false;
+                btn.innerHTML = 'تأكيد و تحقق';
+                errorDiv.innerText = data.message || 'رمز التحقق غير صحيح.';
+                errorDiv.style.display = 'block';
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('حدث خطأ أثناء التحقق.');
+            btn.disabled = false;
+            btn.innerHTML = 'تأكيد و تحقق';
+            errorDiv.innerText = 'حدث خطأ أثناء التحقق.';
+            errorDiv.style.display = 'block';
         });
     }
 
@@ -622,17 +730,5 @@
             }
         });
     });
-
-    // Close on background click
-    window.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal-overlay')) {
-            closeModals();
-            closeOTPModal();
-        }
-    });
-
-    @if($errors->has('current_password') || $errors->has('password'))
-        openPasswordModal();
-    @endif
 </script>
 @endpush

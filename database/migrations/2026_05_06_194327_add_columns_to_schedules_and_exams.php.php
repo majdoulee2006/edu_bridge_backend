@@ -11,21 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // ⚠️ تم إزالة التعديلات الخاصة بجدول schedules من هذا الملف
-        // لأن زميلتك أضافت teacher_id و section في ملف الـ Migration رقم 104117
-        // إبقاء الكود هنا كان سيؤدي إلى خطأ: Column 'teacher_id' already exists.
-
         // ── 2. تعديل جدول exams (الجدول الامتحاني) ──
         Schema::table('exams', function (Blueprint $table) {
-            // القاعة التي يُقام فيها الامتحان (مثال: "A1", "قاعة 3")
-            $table->string('room')
-                  ->nullable()
-                  ->after('exam_date');
+            // القاعة التي يُقام فيها الامتحان (مثال: "A1", "قاعة 3") بعد التحقق من عدم وجودها
+            if (!Schema::hasColumn('exams', 'room')) {
+                $table->string('room')
+                      ->nullable()
+                      ->after('exam_date');
+            }
 
-            // الشعبة المعنية بهذا الامتحان
-            $table->string('class_group')
-                  ->nullable()
-                  ->after('room');
+            // الشعبة المعنية بهذا الامتحان بعد التحقق من عدم وجودها
+            if (!Schema::hasColumn('exams', 'class_group')) {
+                $table->string('class_group')
+                      ->nullable()
+                      ->after('room');
+            }
         });
     }
 
@@ -36,7 +36,16 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('exams', function (Blueprint $table) {
-            $table->dropColumn(['room', 'class_group']);
+            $columns = [];
+            if (Schema::hasColumn('exams', 'room')) {
+                $columns[] = 'room';
+            }
+            if (Schema::hasColumn('exams', 'class_group')) {
+                $columns[] = 'class_group';
+            }
+            if (!empty($columns)) {
+                $table->dropColumn($columns);
+            }
         });
     }
 };

@@ -16,6 +16,8 @@ class Course extends Model
         'description',
         'level',
         'year',        // 1 = السنة الأولى، 2 = السنة الثانية
+        'hours',
+        'semester_id',
     ];
 
     // علاقة المادة بالمعلمين (Many to Many)

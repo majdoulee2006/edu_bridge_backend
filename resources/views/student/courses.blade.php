@@ -47,9 +47,17 @@
     <div style="flex: 1;">
         <div style="font-weight: 800; font-size: 1rem;">{{ $c->title }}</div>
         <div class="course-meta">
-            @if($c->level ?? false)
-                <span class="meta-chip"><i class="fa-solid fa-layer-group"></i> {{ $c->level }}</span>
-            @endif
+            @php
+                $yearNames = [
+                    1 => 'سنة أولى',
+                    2 => 'سنة ثانية',
+                    3 => 'سنة ثالثة',
+                    4 => 'سنة رابعة',
+                    5 => 'سنة خامسة',
+                ];
+                $yearName = $yearNames[$c->year ?? 1] ?? 'سنة أولى';
+            @endphp
+            <span class="meta-chip"><i class="fa-solid fa-layer-group"></i> {{ $yearName }}</span>
             @if($c->credits ?? false)
                 <span class="meta-chip">{{ $c->credits }} ساعة</span>
             @endif

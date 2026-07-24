@@ -35,19 +35,22 @@ class StudentWebController extends Controller
         ]);
 
         $input = $request->login;
-        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
-            $loginField = 'email';
-        } elseif (preg_match('/^\+?[0-9]{7,15}$/', $input)) {
-            $loginField = 'phone';
-        } else {
-            $loginField = 'username';
-        }
+        // 🔍 البحث عن المستخدم بواسطة البريد، اسم المستخدم، أو الهاتف لتجنب تصنيف الأرقام كأرقام هواتف بالخطأ
+        $user = \App\Models\User::where('email', $input)
+            ->orWhere('username', $input)
+            ->orWhere('phone', $input)
+            ->first();
 
-        if (Auth::attempt([$loginField => $input, 'password' => $request->password])) {
+        if ($user && Hash::check($request->password, $user->password)) {
+            Auth::login($user);
             $student = Student::where('user_id', Auth::user()->getKey())->first();
             if (!$student) {
                 Auth::logout();
                 return back()->withErrors(['login' => 'هذا الحساب ليس حساب طالب.']);
+            }
+            if (Auth::user()->status !== 'active') {
+                Auth::logout();
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
             }
             $request->session()->regenerate();
             return redirect('/student/dashboard');
@@ -108,7 +111,7 @@ class StudentWebController extends Controller
             ->where('student_id', $student->student_id)
             ->where('status', 'present')
             ->count();
-        $attendanceRate = $totalAttendance > 0 ? round(($presentCount / $totalAttendance) * 100) : 0;
+        $attendanceRate = $totalAttendance > 0 ? round(($presentCount / $totalAttendance) * 100) : null;
 
         // الإعلانات الأخيرة
         $announcements = DB::table('announcements')
@@ -120,11 +123,25 @@ class StudentWebController extends Controller
             ->limit(5)
             ->get();
 
-        // متوسط الدرجات
-        $avgGrade = DB::table('grades')
+        // متوسط الدرجات (يشمل الواجبات المصححة والاختبارات)
+        $submissionGrades = DB::table('assignment_submissions')
+            ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+            ->where('assignment_submissions.student_id', $student->student_id)
+            ->whereNotNull('assignment_submissions.grade')
+            ->select('assignment_submissions.grade', 'assignments.max_points')
+            ->get();
+
+        $submissionPercentages = $submissionGrades->map(function($sub) {
+            $max = ($sub->max_points ?? 0) > 0 ? $sub->max_points : 100;
+            return ($sub->grade / $max) * 100;
+        });
+
+        $examGrades = DB::table('grades')
             ->where('student_id', $student->student_id)
-            ->avg('score');
-        $avgGrade = $avgGrade ? round($avgGrade, 1) : 0;
+            ->pluck('score');
+
+        $allGrades = $submissionPercentages->concat($examGrades);
+        $avgGrade = $allGrades->count() > 0 ? round($allGrades->avg(), 1) : null;
 
         return view('student.dashboard', compact(
             'student', 'user', 'courses', 'assignments',
@@ -178,11 +195,40 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        $courses = DB::table('enrollments')
+        $query = DB::table('enrollments')
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
-            ->where('enrollments.student_id', $student->student_id)
-            ->select('courses.*',
-                DB::raw('(SELECT COUNT(*) FROM lessons WHERE lessons.course_id = courses.course_id) as lessons_count'),
+            ->where('enrollments.student_id', $student->student_id);
+
+        // 🎓 تصفية المواد حسب السنة الدراسية للطالب (سنة أولى، سنة ثانية، إلخ)
+        $levelMap = [
+            'السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5,
+            'الأولى' => 1, 'الثانية' => 2, 'الثالثة' => 3, 'الرابعة' => 4, 'الخامسة' => 5,
+            '1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5
+        ];
+        $studentYear = $levelMap[$student->level ?? ''] ?? $levelMap[Auth::user()->academic_year ?? ''] ?? null;
+
+        if ($studentYear) {
+            $query->where('courses.year', $studentYear);
+        }
+
+        // 📅 تصفية المواد حسب الفصل الدراسي النشط حالياً إن وجد
+        $activeSemesterId = DB::table('semesters')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->value('semester_id');
+
+        if ($activeSemesterId) {
+            $query->where('courses.semester_id', $activeSemesterId);
+        }
+
+        $courses = $query->select('courses.*',
+                DB::raw("(SELECT COUNT(*) FROM lessons 
+                          WHERE lessons.course_id = courses.course_id 
+                            AND (type != 'session' OR type IS NULL) 
+                            AND title NOT LIKE '%حضور%' 
+                            AND title NOT LIKE '%غياب%' 
+                            AND (content_url IS NULL OR content_url NOT LIKE '%attendance%')
+                         ) as lessons_count"),
                 DB::raw('(SELECT COUNT(*) FROM assignments WHERE assignments.course_id = courses.course_id) as assignments_count')
             )
             ->get();
@@ -217,11 +263,12 @@ class StudentWebController extends Controller
 
         $materials = DB::table('lessons')
             ->where('course_id', $courseId)
-            ->where('type', '!=', 'session')
+            ->where(function($q) {
+                $q->where('type', '!=', 'session')
+                  ->orWhereNull('type');
+            })
             ->where('title', 'not like', '%حضور%')
             ->where('title', 'not like', '%غياب%')
-            ->where('title', 'not like', '%تفقد%')
-            ->where('title', 'not like', '%حصة%')
             ->where(function($query) {
                 $query->whereNull('content_url')
                       ->orWhere('content_url', 'not like', '%attendance%');
@@ -313,17 +360,77 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        $grades = DB::table('grades')
-            ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
-            ->join('courses', 'exams.course_id', '=', 'courses.course_id')
-            ->where('grades.student_id', $student->student_id)
-            ->select('grades.*', 'courses.title as course_title', 'exams.exam_name as exam_title', 'exams.max_score')
-            ->orderBy('courses.title')
+        $enrolledCourses = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->where('enrollments.student_id', $student->student_id)
+            ->select('courses.course_id', 'courses.title as course_title')
             ->get();
 
-        $avgGrade = $grades->avg('score') ? round($grades->avg('score'), 1) : 0;
+        $courseGradesData = [];
+        $allPercentages = [];
 
-        return view('student.grades', compact('grades', 'avgGrade'));
+        foreach ($enrolledCourses as $c) {
+            // 1. الواجبات المصححة للمادة
+            $assignments = DB::table('assignment_submissions')
+                ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+                ->where('assignments.course_id', $c->course_id)
+                ->where('assignment_submissions.student_id', $student->student_id)
+                ->whereNotNull('assignment_submissions.grade')
+                ->select(
+                    'assignments.title as name',
+                    'assignment_submissions.grade as score',
+                    'assignments.max_points as max_score',
+                    'assignment_submissions.feedback',
+                    'assignment_submissions.submitted_at as date'
+                )
+                ->get();
+
+            // 2. الامتحانات والمذاكرات للمادة
+            $examsAndQuizzes = DB::table('grades')
+                ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
+                ->where('exams.course_id', $c->course_id)
+                ->where('grades.student_id', $student->student_id)
+                ->select(
+                    'exams.exam_name as name',
+                    'grades.score',
+                    'exams.max_score',
+                    'grades.created_at as date'
+                )
+                ->get();
+
+            $quizzes = $examsAndQuizzes->filter(function($e) {
+                $name = mb_strtolower($e->name);
+                return str_contains($name, 'مذاكرة') || str_contains($name, 'اختبار قصير') || str_contains($name, 'quiz') || str_contains($name, 'test');
+            })->values();
+
+            $exams = $examsAndQuizzes->filter(function($e) {
+                $name = mb_strtolower($e->name);
+                return !(str_contains($name, 'مذاكرة') || str_contains($name, 'اختبار قصير') || str_contains($name, 'quiz') || str_contains($name, 'test'));
+            })->values();
+
+            // حساب النسب المئوية للمعدل الكلي
+            foreach ($assignments as $a) {
+                $max = ($a->max_score ?? 0) > 0 ? $a->max_score : 100;
+                $allPercentages[] = ($a->score / $max) * 100;
+            }
+            foreach ($examsAndQuizzes as $eq) {
+                $max = ($eq->max_score ?? 0) > 0 ? $eq->max_score : 100;
+                $allPercentages[] = ($eq->score / $max) * 100;
+            }
+
+            $courseGradesData[] = [
+                'course_id'    => $c->course_id,
+                'course_title' => $c->course_title,
+                'assignments'  => $assignments,
+                'quizzes'      => $quizzes,
+                'exams'        => $exams,
+                'total_items'  => $assignments->count() + $quizzes->count() + $exams->count(),
+            ];
+        }
+
+        $avgGrade = count($allPercentages) > 0 ? round(array_sum($allPercentages) / count($allPercentages), 1) : 0;
+
+        return view('student.grades', compact('courseGradesData', 'avgGrade'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -426,8 +533,12 @@ class StudentWebController extends Controller
     {
         $request->validate([
             'reason'     => 'required|string|max:500',
-            'date'       => 'required|date',
+            'date'       => 'required|date|after_or_equal:today',
             'document'   => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf',
+        ], [
+            'date.after_or_equal' => 'تاريخ الغياب يجب أن يكون اليوم أو في المستقبل.',
+            'reason.required'    => 'يرجى كتابة سبب الغياب.',
+            'document.max'       => 'حجم المستند المرفق يجب ألا يتجاوز 10 ميجابايت.',
         ]);
 
         $student  = $this->getStudent();
@@ -437,9 +548,20 @@ class StudentWebController extends Controller
             $filePath = $request->file('document')->store('leave_requests', 'public');
         }
 
+        $reasonText = $request->reason;
+        if ($request->type === 'hourly') {
+            if ($request->from_time && $request->to_time) {
+                $reasonText = "[إذن ساعي: من " . $request->from_time . " إلى " . $request->to_time . "] - " . $request->reason;
+            } else {
+                $reasonText = "[إذن ساعي] - " . $request->reason;
+            }
+        } else {
+            $reasonText = "[إذن يومي] - " . $request->reason;
+        }
+
         DB::table('absence_requests')->insert([
             'student_id' => $student->student_id,
-            'reason'     => $request->reason,
+            'reason'     => $reasonText,
             'date'       => $request->date,
             'document'   => $filePath,
             'status'     => 'pending',
@@ -545,7 +667,12 @@ class StudentWebController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password'     => 'required|min:8|confirmed',
+            'new_password'     => 'required|min:6|confirmed',
+        ], [
+            'current_password.required' => 'يرجى إدخال كلمة المرور الحالية.',
+            'new_password.required'     => 'يرجى إدخال كلمة المرور الجديدة.',
+            'new_password.min'          => 'كلمة المرور الجديدة يجب ألا تقل عن 6 خانات.',
+            'new_password.confirmed'    => 'تأكيد كلمة المرور الجديدة غير متطابق.',
         ]);
 
         $user = Auth::user();
@@ -562,10 +689,110 @@ class StudentWebController extends Controller
         return back()->with('success', 'تم تغيير كلمة المرور بنجاح.');
     }
 
+    public function sendOTP(Request $request)
+    {
+        $request->validate([
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
+            'current_password' => 'nullable|string',
+            'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كلمة المرور الحالية غير صحيحة.'
+                ]);
+            }
+        }
+
+        $otp = (string) rand(100000, 999999);
+
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
+        session([
+            'student_profile_otp'          => $otp,
+            'student_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
+        ]);
+    }
+
+    public function verifyOTP(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|numeric'
+        ]);
+
+        if (session('student_profile_otp') == $request->otp) {
+            $user = Auth::user();
+            $data = session('student_pending_profile_data');
+
+            $updates = ['updated_at' => now()];
+
+            if (!empty($data['full_name'])) {
+                $updates['full_name'] = $data['full_name'];
+            }
+            if (!empty($data['email'])) {
+                $updates['email'] = $data['email'];
+            }
+            if (!empty($data['phone'])) {
+                $updates['phone'] = $data['phone'];
+            }
+            if (!empty($data['new_password'])) {
+                $updates['password'] = Hash::make($data['new_password']);
+            }
+
+            DB::table('users')
+                ->where('user_id', $user->user_id)
+                ->update($updates);
+
+            session()->forget(['student_profile_otp', 'student_pending_profile_data']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديث البيانات بنجاح!'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.'
+        ]);
+    }
+
     // ────────────────────────────────────────────────────────────
     //  MESSAGES / CHAT SYSTEM
     // ────────────────────────────────────────────────────────────
     public function messages()
+    {
+        $currentUserId = Auth::id();
+
+        // Student can only start chats with Teachers, HOD, and Affairs. (roles 2, 5, 6)
+        $allUsers = \App\Models\User::where('user_id', '!=', $currentUserId)
+                        ->whereIn('role_id', [2, 5, 6])
+                        ->get();
+
+        return view('student.messages', compact('allUsers'));
+    }
+
+    public function getContacts()
     {
         $currentUserId = Auth::id();
 
@@ -579,10 +806,44 @@ class StudentWebController extends Controller
             ->unique()
             ->values();
 
-        $contacts = \App\Models\User::whereIn('user_id', $conversations)->get();
-        $allUsers = \App\Models\User::where('user_id', '!=', $currentUserId)->get();
+        $contactsRaw = \App\Models\User::whereIn('user_id', $conversations)->get();
 
-        return view('student.messages', compact('contacts', 'allUsers'));
+        $contacts = [];
+        foreach ($contactsRaw as $c) {
+            $unread = \App\Models\Message::where('sender_id', $c->user_id)
+                ->where('receiver_id', $currentUserId)
+                ->where('is_read', false)
+                ->count();
+
+            $lastMsg = \App\Models\Message::where(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
+                })
+                ->orWhere(function ($q) use ($currentUserId, $c) {
+                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+                })
+                ->latest()
+                ->first();
+
+            $contacts[] = [
+                'id' => $c->user_id,
+                'name' => $c->full_name,
+                'role' => $c->role,
+                'image' => $c->profile_picture ? asset('storage/' . $c->profile_picture) : null,
+                'unread' => $unread,
+                'last_message' => $lastMsg ? $lastMsg->message : '',
+                'time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : '',
+                'updated_at' => $lastMsg ? $lastMsg->created_at : now()
+            ];
+        }
+
+        usort($contacts, function($a, $b) {
+            return $b['updated_at'] <=> $a['updated_at'];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $contacts
+        ]);
     }
 
     public function getConversation($userId)
@@ -606,30 +867,111 @@ class StudentWebController extends Controller
         return response()->json($messages);
     }
 
+    public function searchMessages(Request $request, $userId)
+    {
+        $currentUserId = Auth::id();
+        $query = $request->query('q');
+
+        $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where(function ($q) use ($currentUserId, $userId) {
+                $q->where(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+                })
+                ->orWhere(function($q2) use ($currentUserId, $userId) {
+                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                });
+            })
+            ->where('message', 'LIKE', '%' . $query . '%')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['status' => 'success', 'data' => $messages]);
+    }
+
     public function sendMessage(Request $request)
     {
         $request->validate([
-            'receiver_id' => 'required',
-            'message'     => 'nullable|string',
+            'receiver_id' => 'required|exists:users,user_id',
+            'message'     => 'required|string|max:2000',
             'attachment'  => 'nullable|file|max:51200',
         ]);
 
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('chat_attachments', 'public');
-            $attachmentPath = asset('storage/' . $path);
+            $file = $request->file('attachment');
+            $folder = 'chat_attachments';
+            
+            if ($request->message === '[Voice Note]' || strpos($file->getMimeType(), 'audio') !== false) {
+                $folder = 'chat_voice_notes';
+            }
+            
+            $attachmentPath = $file->store($folder, 'public');
+            $attachmentPath = asset('storage/' . $attachmentPath);
         }
 
         $message = \App\Models\Message::create([
-            'sender_id'   => Auth::id(),
+            'sender_id'   => Auth::user()->user_id,
             'receiver_id' => $request->receiver_id,
             'message'     => $request->message,
             'attachment'  => $attachmentPath,
-            'is_read'     => 0,
+            'is_read'     => false,
         ]);
 
-        broadcast(new \App\Events\MessageSent($message))->toOthers();
+        DB::table('notifications')->insert([
+            'user_id' => $request->receiver_id,
+            'title'   => 'رسالة جديدة',
+            'message' => 'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            'type'    => 'message',
+            'is_read' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \App\Services\FcmService::sendToUser(
+            $request->receiver_id,
+            'رسالة جديدة',
+            'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
+            ['type' => 'message']
+        );
 
-        return response()->json(['status' => 'success', 'data' => $message], 201);
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+    }
+
+    public function updateMessage(Request $request, $id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+        
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        if ($message->attachment || $message->message === '[Voice Note]') {
+            return response()->json(['status' => 'error', 'message' => 'لا يمكن تعديل المرفقات'], 400);
+        }
+
+        $request->validate(['message' => 'required|string|max:2000']);
+        $message->update(['message' => $request->message]);
+
+        return response()->json(['status' => 'success', 'message' => $message]);
+    }
+
+    public function deleteMessage($id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+
+        if ($message->sender_id !== Auth::id()) {
+            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+        }
+
+        if ($message->attachment) {
+            $path = str_replace(asset('storage/'), '', $message->attachment);
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+        }
+
+        $message->delete();
+        return response()->json(['status' => 'success']);
     }
 }

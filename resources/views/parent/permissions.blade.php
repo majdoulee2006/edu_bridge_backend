@@ -255,10 +255,12 @@
                             <div class="request-header">
                                 <span class="request-type">
                                     <i class="fa-solid fa-envelope-open-text" style="color: var(--accent-color); margin-left: 0.5rem;"></i>
-                                    إجازة {{ $req->type === 'hourly' ? 'ساعية' : 'يوم كامل' }}
+                                    إجازة {{ (($req->type ?? '') === 'hourly' || str_contains($req->reason ?? '', 'إذن ساعي')) ? 'ساعية' : 'يومية (يوم كامل)' }}
                                 </span>
                                 @php
+                                    $reqId = $req->request_id ?? $req->id;
                                     $statusLabels = [
+                                        'pending' => 'قيد المراجعة',
                                         'pending_parent' => 'بانتظار موافقة ولي الأمر',
                                         'pending_hod' => 'بانتظار موافقة القسم',
                                         'approved' => 'تمت الموافقة',
@@ -279,9 +281,9 @@
                                 <span>تاريخ الطلب: {{ \Carbon\Carbon::parse($req->created_at)->format('Y-m-d H:i') }}</span>
                             </div>
                             
-                            @if($req->status === 'pending_parent')
+                            @if(in_array($req->status, ['pending', 'pending_parent']))
                                 <div class="action-buttons">
-                                    <form action="{{ route('parent.permissions.respond', $req->id) }}" method="POST" style="margin: 0;">
+                                    <form action="{{ route('parent.permissions.respond', $reqId) }}" method="POST" style="margin: 0;">
                                         @csrf
                                         <input type="hidden" name="status" value="approved">
                                         <button type="submit" class="btn-approve">
@@ -289,7 +291,7 @@
                                         </button>
                                     </form>
                                     
-                                    <form action="{{ route('parent.permissions.respond', $req->id) }}" method="POST" style="margin: 0;">
+                                    <form action="{{ route('parent.permissions.respond', $reqId) }}" method="POST" style="margin: 0;">
                                         @csrf
                                         <input type="hidden" name="status" value="rejected">
                                         <button type="submit" class="btn-reject">

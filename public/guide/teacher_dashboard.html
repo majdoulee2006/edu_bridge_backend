@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دليل المعلم - الصفحة الرئيسية</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Cairo',sans-serif}
+body{background:#f5f5f5;color:#1a1a1a;padding:2rem}
+.page{max-width:900px;margin:0 auto 3rem;background:#fff;border-radius:8px;padding:2.5rem;box-shadow:0 2px 15px rgba(0,0,0,.08);position:relative}
+.page-title{font-size:1.6rem;font-weight:900;color:#1a2633;text-align:center;margin-bottom:.3rem}
+.page-sub{text-align:center;color:#888;font-size:.9rem;margin-bottom:2rem}
+.page-badge{display:block;text-align:center;margin-bottom:2rem}
+.page-badge span{background:#f2f20d;color:#1a2633;padding:.3rem 1.5rem;border-radius:20px;font-weight:800;font-size:.8rem}
+
+/* Screenshot area */
+.screen-area{position:relative;margin:1.5rem auto;display:inline-block;width:100%}
+.screen-area iframe{width:100%;height:550px;border:2px solid #e0e0e0;border-radius:12px;pointer-events:none}
+
+/* Annotation labels */
+.ann{position:absolute;z-index:10;max-width:200px}
+.ann .txt{
+  background:#1a2633;color:#fff;padding:.4rem .7rem;border-radius:8px;
+  font-size:.7rem;font-weight:700;line-height:1.6;
+  border:2px solid #f2f20d;box-shadow:0 3px 10px rgba(0,0,0,.2);
+}
+.ann .num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;background:#f2f20d;color:#1a2633;
+  font-size:.6rem;font-weight:900;margin-left:.3rem;
+}
+
+/* SVG arrows */
+.arrows{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5}
+
+/* Section title */
+.section-title{font-size:1.1rem;font-weight:800;color:#1a2633;margin:1.5rem 0 .8rem;padding-right:.8rem;border-right:4px solid #f2f20d}
+
+/* Description list below */
+.desc-list{margin:1rem 0}
+.desc-item{display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.6rem;padding:.5rem;background:#fafafa;border-radius:8px;border:1px solid #eee}
+.desc-item .di-num{width:24px;height:24px;border-radius:50%;background:#f2f20d;color:#1a2633;font-size:.65rem;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.desc-item .di-title{font-weight:800;font-size:.8rem;color:#1a2633}
+.desc-item .di-text{font-size:.75rem;color:#666;line-height:1.7}
+
+.note-box{background:#fffde6;border:1px solid #f2f20d;border-radius:8px;padding:.8rem;margin-top:1.5rem;font-size:.8rem;color:#555}
+.note-box strong{color:#1a2633}
+
+@media print{body{background:#fff;padding:0}.page{box-shadow:none;page-break-after:always}}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="page-title">📘 دليل المستخدم — بوابة المعلم</div>
+  <div class="page-sub">Edu-Bridge Teacher Portal — User Guide</div>
+  <div class="page-badge"><span>الشاشة ١: الصفحة الرئيسية (Dashboard)</span></div>
+
+  <div class="screen-area" id="area1">
+    <iframe src="/teacher/dashboard" id="frame1"></iframe>
+    
+    <svg class="arrows" id="svg1" viewBox="0 0 900 550" preserveAspectRatio="none">
+      <defs>
+        <marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f2f20d"/>
+        </marker>
+      </defs>
+    </svg>
+
+    <!-- RIGHT SIDEBAR annotations -->
+    <div class="ann" style="left:-10px;top:160px"><div class="txt"><span class="num">1</span>الرئيسية — ملخص شامل</div></div>
+    <div class="ann" style="left:-10px;top:195px"><div class="txt"><span class="num">2</span>الجدول الأسبوعي</div></div>
+    <div class="ann" style="left:-10px;top:230px"><div class="txt"><span class="num">3</span>الحضور بـ QR Code</div></div>
+    <div class="ann" style="left:-10px;top:265px"><div class="txt"><span class="num">4</span>الواجبات والتصحيح</div></div>
+    <div class="ann" style="left:-10px;top:300px"><div class="txt"><span class="num">5</span>رفع المحاضرات</div></div>
+    <div class="ann" style="left:-10px;top:335px"><div class="txt"><span class="num">6</span>التقارير</div></div>
+    <div class="ann" style="left:-10px;top:370px"><div class="txt"><span class="num">7</span>الإعلانات</div></div>
+    <div class="ann" style="left:-10px;top:405px"><div class="txt"><span class="num">8</span>الملف الشخصي</div></div>
+
+    <!-- TOP area -->
+    <div class="ann" style="left:80px;top:-5px"><div class="txt"><span class="num">9</span>تبديل اللغة</div></div>
+    <div class="ann" style="left:180px;top:-5px"><div class="txt"><span class="num">10</span>الإعدادات</div></div>
+
+    <!-- Cards -->
+    <div class="ann" style="left:250px;top:80px"><div class="txt"><span class="num">11</span>عدد المواد الدراسية</div></div>
+    <div class="ann" style="left:480px;top:80px"><div class="txt"><span class="num">12</span>الواجبات المعلقة</div></div>
+
+    <!-- News -->
+    <div class="ann" style="left:350px;top:175px"><div class="txt"><span class="num">13</span>آخر الإعلانات والأخبار</div></div>
+  </div>
+
+  <div class="section-title">شرح تفصيلي لكل عنصر</div>
+  <div class="desc-list">
+    <div class="desc-item"><div class="di-num">1</div><div><div class="di-title">الرئيسية (Dashboard)</div><div class="di-text">أول صفحة تظهر بعد تسجيل الدخول. تعرض ملخص سريع لعدد المواد والواجبات المعلقة وآخر الإعلانات.</div></div></div>
+    <div class="desc-item"><div class="di-num">2</div><div><div class="di-title">الجدول</div><div class="di-text">جدول الحصص الأسبوعي مع أوقات المحاضرات والقاعات ومواعيد الامتحانات القادمة.</div></div></div>
+    <div class="desc-item"><div class="di-num">3</div><div><div class="di-title">الحضور والغياب</div><div class="di-text">بدء جلسة حضور عبر QR Code يمسحه الطلاب من التطبيق. إيقاف الجلسة وتصدير تقرير Excel/PDF.</div></div></div>
+    <div class="desc-item"><div class="di-num">4</div><div><div class="di-title">الواجبات والمشاريع</div><div class="di-text">إنشاء واجبات مع إرفاق ملفات ومراجعة تسليمات الطلاب وتصحيحها ووضع العلامات.</div></div></div>
+    <div class="desc-item"><div class="di-num">5</div><div><div class="di-title">المحاضرات</div><div class="di-text">رفع محاضرات وملفات تعليمية (PDF, عروض, فيديو) ليتمكن الطلاب من تحميلها.</div></div></div>
+    <div class="desc-item"><div class="di-num">6</div><div><div class="di-title">التقارير</div><div class="di-text">تقارير حضور الطلاب وأدائهم مع تصفية حسب المادة والفترة وتصدير النتائج.</div></div></div>
+    <div class="desc-item"><div class="di-num">7</div><div><div class="di-title">الإعلانات</div><div class="di-text">إعلانات الإدارة ورئيس القسم والشؤون الطلابية العامة والخاصة بمواد المعلم.</div></div></div>
+    <div class="desc-item"><div class="di-num">8</div><div><div class="di-title">الملف الشخصي</div><div class="di-text">عرض وتعديل بيانات المعلم: الاسم، التخصص، رقم الهاتف، البريد الإلكتروني.</div></div></div>
+    <div class="desc-item"><div class="di-num">9</div><div><div class="di-title">تبديل اللغة</div><div class="di-text">تبديل واجهة النظام بين العربية والإنجليزية.</div></div></div>
+    <div class="desc-item"><div class="di-num">10</div><div><div class="di-title">الإعدادات</div><div class="di-text">إعدادات الحساب وزر تسجيل الخروج.</div></div></div>
+    <div class="desc-item"><div class="di-num">11</div><div><div class="di-title">بطاقة المواد</div><div class="di-text">عدد المواد التي يدرّسها المعلم مع رابط "اضغط للمزيد" لتفاصيل المواد.</div></div></div>
+    <div class="desc-item"><div class="di-num">12</div><div><div class="di-title">بطاقة الواجبات المعلقة</div><div class="di-text">عدد الواجبات بحاجة تصحيح. الضغط عليها ينقلك لصفحة الواجبات.</div></div></div>
+    <div class="desc-item"><div class="di-num">13</div><div><div class="di-title">الأخبار والإعلانات</div><div class="di-text">آخر 5 إعلانات مع نوع الإعلان (عام/إداري) وتاريخ النشر.</div></div></div>
+  </div>
+
+  <div class="note-box">
+    <strong>💡 ملاحظة:</strong> يجب أن تكون مسجّل دخول بحساب المعلم لعرض الداشبورد أعلاه.<br>
+    <strong>بيانات الدخول:</strong> اسم المستخدم: ahmed | كلمة المرور: 12345678
+  </div>
+</div>
+
+<script>
+// Draw curved SVG arrows from labels to approximate element positions
+function drawArrows(){
+  const svg = document.getElementById('svg1');
+  const area = document.getElementById('area1');
+  if(!svg || !area) return;
+  const w = area.offsetWidth, h = area.offsetHeight;
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  
+  // Arrow definitions: [label_id_index, targetX%, targetY%]
+  const arrows = [
+    [1, 88, 31], [2, 88, 36], [3, 88, 41], [4, 88, 46],
+    [5, 88, 51], [6, 88, 56], [7, 88, 61], [8, 88, 66],
+    [9, 22, 12], [10, 20, 12],
+    [11, 55, 20], [12, 40, 20],
+    [13, 55, 35]
+  ];
+  
+  let paths = '';
+  arrows.forEach(([idx, tx, ty]) => {
+    const label = document.querySelector(`#area1 .ann:nth-child(${idx+1})`);
+    if(!label) return;
+    const lr = label.getBoundingClientRect();
+    const ar = area.getBoundingClientRect();
+    const lx = lr.left - ar.left + lr.width;
+    const ly = lr.top - ar.top + lr.height/2;
+    const ex = w * tx/100;
+    const ey = h * ty/100;
+    const cx1 = lx + (ex-lx)*0.6;
+    const cy1 = ly;
+    const cx2 = ex;
+    const cy2 = ly + (ey-ly)*0.4;
+    paths += `<path d="M${lx},${ly} C${cx1},${cy1} ${cx2},${cy2} ${ex},${ey}" fill="none" stroke="#c0392b" stroke-width="2" marker-end="url(#ah)" opacity="0.85"/>`;
+  });
+  svg.innerHTML = svg.innerHTML.split('</defs>')[0] + '</defs>' + paths;
+}
+window.addEventListener('load', ()=>setTimeout(drawArrows,800));
+window.addEventListener('resize', ()=>setTimeout(drawArrows,200));
+</script>
+
+</body>
+</html>

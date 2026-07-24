@@ -70,6 +70,7 @@
             }
             document.documentElement.classList.toggle('dark',  isDark);
             document.documentElement.classList.toggle('light', !isDark);
+            document.documentElement.setAttribute('data-theme', theme);
         })();
 
         // Immediately load custom font size to prevent layout shift
@@ -143,6 +144,12 @@
                 <a href="{{ route('admin.semesters-subjects') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/semesters-subjects*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
                     <i class="fa-solid fa-book-bookmark text-base"></i>
                     الفصول والمواد
+                </a>
+
+                {{-- Lectures --}}
+                <a href="{{ route('admin.lectures') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/lectures*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                    <i class="fa-solid fa-chalkboard-user text-base"></i>
+                    المحاضرات
                 </a>
 
                 {{-- Reports --}}

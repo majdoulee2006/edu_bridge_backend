@@ -70,6 +70,29 @@
 
 @section('content')
 
+@php
+    $pendingCount = 0;
+    foreach($assignments as $item) {
+        $dDate = \Carbon\Carbon::parse($item->due_date);
+        if (!$item->submission_id && !$dDate->isPast()) {
+            $pendingCount++;
+        }
+    }
+@endphp
+
+<div class="filter-tabs" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
+    <button class="filter-btn active" data-filter="all" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">الكل</button>
+    <button class="filter-btn" data-filter="pending" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
+        نشط (بانتظار التسليم)
+        @if($pendingCount > 0)
+            <span style="background: #ef4444; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.45rem; border-radius: 1rem; min-width: 18px; text-align: center; line-height: 1.2;">{{ $pendingCount }}</span>
+        @endif
+    </button>
+    <button class="filter-btn" data-filter="submitted" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">تم التسليم</button>
+    <button class="filter-btn" data-filter="graded" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">تم التصحيح</button>
+    <button class="filter-btn" data-filter="overdue" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">منتهي</button>
+</div>
+
 @forelse($assignments as $a)
 @php
     $dueDate  = \Carbon\Carbon::parse($a->due_date);
@@ -84,7 +107,7 @@
     else $cardClass = '';
 @endphp
 
-<div class="assignment-card {{ $cardClass }}">
+<div class="assignment-card {{ $cardClass }}" data-status="{{ $isGraded ? 'graded' : ($isSubmitted ? 'submitted' : ($isOverdue ? 'overdue' : 'pending')) }}">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
             @if($isGraded)
@@ -99,7 +122,11 @@
             <span style="font-weight: 800; font-size: 1rem;">{{ $a->title }}</span>
         </div>
         @if($isGraded)
-            <span style="font-size: 1.2rem; font-weight: 800; color: #22c55e;">{{ $a->grade }}<span style="font-size: 0.85rem; color: var(--text-secondary);">/{{ $a->max_points }}</span></span>
+            @php
+                $isPassStudent = $a->grade >= (($a->max_points ?? 100) / 2);
+                $studentGradeColor = $isPassStudent ? '#22c55e' : '#ef4444';
+            @endphp
+            <span style="font-size: 1.2rem; font-weight: 800; color: {{ $studentGradeColor }};">{{ $a->grade }}<span style="font-size: 0.85rem; color: var(--text-secondary);">/{{ $a->max_points }}</span></span>
         @endif
     </div>
 
@@ -110,21 +137,25 @@
     <div style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
         <span><i class="fa-solid fa-book"></i> {{ $a->course_title }}</span>
         <span><i class="fa-solid fa-calendar"></i> الموعد: {{ $dueDate->format('Y-m-d') }}</span>
-        <span><i class="fa-solid fa-star"></i> {{ $a->max_points }} نقطة</span>
     </div>
 
     @if($a->file_path ?? false)
-        <a href="{{ asset('storage/' . $a->file_path) }}" target="_blank" download
+        <a href="/storage/{{ $a->file_path }}" target="_blank" download="{{ $a->file_name ?? 'ملف_المعلم' }}"
            style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--accent-color); font-size: 0.82rem; font-weight: 700; text-decoration: none; margin-bottom: 0.75rem;">
             <i class="fa-solid fa-paperclip"></i> ملف المعلم
         </a>
     @endif
 
-    @if($isGraded && $a->feedback)
-        <div style="background: var(--bg-primary); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.85rem; color: var(--text-secondary); border-right: 3px solid #22c55e;">
-            <strong style="color: var(--text-primary);">ملاحظة المعلم:</strong> {{ $a->feedback }}
+    @if($isGraded)
+        <div style="background: var(--bg-primary); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.85rem; color: #22c55e; font-weight: 700; border-right: 3px solid #22c55e; line-height: 1.5;">
+            <i class="fa-solid fa-circle-check"></i> تم تصحيح وتقييم الواجب بنجاح
+            @if($a->feedback)
+                <div style="margin-top: 0.4rem; color: var(--text-secondary); font-weight: normal;">
+                    <strong style="color: var(--text-primary);">ملاحظة المعلم:</strong> {{ $a->feedback }}
+                </div>
+            @endif
         </div>
-    @elseif($isSubmitted)
+    @elseif($a->submission_id)
         <div style="background: var(--bg-primary); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.85rem; color: #3b82f6; font-weight: 700;">
             <i class="fa-solid fa-circle-check"></i>
             تم تسليم الواجب في {{ \Carbon\Carbon::parse($a->submitted_at)->format('Y-m-d H:i') }}
@@ -193,5 +224,38 @@ function updateFileName(input) {
 document.getElementById('submit-modal').addEventListener('click', function(e) {
     if (e.target === this) closeSubmitModal();
 });
+
+// Client-side status filtering
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.background = 'var(--bg-secondary)';
+            b.style.color = 'var(--text-secondary)';
+            b.style.borderColor = 'var(--border-color)';
+        });
+        this.classList.add('active');
+        this.style.background = 'var(--accent-color)';
+        this.style.color = '#1a1a1a';
+        this.style.borderColor = 'var(--accent-color)';
+        
+        const filter = this.getAttribute('data-filter');
+        document.querySelectorAll('.assignment-card').forEach(card => {
+            if (filter === 'all' || card.getAttribute('data-status') === filter) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Set active style for initial load
+const initialActive = document.querySelector('.filter-btn.active');
+if (initialActive) {
+    initialActive.style.background = 'var(--accent-color)';
+    initialActive.style.color = '#1a1a1a';
+    initialActive.style.borderColor = 'var(--accent-color)';
+}
 </script>
 @endpush

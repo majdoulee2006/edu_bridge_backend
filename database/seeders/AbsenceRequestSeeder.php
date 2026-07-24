@@ -10,50 +10,55 @@ class AbsenceRequestSeeder extends Seeder
 {
     public function run()
     {
-        // جلب student_id للطالب التجريبي
-        $student = DB::table('students')->where('student_code', '2026100')->first();
-        if (!$student) {
-            $this->command->error('لم يتم العثور على الطالب 2026100');
+        // حذف القديم لتجنب التكرار
+        DB::table('absence_requests')->truncate();
+
+        // جلب جميع الطلاب
+        $students = DB::table('students')->get();
+
+        if ($students->isEmpty()) {
+            $this->command->error('لا يوجد طلاب في قاعدة البيانات لإنشاء طلبات إجازة لهم.');
             return;
         }
-        $studentId = $student->student_id;
 
-        // حذف القديم لتجنب التكرار
-        DB::table('absence_requests')->where('student_id', $studentId)->delete();
+        // جلب معرف مستخدم إداري أو رئيس قسم أو موظف شؤون للمراجعة
+        $reviewer = DB::table('users')->whereIn('role_id', [1, 5, 6])->first();
+        $reviewerId = $reviewer ? $reviewer->user_id : null;
 
-        DB::table('absence_requests')->insert([
-            [
-                'student_id'  => $studentId,
-                'date'        => Carbon::now()->subDays(1)->toDateString(),
-                'reason'      => 'يعاني الطالب من وعكة صحية مفاجئة ويحتاج للراحة.',
-                'document'    => null,
-                'status'      => 'pending',
-                'reviewed_by' => null,
-                'created_at'  => now(),
-                'updated_at'  => now(),
-            ],
-            [
-                'student_id'  => $studentId,
-                'date'        => Carbon::now()->subDays(5)->toDateString(),
-                'reason'      => 'خروج مبكر لظرف عائلي طارئ.',
-                'document'    => null,
-                'status'      => 'approved',
-                'reviewed_by' => 1,
-                'created_at'  => now()->subDays(5),
-                'updated_at'  => now()->subDays(5),
-            ],
-            [
-                'student_id'  => $studentId,
-                'date'        => Carbon::now()->subDays(10)->toDateString(),
-                'reason'      => 'غياب بسبب ظرف قاهر خارج عن الإرادة.',
-                'document'    => null,
-                'status'      => 'rejected',
-                'reviewed_by' => 1,
-                'created_at'  => now()->subDays(10),
-                'updated_at'  => now()->subDays(10),
-            ],
-        ]);
+        $reasons = [
+            'يعاني الطالب من وعكة صحية مفاجئة ويحتاج للراحة التامة لمدة يومين.',
+            'ظرف عائلي طارئ يستدعي السفر خارج المدينة مع العائلة.',
+            'مراجعة طبيب الأسنان لإجراء عملية جراحية مستعجلة.',
+            'حضور حفل زفاف أحد الإخوة في مدينة أخرى.',
+            'تجديد الأوراق الثبوتية الشخصية وجواز السفر في الدائرة الحكومية.',
+            'المشاركة في مسابقة رياضية رسمية ممثلاً للنادي.',
+            'تأخر المواصلات العامة بسبب الأحوال الجوية السائدة صباح اليوم.'
+        ];
 
-        $this->command->info("✅ تمت إضافة 3 طلبات غياب للطالب رقم $studentId");
+        $statuses = ['pending', 'approved', 'rejected'];
+
+        $count = 0;
+        foreach ($students as $student) {
+            // ننشئ 2 إلى 3 طلبات لكل طالب للتنويع
+            $numRequests = rand(2, 3);
+            for ($i = 0; $i < $numRequests; $i++) {
+                $status = $statuses[array_rand($statuses)];
+                $date = Carbon::now()->subDays(rand(1, 20))->toDateString();
+                
+                DB::table('absence_requests')->insert([
+                    'student_id'  => $student->student_id,
+                    'date'        => $date,
+                    'reason'      => $reasons[array_rand($reasons)],
+                    'document'    => null,
+                    'status'      => $status,
+                    'reviewed_by' => $status !== 'pending' ? $reviewerId : null,
+                    'created_at'  => Carbon::parse($date)->subHours(rand(1, 12)),
+                    'updated_at'  => $status !== 'pending' ? Carbon::parse($date)->addHours(rand(1, 4)) : now(),
+                ]);
+                $count++;
+            }
+        }
+
+        $this->command->info("✅ تمت إضافة $count طلب إجازة بنجاح لجميع الطلاب!");
     }
 }
