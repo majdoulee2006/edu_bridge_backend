@@ -92,7 +92,7 @@
                     
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         @if($session->is_active)
-                            <button class="action-btn btn-qr" onclick="showQRModal('{{ $session->qr_token }}')">
+                            <button class="action-btn btn-qr" onclick="showQRModal('{{ $session->id }}', '{{ $session->qr_token }}', '{{ $session->session_expires_at ?? $session->expires_at }}')">
                                 <i class="fa-solid fa-qrcode"></i> عرض QR
                             </button>
                             
@@ -128,7 +128,7 @@
             <i class="fa-solid fa-filter" style="color: var(--accent-color);"></i>
             فلترة متقدمة وتصدير شامل
         </h3>
-        <form action="{{ route('teacher.attendance.filtered_export') }}" method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end;">
+        <form id="export-form" action="{{ route('teacher.attendance.filtered_export') }}" method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end;">
             
             <div>
                 <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">نطاق التقرير</label>
@@ -160,11 +160,13 @@
                 </select>
             </div>
 
+            <input type="hidden" name="export_type" id="export_type_input" value="excel">
+
             <div style="display: flex; gap: 10px;">
-                <button type="submit" name="export_type" value="excel" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                <button type="submit" onclick="document.getElementById('export_type_input').value='excel'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
                     <i class="fa-solid fa-file-excel"></i> إكسيل
                 </button>
-                <button type="submit" name="export_type" value="pdf" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                <button type="submit" onclick="document.getElementById('export_type_input').value='pdf'; document.getElementById('export-form').target='_blank';" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
                     <i class="fa-solid fa-file-pdf"></i> PDF
                 </button>
             </div>
@@ -173,18 +175,55 @@
 
     <!-- QR Code Modal -->
     <div id="qr-modal" class="modal-overlay">
-        <div class="modal-card" style="text-align: center;">
-            <button class="close-btn" onclick="closeModal('qr-modal')"><i class="fa-solid fa-xmark"></i></button>
-            <h3 style="font-weight: 800; margin-bottom: 1.5rem; font-size: 1.2rem;">مسح رمز الحضور</h3>
+        <div class="modal-card" style="text-align: center; max-width: 480px;">
+            <button class="close-btn" onclick="closeQrModal()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="font-weight: 800; margin-bottom: 0.75rem; font-size: 1.2rem;">
+                <i class="fa-solid fa-qrcode" style="color: var(--accent-color);"></i>
+                مسح رمز الحضور
+            </h3>
             
-            <div style="background: #fff; padding: 1rem; border-radius: 1rem; display: inline-block; margin-bottom: 1rem; border: 1px solid var(--border-color);">
-                <div id="qrcode"></div>
+            {{-- Session timer --}}
+            <div id="qr-session-timer" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.6rem 1.2rem; border-radius: 0.75rem; background: hsl(120,70%,95%); border: 1px solid hsl(120,50%,80%); font-weight: 700; font-size: 0.85rem; color: hsl(120,50%,30%);">
+                <i class="fa-solid fa-clock"></i>
+                <span>مدة الجلسة المتبقية: </span>
+                <span id="qr-session-countdown" style="font-family: monospace; font-size: 1rem;">10:00</span>
             </div>
             
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+            <div style="background: #fff; padding: 1.25rem; border-radius: 1rem; display: inline-block; margin-bottom: 0.75rem; border: 1px solid var(--border-color); position: relative;">
+                <div id="qrcode"></div>
+                {{-- Refresh overlay --}}
+                <div id="qr-refresh-overlay" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.85); border-radius: 1rem; display: none; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent-color);"></i>
+                </div>
+            </div>
+
+            {{-- QR Token refresh countdown --}}
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+                    <i class="fa-solid fa-rotate" style="color: var(--accent-color); font-size: 0.85rem;"></i>
+                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">يتجدد الرمز تلقائياً كل 30 ثانية</span>
+                </div>
+                <div style="width: 100%; height: 5px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; border: 1px solid var(--border-color);">
+                    <div id="qr-token-progress" style="width: 100%; height: 100%; background: var(--accent-color); transition: width 1s linear; border-radius: 3px;"></div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem; font-weight: 600;">
+                    تجديد بعد <span id="qr-token-countdown" style="color: var(--accent-color); font-family: monospace;">30</span> ثانية
+                </div>
+            </div>
+            
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">
                 اطلب من الطلاب مسح هذا الرمز باستخدام تطبيق الهاتف لتسجيل حضورهم.
-                <br><strong>الرمز صالح لمدة 10 دقائق فقط.</strong>
             </p>
+
+            {{-- Session ended overlay --}}
+            <div id="qr-session-ended" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.7); border-radius: 1.5rem; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; z-index: 10;">
+                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 2rem 2.5rem; text-align: center;">
+                    <i class="fa-solid fa-clock" style="font-size: 2.5rem; color: #ef4444; margin-bottom: 0.75rem; display: block;"></i>
+                    <h4 style="font-weight: 800; font-size: 1.1rem; margin: 0 0 0.5rem 0; color: var(--text-primary);">انتهت مدة الجلسة</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 1rem 0;">انتهت مدة الـ 10 دقائق للجلسة.</p>
+                    <button onclick="closeQrModal()" style="padding: 0.6rem 2rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit;">إغلاق</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -258,22 +297,138 @@
         });
     });
 
-    function showQRModal(token) {
+    /* ===== QR Auto-Refresh System (like Flutter app) ===== */
+    let currentSessionId = null;
+    let currentToken = null;
+    let tokenRefreshInterval = null;
+    let tokenCountdownInterval = null;
+    let sessionCountdownInterval = null;
+    let sessionEndTime = null;
+    let tokenSecondsLeft = 30;
+
+    function showQRModal(sessionId, token, sessionExpiresAt) {
+        currentSessionId = sessionId;
+        currentToken = token;
+        sessionEndTime = new Date(sessionExpiresAt);
+
+        // Render QR
+        renderQR(token);
+
+        // Reset UI
+        document.getElementById('qr-session-ended').style.display = 'none';
+        document.getElementById('qr-refresh-overlay').style.display = 'none';
+        document.getElementById('qr-session-timer').style.background = 'hsl(120,70%,95%)';
+        document.getElementById('qr-session-timer').style.borderColor = 'hsl(120,50%,80%)';
+        document.getElementById('qr-session-timer').style.color = 'hsl(120,50%,30%)';
+
+        openModal('qr-modal');
+
+        // Start token countdown (30s)
+        tokenSecondsLeft = 30;
+        updateTokenCountdownUI();
+        startTokenCountdown();
+
+        // Start token auto-refresh (every 30s)
+        clearInterval(tokenRefreshInterval);
+        tokenRefreshInterval = setInterval(() => refreshQrToken(), 30000);
+
+        // Start session countdown
+        startSessionCountdown();
+    }
+
+    function renderQR(token) {
         const qrContainer = document.getElementById('qrcode');
-        qrContainer.innerHTML = ''; // Clear previous
-        
+        qrContainer.innerHTML = '';
         const data = 'edu-bridge://attendance?token=' + token;
-        
         qrcodeInstance = new QRCode(qrContainer, {
             text: data,
             width: 250,
             height: 250,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
         });
-        
-        openModal('qr-modal');
+    }
+
+    function startTokenCountdown() {
+        clearInterval(tokenCountdownInterval);
+        tokenSecondsLeft = 30;
+        updateTokenCountdownUI();
+        tokenCountdownInterval = setInterval(() => {
+            tokenSecondsLeft--;
+            if (tokenSecondsLeft < 0) tokenSecondsLeft = 0;
+            updateTokenCountdownUI();
+        }, 1000);
+    }
+
+    function updateTokenCountdownUI() {
+        const el = document.getElementById('qr-token-countdown');
+        const bar = document.getElementById('qr-token-progress');
+        if (el) el.textContent = tokenSecondsLeft;
+        if (bar) bar.style.width = ((tokenSecondsLeft / 30) * 100) + '%';
+    }
+
+    function startSessionCountdown() {
+        clearInterval(sessionCountdownInterval);
+        sessionCountdownInterval = setInterval(() => {
+            const now = new Date();
+            const diff = Math.max(0, Math.floor((sessionEndTime - now) / 1000));
+            const mins = Math.floor(diff / 60);
+            const secs = diff % 60;
+            const el = document.getElementById('qr-session-countdown');
+            if (el) el.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+            // Change color when < 2 minutes
+            const timerBox = document.getElementById('qr-session-timer');
+            if (diff <= 120 && diff > 0) {
+                timerBox.style.background = 'hsl(30,80%,95%)';
+                timerBox.style.borderColor = 'hsl(30,60%,70%)';
+                timerBox.style.color = 'hsl(30,60%,30%)';
+            }
+
+            if (diff <= 0) {
+                clearInterval(sessionCountdownInterval);
+                clearInterval(tokenRefreshInterval);
+                clearInterval(tokenCountdownInterval);
+                document.getElementById('qr-session-ended').style.display = 'flex';
+            }
+        }, 1000);
+    }
+
+    function refreshQrToken() {
+        if (!currentSessionId) return;
+
+        // Show refresh overlay briefly
+        const overlay = document.getElementById('qr-refresh-overlay');
+        overlay.style.display = 'flex';
+
+        fetch('{{ url("teacher/attendance/refresh") }}/' + currentSessionId)
+            .then(res => res.json())
+            .then(data => {
+                overlay.style.display = 'none';
+                if (data.success) {
+                    currentToken = data.qr_token;
+                    renderQR(data.qr_token);
+                    startTokenCountdown();
+                } else if (data.session_ended) {
+                    clearInterval(tokenRefreshInterval);
+                    clearInterval(tokenCountdownInterval);
+                    clearInterval(sessionCountdownInterval);
+                    document.getElementById('qr-session-ended').style.display = 'flex';
+                }
+            })
+            .catch(() => {
+                overlay.style.display = 'none';
+            });
+    }
+
+    function closeQrModal() {
+        closeModal('qr-modal');
+        clearInterval(tokenRefreshInterval);
+        clearInterval(tokenCountdownInterval);
+        clearInterval(sessionCountdownInterval);
+        currentSessionId = null;
+        currentToken = null;
     }
 
     function showAbsenteesModal(sessionId) {

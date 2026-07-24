@@ -31,6 +31,7 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::get('/attendance', [TeacherWebController::class, 'attendance'])->name('teacher.attendance');
     Route::post('/attendance', [TeacherWebController::class, 'storeAttendanceSession'])->name('teacher.attendance.store');
     Route::post('/attendance/end/{id}', [TeacherWebController::class, 'endSession'])->name('teacher.attendance.end');
+    Route::get('/attendance/refresh/{id}', [TeacherWebController::class, 'refreshSessionQr'])->name('teacher.attendance.refresh');
     Route::get('/attendance/export/{id}', [TeacherWebController::class, 'exportAttendance'])->name('teacher.attendance.export');
     Route::get('/attendance/filtered-export', [TeacherWebController::class, 'exportFilteredAttendance'])->name('teacher.attendance.filtered_export');
     Route::get('/attendance/absentees/{id}', [TeacherWebController::class, 'getAbsentees'])->name('teacher.attendance.absentees');
@@ -57,8 +58,12 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
 
     // الرسائل
     Route::get('/messages', [TeacherWebController::class, 'messages'])->name('teacher.messages');
+    Route::get('/messages/contacts', [TeacherWebController::class, 'getContacts'])->name('teacher.messages.contacts');
     Route::post('/messages', [TeacherWebController::class, 'sendMessage'])->name('teacher.messages.send');
     Route::get('/messages/conversation/{userId}', [TeacherWebController::class, 'getConversation'])->name('teacher.messages.conversation');
+    Route::get('/messages/conversation/{userId}/search', [TeacherWebController::class, 'searchMessages'])->name('teacher.messages.search');
+    Route::put('/messages/{id}/edit', [TeacherWebController::class, 'updateMessage'])->name('teacher.messages.update');
+    Route::delete('/messages/{id}', [TeacherWebController::class, 'deleteMessage'])->name('teacher.messages.delete');
 
     // الإعلانات
     Route::get('/announcements/create', [TeacherWebController::class, 'createAnnouncement'])->name('teacher.announcements.create');
@@ -133,8 +138,12 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::post('/organization/exam', [HODWebController::class, 'storeExam'])->name('hod.organization.store_exam');
     Route::post('/organization/exam/delete/{id}', [HODWebController::class, 'deleteExam'])->name('hod.organization.delete_exam');
     Route::get('/messages', [HODWebController::class, 'messages'])->name('hod.messages');
-    Route::post('/messages', [HODWebController::class, 'storeMessage'])->name('hod.messages.store');
-    Route::post('/messages/delete/{id}', [HODWebController::class, 'deleteMessage'])->name('hod.messages.delete');
+    Route::get('/messages/contacts', [HODWebController::class, 'getContacts'])->name('hod.messages.contacts');
+    Route::get('/messages/conversation/{userId}', [HODWebController::class, 'getConversation'])->name('hod.messages.conversation');
+    Route::get('/messages/conversation/{userId}/search', [HODWebController::class, 'searchMessages'])->name('hod.messages.search');
+    Route::post('/messages', [HODWebController::class, 'sendMessage'])->name('hod.messages.send');
+    Route::put('/messages/{id}/edit', [HODWebController::class, 'updateMessage'])->name('hod.messages.update');
+    Route::delete('/messages/{id}', [HODWebController::class, 'deleteMessage'])->name('hod.messages.delete');
     Route::get('/reports', [HODWebController::class, 'reports'])->name('hod.reports');
     Route::get('/reports/create', [HODWebController::class, 'createReport'])->name('hod.reports.create');
     Route::post('/reports', [HODWebController::class, 'storeReport'])->name('hod.reports.store');
@@ -195,8 +204,12 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
 
     // الرسائل
     Route::get('/messages', [AffairsWebController::class, 'messages'])->name('affairs.messages');
-    Route::post('/messages', [AffairsWebController::class, 'sendMessage'])->name('affairs.messages.send');
+    Route::get('/messages/contacts', [AffairsWebController::class, 'getContacts'])->name('affairs.messages.contacts');
     Route::get('/messages/conversation/{userId}', [AffairsWebController::class, 'getConversation'])->name('affairs.messages.conversation');
+    Route::get('/messages/conversation/{userId}/search', [AffairsWebController::class, 'searchMessages'])->name('affairs.messages.search');
+    Route::post('/messages', [AffairsWebController::class, 'sendMessage'])->name('affairs.messages.send');
+    Route::put('/messages/{id}/edit', [AffairsWebController::class, 'updateMessage'])->name('affairs.messages.update');
+    Route::delete('/messages/{id}', [AffairsWebController::class, 'deleteMessage'])->name('affairs.messages.delete');
 
     // الإشعارات
     Route::get('/notifications', [AffairsWebController::class, 'notifications'])->name('affairs.notifications');
@@ -247,7 +260,12 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/profile/verify-otp', [AdminWebController::class, 'verifyOTP'])->name('admin.profile.verify_otp');
     Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
     Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
+    Route::get('/messages/contacts', [AdminWebController::class, 'getContacts'])->name('admin.messages.contacts');
+    Route::get('/messages/conversation/{userId}', [AdminWebController::class, 'getConversation'])->name('admin.messages.conversation');
+    Route::get('/messages/conversation/{userId}/search', [AdminWebController::class, 'searchMessages'])->name('admin.messages.search');
     Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
+    Route::put('/messages/{id}/edit', [AdminWebController::class, 'updateMessage'])->name('admin.messages.update');
+    Route::delete('/messages/{id}', [AdminWebController::class, 'deleteMessage'])->name('admin.messages.delete');
     
     // الخدمات الطلابية للإدارة
     Route::get('/student-services', [AdminWebController::class, 'studentServices'])->name('admin.student_services');
@@ -357,8 +375,12 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 
     // الرسائل
     Route::get('/messages', [StudentWebController::class, 'messages'])->name('student.messages');
-    Route::post('/messages', [StudentWebController::class, 'sendMessage'])->name('student.messages.send');
+    Route::get('/messages/contacts', [StudentWebController::class, 'getContacts'])->name('student.messages.contacts');
     Route::get('/messages/conversation/{userId}', [StudentWebController::class, 'getConversation'])->name('student.messages.conversation');
+    Route::get('/messages/conversation/{userId}/search', [StudentWebController::class, 'searchMessages'])->name('student.messages.search');
+    Route::post('/messages', [StudentWebController::class, 'sendMessage'])->name('student.messages.send');
+    Route::put('/messages/{id}/edit', [StudentWebController::class, 'updateMessage'])->name('student.messages.update');
+    Route::delete('/messages/{id}', [StudentWebController::class, 'deleteMessage'])->name('student.messages.delete');
 });
 
 // ==========================================

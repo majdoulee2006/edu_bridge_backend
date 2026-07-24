@@ -137,7 +137,7 @@
                     </div>
                     <div>
                         <label class="form-label">التاريخ *</label>
-                        <input type="date" name="date" class="form-input" required>
+                        <input type="date" name="date" class="form-input" min="{{ date('Y-m-d') }}" required>
                     </div>
                 </div>
 

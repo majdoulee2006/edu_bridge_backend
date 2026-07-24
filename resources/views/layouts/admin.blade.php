@@ -70,6 +70,7 @@
             }
             document.documentElement.classList.toggle('dark',  isDark);
             document.documentElement.classList.toggle('light', !isDark);
+            document.documentElement.setAttribute('data-theme', theme);
         })();
 
         // Immediately load custom font size to prevent layout shift

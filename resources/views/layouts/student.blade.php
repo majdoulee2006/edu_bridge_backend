@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -61,6 +61,10 @@
                 <a href="{{ url('/student/leave-requests') }}" class="nav-item {{ Request::is('student/leave-requests') ? 'active' : '' }}">
                     <i class="fa-solid fa-envelope-open-text"></i>
                     طلبات الإذن
+                </a>
+                <a href="{{ url('/student/messages') }}" class="nav-item {{ Request::is('student/messages*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-comments"></i>
+                    الرسائل
                 </a>
                 <a href="{{ url('/student/profile') }}" class="nav-item {{ Request::is('student/profile') ? 'active' : '' }}">
                     <i class="fa-solid fa-user"></i>
