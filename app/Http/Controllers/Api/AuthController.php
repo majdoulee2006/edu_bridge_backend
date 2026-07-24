@@ -605,7 +605,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $otp = app()->environment('local') ? '123456' : str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         OtpCode::where('email', $request->email)->delete();
         OtpCode::create([
@@ -613,6 +613,9 @@ class AuthController extends Controller
             'code'       => $otp,
             'expires_at' => now()->addMinutes(15),
         ]);
+
+        $telegram = new TelegramService();
+        $telegram->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
 
         try {
             Mail::to($request->email)->send(new OtpMail($otp, $user->full_name));
@@ -622,7 +625,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال رمز التحقق إلى البريد الجديد',
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى بوت تيليغرام والبريد الإلكتروني الجديد',
         ], 200);
     }
 
@@ -802,11 +805,11 @@ class AuthController extends Controller
         $user = $request->user();
 
         $validator = Validator::make($request->all(), [
-            'telegram_chat_id' => 'required|string',
+            'telegram_chat_id' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'يرجى إدخال Chat ID الخاص بتيليغرام'], 422);
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
         }
 
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -819,19 +822,13 @@ class AuthController extends Controller
         ]);
 
         $telegram = new TelegramService();
-        $chatId   = $telegram->findChatIdByUsername($request->telegram_chat_id);
+        $res = $telegram->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
 
-        if (!$chatId) {
-            return response()->json(['success' => false, 'message' => 'لم يتم العثور على حساب تيليغرام بهذا الـ Chat ID'], 404);
+        if (!$res['success']) {
+            return response()->json(['success' => false, 'message' => $res['message']], 400);
         }
 
-        $sent = $telegram->sendOtp($chatId, $otp, $user->full_name);
-
-        if (!$sent) {
-            return response()->json(['success' => false, 'message' => 'فشل إرسال الرمز عبر تيليغرام'], 500);
-        }
-
-        return response()->json(['success' => true, 'message' => 'تم إرسال رمز التحقق عبر تيليغرام'], 200);
+        return response()->json(['success' => true, 'message' => 'تم إرسال رمز التحقق (OTP) عبر بوت تيليغرام بنجاح'], 200);
     }
 
     // ──────────────────────────────────────────────

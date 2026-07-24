@@ -48,6 +48,10 @@ class StudentWebController extends Controller
                 Auth::logout();
                 return back()->withErrors(['login' => 'هذا الحساب ليس حساب طالب.']);
             }
+            if (Auth::user()->status !== 'active') {
+                Auth::logout();
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+            }
             $request->session()->regenerate();
             return redirect('/student/dashboard');
         }
@@ -683,6 +687,94 @@ class StudentWebController extends Controller
         ]);
 
         return back()->with('success', 'تم تغيير كلمة المرور بنجاح.');
+    }
+
+    public function sendOTP(Request $request)
+    {
+        $request->validate([
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
+            'current_password' => 'nullable|string',
+            'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'كلمة المرور الحالية غير صحيحة.'
+                ]);
+            }
+        }
+
+        $otp = (string) rand(100000, 999999);
+
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
+        session([
+            'student_profile_otp'          => $otp,
+            'student_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
+        ]);
+    }
+
+    public function verifyOTP(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|numeric'
+        ]);
+
+        if (session('student_profile_otp') == $request->otp) {
+            $user = Auth::user();
+            $data = session('student_pending_profile_data');
+
+            $updates = ['updated_at' => now()];
+
+            if (!empty($data['full_name'])) {
+                $updates['full_name'] = $data['full_name'];
+            }
+            if (!empty($data['email'])) {
+                $updates['email'] = $data['email'];
+            }
+            if (!empty($data['phone'])) {
+                $updates['phone'] = $data['phone'];
+            }
+            if (!empty($data['new_password'])) {
+                $updates['password'] = Hash::make($data['new_password']);
+            }
+
+            DB::table('users')
+                ->where('user_id', $user->user_id)
+                ->update($updates);
+
+            session()->forget(['student_profile_otp', 'student_pending_profile_data']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديث البيانات بنجاح!'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.'
+        ]);
     }
 
     // ────────────────────────────────────────────────────────────

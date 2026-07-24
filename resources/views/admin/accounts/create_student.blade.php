@@ -19,16 +19,29 @@
     <form class="space-y-5 pb-10" action="{{ route('admin.accounts.store.student') }}" method="POST">
         @csrf
         
-        <!-- Full Name -->
-        <div class="space-y-1.5">
-            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الاسم الكامل</label>
-            <div class="relative group">
-                <input required name="full_name" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm" placeholder="مثال: أحمد محمد علي" type="text" value="{{ old('full_name') }}"/>
-                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">person</span>
+        <!-- الاسم الأول والاسم الثاني (النسبة / الكنية) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الاسم الأول</label>
+                <div class="relative group">
+                    <input required name="first_name" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm" placeholder="مثال: أحمد" type="text" value="{{ old('first_name') }}"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">person</span>
+                </div>
+                @error('first_name')
+                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
+                @enderror
             </div>
-            @error('full_name')
-                <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
-            @enderror
+
+            <div class="space-y-1.5">
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الاسم الثاني / الكنية</label>
+                <div class="relative group">
+                    <input required name="last_name" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm" placeholder="مثال: علي" type="text" value="{{ old('last_name') }}"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">person_outline</span>
+                </div>
+                @error('last_name')
+                    <span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>
+                @enderror
+            </div>
         </div>
 
         <!-- Phone & University ID -->
@@ -109,9 +122,9 @@
             </div>
         </div>
 
-        <!-- الدورة (البرنامج) -->
+        <!-- الدورة -->
         <div class="space-y-1.5">
-            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الدورة / التخصص</label>
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الدورة</label>
             <div class="relative group">
                 <select required name="program_id" id="prog-sel"
                         class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">

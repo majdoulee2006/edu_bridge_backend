@@ -35,7 +35,7 @@
 
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.5rem;">
             {{-- نوع الإجازة --}}
-            <span class="leave-badge">{{ $leave->type == 'full_day' ? 'يوم كامل' : 'ساعية' }}</span>
+            <span class="leave-badge">{{ $leave->type == 'full_day' ? 'يوم كامل' : ($leave->type == 'justification' ? 'تبرير غياب' : 'ساعية') }}</span>
             {{-- حالة الإجازة --}}
             <span style="padding:0.2rem 0.75rem;border-radius:1rem;font-size:0.82rem;font-weight:700;background:{{ $statusColor['bg'] }};color:{{ $statusColor['color'] }};">
                 {{ $statusLabel }}
@@ -60,6 +60,14 @@
         <div style="margin-top:0.75rem;background:var(--bg-primary);padding:0.75rem 1rem;border-radius:0.75rem;font-size:0.9rem;border-right:3px solid var(--border-color);">
             <strong style="color:var(--text-secondary);font-size:0.82rem;display:block;margin-bottom:0.25rem;">السبب:</strong>
             {{ $leave->reason }}
+        </div>
+        @endif
+
+        @if(isset($leave->attachment) && $leave->attachment)
+        <div style="margin-top:0.75rem;">
+            <a href="{{ asset('storage/' . $leave->attachment) }}" target="_blank" style="display:inline-flex;align-items:center;gap:0.4rem;background:#eff6ff;color:#2563eb;padding:0.4rem 0.8rem;border-radius:1rem;font-size:0.85rem;font-weight:700;text-decoration:none;">
+                <i class="fa-solid fa-paperclip"></i> عرض المرفق
+            </a>
         </div>
         @endif
     </div>

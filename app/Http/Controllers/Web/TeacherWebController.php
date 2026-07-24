@@ -60,7 +60,14 @@ class TeacherWebController extends Controller
                     return back()->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
                 }
             }
+<<<<<<< HEAD
             
+=======
+            if (Auth::user()->status !== 'active') {
+                Auth::logout();
+                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+            }
+>>>>>>> 887383bb5c20505a80e633dd963c7f6ccdeeb7dc
             $request->session()->regenerate();
             return redirect('/teacher/dashboard');
         }
@@ -1267,15 +1274,18 @@ class TeacherWebController extends Controller
     public function sendOTP(Request $request)
     {
         $request->validate([
-            'full_name' => 'nullable|string|max:255',
-            'phone'     => 'nullable|string|max:20',
+            'full_name'        => 'nullable|string|max:255',
+            'phone'            => 'nullable|string|max:20',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'current_password' => 'nullable|string',
             'new_password'     => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
         ]);
 
+        $user = Auth::user();
+
         // If changing password, verify current password first
-        if ($request->has('current_password') && $request->current_password) {
-            $user = Auth::user();
+        if ($request->filled('current_password')) {
             if (!Hash::check($request->current_password, $user->password)) {
                 return response()->json([
                     'success' => false,
@@ -1284,17 +1294,26 @@ class TeacherWebController extends Controller
             }
         }
 
-        $otp = rand(1000, 9999);
+        $otp = (string) rand(100000, 999999);
         
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
         session([
             'teacher_profile_otp' => $otp,
-            'teacher_pending_profile_data' => $request->only(['full_name', 'phone', 'new_password'])
+            'teacher_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
         ]);
 
         return response()->json([
             'success' => true,
-            'otp' => $otp,
-            'message' => 'تم إرسال رمز التحقق بنجاح!'
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
         ]);
     }
 
@@ -1316,6 +1335,10 @@ class TeacherWebController extends Controller
 
             if (isset($data['phone'])) {
                 $updates['phone'] = $data['phone'];
+            }
+
+            if (isset($data['email']) && $data['email']) {
+                $updates['email'] = $data['email'];
             }
 
             if (isset($data['new_password']) && $data['new_password']) {
@@ -1693,7 +1716,34 @@ class TeacherWebController extends Controller
         }
         */
 
-        // إشعار رئيس القسم الخاص بالطالب
+        // إشعار صاحب الطلب (موظف الشؤون أو غيره) إذا كان موجوداً
+        $notifiedUsers = [];
+        if ($reportRequest->head_id) {
+            $requesterId = $reportRequest->head_id;
+            $notifiedUsers[] = $requesterId;
+            
+            DB::table('notifications')->insert([
+                'user_id'    => $requesterId,
+                'sender_id'  => auth()->id(),
+                'title'      => 'تقرير جاهز',
+                'message'    => 'تم رفع التقرير الخاص بالطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
+                'type'       => 'report',
+                'related_id' => $id,
+                'category'   => 'academic',
+                'is_read'    => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser(
+                $requesterId,
+                'تقرير جاهز',
+                'تم رفع التقرير الخاص بالطالب ' . $studentName . ' بواسطة ' . auth()->user()->full_name,
+                ['type' => 'report', 'related_id' => (string)$id]
+            );
+        }
+
+        // إشعار رئيس القسم الخاص بالطالب (في حال لم يكن هو صاحب الطلب)
         $studentData = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->where('students.student_id', $studentId)
@@ -1706,7 +1756,7 @@ class TeacherWebController extends Controller
                 ->where('department', $studentData->department)
                 ->value('user_id');
 
-            if ($headId) {
+            if ($headId && !in_array($headId, $notifiedUsers)) {
                 DB::table('notifications')->insert([
                     'user_id'    => $headId,
                     'sender_id'  => auth()->id(),
@@ -1789,6 +1839,89 @@ class TeacherWebController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'تمت إضافة التقييم بنجاح!');
+    }
+
+    public function gradeEventStudents($id)
+    {
+        $teacher = $this->getTeacher();
+        
+        $event = DB::table('grade_events')
+            ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
+            ->where('grade_events.id', $id)
+            ->where('grade_events.teacher_id', $teacher->teacher_id)
+            ->select('grade_events.*', 'courses.title as course_title')
+            ->first();
+
+        if (!$event) {
+            return back()->with('error', 'التقييم غير موجود أو لا تملك صلاحية الوصول إليه.');
+        }
+
+        // Get all students enrolled in this course
+        $enrolledStudentIds = DB::table('enrollments')
+            ->where('course_id', $event->course_id)
+            ->where('status', 'active')
+            ->pluck('student_id');
+
+        // Get students with their current grade entry if exists
+        $students = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('grade_entries', function ($join) use ($id) {
+                $join->on('students.student_id', '=', 'grade_entries.student_id')
+                     ->where('grade_entries.grade_event_id', '=', $id);
+            })
+            ->whereIn('students.student_id', $enrolledStudentIds)
+            ->select('students.student_id', 'users.full_name', 'students.student_code', 'grade_entries.score', 'grade_entries.notes', 'grade_entries.id as entry_id')
+            ->orderBy('users.full_name')
+            ->get();
+
+        return view('teacher.grade_event_students', compact('event', 'students'));
+    }
+
+    public function saveGradeEntries(Request $request, $id)
+    {
+        $teacher = $this->getTeacher();
+        
+        $event = DB::table('grade_events')
+            ->where('id', $id)
+            ->where('teacher_id', $teacher->teacher_id)
+            ->first();
+
+        if (!$event) {
+            return back()->with('error', 'التقييم غير موجود.');
+        }
+
+        $scores = $request->input('scores', []);
+        $notes = $request->input('notes', []);
+
+        foreach ($scores as $studentId => $score) {
+            if ($score === null || $score === '') continue; // Skip empty inputs
+
+            $existing = DB::table('grade_entries')
+                ->where('grade_event_id', $id)
+                ->where('student_id', $studentId)
+                ->first();
+
+            $note = $notes[$studentId] ?? null;
+
+            if ($existing) {
+                DB::table('grade_entries')->where('id', $existing->id)->update([
+                    'score' => $score,
+                    'notes' => $note,
+                    'updated_at' => now(),
+                ]);
+            } else {
+                DB::table('grade_entries')->insert([
+                    'grade_event_id' => $id,
+                    'student_id' => $studentId,
+                    'score' => $score,
+                    'notes' => $note,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        return redirect()->route('teacher.grade_events')->with('success', 'تم حفظ الدرجات بنجاح!');
     }
 
     public function deleteGradeEvent($id)

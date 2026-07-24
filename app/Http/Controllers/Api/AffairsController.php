@@ -502,18 +502,25 @@ class AffairsController extends Controller
     // ── Leaves / Vacations ─────────────────────────────────────────
     public function listLeaves()
     {
-        $leaves = AbsenceRequest::with('student.user')
-            ->latest()
+        $leaves = DB::table('leave_requests')
+            ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
+            ->select(
+                'leave_requests.id',
+                'users.university_id as student_id',
+                'users.full_name as student_name',
+                'leave_requests.reason',
+                'leave_requests.date',
+                'leave_requests.status',
+                'leave_requests.created_at'
+            )
+            ->orderByDesc('leave_requests.created_at')
             ->get()
-            ->map(fn($l) => [
-                'id' => $l->request_id,
-                'student_id' => $l->student_id,
-                'student_name' => $l->student?->user?->full_name ?? 'غير معروف',
-                'reason' => $l->reason,
-                'date' => $l->date ? $l->date->format('Y-m-d') : null,
-                'status' => $l->status,
-                'created_at' => $l->created_at?->format('Y-m-d H:i'),
-            ]);
+            ->map(function ($l) {
+                // Ensure date and created_at are properly formatted for Flutter
+                $l->date = $l->date ? date('Y-m-d', strtotime($l->date)) : null;
+                $l->created_at = $l->created_at ? date('Y-m-d H:i', strtotime($l->created_at)) : null;
+                return $l;
+            });
 
         return response()->json(['success' => true, 'data' => $leaves]);
     }
@@ -525,12 +532,82 @@ class AffairsController extends Controller
         ]);
         if ($v->fails()) return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
 
-        $leave = AbsenceRequest::find($id);
+        $leave = DB::table('leave_requests')->where('id', $id)->first();
         if (!$leave) return response()->json(['success' => false, 'message' => 'الطلب غير موجود.'], 404);
 
-        $leave->status      = $request->status;
-        $leave->reviewed_by = $request->user()->user_id;
-        $leave->save();
+        $status = $request->status;
+
+        DB::table('leave_requests')
+            ->where('id', $id)
+            ->update([
+                'status' => $status,
+                'updated_at' => now()
+            ]);
+
+        // إرسال إشعار للطالب
+        if ($leave->student_id) {
+            $title   = $status === 'approved' ? 'قبول المبرر' : 'رفض المبرر';
+            $message = $status === 'approved'
+                ? 'تم قبول المبرر الخاص بك (تاريخ ' . $leave->date . ') وتم تثبيته من قبل شؤون الطلاب.'
+                : 'نعتذر، تم رفض المبرر الخاص بك (تاريخ ' . $leave->date . ') من قبل شؤون الطلاب.';
+
+            DB::table('notifications')->insert([
+                'user_id'    => $leave->student_id,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'leave_request',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser(
+                $leave->student_id,
+                $title,
+                $message,
+                ['type' => 'leave_request', 'related_id' => (string) $id]
+            );
+
+            // إشعار لمربي الدورة (Advisor)
+            $studentInfo = DB::table('users')
+                ->join('students', 'users.user_id', '=', 'students.user_id')
+                ->where('users.user_id', $leave->student_id)
+                ->select('users.department', 'users.full_name', 'students.level')
+                ->first();
+            
+            if ($studentInfo) {
+                $advisor = DB::table('teachers')
+                    ->where('advisor_branch', $studentInfo->department)
+                    ->where('advisor_year', $studentInfo->level)
+                    ->first();
+                
+                if ($advisor) {
+                    $advisorTitle = 'تحديث حالة تبرير غياب';
+                    $advisorMessage = $status === 'approved'
+                        ? 'قامت شؤون الطلاب بقبول تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leave->date . ')'
+                        : 'قامت شؤون الطلاب برفض تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leave->date . ')';
+                    
+                    DB::table('notifications')->insert([
+                        'user_id'    => $advisor->user_id,
+                        'title'      => $advisorTitle,
+                        'message'    => $advisorMessage,
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    \App\Services\FcmService::sendToUser(
+                        $advisor->user_id,
+                        $advisorTitle,
+                        $advisorMessage,
+                        ['type' => 'leave_request', 'related_id' => (string) $id]
+                    );
+                }
+            }
+        }
 
         return response()->json(['success' => true, 'message' => 'تم تحديث حالة طلب الإجازة.']);
     }
@@ -558,8 +635,8 @@ class AffairsController extends Controller
             'user_id'    => $request->user()->user_id,
             'event_date' => $request->event_date,
             'title'      => $request->title,
-            'event_time' => $request->event_time,
-            'location'   => $request->location,
+            'event_time' => $request->filled('event_time') ? $request->event_time : null,
+            'location'   => $request->filled('location') ? $request->location : null,
         ]);
 
         return response()->json(['success' => true, 'message' => 'تم إضافة الحدث بنجاح.', 'data' => $event]);
@@ -581,8 +658,8 @@ class AffairsController extends Controller
         $event->update([
             'event_date' => $request->event_date,
             'title'      => $request->title,
-            'event_time' => $request->event_time,
-            'location'   => $request->location,
+            'event_time' => $request->filled('event_time') ? $request->event_time : null,
+            'location'   => $request->filled('location') ? $request->location : null,
         ]);
 
         return response()->json(['success' => true, 'message' => 'تم تحديث الحدث بنجاح.', 'data' => $event]);
@@ -703,7 +780,7 @@ class AffairsController extends Controller
     public function getProfile(Request $request)
     {
         $user = $request->user();
-        $reviewedLeaves = AbsenceRequest::where('reviewed_by', $user->user_id)->count();
+        $reviewedLeaves = DB::table('leave_requests')->whereIn('status', ['approved', 'rejected'])->count();
         $sentMessages   = Message::where('sender_id', $user->user_id)->count();
 
         return response()->json([

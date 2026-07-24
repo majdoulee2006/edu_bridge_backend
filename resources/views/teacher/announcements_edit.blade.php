@@ -34,13 +34,15 @@
             @endif
             <div onclick="document.getElementById('imgInput').click()"
                  style="border: 2px dashed var(--border-color); border-radius: 0.75rem; padding: 1.25rem; text-align: center; cursor: pointer; background: var(--bg-primary);">
-                <input type="file" name="image" id="imgInput" accept="image/*" style="display:none;" onchange="previewImg(this)">
+                <input type="file" name="image" id="imgInput" accept="image/*" style="display:none;"
+                       data-crop="true" data-preview-img="preview-img" data-preview-wrap="img-preview" data-placeholder="upload-placeholder" data-preview-name="preview-name">
                 <div id="upload-placeholder">
                     <i class="fa-solid fa-image" style="color: var(--text-secondary);"></i>
                     <p style="color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.25rem;">اضغط لاستبدال الصورة</p>
                 </div>
                 <div id="img-preview" style="display:none;">
                     <img id="preview-img" src="" style="max-height: 120px; border-radius: 0.5rem;">
+                    <p id="preview-name" style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.5rem;"></p>
                 </div>
             </div>
         </div>
@@ -57,19 +59,6 @@
         </div>
     </form>
 </div>
-@endsection
 
-@push('scripts')
-<script>
-function previewImg(input) {
-    if (!input.files || !input.files[0]) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        document.getElementById('preview-img').src = e.target.result;
-        document.getElementById('upload-placeholder').style.display = 'none';
-        document.getElementById('img-preview').style.display = 'block';
-    };
-    reader.readAsDataURL(input.files[0]);
-}
-</script>
-@endpush
+@include('partials.image_cropper')
+@endsection

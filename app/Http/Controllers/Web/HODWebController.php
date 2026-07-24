@@ -45,6 +45,10 @@ class HODWebController extends Controller
             $user = Auth::user();
             // 5 represents Head of Department
             if ($user->role_id == 5) {
+                if ($user->status !== 'active') {
+                    Auth::logout();
+                    return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+                }
                 return redirect('/hod/dashboard');
             } else {
                 Auth::logout();
@@ -205,23 +209,34 @@ class HODWebController extends Controller
     public function sendOTP(Request $request)
     {
         $request->validate([
-            'phone' => 'nullable|string|max:20',
-            'birth_date' => 'nullable|date',
-            'email' => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
-            'password' => 'nullable|string|min:6',
+            'phone'            => 'nullable|string|max:20',
+            'birth_date'       => 'nullable|date',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
+            'password'         => 'nullable|string|min:6',
+            'telegram_chat_id' => 'nullable|string',
         ]);
 
-        $otp = rand(1000, 9999);
-        
+        $user = Auth::user();
+        $otp  = (string) rand(100000, 999999);
+
+        $telegramService = new \App\Services\TelegramService();
+        $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+
+        if (!$telegramResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $telegramResult['message']
+            ]);
+        }
+
         session([
-            'profile_otp' => $otp,
+            'profile_otp'          => $otp,
             'pending_profile_data' => $request->only(['phone', 'birth_date', 'email', 'password'])
         ]);
 
         return response()->json([
             'success' => true,
-            'otp' => $otp,
-            'message' => 'تم إرسال رمز التحقق بنجاح!'
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
         ]);
     }
 
@@ -1409,6 +1424,68 @@ tr:nth-child(even) td{background:#f8fafc}
      */
     public function studentServices()
     {
-        return view('hod.student-services');
+        $user = Auth::user();
+        $hodDeptName = $user->department;
+        $headRecord = DB::table('heads')->where('user_id', $user->user_id)->first();
+        $deptId = $headRecord ? $headRecord->department_id : null;
+
+        // جلب الطلبات الخاصة بقسم رئيس القسم فقط والتي تحولت له بعد الشؤون
+        $query = \App\Models\StudentRequest::with(['student.user', 'student.program.department'])
+                    ->whereIn('status', ['pending_hod', 'pending_admin', 'completed']);
+
+        if ($hodDeptName || $deptId) {
+            $query->whereHas('student', function ($sq) use ($hodDeptName, $deptId) {
+                $sq->where(function ($w) use ($hodDeptName, $deptId) {
+                    if ($hodDeptName) {
+                        $w->whereHas('user', function ($uq) use ($hodDeptName) {
+                            $uq->where('department', $hodDeptName)
+                               ->orWhere('department', 'like', '%' . $hodDeptName . '%');
+                        })->orWhereHas('program.department', function ($dq) use ($hodDeptName) {
+                            $dq->where('name', $hodDeptName)
+                               ->orWhere('name', 'like', '%' . $hodDeptName . '%');
+                        });
+                    }
+                    if ($deptId) {
+                        $w->orWhereHas('program', function ($pq) use ($deptId) {
+                            $pq->where('department_id', $deptId);
+                        });
+                    }
+                });
+            });
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->get();
+
+        // تجميع الطلبات حسب التخصص / الفرع
+        $requestsByBranch = $requests->groupBy(function ($r) {
+            return $r->student->program->name ?? ($r->student->user->branch ?? 'قسم عام');
+        });
+
+        return view('hod.student-services', compact('requests', 'requestsByBranch'));
+    }
+
+    public function processStudentService(Request $request, $id)
+    {
+        $studentReq = \App\Models\StudentRequest::findOrFail($id);
+
+        // منع الرد أكثر من مرة (رد واحد فقط)
+        if ($studentReq->status !== 'pending_hod') {
+            return back()->with('error', 'لقد قمت بإبداء رأيك وسحب صلاحية التعديل على هذا الطلب مسبقاً (مسموح برد واحد فقط).');
+        }
+
+        $request->validate([
+            'decision' => 'required|in:approved,rejected',
+            'notes' => 'required|string'
+        ]);
+        
+        $studentReq->hod_decision = $request->decision;
+        $studentReq->hod_notes = $request->notes;
+        
+        // ينتقل الطلب آلياً للإدارة بعد رد رئيس القسم
+        $studentReq->status = 'pending_admin';
+        
+        $studentReq->save();
+
+        return back()->with('success', 'تم حفظ رأي رئيس القسم بنجاح وتحويل الطلب إلى الإدارة.');
     }
 }

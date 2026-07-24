@@ -126,4 +126,46 @@ class TelegramService
             return false;
         }
     }
+
+    /**
+     * إرسال رمز OTP للمستخدم عبر بوت تيليغرام عند تعديل الملف الشخصي (كلمة سر، هاتف، إيميل)
+     */
+    public function sendProfileOtpToUser($user, string $otp, ?string $telegramChatIdInput = null): array
+    {
+        $chatId = $user->telegram_chat_id ?? null;
+
+        if (!$chatId) {
+            $identifier = $telegramChatIdInput ?? $user->telegram_username ?? $user->phone ?? $user->username ?? null;
+            if ($identifier) {
+                $foundId = $this->findChatIdByUsername((string) $identifier);
+                if ($foundId) {
+                    $chatId = $foundId;
+                    \Illuminate\Support\Facades\DB::table('users')->where('user_id', $user->user_id)->update(['telegram_chat_id' => $chatId]);
+                    $user->telegram_chat_id = $chatId;
+                }
+            }
+        }
+
+        if (!$chatId) {
+            return [
+                'success' => false,
+                'message' => 'لم نتمكن من العثور على Chat ID مرتبط بحسابك على تيليغرام. يرجى التحدث مع بوت الجامعة وإدخال الـ Chat ID أو اسم المستخدم.'
+            ];
+        }
+
+        $sent = $this->sendOtp((int) $chatId, $otp, $user->full_name ?? '');
+
+        if (!$sent) {
+            return [
+                'success' => false,
+                'message' => 'فشل إرسال رمز التحقق عبر بوت تيليغرام. يرجى المحاولة لاحقاً.'
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى بوت تيليغرام الخاص بك بنجاح!',
+            'chat_id' => $chatId
+        ];
+    }
 }

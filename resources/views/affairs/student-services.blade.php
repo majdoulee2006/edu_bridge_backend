@@ -263,13 +263,13 @@
 
     <!-- Tabs Navigation -->
     <div class="custom-tabs">
-        <button class="tab-btn active" onclick="switchTab('mercy')">
+        <button class="tab-btn active" onclick="switchTab(this, 'mercy')">
             <i class="fa-solid fa-gavel"></i> طلبات الاسترحام
         </button>
-        <button class="tab-btn" onclick="switchTab('documents')">
+        <button class="tab-btn" onclick="switchTab(this, 'documents')">
             <i class="fa-solid fa-file-invoice"></i> طلبات الوثائق
         </button>
-        <button class="tab-btn" onclick="switchTab('makeup')">
+        <button class="tab-btn" onclick="switchTab(this, 'makeup')">
             <i class="fa-solid fa-pen-to-square"></i> امتحانات الإكمال
         </button>
     </div>
@@ -290,24 +290,39 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @foreach($requests->where('type', 'mercy') as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">أ</div>
-                                <span>أحمد محمد</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>202401</td>
-                        <td>2024-2025</td>
-                        <td>إعادة تقييم مقرر البرمجة</td>
-                        <td>2026-07-14</td>
-                        <td><span class="badge badge-pending">قيد المراجعة</span></td>
+                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
                         <td>
+                            @if($req->status == 'pending_affairs')
+                                <span class="badge badge-pending">بانتظار قرارك</span>
+                            @else
+                                <span class="badge badge-approved">تم تحويله لرئيس القسم</span>
+                            @endif</td>
+                        <td>
+                            @php $canRespond = ($req->status == 'pending_affairs'); @endphp
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('استرحام', 'أحمد محمد', '202401', '2024-2025', 'الهندسة المعلوماتية', 'هندسة البرمجيات', 'إعادة تقييم مقرر البرمجة')"><i class="fa-solid fa-eye"></i></button>
+                                @if($canRespond)
+                                    <button class="btn-action btn-view" title="إبداء رأي الشؤون" onclick="openRequestModal('استرحام', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? '') }}`, {{ $req->id }}, true)"><i class="fa-solid fa-pen-to-square"></i> إبداء رأي الشؤون</button>
+                                @else
+                                    <button class="btn-action" style="background:#6b7280;" title="معاينة (قراءة فقط)" onclick="openRequestModal('استرحام', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? 'تم إرسال الرأي مسبقاً') }}`, {{ $req->id }}, false)"><i class="fa-solid fa-eye"></i> معاينة (قراءة فقط)</button>
+                                @endif
                             </div>
                         </td>
                     </tr>
+                    @endforeach
+                    @if($requests->where('type', 'mercy')->isEmpty())
+                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -329,24 +344,39 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @foreach($requests->where('type', 'document') as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">س</div>
-                                <span>سارة خالد</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>202405</td>
-                        <td>2024-2025</td>
-                        <td>كشف علامات مفصل</td>
-                        <td>2026-07-13</td>
-                        <td><span class="badge badge-pending">قيد المراجعة</span></td>
+                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
                         <td>
+                            @if($req->status == 'pending_affairs')
+                                <span class="badge badge-pending">بانتظار قرارك</span>
+                            @else
+                                <span class="badge badge-approved">تم تحويله لرئيس القسم</span>
+                            @endif</td>
+                        <td>
+                            @php $canRespond = ($req->status == 'pending_affairs'); @endphp
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('وثيقة', 'سارة خالد', '202405', '2024-2025', 'إدارة الأعمال', 'محاسبة', 'كشف علامات مفصل')"><i class="fa-solid fa-eye"></i></button>
+                                @if($canRespond)
+                                    <button class="btn-action btn-view" title="إبداء رأي الشؤون" onclick="openRequestModal('وثيقة', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? '') }}`, {{ $req->id }}, true)"><i class="fa-solid fa-pen-to-square"></i> إبداء رأي الشؤون</button>
+                                @else
+                                    <button class="btn-action" style="background:#6b7280;" title="معاينة (قراءة فقط)" onclick="openRequestModal('وثيقة', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? 'تم إرسال الرأي مسبقاً') }}`, {{ $req->id }}, false)"><i class="fa-solid fa-eye"></i> معاينة (قراءة فقط)</button>
+                                @endif
                             </div>
                         </td>
                     </tr>
+                    @endforeach
+                    @if($requests->where('type', 'document')->isEmpty())
+                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -368,24 +398,39 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @foreach($requests->where('type', 'makeup') as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">م</div>
-                                <span>محمد العبدالله</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>202410</td>
-                        <td>2024-2025</td>
-                        <td>هندسة البرمجيات، قواعد البيانات</td>
-                        <td>2026-07-14</td>
-                        <td><span class="badge badge-pending">قيد المراجعة</span></td>
+                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
                         <td>
+                            @if($req->status == 'pending_affairs')
+                                <span class="badge badge-pending">بانتظار قرارك</span>
+                            @else
+                                <span class="badge badge-approved">تم تحويله لرئيس القسم</span>
+                            @endif</td>
+                        <td>
+                            @php $canRespond = ($req->status == 'pending_affairs'); @endphp
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('امتحان إكمال', 'محمد العبدالله', '202410', '2024-2025', 'الهندسة المعلوماتية', 'الذكاء الاصطناعي', 'هندسة البرمجيات، قواعد البيانات')"><i class="fa-solid fa-eye"></i></button>
+                                @if($canRespond)
+                                    <button class="btn-action btn-view" title="إبداء رأي الشؤون" onclick="openRequestModal('إكمال', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? '') }}`, {{ $req->id }}, true)"><i class="fa-solid fa-pen-to-square"></i> إبداء رأي الشؤون</button>
+                                @else
+                                    <button class="btn-action" style="background:#6b7280;" title="معاينة (قراءة فقط)" onclick="openRequestModal('إكمال', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? 'تم إرسال الرأي مسبقاً') }}`, {{ $req->id }}, false)"><i class="fa-solid fa-eye"></i> معاينة (قراءة فقط)</button>
+                                @endif
                             </div>
                         </td>
                     </tr>
+                    @endforeach
+                    @if($requests->where('type', 'makeup')->isEmpty())
+                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -395,10 +440,11 @@
 
 <!-- Request Details Modal -->
 <div id="requestModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
-    <div class="modal-content">
+    <form class="modal-content" id="decisionForm" method="POST" action="">
+        @csrf
         <div class="modal-header">
             <h3>تفاصيل الطلب (<span id="modal-request-type"></span>)</h3>
-            <button class="btn-close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="btn-close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
             <div class="modal-grid-2">
@@ -434,30 +480,38 @@
             </div>
             
             <div class="detail-row" style="margin-top: 1.5rem;">
-                <label><i class="fa-solid fa-pen"></i> ملاحظات موظف الشؤون <span style="color: #ef4444;">(مطلوب إجبارياً)</span>:</label>
-                <textarea class="notes-area" id="modal-notes" placeholder="اكتب ملاحظاتك أو أسباب الرفض أو القبول التي ستظهر للطالب هنا..."></textarea>
+                <label><i class="fa-solid fa-pen"></i> ملاحظات ورأي موظف الشؤون:</label>
+                <textarea class="notes-area" id="modal-notes" name="notes" placeholder="اكتب ملاحظاتك أو أسباب الرفض أو القبول التي ستظهر للطالب هنا..."></textarea>
+            </div>
+
+            <div id="modal-readonly-badge" style="display: none; background: #e0e7ff; color: #3730a3; padding: 0.8rem; border-radius: 8px; font-weight: 700; text-align: center; margin-top: 1rem;">
+                <i class="fa-solid fa-lock"></i> تم إرسال رأي الشؤون وتحويل الطلب لرئيس القسم مسبقاً (قراءة فقط).
             </div>
         </div>
-        <div class="modal-footer">
-            <button class="btn-modal-approve" onclick="submitDecision('approve')"><i class="fa-solid fa-check"></i> قبول الطلب</button>
-            <button class="btn-modal-reject" onclick="submitDecision('reject')"><i class="fa-solid fa-xmark"></i> رفض الطلب</button>
+        <div class="modal-footer" id="modal-footer-actions">
+            <input type="hidden" name="decision" id="decisionInput" value="">
+            <button type="button" class="btn-modal-approve" onclick="submitDecision('approved')"><i class="fa-solid fa-check"></i> إرسال وتحويل لرئيس القسم</button>
+            <button type="button" class="btn-modal-reject" onclick="submitDecision('rejected')"><i class="fa-solid fa-xmark"></i> رفض الطلب</button>
         </div>
-    </div>
+    </form>
 </div>
 
 @endsection
 
 @push('scripts')
 <script>
-    function switchTab(tabName) {
+    function switchTab(btnElement, tabName) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         
-        event.currentTarget.classList.add('active');
-        document.getElementById('tab-' + tabName).classList.add('active');
+        btnElement.classList.add('active');
+        const targetTab = document.getElementById('tab-' + tabName);
+        if (targetTab) {
+            targetTab.classList.add('active');
+        }
     }
 
-    function openRequestModal(type, name, id, year, department, specialization, details) {
+    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, reqId, canRespond) {
         document.getElementById('modal-request-type').innerText = type;
         document.getElementById('modal-student-name').innerText = name;
         document.getElementById('modal-student-id').innerText = id;
@@ -465,14 +519,29 @@
         document.getElementById('modal-student-specialization').innerText = specialization;
         document.getElementById('modal-student-year').innerText = year;
         document.getElementById('modal-request-details').innerText = details;
+        document.getElementById('decisionForm').action = '/affairs/student-services/' + reqId + '/process';
         
         const notesElement = document.getElementById('modal-notes');
-        notesElement.value = ''; // clear previous notes
-        notesElement.style.borderColor = 'var(--border-color)'; // reset border color
+        const footerActions = document.getElementById('modal-footer-actions');
+        const readonlyBadge = document.getElementById('modal-readonly-badge');
+
+        notesElement.value = affairsNotes || '';
+        notesElement.style.borderColor = 'var(--border-color)';
+        
+        if (canRespond) {
+            notesElement.readOnly = false;
+            notesElement.style.background = 'var(--bg-secondary)';
+            footerActions.style.display = 'flex';
+            readonlyBadge.style.display = 'none';
+        } else {
+            notesElement.readOnly = true;
+            notesElement.style.background = '#f3f4f6';
+            footerActions.style.display = 'none';
+            readonlyBadge.style.display = 'block';
+        }
         
         const modal = document.getElementById('requestModal');
         modal.style.display = 'flex';
-        // Trigger animation after display flex
         setTimeout(() => modal.classList.add('active'), 10);
     }
 
@@ -492,27 +561,20 @@
     function submitDecision(decision) {
         const notesElement = document.getElementById('modal-notes');
         const notes = notesElement.value.trim();
-        const studentName = document.getElementById('modal-student-name').innerText;
         
-        // التحقق الإجباري من وجود الملاحظات
         if (notes === '') {
-            notesElement.style.borderColor = '#ef4444'; // تلوين الحواف بالأحمر
+            notesElement.style.borderColor = '#ef4444';
             notesElement.focus();
-            
-            // إضافة اهتزاز خفيف للمربع للفت الانتباه (اختياري)
             notesElement.style.transform = 'translateX(5px)';
             setTimeout(() => notesElement.style.transform = 'translateX(-5px)', 100);
             setTimeout(() => notesElement.style.transform = 'translateX(5px)', 200);
             setTimeout(() => notesElement.style.transform = 'translateX(0)', 300);
-            
             alert('❌ عذراً، يجب كتابة الملاحظات قبل اتخاذ قرار الرفض أو القبول!');
             return;
         }
         
-        // إذا كان هناك ملاحظات يتم تنفيذ الطلب
-        const decisionText = decision === 'approve' ? 'الموافقة على' : 'رفض';
-        alert(`تم ${decisionText} طلب الطالب ${studentName} بنجاح!\nالملاحظات المرسلة: ${notes}`);
-        closeModal();
+        document.getElementById('decisionInput').value = decision;
+        document.getElementById('decisionForm').submit();
     }
 </script>
 @endpush

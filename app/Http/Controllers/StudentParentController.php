@@ -276,7 +276,9 @@ class StudentParentController extends Controller
                 'assignment_submissions.submission_id',
                 'assignment_submissions.grade',
                 'assignment_submissions.submitted_at',
+                'assignment_submissions.feedback',
                 DB::raw('CASE
+                    WHEN assignment_submissions.grade IS NOT NULL THEN "مصحح"
                     WHEN assignment_submissions.submission_id IS NOT NULL THEN "مكتملة"
                     WHEN assignments.due_date < NOW() THEN "فائتة"
                     ELSE "جاري"
@@ -478,9 +480,11 @@ class StudentParentController extends Controller
     {
         $request->validate([
             'student_id' => 'required|exists:students,student_id',
-            'type'       => 'required|in:full_day,hourly',
-            'date'       => 'required|date',
-            'reason'     => 'required|string|min:3',
+            'type'       => 'required|in:full_day,hourly,justification',
+            'date'         => 'required|date',
+            'reason'       => 'required|string|min:3',
+            'attachment'   => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'subject_name' => 'nullable|string',
         ]);
 
         $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
@@ -502,11 +506,22 @@ class StudentParentController extends Controller
 
         if (!$studentUser) return response()->json(['message' => 'الطالب غير موجود'], 404);
 
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('leave_attachments', 'public');
+        }
+
+        $finalReason = $request->reason;
+        if ($request->type === 'justification' && $request->has('subject_name')) {
+            $finalReason = "لمادة (" . $request->subject_name . "): " . $finalReason;
+        }
+
         $leaveId = DB::table('leave_requests')->insertGetId([
             'student_id' => $studentUser->user_id,
             'type'       => $request->type,
             'date'       => $request->date,
-            'reason'     => $request->reason,
+            'reason'     => $finalReason,
+            'attachment' => $attachmentPath,
             'status'     => 'pending_hod',
             'created_at' => now(),
             'updated_at' => now(),
@@ -516,10 +531,18 @@ class StudentParentController extends Controller
         $headUserId = DB::table('heads')->value('user_id');
 
         if ($headUserId) {
+            $isJustification = $request->type === 'justification';
+            $title = $isJustification ? 'تبرير غياب من ولي الأمر' : 'طلب إجازة من ولي الأمر';
+            
+            $subjText = $request->has('subject_name') ? ' لمادة ' . $request->subject_name : '';
+            $message = $isJustification
+                ? 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' تبريراً لغياب' . $subjText . ' بتاريخ ' . $request->date
+                : 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date;
+
             DB::table('notifications')->insert([
                 'user_id'    => $headUserId,
-                'title'      => 'طلب إجازة من ولي الأمر',
-                'message'    => 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
+                'title'      => $title,
+                'message'    => $message,
                 'type'       => 'leave_request',
                 'related_id' => $leaveId,
                 'is_read'    => 0,
@@ -528,10 +551,36 @@ class StudentParentController extends Controller
             ]);
             \App\Services\FcmService::sendToUser(
                 $headUserId,
-                'طلب إجازة من ولي الأمر',
-                'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
+                $title,
+                $message,
                 ['type' => 'leave_request', 'related_id' => (string)$leaveId]
             );
+
+            // Notify teachers if it's a justification for a past absence
+            if ($isJustification) {
+                $teacherUserIds = DB::table('attendance')
+                    ->where('attendance.student_id', $request->student_id)
+                    ->whereDate('attendance.attendance_date', $request->date)
+                    ->join('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
+                    ->join('teachers', 'lessons.teacher_id', '=', 'teachers.teacher_id')
+                    ->pluck('teachers.user_id')
+                    ->unique();
+
+                foreach ($teacherUserIds as $tUid) {
+                    if ($tUid) {
+                        DB::table('notifications')->insert([
+                            'user_id'    => $tUid,
+                            'title'      => 'تبرير غياب طالب',
+                            'message'    => 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' تبريراً لغيابه في محاضرتك' . $subjText . ' بتاريخ ' . $request->date,
+                            'type'       => 'leave_request',
+                            'related_id' => $leaveId,
+                            'is_read'    => 0,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
         }
 
         return response()->json(['success' => true, 'message' => 'تم إرسال طلب الإجازة بنجاح، بانتظار موافقة رئيس القسم']);

@@ -28,12 +28,8 @@
             <img id="cropperImg" src="" style="max-width:100%; display:block;">
         </div>
 
-        <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap;">
-            <button class="crop-ratio-btn" data-ratio="" style="padding:0.3rem 0.9rem; border-radius:2rem; border:1px solid #f2f20d; background:#f2f20d; color:#1a1a1a; cursor:pointer; font-size:0.8rem; font-family:inherit; font-weight:700;">حر</button>
-            <button class="crop-ratio-btn" data-ratio="1"    style="padding:0.3rem 0.9rem; border-radius:2rem; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem; font-family:inherit;">مربع 1:1</button>
-            <button class="crop-ratio-btn" data-ratio="1.77" style="padding:0.3rem 0.9rem; border-radius:2rem; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem; font-family:inherit;">أفقي 16:9</button>
-            <button class="crop-ratio-btn" data-ratio="1.5"  style="padding:0.3rem 0.9rem; border-radius:2rem; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem; font-family:inherit;">3:2</button>
-            <button class="crop-ratio-btn" data-ratio="2"    style="padding:0.3rem 0.9rem; border-radius:2rem; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem; font-family:inherit;">بانر 2:1</button>
+        <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; display:none;">
+            <button class="crop-ratio-btn" data-ratio="1.7777777777777777" style="padding:0.3rem 0.9rem; border-radius:2rem; border:1px solid #f2f20d; background:#f2f20d; color:#1a1a1a; cursor:pointer; font-size:0.8rem; font-family:inherit; font-weight:700;">أفقي 16:9</button>
         </div>
 
         <div style="display:flex; gap:0.75rem;">
@@ -56,6 +52,11 @@
     var activeMeta  = {};
 
     function openCropper(input, meta) {
+        if (typeof Cropper === 'undefined') {
+            alert('خطأ: لم يتم تحميل أداة قص الصور (CropperJS). يرجى التأكد من الاتصال بالإنترنت وإعادة المحاولة.');
+            input.value = '';
+            return;
+        }
         var file = input._pendingFile;
         if (!file) return;
         activeInput = input;
@@ -67,6 +68,7 @@
             if (cropper) { cropper.destroy(); cropper = null; }
             cropper = new Cropper(cropperImg, {
                 viewMode: 1, dragMode: 'move',
+                aspectRatio: 1.7777777777777777,
                 autoCropArea: 0.9,
                 guides: true, center: true, highlight: true,
                 cropBoxResizable: true, cropBoxMovable: true,
@@ -138,20 +140,31 @@
     });
 
     // Auto-init
-    document.querySelectorAll('input[type="file"][data-crop="true"]').forEach(function (input) {
-        var meta = {
-            previewImg:    input.dataset.previewImg    || null,
-            previewWrap:   input.dataset.previewWrap   || null,
-            placeholder:   input.dataset.placeholder   || null,
-            previewName:   input.dataset.previewName   || null,
-            simplePreview: input.dataset.simplePreview || null,
-        };
-        input.addEventListener('change', function (e) {
-            var file = e.target.files[0];
-            if (!file || !file.type.startsWith('image/')) return;
-            input._pendingFile = file;
-            openCropper(input, meta);
+    function initCropperInputs() {
+        document.querySelectorAll('input[type="file"][data-crop="true"]').forEach(function (input) {
+            if (input._cropperInitialized) return;
+            input._cropperInitialized = true;
+            
+            var meta = {
+                previewImg:    input.dataset.previewImg    || null,
+                previewWrap:   input.dataset.previewWrap   || null,
+                placeholder:   input.dataset.placeholder   || null,
+                previewName:   input.dataset.previewName   || null,
+                simplePreview: input.dataset.simplePreview || null,
+            };
+            input.addEventListener('change', function (e) {
+                var file = e.target.files[0];
+                if (!file || !file.type.startsWith('image/')) return;
+                input._pendingFile = file;
+                openCropper(input, meta);
+            });
         });
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCropperInputs);
+    } else {
+        initCropperInputs();
+    }
 })();
 </script>

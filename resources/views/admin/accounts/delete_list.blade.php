@@ -1,19 +1,40 @@
 @extends('layouts.admin')
 
 @section('title', 'حذف حسابات ' . $roleTitlePlural)
-@section('header-title', 'حذف حسابات ' . $roleTitlePlural)
-@section('header-subtitle', 'إدارة وحذف مستخدمي فئة ' . $roleTitlePlural)
-
-@section('back-button')
-    <a href="{{ route('admin.accounts') }}" class="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-        <span class="material-symbols-outlined text-slate-800 dark:text-white text-2xl">arrow_forward</span>
-    </a>
-@endsection
 
 @section('content')
 
+    <!-- Top Header Bar with Back Arrow and Delete Action Button -->
+    <div class="flex items-center justify-between bg-white dark:bg-surface-dark p-4 md:p-5 rounded-2xl shadow-soft mb-6 border border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+            <a href="{{ route('admin.accounts') }}" 
+               class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm" 
+               title="الرجوع لإدارة الحسابات">
+                <span class="material-symbols-outlined text-2xl">arrow_forward</span>
+            </a>
+            <div>
+                <h1 class="text-lg md:text-xl font-bold text-slate-800 dark:text-white">
+                    حذف حسابات {{ $roleTitlePlural }}
+                </h1>
+                <p class="text-xs text-slate-400 dark:text-slate-500 hidden sm:block">حدد الحسابات المراد حذفها نهائياً من النظام</p>
+            </div>
+        </div>
+
+        <!-- Header Delete Button -->
+        <button type="button" 
+                id="header-delete-btn" 
+                onclick="openDeleteModal()" 
+                disabled
+                class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm shadow-md shadow-red-500/20 transition-all opacity-50 cursor-not-allowed active:scale-95">
+            <span class="material-symbols-outlined text-xl">delete</span>
+            <span class="hidden sm:inline">حذف الحسابات المحددة</span>
+            <span class="sm:hidden">حذف</span>
+            <span id="selected-badge" class="hidden bg-white/25 px-2 py-0.5 rounded-full text-xs font-black">0</span>
+        </button>
+    </div>
+
     <!-- Unified form for bulk delete -->
-    <form id="bulk-delete-form" action="{{ route('admin.accounts.delete', ['role_id' => $roleId]) }}" method="POST" class="space-y-6 pb-10">
+    <form id="bulk-delete-form" action="{{ route('admin.accounts.delete', ['role_id' => $roleId]) }}" method="POST" class="space-y-6 pb-20">
         @csrf
 
         <!-- Search Bar -->
@@ -21,19 +42,30 @@
             <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                 <span class="material-symbols-outlined text-xl">search</span>
             </span>
-            <input id="user-search" class="w-full py-3.5 pr-11 pl-4 bg-white dark:bg-surface-dark border-none rounded-2xl shadow-soft text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary/50 text-sm placeholder:text-slate-400 transition-all border border-slate-100/50 dark:border-slate-800" placeholder="{{ $searchPlaceholder }}" type="text"/>
+            <input id="user-search" 
+                   class="w-full py-3.5 pr-11 pl-4 bg-white dark:bg-surface-dark border-none rounded-2xl shadow-soft text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary/50 text-sm placeholder:text-slate-400 transition-all border border-slate-100/50 dark:border-slate-800" 
+                   placeholder="{{ $searchPlaceholder }}" 
+                   type="text"/>
         </div>
 
         <div class="flex flex-col gap-3">
             <div class="flex items-center justify-between px-2 pb-1">
-                <h2 class="text-sm font-bold text-slate-500 dark:text-slate-400">قائمة الـ {{ $roleTitlePlural }}</h2>
-                <div class="text-xs text-primary-dark font-extrabold cursor-pointer hover:underline select-none" id="toggle-select-all" onclick="toggleSelectAll()">تحديد الكل</div>
+                <h2 class="text-sm font-bold text-slate-500 dark:text-slate-400">قائمة {{ $roleTitlePlural }} (العدد: {{ count($users) }})</h2>
+                <div class="text-xs text-primary-dark font-extrabold cursor-pointer hover:underline select-none px-3 py-1.5 rounded-lg bg-primary/10" 
+                     id="toggle-select-all" 
+                     onclick="toggleSelectAll()">تحديد الكل</div>
             </div>
 
             <div class="space-y-3" id="users-container">
                 @forelse($users as $usr)
-                    <label class="bg-white dark:bg-surface-dark p-4 rounded-[1.25rem] shadow-soft flex items-center gap-4 cursor-pointer group hover:shadow-lg transition-all duration-300 border border-transparent hover:border-red-500/20 select-none user-label-item" data-search-name="{{ $usr->full_name }}" data-search-extra="{{ $usr->username ?? '' }} {{ $usr->email ?? '' }}">
-                        <input type="checkbox" name="user_ids[]" value="{{ $usr->user_id }}" class="checkbox-custom w-5 h-5 rounded-md border-slate-300 text-primary focus:ring-primary focus:ring-offset-0 bg-slate-50 dark:bg-slate-800 dark:border-slate-650 size-5 select-user-checkbox" onclick="event.stopPropagation(); updateTrashButtonState();"/>
+                    <label class="bg-white dark:bg-surface-dark p-4 rounded-[1.25rem] shadow-soft flex items-center gap-4 cursor-pointer group hover:shadow-lg transition-all duration-300 border border-slate-100/60 dark:border-slate-800/80 hover:border-red-500/30 select-none user-label-item" 
+                           data-search-name="{{ $usr->full_name }}" 
+                           data-search-extra="{{ $usr->username ?? '' }} {{ $usr->email ?? '' }}">
+                        <input type="checkbox" 
+                               name="user_ids[]" 
+                               value="{{ $usr->user_id }}" 
+                               class="checkbox-custom w-5 h-5 rounded-md border-slate-300 text-primary focus:ring-primary focus:ring-offset-0 bg-slate-50 dark:bg-slate-800 dark:border-slate-650 size-5 select-user-checkbox" 
+                               onchange="updateTrashButtonState();"/>
                         
                         <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 {{ $cardIconColor }}">
                             <span class="material-symbols-outlined text-xl">{{ $cardIcon }}</span>
@@ -56,7 +88,7 @@
                         </div>
                     </label>
                 @empty
-                    <div class="flex flex-col items-center justify-center p-8 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft text-center border border-slate-100/50 dark:border-slate-800/50">
+                    <div class="flex flex-col items-center justify-center p-10 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft text-center border border-slate-100/50 dark:border-slate-800/50">
                         <span class="material-symbols-outlined text-5xl text-slate-300 dark:text-slate-700 mb-3">person_off</span>
                         <h3 class="text-base font-bold text-slate-800 dark:text-white">لا يوجد حسابات حالياً</h3>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">لم يتم العثور على أي حساب مسجل لهذه الفئة.</p>
@@ -65,34 +97,45 @@
             </div>
         </div>
 
-        <!-- Floating Delete Button -->
-        <div id="floating-trash-container" class="fixed bottom-28 right-6 z-40 scale-0 transition-transform duration-300">
-            <label class="flex items-center justify-center w-14 h-14 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/30 hover:bg-red-650 hover:scale-105 active:scale-95 transition-all cursor-pointer border-4 border-white dark:border-background-dark" for="delete-trigger">
-                <span class="material-symbols-outlined text-2xl">delete</span>
-            </label>
+        <!-- Floating Bottom Delete Action Bar -->
+        <div id="floating-delete-bar" class="fixed bottom-6 right-4 left-4 md:right-80 md:left-8 z-40 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+            <div class="bg-slate-900/90 dark:bg-slate-800/95 backdrop-blur-md text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center justify-between border border-slate-700/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-sm" id="bottom-selected-count">
+                        0
+                    </div>
+                    <span class="text-sm font-bold">حسابات محددة للحذف</span>
+                </div>
+                <button type="button" 
+                        onclick="openDeleteModal()" 
+                        class="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-red-500/30 transition-all active:scale-95 pointer-events-auto">
+                    <span class="material-symbols-outlined text-lg">delete</span>
+                    <span>تأكيد الحذف الآن</span>
+                </button>
+            </div>
         </div>
 
-        <!-- Modal Trigger -->
-        <input class="hidden" id="delete-trigger" type="checkbox"/>
-        
         <!-- Confirmation Modal -->
-        <div class="fixed inset-0 z-50 flex items-center justify-center px-4" id="delete-confirmation-modal">
-            <label class="absolute inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-sm transition-opacity" for="delete-trigger"></label>
-            <div class="modal-content relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-[2.2rem] p-6 shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col items-center text-center gap-4 border border-slate-100 dark:border-slate-800">
+        <div class="hidden fixed inset-0 z-50 flex items-center justify-center px-4" id="delete-confirmation-modal">
+            <div class="absolute inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-sm transition-opacity" onclick="closeDeleteModal()"></div>
+            <div class="relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-[2.2rem] p-6 shadow-2xl transform transition-transform duration-300 flex flex-col items-center text-center gap-4 border border-slate-100 dark:border-slate-800 z-10">
                 <div class="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center text-red-500 mb-2 shadow-sm">
                     <span class="material-symbols-outlined text-4xl">warning</span>
                 </div>
                 <div class="space-y-2">
                     <h3 class="text-xl font-bold text-slate-900 dark:text-white">هل تريد الحذف بالفعل؟</h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                        سيتم حذف حسابات الـ {{ $roleTitlePlural }} المحددة نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء مطلقاً.
+                        سيتم حذف <span id="modal-count-text" class="font-black text-red-500">0</span> من حسابات الـ {{ $roleTitlePlural }} المحددة نهائياً من النظام. لا يمكن التراجع عن هذا الإجراء.
                     </p>
                 </div>
                 <div class="flex gap-3 w-full mt-4">
-                    <label class="flex-1 py-3.5 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-sm cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-750 transition-colors text-center" for="delete-trigger">
-                        لا، إلغاء
-                    </label>
-                    <button type="submit" class="flex-1 py-3.5 px-4 rounded-2xl bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-500/20 hover:bg-red-650 active:scale-95 transition-all">
+                    <button type="button" 
+                            onclick="closeDeleteModal()" 
+                            class="flex-1 py-3.5 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-750 transition-colors text-center">
+                        إلغاء
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 py-3.5 px-4 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm shadow-lg shadow-red-500/20 active:scale-95 transition-all">
                         نعم، حذف
                     </button>
                 </div>
@@ -101,18 +144,6 @@
     </form>
 
     <style>
-        #delete-confirmation-modal {
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease-in-out;
-        }
-        #delete-trigger:checked ~ #delete-confirmation-modal {
-            opacity: 1;
-            visibility: visible;
-        }
-        #delete-trigger:checked ~ #delete-confirmation-modal .modal-content {
-            transform: scale(1);
-        }
         .checkbox-custom:checked {
             background-color: #f2f20d !important;
             border-color: #f2f20d !important;
@@ -121,6 +152,17 @@
     </style>
 
     <script>
+        function openDeleteModal() {
+            const checkedCount = document.querySelectorAll('.select-user-checkbox:checked').length;
+            if (checkedCount === 0) return;
+            document.getElementById('modal-count-text').textContent = checkedCount;
+            document.getElementById('delete-confirmation-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-confirmation-modal').classList.add('hidden');
+        }
+
         function toggleSelectAll() {
             const checkboxes = document.querySelectorAll('.select-user-checkbox');
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
@@ -140,31 +182,50 @@
         }
 
         function updateTrashButtonState() {
-            const checkboxes = document.querySelectorAll('.select-user-checkbox');
-            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-            const trashContainer = document.getElementById('floating-trash-container');
+            const checked = document.querySelectorAll('.select-user-checkbox:checked');
+            const count = checked.length;
             
-            if (anyChecked) {
-                trashContainer.classList.remove('scale-0');
-                trashContainer.classList.add('scale-100');
+            const headerBtn = document.getElementById('header-delete-btn');
+            const badge = document.getElementById('selected-badge');
+            const bottomBar = document.getElementById('floating-delete-bar');
+            const bottomCount = document.getElementById('bottom-selected-count');
+
+            if (count > 0) {
+                headerBtn.disabled = false;
+                headerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                badge.classList.remove('hidden');
+                badge.textContent = count;
+                
+                bottomBar.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+                bottomBar.classList.add('pointer-events-auto');
+                bottomCount.textContent = count;
             } else {
-                trashContainer.classList.remove('scale-100');
-                trashContainer.classList.add('scale-0');
+                headerBtn.disabled = true;
+                headerBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                badge.classList.add('hidden');
+                badge.textContent = '0';
+                
+                bottomBar.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+                bottomBar.classList.remove('pointer-events-auto');
+                bottomCount.textContent = '0';
             }
         }
 
         // Live search filter
-        document.getElementById('user-search').addEventListener('input', function(e) {
-            const query = e.target.value.toLowerCase();
-            document.querySelectorAll('.user-label-item').forEach(item => {
-                const name = item.getAttribute('data-search-name').toLowerCase();
-                const extra = item.getAttribute('data-search-extra').toLowerCase();
-                if (name.includes(query) || extra.includes(query)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
+        const searchInput = document.getElementById('user-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const query = e.target.value.toLowerCase().trim();
+                document.querySelectorAll('.user-label-item').forEach(item => {
+                    const name = (item.getAttribute('data-search-name') || '').toLowerCase();
+                    const extra = (item.getAttribute('data-search-extra') || '').toLowerCase();
+                    if (name.includes(query) || extra.includes(query)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
             });
-        });
+        }
     </script>
 @endsection

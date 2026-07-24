@@ -296,7 +296,7 @@
                     <div class="info-value">{{ $user->email }}</div>
                 </div>
             </div>
-            <div></div>
+            <button class="edit-btn" onclick="openEditModal('email')"><i class="fa-solid fa-pen"></i></button>
         </div>
 
         @if($courses->count())
@@ -354,9 +354,22 @@
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700;">رقم الهاتف</label>
                 <input type="text" id="edit_phone" class="form-input" value="{{ $user->phone ?? '' }}">
             </div>
+            <div id="emailInputGroup" style="display: none; margin-bottom: 1rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">البريد الإلكتروني</label>
+                <input type="email" id="edit_email" class="form-input" value="{{ $user->email ?? '' }}">
+            </div>
+            
+            <div id="telegramInputGroup" style="margin-bottom: 1.5rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--accent-color);">
+                    <i class="fa-brands fa-telegram"></i> معرف حساب تيليغرام (لإرسال OTP)
+                </label>
+                <input type="text" id="edit_telegram" class="form-input" placeholder="مثال: @username أو معرف الحساب">
+                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">اختياري إذا كان مسجلاً مسبقاً</small>
+            </div>
+
             <div id="profile-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
             <button type="submit" id="profile-btn" class="modal-confirm-btn">
-                <i class="fa-solid fa-save"></i> حفظ التغييرات
+                <i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق
             </button>
             <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
         </form>
@@ -376,13 +389,22 @@
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الجديدة</label>
                 <input type="password" id="new_password" class="form-input" placeholder="••••••••" required minlength="6">
             </div>
-            <div style="margin-bottom: 1.5rem;">
+            <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700;">تأكيد كلمة المرور</label>
                 <input type="password" id="new_password_confirmation" class="form-input" placeholder="••••••••" required minlength="6">
             </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--accent-color);">
+                    <i class="fa-brands fa-telegram"></i> معرف حساب تيليغرام (لإرسال OTP)
+                </label>
+                <input type="text" id="password_telegram" class="form-input" placeholder="مثال: @username أو معرف الحساب">
+                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">اختياري إذا كان مسجلاً مسبقاً</small>
+            </div>
+
             <div id="password-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
             <button type="submit" id="password-btn" class="modal-confirm-btn">
-                <i class="fa-solid fa-key"></i> تغيير كلمة المرور
+                <i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق
             </button>
             <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
         </form>
@@ -393,18 +415,17 @@
 <div class="modal-overlay" id="otpModal">
     <div class="modal-card" style="text-align: center;">
         <div style="width: 70px; height: 70px; background: rgba(242,242,13,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--accent-color); margin: 0 auto 1rem;">
-            <i class="fa-solid fa-shield-halved"></i>
+            <i class="fa-solid fa-paper-plane"></i>
         </div>
-        <h3 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 800;">التحقق الأمني (OTP)</h3>
-        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">أدخل رمز التحقق المرسل للمتابعة.</p>
+        <h3 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 800;">التحقق عبر تيليغرام (OTP)</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">تم إرسال رمز التحقق المكون من 6 أرقام إلى حسابك في بوت تيليغرام.</p>
         <div class="otp-input-row">
             <input class="otp-digit" type="text" maxlength="1">
             <input class="otp-digit" type="text" maxlength="1">
             <input class="otp-digit" type="text" maxlength="1">
             <input class="otp-digit" type="text" maxlength="1">
-        </div>
-        <div id="demo-otp" style="margin-bottom: 1rem; padding: 0.75rem; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; display: none;">
-            الرمز للتجربة: <span id="demo-otp-code"></span>
+            <input class="otp-digit" type="text" maxlength="1">
+            <input class="otp-digit" type="text" maxlength="1">
         </div>
         <div id="otp-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
         <button type="button" class="modal-confirm-btn" id="otp-btn" onclick="verifyOTP()">تأكيد وحفظ</button>
@@ -423,7 +444,9 @@ function openEditModal(field) {
     currentEditField = field;
     document.getElementById('nameInputGroup').style.display = 'none';
     document.getElementById('phoneInputGroup').style.display = 'none';
+    document.getElementById('emailInputGroup').style.display = 'none';
     document.getElementById('profile-error').style.display = 'none';
+    document.getElementById('edit_telegram').value = '';
 
     if (field === 'name') {
         document.getElementById('editModalTitle').innerText = 'تعديل الاسم الكامل';
@@ -431,6 +454,9 @@ function openEditModal(field) {
     } else if (field === 'phone') {
         document.getElementById('editModalTitle').innerText = 'تعديل رقم الهاتف';
         document.getElementById('phoneInputGroup').style.display = 'block';
+    } else if (field === 'email') {
+        document.getElementById('editModalTitle').innerText = 'تعديل البريد الإلكتروني';
+        document.getElementById('emailInputGroup').style.display = 'block';
     }
     document.getElementById('editInfoModal').classList.add('active');
 }
@@ -438,6 +464,10 @@ function openEditModal(field) {
 function openPasswordModal() {
     document.getElementById('editPasswordModal').classList.add('active');
     document.getElementById('password-error').style.display = 'none';
+    document.getElementById('current_password').value = '';
+    document.getElementById('new_password').value = '';
+    document.getElementById('new_password_confirmation').value = '';
+    document.getElementById('password_telegram').value = '';
 }
 
 function closeModals() {
@@ -459,27 +489,32 @@ window.addEventListener('click', function(e) {
 
 function handleProfileSubmit(e) {
     e.preventDefault();
-    const fullName = document.getElementById('edit_full_name').value;
-    const phone    = document.getElementById('edit_phone').value;
+    const payload = {};
+    if (currentEditField === 'name')  payload.full_name = document.getElementById('edit_full_name').value;
+    if (currentEditField === 'phone') payload.phone = document.getElementById('edit_phone').value;
+    if (currentEditField === 'email') payload.email = document.getElementById('edit_email').value;
+    
+    payload.telegram_chat_id = document.getElementById('edit_telegram').value;
+
     const btn      = document.getElementById('profile-btn');
     const errorDiv = document.getElementById('profile-error');
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إرسال OTP...';
     errorDiv.style.display = 'none';
 
     fetch('{{ route("teacher.profile.send_otp") }}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ full_name: fullName, phone: phone })
+        body: JSON.stringify(payload)
     })
     .then(r => r.json())
     .then(data => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-save"></i> حفظ التغييرات';
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
         if (data.success) {
             closeModals();
-            showOTPModal(data.otp);
+            showOTPModal();
         } else {
             errorDiv.innerText = data.message || 'حدث خطأ';
             errorDiv.style.display = 'block';
@@ -487,7 +522,7 @@ function handleProfileSubmit(e) {
     })
     .catch(() => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-save"></i> حفظ التغييرات';
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
         errorDiv.innerText = 'فشل الاتصال بالخادم';
         errorDiv.style.display = 'block';
     });
@@ -498,6 +533,7 @@ function handlePasswordSubmit(e) {
     const current = document.getElementById('current_password').value;
     const newPw   = document.getElementById('new_password').value;
     const confirm = document.getElementById('new_password_confirmation').value;
+    const telegramId = document.getElementById('password_telegram').value;
     const btn     = document.getElementById('password-btn');
     const errorDiv= document.getElementById('password-error');
 
@@ -508,21 +544,25 @@ function handlePasswordSubmit(e) {
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إرسال OTP...';
     errorDiv.style.display = 'none';
 
     fetch('{{ route("teacher.profile.send_otp") }}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ current_password: current, new_password: newPw })
+        body: JSON.stringify({ 
+            current_password: current, 
+            new_password: newPw,
+            telegram_chat_id: telegramId
+        })
     })
     .then(r => r.json())
     .then(data => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-key"></i> تغيير كلمة المرور';
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
         if (data.success) {
             closeModals();
-            showOTPModal(data.otp);
+            showOTPModal();
         } else {
             errorDiv.innerText = data.message || 'حدث خطأ';
             errorDiv.style.display = 'block';
@@ -530,25 +570,22 @@ function handlePasswordSubmit(e) {
     })
     .catch(() => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-key"></i> تغيير كلمة المرور';
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
         errorDiv.innerText = 'فشل الاتصال بالخادم';
         errorDiv.style.display = 'block';
     });
 }
 
-function showOTPModal(otp) {
+function showOTPModal() {
     document.getElementById('otpModal').classList.add('active');
     document.querySelectorAll('.otp-digit').forEach(i => i.value = '');
-    const demoDiv = document.getElementById('demo-otp');
-    document.getElementById('demo-otp-code').innerText = otp;
-    demoDiv.style.display = 'block';
     document.getElementById('otp-error').style.display = 'none';
     document.querySelector('.otp-digit').focus();
 }
 
 function verifyOTP() {
     const otp = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
-    if (otp.length < 4) { alert('يرجى إدخال الرمز كاملاً (4 أرقام)'); return; }
+    if (otp.length < 6) { alert('يرجى إدخال الرمز كاملاً (6 أرقام)'); return; }
 
     const btn     = document.getElementById('otp-btn');
     const errorDiv= document.getElementById('otp-error');
