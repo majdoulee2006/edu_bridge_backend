@@ -188,6 +188,20 @@
 
 @section('content')
 
+@if(session('success'))
+    <div style="background: hsl(120,70%,90%); color: hsl(120,50%,30%); padding: 1rem 1.25rem; border-radius: 0.85rem; margin-bottom: 1.5rem; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; box-shadow: var(--shadow);">
+        <i class="fa-solid fa-circle-check" style="font-size: 1.15rem;"></i>
+        <span>{{ session('success') }}</span>
+    </div>
+@endif
+
+@if($errors->any())
+    <div style="background: hsl(0,70%,90%); color: hsl(0,50%,30%); padding: 1rem 1.25rem; border-radius: 0.85rem; margin-bottom: 1.5rem; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; box-shadow: var(--shadow);">
+        <i class="fa-solid fa-circle-exclamation" style="font-size: 1.15rem;"></i>
+        <span>{{ $errors->first() }}</span>
+    </div>
+@endif
+
 {{-- Profile Header --}}
 <div class="profile-header">
     <div class="profile-cover"></div>

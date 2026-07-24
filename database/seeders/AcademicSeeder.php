@@ -73,11 +73,11 @@ class AcademicSeeder extends Seeder
 
         // 9. إضافة جداول دراسية للمادة (بالأسماء العربية التي يتوقعها التطبيق)
         DB::table('schedules')->insert([
-            ['course_id' => $course1, 'day' => 'الاثنين',   'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة 101', 'created_at' => $now, 'updated_at' => $now],
-            ['course_id' => $course1, 'day' => 'الأربعاء',  'start_time' => '10:00:00', 'end_time' => '11:30:00', 'room' => 'قاعة 101', 'created_at' => $now, 'updated_at' => $now],
-            ['course_id' => $course1, 'day' => 'الخميس',    'start_time' => '14:00:00', 'end_time' => '15:30:00', 'room' => 'قاعة 203', 'created_at' => $now, 'updated_at' => $now],
-            ['course_id' => $course2, 'day' => 'الثلاثاء',  'start_time' => '09:00:00', 'end_time' => '10:30:00', 'room' => 'قاعة 305', 'created_at' => $now, 'updated_at' => $now],
-            ['course_id' => $course2, 'day' => 'الجمعة',    'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة 305', 'created_at' => $now, 'updated_at' => $now],
+            ['course_id' => $course1, 'teacher_id' => $teacherId, 'day' => 'الاثنين',   'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة 101', 'created_at' => $now, 'updated_at' => $now],
+            ['course_id' => $course1, 'teacher_id' => $teacherId, 'day' => 'الأربعاء',  'start_time' => '10:00:00', 'end_time' => '11:30:00', 'room' => 'قاعة 101', 'created_at' => $now, 'updated_at' => $now],
+            ['course_id' => $course1, 'teacher_id' => $teacherId, 'day' => 'الخميس',    'start_time' => '14:00:00', 'end_time' => '15:30:00', 'room' => 'قاعة 203', 'created_at' => $now, 'updated_at' => $now],
+            ['course_id' => $course2, 'teacher_id' => $teacherId, 'day' => 'الثلاثاء',  'start_time' => '09:00:00', 'end_time' => '10:30:00', 'room' => 'قاعة 305', 'created_at' => $now, 'updated_at' => $now],
+            ['course_id' => $course2, 'teacher_id' => $teacherId, 'day' => 'الجمعة',    'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة 305', 'created_at' => $now, 'updated_at' => $now],
         ]);
 
         // 10. إضافة واجبات للمادة

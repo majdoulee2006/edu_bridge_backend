@@ -29,33 +29,43 @@ class TeacherWebController extends Controller
     {
         $request->validate([
             'login'    => 'required|string',
-            'password' => 'required|min:6',
+            'password' => 'required',
         ], [
-            'login.required'    => 'البريد الإلكتروني أو رقم الهاتف مطلوب.',
+            'login.required'    => 'اسم المستخدم أو البريد الإلكتروني مطلوب.',
             'password.required' => 'كلمة المرور مطلوبة.',
         ]);
 
-        // يدعم: email أو phone أو username
-        $input = $request->login;
-        if (str_contains($input, '@')) {
-            $loginField = 'email';
-        } elseif (preg_match('/^\+?[0-9]{7,15}$/', $input)) {
-            $loginField = 'phone';
-        } else {
-            $loginField = 'username';
+        $input = trim($request->login);
+
+        // محاولة الدخول بـ email أو username أو phone أو full_name
+        $fields = ['email', 'username', 'phone', 'full_name'];
+        $authenticated = false;
+
+        foreach ($fields as $field) {
+            if (Auth::attempt([$field => $input, 'password' => $request->password], true)) {
+                $authenticated = true;
+                break;
+            }
         }
 
-        if (Auth::attempt([$loginField => $input, 'password' => $request->password], true)) {
-            $teacher = Teacher::where('user_id', Auth::user()->getKey())->first();
+        if ($authenticated) {
+            $user = Auth::user();
+            $teacher = Teacher::where('user_id', $user->user_id)->first();
+            
             if (!$teacher) {
-                Auth::logout();
-                return back()->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
+                if ($user->role === 'teacher') {
+                    $teacher = Teacher::create(['user_id' => $user->user_id]);
+                } else {
+                    Auth::logout();
+                    return back()->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
+                }
             }
+            
             $request->session()->regenerate();
             return redirect('/teacher/dashboard');
         }
 
-        return back()->withInput()->withErrors(['login' => 'البريد الإلكتروني/رقم الهاتف أو كلمة المرور غير صحيحة.']);
+        return back()->withInput()->withErrors(['login' => 'اسم المستخدم/البريد الإلكتروني أو كلمة المرور غير صحيحة.']);
     }
 
     public function logout(Request $request)
@@ -685,7 +695,25 @@ class TeacherWebController extends Controller
             ->select('courses.course_id', 'courses.title')
             ->get();
 
-        return view('teacher.assignments', compact('assignments', 'courses'));
+        $assignmentIds = $assignments->pluck('assignment_id');
+
+        $allSubmissions = DB::table('assignment_submissions')
+            ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+            ->join('courses', 'assignments.course_id', '=', 'courses.course_id')
+            ->join('students', 'assignment_submissions.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->whereIn('assignments.assignment_id', $assignmentIds)
+            ->select(
+                'assignment_submissions.*',
+                'users.full_name as student_name',
+                'assignments.title as assignment_title',
+                'assignments.max_points',
+                'courses.title as course_title'
+            )
+            ->orderByDesc('assignment_submissions.submitted_at')
+            ->get();
+
+        return view('teacher.assignments', compact('assignments', 'courses', 'allSubmissions'));
     }
 
     public function storeAssignment(Request $request)
@@ -694,10 +722,11 @@ class TeacherWebController extends Controller
             'course_id'   => 'required|exists:courses,course_id',
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
-            'due_date'    => 'required|date',
+            'due_date'    => 'required|date|after_or_equal:today',
             'max_points'  => 'required|integer|min:1',
             'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,mkv,webm,pdf,doc,docx,ppt,pptx,xls,xlsx,txt,zip',
         ], [
+            'due_date.after_or_equal' => 'تاريخ التسليم يجب أن يكون اليوم أو في المستقبل.',
             'attachment.max'   => 'حجم الملف يجب ألا يتجاوز 50 ميجابايت.',
             'attachment.mimes' => 'نوع الملف غير مدعوم.',
         ]);
@@ -915,11 +944,12 @@ class TeacherWebController extends Controller
         $lectures = DB::table('lessons')
             ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
             ->whereIn('lessons.course_id', $courseIds)
-            ->where('lessons.type', '!=', 'session')
+            ->where(function($q) {
+                $q->where('lessons.type', '!=', 'session')
+                  ->orWhereNull('lessons.type');
+            })
             ->where('lessons.title', 'not like', '%حضور%')
             ->where('lessons.title', 'not like', '%غياب%')
-            ->where('lessons.title', 'not like', '%تفقد%')
-            ->where('lessons.title', 'not like', '%حصة%')
             ->where(function($query) {
                 $query->whereNull('lessons.content_url')
                       ->orWhere('lessons.content_url', 'not like', '%attendance%');
@@ -982,6 +1012,7 @@ class TeacherWebController extends Controller
             'file_path'   => $filePath,
             'file_name'   => $fileName,
             'file_type'   => $fileType,
+            'type'        => 'lecture',
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);

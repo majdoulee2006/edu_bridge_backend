@@ -136,9 +136,30 @@
     }
 @endphp
 
+{{-- ===== Header & Download Actions ===== --}}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h3 style="font-weight: 800; font-size: 1.2rem; margin: 0; color: var(--text-primary);">
+            <i class="fa-solid fa-calendar-days" style="color: var(--accent-color);"></i> الجدول الدراسي الأسبوعي
+        </h3>
+    </div>
+    @if($schedules->isNotEmpty())
+    <div style="display: flex; gap: 0.75rem;">
+        <button onclick="downloadScheduleAsImage()" 
+                style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.6rem 1.1rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+            <i class="fa-solid fa-image" style="color: #3b82f6;"></i> تنزيل كـ صورة
+        </button>
+        <button onclick="downloadScheduleAsPDF()" 
+                style="background: var(--accent-color); color: #1a1a1a; border: none; padding: 0.6rem 1.1rem; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+            <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> تنزيل كـ PDF
+        </button>
+    </div>
+    @endif
+</div>
+
 {{-- ===== Timetable Grid ===== --}}
 @if($schedules->isNotEmpty())
-<div class="timetable-wrapper">
+<div class="timetable-wrapper" id="schedule-export-area" style="background: var(--bg-secondary); padding: 0.5rem; border-radius: 1.25rem;">
     <table class="timetable">
         <thead>
             <tr>
@@ -197,14 +218,29 @@
 </div>
 @endif
 
-{{-- ===== Exams Grid ===== --}}
-<p style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">
-    <i class="fa-solid fa-pencil" style="color: #ef4444;"></i>
-    مواعيد الامتحانات
-</p>
+{{-- ===== Exams Grid & Download Actions ===== --}}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: var(--text-primary);">
+            <i class="fa-solid fa-pencil" style="color: #ef4444;"></i> مواعيد الامتحانات
+        </h3>
+    </div>
+    @if($exams->isNotEmpty())
+    <div style="display: flex; gap: 0.75rem;">
+        <button onclick="downloadExamsAsImage()" 
+                style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+            <i class="fa-solid fa-image" style="color: #3b82f6;"></i> تنزيل كـ صورة
+        </button>
+        <button onclick="downloadExamsAsPDF()" 
+                style="background: var(--accent-color); color: #1a1a1a; border: none; padding: 0.5rem 1rem; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+            <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> تنزيل كـ PDF
+        </button>
+    </div>
+    @endif
+</div>
 
 @if($exams->isNotEmpty())
-<div class="timetable-wrapper">
+<div class="timetable-wrapper" id="exams-export-area" style="background: var(--bg-secondary); padding: 0.5rem; border-radius: 1.25rem;">
     <table class="timetable">
         <thead>
             <tr>
@@ -279,3 +315,71 @@
 @endif
 
 @endsection
+
+@push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+function downloadScheduleAsImage() {
+    const target = document.getElementById('schedule-export-area');
+    if (!target) return;
+
+    html2canvas(target, { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#111b26'
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'الجدول_الدراسي.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
+function downloadScheduleAsPDF() {
+    const target = document.getElementById('schedule-export-area');
+    if (!target) return;
+
+    const opt = {
+        margin:       0.4,
+        filename:     'الجدول_الدراسي.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#111b26' },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+    };
+
+    html2pdf().set(opt).from(target).save();
+}
+
+function downloadExamsAsImage() {
+    const target = document.getElementById('exams-export-area');
+    if (!target) return;
+
+    html2canvas(target, { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#111b26'
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'جدول_الامتحانات.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
+function downloadExamsAsPDF() {
+    const target = document.getElementById('exams-export-area');
+    if (!target) return;
+
+    const opt = {
+        margin:       0.4,
+        filename:     'جدول_الامتحانات.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#111b26' },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+    };
+
+    html2pdf().set(opt).from(target).save();
+}
+</script>
+@endpush

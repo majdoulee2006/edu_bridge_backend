@@ -46,7 +46,7 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::get('/lectures', [TeacherWebController::class, 'lectures'])->name('teacher.lectures');
     Route::post('/lectures', [TeacherWebController::class, 'storeLecture'])->name('teacher.lectures.store');
     Route::post('/lectures/update/{id}', [TeacherWebController::class, 'updateLecture'])->name('teacher.lectures.update');
-    Route::post('/lectures/delete/{id}', [TeacherWebController::class, 'deleteLecture'])->name('teacher.lectures.delete');
+    Route::get('/lectures/delete/{id}', [TeacherWebController::class, 'deleteLecture'])->name('teacher.lectures.delete');
 
     // الاختبارات والتقييمات
     Route::get('/grade-events', [TeacherWebController::class, 'gradeEvents'])->name('teacher.grade_events');

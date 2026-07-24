@@ -275,16 +275,17 @@ class HODWebController extends Controller
      */
     public function leaves()
     {
-        $allLeaves = DB::table('leave_requests')
-            ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
-            ->leftJoin('students', 'students.user_id', '=', 'users.user_id')
+        $allLeaves = DB::table('absence_requests')
+            ->join('students', 'absence_requests.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
             ->select(
-                'leave_requests.*',
+                'absence_requests.*',
+                'absence_requests.request_id as id',
                 'users.full_name as student_name',
                 'students.level',
                 'students.student_code'
             )
-            ->orderBy('leave_requests.created_at', 'desc')
+            ->orderBy('absence_requests.created_at', 'desc')
             ->get();
 
         return view('hod.leaves', compact('allLeaves'));
@@ -297,38 +298,36 @@ class HODWebController extends Controller
     {
         $status = $request->input('status'); // 'approved' or 'rejected'
 
-        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
+        $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
 
-        DB::table('leave_requests')
-            ->where('id', $id)
+        DB::table('absence_requests')
+            ->where('request_id', $id)
             ->update(['status' => $status, 'updated_at' => now()]);
 
         // إشعار الطالب بالنتيجة
-        if ($leaveRequest && $leaveRequest->student_id) {
-            $title   = $status === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة';
-            $message = $status === 'approved'
-                ? 'وافق رئيس القسم على طلب إجازتك بتاريخ ' . $leaveRequest->date
-                : 'تم رفض طلب إجازتك بتاريخ ' . $leaveRequest->date . ' من قِبل رئيس القسم';
+        if ($absenceRequest && $absenceRequest->student_id) {
+            $studentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
 
-            DB::table('notifications')->insert([
-                'user_id'    => $leaveRequest->student_id,
-                'title'      => $title,
-                'message'    => $message,
-                'type'       => 'leave_request',
-                'related_id' => $id,
-                'is_read'    => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            \App\Services\FcmService::sendToUser(
-                $leaveRequest->student_id,
-                $title,
-                $message,
-                ['type' => 'leave_request', 'related_id' => (string)$id]
-            );
+            $title   = $status === 'approved' ? 'تمت الموافقة على طلب الإذن' : 'تم رفض طلب الإذن';
+            $message = $status === 'approved'
+                ? 'وافق رئيس القسم على طلب إذنك بتاريخ ' . $absenceRequest->date
+                : 'تم رفض طلب إذنك بتاريخ ' . $absenceRequest->date . ' من قِبل رئيس القسم';
+
+            if ($studentUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $studentUserId,
+                    'title'      => $title,
+                    'message'    => $message,
+                    'type'       => 'leave_request',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
-        return redirect()->back()->with('success', 'تم تحديث حالة الإجازة بنجاح.');
+        return back()->with('success', 'تم تحديث حالة طلب الإذن بنجاح.');
     }
 
     /**

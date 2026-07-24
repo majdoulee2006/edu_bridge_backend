@@ -38,21 +38,36 @@
 
     <!-- Submissions List -->
     @forelse($submissions as $s)
-        <div class="submission-card" onclick="openGradeModal({{ $s->submission_id }}, '{{ addslashes($s->student_name) }}', {{ $s->grade ?? 'null' }}, '{{ addslashes($s->feedback ?? '') }}', '{{ addslashes($s->content ?? '') }}')">
+        @php
+            $fileUrl = $s->file_path ? '/storage/' . $s->file_path : '';
+            $ext = $s->file_path ? pathinfo($s->file_path, PATHINFO_EXTENSION) : '';
+            $extStr = $ext ? '.' . $ext : '';
+            $cleanStudent = str_replace(' ', '_', trim($s->student_name));
+            $cleanTitle = str_replace(' ', '_', trim($assignment->title ?? 'واجب'));
+            $fileName = $s->file_path ? ("حل_واجب_" . $cleanStudent . "_" . $cleanTitle . $extStr) : '';
+        @endphp
+        <div class="submission-card" onclick="openGradeModal({{ $s->submission_id }}, '{{ addslashes($s->student_name) }}', {{ $s->grade ?? 'null' }}, '{{ addslashes($s->feedback ?? '') }}', '{{ addslashes($s->content ?? '') }}', '{{ $fileUrl }}', '{{ addslashes($fileName) }}')">
             <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
                 <div class="avatar">{{ mb_substr($s->student_name, 0, 1) }}</div>
                 <div>
                     <div style="font-weight: 700;">{{ $s->student_name }}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.2rem;">
-                        <i class="fa-solid fa-clock"></i>
-                        {{ $s->submitted_at ? \Carbon\Carbon::parse($s->submitted_at)->format('Y-m-d h:i A') : 'غير محدد' }}
+                    <div style="color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.2rem; display: flex; gap: 0.75rem; align-items: center;">
+                        <span><i class="fa-solid fa-clock"></i> {{ $s->submitted_at ? \Carbon\Carbon::parse($s->submitted_at)->format('Y-m-d h:i A') : 'غير محدد' }}</span>
+                        @if($s->file_path)
+                            <span style="color: var(--accent-color); font-weight: 700;"><i class="fa-solid fa-paperclip"></i> ملف مرفق</span>
+                        @endif
                     </div>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.75rem;">
                 @if($s->grade !== null)
-                    <span class="grade-badge" style="background: hsl(120,70%,90%); color: hsl(120,50%,30%);">{{ $s->grade }}/{{ $assignment->max_points }}</span>
-                    <span style="font-size: 0.8rem; color: hsl(120,50%,30%); font-weight: 700;">تم التصحيح</span>
+                    @php
+                        $isPass = $s->grade >= (($assignment->max_points ?? 100) / 2);
+                        $badgeBg = $isPass ? 'hsl(120,70%,90%)' : 'hsl(0,70%,90%)';
+                        $badgeColor = $isPass ? 'hsl(120,50%,30%)' : 'hsl(0,50%,30%)';
+                    @endphp
+                    <span class="grade-badge" style="background: {{ $badgeBg }}; color: {{ $badgeColor }};">{{ $s->grade }}/{{ $assignment->max_points }}</span>
+                    <span style="font-size: 0.8rem; color: {{ $badgeColor }}; font-weight: 700;">تم التصحيح</span>
                 @else
                     <span class="grade-badge" style="background: hsl(30,70%,90%); color: hsl(30,50%,30%);">بانتظار التصحيح</span>
                 @endif
@@ -79,10 +94,19 @@
                 </button>
             </div>
 
-            <!-- Student Answer -->
+            <!-- Student Answer & Attachment -->
             <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1.25rem; margin-bottom: 1.25rem;">
-                <p style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;"><i class="fa-solid fa-quote-right" style="color: var(--accent-color);"></i> إجابة الطالب</p>
-                <p id="modal-content" style="font-size: 0.92rem; line-height: 1.6; color: var(--text-primary);"></p>
+                <p style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;"><i class="fa-solid fa-quote-right" style="color: var(--accent-color);"></i> حل وتسليم الطالب</p>
+                
+                <p id="modal-content" style="font-size: 0.92rem; line-height: 1.6; color: var(--text-primary); margin-bottom: 0.5rem;"></p>
+                
+                <div id="modal-file-container" style="display: none; margin-top: 0.5rem;">
+                    <a id="modal-file-link" href="#" target="_blank" download
+                       style="display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 700; text-decoration: none;">
+                        <i class="fa-solid fa-file-arrow-down"></i>
+                        <span id="modal-file-name">تحميل ملف الحل المرفوع</span>
+                    </a>
+                </div>
             </div>
 
             <form id="grade-form" method="POST">
@@ -110,11 +134,35 @@
 
 @push('scripts')
 <script>
-function openGradeModal(submissionId, studentName, grade, feedback, content) {
+function openGradeModal(submissionId, studentName, grade, feedback, content, fileUrl, fileName) {
     document.getElementById('modal-student-name').textContent = studentName;
     document.getElementById('modal-grade').value = grade ?? '';
     document.getElementById('modal-feedback').value = feedback ?? '';
-    document.getElementById('modal-content').textContent = content || 'لا يوجد نص مرفق.';
+    
+    const contentElem = document.getElementById('modal-content');
+    if (content && content.trim() !== '') {
+        contentElem.textContent = content;
+        contentElem.style.display = 'block';
+    } else {
+        contentElem.style.display = 'none';
+    }
+
+    const fileContainer = document.getElementById('modal-file-container');
+    if (fileUrl && fileUrl.trim() !== '') {
+        const fileLink = document.getElementById('modal-file-link');
+        fileLink.href = fileUrl;
+        fileLink.setAttribute('download', fileName || 'solution');
+        document.getElementById('modal-file-name').textContent = fileName ? ('تحميل ملف الحل: ' + fileName) : 'تحميل ملف الحل المرفوع';
+        fileContainer.style.display = 'block';
+    } else {
+        fileContainer.style.display = 'none';
+    }
+
+    if ((!content || content.trim() === '') && (!fileUrl || fileUrl.trim() === '')) {
+        contentElem.textContent = 'لا يوجد نص أو ملف مرفق من الطالب.';
+        contentElem.style.display = 'block';
+    }
+
     document.getElementById('grade-form').action = '/teacher/assignments/submissions/' + submissionId + '/grade';
     document.getElementById('grade-modal').classList.add('active');
 }

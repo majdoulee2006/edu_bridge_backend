@@ -102,6 +102,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     #========= روابط الدردشة المشتركة ==========
+    Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {
+        return \Illuminate\Support\Facades\Broadcast::auth($request);
+    });
     Route::get('/contacts', [ChatController::class, 'getContacts']);
     Route::post('/send-message', [ChatController::class, 'sendMessage']);
     Route::get('/messages/unread-count', [ChatController::class, 'getUnreadCount']);

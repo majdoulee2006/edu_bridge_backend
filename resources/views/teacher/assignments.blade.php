@@ -66,10 +66,19 @@
 @endpush
 
 @section('content')
+@php
+    $pendingSubmissionsCount = isset($allSubmissions) ? $allSubmissions->whereNull('grade')->count() : 0;
+@endphp
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <div class="tab-bar">
             <button class="tab-btn active" onclick="switchTab('all', this)">الكل</button>
-            <button class="tab-btn" onclick="switchTab('submissions', this)">الردود</button>
+            <button class="tab-btn" onclick="switchTab('submissions', this)" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                الردود
+                @if($pendingSubmissionsCount > 0)
+                    <span style="background: #ef4444; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.45rem; border-radius: 1rem; min-width: 18px; text-align: center; line-height: 1.2;">{{ $pendingSubmissionsCount }}</span>
+                @endif
+            </button>
         </div>
         <button onclick="document.getElementById('add-modal').classList.add('active')"
                 style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; padding: 0.6rem 1.25rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem;">
@@ -153,10 +162,76 @@
 
     {{-- Submissions Tab --}}
     <div id="tab-submissions" style="display: none;">
-        <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
-            <i class="fa-solid fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.75rem; display: block; color: var(--accent-color);"></i>
-            اضغط على "الردود" في أي واجب لعرض تسليمات الطلاب
-        </div>
+        @php
+            $groupedSubmissions = isset($allSubmissions) ? $allSubmissions->groupBy('assignment_title') : collect();
+        @endphp
+
+        @forelse($groupedSubmissions as $assignmentTitle => $subs)
+            <div style="background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; box-shadow: var(--shadow); border-right: 4px solid var(--accent-color);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                    <div>
+                        <h4 style="font-weight: 800; font-size: 1.05rem; color: var(--text-primary); margin: 0;">{{ $assignmentTitle }}</h4>
+                        <span style="color: var(--text-secondary); font-size: 0.82rem;">{{ $subs->first()->course_title ?? '' }} &nbsp;|&nbsp; {{ $subs->count() }} تسليم</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    @foreach($subs as $s)
+                        @php
+                            $fileUrl = $s->file_path ? '/storage/' . $s->file_path : '';
+                            $ext = $s->file_path ? pathinfo($s->file_path, PATHINFO_EXTENSION) : '';
+                            $extStr = $ext ? '.' . $ext : '';
+                            $cleanStudent = str_replace(' ', '_', trim($s->student_name));
+                            $cleanTitle = str_replace(' ', '_', trim($s->assignment_title));
+                            $fileName = $s->file_path ? ("حل_واجب_" . $cleanStudent . "_" . $cleanTitle . $extStr) : '';
+                            
+                            $isPassTeacher = $s->grade !== null && ($s->grade >= (($s->max_points ?? 100) / 2));
+                            $badgeBgTeacher = $isPassTeacher ? 'hsl(120,70%,90%)' : 'hsl(0,70%,90%)';
+                            $badgeColorTeacher = $isPassTeacher ? 'hsl(120,50%,30%)' : 'hsl(0,50%,30%)';
+                        @endphp
+                        <div style="background: var(--bg-primary); border-radius: 0.875rem; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid var(--border-color); flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1; min-width: 240px;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--accent-color); color: #1a1a1a; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    {{ mb_substr($s->student_name, 0, 1) }}
+                                </div>
+                                <div>
+                                    <div style="font-weight: 700; font-size: 0.95rem;">{{ $s->student_name }}</div>
+                                    <div style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.15rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                                        <span><i class="fa-solid fa-clock"></i> {{ \Carbon\Carbon::parse($s->submitted_at)->format('Y-m-d h:i A') }}</span>
+                                        @if($s->file_path)
+                                            <a href="{{ $fileUrl }}" target="_blank" download="{{ $fileName }}"
+                                               style="color: var(--accent-color); font-weight: 700; text-decoration: none;" onclick="event.stopPropagation();">
+                                                <i class="fa-solid fa-paperclip"></i> تحميل الحل
+                                            </a>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                @if($s->grade !== null)
+                                    <span style="background: {{ $badgeBgTeacher }}; color: {{ $badgeColorTeacher }}; padding: 0.25rem 0.75rem; border-radius: 2rem; font-weight: 800; font-size: 0.85rem;">
+                                        {{ $s->grade }}/{{ $s->max_points }}
+                                    </span>
+                                @else
+                                    <span style="background: hsl(30,70%,90%); color: hsl(30,50%,30%); padding: 0.25rem 0.75rem; border-radius: 2rem; font-weight: 800; font-size: 0.85rem;">
+                                        بانتظار التصحيح
+                                    </span>
+                                @endif
+                                <a href="{{ route('teacher.assignments.submissions', $s->assignment_id) }}" 
+                                   style="background: var(--accent-color); color: #1a1a1a; border-radius: 0.5rem; padding: 0.4rem 0.85rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                    <i class="fa-solid fa-pen-to-square"></i> تصحيح
+                                </a>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @empty
+            <div style="text-align: center; padding: 4rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary);">
+                <i class="fa-solid fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
+                <p style="font-size: 1.05rem; font-weight: 600;">لا توجد تسليمات متاحة حتى الآن</p>
+            </div>
+        @endforelse
     </div>
 
 
@@ -203,7 +278,7 @@
                 <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
                     <div style="flex: 1;">
                         <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">تاريخ التسليم</label>
-                        <input type="date" name="due_date" class="form-input" required>
+                        <input type="date" name="due_date" class="form-input" min="{{ date('Y-m-d') }}" required>
                     </div>
                     <div style="flex: 1;">
                         <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">الدرجة الكبرى</label>

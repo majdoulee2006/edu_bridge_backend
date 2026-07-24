@@ -355,11 +355,8 @@ class ParentWebController extends Controller
             return $this->parentView('parent.permissions', ['requests' => collect()]);
         }
 
-        // Get student's user record (leave_requests table uses user_id as student_id)
-        $studentUserId = DB::table('students')->where('student_id', $studentId)->value('user_id');
-
-        $requests = DB::table('leave_requests')
-            ->where('student_id', $studentUserId)
+        $requests = DB::table('absence_requests')
+            ->where('student_id', $studentId)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -370,66 +367,20 @@ class ParentWebController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
 
-        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
-        if (!$leaveRequest) {
+        $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
+        if (!$absenceRequest) {
             return back()->with('error', 'الطلب غير موجود.');
         }
 
-        if ($request->status === 'approved') {
-            DB::table('leave_requests')
-                ->where('id', $id)
-                ->update(['status' => 'pending_hod', 'updated_at' => now()]);
+        DB::table('absence_requests')
+            ->where('request_id', $id)
+            ->update([
+                'status'     => $request->status,
+                'updated_at' => now(),
+            ]);
 
-            $studentUser = DB::table('users')->where('user_id', $leaveRequest->student_id)->first();
-            $studentName = $studentUser->full_name ?? 'الطالب';
-
-            $headUserId = DB::table('heads')->value('user_id')
-                ?? DB::table('users')->where('role_id', 5)->value('user_id');
-                
-            if ($headUserId) {
-                DB::table('notifications')->insert([
-                    'user_id'    => $headUserId,
-                    'title'      => 'طلب إجازة بانتظار موافقتك',
-                    'message'    => 'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
-                    'type'       => 'leave_request',
-                    'related_id' => $id,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser(
-                    $headUserId,
-                    'طلب إجازة بانتظار موافقتك',
-                    'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
-                    ['type' => 'leave_request', 'related_id' => (string)$id]
-                );
-            }
-            return back()->with('success', 'تمت الموافقة على الإجازة وإحالتها لرئيس القسم.');
-        } else {
-            DB::table('leave_requests')
-                ->where('id', $id)
-                ->update(['status' => 'rejected', 'updated_at' => now()]);
-
-            if ($leaveRequest->student_id) {
-                $typeText = $leaveRequest->type === 'hourly' ? 'الساعية' : 'اليومية';
-                DB::table('notifications')->insert([
-                    'user_id'    => $leaveRequest->student_id,
-                    'title'      => 'تم رفض طلب الإجازة',
-                    'message'    => 'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
-                    'type'       => 'leave_request',
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser(
-                    $leaveRequest->student_id,
-                    'تم رفض طلب الإجازة',
-                    'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
-                    ['type' => 'leave_request']
-                );
-            }
-            return back()->with('success', 'تم رفض طلب الإجازة بنجاح.');
-        }
+        $msg = $request->status === 'approved' ? 'تمت الموافقة على طلب الإذن بنجاح.' : 'تم رفض طلب الإذن.';
+        return back()->with('success', $msg);
     }
 
     public function submitLeaveRequest(Request $request)

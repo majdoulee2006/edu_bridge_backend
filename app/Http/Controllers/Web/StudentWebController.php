@@ -35,15 +35,14 @@ class StudentWebController extends Controller
         ]);
 
         $input = $request->login;
-        if (filter_var($input, FILTER_VALIDATE_EMAIL)) {
-            $loginField = 'email';
-        } elseif (preg_match('/^\+?[0-9]{7,15}$/', $input)) {
-            $loginField = 'phone';
-        } else {
-            $loginField = 'username';
-        }
+        // 🔍 البحث عن المستخدم بواسطة البريد، اسم المستخدم، أو الهاتف لتجنب تصنيف الأرقام كأرقام هواتف بالخطأ
+        $user = \App\Models\User::where('email', $input)
+            ->orWhere('username', $input)
+            ->orWhere('phone', $input)
+            ->first();
 
-        if (Auth::attempt([$loginField => $input, 'password' => $request->password])) {
+        if ($user && Hash::check($request->password, $user->password)) {
+            Auth::login($user);
             $student = Student::where('user_id', Auth::user()->getKey())->first();
             if (!$student) {
                 Auth::logout();
@@ -108,7 +107,7 @@ class StudentWebController extends Controller
             ->where('student_id', $student->student_id)
             ->where('status', 'present')
             ->count();
-        $attendanceRate = $totalAttendance > 0 ? round(($presentCount / $totalAttendance) * 100) : 0;
+        $attendanceRate = $totalAttendance > 0 ? round(($presentCount / $totalAttendance) * 100) : null;
 
         // الإعلانات الأخيرة
         $announcements = DB::table('announcements')
@@ -120,11 +119,25 @@ class StudentWebController extends Controller
             ->limit(5)
             ->get();
 
-        // متوسط الدرجات
-        $avgGrade = DB::table('grades')
+        // متوسط الدرجات (يشمل الواجبات المصححة والاختبارات)
+        $submissionGrades = DB::table('assignment_submissions')
+            ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+            ->where('assignment_submissions.student_id', $student->student_id)
+            ->whereNotNull('assignment_submissions.grade')
+            ->select('assignment_submissions.grade', 'assignments.max_points')
+            ->get();
+
+        $submissionPercentages = $submissionGrades->map(function($sub) {
+            $max = ($sub->max_points ?? 0) > 0 ? $sub->max_points : 100;
+            return ($sub->grade / $max) * 100;
+        });
+
+        $examGrades = DB::table('grades')
             ->where('student_id', $student->student_id)
-            ->avg('score');
-        $avgGrade = $avgGrade ? round($avgGrade, 1) : 0;
+            ->pluck('score');
+
+        $allGrades = $submissionPercentages->concat($examGrades);
+        $avgGrade = $allGrades->count() > 0 ? round($allGrades->avg(), 1) : null;
 
         return view('student.dashboard', compact(
             'student', 'user', 'courses', 'assignments',
@@ -178,11 +191,40 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        $courses = DB::table('enrollments')
+        $query = DB::table('enrollments')
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
-            ->where('enrollments.student_id', $student->student_id)
-            ->select('courses.*',
-                DB::raw('(SELECT COUNT(*) FROM lessons WHERE lessons.course_id = courses.course_id) as lessons_count'),
+            ->where('enrollments.student_id', $student->student_id);
+
+        // 🎓 تصفية المواد حسب السنة الدراسية للطالب (سنة أولى، سنة ثانية، إلخ)
+        $levelMap = [
+            'السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5,
+            'الأولى' => 1, 'الثانية' => 2, 'الثالثة' => 3, 'الرابعة' => 4, 'الخامسة' => 5,
+            '1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5
+        ];
+        $studentYear = $levelMap[$student->level ?? ''] ?? $levelMap[Auth::user()->academic_year ?? ''] ?? null;
+
+        if ($studentYear) {
+            $query->where('courses.year', $studentYear);
+        }
+
+        // 📅 تصفية المواد حسب الفصل الدراسي النشط حالياً إن وجد
+        $activeSemesterId = DB::table('semesters')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->value('semester_id');
+
+        if ($activeSemesterId) {
+            $query->where('courses.semester_id', $activeSemesterId);
+        }
+
+        $courses = $query->select('courses.*',
+                DB::raw("(SELECT COUNT(*) FROM lessons 
+                          WHERE lessons.course_id = courses.course_id 
+                            AND (type != 'session' OR type IS NULL) 
+                            AND title NOT LIKE '%حضور%' 
+                            AND title NOT LIKE '%غياب%' 
+                            AND (content_url IS NULL OR content_url NOT LIKE '%attendance%')
+                         ) as lessons_count"),
                 DB::raw('(SELECT COUNT(*) FROM assignments WHERE assignments.course_id = courses.course_id) as assignments_count')
             )
             ->get();
@@ -217,11 +259,12 @@ class StudentWebController extends Controller
 
         $materials = DB::table('lessons')
             ->where('course_id', $courseId)
-            ->where('type', '!=', 'session')
+            ->where(function($q) {
+                $q->where('type', '!=', 'session')
+                  ->orWhereNull('type');
+            })
             ->where('title', 'not like', '%حضور%')
             ->where('title', 'not like', '%غياب%')
-            ->where('title', 'not like', '%تفقد%')
-            ->where('title', 'not like', '%حصة%')
             ->where(function($query) {
                 $query->whereNull('content_url')
                       ->orWhere('content_url', 'not like', '%attendance%');
@@ -313,17 +356,77 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        $grades = DB::table('grades')
-            ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
-            ->join('courses', 'exams.course_id', '=', 'courses.course_id')
-            ->where('grades.student_id', $student->student_id)
-            ->select('grades.*', 'courses.title as course_title', 'exams.exam_name as exam_title', 'exams.max_score')
-            ->orderBy('courses.title')
+        $enrolledCourses = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->where('enrollments.student_id', $student->student_id)
+            ->select('courses.course_id', 'courses.title as course_title')
             ->get();
 
-        $avgGrade = $grades->avg('score') ? round($grades->avg('score'), 1) : 0;
+        $courseGradesData = [];
+        $allPercentages = [];
 
-        return view('student.grades', compact('grades', 'avgGrade'));
+        foreach ($enrolledCourses as $c) {
+            // 1. الواجبات المصححة للمادة
+            $assignments = DB::table('assignment_submissions')
+                ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+                ->where('assignments.course_id', $c->course_id)
+                ->where('assignment_submissions.student_id', $student->student_id)
+                ->whereNotNull('assignment_submissions.grade')
+                ->select(
+                    'assignments.title as name',
+                    'assignment_submissions.grade as score',
+                    'assignments.max_points as max_score',
+                    'assignment_submissions.feedback',
+                    'assignment_submissions.submitted_at as date'
+                )
+                ->get();
+
+            // 2. الامتحانات والمذاكرات للمادة
+            $examsAndQuizzes = DB::table('grades')
+                ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
+                ->where('exams.course_id', $c->course_id)
+                ->where('grades.student_id', $student->student_id)
+                ->select(
+                    'exams.exam_name as name',
+                    'grades.score',
+                    'exams.max_score',
+                    'grades.created_at as date'
+                )
+                ->get();
+
+            $quizzes = $examsAndQuizzes->filter(function($e) {
+                $name = mb_strtolower($e->name);
+                return str_contains($name, 'مذاكرة') || str_contains($name, 'اختبار قصير') || str_contains($name, 'quiz') || str_contains($name, 'test');
+            })->values();
+
+            $exams = $examsAndQuizzes->filter(function($e) {
+                $name = mb_strtolower($e->name);
+                return !(str_contains($name, 'مذاكرة') || str_contains($name, 'اختبار قصير') || str_contains($name, 'quiz') || str_contains($name, 'test'));
+            })->values();
+
+            // حساب النسب المئوية للمعدل الكلي
+            foreach ($assignments as $a) {
+                $max = ($a->max_score ?? 0) > 0 ? $a->max_score : 100;
+                $allPercentages[] = ($a->score / $max) * 100;
+            }
+            foreach ($examsAndQuizzes as $eq) {
+                $max = ($eq->max_score ?? 0) > 0 ? $eq->max_score : 100;
+                $allPercentages[] = ($eq->score / $max) * 100;
+            }
+
+            $courseGradesData[] = [
+                'course_id'    => $c->course_id,
+                'course_title' => $c->course_title,
+                'assignments'  => $assignments,
+                'quizzes'      => $quizzes,
+                'exams'        => $exams,
+                'total_items'  => $assignments->count() + $quizzes->count() + $exams->count(),
+            ];
+        }
+
+        $avgGrade = count($allPercentages) > 0 ? round(array_sum($allPercentages) / count($allPercentages), 1) : 0;
+
+        return view('student.grades', compact('courseGradesData', 'avgGrade'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -426,8 +529,12 @@ class StudentWebController extends Controller
     {
         $request->validate([
             'reason'     => 'required|string|max:500',
-            'date'       => 'required|date',
+            'date'       => 'required|date|after_or_equal:today',
             'document'   => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf',
+        ], [
+            'date.after_or_equal' => 'تاريخ الغياب يجب أن يكون اليوم أو في المستقبل.',
+            'reason.required'    => 'يرجى كتابة سبب الغياب.',
+            'document.max'       => 'حجم المستند المرفق يجب ألا يتجاوز 10 ميجابايت.',
         ]);
 
         $student  = $this->getStudent();
@@ -437,9 +544,20 @@ class StudentWebController extends Controller
             $filePath = $request->file('document')->store('leave_requests', 'public');
         }
 
+        $reasonText = $request->reason;
+        if ($request->type === 'hourly') {
+            if ($request->from_time && $request->to_time) {
+                $reasonText = "[إذن ساعي: من " . $request->from_time . " إلى " . $request->to_time . "] - " . $request->reason;
+            } else {
+                $reasonText = "[إذن ساعي] - " . $request->reason;
+            }
+        } else {
+            $reasonText = "[إذن يومي] - " . $request->reason;
+        }
+
         DB::table('absence_requests')->insert([
             'student_id' => $student->student_id,
-            'reason'     => $request->reason,
+            'reason'     => $reasonText,
             'date'       => $request->date,
             'document'   => $filePath,
             'status'     => 'pending',
@@ -545,7 +663,12 @@ class StudentWebController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password'     => 'required|min:8|confirmed',
+            'new_password'     => 'required|min:6|confirmed',
+        ], [
+            'current_password.required' => 'يرجى إدخال كلمة المرور الحالية.',
+            'new_password.required'     => 'يرجى إدخال كلمة المرور الجديدة.',
+            'new_password.min'          => 'كلمة المرور الجديدة يجب ألا تقل عن 6 خانات.',
+            'new_password.confirmed'    => 'تأكيد كلمة المرور الجديدة غير متطابق.',
         ]);
 
         $user = Auth::user();
