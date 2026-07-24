@@ -816,9 +816,9 @@ class ParentWebController extends Controller
     {
         $currentUserId = Auth::id();
 
-        // Allowed targets for parent: Admin, HOD, Affairs, Teachers
+        // Allowed targets for parent: Admin (1), Teacher (2), Head (5), Affairs (6)
         $allUsers = \App\Models\User::where('user_id', '!=', $currentUserId)
-            ->whereIn('role', ['admin', 'head', 'affairs', 'teacher'])
+            ->whereIn('role_id', [1, 2, 5, 6])
             ->get();
 
         return $this->parentView('parent.messages', compact('allUsers'));
