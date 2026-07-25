@@ -1,8 +1,7 @@
-@extends('layouts.admin')
+﻿@extends('layouts.admin')
 
 @section('title', 'الرسائل')
-@section('header-title', 'نظام الدردشة الموحد')
-@section('header-subtitle', 'تواصل فوري مع الكادر الإداري والتعليمي')
+@section('subtitle', 'تواصل فوري مع الكادر الإداري والتعليمي')
 
 @section('content')
 <div class="flex gap-6 h-[calc(100vh-12rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft transition-colors" id="chat-app-container">
@@ -11,11 +10,16 @@
     <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-slate-800 h-full shrink-0" id="contacts-sidebar-pane">
         <!-- Search and Filter -->
         <div class="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
-            <div class="relative">
-                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span class="material-symbols-outlined text-xl">search</span>
-                </span>
-                <input id="contact-search" oninput="filterContactsList()" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="البحث في جهات الاتصال..." type="text"/>
+            <div class="flex items-center gap-2">
+                <div class="relative flex-1">
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                        <span class="material-symbols-outlined text-xl">search</span>
+                    </span>
+                    <input id="contact-search" oninput="filterContactsList()" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="البحث في جهات الاتصال..." type="text"/>
+                </div>
+                <button type="button" onclick="openNewChatModal()" class="w-12 h-12 rounded-2xl bg-[#FFCC00] hover:bg-[#E6B800] text-black flex items-center justify-center transition-all shrink-0" title="محادثة جديدة">
+                    <span class="material-symbols-outlined font-bold">add_comment</span>
+                </button>
             </div>
         </div>
 
@@ -149,6 +153,66 @@
                         <span id="send-btn-icon" class="material-symbols-outlined rotate-180">send</span>
                     </button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= NEW CHAT MODAL ================= -->
+<div id="new-chat-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="text-lg font-black text-slate-800 dark:text-white">محادثة جديدة</h3>
+            <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 transition-colors">
+                <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+        </div>
+        <div class="p-4">
+            <div class="relative mb-4">
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined text-xl">search</span>
+                </span>
+                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="البحث عن مستخدم..." type="text"/>
+            </div>
+            
+            <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-2" id="modal-contacts-list">
+                @if(isset($allUsers) && count($allUsers) > 0)
+                    @foreach($allUsers as $user)
+                        @php
+                            $roleAr = $user->role;
+                            $badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/10 text-rose-500'; $roleAr = 'الإدارة'; }
+                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/10 text-blue-500'; $roleAr = 'المدرب'; }
+                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/10 text-emerald-500'; $roleAr = 'الطالب'; }
+                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/10 text-purple-500'; $roleAr = 'الأهل'; }
+                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/10 text-amber-500'; $roleAr = 'رئيس القسم'; }
+                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/10 text-cyan-500'; $roleAr = 'الشؤون'; }
+                            
+                            $avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : '';
+                            $initials = mb_substr(trim($user->full_name), 0, 1);
+                        @endphp
+                        <div onclick="startNewChat({{ $user->user_id }}, '{{ $user->full_name }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700" data-name="{{ strtolower($user->full_name) }}">
+                            <!-- Avatar -->
+                            <div class="relative shrink-0 select-none">
+                                @if($user->avatar)
+                                    <img class="w-10 h-10 rounded-full object-cover" src="{{ $avatarUrl }}" alt="Avatar">
+                                @else
+                                    <div class="w-10 h-10 rounded-full bg-primary/20 text-yellow-700 dark:text-yellow-400 flex items-center justify-center font-bold text-sm">{{ $initials }}</div>
+                                @endif
+                            </div>
+                            <!-- Details -->
+                            <div class="flex-1 min-w-0">
+                                <div class="text-xs font-bold text-slate-800 dark:text-white truncate">{{ $user->full_name }}</div>
+                                <div class="text-[10px] font-semibold text-slate-400 truncate">{{ $user->email }}</div>
+                            </div>
+                            <div class="shrink-0">
+                                <span class="text-[9px] font-bold px-2 py-1 rounded-full {{ $badgeClass }}">{{ $roleAr }}</span>
+                            </div>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="text-center py-8 text-slate-400 text-xs font-semibold">لا يوجد مستخدمين آخرين في النظام</div>
+                @endif
             </div>
         </div>
     </div>
@@ -305,11 +369,19 @@ tailwind.config = {
         emptyDiv.classList.add('hidden');
         wrapperDiv.classList.add('hidden');
 
-        fetch("{{ route('chat.contacts') }}")
-            .then(res => res.json())
+        fetch("{{ route('admin.messages.contacts') }}", {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+            .then(res => {
+                if (!res.ok) throw new Error("HTTP error " + res.status);
+                return res.json();
+            })
             .then(data => {
                 loadingDiv.classList.add('hidden');
-                if (data.status === 'success' && data.data.length > 0) {
+                if (data.status === 'success' && data.data && data.data.length > 0) {
                     renderContactsList(data.data);
                     wrapperDiv.classList.remove('hidden');
                 } else {
@@ -325,15 +397,21 @@ tailwind.config = {
 
     // Refresh contact list quietly to keep unread badges and messages synced
     function loadContactsSilently() {
-        fetch("{{ route('chat.contacts') }}")
+        fetch("{{ route('admin.messages.contacts') }}", {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'success') {
+                if (data.status === 'success' && data.data) {
                     renderContactsList(data.data);
                     document.getElementById('contacts-wrapper').classList.remove('hidden');
                     document.getElementById('contacts-empty').classList.add('hidden');
                 }
-            });
+            })
+            .catch(err => console.error("Silent contacts update failed: ", err));
     }
 
     // Render Contact Item Rows with Role Badges and excerpt
@@ -345,22 +423,22 @@ tailwind.config = {
             // Pick Role badge color classes
             let badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
             let roleAr = contact.role;
-            if (contact.role === 'Administration') {
+            if (contact.role === 'admin') {
                 badgeClass = 'bg-rose-500/10 text-rose-500';
                 roleAr = 'الإدارة';
-            } else if (contact.role === 'Teacher') {
+            } else if (contact.role === 'teacher') {
                 badgeClass = 'bg-blue-500/10 text-blue-500';
                 roleAr = 'المدرب';
-            } else if (contact.role === 'Student') {
+            } else if (contact.role === 'student') {
                 badgeClass = 'bg-emerald-500/10 text-emerald-500';
                 roleAr = 'الطالب';
-            } else if (contact.role === 'Parent') {
+            } else if (contact.role === 'parent') {
                 badgeClass = 'bg-purple-500/10 text-purple-500';
                 roleAr = 'الأهل';
-            } else if (contact.role === 'Head of Department') {
+            } else if (contact.role === 'head') {
                 badgeClass = 'bg-amber-500/10 text-amber-500';
                 roleAr = 'رئيس القسم';
-            } else if (contact.role === 'Affairs Officer') {
+            } else if (contact.role === 'affairs') {
                 badgeClass = 'bg-cyan-500/10 text-cyan-500';
                 roleAr = 'الشؤون';
             }
@@ -436,6 +514,47 @@ tailwind.config = {
         });
     }
 
+    // Modal Functions
+    function openNewChatModal() {
+        const modal = document.getElementById('new-chat-modal');
+        modal.classList.remove('hidden');
+        // Small delay to allow transition
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            document.getElementById('new-chat-modal-content').classList.remove('scale-95');
+        }, 10);
+    }
+
+    function closeNewChatModal() {
+        const modal = document.getElementById('new-chat-modal');
+        modal.classList.add('opacity-0');
+        document.getElementById('new-chat-modal-content').classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+
+    function filterModalContacts() {
+        const query = document.getElementById('modal-contact-search').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.modal-contact-row');
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name');
+            if (name.includes(query)) {
+                row.classList.remove('hidden');
+                row.classList.add('flex');
+            } else {
+                row.classList.remove('flex');
+                row.classList.add('hidden');
+            }
+        });
+    }
+
+    function startNewChat(userId, name, roleLabel, avatarUrl) {
+        closeNewChatModal();
+        selectContact(userId, name, roleLabel, avatarUrl);
+    }
+
     // Switch conversation details and fetch old chat history
     function selectContact(contactId, name, roleLabel, avatarUrl) {
         activeContactId = contactId;
@@ -485,12 +604,18 @@ tailwind.config = {
             </div>
         `;
 
-        fetch(`/chat/messages/${contactId}`)
+        fetch(`/admin/messages/conversation/${contactId}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
             .then(res => res.json())
             .then(data => {
                 feed.innerHTML = '';
-                if (data.status === 'success' && data.data.length > 0) {
-                    data.data.slice().reverse().forEach(msg => {
+                // data from getConversation is just an array of messages
+                if (data.length > 0) {
+                    data.forEach(msg => {
                         appendMessageBubble(msg);
                     });
                     scrollMessagesToBottom();
@@ -502,7 +627,6 @@ tailwind.config = {
                         </div>
                     `;
                 }
-                markActiveChatAsRead();
             })
             .catch(err => {
                 console.error("Messages history load error: ", err);
@@ -513,15 +637,7 @@ tailwind.config = {
     // Mark current active messages as read
     function markActiveChatAsRead() {
         if (!activeContactId) return;
-        fetch(`/chat/messages/${activeContactId}/mark-read`, {
-            method: 'PUT',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json'
-            }
-        }).then(() => {
-            loadContactsSilently();
-        });
+        // The getConversation route already handles marking as read, but for realtime we can just call it or ignore
     }
 
     // Append Message Bubble into Feed container
@@ -690,7 +806,7 @@ tailwind.config = {
         if (text === '' && !selectedAttachmentFile) return;
 
         if (editingMessageId) {
-            fetch('/chat/messages/' + editingMessageId + '/edit', {
+            fetch('/admin/messages/' + editingMessageId + '/edit', {
                 method: 'PUT',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -744,7 +860,7 @@ tailwind.config = {
         input.value = '';
         clearSelectedAttachment();
 
-        fetch("{{ route('chat.send-message') }}", {
+        fetch("{{ route('admin.messages.send') }}", {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -763,9 +879,9 @@ tailwind.config = {
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            if (data.status === 'success') {
-                if (!document.getElementById('msg-' + data.data.id)) {
-                    appendMessageBubble(data.data);
+            if (data.success) {
+                if (!document.getElementById('msg-' + data.message.id)) {
+                    appendMessageBubble(data.message);
                     scrollMessagesToBottom();
                 }
                 loadContactsSilently();
@@ -903,7 +1019,7 @@ tailwind.config = {
         document.getElementById('msg-options-' + id).classList.add('hidden');
         if(!confirm('هل أنت متأكد من حذف هذه الرسالة؟')) return;
         
-        fetch('/chat/messages/' + id, {
+        fetch('/admin/messages/' + id, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -927,7 +1043,7 @@ tailwind.config = {
             return;
         }
         
-        fetch(`/chat/messages/${activeContactId}/search?q=${encodeURIComponent(query)}`)
+        fetch(`/admin/messages/conversation/${activeContactId}/search?q=${encodeURIComponent(query)}`)
             .then(res => res.json())
             .then(data => {
                 const feed = document.getElementById('messages-feed');
@@ -970,7 +1086,7 @@ tailwind.config = {
         });
         scrollMessagesToBottom();
 
-        fetch("{{ route('chat.send-message') }}", {
+        fetch("{{ route('admin.messages.send') }}", {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -989,9 +1105,9 @@ tailwind.config = {
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            if (data.status === 'success') {
-                if (!document.getElementById('msg-' + data.data.id)) {
-                    appendMessageBubble(data.data);
+            if (data.success) {
+                if (!document.getElementById('msg-' + data.message.id)) {
+                    appendMessageBubble(data.message);
                     scrollMessagesToBottom();
                 }
                 loadContactsSilently();
@@ -1026,19 +1142,15 @@ tailwind.config = {
         const pageTitle = document.querySelector('.page-title');
 
         if (isDark) {
-            document.documentElement.classList.add('dark');
-            document.documentElement.setAttribute('data-theme', 'dark');
-            if (body) body.classList.add('bg-slate-900', 'text-white');
-            if (mainContent) mainContent.classList.add('bg-slate-900');
-            if (header) header.classList.add('bg-slate-900', 'border-slate-800');
-            if (pageTitle) pageTitle.classList.add('text-white');
+            if (body && !body.classList.contains('bg-slate-900')) body.classList.add('bg-slate-900', 'text-white');
+            if (mainContent && !mainContent.classList.contains('bg-slate-900')) mainContent.classList.add('bg-slate-900');
+            if (header && !header.classList.contains('bg-slate-900')) header.classList.add('bg-slate-900', 'border-slate-800');
+            if (pageTitle && !pageTitle.classList.contains('text-white')) pageTitle.classList.add('text-white');
         } else {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.setAttribute('data-theme', 'light');
-            if (body) body.classList.remove('bg-slate-900', 'text-white');
-            if (mainContent) mainContent.classList.remove('bg-slate-900');
-            if (header) header.classList.remove('bg-slate-900', 'border-slate-800');
-            if (pageTitle) pageTitle.classList.remove('text-white');
+            if (body && body.classList.contains('bg-slate-900')) body.classList.remove('bg-slate-900', 'text-white');
+            if (mainContent && mainContent.classList.contains('bg-slate-900')) mainContent.classList.remove('bg-slate-900');
+            if (header && header.classList.contains('bg-slate-900')) header.classList.remove('bg-slate-900', 'border-slate-800');
+            if (pageTitle && pageTitle.classList.contains('text-white')) pageTitle.classList.remove('text-white');
         }
     }
 
@@ -1046,15 +1158,20 @@ tailwind.config = {
     syncDarkMode();
 
     // Observe changes to the html/body tags to react to the layout's theme toggle
-    const themeObserver = new MutationObserver(() => {
+    const themeObserver = new MutationObserver((mutations) => {
+        // Disconnect to prevent infinite loops when we modify classes ourselves
+        themeObserver.disconnect();
         syncDarkMode();
+        // Re-observe after changes
+        if (document.documentElement) {
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+        }
     });
+    
     if (document.documentElement) {
         themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-    }
-    if (document.body) {
-        themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme'] });
     }
 </script>
 @endpush
 @endsection
+

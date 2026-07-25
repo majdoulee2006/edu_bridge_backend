@@ -15,7 +15,7 @@ class Message extends Model
         'course_id',
         'message',
         'attachment',
-        'is_read',
+        'is_read', 'is_delivered',
         'reply_to_message_id', 
         'group_id'
     ];

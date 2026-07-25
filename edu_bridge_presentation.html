@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عرض منظومة Edu-Bridge المتكاملة</title>
+    <!-- Google Fonts: Cairo & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* 100% matched palette to actual project style */
+            --bg-primary: #101922;
+            --bg-secondary: #1a2633;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #f2f20d;
+            --accent-hover: #d9d905;
+            --border-color: #1e2d3d;
+            --shadow: 0 10px 30px rgba(0,0,0,0.5);
+            --glow-shadow: 0 0 25px rgba(242,242,13,0.3);
+            --font-ar: 'Cairo', sans-serif;
+            --font-en: 'Outfit', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-ar);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(242, 242, 13, 0.02) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(242, 242, 13, 0.02) 0%, transparent 40%);
+        }
+
+        /* Top Progress Bar */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ffd700, var(--accent-color));
+            box-shadow: 0 0 10px var(--accent-color);
+            transition: width 0.4s cubic-bezier(0.1, 0.8, 0.25, 1);
+        }
+
+        /* Presentation Wrapper with 3D Perspective */
+        .presentation-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            position: relative;
+            perspective: 1500px;
+            overflow: hidden;
+        }
+
+        /* 3D Slide Flip Transitions */
+        .slide {
+            position: absolute;
+            width: 92%;
+            max-width: 1240px;
+            height: 82vh;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 2rem;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            opacity: 0;
+            pointer-events: none;
+            transform-style: preserve-3d;
+            transform: rotateY(90deg) translateZ(300px) scale(0.9);
+            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            backdrop-filter: blur(15px);
+            box-shadow: var(--shadow);
+        }
+
+        /* Next/Prev states for complex transitions */
+        .slide.active {
+            opacity: 1;
+            transform: rotateY(0deg) translateZ(0px) scale(1);
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .slide.prev {
+            opacity: 0;
+            transform: rotateY(-90deg) translateZ(300px) scale(0.9);
+        }
+
+        /* Slide Header */
+        .slide-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .slide-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .slide-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(242, 242, 13, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: var(--accent-color);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--glow-shadow);
+        }
+
+        .slide-title {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .slide-subtitle {
+            font-family: var(--font-en);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Slide Body Layout */
+        .slide-body {
+            flex: 1;
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .slide-text {
+            flex: 1.3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1rem;
+            overflow-y: auto;
+            max-height: 100%;
+            padding-right: 0.5rem;
+        }
+
+        .slide-text p {
+            font-size: 1.15rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        .slide-visual {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Animated Bullet Points */
+        .bullet-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .bullet-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            font-size: 1.05rem;
+            line-height: 1.45;
+            opacity: 0;
+            transform: translateX(30px);
+            transition: all 0.5s ease;
+        }
+
+        .slide.active .bullet-item {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Bullet delays */
+        .slide.active .bullet-item:nth-child(1) { transition-delay: 0.1s; }
+        .slide.active .bullet-item:nth-child(2) { transition-delay: 0.2s; }
+        .slide.active .bullet-item:nth-child(3) { transition-delay: 0.3s; }
+        .slide.active .bullet-item:nth-child(4) { transition-delay: 0.4s; }
+        .slide.active .bullet-item:nth-child(5) { transition-delay: 0.5s; }
+        .slide.active .bullet-item:nth-child(6) { transition-delay: 0.6s; }
+
+        .bullet-item i {
+            color: var(--accent-color);
+            margin-top: 0.2rem;
+            text-shadow: 0 0 8px var(--accent-color);
+        }
+
+        .bullet-text strong {
+            color: var(--text-primary);
+        }
+
+        .bullet-text span {
+            display: block;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            margin-top: 0.15rem;
+        }
+
+        /* Footer Controls */
+        .controls-footer {
+            height: 80px;
+            background: rgba(16, 25, 34, 0.95);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 3rem;
+            z-index: 50;
+        }
+
+        .slide-number {
+            font-family: var(--font-en);
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--text-secondary);
+        }
+
+        .slide-number span {
+            color: var(--accent-color);
+            font-size: 1.3rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.6rem 1.6rem;
+            border-radius: 12px;
+            font-family: var(--font-ar);
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: var(--accent-color);
+            color: #101922;
+            border-color: var(--accent-color);
+            box-shadow: var(--glow-shadow);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.15;
+            cursor: not-allowed;
+            transform: none !important;
+            background: rgba(255, 255, 255, 0.02) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+            box-shadow: none !important;
+        }
+
+        .highlight {
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        /* ── INTERACTIVE DEMOS & SIMULATORS ── */
+
+        /* Welcome Logo Pulse */
+        .welcome-center {
+            text-align: center;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .main-logo {
+            font-size: 5rem;
+            color: var(--accent-color);
+            animation: pulse-glow 3s infinite alternate;
+        }
+        @keyframes pulse-glow {
+            0% { transform: scale(0.95); text-shadow: 0 0 10px rgba(242,242,13,0.2); }
+            100% { transform: scale(1.05); text-shadow: 0 0 35px rgba(242,242,13,0.6); }
+        }
+        .glow-btn {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #ffd700 100%);
+            color: #101922;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--glow-shadow);
+            transition: all 0.3s;
+        }
+        .glow-btn:hover {
+            transform: scale(1.04);
+            box-shadow: 0 0 30px var(--accent-color);
+        }
+
+        /* ID Generator Mockup card */
+        .id-card-visual {
+            width: 270px;
+            background: linear-gradient(135deg, #16222f 0%, #0d151c 100%);
+            border: 2px solid var(--accent-color);
+            border-radius: 1rem;
+            padding: 1.2rem;
+            position: relative;
+            box-shadow: var(--glow-shadow);
+            display: none;
+            animation: slideInUp 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+        }
+        @keyframes slideInUp {
+            from { transform: translateY(50px) scale(0.9); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        /* Telegram Mockup */
+        .tg-phone {
+            width: 250px;
+            height: 300px;
+            background: #090e14;
+            border: 5px solid #222;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .tg-header {
+            background: #2481cc;
+            color: #fff;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+            text-align: center;
+            font-weight: 700;
+        }
+        .tg-content {
+            flex: 1;
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            overflow-y: auto;
+            background: #0e1621;
+        }
+        .tg-bubble {
+            max-width: 80%;
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: slideInUp 0.3s forwards;
+        }
+        .tg-bubble.in {
+            background: #182533;
+            color: #fff;
+            align-self: flex-start;
+        }
+        .tg-bubble.out {
+            background: #2b5278;
+            color: #fff;
+            align-self: flex-end;
+        }
+
+        /* Device Lock Mockup */
+        .lock-badge-visual {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            border: 3px solid #ff4d4d;
+            background: rgba(255, 77, 77, 0.1);
+            color: #ff4d4d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            box-shadow: 0 0 20px rgba(255,77,77,0.3);
+            transition: all 0.4s ease;
+        }
+        .lock-badge-visual.unlocked {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
+            box-shadow: 0 0 20px rgba(0,255,0,0.3);
+        }
+
+        /* Cooldown QR Bar */
+        .qr-card {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .qr-cooldown-bar {
+            width: 100%;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .qr-cooldown-fill {
+            height: 100%;
+            width: 100%;
+            background: var(--accent-color);
+            animation: qr-drain 5s linear infinite;
+        }
+        @keyframes qr-drain {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+
+        /* Radar Scanner GPS */
+        .radar-box {
+            width: 220px;
+            height: 220px;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle, #16222f 0%, #0d151c 100%);
+        }
+        .radar-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1px dashed rgba(242, 242, 13, 0.2);
+            position: absolute;
+            animation: pulse-radar 2.5s linear infinite;
+        }
+        @keyframes pulse-radar {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+
+        /* Scan Line Face ID */
+        .face-box {
+            width: 200px;
+            height: 250px;
+            border-radius: 1.5rem;
+            border: 2px solid var(--accent-color);
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--glow-shadow);
+        }
+        .face-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .laser-line {
+            width: 100%;
+            height: 4px;
+            background: var(--accent-color);
+            box-shadow: 0 0 12px var(--accent-color);
+            position: absolute;
+            top: 0;
+            animation: scan-vertical 2.5s infinite ease-in-out;
+        }
+        @keyframes scan-vertical {
+            0%, 100% { top: 0%; }
+            50% { top: 100%; }
+        }
+
+        /* Parent OTP simulator */
+        .otp-input-field {
+            width: 45px;
+            height: 45px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.3rem;
+            color: #fff;
+            font-weight: 800;
+        }
+
+        /* PDF Report generator styling */
+        .mock-pdf {
+            width: 280px;
+            background: #fff;
+            color: #333;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: var(--shadow);
+            display: none;
+            transform: scale(0.9);
+            animation: doc-open 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+        }
+        @keyframes doc-open {
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* Push Notification Toast */
+        .toast-notif {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            background: rgba(26, 38, 51, 0.95);
+            border: 1px solid var(--accent-color);
+            border-radius: 10px;
+            padding: 0.75rem;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateY(-50px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast-notif.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* High-End Reference Table */
+        .ref-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .ref-table th, .ref-table td {
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: right;
+        }
+        .ref-table th {
+            color: var(--accent-color);
+            font-weight: 800;
+        }
+        .ref-table tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* Floating elements when slide is active */
+        .slide.active .float-box {
+            animation: float-anim 3s infinite alternate ease-in-out;
+        }
+        @keyframes float-anim {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-10px); }
+        }
+
+        /* Student phone view simulation */
+        .std-phone {
+            width: 250px;
+            height: 330px;
+            background: #0d151c;
+            border: 4px solid #222;
+            border-radius: 1.5rem;
+            padding: 0.8rem;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            color: #fff;
+        }
+
+        /* Floating Navigation Buttons */
+        .floating-nav-btn {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 55px;
+            height: 55px;
+            background: rgba(26, 38, 51, 0.75);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .floating-nav-btn.prev {
+            right: 20px;
+        }
+
+        .floating-nav-btn.next {
+            left: 20px;
+        }
+
+        .floating-nav-btn:hover:not(:disabled) {
+            background: var(--accent-color);
+            color: #101922;
+            border-color: var(--accent-color);
+            box-shadow: var(--glow-shadow);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .floating-nav-btn:disabled {
+            opacity: 0.15;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Progress Bar -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Presentation Container -->
+    <div class="presentation-container">
+
+        <!-- Slide 1: Welcome & Landing -->
+        <div class="slide active" id="slide1" style="justify-content: space-between; padding: 1.8rem 3rem 1.5rem 3rem;">
+            
+            <!-- Top Brand Logo -->
+            <div style="display: flex; align-items: center; gap: 0.8rem; justify-content: center; margin-top: 0.2rem;">
+                <img src="file:///C:/Users/heba/.gemini/antigravity/brain/25ad79a7-38d7-4321-bbc6-f56000d60fea/media__1783165590189.png" style="height: 50px; width: auto; border-radius: 8px; filter: drop-shadow(0 0 15px rgba(242, 242, 13, 0.35));" alt="Logo">
+                <span style="font-size: 1.35rem; font-weight: 900; letter-spacing: 2px; color: #fff; font-family: var(--font-en);">EDU-BRIDGE</span>
+            </div>
+
+            <!-- Center Hero Section -->
+            <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; max-width: 800px; margin: auto;">
+                <h1 style="font-size: 3.3rem; font-weight: 900; color: #fff; line-height: 1.25; letter-spacing: -0.5px; margin: 0;">
+                    منظومة <span style="color: var(--accent-color); text-shadow: var(--glow-shadow);">Edu-Bridge</span> التعليمية
+                </h1>
+                
+                <p style="font-size: 1.35rem; font-weight: 700; color: var(--text-secondary); line-height: 1.6; margin: 0; max-width: 700px;">
+                    إدارة شاملة وحوكمة إدارية ذكية لحماية نزاهة وأمن الحرم الأكاديمي
+                </p>
+                
+                <div style="width: 60px; height: 3px; background: var(--accent-color); border-radius: 2px; margin: 0.3rem 0;"></div>
+                
+                <button class="glow-btn" style="padding: 0.8rem 2.2rem; font-size: 1rem; font-weight: 800; border-radius: 30px; margin-top: 0.8rem;" onclick="nextSlide()">
+                    بدء استعراض المشروع <i class="fa-solid fa-arrow-left" style="margin-right: 0.6rem;"></i>
+                </button>
+            </div>
+
+            <!-- Bottom Metadata Bar -->
+            <div style="width: 100%; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1.2rem; display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 1.5rem; text-align: right; margin-top: auto;">
+                <!-- Students Column -->
+                <div>
+                    <span style="color: var(--accent-color); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 0.4rem;"><i class="fa-solid fa-graduation-cap"></i> إعداد الطلاب:</span>
+                    <div style="font-size: 0.85rem; color: #fff; font-weight: 700; display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem;">
+                        <span>مجدولين محمود</span>
+                        <span>•</span>
+                        <span>محمود غنّان</span>
+                        <span>•</span>
+                        <span>إسراء منور</span>
+                        <span>•</span>
+                        <span>شهد زريقي</span>
+                        <span>•</span>
+                        <span>هبة الله عيسى</span>
+                    </div>
+                </div>
+
+                <!-- Supervisors Column -->
+                <div>
+                    <span style="color: var(--accent-color); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 0.4rem;"><i class="fa-solid fa-chalkboard-user"></i> تحت إشراف المهندسين:</span>
+                    <div style="font-size: 0.85rem; color: #fff; font-weight: 700; display: flex; flex-direction: column; gap: 0.15rem;">
+                        <span>م. وسيم الماضي</span>
+                        <span>م. خالد إسماعيلي</span>
+                    </div>
+                </div>
+
+                <!-- Project Title Column -->
+                <div style="text-align: left;">
+                    <span style="color: var(--accent-color); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 0.4rem;"><i class="fa-solid fa-book-bookmark"></i> مشروع التخرج:</span>
+                    <div style="font-size: 0.85rem; color: #fff; font-weight: 700;">
+                        نيل درجة الإجازة في الهندسة التقنية
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Slide 2: The Core Problem -->
+        <div class="slide" id="slide2">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <h1 class="slide-title">المشكلة</h1>
+                </div>
+                <div class="slide-subtitle">The Pain Points</div>
+            </div>
+            <div class="slide-body" style="flex-direction: column; justify-content: center; gap: 1rem;">
+                <p style="text-align: center; color: var(--text-secondary); font-size: 1.15rem; max-width: 800px; margin: 0 auto 0.5rem auto;">
+                    تجاوز الفجوات الأمنية والتنظيمية التي تؤثر على جودة ومصداقية العملية التعليمية في الأنظمة التقليدية:
+                </p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; width: 100%;">
+                    <!-- Card 1 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.3rem; border-radius: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.3s ease; box-shadow: var(--shadow);" onmouseover="this.style.borderColor='#ff4d4d'; this.style.boxShadow='0 0 15px rgba(255,77,77,0.15)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(255, 77, 77, 0.1); display: flex; align-items: center; justify-content: center; color: #ff4d4d; border: 1px solid rgba(255, 77, 77, 0.2); font-size: 1.2rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-user-slash"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">تزوير كشوف الحضور والغياب (Proxy)</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55;">مشاركة كود الـ QR والتحضير بالنيابة عن الطلاب الغائبين من خارج القاعة الدراسية دون وجود فيزيائي حقيقي.</p>
+                        </div>
+                    </div>
+                    <!-- Card 2 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.3rem; border-radius: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.3s ease; box-shadow: var(--shadow);" onmouseover="this.style.borderColor='#ff4d4d'; this.style.boxShadow='0 0 15px rgba(255,77,77,0.15)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(255, 77, 77, 0.1); display: flex; align-items: center; justify-content: center; color: #ff4d4d; border: 1px solid rgba(255, 77, 77, 0.2); font-size: 1.2rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-share-nodes"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">تشارك الحسابات والامتحانات</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55;">غياب الربط العتادي بالأجهزة الذكية يسمح للطلاب بمشاركة كلمات المرور وحل التكليفات والاختبارات بالنيابة عن غيرهم.</p>
+                        </div>
+                    </div>
+                    <!-- Card 3 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.3rem; border-radius: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.3s ease; box-shadow: var(--shadow);" onmouseover="this.style.borderColor='#ff4d4d'; this.style.boxShadow='0 0 15px rgba(255,77,77,0.15)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(255, 77, 77, 0.1); display: flex; align-items: center; justify-content: center; color: #ff4d4d; border: 1px solid rgba(255, 77, 77, 0.2); font-size: 1.2rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-users-slash"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">انقطاع التواصل مع أولياء الأمور</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55;">صعوبة وصول الأهالي لنسب غياب أبنائهم اليومية، تحذيراتهم السلوكية، كشوف درجاتهم الأكاديمية بشكل مباشر ولحظي.</p>
+                        </div>
+                    </div>
+                    <!-- Card 4 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.3rem; border-radius: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.3s ease; box-shadow: var(--shadow);" onmouseover="this.style.borderColor='#ff4d4d'; this.style.boxShadow='0 0 15px rgba(255,77,77,0.15)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(255, 77, 77, 0.1); display: flex; align-items: center; justify-content: center; color: #ff4d4d; border: 1px solid rgba(255, 77, 77, 0.2); font-size: 1.2rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">البيروقراطية وتأخر تسليم البيانات</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55;">استهلاك وقت موظفي شؤون الطلاب في مراجعات يدوية معقدة، طباعة المستندات، وتوزيع بيانات الدخول والبطاقات ورقياً.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Solution & Vision -->
+        <div class="slide" id="slide3">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <h1 class="slide-title">الحل: كيف قمنا بحل هذه المشاكل؟</h1>
+                </div>
+                <div class="slide-subtitle">How We Solved The Problems</div>
+            </div>
+            <div class="slide-body" style="flex-direction: column; justify-content: center; gap: 1rem;">
+                <p style="text-align: center; color: var(--text-secondary); font-size: 1.15rem; max-width: 800px; margin: 0 auto 0.5rem auto;">
+                    قمنا ببناء وتطبيق حلول أمنية وبرمجية متكاملة في صلب المنظومة (قاعدة البيانات والباك إند وتطبيق الموبايل):
+                </p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; width: 100%;">
+                    <!-- Solution 1 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.3rem; border-radius: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.3s ease; box-shadow: var(--shadow);" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.boxShadow='0 0 15px rgba(242,242,13,0.15)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); border: 1px solid rgba(242, 242, 13, 0.2); font-size: 1.2rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-expand"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">التحقق الثلاثي لتسجيل الحضور</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55;">دمج مسح الـ QR الديناميكي (يتغير كل 5 ثوانٍ) بمطابقة بصمة الوجه (Face-ID) وموقع الهاتف الفعلي (GPS) في نفس اللحظة.</p>
+                        </div>
+                    </div>
+                    <!-- Solution 2 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.3rem; border-radius: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.3s ease; box-shadow: var(--shadow);" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.boxShadow='0 0 15px rgba(242, 242, 13, 0.15)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); border: 1px solid rgba(242, 242, 13, 0.2); font-size: 1.2rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">قفل وربط الحساب بالهاتف (Device Lock)</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55;">تسجيل وحظر الهاتف الذكي للطالب (`device_id`) في قاعدة البيانات فور تسجيل الدخول الأول، لمنع تداول الحسابات نهائياً.</p>
+                        </div>
+                    </div>
+                    <!-- Solution 3 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.3rem; border-radius: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.3s ease; box-shadow: var(--shadow);" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.boxShadow='0 0 15px rgba(242, 242, 13, 0.15)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); border: 1px solid rgba(242, 242, 13, 0.2); font-size: 1.2rem; flex-shrink: 0;">
+                            <i class="fa-brands fa-telegram"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">أتمتة تلغرام وبوابات التحقق اللحظية</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55;">بناء بوت تلغرام رسمي يوزّع بيانات الدخول للطلاب الجدد فوراً، مع حماية حسابات الأهالي بأكواد تحقق OTP مؤقتة.</p>
+                        </div>
+                    </div>
+                    <!-- Solution 4 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.3rem; border-radius: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.3s ease; box-shadow: var(--shadow);" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.boxShadow='0 0 15px rgba(242, 242, 13, 0.15)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); border: 1px solid rgba(242, 242, 13, 0.2); font-size: 1.2rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem;">طابور التحضير أوفلاين (Offline Queue)</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.55;">استخدام قاعدة بيانات SQLite لتسجيل حضور الطلاب محلياً بالهاتف عند ضعف الشبكة ومزامنتها لاحقاً مع السيرفر تلقائياً.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Project Objectives -->
+        <div class="slide" id="slide4">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-bullseye"></i></div>
+                    <h1 class="slide-title">أهداف المشروع</h1>
+                </div>
+                <div class="slide-subtitle">Project Objectives</div>
+            </div>
+            <div class="slide-body" style="flex-direction: column; justify-content: center; gap: 1rem;">
+                <p style="text-align: center; color: var(--text-secondary); font-size: 1.15rem; max-width: 800px; margin: 0 auto 0.5rem auto;">
+                    الأهداف الاستراتيجية التي تسعى منظومة Edu-Bridge إلى تحقيقها في الوسط الأكاديمي:
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; width: 100%;">
+                    <!-- Goal 1 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.5rem 1.1rem; border-radius: 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1rem; transition: all 0.3s ease; box-shadow: var(--shadow); min-height: 270px; justify-content: flex-start;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.boxShadow='0 0 15px rgba(242,242,13,0.18)'; this.style.transform='translateY(-4px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 55px; height: 55px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); border: 1px solid rgba(242, 242, 13, 0.2); font-size: 1.4rem; box-shadow: var(--glow-shadow); flex-shrink: 0;">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <h3 style="color: #fff; font-size: 1.05rem; font-weight: 800; line-height: 1.4;">نزاهة الحضور بنسبة 100%</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">الحد النهائي من ظاهرة التحضير بالنيابة والمزيف بدمج البصمة والموقع الجغرافي والـ QR المتغير.</p>
+                    </div>
+                    <!-- Goal 2 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.5rem 1.1rem; border-radius: 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1rem; transition: all 0.3s ease; box-shadow: var(--shadow); min-height: 270px; justify-content: flex-start;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.boxShadow='0 0 15px rgba(242,242,13,0.18)'; this.style.transform='translateY(-4px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 55px; height: 55px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); border: 1px solid rgba(242, 242, 13, 0.2); font-size: 1.4rem; box-shadow: var(--glow-shadow); flex-shrink: 0;">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <h3 style="color: #fff; font-size: 1.05rem; font-weight: 800; line-height: 1.4;">تجسير الفجوة مع الأهالي</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">إشراك أولياء الأمور في مسار أبنائهم التعليمي عبر قنوات غياب وتقارير سلوك مباشرة ولحظية.</p>
+                    </div>
+                    <!-- Goal 3 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.5rem 1.1rem; border-radius: 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1rem; transition: all 0.3s ease; box-shadow: var(--shadow); min-height: 270px; justify-content: flex-start;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.boxShadow='0 0 15px rgba(242,242,13,0.18)'; this.style.transform='translateY(-4px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 55px; height: 55px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); border: 1px solid rgba(242, 242, 13, 0.2); font-size: 1.4rem; box-shadow: var(--glow-shadow); flex-shrink: 0;">
+                            <i class="fa-solid fa-laptop-file"></i>
+                        </div>
+                        <h3 style="color: #fff; font-size: 1.05rem; font-weight: 800; line-height: 1.4;">الأتمتة والتحول الرقمي</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">استبدال السجلات والتوزيع الورقي ببطاقات رقمية سريعة وبوت تلغرام فوري لتسليم البيانات.</p>
+                    </div>
+                    <!-- Goal 4 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.5rem 1.1rem; border-radius: 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1rem; transition: all 0.3s ease; box-shadow: var(--shadow); min-height: 270px; justify-content: flex-start;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.boxShadow='0 0 15px rgba(242,242,13,0.18)'; this.style.transform='translateY(-4px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.boxShadow='var(--shadow)'; this.style.transform='translateY(0)';">
+                        <div style="width: 55px; height: 55px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); border: 1px solid rgba(242, 242, 13, 0.2); font-size: 1.4rem; box-shadow: var(--glow-shadow); flex-shrink: 0;">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                        </div>
+                        <h3 style="color: #fff; font-size: 1.05rem; font-weight: 800; line-height: 1.4;">تسهيل التجربة التعليمية</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">تمكين الأساتذة من بدء التحضير بثوانٍ، والسماح للطلاب بتسجيل حضورهم أوفلاين عند غياب الشبكة.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Core System Features -->
+        <div class="slide" id="slide5">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-star"></i></div>
+                    <h1 class="slide-title">أهم ميزات المنظومة</h1>
+                </div>
+                <div class="slide-subtitle">Core System Features</div>
+            </div>
+            <div class="slide-body" style="flex-direction: column; justify-content: center; gap: 1rem;">
+                <p style="text-align: center; color: var(--text-secondary); font-size: 1.15rem; max-width: 800px; margin: 0 auto 0.5rem auto;">
+                    أبرز الابتكارات التقنية التي تمنح Edu-Bridge الريادة والفاعلية الأمنية والتشغيلية:
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; width: 100%;">
+                    <!-- Feature 1 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.2rem; border-radius: 1.2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; transition: all 0.3s ease; min-height: 190px;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); font-size: 1.2rem;">
+                            <i class="fa-solid fa-fingerprint"></i>
+                        </div>
+                        <h4 style="color: #fff; font-size: 1rem; font-weight: 800;">التحقق الثلاثي الآمن (Tri-Factor)</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.5;">دمج البصمة الحيوية (Face ID) مع الموقع الجغرافي الفعلي (GPS) والـ QR كود المحدث تلقائياً.</p>
+                    </div>
+                    <!-- Feature 2 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.2rem; border-radius: 1.2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; transition: all 0.3s ease; min-height: 190px;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); font-size: 1.2rem;">
+                            <i class="fa-solid fa-mobile-screen"></i>
+                        </div>
+                        <h4 style="color: #fff; font-size: 1rem; font-weight: 800;">قفل الأجهزة الفيزيائية (Device Lock)</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.5;">ربط عتادي للحساب بجهاز هاتف وحيد، مما يلغي نهائياً إمكانية مشاركة وتداول الحسابات الشخصية.</p>
+                    </div>
+                    <!-- Feature 3 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.2rem; border-radius: 1.2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; transition: all 0.3s ease; min-height: 190px;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); font-size: 1.2rem;">
+                            <i class="fa-brands fa-telegram"></i>
+                        </div>
+                        <h4 style="color: #fff; font-size: 1rem; font-weight: 800;">توزيع الحسابات المؤتمت (Telegram Bot)</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.5;">توليد وإرسال بيانات الدخول آلياً للطالب فور قبوله إدارياً عبر بوت تلجرام ذكي وموثق.</p>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; width: 80%; margin: 0 auto;">
+                    <!-- Feature 4 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.2rem; border-radius: 1.2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; transition: all 0.3s ease; min-height: 170px;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); font-size: 1.2rem;">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <h4 style="color: #fff; font-size: 1rem; font-weight: 800;">طابور التحضير غير المتصل (Offline Sync)</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.5;">تخزين الحضور محلياً ومزامنته فور عودة الإنترنت، لتفادي مشكلات الشبكات الضعيفة بالمدرجات.</p>
+                    </div>
+                    <!-- Feature 5 -->
+                    <div style="background: rgba(26, 38, 51, 0.65); border: 1px solid var(--border-color); padding: 1.2rem; border-radius: 1.2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; transition: all 0.3s ease; min-height: 170px;" onmouseover="this.style.borderColor='var(--accent-color)'; this.style.transform='translateY(-3px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)';">
+                        <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(242, 242, 13, 0.1); display: flex; align-items: center; justify-content: center; color: var(--accent-color); font-size: 1.2rem;">
+                            <i class="fa-solid fa-users-gear"></i>
+                        </div>
+                        <h4 style="color: #fff; font-size: 1rem; font-weight: 800;">نظام الحوكمة والتواصل مع الأهالي (OTP & FCM)</h4>
+                        <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.5;">6 أدوار مستخدمين متكاملة مع حماية بوابات أولياء الأمور بـ OTP وتنبيهات فورية لنسب الغياب والدرجات.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Target Audiences / Actors -->
+        <div class="slide" id="slide6">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-users-viewfinder"></i></div>
+                    <h1 class="slide-title">الفئات المستهدفة بالمنظومة</h1>
+                </div>
+                <div class="slide-subtitle">Target Audiences & Actors</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>الجهات التعليمية والإدارية والأكاديمية المترابطة عبر المنظومة:</p>
+                    <ul class="bullet-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 1rem;">
+                        <li class="bullet-item" style="background: rgba(26, 38, 51, 0.65); padding: 0.8rem 1.2rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.85rem;">
+                            <i class="fa-solid fa-address-card" style="color: var(--accent-color); font-size: 1.3rem;"></i>
+                            <div class="bullet-text">
+                                <strong style="font-size: 1.15rem; color: #fff;">1. شؤون الطلاب</strong>
+                            </div>
+                        </li>
+                        <li class="bullet-item" style="background: rgba(26, 38, 51, 0.65); padding: 0.8rem 1.2rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.85rem;">
+                            <i class="fa-solid fa-user-tie" style="color: var(--accent-color); font-size: 1.3rem;"></i>
+                            <div class="bullet-text">
+                                <strong style="font-size: 1.15rem; color: #fff;">2. المشرف التربوي</strong>
+                            </div>
+                        </li>
+                        <li class="bullet-item" style="background: rgba(26, 38, 51, 0.65); padding: 0.8rem 1.2rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.85rem;">
+                            <i class="fa-solid fa-chalkboard-user" style="color: var(--accent-color); font-size: 1.3rem;"></i>
+                            <div class="bullet-text">
+                                <strong style="font-size: 1.15rem; color: #fff;">3. الأستاذ</strong>
+                            </div>
+                        </li>
+                        <li class="bullet-item" style="background: rgba(26, 38, 51, 0.65); padding: 0.8rem 1.2rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.85rem;">
+                            <i class="fa-solid fa-sitemap" style="color: var(--accent-color); font-size: 1.3rem;"></i>
+                            <div class="bullet-text">
+                                <strong style="font-size: 1.15rem; color: #fff;">4. رئيس القسم (HOD)</strong>
+                            </div>
+                        </li>
+                        <li class="bullet-item" style="background: rgba(26, 38, 51, 0.65); padding: 0.8rem 1.2rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.85rem;">
+                            <i class="fa-solid fa-user-graduate" style="color: var(--accent-color); font-size: 1.3rem;"></i>
+                            <div class="bullet-text">
+                                <strong style="font-size: 1.15rem; color: #fff;">5. الطالب</strong>
+                            </div>
+                        </li>
+                        <li class="bullet-item" style="background: rgba(26, 38, 51, 0.65); padding: 0.8rem 1.2rem; border-radius: 0.75rem; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.85rem;">
+                            <i class="fa-solid fa-user-group" style="color: var(--accent-color); font-size: 1.3rem;"></i>
+                            <div class="bullet-text">
+                                <strong style="font-size: 1.15rem; color: #fff;">6. ولي الأمر</strong>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="glow-circle"></div>
+                    <i class="fa-solid fa-users-viewfinder" style="font-size: 8rem; color: var(--accent-color); text-shadow: var(--glow-shadow);"></i>
+                </div>
+            </div>
+        </div>
+                            <!-- Slide 7: Actor 1 - Student Affairs (1) -->
+        <div class="slide" id="slide7">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-address-card"></i></div>
+                    <h1 class="slide-title">شؤون الطلاب: إدارة الحسابات والبيانات الأساسية</h1>
+                </div>
+                <div class="slide-subtitle">Student Affairs - Accounts & Data</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>صلاحيات شؤون الطلاب في إدارة الهيكل الأساسي وحسابات الكلية:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <div class="bullet-text">
+                                <strong>تسجيل الكادر التعليمي وإدارته:</strong>
+                                <span>إدخال بيانات المعلمين الجدد بالكامل، وتحديث تخصصاتهم وأرقام هواتفهم، أو تنشيط وتعليق حساباتهم.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-sitemap"></i>
+                            <div class="bullet-text">
+                                <strong>حوكمة حسابات رؤساء الأقسام (HOD):</strong>
+                                <span>إنشاء حسابات رؤساء الأقسام وربطها بدقة بأقسامهم الأكاديمية المقابلة لتفويض الصلاحيات.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-calendar-days"></i>
+                            <div class="bullet-text">
+                                <strong>إدارة التقويم والأحداث الجامعية:</strong>
+                                <span>صلاحية إضافة الأحداث والفعاليات العامة والأنشطة في التقويم الأكاديمي للجامعة وتعديلها.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="demo-panel">
+                        <button class="glow-btn" style="padding: 0.6rem 1.2rem; font-size: 0.95rem; margin-bottom: 0.5rem;" onclick="simulateIDGeneration()">محاكاة توليد بطاقة الطالب <i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                        <div class="id-card-visual" id="studentCard">
+                            <h4 style="color: var(--accent-color); margin-bottom: 0.5rem; font-size: 1rem;"><i class="fa-solid fa-graduation-cap"></i> بطاقة طالب جامعية</h4>
+                            <div style="font-size: 0.85rem; line-height: 1.6;">
+                                <div>الاسم: أحمد سمير أبو سمرة</div>
+                                <div>الرقم الجامعي: <span class="highlight">2026110904</span></div>
+                                <div>القسم: هندسة البرمجيات</div>
+                                <div>تاريخ التسجيل: 2026-07-02</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Actor 1 - Student Affairs (2) -->
+        <div class="slide" id="slide8">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-brands fa-telegram"></i></div>
+                    <h1 class="slide-title">شؤون الطلاب: القبول وأتمتة تسليم الحسابات</h1>
+                </div>
+                <div class="slide-subtitle">Student Affairs - Admissions & Bot Delivery</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>أتمتة معاملات الطلاب الجدد وتسجيلهم الفوري عبر قنوات التواصل الرسمية:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-barcode"></i>
+                            <div class="bullet-text">
+                                <strong>توليد الأرقام الجامعية تلقائياً:</strong>
+                                <span>إدخال بيانات الطلاب المقبولين وتوليد رقم جامعي فريد غير قابل للتكرار لكل طالب فوراً.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-user-check"></i>
+                            <div class="bullet-text">
+                                <strong>ربط معرف Telegram للمستخدم:</strong>
+                                <span>حفظ وتوثيق رقم الـ Telegram Chat ID الخاص بالطالب في قاعدة البيانات لربطه بنظام الإشعارات الآلي.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <div class="bullet-text">
+                                <strong>أتمتة إرسال الحسابات:</strong>
+                                <span>يقوم السيرفر عبر Telegram Bot بإرسال الرقم الجامعي وكلمة المرور الافتراضية للطالب فورياً عند طلبها.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual" style="flex-direction: column; gap: 0.75rem;">
+                    <div class="tg-phone">
+                        <div class="tg-header"><i class="fa-brands fa-telegram"></i> بوت Edu-Bridge</div>
+                        <div class="tg-content" id="tgChat">
+                            <div class="tg-bubble in" style="opacity:1; transform:none;">أهلاً بك في نظام Edu-Bridge. يرجى تزويدنا برقمك الجامعي لتسليم حسابك.</div>
+                        </div>
+                    </div>
+                    <button class="glow-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="simulateTelegramChat()">أرسل الرقم الجامعي <i class="fa-solid fa-message"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Actor 1 - Student Affairs (3) -->
+        <div class="slide" id="slide9">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-lock"></i></div>
+                    <h1 class="slide-title">شؤون الطلاب: حوكمة أمن الأجهزة والإعفاءات</h1>
+                </div>
+                <div class="slide-subtitle">Student Affairs - Device Lock & Approvals</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>إدارة السياسات الأمنية الحساسة وطلبات تفعيل الحسابات والإجازات الطبية:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-mobile-retro"></i>
+                            <div class="bullet-text">
+                                <strong>تصفير معرّف الجهاز (Device Lock Reset):</strong>
+                                <span>صلاحية فك قفل هاتف الطالب المقترن بحسابه عند ضياع هاتفه أو استبداله ليتمكن من التسجيل مجدداً.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-people-arrows"></i>
+                            <div class="bullet-text">
+                                <strong>مراجعة وتفعيل الحسابات المعلقة:</strong>
+                                <span>دراسة طلبات تسجيل أولياء الأمور والتحقق من وثائق صلة القرابة قبل ربط وتفعيل حسابات الأبناء (Multi-Student).</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-house-medical-flag"></i>
+                            <div class="bullet-text">
+                                <strong>دراسة الإعفاءات الطبية والغيابات:</strong>
+                                <span>استقبل ومراجعة طلبات تبرير الغياب المرفوعة من الطلاب بالتقارير الطبية والموافقة عليها لتعديل سجل الحضور.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
+                        <div class="lock-badge-visual" id="lockIndicator">
+                            <i class="fa-solid fa-lock"></i>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="nav-btn" style="background:#ff4d4d;" onclick="toggleLockState(true)">قفل الحساب بالجهاز</button>
+                            <button class="nav-btn" style="background:#00ff00; color:#101922;" onclick="toggleLockState(false)">إلغاء قفل الجهاز</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Actor 2 - Course Advisor -->
+        <div class="slide" id="slide10">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-user-tie"></i></div>
+                    <h1 class="slide-title">المشرف التربوي: الإرشاد والتقويم السلوكي</h1>
+                </div>
+                <div class="slide-subtitle">Course Advisor - Behavioral & Academic Monitoring</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>صلاحيات إرشادية وتربوية متكاملة لمتابعة الطلاب وتقويم سلوكهم وتوجيه مسارهم الدراسي:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <div class="bullet-text">
+                                <strong>تتبع مستويات الطلاب حضوراً وعلماً:</strong>
+                                <span>متابعة حضور وغياب دفعات معينة بشكل إحصائي متكامل ورصد سلوكيات الطلاب اليومية والتحذيرات.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-file-invoice"></i>
+                            <div class="bullet-text">
+                                <strong>إرسال ومتابعة التقرير السلوكي:</strong>
+                                <span>إرسال تقارير مراجعات سلوكية وتنبيهات دورية ومباشرة لأولياء أمور الطلاب.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-comments"></i>
+                            <div class="bullet-text">
+                                <strong>قناة إرشادية وتواصل مباشر:</strong>
+                                <span>إرسال التوجيهات الأكاديمية وحل مشكلات تعثر الطلاب بالتنسيق مع الطلاب أنفسهم ورؤساء الأقسام.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="glow-circle"></div>
+                    <i class="fa-solid fa-user-tie" style="font-size: 8rem; color: var(--accent-color); text-shadow: var(--glow-shadow);"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Actor 3 - Teacher (1) -->
+        <div class="slide" id="slide11">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-briefcase"></i></div>
+                    <h1 class="slide-title">بوابة الأستاذ: المقررات والواجبات والتكليفات</h1>
+                </div>
+                <div class="slide-subtitle">Teacher Portal - Course Material & Assignments</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>إدارة متكاملة ومباشرة للمقررات والأنشطة والتكليفات الدراسية التي يتفاعل معها الطلاب:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-file-arrow-up"></i>
+                            <div class="bullet-text">
+                                <strong>إدارة ورفع المحاضرات والمناهج:</strong>
+                                <span>رفع ملفات المحاضرات وسلايدات الشرح لتكون متاحة للطلاب مباشرة للتحميل والقراءة عبر تطبيق الموبايل.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-list-check"></i>
+                            <div class="bullet-text">
+                                <strong>إنشاء الواجبات وتحديد المعايير:</strong>
+                                <span>تحديد التكليفات والواجبات المنزلية، وتحديد تواريخ وأوقات التسليم النهائية والدرجات المخصصة لكل واجب.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-clipboard-check"></i>
+                            <div class="bullet-text">
+                                <strong>تصحيح وتقييم حلول الواجبات:</strong>
+                                <span>تصفح ملفات الإجابة المرفوعة من قِبل الطلاب وتصحيحها وإضافة الدرجات وكتابة الملاحظات التقييمية لكل طالب.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="glow-circle"></div>
+                    <i class="fa-solid fa-chalkboard-user" style="font-size: 8rem; color: var(--accent-color); text-shadow: var(--glow-shadow);"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Actor 3 - Teacher (2) -->
+        <div class="slide" id="slide12">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-qrcode"></i></div>
+                    <h1 class="slide-title">بوابة الأستاذ: الحضور الذكي والدرجات الفصلية</h1>
+                </div>
+                <div class="slide-subtitle">Teacher Portal - Smart Attendance & Term Grades</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>صلاحية التحكم الفوري بالحضور داخل القاعات الدراسية ورصد الدرجات النهائية:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-arrow-rotate-right"></i>
+                            <div class="bullet-text">
+                                <strong>إطلق كود الـ QR الديناميكي:</strong>
+                                <span>تشغيل رمز التحضير الديناميكي المتغير كل 5 ثوانٍ على شاشة القاعة لضمان مسح الطلاب الحاضرين فقط للرمز.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-users-viewfinder"></i>
+                            <div class="bullet-text">
+                                <strong>مراقبة حضور وغياب الطلاب حياً:</strong>
+                                <span>متابعة تفاصيل الطلاب الذين أتموا عملية مسح الـ QR والـ GPS وتأكيد حضورهم في نفس اللحظة.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                            <div class="bullet-text">
+                                <strong>رصد وتصدير كشوف الدرجات:</strong>
+                                <span>إدخل وتعديل درجات أعمال السنة والامتحانات وتصدير النتائج في ملفات Excel أو PDF لإدارة الكلية.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual" style="flex-direction: row; gap: 1.5rem; width: 100%;">
+                    <div class="qr-card" style="flex: 1;">
+                        <div class="qr-image" id="qrDemoImage" style="width: 110px; height: 110px; background-size: cover; background-image: url('https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=EduBridge_Session_Token_1');"></div>
+                        <div class="qr-cooldown-bar"><div class="qr-cooldown-fill"></div></div>
+                        <span id="qrTokenLabel" style="font-size:0.7rem; color:#666; font-family: var(--font-en);">Token: QR_6602F8C_A9</span>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--bg-primary);">شاشة عرض الأستاذ</div>
+                    </div>
+                    <div style="flex: 1.2; border: 1px solid var(--border-color); border-radius: 1rem; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column;">
+                        <img src="file:///C:/Users/heba/.gemini/antigravity/brain/25ad79a7-38d7-4321-bbc6-f56000d60fea/edu_bridge_qr_attendance_1782993694197.png" style="width: 100%; height: 140px; object-fit: cover;" alt="مسح الحضور">
+                        <div style="background: rgba(0,0,0,0.8); padding: 0.4rem; text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--accent-color);">مسح الطالب ومطابقة الموقع والوجه</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Actor 4 - Head of Department (1) -->
+        <div class="slide" id="slide13">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-sitemap"></i></div>
+                    <h1 class="slide-title">رئيس القسم الأكاديمي: التخطيط والجدولة والمهام</h1>
+                </div>
+                <div class="slide-subtitle">HOD - Curriculum & Class Schedules</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>صلاحيات قيادية لإعداد البنية التعليمية وتوزيع الحصص والمهام داخل القسم:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-book-open"></i>
+                            <div class="bullet-text">
+                                <strong>إدارة المقررات وتكليف المعلمين:</strong>
+                                <span>إنشاء المواد الدراسية، وتعيين المدرسين المسؤولين عن تدريسها، وإلغاء تعيينهم عند الحاجة.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-calendar-alt"></i>
+                            <div class="bullet-text">
+                                <strong>بناء الجداول الدراسية وجداول الامتحانات:</strong>
+                                <span>توزيع المحاضرات الأسبوعية والفترات الدراسية، وتعيين القاعات، وتفويض المعلمين للمراقبة في الاختبارات.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-user-shield"></i>
+                            <div class="bullet-text">
+                                <strong>تعيين مربي الدورات والمشرفين:</strong>
+                                <span>تكليف وتفويض المعلمين بدور مربي الدورة أو المرشد الأكاديمي لمجموعة من الطلاب أو السنوات الدراسية.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="glow-circle"></div>
+                    <i class="fa-solid fa-sitemap" style="font-size: 8rem; color: var(--accent-color); text-shadow: var(--glow-shadow);"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Actor 4 - Head of Department (2) -->
+        <div class="slide" id="slide14">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-people-roof"></i></div>
+                    <h1 class="slide-title">رئيس القسم الأكاديمي: الحوكمة والقرارات والمراسلات</h1>
+                </div>
+                <div class="slide-subtitle">HOD - Governance, Excuses & Broadcasting</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>حوكمة القسم واعتماد التقارير والتواصل الطارئ مع المنسوبين وأولياء الأمور:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-stamp"></i>
+                            <div class="bullet-text">
+                                <strong>اعتماد الإجازات الطبية والأعذار الرسمية:</strong>
+                                <span>النظر في طلبات الإعفاء والتقارير المرفوعة من الطلاب والموافقة عليها لتبرير غيابهم.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-comments"></i>
+                            <div class="bullet-text">
+                                <strong>مراسلة أولياء الأمور وتصدير التقارير:</strong>
+                                <span>استعراض المحادثات وصندوق الرسائل للاستجابة لاستفسارات أولياء الأمور وإرسال تقارير أداء الطلاب.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-bell"></i>
+                            <div class="bullet-text">
+                                <strong>بث الإشعارات والتحذيرات الطارئة:</strong>
+                                <span>إرسال تنبيهات لحظية عامة أو خاصة عبر خوادم Firebase FCM لهواتف جميع الطلاب والمعلمين بالقسم.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="glow-circle"></div>
+                    <i class="fa-solid fa-people-roof" style="font-size: 8rem; color: var(--accent-color); text-shadow: var(--glow-shadow);"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Actor 5 - Student (1) -->
+        <div class="slide" id="slide15">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-location-dot"></i></div>
+                    <h1 class="slide-title">تطبيق الطالب: تسجيل الحضور الذكي والآمن</h1>
+                </div>
+                <div class="slide-subtitle">Student App - Location & Identity Verification</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>تسجيل الحضور الفوري والذكي ثلاثي الأمان داخل القاعات الجامعية:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-qrcode"></i>
+                            <div class="bullet-text">
+                                <strong>مسح رمز الـ QR الديناميكي:</strong>
+                                <span>التقاط الكود المتجدد للأستاذ عبر كاميرا التطبيق لتأكيد المحاضرة الحالية.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-globe"></i>
+                            <div class="bullet-text">
+                                <strong>التحقق الجغرافي بالـ GPS:</strong>
+                                <span>مطابقة موقع الطالب بدقة للتأكد من تواجده الجسدي داخل القاعة وحظر تسجيل الحضور من الخارج.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                            <div class="bullet-text">
+                                <strong>حماية وتأمين الجهاز الفريد:</strong>
+                                <span>حظر فتح الحساب من هاتفين في نفس الوقت عبر ربط الحساب برقم العتاد الفريد لمنع انتحال الشخصية.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="radar-box">
+                        <div class="radar-circle"></div>
+                        <i class="fa-solid fa-school pin" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--accent-color); font-size:1.5rem; text-shadow:0 0 10px var(--accent-color);"></i>
+                        <i class="fa-solid fa-user-graduate pin" style="position:absolute; top:35%; left:30%; transform:translate(-50%,-50%); color:#00ff00; font-size:1.2rem; animation: float-anim 2s infinite alternate ease-in-out;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: Actor 5 - Student (2) -->
+        <div class="slide" id="slide16">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-camera"></i></div>
+                    <h1 class="slide-title">تطبيق الطالب: بصمة الوجه والمزامنة أوفلاين</h1>
+                </div>
+                <div class="slide-subtitle">Student App - Face-ID & Offline Resilience</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>طبقات حماية متقدمة لضمان استقرار وموثوقية رصد الحضور تحت أي ظروف:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-user-shield"></i>
+                            <div class="bullet-text">
+                                <strong>التحقق الفوري ببصمة الوجه (AI Face ID):</strong>
+                                <span>كشف ملامح الوجه ومطابقته ببصمة الوجه المخزنة المشفرة لضمان حضور الطالب بنفسه.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-wifi-slash"></i>
+                            <div class="bullet-text">
+                                <strong>طابور المزامنة أوفلاين (Offline Queue):</strong>
+                                <span>تخزين حضور المحاضرات أوفلاين وتوقيتها ومزامنتها تلقائياً بمجرد اتصال الهاتف بالإنترنت.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual" style="display:flex; flex-direction:column; gap:1rem; width:100%;">
+                    <!-- Face-ID Visual -->
+                    <div class="face-box" style="margin: 0 auto; width:140px; height:140px;">
+                        <img src="file:///C:/Users/heba/.gemini/antigravity/brain/25ad79a7-38d7-4321-bbc6-f56000d60fea/edu_bridge_qr_attendance_1782993694197.png" class="face-img" alt="واجهة التحقق بالوجه" style="height:100%;">
+                        <div class="laser-line"></div>
+                    </div>
+                    <!-- Offline Sync Visual -->
+                    <div style="background:#0c131a; border: 1px solid var(--border-color); border-radius:1rem; padding: 0.8rem; width:100%; display:flex; flex-direction:column; gap:0.4rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:0.4rem; border-radius:6px; font-size:0.8rem;">
+                            <span>حضور هندسة البرمجيات</span>
+                            <span style="color:#00ff00; font-weight:700;">تمت المزامنة ✅</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:0.4rem; border-radius:6px; font-size:0.8rem;">
+                            <span>حضور قواعد البيانات</span>
+                            <span id="syncStatusBadge" style="color:orange; font-weight:700;">في الانتظار (أوفلاين) ⏳</span>
+                        </div>
+                        <button class="glow-btn" style="padding:0.3rem; font-size:0.75rem; border-radius:8px;" onclick="simulateOfflineSync()">محاكاة عودة الاتصال ومزامنة البيانات 📡</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: Actor 5 - Student (3) -->
+        <div class="slide" id="slide17">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+                    <h1 class="slide-title">تطبيق الطالب: الملف الأكاديمي والواجبات</h1>
+                </div>
+                <div class="slide-subtitle">Student App - Academics, Excuses & Grades</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>مركز التفاعل الدراسي والطلبات الإلكترونية المباشرة عبر تطبيق الموبايل:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-file-invoice"></i>
+                            <div class="bullet-text">
+                                <strong>حل الواجبات ورفع التكليفات:</strong>
+                                <span>تصفح الواجبات النشطة وتحميل ملفاتها، ورفع ملف الإجابة والحلول لتقييمها من المدرس.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-file-medical"></i>
+                            <div class="bullet-text">
+                                <strong>تقديم طلبات الإجازة والأعذار الطبية:</strong>
+                                <span>رفع صور وتقارير الأعذار الطبية مع تحديد التواريخ والأسباب لتبرير الغياب أمام الإدارة ورئيس القسم.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-clock"></i>
+                            <div class="bullet-text">
+                                <strong>تصفح الجداول الأكاديمية والنتائج:</strong>
+                                <span>الاطلاع اليومي على جدول المحاضرات الأسبوعي، جدول الامتحانات، رصد درجات الامتحانات والواجبات ومعدلات الحضور.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="std-phone">
+                        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; display: flex; justify-content: space-between;">
+                            <span class="highlight">بوابة الطالب - الموبايل</span>
+                            <span>أحمد سمير</span>
+                        </div>
+                        <div style="margin: 0.5rem 0; display:flex; flex-direction:column; gap:0.4rem;">
+                            <div style="background:rgba(255,255,255,0.03); padding:0.4rem; border-radius:6px;">
+                                <div>واجب هندسة البرمجيات</div>
+                                <div style="color:var(--accent-color); font-size:0.65rem;">تاريخ التسليم: بعد 3 أيام</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.03); padding:0.4rem; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                                <span>نسبة حضورك:</span>
+                                <span class="highlight">96% ✅</span>
+                            </div>
+                        </div>
+                        <button class="glow-btn" style="padding: 0.4rem; font-size:0.75rem; border-radius: 8px;" onclick="alert('تم محاكاة تسليم الملف بنجاح!')">تسليم ملف الواجب 📤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: Actor 6 - Parent (1) -->
+        <div class="slide" id="slide18">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-user-group"></i></div>
+                    <h1 class="slide-title">بوابة ولي الأمر: الرقابة المباشرة والتحقق اللحظي</h1>
+                </div>
+                <div class="slide-subtitle">Parent Portal - Live Performance Monitoring</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>بوابة ويب مخصصة للأهالي لمتابعة حضور وأداء الأبناء في الكلية لحظياً:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-users"></i>
+                            <div class="bullet-text">
+                                <strong>تعدد الأبناء في حساب واحد (Multi-Student):</strong>
+                                <span>لوحة تحكم واحدة تمكن ولي الأمر من الانتقال بين ملفات جميع أبنائه المسجلين بالكلية بضغطة زر.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-calendar-check"></i>
+                            <div class="bullet-text">
+                                <strong>كشوف حضور وغياب الأبناء الحية:</strong>
+                                <span>الاطلاع الفوري على سجل حضور وغياب الأبناء اليومي لمعرفة وقت دخول المحاضرة وتفاصيل غياباتهم بدقة.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-chart-column"></i>
+                            <div class="bullet-text">
+                                <strong>النتائج والدرجات والمعدلات الأكاديمية:</strong>
+                                <span>متابعة تفصيلية لدرجات الواجبات المنزلية، والامتحانات الشهرية والنهائية، ومعدل الطالب العام GPA.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div class="glow-circle"></div>
+                    <i class="fa-solid fa-shield-heart" style="font-size: 8rem; color: var(--accent-color); text-shadow: var(--glow-shadow);"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 19: Actor 6 - Parent (2) -->
+        <div class="slide" id="slide19">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h1 class="slide-title">بوابة ولي الأمر: المراسلة والتقارير والتحقق بـ OTP</h1>
+                </div>
+                <div class="slide-subtitle">Parent Portal - Secure Operations & Reports</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>صلاحيات تأمين المعاملات والاتصال المباشر بإدارة ومدرسي الكلية:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            <div class="bullet-text">
+                                <strong>تحميل وطباعة كشوف الأداء:</strong>
+                                <span>تنزيل تقارير كشوف الدرجات والالتزام السلوكي كملفات PDF رسمية مباشرة وموثوقة من البوابة.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-comments"></i>
+                            <div class="bullet-text">
+                                <strong>مراسلة الأساتذة والمشرفين التربويين:</strong>
+                                <span>التواصل والتحاور المباشر مع الهيئة التدريسية ورئيس القسم لمتابعة مستوى الأبناء وحل تعثرهم.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-key"></i>
+                            <div class="bullet-text">
+                                <strong>حماية الحساب برمز التحقق المؤقت (OTP):</strong>
+                                <span>حماية المعاملات الحساسة كحذف الحساب أو تغيير البريد الإلكتروني عبر إدخال رمز التحقق (OTP) المرسل للبريد.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual">
+                    <div style="background:#0c131a; border: 1px solid var(--border-color); border-radius:1rem; padding: 1.2rem; width:100%; display:flex; flex-direction:column; gap:0.8rem;">
+                        <h4 style="color:var(--accent-color); font-size:0.9rem; margin:0;"><i class="fa-solid fa-shield-halved"></i> تحقق الأمان الثنائي (OTP)</h4>
+                        <p style="font-size:0.75rem; color:var(--text-secondary); margin:0;">أدخل الرمز المؤقت المكون من 4 أرقام المرسل لبريدك الإلكتروني لتعديل الحساب:</p>
+                        <div style="display:flex; justify-content:center; gap:0.5rem; direction:ltr;">
+                            <input type="text" value="3" disabled style="width:35px; height:35px; text-align:center; background:#1a2633; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-weight:700;">
+                            <input type="text" value="7" disabled style="width:35px; height:35px; text-align:center; background:#1a2633; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-weight:700;">
+                            <input type="text" value="2" disabled style="width:35px; height:35px; text-align:center; background:#1a2633; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-weight:700;">
+                            <input type="text" id="otpLastDigit" placeholder="?" style="width:35px; height:35px; text-align:center; background:#223244; border:2px solid var(--accent-color); border-radius:6px; color:#fff; font-weight:700;">
+                        </div>
+                        <span id="otpFeedback" style="font-size:0.7rem; text-align:center; color:var(--text-secondary);">تلميح: الرقم الصحيح هو 1</span>
+                        <button class="glow-btn" style="padding:0.4rem; font-size:0.8rem; border-radius:10px;" onclick="simulateOTPVerify()">تحقق من الرمز والولوج 🔑</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 20: Reporting Hub & FCM Notifications -->
+        <div class="slide" id="slide20">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-envelope-open-text"></i></div>
+                    <h1 class="slide-title">نظام المتابعة: التقارير الآلية والإشعارات اللحظية</h1>
+                </div>
+                <div class="slide-subtitle">Integrated Communication & Report Export</div>
+            </div>
+            <div class="slide-body">
+                <div class="slide-text">
+                    <p>الربط التكاملي التلقائي بين الأطراف الأكاديمية والعمليات الإدارية لضمان سرعة الاستجابة والموثوقية:</p>
+                    <ul class="bullet-list">
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-file-pdf" style="color:#ff4d4d;"></i>
+                            <div class="bullet-text">
+                                <strong>تصدير التقارير الأكاديمية الفورية:</strong>
+                                <span>توليد كشوف الحضور والغياب والدرجات وحساب المعدل الفصلي كملفات PDF رسمية مصممة للطباعة.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-paper-plane" style="color:var(--accent-color);"></i>
+                            <div class="bullet-text">
+                                <strong>إشعارات Firebase FCM اللحظية:</strong>
+                                <span>تنبيهات فورية وذكية على هواتف الأهالي والطلاب عند رصد أي غياب أو إعلان من القسم.</span>
+                            </div>
+                        </li>
+                        <li class="bullet-item">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            <div class="bullet-text">
+                                <strong>سجلات الأنشطة والتدقيق الأمني:</strong>
+                                <span>توثيق كل الحركات التي يقوم بها الطلاب أو الموظفون لضمان الشفافية وموثوقية الرصد.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="slide-visual" style="flex-direction: column; gap:1.2rem; justify-content:center;">
+                    <!-- PDF Simulator -->
+                    <div style="display:flex; flex-direction:column; gap:0.4rem; align-items: center; width:100%;">
+                        <button class="glow-btn" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick="simulateReportGeneration()">محاكاة توليد تقرير الطالب <i class="fa-solid fa-file-export"></i></button>
+                        <div class="mock-pdf" id="pdfReport" style="width: 100%; max-width: 320px;">
+                            <h5 style="border-bottom:1px solid #ddd; padding-bottom:0.2rem; margin-bottom:0.3rem; font-weight:800; font-size:0.8rem; color:#1a2633;">تقرير الأداء الأكاديمي - كلي المعهد التقني</h5>
+                            <div style="font-size:0.65rem; line-height:1.4; color:#333;">
+                                <div>اسم الطالب: عمر الخالد | القسم: هندسة حواسب</div>
+                                <div>نسبة الحضور الإجمالية: <span class="highlight" style="color:green; font-weight:700;">94%</span></div>
+                                <div>متوسط درجات الواجبات: 92/100</div>
+                                <div style="margin-top:0.3rem; font-style:italic; color:#666;">ملاحظة المرشد: الطالب متميز وملتزم بالحضور.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FCM Simulator -->
+                    <div style="display:flex; flex-direction:column; gap:0.4rem; position:relative; align-items: center; width:100%;">
+                        <div class="toast-notif" id="toastNotif" style="width: 100%; position: absolute; z-index: 10; background: rgba(26, 38, 51, 0.98);">
+                            <i class="fa-solid fa-bell" style="color:var(--accent-color); font-size:1.2rem;"></i>
+                            <div style="font-size:0.75rem; text-align: right;">
+                                <strong style="color:#fff;">تنبيه من رئيس القسم:</strong>
+                                <div style="color:var(--text-secondary); margin-top:0.1rem;">يرجى الاطلاع على جدول الامتحانات الجديد.</div>
+                            </div>
+                        </div>
+                        <span style="font-size:0.8rem; color:var(--text-secondary);">لوحة تحكم رئيس القسم HOD</span>
+                        <button class="glow-btn" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:8px;" onclick="simulatePushNotification()">إرسال إعلان هام للقسم 📣</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Slide 21: Reference Study & Comparison -->
+        <div class="slide" id="slide21">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                    <h1 class="slide-title">الدراسة المرجعية والمقارنة التنافسية</h1>
+                </div>
+                <div class="slide-subtitle">Reference Study</div>
+            </div>
+            <div class="slide-body" style="flex-direction: column; align-items: stretch; justify-content: flex-start;">
+                <table class="ref-table">
+                    <thead>
+                        <tr>
+                            <th>المعيار الأمني والتشغيلي</th>
+                            <th>الأنظمة التقليدية القديمة (Moodle/Klassi)</th>
+                            <th>نظام Edu-Bridge المقترح</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>أمان حظر الامتحان والواجبات</strong></td>
+                            <td>حساب عادي مفتوح يسهل مشاركته وتقديم الاختبارات من الخارج.</td>
+                            <td class="highlight">ربط وحظر بعتاد جهاز فيزيائي واحد (Device ID Lock) لا يمكن تخطيه.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ضمان التواجد الجسدي بالحضور</strong></td>
+                            <td>عبر كود عادي أو QR ثابت يتم تداوله على الواتساب بين الطلاب.</td>
+                            <td class="highlight">رمز QR ديناميكي يتجدد كل 5 ثوانٍ مع تحقق الـ GPS وبصمة الوجه.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>توزيع الحسابات الجديدة</strong></td>
+                            <td>يدوي عبر طباعة أوراق أو إيميلات مبعثرة للطلاب.</td>
+                            <td class="highlight">مؤتمت وفوري بنسبة 100% عبر Telegram Bot بمجرد التسجيل.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>الاستقرار والعمل أوفلاين</strong></td>
+                            <td>تتوقف تماماً عن العمل في حال انقطاع واي فاي قاعات الدراسة.</td>
+                            <td class="highlight">طابور مزامنة أوفلاين محلي (Local SQLite Queue) يرفع تلقائياً.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Slide 22: Technology Stack & Scale -->
+        <div class="slide" id="slide22">
+            <div class="slide-header">
+                <div class="slide-title-wrapper">
+                    <div class="slide-icon"><i class="fa-solid fa-code"></i></div>
+                    <h1 class="slide-title">البنية البرمجية والعائد الاستثماري (ROI)</h1>
+                </div>
+                <div class="slide-subtitle">Tech Stack & CTA</div>
+            </div>
+            <div class="slide-body" style="justify-content: center;">
+                <div class="welcome-center">
+                    <h2 style="font-size: 2.1rem; font-weight: 800; color: var(--accent-color);">كفاءة تشغيلية بنسبة 95% ومصداقية كاملة</h2>
+                    <p style="color: var(--text-secondary); max-width: 700px; font-size: 1.1rem; line-height: 1.8;">
+                        تم بناء المنظومة باستخدام محرك الباك إند القوي **Laravel API** وقواعد البيانات المتينة، وتطبيقات الموبايل الفائقة **Flutter Client** مع خوادم إشعارات **Firebase FCM** وبوتات التليجرام الرسمية.
+                    </p>
+                    <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); padding: 1.2rem 2.5rem; border-radius: 1rem; margin-top: 0.5rem; text-align:center;">
+                        <h4 style="margin-bottom: 0.3rem;">لطلب العرض التجريبي المباشر (Live Demo):</h4>
+                        <div class="highlight" style="font-size: 1.25rem; font-family: var(--font-en);">sales@edu-bridge.com</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer Controls -->
+    <div class="controls-footer">
+        <div class="slide-number">
+            الشريحة <span id="currentSlideNum">1</span> / 22
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-btn" id="prevBtn" onclick="prevSlide()" disabled><i class="fa-solid fa-arrow-right"></i> السابق</button>
+            <button class="nav-btn" id="nextBtn" onclick="nextSlide()">التالي <i class="fa-solid fa-arrow-left"></i></button>
+        </div>
+    </div>
+
+    <!-- Floating Navigation Buttons -->
+    <button class="floating-nav-btn prev" id="floatingPrevBtn" onclick="prevSlide()" aria-label="السابق" disabled>
+        <i class="fa-solid fa-chevron-right"></i>
+    </button>
+    <button class="floating-nav-btn next" id="floatingNextBtn" onclick="nextSlide()" aria-label="التالي">
+        <i class="fa-solid fa-chevron-left"></i>
+    </button>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 22;
+
+        function updateSlideVisibility() {
+            for (let i = 1; i <= totalSlides; i++) {
+                const slide = document.getElementById('slide' + i);
+                if (i === currentSlide) {
+                    slide.className = 'slide active';
+                } else if (i < currentSlide) {
+                    slide.className = 'slide prev';
+                } else {
+                    slide.className = 'slide';
+                }
+            }
+
+            // Update footer info
+            document.getElementById('currentSlideNum').innerText = currentSlide;
+            document.getElementById('prevBtn').disabled = (currentSlide === 1);
+            document.getElementById('nextBtn').disabled = (currentSlide === totalSlides);
+
+            // Update floating buttons
+            const floatPrev = document.getElementById('floatingPrevBtn');
+            const floatNext = document.getElementById('floatingNextBtn');
+            if (floatPrev) floatPrev.disabled = (currentSlide === 1);
+            if (floatNext) floatNext.disabled = (currentSlide === totalSlides);
+
+            // Update top progress indicator
+            const percent = ((currentSlide - 1) / (totalSlides - 1)) * 100;
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                currentSlide++;
+                updateSlideVisibility();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                currentSlide--;
+                updateSlideVisibility();
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowLeft') {
+                nextSlide();
+            } else if (event.key === 'ArrowRight') {
+                prevSlide();
+            } else if (event.key === ' ' || event.key === 'Enter') {
+                event.preventDefault();
+                nextSlide();
+            }
+        });
+
+        // Initialize first slide view
+        updateSlideVisibility();
+
+        // ── SIMULATION FUNCTIONS ──
+
+        // Slide 7 ID Generator
+        function simulateIDGeneration() {
+            const card = document.getElementById('studentCard');
+            card.style.display = 'none';
+            setTimeout(() => { card.style.display = 'block'; }, 100);
+        }
+
+        // Slide 8 Telegram chat simulator
+        let tgStep = 0;
+        function simulateTelegramChat() {
+            const chat = document.getElementById('tgChat');
+            if (tgStep === 0) {
+                const sendBubble = document.createElement('div');
+                sendBubble.className = 'tg-bubble out';
+                sendBubble.innerText = 'رقمي الجامعي: 2026110904';
+                chat.appendChild(sendBubble);
+                tgStep = 1;
+                
+                setTimeout(() => {
+                    const receiveBubble = document.createElement('div');
+                    receiveBubble.className = 'tg-bubble in';
+                    receiveBubble.innerText = 'تم التحقق بنجاح! تفضل بيانات حسابك:\n\nاسم المستخدم: samra_904\nكلمة المرور الافتراضية: Eb#2026_xYz';
+                    chat.appendChild(receiveBubble);
+                    chat.scrollTop = chat.scrollHeight;
+                }, 1200);
+            }
+        }
+
+        // Slide 9 Device Lock
+        function toggleLockState(shouldLock) {
+            const ind = document.getElementById('lockIndicator');
+            if (shouldLock) {
+                ind.className = 'lock-badge-visual';
+                ind.innerHTML = '<i class="fa-solid fa-lock"></i>';
+            } else {
+                ind.className = 'lock-badge-visual unlocked';
+                ind.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
+            }
+        }
+
+        // Slide 10 QR Cooldown Generator
+        let qrCounter = 1;
+        setInterval(() => {
+            qrCounter++;
+            const qrImg = document.getElementById('qrDemoImage');
+            const tokenLbl = document.getElementById('qrTokenLabel');
+            if (qrImg) {
+                qrImg.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    qrImg.style.backgroundImage = `url('https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=EduBridge_Session_Token_${qrCounter}')`;
+                    qrImg.style.transform = 'scale(1)';
+                    tokenLbl.innerText = 'Token: QR_' + Math.random().toString(36).substring(2, 9).toUpperCase();
+                }, 150);
+            }
+        }, 5000);
+
+        // Slide 13 Offline Sync Queue
+        function simulateOfflineSync() {
+            const bdg = document.getElementById('syncStatusBadge');
+            if (bdg) {
+                bdg.innerText = 'مزامنة... 🔄';
+                bdg.style.color = '#f2f20d';
+                setTimeout(() => {
+                    bdg.innerText = 'تمت المزامنة بنجاح! ✅';
+                    bdg.style.color = '#00ff00';
+                }, 1800);
+            }
+        }
+
+        // Slide 19 OTP verification
+        function simulateOTPVerify() {
+            const lastDigit = document.getElementById('otpLastDigit');
+            const feedback = document.getElementById('otpFeedback');
+            if (lastDigit.value === '1') {
+                feedback.innerText = 'تم مطابقة الرمز بنجاح! تم فتح قفل كلمة المرور. 🔓';
+                feedback.style.color = '#00ff00';
+            } else {
+                feedback.innerText = 'الرمز غير صحيح، حاول مجدداً.';
+                feedback.style.color = '#ff4d4d';
+            }
+        }
+
+        // Slide 20 PDF Report Generator
+        function simulateReportGeneration() {
+            const pdf = document.getElementById('pdfReport');
+            pdf.style.display = 'none';
+            setTimeout(() => { pdf.style.display = 'block'; }, 100);
+        }
+
+        // Slide 20 FCM Notifications
+        function simulatePushNotification() {
+            const toast = document.getElementById('toastNotif');
+            toast.classList.add('active');
+            setTimeout(() => { toast.classList.remove('active'); }, 5000);
+        }
+    </script>
+</body>
+</html>

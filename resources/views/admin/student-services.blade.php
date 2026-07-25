@@ -269,21 +269,34 @@
 
 @section('content')
 
-    <!-- Tabs Navigation -->
-    <div class="custom-tabs">
-        <button class="tab-btn active" onclick="switchTab(this, 'mercy')">
-            <i class="fa-solid fa-gavel"></i> طلبات الاسترحام
+    <!-- Main Tabs Navigation -->
+    <div class="custom-tabs" style="border-bottom: 3px solid var(--accent-color); margin-bottom: 2rem;">
+        <button class="tab-btn active" onclick="switchMainTab(this, 'pending')" style="font-size: 1.2rem; border-radius: 12px 12px 0 0;">
+            <i class="fa-regular fa-clock"></i> طلبات معلقة
         </button>
-        <button class="tab-btn" onclick="switchTab(this, 'documents')">
-            <i class="fa-solid fa-file-invoice"></i> طلبات الوثائق
-        </button>
-        <button class="tab-btn" onclick="switchTab(this, 'makeup')">
-            <i class="fa-solid fa-pen-to-square"></i> امتحانات الإكمال
+        <button class="tab-btn" onclick="switchMainTab(this, 'completed')" style="font-size: 1.2rem; border-radius: 12px 12px 0 0;">
+            <i class="fa-solid fa-check-double"></i> طلبات منتهية
         </button>
     </div>
 
+    @foreach(['pending', 'completed'] as $statusGrp)
+    <div id="main-tab-{{ $statusGrp }}" class="main-tab-content" style="display: {{ $loop->first ? 'block' : 'none' }}; animation: fadeIn 0.3s ease;">
+        
+        <!-- Sub Tabs Navigation -->
+        <div class="custom-tabs">
+            <button class="tab-btn active" onclick="switchSubTab(this, '{{ $statusGrp }}-mercy', '{{ $statusGrp }}')">
+                <i class="fa-solid fa-gavel"></i> طلبات الاسترحام
+            </button>
+            <button class="tab-btn" onclick="switchSubTab(this, '{{ $statusGrp }}-documents', '{{ $statusGrp }}')">
+                <i class="fa-solid fa-file-invoice"></i> طلبات الوثائق
+            </button>
+            <button class="tab-btn" onclick="switchSubTab(this, '{{ $statusGrp }}-makeup', '{{ $statusGrp }}')">
+                <i class="fa-solid fa-pen-to-square"></i> امتحانات الإكمال
+            </button>
+        </div>
+
     <!-- 1. Mercy Petitions Tab -->
-    <div id="tab-mercy" class="tab-content active">
+    <div id="tab-{{ $statusGrp }}-mercy" class="sub-tab-content-{{ $statusGrp }}" style="display: block; animation: fadeIn 0.3s ease;">
         <div class="table-container">
             <table class="custom-table">
                 <thead>
@@ -298,7 +311,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($requests->where('type', 'mercy') as $req)
+                    @php $filtered = $requests->where('type', 'mercy')->filter(function($r) use ($statusGrp) { return $statusGrp == 'pending' ? ($r->status == 'pending_admin') : ($r->status != 'pending_admin'); }); @endphp
+                    @foreach($filtered as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
@@ -318,12 +332,13 @@
                             @endif</td>
                         <td>
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('mercy', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, {{ $req->id }})"><i class="fa-solid fa-eye"></i></button>
+                                @php $canRespond = ($req->status == 'pending_admin'); @endphp
+                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('mercy', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? "لا توجد ملاحظات") }}`, `{{ addslashes($req->hod_notes ?? "لا توجد ملاحظات") }}`, {{ $req->id }}, {{ $canRespond ? "true" : "false" }})"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
                     @endforeach
-                    @if($requests->where('type', 'mercy')->isEmpty())
+                    @if($filtered->isEmpty())
                     <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
                     @endif
                 </tbody>
@@ -332,7 +347,7 @@
     </div>
 
     <!-- 2. Documents Requests Tab -->
-    <div id="tab-documents" class="tab-content">
+    <div id="tab-{{ $statusGrp }}-documents" class="sub-tab-content-{{ $statusGrp }}" style="display: none; animation: fadeIn 0.3s ease;">
         <div class="table-container">
             <table class="custom-table">
                 <thead>
@@ -347,7 +362,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($requests->where('type', 'document') as $req)
+                    @php $filtered = $requests->where('type', 'document')->filter(function($r) use ($statusGrp) { return $statusGrp == 'pending' ? ($r->status == 'pending_admin') : ($r->status != 'pending_admin'); }); @endphp
+                    @foreach($filtered as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
@@ -367,12 +383,13 @@
                             @endif</td>
                         <td>
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('document', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, {{ $req->id }})"><i class="fa-solid fa-eye"></i></button>
+                                @php $canRespond = ($req->status == 'pending_admin'); @endphp
+                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('document', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? "لا توجد ملاحظات") }}`, `{{ addslashes($req->hod_notes ?? "لا توجد ملاحظات") }}`, {{ $req->id }}, {{ $canRespond ? "true" : "false" }})"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
                     @endforeach
-                    @if($requests->where('type', 'document')->isEmpty())
+                    @if($filtered->isEmpty())
                     <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
                     @endif
                 </tbody>
@@ -381,7 +398,7 @@
     </div>
 
     <!-- 3. Makeup Exams Tab -->
-    <div id="tab-makeup" class="tab-content">
+    <div id="tab-{{ $statusGrp }}-makeup" class="sub-tab-content-{{ $statusGrp }}" style="display: none; animation: fadeIn 0.3s ease;">
         <div class="table-container">
             <table class="custom-table">
                 <thead>
@@ -396,7 +413,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($requests->where('type', 'makeup') as $req)
+                    @php $filtered = $requests->where('type', 'makeup')->filter(function($r) use ($statusGrp) { return $statusGrp == 'pending' ? ($r->status == 'pending_admin') : ($r->status != 'pending_admin'); }); @endphp
+                    @foreach($filtered as $req)
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
@@ -416,12 +434,13 @@
                             @endif</td>
                         <td>
                             <div class="action-btns">
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('makeup', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, {{ $req->id }})"><i class="fa-solid fa-eye"></i></button>
+                                @php $canRespond = ($req->status == 'pending_admin'); @endphp
+                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('makeup', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? "لا توجد ملاحظات") }}`, `{{ addslashes($req->hod_notes ?? "لا توجد ملاحظات") }}`, {{ $req->id }}, {{ $canRespond ? "true" : "false" }})"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
                     @endforeach
-                    @if($requests->where('type', 'makeup')->isEmpty())
+                    @if($filtered->isEmpty())
                     <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
                     @endif
                 </tbody>
@@ -429,6 +448,8 @@
         </div>
     </div>
 
+    </div>
+    @endforeach
 <!-- Request Details Modal -->
 <div id="requestModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
     <form class="modal-content" id="decisionForm" method="POST" action="">
@@ -502,18 +523,33 @@
 
 @push('scripts')
 <script>
-    function switchTab(btnElement, tabName) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        
+    function switchMainTab(btnElement, statusGrp) {
+        btnElement.parentElement.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         btnElement.classList.add('active');
-        const targetTab = document.getElementById('tab-' + tabName);
-        if (targetTab) {
-            targetTab.classList.add('active');
+        
+        document.querySelectorAll('.main-tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        const targetMainTab = document.getElementById('main-tab-' + statusGrp);
+        if (targetMainTab) {
+            targetMainTab.style.display = 'block';
         }
     }
 
-    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, hodNotes, reqId) {
+    function switchSubTab(btnElement, tabId, statusGrp) {
+        btnElement.parentElement.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        btnElement.classList.add('active');
+        
+        document.querySelectorAll('.sub-tab-content-' + statusGrp).forEach(content => {
+            content.style.display = 'none';
+        });
+        const targetTab = document.getElementById('tab-' + tabId);
+        if (targetTab) {
+            targetTab.style.display = 'block';
+        }
+    }
+
+    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, hodNotes, reqId, canRespond) {
         document.getElementById('modal-request-type').innerText = type;
         document.getElementById('modal-student-name').innerText = name;
         document.getElementById('modal-student-id').innerText = id;
@@ -526,8 +562,18 @@
         document.getElementById('decisionForm').action = '/admin/student-services/' + reqId + '/process';
         
         const notesElement = document.getElementById('modal-admin-notes');
-        notesElement.value = ''; // clear previous notes
-        notesElement.style.borderColor = ''; // reset border color
+        notesElement.style.borderColor = '';
+        
+        const footer = document.querySelector('.modal-footer');
+        if (canRespond) {
+            notesElement.value = '';
+            notesElement.readOnly = false;
+            footer.style.display = 'flex';
+        } else {
+            notesElement.value = 'تم إغلاق الطلب مسبقاً ولا يمكن تعديله.';
+            notesElement.readOnly = true;
+            footer.style.display = 'none';
+        }
         
         const modal = document.getElementById('requestModal');
         modal.style.display = 'flex';

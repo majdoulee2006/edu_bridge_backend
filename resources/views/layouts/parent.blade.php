@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -59,6 +59,10 @@
                 <a href="{{ url('/parent/reports') }}" class="nav-item {{ Request::is('parent/reports') ? 'active' : '' }}">
                     <i class="fa-solid fa-chart-line"></i>
                     تقارير الأداء
+                </a>
+                <a href="{{ url('/parent/messages') }}" class="nav-item {{ Request::is('parent/messages*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-comments"></i>
+                    الرسائل
                 </a>
                 <a href="{{ url('/parent/profile') }}" class="nav-item {{ Request::is('parent/profile') ? 'active' : '' }}">
                     <i class="fa-solid fa-user"></i>
