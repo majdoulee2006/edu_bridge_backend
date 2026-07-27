@@ -26,32 +26,51 @@ class AdminController extends Controller
         $teacherRoleId = Role::where('name', 'teacher')->value('role_id');
         $parentRoleId = Role::where('name', 'parent')->value('role_id');
 
-        $announcements = \App\Models\Announcement::with('user')->latest()->limit(10)->get()->map(function($a) {
+        $loggedUserId = $request->user()?->user_id;
+
+        $announcements = \App\Models\Announcement::with('user')->latest()->limit(10)->get()->map(function($a) use ($loggedUserId) {
             return [
                 'announcement_id' => $a->announcement_id,
-                'title' => $a->title,
-                'content' => $a->content,
-                'type' => $a->type ?? 'general',
-                'category' => $a->category ?? 'إعلان',
-                'author_name' => $a->user ? $a->user->full_name : 'الإدارة',
-                'created_at' => $a->created_at ? $a->created_at->diffForHumans() : '',
-                'image_url' => $a->image ? asset('storage/' . $a->image) : null,
+                'title'           => $a->title,
+                'content'         => $a->content,
+                'type'            => $a->type ?? 'general',
+                'category'        => $a->category ?? 'إعلان',
+                'author_name'     => $a->user ? $a->user->full_name : 'الإدارة',
+                'created_at'      => $a->created_at ? $a->created_at->diffForHumans() : '',
+                'image_url'       => $a->image ? asset('storage/' . $a->image) : null,
+                'user_id'         => $a->user_id, // لتحديد صاحب الإعلان
+                'is_mine'         => ($a->user_id == $loggedUserId), // هل أنشأه المستخدم الحالي؟
             ];
         });
 
+        $studentsCount    = User::where('role_id', $studentRoleId)->count();
+        $teachersCount    = User::where('role_id', $teacherRoleId)->count();
+        $parentsCount     = User::where('role_id', $parentRoleId)->count();
+        $coursesCount     = Course::count();
+        $departmentsCount = Department::count();
+
         $statistics = [
-            'total_students' => User::where('role_id', $studentRoleId)->count(),
-            'total_teachers' => User::where('role_id', $teacherRoleId)->count(),
-            'total_parents' => User::where('role_id', $parentRoleId)->count(),
-            'total_courses' => Course::count(),
-            'total_departments' => Department::count(),
+            // مفاتيح قديمة للتوافق مع أي كود سابق
+            'total_students'    => $studentsCount,
+            'total_teachers'    => $teachersCount,
+            'total_parents'     => $parentsCount,
+            'total_courses'     => $coursesCount,
+            'total_departments' => $departmentsCount,
+            // مفاتيح counts التي يقرأها التطبيق
+            'counts' => [
+                'students'    => $studentsCount,
+                'teachers'    => $teachersCount,
+                'parents'     => $parentsCount,
+                'courses'     => $coursesCount,
+                'departments' => $departmentsCount,
+            ],
             'active_semester' => Semester::where('is_active', true)->first(),
-            'announcements' => $announcements,
-            'recent_users' => User::latest()->limit(10)->get()->map(function($user) {
+            'announcements'   => $announcements,
+            'recent_users'    => User::latest()->limit(10)->get()->map(function($user) {
                 return [
-                    'id' => $user->user_id,
-                    'name' => $user->full_name,
-                    'role' => $user->role ?? 'unknown',
+                    'id'         => $user->user_id,
+                    'name'       => $user->full_name,
+                    'role'       => $user->role ?? 'unknown',
                     'created_at' => $user->created_at ? $user->created_at->diffForHumans() : null,
                 ];
             }),
