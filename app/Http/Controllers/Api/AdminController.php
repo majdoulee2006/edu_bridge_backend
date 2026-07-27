@@ -174,6 +174,7 @@ class AdminController extends Controller
                 'level' => $request->academic_year,
             ]);
             Student::autoAssignAdvisor($student->student_id);
+            Student::autoEnrollCourses($student->student_id);
         } elseif ($request->role == 'teacher') {
             $teacher = Teacher::create([
                 'user_id' => $user->user_id,
@@ -190,7 +191,8 @@ class AdminController extends Controller
                 }
             }
         } elseif ($request->role == 'parent') {
-            Parents::create(['user_id' => $user->user_id]);
+            $parent = Parents::create(['user_id' => $user->user_id]);
+            Parents::autoLinkStudentByPhoneOrId($parent->parent_id, $request->phone, $request->email);
         }
 
         return response()->json([

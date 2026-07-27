@@ -143,4 +143,42 @@ class Student extends Model
             }
         }
     }
+
+    public static function autoEnrollCourses($studentId)
+    {
+        $student = static::with(['user', 'program'])->find($studentId);
+        if (!$student) return;
+
+        $user = $student->user;
+        $programId = $student->program_id;
+
+        $query = Course::query();
+
+        if ($programId) {
+            $deptId = $student->program?->department_id;
+            $query->where(function($q) use ($programId, $deptId) {
+                $q->whereHas('programs', function($pQuery) use ($programId) {
+                    $pQuery->where('programs.id', $programId);
+                });
+                if ($deptId) {
+                    $q->orWhere('department_id', $deptId);
+                }
+            });
+        } elseif ($user?->department_id) {
+            $query->where('department_id', $user->department_id);
+        }
+
+        $courses = $query->get();
+
+        foreach ($courses as $course) {
+            Enrollment::firstOrCreate([
+                'student_id' => $student->student_id,
+                'course_id'  => $course->course_id,
+            ], [
+                'status'          => 'active',
+                'enrollment_date' => now(),
+            ]);
+        }
+    }
 }
+

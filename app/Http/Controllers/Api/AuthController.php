@@ -74,14 +74,17 @@ class AuthController extends Controller
 
         $user->update(['last_login' => now()]);
 
-        // ── ربط الجهاز بحساب الطالب عند أول تسجيل دخول ──────────────────
-        if ($user->role_id === 3 && $request->filled('device_id')) {
+        // ── ربط الجهاز والإنهاء التلقائي لتسجيل المواد للطالب ──────────────────
+        if ($user->role_id === 3) {
             $student = \App\Models\Student::where('user_id', $user->user_id)->first();
-            if ($student && empty($student->device_id)) {
-                $student->update([
-                    'device_id'        => $request->device_id,
-                    'is_device_locked' => 1,
-                ]);
+            if ($student) {
+                if ($request->filled('device_id') && empty($student->device_id)) {
+                    $student->update([
+                        'device_id'        => $request->device_id,
+                        'is_device_locked' => 1,
+                    ]);
+                }
+                \App\Models\Student::autoEnrollCourses($student->student_id);
             }
         }
 
@@ -91,6 +94,9 @@ class AuthController extends Controller
         if ($user->role_id == 4) {
             $parent   = DB::table('parents')->where('user_id', $user->user_id)->first();
             $parentId = $parent?->parent_id;
+            if ($parentId) {
+                \App\Models\Parents::autoLinkStudentByPhoneOrId($parentId, $user->phone, $user->email);
+            }
         }
 
         $isAdvisor = false;
