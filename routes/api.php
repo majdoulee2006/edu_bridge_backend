@@ -363,6 +363,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/pending-accounts', [AdminController::class, 'getPendingAccounts']);
             Route::post('/accounts/{id}/approve', [AdminController::class, 'approveAccount']);
             Route::post('/accounts/{id}/reject', [AdminController::class, 'rejectAccount']);
+
+            // Student Services Management
+            Route::get('/student-services', [AdminController::class, 'getStudentServices']);
+            Route::post('/student-services/{id}/process', [AdminController::class, 'processStudentService']);
         });
     });
 

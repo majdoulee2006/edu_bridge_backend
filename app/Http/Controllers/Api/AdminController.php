@@ -1274,4 +1274,100 @@ class AdminController extends Controller
 
         return response()->json(['success' => true, 'message' => 'تم رفض وحذف طلب الحساب بنجاح.'], 200);
     }
+
+    public function getStudentServices(Request $request)
+    {
+        $type   = $request->query('type');
+        $status = $request->query('status');
+
+        $query = \App\Models\StudentRequest::with(['student.user', 'student.program.department'])
+                    ->whereIn('status', ['pending_admin', 'completed']);
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        if ($status && $status !== 'all') {
+            if ($status === 'pending') {
+                $query->where('status', 'pending_admin');
+            } elseif ($status === 'completed') {
+                $query->where('status', 'completed');
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->get()->map(function($req) {
+            return [
+                'id'               => $req->id,
+                'student_id'       => $req->student_id,
+                'type'             => $req->type,
+                'details'          => $req->details,
+                'status'           => $req->status,
+                'affairs_decision' => $req->affairs_decision,
+                'hod_decision'     => $req->hod_decision,
+                'admin_decision'   => $req->admin_decision,
+                'affairs_notes'    => $req->affairs_notes ?? 'لا توجد ملاحظات',
+                'hod_notes'        => $req->hod_notes ?? 'لا توجد ملاحظات',
+                'admin_notes'      => $req->admin_notes,
+                'created_at'       => $req->created_at ? $req->created_at->format('Y-m-d H:i') : '',
+                'student_name'     => $req->student?->user?->full_name ?? 'غير معروف',
+                'student_code'     => $req->student?->student_code ?? 'N/A',
+                'academic_year'    => $req->student?->user?->academic_year ?? 'N/A',
+                'department_name'  => $req->student?->program?->department?->name ?? 'غير محدد',
+                'program_name'     => $req->student?->program?->name ?? 'غير محدد',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $requests,
+        ], 200);
+    }
+
+    public function processStudentService(Request $request, $id)
+    {
+        $request->validate([
+            'decision' => 'required|in:approved,rejected',
+            'notes'    => 'required|string'
+        ]);
+
+        $studentReq = \App\Models\StudentRequest::findOrFail($id);
+
+        $studentReq->admin_decision = $request->decision;
+        $studentReq->admin_notes    = $request->notes;
+        $studentReq->status         = 'completed';
+        $studentReq->save();
+
+        if ($studentReq->student?->user_id) {
+            $decText = ($request->decision === 'approved') ? 'مقبول' : 'مرفوض';
+            $title   = 'تحديث حالة طلبك';
+            $msg     = 'تم الرد على طلبك من قبل الإدارة بالقرار: ' . $decText . '، يرجى مراجعة تفاصيل الطلب.';
+
+            \DB::table('notifications')->insert([
+                'user_id'    => $studentReq->student->user_id,
+                'sender_id'  => auth()->id(),
+                'title'      => $title,
+                'message'    => $msg,
+                'type'       => 'system',
+                'category'   => 'administrative',
+                'is_read'    => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser(
+                $studentReq->student->user_id,
+                $title,
+                $msg,
+                ['type' => 'system']
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم اتخاذ القرار النهائي بنجاح وتم إغلاق الطلب وإشعار الطالب.'
+        ], 200);
+    }
 }
+
