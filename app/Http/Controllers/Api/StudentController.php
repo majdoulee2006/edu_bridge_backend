@@ -97,11 +97,47 @@ class StudentController extends Controller
             ];
         }
 
+        $advisorTeacher = null;
+        if ($student) {
+            $level = $student->level ?? $user->academic_year ?? 'السنة الأولى';
+            $academicYear = trim($level);
+            if ($academicYear === 'أولى' || $academicYear === 'السنة الأولى' || $academicYear === '1') $academicYear = 'السنة الأولى';
+            elseif ($academicYear === 'ثانية' || $academicYear === 'السنة الثانية' || $academicYear === '2') $academicYear = 'السنة الثانية';
+            elseif ($academicYear === 'ثالثة' || $academicYear === 'السنة الثالثة' || $academicYear === '3') $academicYear = 'السنة الثالثة';
+            elseif ($academicYear === 'رابعة' || $academicYear === 'السنة الرابعة' || $academicYear === '4') $academicYear = 'السنة الرابعة';
+            elseif ($academicYear === 'خامسة' || $academicYear === 'السنة الخامسة' || $academicYear === '5') $academicYear = 'السنة الخامسة';
+
+            $branch = \DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->department ?? $user->branch;
+
+            $teacherRow = \DB::table('teachers')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->where('teachers.advisor_branch', $branch)
+                ->where('teachers.advisor_year', $academicYear)
+                ->select('users.full_name', 'users.phone', 'users.email', 'teachers.specialization')
+                ->first();
+
+            if (!$teacherRow && $user->department) {
+                $teacherRow = \DB::table('teachers')
+                    ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                    ->where('users.department', 'LIKE', '%' . $user->department . '%')
+                    ->select('users.full_name', 'users.phone', 'users.email', 'teachers.specialization')
+                    ->first();
+            }
+
+            if ($teacherRow) {
+                $advisorTeacher = [
+                    'name'           => $teacherRow->full_name,
+                    'phone'          => $teacherRow->phone ?? 'غير متوفر',
+                    'email'          => $teacherRow->email ?? 'غير متوفر',
+                    'specialization' => $teacherRow->specialization ?? 'مربي الدورة',
+                ];
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'تم جلب البيانات بنجاح',
             'data' => [
-                // 🌟 رجعناها خفيفة ونظيفة مثل ما طلبتي بالضبط!
                 'student' => [
                     'id' => $user->user_id,
                     'name' => $user->full_name,
@@ -110,6 +146,7 @@ class StudentController extends Controller
                 ],
                 'next_lecture' => $nextLecture,
                 'announcements' => $announcements,
+                'advisor_teacher' => $advisorTeacher,
             ]
         ], 200);
     }
@@ -121,6 +158,43 @@ class StudentController extends Controller
     {
         $user = $request->user();
         $student = $user->student;
+
+        $advisorTeacher = null;
+        if ($student) {
+            $level = $student->level ?? $user->academic_year ?? 'السنة الأولى';
+            $academicYear = trim($level);
+            if ($academicYear === 'أولى' || $academicYear === 'السنة الأولى' || $academicYear === '1') $academicYear = 'السنة الأولى';
+            elseif ($academicYear === 'ثانية' || $academicYear === 'السنة الثانية' || $academicYear === '2') $academicYear = 'السنة الثانية';
+            elseif ($academicYear === 'ثالثة' || $academicYear === 'السنة الثالثة' || $academicYear === '3') $academicYear = 'السنة الثالثة';
+            elseif ($academicYear === 'رابعة' || $academicYear === 'السنة الرابعة' || $academicYear === '4') $academicYear = 'السنة الرابعة';
+            elseif ($academicYear === 'خامسة' || $academicYear === 'السنة الخامسة' || $academicYear === '5') $academicYear = 'السنة الخامسة';
+
+            $branch = \DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->department ?? $user->branch;
+
+            $teacherRow = \DB::table('teachers')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->where('teachers.advisor_branch', $branch)
+                ->where('teachers.advisor_year', $academicYear)
+                ->select('users.full_name', 'users.phone', 'users.email', 'teachers.specialization')
+                ->first();
+
+            if (!$teacherRow && $user->department) {
+                $teacherRow = \DB::table('teachers')
+                    ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                    ->where('users.department', 'LIKE', '%' . $user->department . '%')
+                    ->select('users.full_name', 'users.phone', 'users.email', 'teachers.specialization')
+                    ->first();
+            }
+
+            if ($teacherRow) {
+                $advisorTeacher = [
+                    'name'           => $teacherRow->full_name,
+                    'phone'          => $teacherRow->phone ?? 'غير متوفر',
+                    'email'          => $teacherRow->email ?? 'غير متوفر',
+                    'specialization' => $teacherRow->specialization ?? 'مربي الدورة',
+                ];
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -136,10 +210,10 @@ class StudentController extends Controller
                 'birth_date' => $user->birth_date ? $user->birth_date->format('Y-m-d') : null,
                 'gender' => $user->gender ?? 'غير محدد',
                 'level' => $student->level ?? 'غير محدد',
-                // 🌟 إضافة رابط الصورة (إذا مافي صورة بنرجع null)
                 'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
-                'reference_photo_url' => $student->reference_photo ? url('storage/' . $student->reference_photo) : null,
-                'has_face_embedding' => (!empty($student->face_embedding) && !$student->requires_face_reset),
+                'reference_photo_url' => $student?->reference_photo ? url('storage/' . $student->reference_photo) : null,
+                'has_face_embedding' => (!empty($student?->face_embedding) && !$student?->requires_face_reset),
+                'advisor_teacher' => $advisorTeacher,
             ]
         ], 200);
     }
