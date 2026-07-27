@@ -316,14 +316,14 @@
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
                         <td>{{ Str::limit($req->details, 30) }}</td>
-                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
+                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_admin')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
@@ -333,7 +333,19 @@
                         <td>
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_admin'); @endphp
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('mercy', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? "لا توجد ملاحظات") }}`, `{{ addslashes($req->hod_notes ?? "لا توجد ملاحظات") }}`, {{ $req->id }}, {{ $canRespond ? "true" : "false" }})"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn-action btn-view" title="عرض التفاصيل"
+                                    data-type="استرحام"
+                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-id="{{ $req->student?->student_code ?? 'N/A' }}"
+                                    data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-details="{{ $req->details }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-hod-notes="{{ $req->hod_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-req-id="{{ $req->id }}"
+                                    data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
+                                    onclick="openRequestModalFromBtn(this)"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -367,14 +379,14 @@
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
                         <td>{{ Str::limit($req->details, 30) }}</td>
-                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
+                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_admin')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
@@ -384,7 +396,19 @@
                         <td>
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_admin'); @endphp
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('document', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? "لا توجد ملاحظات") }}`, `{{ addslashes($req->hod_notes ?? "لا توجد ملاحظات") }}`, {{ $req->id }}, {{ $canRespond ? "true" : "false" }})"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn-action btn-view" title="عرض التفاصيل"
+                                    data-type="وثيقة"
+                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-id="{{ $req->student?->student_code ?? 'N/A' }}"
+                                    data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-details="{{ $req->details }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-hod-notes="{{ $req->hod_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-req-id="{{ $req->id }}"
+                                    data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
+                                    onclick="openRequestModalFromBtn(this)"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -418,14 +442,14 @@
                     <tr>
                         <td>
                             <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student->user->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student->user->full_name ?? 'غير معروف' }}</span>
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student->user->academic_year ?? 'N/A' }}</td>
+                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
                         <td>{{ Str::limit($req->details, 30) }}</td>
-                        <td>{{ $req->created_at->format('Y-m-d') }}</td>
+                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_admin')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
@@ -435,7 +459,19 @@
                         <td>
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_admin'); @endphp
-                                <button class="btn-action btn-view" title="عرض التفاصيل" onclick="openRequestModal('makeup', '{{ $req->student->user->full_name ?? '' }}', '{{ $req->student->student_code ?? '' }}', '{{ $req->student->user->academic_year ?? '' }}', '{{ $req->student->program->department->name ?? 'غير محدد' }}', '{{ $req->student->program->name ?? 'غير محدد' }}', `{{ addslashes($req->details) }}`, `{{ addslashes($req->affairs_notes ?? "لا توجد ملاحظات") }}`, `{{ addslashes($req->hod_notes ?? "لا توجد ملاحظات") }}`, {{ $req->id }}, {{ $canRespond ? "true" : "false" }})"><i class="fa-solid fa-eye"></i></button>
+                                <button class="btn-action btn-view" title="عرض التفاصيل"
+                                    data-type="إكمال"
+                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-id="{{ $req->student?->student_code ?? 'N/A' }}"
+                                    data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-details="{{ $req->details }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-hod-notes="{{ $req->hod_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-req-id="{{ $req->id }}"
+                                    data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
+                                    onclick="openRequestModalFromBtn(this)"><i class="fa-solid fa-eye"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -456,7 +492,7 @@
         @csrf
         <div class="modal-header">
             <h3>تفاصيل الطلب (<span id="modal-request-type"></span>)</h3>
-            <button class="btn-close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+            <button class="btn-close-modal" type="button" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
             <div class="modal-grid-2">
@@ -549,6 +585,22 @@
         }
     }
 
+    function openRequestModalFromBtn(btn) {
+        const type = btn.getAttribute('data-type') || '';
+        const name = btn.getAttribute('data-name') || '';
+        const id = btn.getAttribute('data-id') || '';
+        const year = btn.getAttribute('data-year') || '';
+        const department = btn.getAttribute('data-department') || '';
+        const specialization = btn.getAttribute('data-specialization') || '';
+        const details = btn.getAttribute('data-details') || '';
+        const affairsNotes = btn.getAttribute('data-affairs-notes') || 'لا توجد ملاحظات';
+        const hodNotes = btn.getAttribute('data-hod-notes') || 'لا توجد ملاحظات';
+        const reqId = btn.getAttribute('data-req-id') || '';
+        const canRespond = btn.getAttribute('data-can-respond') === 'true';
+
+        openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, hodNotes, reqId, canRespond);
+    }
+
     function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, hodNotes, reqId, canRespond) {
         document.getElementById('modal-request-type').innerText = type;
         document.getElementById('modal-student-name').innerText = name;
@@ -618,3 +670,4 @@
     }
 </script>
 @endpush
+

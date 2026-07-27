@@ -1179,3 +1179,5 @@ class AffairsWebController extends Controller
         return redirect()->back()->with('success', 'تم إرسال طلب التقرير للمدرب وتم إشعاره بنجاح!');
     }
 }
+
+
