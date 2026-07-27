@@ -170,19 +170,6 @@ class DepartmentHeadController extends Controller
             }
         }
 
-        // Ultimate fallback: If still empty, return all teachers
-        if ($teachers->isEmpty()) {
-            $teachers = DB::table('teachers')
-                ->join('users', 'teachers.user_id', '=', 'users.user_id')
-                ->select(
-                    'teachers.teacher_id as id',
-                    'users.full_name',
-                    'users.email',
-                    'users.phone',
-                    'teachers.specialization'
-                )
-                ->get();
-        }
 
         return response()->json(['success' => true, 'data' => $teachers]);
     }
