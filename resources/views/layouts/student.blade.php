@@ -62,9 +62,20 @@
                     <i class="fa-solid fa-envelope-open-text"></i>
                     طلبات الإذن
                 </a>
-                <a href="{{ url('/student/messages') }}" class="nav-item {{ Request::is('student/messages*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-comments"></i>
-                    الرسائل
+                <a href="{{ url('/student/notifications') }}" class="nav-item {{ Request::is('student/notifications') ? 'active' : '' }}" style="position: relative;">
+                    <i class="fa-solid fa-bell"></i> الإشعارات
+                    @php $unreadCount = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
+                    @if($unreadCount > 0)
+                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadCount }}</span>
+                    @endif
+                </a>
+                
+                <a href="{{ url('/student/messages') }}" class="nav-item {{ Request::is('student/messages*') ? 'active' : '' }}" style="position: relative;">
+                    <i class="fa-solid fa-comments"></i> الرسائل
+                    @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
+                    @if($unreadMessages > 0)
+                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
+                    @endif
                 </a>
                 <a href="{{ url('/student/profile') }}" class="nav-item {{ Request::is('student/profile') ? 'active' : '' }}">
                     <i class="fa-solid fa-user"></i>

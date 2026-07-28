@@ -778,6 +778,19 @@ class StudentWebController extends Controller
     }
 
     // ────────────────────────────────────────────────────────────
+    //  NOTIFICATIONS
+    // ────────────────────────────────────────────────────────────
+    public function notifications()
+    {
+        $student = $this->getStudent();
+        $notifications = \App\Models\Notification::where('user_id', Auth::id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('student.notifications', compact('notifications'));
+    }
+
+    // ────────────────────────────────────────────────────────────
     //  MESSAGES / CHAT SYSTEM
     // ────────────────────────────────────────────────────────────
     public function messages()

@@ -29,4 +29,31 @@ class Parents extends Model
     {
         return $this->belongsToMany(Student::class, 'parent_students', 'parent_id', 'student_id');
     }
+
+    public static function autoLinkStudentByPhoneOrId($parentId, $phone = null, $email = null)
+    {
+        $parent = static::find($parentId);
+        if (!$parent) return;
+
+        $user = $parent->user;
+        $phoneSearch = $phone ?? $user?->phone;
+
+        if ($phoneSearch) {
+            $students = Student::whereHas('user', function($q) use ($phoneSearch) {
+                $q->where('phone', $phoneSearch)
+                  ->orWhere('username', $phoneSearch);
+            })->get();
+
+            foreach ($students as $student) {
+                \DB::table('parent_students')->updateOrInsert([
+                    'parent_id'  => $parentId,
+                    'student_id' => $student->student_id,
+                ], [
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+    }
 }
+

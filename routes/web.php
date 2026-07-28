@@ -373,6 +373,9 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::post('/profile/send-otp', [StudentWebController::class, 'sendOTP'])->name('student.profile.send_otp');
     Route::post('/profile/verify-otp', [StudentWebController::class, 'verifyOTP'])->name('student.profile.verify_otp');
 
+    // الإشعارات
+    Route::get('/notifications', [StudentWebController::class, 'notifications'])->name('student.notifications');
+
     // الرسائل
     Route::get('/messages', [StudentWebController::class, 'messages'])->name('student.messages');
     Route::get('/messages/contacts', [StudentWebController::class, 'getContacts'])->name('student.messages.contacts');

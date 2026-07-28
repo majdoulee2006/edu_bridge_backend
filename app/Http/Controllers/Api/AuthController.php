@@ -41,47 +41,77 @@ class AuthController extends Controller
         $digitsOnly = preg_replace('/[^0-9]/', '', $input);
 
         if ($isStudent) {
-            // وضع الطالب: البحث عبر الرقم الجامعي فقط
-            $user = User::where('university_id', $input)->where('role_id', 3)->first();
-        } else {
-            // الوضع العادي: بحث عبر الهاتف أو الإيميل أو username — مع استثناء الطلاب
-            $user = User::where('role_id', '!=', 3)
+            // وضع الطالب: البحث عبر الرقم الجامعي، اسم المستخدم، الإيميل، الهاتف، أو كود الطالب
+            $user = User::where('role_id', 3)
                 ->where(function ($q) use ($input, $digitsOnly) {
+                    $q->where('university_id', $input)
+                      ->orWhere('username', $input)
+                      ->orWhere('email', $input)
+                      ->orWhere('phone', $input)
+                      ->orWhereHas('student', function ($sq) use ($input) {
+                          $sq->where('student_code', $input);
+                      });
+                    if (!empty($digitsOnly)) {
+                        $q->orWhere('university_id', $digitsOnly)
+                          ->orWhere('username', $digitsOnly);
+                    }
+                })
+                ->first();
+
+            if (!$user) {
+                // محاولة بحث عامة للحصول على معلومات دقيقة إن كان المستخدم موجود بدور آخر
+                $anyUser = User::where('university_id', $input)->orWhere('username', $input)->first();
+                if ($anyUser && $anyUser->role_id !== 3) {
+                    return response()->json(['success' => false, 'message' => 'هذا الحساب ليس حساب طالب. يرجى إغلاق خيار "طالب" لتسجيل الدخول.'], 403);
+                }
+            }
+        } else {
+            // الوضع العادي: بحث شامل بدون استثناء تعسفي
+            $user = User::where(function ($q) use ($input, $digitsOnly) {
                     $q->where('username', $input)
                       ->orWhere('email', $input)
                       ->orWhere('phone', $input)
-                      ->orWhere('phone', '+' . $digitsOnly)
-                      ->orWhereRaw("REPLACE(REPLACE(phone, '+', ''), ' ', '') = ?", [$digitsOnly])
-                      ->when(strlen($digitsOnly) >= 7, function ($q2) use ($digitsOnly) {
-                          $q2->orWhereRaw("REPLACE(REPLACE(phone, '+', ''), ' ', '') LIKE ?", ['%' . $digitsOnly]);
+                      ->orWhere('university_id', $input)
+                      ->orWhereHas('student', function ($sq) use ($input) {
+                          $sq->where('student_code', $input);
                       });
+                    if (!empty($digitsOnly)) {
+                        $q->orWhere('phone', '+' . $digitsOnly)
+                          ->orWhereRaw("REPLACE(REPLACE(phone, '+', ''), ' ', '') = ?", [$digitsOnly]);
+                    }
                 })
                 ->first();
         }
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['success' => false, 'message' => 'اسم المستخدم أو كلمة المرور غير صحيحة'], 401);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'اسم المستخدم أو الرقم الجامعي غير موجود بالنظام'], 404);
         }
 
-        // منع الطالب من الدخول بدون تفعيل زر "طالب"
-        if (!$isStudent && $user->role_id === 3) {
-            return response()->json(['success' => false, 'message' => 'يرجى تفعيل خيار "طالب" لتسجيل الدخول برقمك الجامعي'], 403);
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json(['success' => false, 'message' => 'كلمة المرور غير صحيحة. يرجى التأكد وإعادة المحاولة.'], 401);
+        }
+
+        if ($user->status === 'pending') {
+            return response()->json(['success' => false, 'message' => 'حسابك قيد المراجعة حالياً، يرجى الانتظار حتى يتم اعتماده وتفعيله من الشؤون أو الإدارة.'], 403);
         }
 
         if ($user->status === 'inactive') {
-            return response()->json(['success' => false, 'message' => 'الحساب غير مفعّل. يرجى التحقق من بريدك الإلكتروني'], 403);
+            return response()->json(['success' => false, 'message' => 'الحساب غير مفعّل. يرجى التواصل مع إدارة المعهد لإنشائه/تفعيله.'], 403);
         }
 
         $user->update(['last_login' => now()]);
 
-        // ── ربط الجهاز بحساب الطالب عند أول تسجيل دخول ──────────────────
-        if ($user->role_id === 3 && $request->filled('device_id')) {
+        // ── ربط الجهاز والإنهاء التلقائي لتسجيل المواد للطالب ──────────────────
+        if ($user->role_id === 3) {
             $student = \App\Models\Student::where('user_id', $user->user_id)->first();
-            if ($student && empty($student->device_id)) {
-                $student->update([
-                    'device_id'        => $request->device_id,
-                    'is_device_locked' => 1,
-                ]);
+            if ($student) {
+                if ($request->filled('device_id') && empty($student->device_id)) {
+                    $student->update([
+                        'device_id'        => $request->device_id,
+                        'is_device_locked' => 1,
+                    ]);
+                }
+                \App\Models\Student::autoEnrollCourses($student->student_id);
             }
         }
 
@@ -91,6 +121,9 @@ class AuthController extends Controller
         if ($user->role_id == 4) {
             $parent   = DB::table('parents')->where('user_id', $user->user_id)->first();
             $parentId = $parent?->parent_id;
+            if ($parentId) {
+                \App\Models\Parents::autoLinkStudentByPhoneOrId($parentId, $user->phone, $user->email);
+            }
         }
 
         $isAdvisor = false;
@@ -104,6 +137,16 @@ class AuthController extends Controller
             }
         }
 
+        $roleName = match((int)$user->role_id) {
+            1 => 'admin',
+            2 => 'teacher',
+            3 => 'student',
+            4 => 'parent',
+            5 => 'head',
+            6 => 'affairs',
+            default => 'student',
+        };
+
         return response()->json([
             'success' => true,
             'message' => 'تم تسجيل الدخول بنجاح',
@@ -113,7 +156,7 @@ class AuthController extends Controller
                 'name'             => $user->full_name,
                 'username'         => $user->username,
                 'email'            => $user->email,
-                'role'             => $user->role ?? 'student',
+                'role'             => $roleName,
                 'role_id'          => $user->role_id,
                 'parent_id'        => $parentId,
                 'is_advisor'       => $isAdvisor,

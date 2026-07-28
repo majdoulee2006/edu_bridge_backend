@@ -159,39 +159,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/notifications/{id}/read', [StudentController::class, 'markNotificationAsRead']);
         Route::put('/notifications/read-all', [StudentController::class, 'markAllNotificationsAsRead']);
     });
-    Route::get('/parent/announcements', function () {
-        $announcements = \DB::table('announcements')
-            ->leftJoin('users', 'announcements.user_id', '=', 'users.user_id')
-            ->latest('announcements.created_at')
-            ->limit(10)
-            ->get(['announcements.*', 'users.full_name as author_name'])
-            ->map(fn($a) => [
-                'id'          => $a->announcement_id,
-                'title'       => $a->title,
-                'content'     => $a->content,
-                'body'        => $a->content,
-                'image_url'   => $a->image ? url('storage/' . $a->image) : null,
-                'link_url'    => $a->link_url ?? null,
-                'author_name' => $a->author_name ?? 'الإدارة',
-                'time_ago'    => $a->created_at ? \Carbon\Carbon::parse($a->created_at)->diffForHumans() : 'منذ قليل',
-                'created_at'  => $a->created_at,
-            ]);
-        return response()->json(['success' => true, 'data' => $announcements]);
-    });
-    Route::post('/parent/request-report', [StudentParentController::class, 'requestReport']);
-    Route::get('/parent/performance/{studentId}', [StudentParentController::class, 'getFullPerformance']);
-    Route::get('/parent/student/{studentId}/assignments', [StudentParentController::class, 'getAssignments']);
-    Route::get('/parent/student/{studentId}/permissions', [StudentParentController::class, 'getPermissions']);
-    Route::post('/parent/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
-    Route::get('/parent/notifications', [NotificationController::class, 'getNotifications']);
-    Route::put('/parent/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-    Route::put('/parent/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/parent/add-student', [ParentController::class, 'linkStudent']);
-    Route::get('/parent/leave-requests', [StudentParentController::class, 'getLeaveRequests']);
-    Route::post('/parent/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);
-    Route::post('/parent/leave-requests/submit', [StudentParentController::class, 'submitParentLeaveRequest']);
-    Route::get('/parent/reports/history', [StudentParentController::class, 'getReportHistory']);
-    Route::get('/parent/children', [ParentController::class, 'getChildren']);
 
     #========= روابط واجهات المعلم ==========
     Route::prefix('teacher')->middleware('role:teacher')->group(function () {
@@ -396,6 +363,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/pending-accounts', [AdminController::class, 'getPendingAccounts']);
             Route::post('/accounts/{id}/approve', [AdminController::class, 'approveAccount']);
             Route::post('/accounts/{id}/reject', [AdminController::class, 'rejectAccount']);
+
+            // Student Services Management
+            Route::get('/student-services', [AdminController::class, 'getStudentServices']);
+            Route::post('/student-services/{id}/process', [AdminController::class, 'processStudentService']);
         });
     });
 
@@ -412,6 +383,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/children/{id}/assignments', [ParentController::class, 'getChildAssignments']);
         Route::post('/request-report', [ParentController::class, 'requestReport']);
         Route::get('/reports/history', [ParentController::class, 'getReportsHistory']);
+        Route::get('/performance/{studentId}', [StudentParentController::class, 'getFullPerformance']);
+        Route::get('/student/{studentId}/assignments', [StudentParentController::class, 'getAssignments']);
+        Route::get('/student/{studentId}/permissions', [StudentParentController::class, 'getPermissions']);
+        Route::post('/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
+        Route::get('/leave-requests', [StudentParentController::class, 'getLeaveRequests']);
+        Route::post('/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);
+        Route::post('/leave-requests/submit', [StudentParentController::class, 'submitParentLeaveRequest']);
+
+        // Notifications
+        Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+        Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+        Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     });
 
     Route::get('/student/info/{id}', function ($id) {

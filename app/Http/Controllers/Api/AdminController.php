@@ -26,32 +26,51 @@ class AdminController extends Controller
         $teacherRoleId = Role::where('name', 'teacher')->value('role_id');
         $parentRoleId = Role::where('name', 'parent')->value('role_id');
 
-        $announcements = \App\Models\Announcement::with('user')->latest()->limit(10)->get()->map(function($a) {
+        $loggedUserId = $request->user()?->user_id;
+
+        $announcements = \App\Models\Announcement::with('user')->latest()->limit(10)->get()->map(function($a) use ($loggedUserId) {
             return [
                 'announcement_id' => $a->announcement_id,
-                'title' => $a->title,
-                'content' => $a->content,
-                'type' => $a->type ?? 'general',
-                'category' => $a->category ?? 'إعلان',
-                'author_name' => $a->user ? $a->user->full_name : 'الإدارة',
-                'created_at' => $a->created_at ? $a->created_at->diffForHumans() : '',
-                'image_url' => $a->image ? asset('storage/' . $a->image) : null,
+                'title'           => $a->title,
+                'content'         => $a->content,
+                'type'            => $a->type ?? 'general',
+                'category'        => $a->category ?? 'إعلان',
+                'author_name'     => $a->user ? $a->user->full_name : 'الإدارة',
+                'created_at'      => $a->created_at ? $a->created_at->diffForHumans() : '',
+                'image_url'       => $a->image ? asset('storage/' . $a->image) : null,
+                'user_id'         => $a->user_id, // لتحديد صاحب الإعلان
+                'is_mine'         => ($a->user_id == $loggedUserId), // هل أنشأه المستخدم الحالي؟
             ];
         });
 
+        $studentsCount    = User::where('role_id', $studentRoleId)->count();
+        $teachersCount    = User::where('role_id', $teacherRoleId)->count();
+        $parentsCount     = User::where('role_id', $parentRoleId)->count();
+        $coursesCount     = Course::count();
+        $departmentsCount = Department::count();
+
         $statistics = [
-            'total_students' => User::where('role_id', $studentRoleId)->count(),
-            'total_teachers' => User::where('role_id', $teacherRoleId)->count(),
-            'total_parents' => User::where('role_id', $parentRoleId)->count(),
-            'total_courses' => Course::count(),
-            'total_departments' => Department::count(),
+            // مفاتيح قديمة للتوافق مع أي كود سابق
+            'total_students'    => $studentsCount,
+            'total_teachers'    => $teachersCount,
+            'total_parents'     => $parentsCount,
+            'total_courses'     => $coursesCount,
+            'total_departments' => $departmentsCount,
+            // مفاتيح counts التي يقرأها التطبيق
+            'counts' => [
+                'students'    => $studentsCount,
+                'teachers'    => $teachersCount,
+                'parents'     => $parentsCount,
+                'courses'     => $coursesCount,
+                'departments' => $departmentsCount,
+            ],
             'active_semester' => Semester::where('is_active', true)->first(),
-            'announcements' => $announcements,
-            'recent_users' => User::latest()->limit(10)->get()->map(function($user) {
+            'announcements'   => $announcements,
+            'recent_users'    => User::latest()->limit(10)->get()->map(function($user) {
                 return [
-                    'id' => $user->user_id,
-                    'name' => $user->full_name,
-                    'role' => $user->role ?? 'unknown',
+                    'id'         => $user->user_id,
+                    'name'       => $user->full_name,
+                    'role'       => $user->role ?? 'unknown',
                     'created_at' => $user->created_at ? $user->created_at->diffForHumans() : null,
                 ];
             }),
@@ -155,6 +174,7 @@ class AdminController extends Controller
                 'level' => $request->academic_year,
             ]);
             Student::autoAssignAdvisor($student->student_id);
+            Student::autoEnrollCourses($student->student_id);
         } elseif ($request->role == 'teacher') {
             $teacher = Teacher::create([
                 'user_id' => $user->user_id,
@@ -171,7 +191,8 @@ class AdminController extends Controller
                 }
             }
         } elseif ($request->role == 'parent') {
-            Parents::create(['user_id' => $user->user_id]);
+            $parent = Parents::create(['user_id' => $user->user_id]);
+            Parents::autoLinkStudentByPhoneOrId($parent->parent_id, $request->phone, $request->email);
         }
 
         return response()->json([
@@ -1255,4 +1276,100 @@ class AdminController extends Controller
 
         return response()->json(['success' => true, 'message' => 'تم رفض وحذف طلب الحساب بنجاح.'], 200);
     }
+
+    public function getStudentServices(Request $request)
+    {
+        $type   = $request->query('type');
+        $status = $request->query('status');
+
+        $query = \App\Models\StudentRequest::with(['student.user', 'student.program.department'])
+                    ->whereIn('status', ['pending_admin', 'completed']);
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        if ($status && $status !== 'all') {
+            if ($status === 'pending') {
+                $query->where('status', 'pending_admin');
+            } elseif ($status === 'completed') {
+                $query->where('status', 'completed');
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->get()->map(function($req) {
+            return [
+                'id'               => $req->id,
+                'student_id'       => $req->student_id,
+                'type'             => $req->type,
+                'details'          => $req->details,
+                'status'           => $req->status,
+                'affairs_decision' => $req->affairs_decision,
+                'hod_decision'     => $req->hod_decision,
+                'admin_decision'   => $req->admin_decision,
+                'affairs_notes'    => $req->affairs_notes ?? 'لا توجد ملاحظات',
+                'hod_notes'        => $req->hod_notes ?? 'لا توجد ملاحظات',
+                'admin_notes'      => $req->admin_notes,
+                'created_at'       => $req->created_at ? $req->created_at->format('Y-m-d H:i') : '',
+                'student_name'     => $req->student?->user?->full_name ?? 'غير معروف',
+                'student_code'     => $req->student?->student_code ?? 'N/A',
+                'academic_year'    => $req->student?->user?->academic_year ?? 'N/A',
+                'department_name'  => $req->student?->program?->department?->name ?? 'غير محدد',
+                'program_name'     => $req->student?->program?->name ?? 'غير محدد',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $requests,
+        ], 200);
+    }
+
+    public function processStudentService(Request $request, $id)
+    {
+        $request->validate([
+            'decision' => 'required|in:approved,rejected',
+            'notes'    => 'required|string'
+        ]);
+
+        $studentReq = \App\Models\StudentRequest::findOrFail($id);
+
+        $studentReq->admin_decision = $request->decision;
+        $studentReq->admin_notes    = $request->notes;
+        $studentReq->status         = 'completed';
+        $studentReq->save();
+
+        if ($studentReq->student?->user_id) {
+            $decText = ($request->decision === 'approved') ? 'مقبول' : 'مرفوض';
+            $title   = 'تحديث حالة طلبك';
+            $msg     = 'تم الرد على طلبك من قبل الإدارة بالقرار: ' . $decText . '، يرجى مراجعة تفاصيل الطلب.';
+
+            \DB::table('notifications')->insert([
+                'user_id'    => $studentReq->student->user_id,
+                'sender_id'  => auth()->id(),
+                'title'      => $title,
+                'message'    => $msg,
+                'type'       => 'system',
+                'category'   => 'administrative',
+                'is_read'    => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser(
+                $studentReq->student->user_id,
+                $title,
+                $msg,
+                ['type' => 'system']
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم اتخاذ القرار النهائي بنجاح وتم إغلاق الطلب وإشعار الطالب.'
+        ], 200);
+    }
 }
+
