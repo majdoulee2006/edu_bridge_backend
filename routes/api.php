@@ -128,6 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/photo-change-request/status', [StudentController::class, 'myPhotoChangeStatus']);
         Route::get('/announcements', [AnnouncementController::class, 'getHomeAnnouncements']);
         Route::get('/my-schedule', [StudentController::class, 'getMySchedule']);
+        Route::get('/my-schedule/pdf', [StudentController::class, 'exportSchedulePdf']);
         Route::get('/my-exams', [StudentController::class, 'getMyExams']);
         Route::get('/my-exams/pdf', [StudentController::class, 'exportExamsPdf']);
         Route::get('/my-exams/excel', [StudentController::class, 'exportExamsExcel']);
@@ -479,6 +480,48 @@ Route::get('/user/profile/{id}', function ($id) {
         ->where('user_id', $id)
         ->select('full_name', 'email', 'phone')
         ->first();
+});
+
+
+Route::get('/dev/reset-schedules', function() {
+    \Illuminate\Support\Facades\DB::table('schedules')->truncate();
+
+    $courses = \Illuminate\Support\Facades\DB::table('courses')->get();
+    if ($courses->isEmpty()) {
+        return response()->json(['message' => 'No courses found in database! Please seed courses first.'], 400);
+    }
+
+    $courseIds = $courses->pluck('course_id')->toArray();
+    $teacher = \Illuminate\Support\Facades\DB::table('teachers')->first();
+    $teacherId = $teacher ? $teacher->teacher_id : 1;
+
+    $c1 = $courseIds[0] ?? 1;
+    $c2 = $courseIds[1] ?? $c1;
+    $c3 = $courseIds[2] ?? $c1;
+    $c4 = $courseIds[3] ?? $c1;
+
+    $schedules = [
+        ['course_id' => $c1, 'teacher_id' => $teacherId, 'day' => 'Sunday', 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة A1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+        ['course_id' => $c2, 'teacher_id' => $teacherId, 'day' => 'Sunday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة A2', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+        ['course_id' => $c3, 'teacher_id' => $teacherId, 'day' => 'Sunday', 'start_time' => '11:00:00', 'end_time' => '12:30:00', 'room' => 'قاعة B1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+
+        ['course_id' => $c2, 'teacher_id' => $teacherId, 'day' => 'Monday', 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة A1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+        ['course_id' => $c4, 'teacher_id' => $teacherId, 'day' => 'Monday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة C3', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+
+        ['course_id' => $c1, 'teacher_id' => $teacherId, 'day' => 'Tuesday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة A1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+        ['course_id' => $c3, 'teacher_id' => $teacherId, 'day' => 'Tuesday', 'start_time' => '11:00:00', 'end_time' => '12:30:00', 'room' => 'قاعة B2', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+
+        ['course_id' => $c2, 'teacher_id' => $teacherId, 'day' => 'Wednesday', 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة A1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+        ['course_id' => $c1, 'teacher_id' => $teacherId, 'day' => 'Wednesday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة C2', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+        ['course_id' => $c4, 'teacher_id' => $teacherId, 'day' => 'Wednesday', 'start_time' => '11:00:00', 'end_time' => '12:30:00', 'room' => 'قاعة B1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+
+        ['course_id' => $c3, 'teacher_id' => $teacherId, 'day' => 'Thursday', 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة B3', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+        ['course_id' => $c4, 'teacher_id' => $teacherId, 'day' => 'Thursday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة A2', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
+    ];
+
+    \Illuminate\Support\Facades\DB::table('schedules')->insert($schedules);
+
+    return response()->json(['message' => 'Schedules reset successfully to a varied, realistic weekly program!']);
 });
 
 
