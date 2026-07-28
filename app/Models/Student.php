@@ -155,17 +155,9 @@ class Student extends Model
         $query = Course::query();
 
         if ($programId) {
-            $deptId = $student->program?->department_id;
-            $query->where(function($q) use ($programId, $deptId) {
-                $q->whereHas('programs', function($pQuery) use ($programId) {
-                    $pQuery->where('programs.id', $programId);
-                });
-                if ($deptId) {
-                    $q->orWhere('department_id', $deptId);
-                }
+            $query->whereHas('programs', function($pQuery) use ($programId) {
+                $pQuery->where('programs.id', $programId);
             });
-        } elseif ($user?->department_id) {
-            $query->where('department_id', $user->department_id);
         }
 
         $courses = $query->get();
