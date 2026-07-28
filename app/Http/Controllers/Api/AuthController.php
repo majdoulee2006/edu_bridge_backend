@@ -40,48 +40,22 @@ class AuthController extends Controller
         $isStudent  = filter_var($request->input('is_student', false), FILTER_VALIDATE_BOOLEAN);
         $digitsOnly = preg_replace('/[^0-9]/', '', $input);
 
-        if ($isStudent) {
-            // وضع الطالب: البحث عبر الرقم الجامعي، اسم المستخدم، الإيميل، الهاتف، أو كود الطالب
-            $user = User::where('role_id', 3)
-                ->where(function ($q) use ($input, $digitsOnly) {
-                    $q->where('university_id', $input)
-                      ->orWhere('username', $input)
-                      ->orWhere('email', $input)
-                      ->orWhere('phone', $input)
-                      ->orWhereHas('student', function ($sq) use ($input) {
-                          $sq->where('student_code', $input);
-                      });
-                    if (!empty($digitsOnly)) {
-                        $q->orWhere('university_id', $digitsOnly)
-                          ->orWhere('username', $digitsOnly);
-                    }
-                })
-                ->first();
-
-            if (!$user) {
-                // محاولة بحث عامة للحصول على معلومات دقيقة إن كان المستخدم موجود بدور آخر
-                $anyUser = User::where('university_id', $input)->orWhere('username', $input)->first();
-                if ($anyUser && $anyUser->role_id !== 3) {
-                    return response()->json(['success' => false, 'message' => 'هذا الحساب ليس حساب طالب. يرجى إغلاق خيار "طالب" لتسجيل الدخول.'], 403);
+        // بحث موحد لجميع المستخدمين بغض النظر عن الدور
+        $user = User::where(function ($q) use ($input, $digitsOnly) {
+                $q->where('username', $input)
+                  ->orWhere('email', $input)
+                  ->orWhere('phone', $input)
+                  ->orWhere('university_id', $input)
+                  ->orWhereHas('student', function ($sq) use ($input) {
+                      $sq->where('student_code', $input);
+                  });
+                if (!empty($digitsOnly)) {
+                    $q->orWhere('university_id', $digitsOnly)
+                      ->orWhere('phone', '+' . $digitsOnly)
+                      ->orWhereRaw("REPLACE(REPLACE(phone, '+', ''), ' ', '') = ?", [$digitsOnly]);
                 }
-            }
-        } else {
-            // الوضع العادي: بحث شامل بدون استثناء تعسفي
-            $user = User::where(function ($q) use ($input, $digitsOnly) {
-                    $q->where('username', $input)
-                      ->orWhere('email', $input)
-                      ->orWhere('phone', $input)
-                      ->orWhere('university_id', $input)
-                      ->orWhereHas('student', function ($sq) use ($input) {
-                          $sq->where('student_code', $input);
-                      });
-                    if (!empty($digitsOnly)) {
-                        $q->orWhere('phone', '+' . $digitsOnly)
-                          ->orWhereRaw("REPLACE(REPLACE(phone, '+', ''), ' ', '') = ?", [$digitsOnly]);
-                    }
-                })
-                ->first();
-        }
+            })
+            ->first();
 
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'اسم المستخدم أو الرقم الجامعي غير موجود بالنظام'], 404);
