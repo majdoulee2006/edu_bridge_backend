@@ -27,12 +27,12 @@
         white-space: nowrap;
         border-radius: 8px 8px 0 0;
     }
-    .dark .tab-btn { color: #94a3b8; }
+    [data-theme="dark"] .tab-btn { color: #94a3b8; }
     .tab-btn:hover {
         color: var(--text-primary, #0f172a);
         background: var(--bg-secondary, #f8fafc);
     }
-    .dark .tab-btn:hover {
+    [data-theme="dark"] .tab-btn:hover {
         color: #f8fafc;
         background: #1e293b;
     }
@@ -71,7 +71,7 @@
         box-shadow: 0 4px 20px -2px rgba(0,0,0,0.06);
         overflow-x: auto;
     }
-    .dark .table-container {
+    [data-theme="dark"] .table-container {
         background: var(--surface-dark, #1a2633);
         box-shadow: none;
     }
@@ -88,7 +88,7 @@
         border-bottom: 2px solid var(--border-color, #e2e8f0);
         white-space: nowrap;
     }
-    .dark .custom-table th {
+    [data-theme="dark"] .custom-table th {
         color: #94a3b8;
         border-bottom-color: #334155;
     }
@@ -99,14 +99,14 @@
         border-bottom: 1px solid var(--border-color, #e2e8f0);
         vertical-align: middle;
     }
-    .dark .custom-table td {
+    [data-theme="dark"] .custom-table td {
         color: #f8fafc;
         border-bottom-color: #1e293b;
     }
     .custom-table tr:hover td {
         background: rgba(0, 0, 0, 0.02);
     }
-    .dark .custom-table tr:hover td {
+    [data-theme="dark"] .custom-table tr:hover td {
         background: rgba(255, 255, 255, 0.02);
     }
 
@@ -122,7 +122,7 @@
     .badge-approved { background: #bbf7d0; color: #166534; }
     .badge-rejected { background: #fecaca; color: #991b1b; }
     .badge-admin-review { background: #c4b5fd; color: #4c1d95; } /* بانتظار قرار الإدارة */
-    .dark .badge-admin-review { background: #4c1d95; color: #ddd6fe; }
+    [data-theme="dark"] .badge-admin-review { background: #4c1d95; color: #ddd6fe; }
 
     /* Action Buttons */
     .action-btns {
@@ -175,7 +175,7 @@
         max-height: 90vh;
         overflow-y: auto;
     }
-    .dark .modal-content {
+    [data-theme="dark"] .modal-content {
         background: var(--surface-dark, #1a2633);
         color: white;
     }
@@ -190,7 +190,7 @@
         border-bottom: 1px solid var(--border-color, #e2e8f0);
         padding-bottom: 1rem;
     }
-    .dark .modal-header { border-bottom-color: #334155; }
+    [data-theme="dark"] .modal-header { border-bottom-color: #334155; }
     .modal-header h3 {
         font-size: 1.4rem;
         font-weight: 800;
@@ -213,7 +213,7 @@
         font-weight: 700;
         margin-bottom: 0.3rem;
     }
-    .dark .detail-row label { color: #94a3b8; }
+    [data-theme="dark"] .detail-row label { color: #94a3b8; }
     .detail-row .detail-value {
         font-size: 1.05rem;
         font-weight: 600;
@@ -236,7 +236,7 @@
         margin-top: 0.5rem;
         transition: border-color 0.3s;
     }
-    .dark .notes-area {
+    [data-theme="dark"] .notes-area {
         background: #0f172a;
         border-color: #334155;
         color: white;
