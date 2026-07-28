@@ -164,8 +164,12 @@ class Student extends Model
                     $q->orWhere('department_id', $deptId);
                 }
             });
-        } elseif ($user?->department_id) {
-            $query->where('department_id', $user->department_id);
+        } elseif ($user?->department) {
+            // البحث عن department_id من اسم القسم المحفوظ نصاً في users
+            $deptId = \DB::table('departments')->where('name', 'LIKE', '%' . $user->department . '%')->value('department_id');
+            if ($deptId) {
+                $query->where('department_id', $deptId);
+            }
         }
 
         $courses = $query->get();
