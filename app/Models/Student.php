@@ -155,21 +155,9 @@ class Student extends Model
         $query = Course::query();
 
         if ($programId) {
-            $deptId = $student->program?->department_id;
-            $query->where(function($q) use ($programId, $deptId) {
-                $q->whereHas('programs', function($pQuery) use ($programId) {
-                    $pQuery->where('programs.id', $programId);
-                });
-                if ($deptId) {
-                    $q->orWhere('department_id', $deptId);
-                }
+            $query->whereHas('programs', function($pQuery) use ($programId) {
+                $pQuery->where('programs.id', $programId);
             });
-        } elseif ($user?->department) {
-            // البحث عن department_id من اسم القسم المحفوظ نصاً في users
-            $deptId = \DB::table('departments')->where('name', 'LIKE', '%' . $user->department . '%')->value('department_id');
-            if ($deptId) {
-                $query->where('department_id', $deptId);
-            }
         }
 
         $courses = $query->get();
