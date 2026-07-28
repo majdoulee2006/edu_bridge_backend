@@ -563,9 +563,7 @@ class StudentController extends Controller
             ->orderBy('day')
             ->orderBy('start_time')
             ->get()
-            ->groupBy('day')
-            ->map(function($items, $day) {
-                // ترجمة الأيام إلى العربية إذا كانت بالإنجليزية (لتتوافق مع تطبيق الموبايل)
+            ->groupBy(function($item) {
                 $dayMap = [
                     'Sunday'    => 'الأحد',
                     'Monday'    => 'الاثنين',
@@ -575,18 +573,15 @@ class StudentController extends Controller
                     'Friday'    => 'الجمعة',
                     'Saturday'  => 'السبت',
                 ];
-                $translatedDay = $dayMap[$day] ?? $day;
-
+                return $dayMap[$item->day] ?? $item->day;
+            })
+            ->map(function($items, $translatedDay) {
                 return [
                     'day' => $translatedDay,
                     'lectures' => $items->map(function($item) {
                         return [
-                            // 💡 2. التعديل: استخدمنا title بدل course_name
                             'course_name' => $item->course->title ?? 'مادة غير معروفة',
-
-                            // 💡 3. التعديل: جلب اسم أول مدرس من قائمة المدرسين
-                          'teacher' => $item->course->teachers->first()?->user?->name ?? $item->course->teachers->first()?->user?->full_name ?? 'مدرس غير محدد',
-
+                            'teacher' => $item->course->teachers->first()?->user?->name ?? $item->course->teachers->first()?->user?->full_name ?? 'مدرس غير محدد',
                             'start_time'  => date('h:i A', strtotime($item->start_time)),
                             'end_time'    => date('h:i A', strtotime($item->end_time)),
                             'room'        => $item->room,
@@ -781,13 +776,16 @@ class StudentController extends Controller
             ->orderBy('grade_events.date')
             ->get();
 
-        $pdf = \Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::loadView('exports.exams_pdf', compact('exams', 'student'), [], [
+        $html = view('exports.exams_pdf', compact('exams', 'student'))->render();
+        $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
             'orientation' => 'P',
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
         ]);
+        $mpdf->SetDirectionality('rtl');
+        $mpdf->WriteHTML($html);
 
         $fileName = 'exams_' . $student->student_id . '_' . time() . '.pdf';
         $directory = public_path('exports');
@@ -795,7 +793,7 @@ class StudentController extends Controller
             mkdir($directory, 0755, true);
         }
         $filePath = $directory . '/' . $fileName;
-        file_put_contents($filePath, $pdf->output());
+        file_put_contents($filePath, $mpdf->Output('', 'S'));
 
         $pdfUrl = url('exports/' . $fileName);
 
@@ -803,6 +801,63 @@ class StudentController extends Controller
             'success'  => true,
             'pdf_url'  => $pdfUrl,
             'data'     => $exams,
+        ], 200);
+    }
+
+    /**
+     * تصدير الجدول الدراسي الأسبوعي (PDF)
+     */
+    public function exportSchedulePdf(Request $request)
+    {
+        $user = $request->user();
+        $student = $user->student;
+        
+        $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? '');
+        $branchName = \Illuminate\Support\Facades\DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
+        $classGroup = $branchName . ' - ' . $academicYearStr;
+
+        $schedules = Schedule::where(function($query) use ($student, $classGroup) {
+                $query->whereHas('course', function($qCourse) use ($student) {
+                    $qCourse->whereHas('students', function($qEnrolled) use ($student) {
+                        $qEnrolled->where('enrollments.student_id', $student->student_id);
+                    });
+                })
+                ->orWhere('class_group', $classGroup);
+            })
+            ->with(['course', 'course.teachers.user'])
+            ->orderBy('day')
+            ->orderBy('start_time')
+            ->get();
+
+        foreach ($schedules as $s) {
+            $s->course_title = $s->course->title ?? 'مادة غير معروفة';
+            $s->teacher_name = $s->course->teachers->first()?->user?->name ?? $s->course->teachers->first()?->user?->full_name ?? '';
+        }
+
+        $html = view('exports.schedule_pdf', compact('schedules', 'student'))->render();
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'orientation' => 'L',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+        ]);
+        $mpdf->SetDirectionality('rtl');
+        $mpdf->WriteHTML($html);
+
+        $fileName = 'schedule_' . $student->student_id . '_' . time() . '.pdf';
+        $directory = public_path('exports');
+        if (!file_exists($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        $filePath = $directory . '/' . $fileName;
+        file_put_contents($filePath, $mpdf->Output('', 'S'));
+
+        $pdfUrl = url('exports/' . $fileName);
+
+        return response()->json([
+            'success'  => true,
+            'pdf_url'  => $pdfUrl,
         ], 200);
     }
 

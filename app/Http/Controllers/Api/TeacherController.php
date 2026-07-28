@@ -2209,17 +2209,21 @@ class TeacherController extends Controller
             $courseSessions[$session->course_id][] = $session;
         }
 
-        $pdf = \Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::loadView('exports.attendance_pdf', compact(
+        $html = view('exports.attendance_pdf', compact(
             'allStudents', 'matrix', 'sessions', 'daysMap', 'dailyStatus', 'courseSessions'
-        ), [], [
+        ))->render();
+
+        $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
             'orientation' => 'P',
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
         ]);
+        $mpdf->SetDirectionality('rtl');
+        $mpdf->WriteHTML($html);
 
-        return response($pdf->output(), 200, [
+        return response($mpdf->Output('', 'S'), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="filtered_attendance_report_' . now()->format('Y-m-d') . '.pdf"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
