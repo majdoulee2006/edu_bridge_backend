@@ -509,7 +509,7 @@ class TeacherController extends Controller
     }
 
     /**
-     * إ�™â€ Ã™!اء ج�™سة ا�™حض�™�ر �™�تسج�™Å Ã™ ا�™غ�™`اب
+     * إ™â€ Ã™!اء ج™ سة ا™ حض™ر ™تسج™Å Ã™  ا™ غ™`اب
      */
     public function endSession(Request $request, $sessionId)
     {
@@ -858,9 +858,37 @@ class TeacherController extends Controller
 
         $assignment->update($data);
 
+        // إرسال إشعار للطلاب عند تعديل الواجب
+        $studentUserIds = DB::table('enrollments')
+            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+            ->where('enrollments.course_id', $assignment->course_id)
+            ->pluck('students.user_id');
+
+        $teacherUser = $request->user();
+        $title   = 'تعديل واجب أسبوعي';
+        $message = 'قام المعلم بتعديل الواجب: ' . $assignment->title;
+
+        foreach ($studentUserIds as $uid) {
+            DB::table('notifications')->insert([
+                'user_id'    => $uid,
+                'sender_id'  => $teacherUser->user_id,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'assignment',
+                'category'   => 'academic',
+                'related_id' => $assignment->assignment_id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            \App\Services\FcmService::sendToUser($uid, $title, $message, [
+                'type' => 'assignment', 'related_id' => (string) $assignment->assignment_id,
+            ]);
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الواجب بنجاح',
+            'message' => 'تم تحديث الواجب بنجاح',
             'data'    => $assignment
         ], 200);
     }
@@ -2355,6 +2383,7 @@ class TeacherController extends Controller
         $validated = $request->validate([
             'program_id' => 'required|exists:programs,id',
             'year_level' => 'required|integer|min:1|max:5',
+            'course_id'  => 'nullable|exists:courses,course_id',
             'title'      => 'required|string|max:255',
             'date'       => 'required|date',
             'notes'      => 'nullable|string|max:500',
@@ -2363,7 +2392,7 @@ class TeacherController extends Controller
 
         $id = DB::table('grade_events')->insertGetId([
             'teacher_id' => $teacher->teacher_id,
-            'course_id'  => null,
+            'course_id'  => $validated['course_id'] ?? null,
             'program_id' => $validated['program_id'],
             'year_level' => $validated['year_level'],
             'type'       => 'oral',
@@ -2699,6 +2728,69 @@ class TeacherController extends Controller
             ->get();
 
         return response()->json(['success' => true, 'data' => $requests]);
+    }
+
+    /**
+     * استدعاء ولي أمر من قبل المعلم أو رئيس القسم
+     */
+    public function sendParentSummon(Request $request)
+    {
+        $validated = $request->validate([
+            'student_id'   => 'required|exists:students,student_id',
+            'reason_title' => 'required|string|max:255',
+            'details'      => 'required|string',
+            'summon_date'  => 'nullable|date',
+        ]);
+
+        $sender = $request->user();
+        $student = DB::table('students')->where('student_id', $validated['student_id'])->first();
+        if (!$student) {
+            return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
+        }
+
+        // جلب ولي أمر الطالب
+        $parentUserId = DB::table('parent_students')
+            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+            ->where('parent_students.student_id', $student->student_id)
+            ->value('parents.user_id');
+
+        $summonId = DB::table('parent_summons')->insertGetId([
+            'sender_user_id' => $sender->user_id,
+            'student_id'     => $student->student_id,
+            'parent_user_id' => $parentUserId,
+            'reason_title'   => $validated['reason_title'],
+            'details'        => $validated['details'],
+            'summon_date'    => $validated['summon_date'] ?? null,
+            'status'         => 'sent',
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        if ($parentUserId) {
+            $title = 'استدعاء ولي أمر عاجل';
+            $msg   = 'لديك استدعاء رسمي بخصوص الطالب: ' . $validated['reason_title'];
+            DB::table('notifications')->insert([
+                'user_id'    => $parentUserId,
+                'sender_id'  => $sender->user_id,
+                'title'      => $title,
+                'message'    => $msg,
+                'type'       => 'summon',
+                'category'   => 'administrative',
+                'related_id' => $summonId,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            \App\Services\FcmService::sendToUser($parentUserId, $title, $msg, [
+                'type' => 'summon', 'related_id' => (string) $summonId
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال استدعاء ولي الأمر بنجاح',
+            'id'      => $summonId
+        ], 201);
     }
 }
 

@@ -231,6 +231,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/assignments/{assignmentId}', [TeacherController::class, 'deleteAssignment']);
         Route::get('/assignments/{assignmentId}/submissions', [TeacherController::class, 'getAssignmentSubmissions']);
         Route::post('/assignments/{submissionId}/grade', [TeacherController::class, 'gradeAssignment']);
+        Route::post('/parent-summons/send', [TeacherController::class, 'sendParentSummon']);
 
         // الإعلانات
         Route::get('/announcements', [TeacherController::class, 'getAnnouncements']);
@@ -392,11 +393,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/leave-requests', [StudentParentController::class, 'getLeaveRequests']);
         Route::post('/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);
         Route::post('/leave-requests/submit', [StudentParentController::class, 'submitParentLeaveRequest']);
+        Route::post('/request-meeting', [ParentController::class, 'requestMeeting']);
+        Route::get('/meeting-requests', [ParentController::class, 'getMyMeetingRequests']);
+        Route::get('/summons', [ParentController::class, 'getMySummons']);
 
         // Notifications
         Route::get('/notifications', [NotificationController::class, 'getNotifications']);
         Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/toggle-mute', [NotificationController::class, 'toggleMute']);
     });
 
     Route::get('/student/info/{id}', function ($id) {

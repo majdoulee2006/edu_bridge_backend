@@ -51,7 +51,7 @@ class FcmService
     public static function sendToUser(int $userId, string $title, string $body, array $data = []): bool
     {
         $user = User::find($userId);
-        if (!$user || empty($user->device_token)) return false;
+        if (!$user || empty($user->device_token) || $user->notifications_muted) return false;
         return self::send($user->device_token, $title, $body, $data);
     }
 

@@ -306,6 +306,7 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
 
     // الدورات
     Route::get('/courses', [AdminWebController::class, 'courses'])->name('admin.courses');
+    Route::post('/departments/store', [AdminWebController::class, 'storeDepartment'])->name('admin.departments.store');
     Route::get('/courses/create', [AdminWebController::class, 'createCourse'])->name('admin.courses.create');
     Route::post('/courses', [AdminWebController::class, 'storeCourse'])->name('admin.courses.store');
     Route::post('/courses/delete/{id}', [AdminWebController::class, 'deleteCourse'])->name('admin.courses.delete');

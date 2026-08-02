@@ -205,6 +205,16 @@
                                             </a>
                                         @endif
                                     </div>
+                                    @if(!empty($s->solution_text))
+                                        <div style="font-size: 0.85rem; color: var(--text-primary); margin-top: 0.35rem; background: rgba(255,255,255,0.05); padding: 0.4rem 0.6rem; border-radius: 0.5rem;">
+                                            <strong>نص الإجابة:</strong> {{ $s->solution_text }}
+                                        </div>
+                                    @endif
+                                    @if(!empty($s->student_notes))
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem; font-style: italic;">
+                                            <i class="fa-solid fa-comment-dots"></i> <strong>ملاحظات الطالب:</strong> {{ $s->student_notes }}
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.75rem;">

@@ -25,22 +25,39 @@ class AttendanceController extends Controller
             return response()->json(['status' => 'error', 'message' => 'سجل الطالب غير موجود.'], 404);
         }
 
-        $attendances = Attendance::with('lesson')
+        $allRecords = Attendance::with(['lesson.course'])
             ->where('student_id', $student->student_id)
             ->orderBy('attendance_date', 'desc')
-            ->get()
-            ->map(function ($record) {
-                return [
-                    'id' => $record->attendance_id,
-                    'subject' => $record->lesson->subject_name ?? 'مادة عامة',
-                    'date' => $record->attendance_date,
-                    'status' => $record->status,
-                    'excuse_status' => $record->excuse_status,
-                ];
-            });
+            ->get();
+
+        $totalCount  = $allRecords->count();
+        $presentCount = $allRecords->whereIn('status', ['present', 'حاضر'])->count();
+        $absentCount  = $allRecords->whereIn('status', ['absent', 'غائب'])->count();
+        $lateCount    = $allRecords->whereIn('status', ['late', 'متأخر'])->count();
+        $attendanceRate = $totalCount > 0 ? round(($presentCount / $totalCount) * 100, 1) : 100.0;
+
+        $attendances = $allRecords->map(function ($record) {
+            return [
+                'id'            => $record->attendance_id,
+                'subject'       => $record->lesson->title ?? $record->lesson->subject_name ?? $record->lesson->course->title ?? 'مادة عامة',
+                'course_name'   => $record->lesson->course->title ?? $record->lesson->title ?? 'مادة عامة',
+                'date'          => $record->attendance_date ? \Carbon\Carbon::parse($record->attendance_date)->format('Y-m-d') : null,
+                'formatted_date'=> $record->attendance_date ? \Carbon\Carbon::parse($record->attendance_date)->format('Y-m-d h:i A') : '',
+                'status'        => $record->status,
+                'excuse_status' => $record->excuse_status ?? 'none',
+                'notes'         => $record->notes ?? null,
+            ];
+        });
 
         return response()->json([
             'status' => 'success',
+            'summary' => [
+                'total_records'   => $totalCount,
+                'present_count'   => $presentCount,
+                'absent_count'    => $absentCount,
+                'late_count'      => $lateCount,
+                'attendance_rate' => $attendanceRate,
+            ],
             'data' => $attendances
         ]);
     }

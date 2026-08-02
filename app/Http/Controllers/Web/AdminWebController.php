@@ -109,7 +109,6 @@ class AdminWebController extends Controller
         $request->validate([
             'full_name' => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
-            'email'     => 'required|email|unique:users,email,' . $user->user_id . ',user_id',
         ]);
 
         DB::table('users')
@@ -117,7 +116,6 @@ class AdminWebController extends Controller
             ->update([
                 'full_name'  => $request->full_name,
                 'phone'      => $request->phone,
-                'email'      => $request->email,
                 'updated_at' => now(),
             ]);
 
@@ -1208,6 +1206,28 @@ class AdminWebController extends Controller
     {
         $departments = DB::table('departments')->get();
         return view('admin.courses.create', compact('departments'));
+    }
+
+    public function storeDepartment(Request $request)
+    {
+        $request->validate([
+            'name'        => 'required|string|max:255|unique:departments,name',
+            'code'        => 'nullable|string|max:50',
+            'description' => 'nullable|string|max:1000',
+        ], [
+            'name.required' => 'اسم القسم مطلوب.',
+            'name.unique'   => 'هذا القسم موجود مسبقاً.'
+        ]);
+
+        DB::table('departments')->insert([
+            'name'        => $request->name,
+            'code'        => $request->code,
+            'description' => $request->description,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'تم إضافة القسم الجديد بنجاح!');
     }
 
     public function storeCourse(Request $request)

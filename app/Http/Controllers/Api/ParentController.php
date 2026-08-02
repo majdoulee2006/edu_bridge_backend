@@ -552,6 +552,8 @@ class ParentController extends Controller
             return response()->json(['success' => false, 'message' => 'لا يمكنك طلب تقرير سلوكي أكثر من مرة خلال 15 يوماً.'], 400);
         }
 
+
+
         $requestId = \Illuminate\Support\Facades\DB::table('report_requests')->insertGetId([
             'head_id' => $request->user()->user_id, // Parent's User ID
             'teacher_id' => $advisorTeacher->teacher_id,
@@ -614,5 +616,81 @@ class ParentController extends Controller
         }
 
         return response()->json(['success' => true, 'data' => $history], 200);
+    }
+
+    /**
+     * طلب موعد للالتقاء مع الإدارة من الأهل
+     */
+    public function requestMeeting(Request $request)
+    {
+        $validated = $request->validate([
+            'subject'        => 'required|string|max:255',
+            'reason'         => 'required|string',
+            'student_id'     => 'nullable|exists:students,student_id',
+            'preferred_date' => 'nullable|date',
+        ]);
+
+        $user = $request->user();
+
+        $requestId = \DB::table('parent_meeting_requests')->insertGetId([
+            'parent_user_id' => $user->user_id,
+            'student_id'     => $validated['student_id'] ?? null,
+            'subject'        => $validated['subject'],
+            'reason'         => $validated['reason'],
+            'preferred_date' => $validated['preferred_date'] ?? null,
+            'status'         => 'pending',
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تقديم طلب موعد مع الإدارة بنجاح',
+            'id'      => $requestId
+        ], 201);
+    }
+
+    /**
+     * عرض طلبات المواعيد الخاصة بولي الأمر
+     */
+    public function getMyMeetingRequests(Request $request)
+    {
+        $user = $request->user();
+
+        $meetings = \DB::table('parent_meeting_requests')
+            ->where('parent_user_id', $user->user_id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $meetings
+        ]);
+    }
+
+    /**
+     * عرض الاستدعاءات الصادرة لولي الأمر من المعلمين ورؤساء الأقسام
+     */
+    public function getMySummons(Request $request)
+    {
+        $user = $request->user();
+
+        $summons = \DB::table('parent_summons')
+            ->join('students', 'parent_summons.student_id', '=', 'students.student_id')
+            ->join('users as student_user', 'students.user_id', '=', 'student_user.user_id')
+            ->join('users as sender_user', 'parent_summons.sender_user_id', '=', 'sender_user.user_id')
+            ->where('parent_summons.parent_user_id', $user->user_id)
+            ->select(
+                'parent_summons.*',
+                'student_user.full_name as student_name',
+                'sender_user.full_name as sender_name'
+            )
+            ->orderByDesc('parent_summons.created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $summons
+        ]);
     }
 }

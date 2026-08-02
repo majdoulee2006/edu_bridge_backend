@@ -1299,7 +1299,7 @@ class TeacherWebController extends Controller
             $filePath = $file->store($folder, 'public');
         }
 
-        DB::table('lessons')->insert([
+        $lessonId = DB::table('lessons')->insertGetId([
             'course_id'   => $request->course_id,
             'teacher_id'  => $teacher->teacher_id,
             'title'       => $request->title,
@@ -1311,6 +1311,37 @@ class TeacherWebController extends Controller
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
+
+        // ── إشعار عميق (Deep Link) للطلاب بوجود محاضرة جديدة ───────
+        $studentUserIds = DB::table('enrollments')
+            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+            ->where('enrollments.course_id', $request->course_id)
+            ->pluck('students.user_id');
+
+        $teacherUser = auth()->user();
+        $notifTitle = 'محاضرة جديدة: ' . $request->title;
+        $notifMsg   = 'قام المعلم بنشر محاضرة جديدة، اضغط للمشاهدة الآن.';
+
+        foreach ($studentUserIds as $uid) {
+            DB::table('notifications')->insert([
+                'user_id'    => $uid,
+                'sender_id'  => $teacherUser->user_id ?? null,
+                'title'      => $notifTitle,
+                'message'    => $notifMsg,
+                'type'       => 'lecture',
+                'category'   => 'academic',
+                'related_id' => $lessonId,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            \App\Services\FcmService::sendToUser($uid, $notifTitle, $notifMsg, [
+                'type'       => 'lecture',
+                'related_id' => (string) $lessonId,
+                'lecture_id' => (string) $lessonId,
+                'course_id'  => (string) $request->course_id,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'تمت إضافة المحاضرة بنجاح!');
     }

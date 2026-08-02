@@ -671,17 +671,14 @@ class ParentWebController extends Controller
         $user = auth()->user();
         $request->validate([
             'full_name' => 'required|string|max:255',
-            'email'     => 'required|email|max:255|unique:users,email,' . $user->user_id . ',user_id',
             'phone'     => 'required|string|max:20|unique:users,phone,' . $user->user_id . ',user_id',
         ], [
             'full_name.required' => 'الاسم الكامل مطلوب.',
-            'email.required' => 'البريد الإلكتروني مطلوب.',
-            'phone.required' => 'رقم الهاتف مطلوب.'
+            'phone.required'     => 'رقم الهاتف مطلوب.'
         ]);
 
         DB::table('users')->where('user_id', $user->user_id)->update([
             'full_name' => $request->full_name,
-            'email'     => $request->email,
             'phone'     => $request->phone,
             'updated_at'=> now()
         ]);

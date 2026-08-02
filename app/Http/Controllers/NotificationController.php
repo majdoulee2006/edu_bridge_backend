@@ -54,4 +54,17 @@ class NotificationController extends Controller
 
       return response()->json(['success' => true, 'message' => 'تم تحديد جميع الإشعارات كمقروءة']);
   }
+
+  public function toggleMute(Request $request)
+  {
+      $user = $request->user();
+      $user->notifications_muted = !$user->notifications_muted;
+      $user->save();
+
+      return response()->json([
+          'success' => true,
+          'notifications_muted' => (bool) $user->notifications_muted,
+          'message' => $user->notifications_muted ? 'تم كتم الإشعارات بنجاح' : 'تم تفعيل الإشعارات بنجاح'
+      ]);
+  }
 }
