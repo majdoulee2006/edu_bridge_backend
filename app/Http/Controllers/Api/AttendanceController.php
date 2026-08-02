@@ -6,27 +6,36 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Attendance;
 use App\Models\LeaveRequest;
+use App\Models\Student;
 
 class AttendanceController extends Controller
 {
+    private function getStudent()
+    {
+        $user = auth()->user();
+        return Student::where('user_id', $user->user_id)->first();
+    }
+
     // 🌟 1. جلب سجل الحضور والغياب للطالب الحالي
     public function getAttendanceHistory()
     {
-        $studentId = auth()->user()->user_id;
+        $student = $this->getStudent();
 
-        // جلب السجل مع اسم المادة (من علاقة lesson إذا كنتِ رابطتيها)
-        // إذا مافي علاقة lesson، فيك تجيبي البيانات مباشرة
+        if (!$student) {
+            return response()->json(['status' => 'error', 'message' => 'سجل الطالب غير موجود.'], 404);
+        }
+
         $attendances = Attendance::with('lesson')
-            ->where('student_id', $studentId)
+            ->where('student_id', $student->student_id)
             ->orderBy('attendance_date', 'desc')
             ->get()
             ->map(function ($record) {
                 return [
                     'id' => $record->attendance_id,
-                    'subject' => $record->lesson->subject_name ?? 'مادة عامة', // عدليها حسب اسم عمود المادة بجدول lessons
+                    'subject' => $record->lesson->subject_name ?? 'مادة عامة',
                     'date' => $record->attendance_date,
-                    'status' => $record->status, // present, absent, late
-                    'excuse_status' => $record->excuse_status, // none, pending, approved, rejected
+                    'status' => $record->status,
+                    'excuse_status' => $record->excuse_status,
                 ];
             });
 
@@ -40,25 +49,29 @@ class AttendanceController extends Controller
     public function submitLeaveRequest(Request $request)
     {
         $request->validate([
-            'type' => 'required|in:full_day,hourly',
-            'date' => 'required|date',
+            'type'   => 'required|in:full_day,hourly',
+            'date'   => 'required|date',
             'reason' => 'required|string',
         ]);
 
-        $studentId = auth()->user()->user_id;
+        $student = $this->getStudent();
+
+        if (!$student) {
+            return response()->json(['status' => 'error', 'message' => 'سجل الطالب غير موجود.'], 404);
+        }
 
         $leaveRequest = LeaveRequest::create([
-            'student_id' => $studentId,
-            'type' => $request->type,
-            'date' => $request->date,
-            'reason' => $request->reason,
-            'status' => 'pending', // الطلب دائماً يبدأ قيد المراجعة
+            'student_id' => $student->student_id,
+            'type'       => $request->type,
+            'date'       => $request->date,
+            'reason'     => $request->reason,
+            'status'     => 'pending',
         ]);
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'تم إرسال طلب الإجازة بنجاح، وهو قيد المراجعة.',
-            'data' => $leaveRequest
+            'data'    => $leaveRequest
         ], 201);
     }
 
@@ -67,14 +80,16 @@ class AttendanceController extends Controller
     {
         $request->validate([
             'excuse_text' => 'required|string',
-            // يمكنك إضافة تحقق للملفات إذا أردتِ: 'excuse_attachment' => 'nullable|file|mimes:jpg,png,pdf|max:2048'
         ]);
 
-        $studentId = auth()->user()->user_id;
+        $student = $this->getStudent();
 
-        // البحث عن سجل الغياب الخاص بهذا الطالب
+        if (!$student) {
+            return response()->json(['status' => 'error', 'message' => 'سجل الطالب غير موجود.'], 404);
+        }
+
         $attendance = Attendance::where('attendance_id', $attendance_id)
-            ->where('student_id', $studentId)
+            ->where('student_id', $student->student_id)
             ->where('status', 'absent')
             ->first();
 
@@ -82,11 +97,9 @@ class AttendanceController extends Controller
             return response()->json(['status' => 'error', 'message' => 'سجل الغياب غير موجود أو لا يخصك.'], 404);
         }
 
-        // تحديث السجل بالعذر
         $attendance->excuse_text = $request->excuse_text;
-        $attendance->excuse_status = 'pending'; // تحويل حالة العذر لقيد المراجعة
+        $attendance->excuse_status = 'pending';
 
-        // 🌟 إذا كان هناك ملف مرفق (اختياري)
         if ($request->hasFile('excuse_attachment')) {
             $file = $request->file('excuse_attachment');
             $filename = time() . '_' . $file->getClientOriginalName();
@@ -97,36 +110,35 @@ class AttendanceController extends Controller
         $attendance->save();
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'تم إرسال العذر بنجاح، بانتظار موافقة الإدارة.',
         ]);
     }
+
     // 🌟 4. دالة للمدرب: توليد باركود جديد لجلسة تفقد
     public function generateQrToken(Request $request)
     {
         $request->validate([
-            'lesson_id' => 'required|exists:lessons,lesson_id', // تأكدي من اسم الحقل
-            'duration_minutes' => 'integer|min:1|max:60' // مدة صلاحية الباركود (افتراضي 5 دقائق)
+            'lesson_id'        => 'required|exists:lessons,lesson_id',
+            'duration_minutes' => 'integer|min:1|max:60'
         ]);
 
         $duration = $request->duration_minutes ?? 5;
-
-        // توليد توكن عشوائي وفريد
-        $qrToken = 'QR_' . strtoupper(uniqid()) . '_' . bin2hex(random_bytes(4));
+        $qrToken  = 'QR_' . strtoupper(uniqid()) . '_' . bin2hex(random_bytes(4));
 
         $session = \App\Models\AttendanceSession::create([
-            'lesson_id' => $request->lesson_id,
-            'qr_token' => $qrToken,
+            'lesson_id'  => $request->lesson_id,
+            'qr_token'   => $qrToken,
             'expires_at' => now()->addMinutes($duration),
-            'is_active' => true,
+            'is_active'  => true,
         ]);
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'تم بدء جلسة التفقد بنجاح.',
-            'data' => [
-                'qr_token' => $qrToken,
-                'expires_at' => $session->expires_at->format('Y-m-d H:i:s'),
+            'data'    => [
+                'qr_token'           => $qrToken,
+                'expires_at'         => $session->expires_at->format('Y-m-d H:i:s'),
                 'expires_in_seconds' => $duration * 60,
             ]
         ]);
@@ -140,14 +152,19 @@ class AttendanceController extends Controller
             'device_id' => 'required|string|max:255',
         ]);
 
-        $user    = auth()->user();
-        $student = \App\Models\Student::where('user_id', $user->user_id)->first();
+        $student = $this->getStudent();
 
         if (!$student) {
             return response()->json(['status' => 'error', 'message' => 'الطالب غير موجود'], 404);
         }
 
-        // التحقق من الجهاز معطّل مؤقتاً
+        // ── التحقق من مطابقة جهاز الطالب ────────────────────────────────────
+        if ($student->is_device_locked && !empty($student->device_id) && $student->device_id !== $request->device_id) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'عذراً، لا يمكنك تسجيل الحضور من هذا الجهاز لأنه غير مقترن بحسابك.',
+            ], 403);
+        }
 
         // ── التحقق من صلاحية QR ──────────────────────────────────────────
         $session = \App\Models\AttendanceSession::where('qr_token', $request->qr_token)

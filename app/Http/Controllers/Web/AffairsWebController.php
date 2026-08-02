@@ -214,9 +214,40 @@ class AffairsWebController extends Controller
         $studentReq->affairs_decision = $request->decision;
         $studentReq->affairs_notes = $request->notes;
         
-        // الطلب ينتقل لرئيس القسم بغض النظر عن رأي الشؤون
+        // إذا كان نوع الطلب فك قفل الجهاز وتمت الموافقة عليه من الشؤون
+        if ($studentReq->type === 'device_reset') {
+            $studentReq->status = $request->decision === 'approved' ? 'approved' : 'rejected';
+            $studentReq->save();
+
+            $student = $studentReq->student;
+            if ($student && $request->decision === 'approved') {
+                // تصفير قفل الجهاز
+                $student->update([
+                    'device_id'        => null,
+                    'is_device_locked' => 0,
+                ]);
+
+                // تسجيل الخروج التلقائي من جميع الأجهزة عبر حذف التوكنات Active
+                DB::table('personal_access_tokens')
+                    ->where('tokenable_id', $student->user_id)
+                    ->delete();
+
+                // إرسال إشعار للطالب
+                \App\Models\Notification::create([
+                    'user_id' => $student->user_id,
+                    'title'   => 'تم فك قفل الجهاز',
+                    'message' => 'وافقت شؤون الطلاب على طلب فك قفل الجهاز الخاص بك. تم تسجيل الخروج من الأجهزة القديمة وتصفير القفل، يمكنك الآن تسجيل الدخول من جهازك الجديد.',
+                    'type'    => 'academic',
+                ]);
+            }
+
+            return back()->with('success', $request->decision === 'approved' 
+                ? 'تمت الموافقة على طلب فك قفل الجهاز وتصفير الجهاز وتسجيل الخروج من الحساب بنجاح.' 
+                : 'تم رفض طلب فك قفل الجهاز.');
+        }
+
+        // الطلبات الأخرى تنتقل لرئيس القسم
         $studentReq->status = 'pending_hod';
-        
         $studentReq->save();
 
         return back()->with('success', 'تم حفظ رأي الشؤون بنجاح وتحويل الطلب إلى رئيس القسم.');

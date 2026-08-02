@@ -36,6 +36,7 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
 Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
+Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset']);
 
 // -----------------------------------------------------------
 // روابط ولي الأمر العامة (بدون توكن)

@@ -79,6 +79,15 @@ class AuthController extends Controller
         if ($user->role_id === 3) {
             $student = \App\Models\Student::where('user_id', $user->user_id)->first();
             if ($student) {
+                // إذا كان الحساب مقفولاً على جهاز آخر
+                if ($student->is_device_locked && !empty($student->device_id) && $request->filled('device_id') && $student->device_id !== $request->device_id) {
+                    return response()->json([
+                        'success'       => false,
+                        'device_locked' => true,
+                        'message'       => 'عذراً، هذا الحساب مقترن بجهاز آخر. يمكنك تقديم طلب لشؤون الطلاب لفك قفل الجهاز.'
+                    ], 403);
+                }
+
                 if ($request->filled('device_id') && empty($student->device_id)) {
                     $student->update([
                         'device_id'        => $request->device_id,
@@ -952,5 +961,68 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'تم تغيير كلمة المرور بنجاح! يمكنك تسجيل الدخول الآن.',
         ], 200);
+    }
+
+    /**
+     * تقديم طلب فك قفل الجهاز من شاشة الدخول
+     */
+    public function requestDeviceReset(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'username'      => 'required|string',
+            'password'      => 'required|string',
+            'reason'        => 'required|string|max:1000',
+            'new_device_id' => 'nullable|string|max:255',
+        ], [
+            'reason.required'   => 'سبب طلب فك قفل الجهاز مطلوب.',
+            'username.required' => 'اسم المستخدم مطلوب.',
+            'password.required' => 'كلمة المرور مطلوبة.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $input = $request->username;
+        $user = User::where(function ($q) use ($input) {
+            $q->where('username', $input)
+              ->orWhere('email', $input)
+              ->orWhere('phone', $input)
+              ->orWhere('university_id', $input);
+        })->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['success' => false, 'message' => 'اسم المستخدم أو كلمة المرور غير صحيحة.'], 401);
+        }
+
+        $student = Student::where('user_id', $user->user_id)->first();
+        if (!$student) {
+            return response()->json(['success' => false, 'message' => 'هذا الحساب ليس حساب طالب.'], 403);
+        }
+
+        // التأكد من عدم وجود طلب قيد المراجعة مسبقاً
+        $existing = \App\Models\StudentRequest::where('student_id', $student->student_id)
+            ->where('type', 'device_reset')
+            ->where('status', 'pending_affairs')
+            ->first();
+
+        if ($existing) {
+            return response()->json(['success' => false, 'message' => 'لديك طلب فك قفل جهاز قيد المراجعة حالياً من قبل شؤون الطلاب.'], 400);
+        }
+
+        \App\Models\StudentRequest::create([
+            'student_id' => $student->student_id,
+            'type'       => 'device_reset',
+            'details'    => json_encode([
+                'reason'        => $request->reason,
+                'new_device_id' => $request->new_device_id ?? '',
+            ], JSON_UNESCAPED_UNICODE),
+            'status'     => 'pending_affairs',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تقديم طلب فك قفل الجهاز بنجاح للشؤون. ستصلك الموافقة ويتم تصفير القفل بمجرد معالجته.',
+        ]);
     }
 }

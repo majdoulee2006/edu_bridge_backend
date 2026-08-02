@@ -862,12 +862,21 @@ class AffairsController extends Controller
         $req = DB::table('photo_change_requests')->where('id', $id)->where('status', 'pending')->first();
         if (!$req) return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
 
-        // حذف الصورة القديمة وتحديث الـ avatar
+        // حذف الصورة القديمة وتحديث الـ avatar وصورة التحقق من الوجه للطالب
         if ($req->old_photo) Storage::disk('public')->delete($req->old_photo);
         DB::table('users')->where('user_id', $req->user_id)->update(['avatar' => $req->new_photo]);
+        DB::table('students')->where('user_id', $req->user_id)->update(['reference_photo' => $req->new_photo]);
         DB::table('photo_change_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
 
-        return response()->json(['success' => true, 'message' => 'تمت الموافقة على تغيير الصورة']);
+        // إرسال إشعار للطالب
+        \App\Models\Notification::create([
+            'user_id' => $req->user_id,
+            'title'   => 'تمت الموافقة على تغيير صورة الوجه',
+            'message' => 'تمت الموافقة من قبل شؤون الطلاب على طلب تحديث صورة بصمة الوجه الخاصة بك.',
+            'type'    => 'academic',
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'تمت الموافقة على تغيير الصورة وتحديث بصمة الوجه بنجاح']);
     }
 
     public function rejectPhotoChange($id)
