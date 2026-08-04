@@ -899,7 +899,8 @@ class AffairsController extends Controller
     // ── الإعلانات (الأنشطة) ────────────────────────────────────────
     public function listAnnouncements(Request $request)
     {
-        $announcements = \App\Models\Announcement::with(['department', 'course'])->where('user_id', auth()->id())
+        // نجيب كل إعلانات نشرها موظفو الشؤون (بدون تقييد user_id)
+        $announcements = \App\Models\Announcement::with(['department', 'course', 'user'])
             ->latest()
             ->get()
             ->map(fn($a) => [
@@ -916,6 +917,8 @@ class AffairsController extends Controller
                 'department_name' => $a->department ? $a->department->name : null,
                 'course_id'       => $a->course_id,
                 'course_name'     => $a->course ? $a->course->title : null,
+                'created_by'      => $a->user ? $a->user->full_name : 'غير معروف',
+                'is_mine'         => $a->user_id == auth()->id(), // للتمييز بين المنشورات
                 'created_at'      => $a->created_at?->format('Y-m-d'),
             ]);
 
