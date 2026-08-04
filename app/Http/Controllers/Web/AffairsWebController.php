@@ -76,7 +76,7 @@ class AffairsWebController extends Controller
         $totalStudents = User::where('role_id', 3)->count();
         $totalTeachers = User::where('role_id', 2)->count();
         $totalStaff    = User::whereIn('role_id', [2, 5, 6])->count();
-        $pendingLeaves = DB::table('leave_requests')->where('status', 'pending')->count();
+        $pendingLeaves = DB::table('leave_requests')->whereIn('status', ['pending', 'pending_affairs'])->count();
         $totalUsers    = User::count();
 
         // آخر 5 طلبات إجازة

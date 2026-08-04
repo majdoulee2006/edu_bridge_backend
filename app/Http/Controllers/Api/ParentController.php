@@ -272,15 +272,30 @@ class ParentController extends Controller
 
     public function getAnnouncements(Request $request)
     {
-        $announcements = Announcement::latest()->limit(20)->get()->map(function($announcement) {
+        $announcements = Announcement::with(['department', 'course'])
+            ->where(function($q) {
+                $q->whereNull('target_audience')
+                  ->orWhereIn('target_audience', ['all', 'parents', 'students']);
+            })
+            ->where(function($q) {
+                $q->whereNull('target_role')
+                  ->orWhereIn('target_role', ['parent', 'student']);
+            })
+            ->latest()->limit(20)->get()->map(function($announcement) {
             return [
-                'id' => $announcement->announcement_id,
-                'title' => $announcement->title,
-                'content' => $announcement->content,
-                'type' => $announcement->type,
-                'image_url' => $announcement->image ? url('storage/' . $announcement->image) : null,
-                'created_at' => $announcement->created_at ? $announcement->created_at->format('Y-m-d H:i') : null,
-                'time_ago' => $announcement->created_at ? $announcement->created_at->diffForHumans() : 'منذ قليل',
+                'id'              => $announcement->announcement_id,
+                'title'           => $announcement->title,
+                'content'         => $announcement->content,
+                'body'            => $announcement->content,
+                'type'            => $announcement->type,
+                'target_audience' => $announcement->target_audience ?? 'all',
+                'department_id'   => $announcement->department_id,
+                'department_name' => $announcement->department ? $announcement->department->name : null,
+                'course_id'       => $announcement->course_id,
+                'course_name'     => $announcement->course ? $announcement->course->title : null,
+                'image_url'       => $announcement->image ? url('storage/' . $announcement->image) : null,
+                'created_at'      => $announcement->created_at ? $announcement->created_at->format('Y-m-d H:i') : null,
+                'time_ago'        => $announcement->created_at ? $announcement->created_at->diffForHumans() : 'منذ قليل',
             ];
         });
 
@@ -386,7 +401,15 @@ class ParentController extends Controller
             $averageGrades[] = $child->grades->avg('score') ?? 0;
         }
 
-        $recentAnnouncements = Announcement::latest()->limit(5)->get()->map(function($ann) {
+        $recentAnnouncements = Announcement::where(function($q) {
+                $q->whereNull('target_audience')
+                  ->orWhereIn('target_audience', ['all', 'parents']);
+            })
+            ->where(function($q) {
+                $q->whereNull('target_role')
+                  ->orWhere('target_role', 'parent');
+            })
+            ->latest()->limit(5)->get()->map(function($ann) {
             return [
                 'id' => $ann->announcement_id,
                 'title' => $ann->title,

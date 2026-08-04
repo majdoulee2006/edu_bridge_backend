@@ -57,10 +57,14 @@ class TeacherController extends Controller
 
         // آخر 5 إع�™ا�™ ات
         $recentAnnouncements = Announcement::with('user')
-            ->where(function($q) use ($courses) {
-                $q->whereIn('course_id', $courses->pluck('course_id'))
-                  ->orWhere('type', 'general')
-                  ->orWhereNull('course_id');
+            ->where(function($q) use ($request) {
+                $q->where('user_id', $request->user()->user_id)
+                  ->orWhereNull('target_audience')
+                  ->orWhereIn('target_audience', ['all', 'teachers']);
+            })
+            ->where(function($q) {
+                $q->whereNull('target_role')
+                  ->orWhere('target_role', 'teacher');
             })
             ->latest()
             ->limit(5)
@@ -1209,33 +1213,40 @@ class TeacherController extends Controller
         // إع�ا� ات ا��&ع��& � �س�! + إع�ا� ات رئ�`س ا��س�& ا��&��ج�!ة ���&ع��&�`�  أ�� ��ج�&�`ع
         $headUserIds = \DB::table('users')->where('role_id', 5)->pluck('user_id');
 
-        $announcements = Announcement::where(function($q) use ($request, $headUserIds) {
+        $announcements = Announcement::where(function($q) use ($request) {
                 $q->where('user_id', $request->user()->user_id)
-                  ->orWhere(function($q2) use ($headUserIds) {
-                      $q2->whereIn('user_id', $headUserIds)
-                         ->where(function($q3) {
-                             $q3->whereNull('target_role')
-                                ->orWhere('target_role', 'teacher');
-                         });
+                  ->orWhere(function($q2) {
+                      $q2->whereNull('target_audience')
+                         ->orWhereIn('target_audience', ['all', 'teachers']);
                   });
             })
-            ->with(['course', 'user'])
+            ->where(function($q) {
+                $q->whereNull('target_role')
+                  ->orWhere('target_role', 'teacher');
+            })
+            ->with(['department', 'course', 'user'])
             ->latest()
             ->get()
             ->map(function($announcement) use ($headUserIds) {
                 $isFromHead = $headUserIds->contains($announcement->user_id);
                 return [
-                    'id'          => $announcement->announcement_id,
-                    'title'       => $announcement->title,
-                    'content'     => $announcement->content,
-                    'type'        => $announcement->type,
-                    'course'      => $announcement->course ? $announcement->course->title : null,
-                    'from_head'   => $isFromHead,
-                    'author_name' => $announcement->user ? $announcement->user->full_name : null,
-                    'image_url'   => $announcement->image ? url('storage/' . $announcement->image) : null,
-                    'link_url'    => $announcement->link_url ?? null,
-                    'created_at'  => $announcement->created_at->format('Y-m-d H:i'),
-                    'time_ago'    => $announcement->created_at->diffForHumans(),
+                    'id'              => $announcement->announcement_id,
+                    'title'           => $announcement->title,
+                    'content'         => $announcement->content,
+                    'body'            => $announcement->content,
+                    'type'            => $announcement->type,
+                    'target_audience' => $announcement->target_audience ?? 'all',
+                    'department_id'   => $announcement->department_id,
+                    'department_name' => $announcement->department ? $announcement->department->name : null,
+                    'course_id'       => $announcement->course_id,
+                    'course_name'     => $announcement->course ? $announcement->course->title : null,
+                    'course'          => $announcement->course ? $announcement->course->title : null,
+                    'from_head'       => $isFromHead,
+                    'author_name'     => $announcement->user ? $announcement->user->full_name : null,
+                    'image_url'       => $announcement->image ? url('storage/' . $announcement->image) : null,
+                    'link_url'        => $announcement->link_url ?? null,
+                    'created_at'      => $announcement->created_at->format('Y-m-d H:i'),
+                    'time_ago'        => $announcement->created_at->diffForHumans(),
                 ];
             });
 
