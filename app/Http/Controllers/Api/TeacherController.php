@@ -1620,18 +1620,19 @@ class TeacherController extends Controller
             ->get()
             ->map(function ($sub) {
                 return [
-                    'submission_id'    => $sub->submission_id,
-                    'student_name'     => $sub->student->user->full_name ?? 'غير معروف',
-                    'assignment_title' => $sub->assignment->title ?? '',
-                    'course_name'      => $sub->assignment->course->title ?? '',
-                    'student_notes'    => $sub->student_notes ?? '',
-                    'solution_text'    => $sub->solution_text ?? '',
-                    'file_path'        => $sub->file_path ? storageUrl($sub->file_path) : null,
-                    'grade'            => $sub->grade,
-                    'feedback'         => $sub->feedback,
-                    'max_points'       => $sub->assignment->max_points ?? 100,
-                    'submitted_at'     => $sub->submitted_at ? \Carbon\Carbon::parse($sub->submitted_at)->format('Y-m-d H:i') : ($sub->created_at ? $sub->created_at->format('Y-m-d H:i') : null),
-                    'is_graded'        => !is_null($sub->grade),
+                    'submission_id'          => $sub->submission_id,
+                    'student_name'           => $sub->student->user->full_name ?? 'غير معروف',
+                    'assignment_title'       => $sub->assignment->title ?? '',
+                    'assignment_description' => $sub->assignment->description ?? '',
+                    'course_name'            => $sub->assignment->course->title ?? '',
+                    'student_notes'          => $sub->student_notes ?? '',
+                    'solution_text'          => $sub->solution_text ?? '',
+                    'file_path'              => $sub->file_path ? storageUrl($sub->file_path) : null,
+                    'grade'                  => $sub->grade,
+                    'feedback'               => $sub->feedback,
+                    'max_points'             => $sub->assignment->max_points ?? 100,
+                    'submitted_at'           => $sub->submitted_at ? \Carbon\Carbon::parse($sub->submitted_at)->format('Y-m-d H:i') : ($sub->created_at ? $sub->created_at->format('Y-m-d H:i') : null),
+                    'is_graded'              => !is_null($sub->grade),
                 ];
             });
 
@@ -1657,19 +1658,20 @@ class TeacherController extends Controller
             ->get()
             ->map(function($sub) use ($assignment) {
                 return [
-                    'submission_id'    => $sub->submission_id,
-                    'student_id'       => $sub->student_id,
-                    'student_name'     => $sub->student->user->full_name,
-                    'assignment_title' => $assignment->title,
-                    'course_name'      => $assignment->course->title ?? '',
-                    'max_points'       => $assignment->max_points,
-                    'file_path'        => $sub->file_path ? storageUrl($sub->file_path) : null,
-                    'student_notes'    => $sub->student_notes ?? '',
-                    'solution_text'    => $sub->solution_text ?? '',
-                    'grade'            => $sub->grade,
-                    'feedback'         => $sub->feedback,
-                    'is_graded'        => !is_null($sub->grade),
-                    'submitted_at'     => $sub->submitted_at
+                    'submission_id'          => $sub->submission_id,
+                    'student_id'             => $sub->student_id,
+                    'student_name'           => $sub->student->user->full_name,
+                    'assignment_title'       => $assignment->title,
+                    'assignment_description' => $assignment->description ?? '',
+                    'course_name'            => $assignment->course->title ?? '',
+                    'max_points'             => $assignment->max_points,
+                    'file_path'              => $sub->file_path ? storageUrl($sub->file_path) : null,
+                    'student_notes'          => $sub->student_notes ?? '',
+                    'solution_text'          => $sub->solution_text ?? '',
+                    'grade'                  => $sub->grade,
+                    'feedback'               => $sub->feedback,
+                    'is_graded'              => !is_null($sub->grade),
+                    'submitted_at'           => $sub->submitted_at
                         ? \Carbon\Carbon::parse($sub->submitted_at)->format('Y-m-d H:i')
                         : ($sub->created_at ? $sub->created_at->format('Y-m-d H:i') : null),
                 ];
