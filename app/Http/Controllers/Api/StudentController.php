@@ -43,7 +43,7 @@ class StudentController extends Controller
             ->value('department_id');
 
         // 🌟 2. جلب الإعلانات (العامة + المخصصة لقسم الطالب فقط)
-        $announcements = Announcement::with(['author', 'department', 'course'])
+        $announcements = Announcement::with(['user', 'department', 'course'])
             ->where(function($query) use ($departmentId) {
                 $query->whereNull('department_id')
                       ->orWhere('department_id', $departmentId);
@@ -80,8 +80,9 @@ class StudentController extends Controller
                     'course_name' => $item->course ? $item->course->title : null,
                     'image_url' => $item->image ? url('storage/' . $item->image) : null,
                     'link_url' => $item->link_url ?? null,
-                    'author_name' => $item->author->full_name ?? $item->author->name ?? 'الإدارة',
-                    'publisher_name' => $item->author->full_name ?? $item->author->name ?? 'الإدارة',
+                    'created_by' => $item->user->full_name ?? $item->user->name ?? 'الإدارة',
+                    'author_name' => $item->user->full_name ?? $item->user->name ?? 'الإدارة',
+                    'publisher_name' => $item->user->full_name ?? $item->user->name ?? 'الإدارة',
                     'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
                 ];
             });

@@ -272,7 +272,7 @@ class ParentController extends Controller
 
     public function getAnnouncements(Request $request)
     {
-        $announcements = Announcement::with(['department', 'course'])
+        $announcements = Announcement::with(['user', 'department', 'course'])
             ->where(function($q) {
                 $q->whereNull('target_audience')
                   ->orWhereIn('target_audience', ['all', 'parents', 'students']);
@@ -288,12 +288,16 @@ class ParentController extends Controller
                 'content'         => $announcement->content,
                 'body'            => $announcement->content,
                 'type'            => $announcement->type,
+                'category'        => $announcement->category ?? 'عام',
                 'target_audience' => $announcement->target_audience ?? 'all',
                 'department_id'   => $announcement->department_id,
                 'department_name' => $announcement->department ? $announcement->department->name : null,
                 'course_id'       => $announcement->course_id,
                 'course_name'     => $announcement->course ? $announcement->course->title : null,
                 'image_url'       => $announcement->image ? url('storage/' . $announcement->image) : null,
+                'created_by'      => $announcement->user->full_name ?? $announcement->user->name ?? 'الإدارة',
+                'author_name'     => $announcement->user->full_name ?? $announcement->user->name ?? 'الإدارة',
+                'publisher_name'  => $announcement->user->full_name ?? $announcement->user->name ?? 'الإدارة',
                 'created_at'      => $announcement->created_at ? $announcement->created_at->format('Y-m-d H:i') : null,
                 'time_ago'        => $announcement->created_at ? $announcement->created_at->diffForHumans() : 'منذ قليل',
             ];

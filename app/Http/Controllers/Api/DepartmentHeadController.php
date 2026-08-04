@@ -45,7 +45,9 @@ class DepartmentHeadController extends Controller
                 'course_name'     => $a->course ? $a->course->title : null,
                 'image_url'       => $a->image ? url('storage/' . $a->image) : null,
                 'link_url'        => $a->link_url,
-                'author_name'     => $a->user?->full_name ?? 'المدير',
+                'created_by'      => $a->user?->full_name ?? 'الإدارة',
+                'author_name'     => $a->user?->full_name ?? 'الإدارة',
+                'publisher_name'  => $a->user?->full_name ?? 'الإدارة',
                 'time_ago'        => $a->created_at ? $a->created_at->diffForHumans() : 'منذ قليل',
                 'is_mine'         => $a->user_id === $request->user()->user_id,
             ]);
@@ -1067,7 +1069,9 @@ class DepartmentHeadController extends Controller
                 'course_name'     => $a->course ? $a->course->title : null,
                 'image_url'       => $a->image ? url('storage/' . $a->image) : null,
                 'link_url'        => $a->link_url,
-                'author_name'     => $a->user?->full_name ?? 'المدير',
+                'created_by'      => $a->user?->full_name ?? 'الإدارة',
+                'author_name'     => $a->user?->full_name ?? 'الإدارة',
+                'publisher_name'  => $a->user?->full_name ?? 'الإدارة',
                 'time_ago'        => $a->created_at ? $a->created_at->diffForHumans() : 'منذ قليل',
                 'is_mine'         => $a->user_id === $userId,
             ]);

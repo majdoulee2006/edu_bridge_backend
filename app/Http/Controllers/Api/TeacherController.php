@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -103,7 +103,9 @@ class TeacherController extends Controller
                         'category'        => $announcement->category ?? ($announcement->target_audience == 'teachers' ? 'للمعلمين' : ($announcement->target_audience == 'students' ? 'للطلاب' : 'عام')),
                         'target_audience' => $announcement->target_audience ?? $announcement->target_role ?? 'all',
                         'target_role'     => $announcement->target_role,
-                        'author_name' => $announcement->user ? $announcement->user->full_name : 'ا�إدارة',
+                        'created_by'      => $announcement->user ? $announcement->user->full_name : 'الإدارة',
+                        'author_name'     => $announcement->user ? $announcement->user->full_name : 'الإدارة',
+                        'publisher_name'  => $announcement->user ? $announcement->user->full_name : 'الإدارة',
                         'image_url'   => $announcement->image ? url('storage/' . $announcement->image) : null,
                         'link_url'    => $announcement->link_url ?? null,
                         'created_at'  => $announcement->created_at->diffForHumans(),
@@ -1246,7 +1248,9 @@ class TeacherController extends Controller
                     'course_name'     => $announcement->course ? $announcement->course->title : null,
                     'course'          => $announcement->course ? $announcement->course->title : null,
                     'from_head'       => $isFromHead,
-                    'author_name'     => $announcement->user ? $announcement->user->full_name : null,
+                        'created_by'      => $announcement->user ? $announcement->user->full_name : 'الإدارة',
+                        'author_name'     => $announcement->user ? $announcement->user->full_name : 'الإدارة',
+                        'publisher_name'  => $announcement->user ? $announcement->user->full_name : 'الإدارة',
                     'image_url'       => $announcement->image ? url('storage/' . $announcement->image) : null,
                     'link_url'        => $announcement->link_url ?? null,
                     'created_at'      => $announcement->created_at->format('Y-m-d H:i'),
@@ -2808,4 +2812,5 @@ class TeacherController extends Controller
         ], 201);
     }
 }
+
 
