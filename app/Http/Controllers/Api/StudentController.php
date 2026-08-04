@@ -37,14 +37,24 @@ class StudentController extends Controller
         // 1. استخراج أرقام الكورسات لأننا سنحتاجها في المحاضرة القادمة
         $enrolledCourseIds = $student ? $student->courses->modelKeys() : [];
 
+        // استنتاج معرف القسم للطالب بناءً على اسم القسم
+        $departmentId = \Illuminate\Support\Facades\DB::table('departments')
+            ->where('name', 'LIKE', '%' . $user->department . '%')
+            ->value('department_id');
+
         // 🌟 2. جلب الإعلانات (العامة + المخصصة لقسم الطالب فقط)
-        $announcements = Announcement::with('author')
-            ->where(function($query) use ($user) {
+        $announcements = Announcement::with(['user', 'department', 'course'])
+            ->where(function($query) use ($departmentId) {
                 $query->whereNull('department_id')
-                      ->orWhere('department_id', $user->department_id);
+                      ->orWhere('department_id', $departmentId);
             })
             ->where(function($q) {
-                $q->whereNull('target_role')->orWhere('target_role', 'student');
+                $q->whereNull('target_audience')
+                  ->orWhereIn('target_audience', ['all', 'students']);
+            })
+            ->where(function($q) {
+                $q->whereNull('target_role')
+                  ->orWhere('target_role', 'student');
             })
             ->latest()
             ->get()
@@ -63,10 +73,16 @@ class StudentController extends Controller
                     'body' => $item->content ?? '',
                     'category' => $item->category ?? 'general',
                     'category_text' => $categoryText,
+                    'target_audience' => $item->target_audience ?? 'all',
+                    'department_id' => $item->department_id,
+                    'department_name' => $item->department ? $item->department->name : null,
+                    'course_id' => $item->course_id,
+                    'course_name' => $item->course ? $item->course->title : null,
                     'image_url' => $item->image ? url('storage/' . $item->image) : null,
                     'link_url' => $item->link_url ?? null,
-                    'author_name' => $item->author->full_name ?? $item->author->name ?? 'الإدارة',
-                    'publisher_name' => $item->author->full_name ?? $item->author->name ?? 'الإدارة',
+                    'created_by' => $item->user->full_name ?? $item->user->name ?? 'الإدارة',
+                    'author_name' => $item->user->full_name ?? $item->user->name ?? 'الإدارة',
+                    'publisher_name' => $item->user->full_name ?? $item->user->name ?? 'الإدارة',
                     'time_ago' => $item->created_at ? $item->created_at->diffForHumans() : 'منذ قليل',
                 ];
             });
@@ -321,12 +337,15 @@ class StudentController extends Controller
                     $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
                     $linkUrl  = $ann->link_url ?? null;
                 }
+                $isAcademic = $notify->category === 'academic' || in_array($notify->type, ['grade', 'marks', 'assignment', 'lecture']);
+                $cat = $notify->category ?? ($isAcademic ? 'academic' : 'administrative');
+
                 return [
                     'id' => $notify->id,
                     'title' => $notify->title,
                     'message' => $notify->message,
                     'type' => $notify->type,
-                    'category' => $notify->category,
+                    'category' => $cat,
                     'sender_name' => $notify->sender->full_name ?? 'الإدارة',
                     'is_read' => (bool)$notify->is_read,
                     'related_id' => $notify->related_id,
@@ -341,7 +360,6 @@ class StudentController extends Controller
             'success' => true,
             'message' => 'تم جلب الإشعارات بنجاح',
             'data' => [
-                // 🌟 استخدام حقل category الجديد للتقسيم بشكل مباشر وأدق
                 'academic' => $notifications->where('category', 'academic')->values(),
                 'administrative' => $notifications->where('category', 'administrative')->values(),
                 'all' => $notifications->values(),
@@ -1221,7 +1239,7 @@ class StudentController extends Controller
                 return [
                     'id' => $attendance->attendance_id,
                     'date' => \Carbon\Carbon::parse($attendance->attendance_date)->translatedFormat('d F، l'),
-                    'time' => $attendance->created_at ? \Carbon\Carbon::parse($attendance->created_at)->format('h:i A') : null,
+                    'time' => $attendance->created_at ? \Carbon\Carbon::parse($attendance->created_at)->timezone('Asia/Damascus')->format('h:i A') : null,
                     'status' => $status,
                     'status_text' => $statusText,
                     'course_name' => $attendance->lesson->course->title ?? 'غير محدد',
@@ -1362,6 +1380,43 @@ class StudentController extends Controller
         return response()->json([
             'success' => true,
             'data' => $requests
+        ], 200);
+    }
+
+    /**
+     * 3.1 جلب تفاصيل طلب إجازة محدد بالـ ID
+     */
+    public function getLeaveDetails(Request $request, $id)
+    {
+        $req = LeaveRequest::where('id', $id)->first();
+        if (!$req) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        $dateCarbon = \Carbon\Carbon::parse($req->date);
+        $dayName = $dateCarbon->locale('ar')->dayName;
+
+        $statusText = 'قيد المراجعة';
+        if ($req->status == 'approved') $statusText = 'تمت الموافقة من قبل إدارة شؤون الطلاب';
+        elseif ($req->status == 'rejected') $statusText = 'تم الرفض من قبل إدارة شؤون الطلاب';
+        elseif ($req->status == 'pending_hod') $statusText = 'بانتظار موافقة رئيس القسم';
+        elseif ($req->status == 'pending_affairs') $statusText = 'بانتظار موافقة شؤون الطلاب';
+        elseif ($req->status == 'pending_parent') $statusText = 'بانتظار موافقة ولي الأمر';
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id'             => $req->id,
+                'type'           => $req->type == 'hourly' ? 'إجازة ساعية' : 'إجازة يوم كامل',
+                'raw_type'       => $req->type,
+                'date'           => $dateCarbon->format('Y-m-d'),
+                'formatted_date' => $dateCarbon->translatedFormat('d F Y'),
+                'day_name'       => $dayName,
+                'reason'         => $req->reason,
+                'status'         => $req->status,
+                'status_text'    => $statusText,
+                'created_at'     => $req->created_at ? $req->created_at->format('Y-m-d H:i') : null,
+            ]
         ], 200);
     }
     /**

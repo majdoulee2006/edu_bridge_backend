@@ -154,6 +154,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
         Route::post('/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
         Route::get('/leave-requests', [StudentController::class, 'getMyAbsenceRequests']);
+        Route::get('/leave-requests/{id}', [StudentController::class, 'getLeaveDetails']);
         Route::post('/leave-requests', [StudentController::class, 'requestAbsence']);
 
         // مسارات الإشعارات للطالب
@@ -445,6 +446,12 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(fu
 
     // Metadata (departments, courses) for creating accounts
     Route::get('/metadata',                              [AffairsController::class, 'getMetadata']);
+
+    // Announcements / Activities
+    Route::get('/announcements',                         [AffairsController::class, 'listAnnouncements']);
+    Route::post('/announcements',                        [AffairsController::class, 'createAnnouncement']);
+    Route::delete('/announcements/{id}',                 [AffairsController::class, 'deleteAnnouncement']);
+    Route::post('/announcements/{id}',                   [AffairsController::class, 'updateAnnouncement']);
 
     // Leaves / Vacations
     Route::get('/leaves',                                [AffairsController::class, 'listLeaves']);

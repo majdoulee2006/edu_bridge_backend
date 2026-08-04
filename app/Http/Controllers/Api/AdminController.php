@@ -34,8 +34,12 @@ class AdminController extends Controller
                 'title'           => $a->title,
                 'content'         => $a->content,
                 'type'            => $a->type ?? 'general',
-                'category'        => $a->category ?? 'إعلان',
+                'category'        => $a->category ?? ($a->target_audience == 'teachers' ? 'للمعلمين' : ($a->target_audience == 'students' ? 'للطلاب' : 'إعلان')),
+                'target_audience' => $a->target_audience ?? $a->target_role ?? 'all',
+                'target_role'     => $a->target_role,
+                'created_by'      => $a->user ? $a->user->full_name : 'الإدارة',
                 'author_name'     => $a->user ? $a->user->full_name : 'الإدارة',
+                'publisher_name'  => $a->user ? $a->user->full_name : 'الإدارة',
                 'created_at'      => $a->created_at ? $a->created_at->diffForHumans() : '',
                 'image_url'       => $a->image ? asset('storage/' . $a->image) : null,
                 'user_id'         => $a->user_id, // لتحديد صاحب الإعلان

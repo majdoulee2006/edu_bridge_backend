@@ -25,6 +25,9 @@ class Announcement extends Model
         'image',    // 👈 جديد من طلبات زميلك
         'link_url',
         'target_audience',
+        'event_date',
+        'event_time',
+        'location',
     ];
 
     // هاي الدالة هي اللي بتجيب بيانات صاحب الإعلان (شغلك القديم الممتاز)
@@ -37,6 +40,11 @@ class Announcement extends Model
     public function course()
     {
         return $this->belongsTo(Course::class, 'course_id', 'course_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'department_id', 'department_id');
     }
 
     // دالة إضافية طلبها زميلك (هو سماها author، بس هي نفس دالة user اللي انتي عملتيها)

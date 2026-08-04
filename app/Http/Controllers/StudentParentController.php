@@ -338,7 +338,29 @@ class StudentParentController extends Controller
                 'users.full_name as student_name'
             )
             ->orderBy('leave_requests.created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($r) {
+                switch ($r->status) {
+                    case 'pending_parent':
+                        $r->status_text = 'بانتظار ولي الأمر';
+                        break;
+                    case 'pending_hod':
+                        $r->status_text = 'بانتظار رئيس القسم';
+                        break;
+                    case 'pending_affairs':
+                        $r->status_text = 'بانتظار شؤون الطلاب';
+                        break;
+                    case 'approved':
+                        $r->status_text = 'مقبول';
+                        break;
+                    case 'rejected':
+                        $r->status_text = 'مرفوض';
+                        break;
+                    default:
+                        $r->status_text = 'قيد المراجعة';
+                }
+                return $r;
+            });
 
         return response()->json(['success' => true, 'data' => $requests]);
     }

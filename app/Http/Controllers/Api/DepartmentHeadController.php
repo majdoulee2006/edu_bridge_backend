@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Models\Announcement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -19,21 +20,36 @@ class DepartmentHeadController extends Controller
         $user    = $request->user();
         $pending = DB::table('leave_requests')->where('status', 'pending')->count();
 
-        $announcements = DB::table('announcements')
-            ->join('users', 'announcements.user_id', '=', 'users.user_id')
-            ->orderBy('announcements.created_at', 'desc')
-            ->limit(5)
-            ->get(['announcements.announcement_id', 'announcements.title', 'announcements.content', 'announcements.image', 'announcements.link_url', 'announcements.created_at', 'announcements.user_id', 'users.full_name as author_name'])
+        $announcements = Announcement::with(['department', 'course', 'user'])
+            ->where(function($q) use ($user) {
+                $q->where('user_id', $user->user_id)
+                  ->orWhereNull('target_audience')
+                  ->orWhereIn('target_audience', ['all', 'heads']);
+            })
+            ->where(function($q) {
+                $q->whereNull('target_role')
+                  ->orWhere('target_role', 'head');
+            })
+            ->latest()
+            ->limit(10)
+            ->get()
             ->map(fn($a) => [
-                'id'          => $a->announcement_id,
-                'title'       => $a->title,
-                'content'     => $a->content,
-                'body'        => $a->content,
-                'image_url'   => $a->image ? url('storage/' . $a->image) : null,
-                'link_url'    => $a->link_url,
-                'author_name' => $a->author_name,
-                'time_ago'    => \Carbon\Carbon::parse($a->created_at)->diffForHumans(),
-                'is_mine'     => $a->user_id === $request->user()->user_id,
+                'id'              => $a->announcement_id,
+                'title'           => $a->title,
+                'content'         => $a->content,
+                'body'            => $a->content,
+                'target_audience' => $a->target_audience ?? 'all',
+                'department_id'   => $a->department_id,
+                'department_name' => $a->department ? $a->department->name : null,
+                'course_id'       => $a->course_id,
+                'course_name'     => $a->course ? $a->course->title : null,
+                'image_url'       => $a->image ? url('storage/' . $a->image) : null,
+                'link_url'        => $a->link_url,
+                'created_by'      => $a->user?->full_name ?? 'الإدارة',
+                'author_name'     => $a->user?->full_name ?? 'الإدارة',
+                'publisher_name'  => $a->user?->full_name ?? 'الإدارة',
+                'time_ago'        => $a->created_at ? $a->created_at->diffForHumans() : 'منذ قليل',
+                'is_mine'         => $a->user_id === $request->user()->user_id,
             ]);
 
         return response()->json([
@@ -429,36 +445,100 @@ class DepartmentHeadController extends Controller
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
-        $newStatus = $request->status === 'approved' ? 'approved' : 'rejected';
+        $newStatus = $request->status === 'approved' ? 'pending_affairs' : 'rejected';
 
         DB::table('leave_requests')
             ->where('id', $id)
             ->update(['status' => $newStatus, 'updated_at' => now()]);
+            
+        // إشعار موظف الشؤون في حال القبول
+        if ($newStatus === 'pending_affairs') {
+            try {
+                // جلب اسم صاحب الطلب
+                $requesterName = DB::table('users')->where('user_id', $leaveRequest->student_id)->value('full_name') 
+                              ?? DB::table('users')->where('user_id', $leaveRequest->teacher_id)->value('full_name') 
+                              ?? 'شخص ما';
+                
+                // البحث عن موظف الشؤون (role_id = 6)
+                $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
+                
+                foreach ($affairsUserIds as $affairsId) {
+                    \App\Models\Notification::create([
+                        'user_id'    => $affairsId,
+                        'sender_id'  => auth()->id(),
+                        'title'      => 'طلب إجازة بانتظار اعتمادك',
+                        'message'    => "وافق رئيس القسم على طلب إجازة لـ $requesterName، يرجى مراجعته واعتماده.",
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => false,
+                    ]);
+                }
+            } catch (\Exception $e) {}
+        }
 
-        if ($leaveRequest->student_id) {
-            $title   = $newStatus === 'approved' ? 'تمت الموافقة على طلب الإجازة' : 'تم رفض طلب الإجازة';
-            $message = $newStatus === 'approved'
-                ? 'وافق رئيس القسم على طلب إجازتك بتاريخ ' . $leaveRequest->date
-                : 'تم رفض طلب إجازتك بتاريخ ' . $leaveRequest->date . ' من قِبل رئيس القسم';
+        $studentName = DB::table('users')->where('user_id', $leaveRequest->student_id)->value('full_name') ?? 'الطالب';
 
-            DB::table('notifications')->insert([
-                'user_id'    => $leaveRequest->student_id,
-                'title'      => $title,
-                'message'    => $message,
-                'type'       => 'leave_request',
-                'related_id' => $id,
-                'is_read'    => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            // FCM — نجيب user_id من جدول الطلاب
-            $studentUserId = DB::table('students')->where('student_id', $leaveRequest->student_id)->value('user_id');
-            if ($studentUserId) {
-                \App\Services\FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request']);
+        if ($newStatus === 'pending_affairs') {
+            // إشعار الطالب أن رئيس القسم وافق والطلب محال للشؤون
+            if ($leaveRequest->student_id) {
+                $title   = 'موافقة رئيس القسم على طلب الإجازة';
+                $message = 'وافق رئيس القسم على طلب إجازتك بتاريخ ' . $leaveRequest->date . ' وتم إحالتها لموظف الشؤون للقرار النهائي.';
+
+                DB::table('notifications')->insert([
+                    'user_id'    => $leaveRequest->student_id,
+                    'title'      => $title,
+                    'message'    => $message,
+                    'type'       => 'leave_request',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $studentUserId = DB::table('students')->where('student_id', $leaveRequest->student_id)->value('user_id');
+                if ($studentUserId) {
+                    \App\Services\FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request', 'related_id' => (string)$id]);
+                }
+            }
+
+            // إشعار موظف الشؤون بوجود طلب ينتظر موافقته
+            $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
+            foreach ($affairsUserIds as $affairsId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $affairsId,
+                    'title'      => 'طلب إجازة جديد بانتظار موافقتك',
+                    'message'    => 'تمت موافقة رئيس القسم على طلب إجازة للطالب ' . $studentName . ' بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته والبت فيه.',
+                    'type'       => 'leave_request',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                \App\Services\FcmService::sendToUser($affairsId, 'طلب إجازة جديد بانتظار موافقتك', 'تمت موافقة رئيس القسم على طلب إجازة للطالب ' . $studentName . ' بتاريخ ' . $leaveRequest->date, ['type' => 'leave_request', 'related_id' => (string)$id]);
+            }
+        } else {
+            // رفض الطلب
+            if ($leaveRequest->student_id) {
+                $title   = 'تم رفض طلب الإجازة';
+                $message = 'تم رفض طلب إجازتك بتاريخ ' . $leaveRequest->date . ' من قِبل رئيس القسم';
+
+                DB::table('notifications')->insert([
+                    'user_id'    => $leaveRequest->student_id,
+                    'title'      => $title,
+                    'message'    => $message,
+                    'type'       => 'leave_request',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $studentUserId = DB::table('students')->where('student_id', $leaveRequest->student_id)->value('user_id');
+                if ($studentUserId) {
+                    \App\Services\FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request', 'related_id' => (string)$id]);
+                }
             }
         }
 
-        return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب']);
+        return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب وإحالته لشؤون الطلاب']);
     }
 
     // ─── Teachers list (for report dropdown) ─────────────────────
@@ -959,25 +1039,42 @@ class DepartmentHeadController extends Controller
         ]);
     }
 
-    public function getAnnouncements()
+    public function getAnnouncements(Request $request)
     {
-        $announcements = DB::table('announcements')
-            ->join('users', 'announcements.user_id', '=', 'users.user_id')
-            ->orderBy('announcements.created_at', 'desc')
+        $userId = $request->user()?->user_id;
+        $announcements = Announcement::with(['department', 'course', 'user'])
+            ->where(function($q) use ($userId) {
+                if ($userId) {
+                    $q->where('user_id', $userId);
+                }
+                $q->orWhereNull('target_audience')
+                  ->orWhereIn('target_audience', ['all', 'heads']);
+            })
+            ->where(function($q) {
+                $q->whereNull('target_role')
+                  ->orWhere('target_role', 'head');
+            })
+            ->latest()
             ->limit(20)
-            ->get([
-                'announcements.announcement_id as id',
-                'announcements.title',
-                'announcements.content',
-                'announcements.image',
-                'announcements.link_url',
-                'announcements.created_at',
-                'users.full_name as author_name',
-            ])
-            ->map(fn($a) => array_merge((array)$a, [
-                'image_url' => $a->image ? url('storage/' . $a->image) : null,
-                'time_ago'  => \Carbon\Carbon::parse($a->created_at)->diffForHumans(),
-            ]));
+            ->get()
+            ->map(fn($a) => [
+                'id'              => $a->announcement_id,
+                'title'           => $a->title,
+                'content'         => $a->content,
+                'body'            => $a->content,
+                'target_audience' => $a->target_audience ?? 'all',
+                'department_id'   => $a->department_id,
+                'department_name' => $a->department ? $a->department->name : null,
+                'course_id'       => $a->course_id,
+                'course_name'     => $a->course ? $a->course->title : null,
+                'image_url'       => $a->image ? url('storage/' . $a->image) : null,
+                'link_url'        => $a->link_url,
+                'created_by'      => $a->user?->full_name ?? 'الإدارة',
+                'author_name'     => $a->user?->full_name ?? 'الإدارة',
+                'publisher_name'  => $a->user?->full_name ?? 'الإدارة',
+                'time_ago'        => $a->created_at ? $a->created_at->diffForHumans() : 'منذ قليل',
+                'is_mine'         => $a->user_id === $userId,
+            ]);
 
         return response()->json(['success' => true, 'data' => $announcements]);
     }

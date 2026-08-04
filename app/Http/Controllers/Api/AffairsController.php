@@ -25,7 +25,7 @@ class AffairsController extends Controller
         $totalStudents = User::where('role_id', 3)->count();
         $totalTeachers = User::where('role_id', 2)->count();
         $totalStaff    = User::whereIn('role_id', [2, 5, 6])->count();
-        $pendingLeaves = AbsenceRequest::where('status', 'pending')->count();
+        $pendingLeaves = DB::table('leave_requests')->whereIn('status', ['pending', 'pending_affairs'])->count();
         $totalUsers    = User::count();
 
         // 6 recent announcements
@@ -34,13 +34,17 @@ class AffairsController extends Controller
             ->take(6)
             ->get()
             ->map(fn($p) => [
-                'id'        => $p->id,
-                'title'     => $p->title,
-                'content'   => $p->content,
-                'type'      => $p->type,
-                'user_name' => $p->user?->full_name ?? 'المدير',
-                'created_at'=> $p->created_at?->format('Y-m-d H:i'),
-                'image_url' => $p->image ? url('storage/' . $p->image) : null,
+                'id'              => $p->announcement_id ?? $p->id,
+                'announcement_id' => $p->announcement_id ?? $p->id,
+                'title'           => $p->title,
+                'content'         => $p->content,
+                'type'            => $p->type,
+                'category'        => $p->category ?? ($p->target_audience == 'teachers' ? 'للمعلمين' : ($p->target_audience == 'students' ? 'للطلاب' : 'عام')),
+                'target_audience' => $p->target_audience ?? $p->target_role ?? 'all',
+                'target_role'     => $p->target_role,
+                'user_name'       => $p->user?->full_name ?? 'المدير',
+                'created_at'      => $p->created_at?->format('Y-m-d H:i'),
+                'image_url'       => $p->image ? url('storage/' . $p->image) : null,
             ]);
 
         return response()->json([
@@ -404,7 +408,16 @@ class AffairsController extends Controller
     public function getMetadata(Request $request)
     {
         $departments = DB::table('departments')->orderBy('name')->get();
-        $courses = DB::table('courses')->orderBy('title')->get();
+        
+        $pivots = DB::table('course_departments')->get()->groupBy('course_id');
+        
+        $courses = DB::table('courses')->orderBy('title')->get()->map(function ($course) use ($pivots) {
+            $courseId = $course->course_id;
+            $course->department_ids = isset($pivots[$courseId])
+                ? $pivots[$courseId]->pluck('department_id')->toArray()
+                : [];
+            return $course;
+        });
         
         return response()->json([
             'success' => true,
@@ -552,6 +565,7 @@ class AffairsController extends Controller
     {
         $leaves = DB::table('leave_requests')
             ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
+            ->whereIn('leave_requests.status', ['pending_affairs', 'approved', 'rejected'])
             ->select(
                 'leave_requests.id',
                 'users.university_id as student_id',
@@ -592,13 +606,13 @@ class AffairsController extends Controller
                 'updated_at' => now()
             ]);
 
-        // إرسال إشعار للطالب
         if ($leave->student_id) {
-            $title   = $status === 'approved' ? 'قبول المبرر' : 'رفض المبرر';
+            $title   = $status === 'approved' ? 'القرار النهائي: تمت الموافقة على الإجازة' : 'القرار النهائي: تم رفض الإجازة';
             $message = $status === 'approved'
-                ? 'تم قبول المبرر الخاص بك (تاريخ ' . $leave->date . ') وتم تثبيته من قبل شؤون الطلاب.'
-                : 'نعتذر، تم رفض المبرر الخاص بك (تاريخ ' . $leave->date . ') من قبل شؤون الطلاب.';
+                ? 'وافقت إدارة شؤون الطلاب نهائياً على طلب إجازتك بتاريخ ' . $leave->date . '.'
+                : 'نعتذر، تم رفض طلب إجازتك بتاريخ ' . $leave->date . ' من قِبل إدارة شؤون الطلاب.';
 
+            // 1. إشعار الطالب
             DB::table('notifications')->insert([
                 'user_id'    => $leave->student_id,
                 'title'      => $title,
@@ -617,7 +631,59 @@ class AffairsController extends Controller
                 ['type' => 'leave_request', 'related_id' => (string) $id]
             );
 
-            // إشعار لمربي الدورة (Advisor)
+            // 2. إشعار ولي الأمر
+            $studentRecord = DB::table('students')->where('user_id', $leave->student_id)->first();
+            if ($studentRecord) {
+                $parentUserIds = DB::table('parent_students')
+                    ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                    ->where('parent_students.student_id', $studentRecord->student_id)
+                    ->pluck('parents.user_id');
+
+                $parentMsg = $status === 'approved'
+                    ? 'وافقت شؤون الطلاب نهائياً على طلب الإجازة المقدم بتاريخ ' . $leave->date . '.'
+                    : 'تم رفض طلب الإجازة المقدم بتاريخ ' . $leave->date . ' من قِبل شؤون الطلاب.';
+
+                foreach ($parentUserIds as $pId) {
+                    if ($pId) {
+                        DB::table('notifications')->insert([
+                            'user_id'    => $pId,
+                            'title'      => $title,
+                            'message'    => $parentMsg,
+                            'type'       => 'leave_request',
+                            'related_id' => $id,
+                            'is_read'    => 0,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        \App\Services\FcmService::sendToUser($pId, $title, $parentMsg, ['type' => 'leave_request', 'related_id' => (string) $id]);
+                    }
+                }
+            }
+
+            // 3. إشعار رئيس القسم (HOD)
+            $headUserId = DB::table('heads')->value('user_id')
+                ?? DB::table('users')->where('role_id', 5)->value('user_id');
+
+            if ($headUserId) {
+                $studentName = DB::table('users')->where('user_id', $leave->student_id)->value('full_name') ?? 'الطالب';
+                $hodMsg = $status === 'approved'
+                    ? 'اعتمدت شؤون الطلاب إجازة الطالب ' . $studentName . ' بتاريخ ' . $leave->date
+                    : 'رفضت شؤون الطلاب إجازة الطالب ' . $studentName . ' بتاريخ ' . $leave->date;
+
+                DB::table('notifications')->insert([
+                    'user_id'    => $headUserId,
+                    'title'      => $title,
+                    'message'    => $hodMsg,
+                    'type'       => 'leave_request',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                \App\Services\FcmService::sendToUser($headUserId, $title, $hodMsg, ['type' => 'leave_request', 'related_id' => (string) $id]);
+            }
+
+            // 4. إشعار لمربي الدورة (Advisor)
             $studentInfo = DB::table('users')
                 ->join('students', 'users.user_id', '=', 'students.user_id')
                 ->where('users.user_id', $leave->student_id)
@@ -630,7 +696,7 @@ class AffairsController extends Controller
                     ->where('advisor_year', $studentInfo->level)
                     ->first();
                 
-                if ($advisor) {
+                if ($advisor && $advisor->user_id) {
                     $advisorTitle = 'تحديث حالة تبرير غياب';
                     $advisorMessage = $status === 'approved'
                         ? 'قامت شؤون الطلاب بقبول تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leave->date . ')'
@@ -657,7 +723,7 @@ class AffairsController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'message' => 'تم تحديث حالة طلب الإجازة.']);
+        return response()->json(['success' => true, 'message' => 'تم تحديث حالة طلب الإجازة وإشعار جميع الأطراف المعنية.']);
     }
 
     // ── Calendar Events ────────────────────────────────────────────
@@ -876,6 +942,152 @@ class AffairsController extends Controller
 
         $user->update(['password' => Hash::make($request->password)]);
         return response()->json(['success' => true, 'message' => 'تم تغيير كلمة المرور بنجاح.']);
+    }
+
+    // ── الإعلانات (الأنشطة) ────────────────────────────────────────
+    public function listAnnouncements(Request $request)
+    {
+        // نجيب كل إعلانات نشرها موظفو الشؤون (بدون تقييد user_id)
+        $announcements = \App\Models\Announcement::with(['department', 'course', 'user'])
+            ->latest()
+            ->get()
+            ->map(fn($a) => [
+                'id'              => $a->announcement_id,
+                'title'           => $a->title,
+                'content'         => $a->content,
+                'category'        => $a->category ?? 'عام',
+                'target_audience' => $a->target_audience ?? 'all',
+                'event_date'      => $a->event_date ?? null,
+                'event_time'      => $a->event_time ?? null,
+                'location'        => $a->location ?? null,
+                'image_url'       => $a->image ? url('storage/' . $a->image) : null,
+                'department_id'   => $a->department_id,
+                'department_name' => $a->department ? $a->department->name : null,
+                'course_id'       => $a->course_id,
+                'course_name'     => $a->course ? $a->course->title : null,
+                'created_by'      => $a->user ? $a->user->full_name : 'غير معروف',
+                'is_mine'         => $a->user_id == auth()->id(), // للتمييز بين المنشورات
+                'created_at'      => $a->created_at?->format('Y-m-d'),
+            ]);
+
+        return response()->json(['success' => true, 'data' => $announcements]);
+    }
+
+    public function deleteAnnouncement(Request $request, $id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$announcement) {
+            return response()->json(['success' => false, 'message' => 'النشاط غير موجود'], 404);
+        }
+
+        $announcement->delete();
+        return response()->json(['success' => true, 'message' => 'تم حذف النشاط بنجاح']);
+    }
+
+    public function updateAnnouncement(Request $request, $id)
+    {
+        $announcement = \App\Models\Announcement::where('announcement_id', $id)->first();
+
+        if (!$announcement) {
+            return response()->json(['success' => false, 'message' => 'النشاط غير موجود'], 404);
+        }
+
+        $input = $request->all();
+        if (isset($input['department_id']) && ($input['department_id'] === 'null' || $input['department_id'] === '' || $input['department_id'] === 0 || $input['department_id'] === '0')) {
+            $input['department_id'] = null;
+        }
+        if (isset($input['course_id']) && ($input['course_id'] === 'null' || $input['course_id'] === '' || $input['course_id'] === 0 || $input['course_id'] === '0')) {
+            $input['course_id'] = null;
+        }
+        $request->merge($input);
+
+        $validator = Validator::make($request->all(), [
+            'title'           => 'sometimes|required|string|max:255',
+            'content'         => 'sometimes|required|string',
+            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'link_url'        => 'nullable|url|max:500',
+            'target_audience' => 'nullable|in:all,students,teachers,heads',
+            'department_id'   => 'nullable|exists:departments,department_id',
+            'course_id'       => 'nullable|exists:courses,course_id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $updates = $request->only(['title', 'content', 'category', 'link_url', 'target_audience', 'department_id', 'course_id', 'event_date', 'event_time', 'location']);
+
+        if ($request->hasFile('image')) {
+            if ($announcement->image) {
+                Storage::disk('public')->delete($announcement->image);
+            }
+            $updates['image'] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement->update($updates);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تعديل النشاط بنجاح!',
+            'data' => $announcement
+        ]);
+    }
+
+
+    public function createAnnouncement(Request $request)
+    {
+        $input = $request->all();
+        if (isset($input['department_id']) && ($input['department_id'] === 'null' || $input['department_id'] === '' || $input['department_id'] === 0 || $input['department_id'] === '0')) {
+            $input['department_id'] = null;
+        }
+        if (isset($input['course_id']) && ($input['course_id'] === 'null' || $input['course_id'] === '' || $input['course_id'] === 0 || $input['course_id'] === '0')) {
+            $input['course_id'] = null;
+        }
+        $request->merge($input);
+
+        $validator = Validator::make($request->all(), [
+            'title'           => 'required|string|max:255',
+            'content'         => 'required|string',
+            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'link_url'        => 'nullable|url|max:500',
+            'target_audience' => 'nullable|in:all,students,teachers,heads',
+            'department_id'   => 'nullable|exists:departments,department_id',
+            'course_id'       => 'nullable|exists:courses,course_id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement = \App\Models\Announcement::create([
+            'user_id'         => auth()->id(),
+            'title'           => $request->title,
+            'content'         => $request->content,
+            'category'        => $request->input('category', 'عام'),
+            'image'           => $imagePath,
+            'link_url'        => $request->input('link_url'),
+            'target_audience' => $request->input('target_audience', 'all'),
+            'type'            => 'general',
+            'department_id'   => $request->input('department_id'),
+            'course_id'       => $request->input('course_id'),
+            'event_date'      => $request->input('event_date'),
+            'event_time'      => $request->input('event_time'),
+            'location'        => $request->input('location'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم نشر النشاط بنجاح!',
+            'data' => $announcement
+        ], 201);
     }
 
     // ── طلبات تغيير الصورة ────────────────────────────────────────
