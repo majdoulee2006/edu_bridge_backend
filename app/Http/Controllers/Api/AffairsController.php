@@ -34,13 +34,17 @@ class AffairsController extends Controller
             ->take(6)
             ->get()
             ->map(fn($p) => [
-                'id'        => $p->id,
-                'title'     => $p->title,
-                'content'   => $p->content,
-                'type'      => $p->type,
-                'user_name' => $p->user?->full_name ?? 'المدير',
-                'created_at'=> $p->created_at?->format('Y-m-d H:i'),
-                'image_url' => $p->image ? url('storage/' . $p->image) : null,
+                'id'              => $p->announcement_id ?? $p->id,
+                'announcement_id' => $p->announcement_id ?? $p->id,
+                'title'           => $p->title,
+                'content'         => $p->content,
+                'type'            => $p->type,
+                'category'        => $p->category ?? ($p->target_audience == 'teachers' ? 'للمعلمين' : ($p->target_audience == 'students' ? 'للطلاب' : 'عام')),
+                'target_audience' => $p->target_audience ?? $p->target_role ?? 'all',
+                'target_role'     => $p->target_role,
+                'user_name'       => $p->user?->full_name ?? 'المدير',
+                'created_at'      => $p->created_at?->format('Y-m-d H:i'),
+                'image_url'       => $p->image ? url('storage/' . $p->image) : null,
             ]);
 
         return response()->json([

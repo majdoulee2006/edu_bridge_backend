@@ -95,10 +95,14 @@ class TeacherController extends Controller
                 })->values(),
                 'recent_announcements' => $recentAnnouncements->map(function($announcement) {
                     return [
-                        'id'          => $announcement->announcement_id,
-                        'title'       => $announcement->title ?? '',
-                        'content'     => substr($announcement->content ?? '', 0, 100),
-                        'body'        => $announcement->content ?? '',
+                        'id'              => $announcement->announcement_id,
+                        'announcement_id' => $announcement->announcement_id,
+                        'title'           => $announcement->title ?? '',
+                        'content'         => substr($announcement->content ?? '', 0, 100),
+                        'body'            => $announcement->content ?? '',
+                        'category'        => $announcement->category ?? ($announcement->target_audience == 'teachers' ? 'للمعلمين' : ($announcement->target_audience == 'students' ? 'للطلاب' : 'عام')),
+                        'target_audience' => $announcement->target_audience ?? $announcement->target_role ?? 'all',
+                        'target_role'     => $announcement->target_role,
                         'author_name' => $announcement->user ? $announcement->user->full_name : 'ا�إدارة',
                         'image_url'   => $announcement->image ? url('storage/' . $announcement->image) : null,
                         'link_url'    => $announcement->link_url ?? null,
