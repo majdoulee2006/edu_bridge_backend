@@ -1431,6 +1431,7 @@ class HODWebController extends Controller
                     'title'      => 'تقرير أداء للطالب ' . $studentName,
                     'message'    => $notificationMessage,
                     'type'       => 'report',
+                    'category'   => 'academic',
                     'related_id' => $report->report_request_id ?? $id,
                     'is_read'    => 0,
                     'created_at' => now(),

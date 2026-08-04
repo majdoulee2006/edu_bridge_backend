@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تحميل صور انستغرام EduBridge</title>
+    <!-- استيراد خطوط احترافية من جوجل -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; background: #1a1a2e; color: #fff; text-align: center; padding: 20px; }
+        h1 { color: #FFD700; }
+        .canvas-container { margin: 20px auto; display: inline-block; background: #16213e; padding: 15px; border-radius: 12px; box-shadow: 0 8px 15px rgba(0,0,0,0.5); border: 1px solid #FFD700; }
+        canvas { max-width: 400px; height: auto; border-radius: 8px; }
+        button { display: block; width: 100%; margin-top: 15px; padding: 12px; font-family: 'Cairo', sans-serif; font-weight: 900; font-size: 16px; background: #FFD700; color: #1a1a2e; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #fff; }
+    </style>
+</head>
+<body>
+    <h1>الصور جاهزة مع النصوص الاحترافية 🎉</h1>
+    <p>لقد قمت ببرمجة هذه الصفحة خصيصاً لك لدمج الصور مع النصوص العربية بخط "Cairo" المذهل.</p>
+    <p>انتظر ثانية حتى يكتمل التحميل، ثم اضغط على زر التحميل تحت كل صورة لحفظها على جهازك بجودة عالية!</p>
+
+    <!-- Canvas 1 -->
+    <div class="canvas-container">
+        <canvas id="c1" width="1024" height="1024"></canvas>
+        <button onclick="downloadImg('c1', 'edubridge_post_1.png')">📥 تحميل الصورة الأولى (لماذا EduBridge)</button>
+    </div>
+
+    <!-- Canvas 2 -->
+    <div class="canvas-container">
+        <canvas id="c2" width="1024" height="1024"></canvas>
+        <button onclick="downloadImg('c2', 'edubridge_post_2.png')">📥 تحميل الصورة الثانية (الميزات)</button>
+    </div>
+
+    <!-- Canvas 3 -->
+    <div class="canvas-container">
+        <canvas id="c3" width="1024" height="1024"></canvas>
+        <button onclick="downloadImg('c3', 'edubridge_post_3.png')">📥 تحميل الصورة الثالثة (المستقبل)</button>
+    </div>
+
+    <script>
+        // ننتظر تحميل الخطوط لكي لا يظهر النص بخط عادي
+        document.fonts.ready.then(function() {
+            setTimeout(() => {
+                // الصورة الأولى: مساحة فارغة على اليسار
+                // نستخدم محاذاة للوسط مع وضع مركز النص في النصف الأيسر (X = 280)
+                drawImageWithText('c1', '/post_1.png', [
+                    { text: "لماذا EduBridge ؟", x: 300, y: 350, size: 70, color: "#FFD700", align: "center" },
+                    { text: "ليس مجرد تطبيق..", x: 300, y: 480, size: 45, color: "#FFFFFF", align: "center" },
+                    { text: "بل نظام متكامل يربط", x: 300, y: 550, size: 45, color: "#FFFFFF", align: "center" },
+                    { text: "أطراف العملية التعليمية!", x: 300, y: 620, size: 45, color: "#FFD700", align: "center" }
+                ]);
+
+                // الصورة الثانية: مساحة فارغة في المنتصف/الأسفل
+                // رفعنا العنوان للأعلى (Y=80) لكي لا يغطي الأيقونات
+                drawImageWithText('c2', '/post_2.png', [
+                    { text: "ميزات باختصار 🚀", x: 512, y: 80, size: 80, color: "#FFD700", align: "center" },
+                    { text: "📅 إدارة ذكية للجدول والغيابات", x: 512, y: 800, size: 45, color: "#FFFFFF", align: "center" },
+                    { text: "💬 تواصل فعال بين الجميع", x: 512, y: 870, size: 45, color: "#FFFFFF", align: "center" },
+                    { text: "🔔 متابعة فورية للإشعارات", x: 512, y: 940, size: 45, color: "#FFFFFF", align: "center" }
+                ]);
+
+                // الصورة الثالثة: مساحة فارغة في الأسفل/المنتصف
+                // تجنبنا خلط الانكليزي والعربي لتفادي مشاكل الاتجاه
+                drawImageWithText('c3', '/post_3.png', [
+                    { text: "كيف نبني مستقبلك؟ 🌟", x: 512, y: 80, size: 80, color: "#FFD700", align: "center" },
+                    { text: "نختصر عليك الوقت والجهد!", x: 512, y: 840, size: 55, color: "#FFFFFF", align: "center" },
+                    { text: "حمل التطبيق وابدأ الآن 📲", x: 512, y: 930, size: 50, color: "#FFD700", align: "center" }
+                ]);
+            }, 500);
+        });
+
+        function drawImageWithText(canvasId, imgSrc, textArr) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, 1024, 1024);
+                
+                // تدرج لوني أقوى في الأعلى
+                let gradTop = ctx.createLinearGradient(0, 0, 0, 200);
+                gradTop.addColorStop(0, "rgba(0,0,0,0.9)");
+                gradTop.addColorStop(1, "rgba(0,0,0,0)");
+                ctx.fillStyle = gradTop;
+                ctx.fillRect(0, 0, 1024, 200);
+
+                // تدرج لوني أقوى في الأسفل للنصوص السفلية
+                let gradBottom = ctx.createLinearGradient(0, 700, 0, 1024);
+                gradBottom.addColorStop(0, "rgba(0,0,0,0)");
+                gradBottom.addColorStop(1, "rgba(0,0,0,0.95)");
+                ctx.fillStyle = gradBottom;
+                ctx.fillRect(0, 700, 1024, 1024 - 700);
+                
+                // تدرج داكن على اليسار للصورة الأولى فقط لأن النص موجود هناك
+                if(canvasId === 'c1') {
+                    let gradLeft = ctx.createLinearGradient(0, 0, 650, 0);
+                    gradLeft.addColorStop(0, "rgba(0,0,0,0.95)");
+                    gradLeft.addColorStop(1, "rgba(0,0,0,0)");
+                    ctx.fillStyle = gradLeft;
+                    ctx.fillRect(0, 0, 650, 1024);
+                }
+
+                ctx.textBaseline = "middle";
+
+                textArr.forEach(item => {
+                    ctx.textAlign = item.align || "center";
+                    ctx.font = `900 ${item.size}px 'Cairo', sans-serif`;
+                    
+                    // رسم الظل الداكن للنص مرتين لزيادة الوضوح
+                    ctx.fillStyle = "rgba(0,0,0,0.9)";
+                    ctx.fillText(item.text, item.x + 4, item.y + 4);
+                    ctx.fillText(item.text, item.x - 2, item.y - 2);
+                    
+                    // رسم النص الأساسي
+                    ctx.fillStyle = item.color;
+                    ctx.fillText(item.text, item.x, item.y);
+                });
+            };
+            img.src = imgSrc;
+        }
+
+        function downloadImg(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>

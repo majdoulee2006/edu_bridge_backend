@@ -1,6 +1,6 @@
 ﻿@extends('layouts.affairs')
 @section('title', 'الرئيسية')
-@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'موظ� الشؤون'))
+@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'موظف الشؤون'))
 
 @push('styles')
 <style>
@@ -289,7 +289,7 @@
 
 @forelse($posts as $post)
     @php
-        // اختيار لون الأ�اتار بناءً على الـ index
+        // اختيار لون الأفاتار بناءً على الـ index
         $colors = ['#111827','#1d4ed8','#065f46','#7c3aed','#be123c','#b45309'];
         $color  = $colors[$loop->index % count($colors)];
         $initials = mb_substr($post->user->full_name ?? 'إ', 0, 1);

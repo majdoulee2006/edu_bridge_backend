@@ -139,14 +139,18 @@
                 <a href="{{ url('/affairs/accounts') }}" class="nav-item {{ Request::is('affairs/accounts') ? 'active' : '' }}">
                     <i class="fa-solid fa-users-gear"></i> الحسابات
                 </a>
-                <a href="{{ url('/affairs/university-ids') }}" class="nav-item {{ Request::is('affairs/university-ids') ? 'active' : '' }}">
-                    <i class="fa-solid fa-id-card"></i> الأرقام الجامعية
-                </a>
                 <a href="{{ url('/affairs/pending-accounts') }}" class="nav-item {{ Request::is('affairs/pending-accounts') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
                     <span><i class="fa-solid fa-clock"></i> طلبات التسجيل</span>
                     @php $pc = \App\Models\User::whereIn('role_id',[3,4])->where('status','inactive')->count(); @endphp
                     @if($pc > 0)
                         <span style="background:#ef4444; color:white; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $pc }}</span>
+                    @endif
+                </a>
+                <a href="{{ url('/affairs/photo-requests') }}" class="nav-item {{ Request::is('affairs/photo-requests') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
+                    <span><i class="fa-solid fa-camera"></i> طلبات الصورة</span>
+                    @php $photoReqCount = \Illuminate\Support\Facades\DB::table('photo_change_requests')->where('status', 'pending')->count(); @endphp
+                    @if($photoReqCount > 0)
+                        <span style="background:#ffcc00; color:#1a1a1a; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $photoReqCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}">

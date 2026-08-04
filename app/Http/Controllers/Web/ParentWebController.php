@@ -643,6 +643,7 @@ class ParentWebController extends Controller
                 'title'      => 'طلب تقرير سلوكي جديد',
                 'message'    => 'طلب ولي أمر الطالب ' . $student->student_name . ' تقريراً سلوكياً، يرجى تعبئته.',
                 'type'       => 'report',
+                'category'   => 'academic',
                 'is_read'    => 0,
                 'created_at' => now(),
                 'updated_at' => now(),

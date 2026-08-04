@@ -196,12 +196,22 @@ class AffairsController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(fn($u) => [
-                'user_id'       => $u->user_id,
-                'full_name'     => $u->full_name,
-                'email'         => $u->email,
-                'role'          => $u->role,
-                'university_id' => $u->university_id,
-                'created_at'    => $u->created_at?->format('Y-m-d H:i'),
+                'user_id'          => $u->user_id,
+                'full_name'        => $u->full_name,
+                'first_name'       => $u->first_name,
+                'last_name'        => $u->last_name,
+                'email'            => $u->email,
+                'phone'            => $u->phone,
+                'role'             => $u->role,
+                'university_id'    => $u->university_id,
+                'department'       => $u->department,
+                'branch'           => $u->branch,
+                'academic_year'    => $u->academic_year,
+                'gender'           => $u->gender,
+                'birth_date'       => $u->birth_date,
+                'avatar'           => $u->avatar ? url('storage/' . $u->avatar) : null,
+                'telegram_chat_id' => $u->telegram_chat_id,
+                'created_at'       => $u->created_at?->format('Y-m-d H:i'),
             ]);
 
         return response()->json(['success' => true, 'data' => $users]);
@@ -212,7 +222,37 @@ class AffairsController extends Controller
         $user = User::find($userId);
         if (!$user) return response()->json(['success' => false, 'message' => 'المستخدم غير موجود'], 404);
 
-        $user->update(['status' => 'active']);
+        // إذا كان طالباً ولم يكن يملك رقماً جامعياً، نولد له رقماً جامعياً تلقائياً
+        if ($user->role_id == 3 && empty($user->university_id)) {
+            $base = 2026100;
+            $last = DB::table('university_ids')
+                ->whereRaw("CAST(university_id AS UNSIGNED) >= ? AND CAST(university_id AS UNSIGNED) <= 9999999", [$base])
+                ->orderByDesc(DB::raw('CAST(university_id AS UNSIGNED)'))
+                ->value('university_id');
+
+            $nextId = $last ? ((int)$last + 1) : $base;
+            $generatedUniversityId = (string) $nextId;
+
+            $user->university_id = $generatedUniversityId;
+
+            DB::table('university_ids')->insertOrIgnore([
+                'university_id' => $generatedUniversityId,
+                'full_name'     => $user->full_name,
+                'first_name'    => $user->first_name,
+                'last_name'     => $user->last_name,
+                'role'          => 'student',
+                'is_used'       => true,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+
+            DB::table('students')->where('user_id', $user->user_id)->update([
+                'student_code' => $generatedUniversityId
+            ]);
+        }
+
+        $user->status = 'active';
+        $user->save();
 
         // ---- إضافة ربط الأبناء بولي الأمر عند الموافقة ----
         if ($user->role_id == 4 && !empty($user->children_ids)) {
@@ -243,7 +283,7 @@ class AffairsController extends Controller
         // إشعار داخل DB
         DB::table('notifications')->insert([
             'user_id'    => $user->user_id,
-            'sender_id'  => $request->user()->user_id,
+            'sender_id'  => $request->user()?->user_id ?? $user->user_id,
             'title'      => $notifTitle,
             'message'    => $notifMsg,
             'type'       => 'administrative',
@@ -263,17 +303,25 @@ class AffairsController extends Controller
         if ($user->telegram_chat_id) {
             try {
                 $telegram = new \App\Services\TelegramService();
+                $universityIdMsg = $user->university_id 
+                    ? "\n💳 <b>رقمك الجامعي:</b> <code>{$user->university_id}</code>\n" 
+                    : "";
                 $text = "🎓 <b>تفعيل الحساب - Edu Bridge</b>\n\n"
                       . "مرحباً <b>{$user->full_name}</b>،\n\n"
-                      . "🎉 لقد تم <b>الموافقة وتفعيل حسابك بنجاح</b> من قِبل إدارة شؤون الطلاب!\n\n"
-                      . "📲 يمكنك الآن فتح التطبيق وتسجيل الدخول مباشرة.";
+                      . "🎉 لقد تم <b>الموافقة وتفعيل حسابك بنجاح</b> من قِبل إدارة شؤون الطلاب!\n"
+                      . $universityIdMsg . "\n"
+                      . "📲 يمكنك الآن تسجيل الدخول إلى التطبيق إما باستخدام <b>البريد الإلكتروني</b> أو <b>الرقم الجامعي</b>.";
                 $telegram->sendMessage((int) $user->telegram_chat_id, $text);
             } catch (\Exception $e) {
                 \Log::error('Telegram approveAccount API notification error: ' . $e->getMessage());
             }
         }
 
-        return response()->json(['success' => true, 'message' => 'تم تفعيل الحساب']);
+        return response()->json([
+            'success'       => true,
+            'message'       => 'تم تفعيل الحساب بنجاح',
+            'university_id' => $user->university_id
+        ]);
     }
 
     public function rejectAccount(Request $request, $userId)
@@ -884,9 +932,30 @@ class AffairsController extends Controller
         $req = DB::table('photo_change_requests')->where('id', $id)->where('status', 'pending')->first();
         if (!$req) return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
 
-        Storage::disk('public')->delete($req->new_photo);
+        if ($req->new_photo) {
+            Storage::disk('public')->delete($req->new_photo);
+        }
         DB::table('photo_change_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => now()]);
 
-        return response()->json(['success' => true, 'message' => 'تم رفض طلب تغيير الصورة']);
+        // إرسال إشعار للطالب بالرفض
+        DB::table('notifications')->insert([
+            'user_id'    => $req->user_id,
+            'sender_id'  => auth()->id(),
+            'title'      => 'تم رفض طلب تغيير الصورة',
+            'message'    => 'تم رفض طلب تحديث صورة بصمة الوجه الخاصة بك من قبل شؤون الطلاب.',
+            'type'       => 'alert',
+            'category'   => 'academic',
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \App\Services\FcmService::sendToUser(
+            $req->user_id,
+            'تم رفض طلب تغيير الصورة',
+            'تم رفض طلب تحديث صورة بصمة الوجه الخاصة بك من قبل شؤون الطلاب.',
+            ['type' => 'photo_request', 'status' => 'rejected']
+        );
+
+        return response()->json(['success' => true, 'message' => 'تم رفض طلب تغيير الصورة وإشعاره بنجاح']);
     }
 }

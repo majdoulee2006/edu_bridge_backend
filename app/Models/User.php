@@ -31,6 +31,8 @@ class User extends Authenticatable
         'branch',
         'children_ids',
         'avatar',
+        'telegram_chat_id',
+        'telegram_id',
         'device_token',
         'last_login',
     ];

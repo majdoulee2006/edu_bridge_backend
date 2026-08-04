@@ -95,7 +95,7 @@ class TeacherController extends Controller
                         'title'       => $announcement->title ?? '',
                         'content'     => substr($announcement->content ?? '', 0, 100),
                         'body'        => $announcement->content ?? '',
-                        'author_name' => $announcement->user ? $announcement->user->full_name : 'ا�إدارة',
+                        'author_name' => $announcement->user ? $announcement->user->full_name : 'الإدارة',
                         'image_url'   => $announcement->image ? url('storage/' . $announcement->image) : null,
                         'link_url'    => $announcement->link_url ?? null,
                         'created_at'  => $announcement->created_at->diffForHumans(),
@@ -590,6 +590,9 @@ class TeacherController extends Controller
         }
 
         $saved = 0;
+        $teacherUser = $request->user();
+        $courseName  = $exam->course->title ?? $exam->course->name ?? 'المادة';
+
         foreach ($request->grades as $grade) {
             \App\Models\Grade::updateOrCreate(
                 [
@@ -602,6 +605,32 @@ class TeacherController extends Controller
                 ]
             );
             $saved++;
+
+            // إشعار الطالب بعلامة الامتحان (أكاديمي)
+            $studentUserId = DB::table('students')
+                ->where('student_id', $grade['student_id'])
+                ->value('user_id');
+
+            if ($studentUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $studentUserId,
+                    'sender_id'  => $teacherUser->user_id,
+                    'title'      => 'رصد علامة امتحان — ' . $courseName,
+                    'message'    => 'تم رصد علامة امتحانك في مادة (' . $courseName . '): ' . $grade['score'],
+                    'type'       => 'grade',
+                    'category'   => 'academic',
+                    'related_id' => $exam->exam_id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                \App\Services\FcmService::sendToUser(
+                    $studentUserId,
+                    'رصد علامة امتحان — ' . $courseName,
+                    'تم رصد علامة امتحانك في مادة (' . $courseName . '): ' . $grade['score'],
+                    ['type' => 'grade', 'related_id' => (string) $exam->exam_id]
+                );
+            }
         }
 
         return response()->json([
@@ -688,6 +717,7 @@ class TeacherController extends Controller
                     'id'              => $assignment->assignment_id,
                     'title'           => $assignment->title,
                     'description'     => $assignment->description ?? '',
+                    'notes'           => $assignment->notes ?? '',
                     'course_id'       => $assignment->course_id,
                     'course_name'     => $assignment->course->title ?? '',
                     'due_date'        => $assignment->due_date->format('Y-m-d H:i:s'),
@@ -712,6 +742,7 @@ class TeacherController extends Controller
             'course_id'  => 'required|exists:courses,course_id',
             'title'      => 'required|string|max:255',
             'description'=> 'required|string',
+            'notes'      => 'nullable|string',
             'due_date'   => 'required|date|after:now',
             'max_points' => 'required|integer|min:1|max:100',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:20480',
@@ -749,6 +780,7 @@ class TeacherController extends Controller
             'teacher_id'      => $teacher->teacher_id,
             'title'           => $request->title,
             'description'     => $request->description,
+            'notes'           => $request->notes,
             'due_date'        => $request->due_date,
             'max_points'      => $request->max_points,
             'attachment_path' => $attachmentPath,
@@ -820,6 +852,7 @@ class TeacherController extends Controller
             'course_id'   => 'sometimes|exists:courses,course_id',
             'title'       => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
+            'notes'       => 'nullable|string',
             'due_date'    => 'sometimes|date',
             'max_points'  => 'sometimes|integer|min:1|max:100',
             'attachment'  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:20480',
@@ -829,7 +862,7 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $data = $request->only(['title', 'description', 'due_date', 'max_points']);
+        $data = $request->only(['title', 'description', 'notes', 'due_date', 'max_points']);
 
         if ($request->filled('course_id')) {
             $newCourse = $teacher->courses()->where('courses.course_id', $request->course_id)->first();
@@ -999,9 +1032,10 @@ class TeacherController extends Controller
             DB::table('notifications')->insert([
                 'user_id'    => $studentUserId,
                 'sender_id'  => $request->user()->user_id,
-                'title'      => 'ت�& تصح�`ح ��اجبْ',
-                'message'    => 'صح�ح ا��&ع��& ��اجب "' . $submission->assignment->title . '" � ع�ا�&تْ: ' . $request->grade . '/' . ($submission->assignment->max_points ?? 100),
+                'title'      => 'تم تصحيح واجب',
+                'message'    => 'صحح المعلم واجب "' . $submission->assignment->title . '" وحصلت على علامة: ' . $request->grade . '/' . ($submission->assignment->max_points ?? 100),
                 'type'       => 'assignment',
+                'category'   => 'academic',
                 'related_id' => $submission->assignment->assignment_id,
                 'is_read'    => 0,
                 'created_at' => now(),
@@ -1096,7 +1130,7 @@ class TeacherController extends Controller
     {
         $reportRequest = DB::table('report_requests')->where('id', $id)->first();
         if (!$reportRequest) {
-            return response()->json(['success' => false, 'message' => 'ا�ط�ب غ�`ر �&��ج��د'], 404);
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
         $studentId = $reportRequest->student_id;
@@ -1133,7 +1167,7 @@ class TeacherController extends Controller
 
         $reportRequest = DB::table('report_requests')->find($id);
         if (!$reportRequest) {
-            return response()->json(['success' => false, 'message' => 'ا�ط�ب غ�`ر �&��ج��د'], 404);
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
         DB::table('report_requests')->where('id', $id)->update([
@@ -1150,9 +1184,10 @@ class TeacherController extends Controller
         // إشعار رئ�`س ا��س�& (ا�أساس�`)
         DB::table('notifications')->insert([
             'user_id'    => $reportRequest->head_id,
-            'title'      => 'ت�& إرسا� ت��`�`�& ا�طا�ب',
-            'message'    => '�د��& ا��&ع��& ت��`�`�&�! ��طا�ب ' . ($studentName ?? ''),
+            'title'      => 'تم إرسال تقييم الطالب',
+            'message'    => 'قدّم المعلم تقييماً للطالب ' . ($studentName ?? ''),
             'type'       => 'report',
+            'category'   => 'academic',
             'is_read'    => 0,
             'created_at' => now(),
             'updated_at' => now(),
@@ -1198,7 +1233,7 @@ class TeacherController extends Controller
             \Log::warning('submitEvaluation side-effects failed: ' . $e->getMessage());
         }
 
-        return response()->json(['success' => true, 'message' => 'ت�& إرسا� ا�ت��`�`�& ب� جاح']);
+        return response()->json(['success' => true, 'message' => 'تم إرسال التقييم بنجاح']);
     }
 
     /**
@@ -1420,7 +1455,7 @@ class TeacherController extends Controller
             ->first();
 
         if (!$lesson) {
-            return response()->json(['success' => false, 'message' => 'ا��&حاضرة غ�`ر �&��ج��دة أ�� �ا تخصْ'], 404);
+            return response()->json(['success' => false, 'message' => 'المحاضرة غير موجودة أو لا تخصك'], 404);
         }
 
         $validator = Validator::make($request->all(), [
@@ -1454,7 +1489,7 @@ class TeacherController extends Controller
 
         $lesson->save();
 
-        return response()->json(['success' => true, 'message' => 'ت�& تعد�`� ا��&حاضرة ب� جاح', 'data' => $lesson], 200);
+        return response()->json(['success' => true, 'message' => 'تم تعديل المحاضرة بنجاح', 'data' => $lesson], 200);
     }
     public function deleteLesson(Request $request, $lessonId)
     {
@@ -1500,7 +1535,7 @@ class TeacherController extends Controller
                     $data = [
                         'image_url'   => $imageUrl,
                         'content'     => $ann->content ?? '',
-                        'author_name' => $ann->author_name ?? 'ا�إدارة',
+                        'author_name' => $ann->author_name ?? 'الإدارة',
                         'link_url'    => $ann->link_url ?? null,
                     ];
                 }
@@ -1571,7 +1606,8 @@ class TeacherController extends Controller
                     'student_name'     => $sub->student->user->full_name ?? 'غير معروف',
                     'assignment_title' => $sub->assignment->title ?? '',
                     'course_name'      => $sub->assignment->course->title ?? '',
-                    'student_notes'    => $sub->notes ?? '',
+                    'student_notes'    => $sub->student_notes ?? '',
+                    'solution_text'    => $sub->solution_text ?? '',
                     'file_path'        => $sub->file_path ? storageUrl($sub->file_path) : null,
                     'grade'            => $sub->grade,
                     'feedback'         => $sub->feedback,
@@ -1610,7 +1646,8 @@ class TeacherController extends Controller
                     'course_name'      => $assignment->course->title ?? '',
                     'max_points'       => $assignment->max_points,
                     'file_path'        => $sub->file_path ? storageUrl($sub->file_path) : null,
-                    'student_notes'    => $sub->notes ?? '',
+                    'student_notes'    => $sub->student_notes ?? '',
+                    'solution_text'    => $sub->solution_text ?? '',
                     'grade'            => $sub->grade,
                     'feedback'         => $sub->feedback,
                     'is_graded'        => !is_null($sub->grade),
@@ -2563,6 +2600,7 @@ class TeacherController extends Controller
                 'title'      => "نتيجة $eventType",
                 'message'    => $msgStudent,
                 'type'       => 'grade',
+                'category'   => 'academic',
                 'related_id' => $id,
                 'is_read'    => 0,
                 'created_at' => now(),
@@ -2589,6 +2627,7 @@ class TeacherController extends Controller
                     'title'      => "نتيجة $eventType",
                     'message'    => $msgParent,
                     'type'       => 'grade',
+                    'category'   => 'academic',
                     'related_id' => $id,
                     'is_read'    => 0,
                     'created_at' => now(),
@@ -2688,6 +2727,7 @@ class TeacherController extends Controller
             'title'      => "تقرير علامات جاهز: $courseTitle",
             'message'    => $detailMsg,
             'type'       => 'grade_report_ready',
+            'category'   => 'academic',
             'related_id' => $req->course_id,
             'is_read'    => 0,
             'created_at' => now(),

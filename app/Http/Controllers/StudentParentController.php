@@ -71,6 +71,7 @@ class StudentParentController extends Controller
                         'title'      => 'طلب تقرير سلوكي',
                         'message'    => 'طلب ولي أمر الطالب ' . ($student->student_name ?? 'الطالب') . ' تقريراً سلوكياً، يُرجى المراجعة.',
                         'type'       => 'report',
+                        'category'   => 'academic',
                         'is_read'    => 0,
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -125,6 +126,7 @@ class StudentParentController extends Controller
                 'title'      => 'تقرير أكاديمي جاهز',
                 'message'    => 'تم إصدار التقرير الأكاديمي للابن: ' . ($student->student_name ?? 'الطالب') . ' بمعدل ' . $averageGrade . '%',
                 'type'       => 'report',
+                'category'   => 'academic',
                 'is_read'    => 0,
                 'created_at' => now(),
             ]);

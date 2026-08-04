@@ -238,6 +238,11 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/pending-accounts/{id}/approve', [AffairsWebController::class, 'approveAccount'])->name('affairs.pending_accounts.approve');
     Route::post('/pending-accounts/{id}/reject', [AffairsWebController::class, 'rejectAccount'])->name('affairs.pending_accounts.reject');
 
+    // طلبات تغيير الصورة
+    Route::get('/photo-requests', [AffairsWebController::class, 'photoRequests'])->name('affairs.photo_requests');
+    Route::post('/photo-requests/{id}/approve', [AffairsWebController::class, 'approvePhotoRequest'])->name('affairs.photo_requests.approve');
+    Route::post('/photo-requests/{id}/reject', [AffairsWebController::class, 'rejectPhotoRequest'])->name('affairs.photo_requests.reject');
+
     // التقارير
     Route::get('/reports', [AffairsWebController::class, 'reports'])->name('affairs.reports');
     Route::post('/reports', [AffairsWebController::class, 'storeReport'])->name('affairs.reports.store');

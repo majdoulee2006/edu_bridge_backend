@@ -1035,6 +1035,7 @@ class StudentController extends Controller
                 'assignment_id' => $assignment->assignment_id,
                 'title'         => $assignment->title,
                 'description'   => $assignment->description,
+                'notes'         => $assignment->notes ?? '',
                 'type'          => $assignment->type,
                 'due_date'      => $assignment->due_date->format('Y-m-d h:i A'),
                 'max_points'    => $assignment->max_points,
@@ -1631,8 +1632,9 @@ class StudentController extends Controller
                 'user_id'    => $teacher->user_id,
                 'sender_id'  => $student->user_id,
                 'title'      => $titles[$status] ?? 'إشعار حضور',
-                'body'       => $bodies[$status]  ?? '',
+                'message'    => $bodies[$status]  ?? '',
                 'type'       => 'face_verification',
+                'category'   => 'academic',
                 'is_read'    => false,
             ]);
         } catch (\Exception $e) {

@@ -175,9 +175,10 @@ class AuthController extends Controller
             'email'            => 'required|email|unique:users,email',
             'phone'            => 'nullable|string|max:20',
             'telegram_username'=> 'nullable|string|max:100',
+            'telegram_chat_id' => 'nullable|string|max:100',
             'password'         => 'required|string|min:6',
             'role'             => 'required|in:student,parent',
-            'university_id'    => 'required_if:role,student|string|unique:users,university_id',
+            'university_id'    => 'nullable|string|unique:users,university_id',
             'child_university_id' => 'nullable|string',
             'gender'           => 'nullable|in:ذكر,أنثى',
             'birth_date'       => 'nullable|date',
@@ -196,8 +197,8 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // تحقق من الرقم الجامعي للطالب
-        if ($request->role === 'student') {
+        // تحقق من الرقم الجامعي للطالب (إذا أُدخل)
+        if ($request->role === 'student' && $request->filled('university_id')) {
             $uid = \DB::table('university_ids')
                 ->where('university_id', $request->university_id)
                 ->where('role', 'student')
@@ -279,8 +280,9 @@ class AuthController extends Controller
             $username = $base . $i++;
         }
 
-        $telegramId = $request->telegram_username && is_numeric(trim($request->telegram_username))
-            ? trim($request->telegram_username)
+        $rawTelegram = $request->telegram_chat_id ?? $request->telegram_username;
+        $telegramId = $rawTelegram && is_numeric(trim($rawTelegram))
+            ? trim($rawTelegram)
             : null;
 
         $childrenIds = $request->children_ids;
@@ -298,6 +300,11 @@ class AuthController extends Controller
 
         if (!$telegramId && $request->role === 'student' && isset($uid) && !empty($uid->telegram_chat_id)) {
             $telegramId = $uid->telegram_chat_id;
+        }
+
+        $avatarPath = null;
+        if ($request->hasFile('avatar')) {
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
         }
 
         $user = User::create([
@@ -319,15 +326,17 @@ class AuthController extends Controller
             'branch'           => $request->branch,
             'children_ids'     => $childrenIds,
             'device_token'     => $request->fcm_token,
+            'avatar'           => $avatarPath,
         ]);
 
         if ($request->role === 'student') {
             // نقل صورة الطالب المرجعية من جدول university_ids (اللي رفعها موظف الشؤون)
             $referencePhoto = isset($uid) && !empty($uid->photo) ? $uid->photo : null;
+            $studentCode    = !empty($request->university_id) ? $request->university_id : ('PENDING_' . $user->user_id);
 
             $student = Student::create([
                 'user_id'         => $user->user_id,
-                'student_code'    => $request->university_id,
+                'student_code'    => $studentCode,
                 'level'           => $request->academic_year ?? 'السنة الأولى',
                 'birth_date'      => $request->birth_date,
                 'reference_photo' => $referencePhoto,
@@ -389,7 +398,7 @@ class AuthController extends Controller
         }
 
         // علّم الرقم الجامعي كمستخدم
-        if ($request->role === 'student') {
+        if ($request->role === 'student' && $request->filled('university_id')) {
             \DB::table('university_ids')
                 ->where('university_id', $request->university_id)
                 ->update(['is_used' => true]);
@@ -405,10 +414,10 @@ class AuthController extends Controller
             // إشعار داخل DB
             DB::table('notifications')->insert([
                 'user_id'    => $affairsUser->user_id,
-                'sender_id'  => null,
+                'sender_id'  => $user->user_id,
                 'title'      => $fcmTitle,
                 'message'    => $fcmBody,
-                'type'       => 'administrative',
+                'type'       => 'pending_account',
                 'category'   => 'administrative',
                 'is_read'    => 0,
                 'created_at' => now(),
@@ -418,6 +427,7 @@ class AuthController extends Controller
             \App\Services\FcmService::sendToUser($affairsUser->user_id, $fcmTitle, $fcmBody, [
                 'type'   => 'pending_account',
                 'screen' => 'pending_accounts',
+                'sender_avatar' => $user->avatar ? asset('storage/' . $user->avatar) : null,
             ]);
         }
 

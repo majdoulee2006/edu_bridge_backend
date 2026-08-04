@@ -545,7 +545,38 @@ class AffairsWebController extends Controller
     public function approveAccount($id)
     {
         $user = User::findOrFail($id);
-        $user->update(['status' => 'active']);
+
+        // إذا كان طالباً ولم يكن يملك رقماً جامعياً، نولد له رقماً جامعياً تلقائياً
+        if ($user->role_id == 3 && empty($user->university_id)) {
+            $base = 2026100;
+            $last = DB::table('university_ids')
+                ->whereRaw("CAST(university_id AS UNSIGNED) >= ? AND CAST(university_id AS UNSIGNED) <= 9999999", [$base])
+                ->orderByDesc(DB::raw('CAST(university_id AS UNSIGNED)'))
+                ->value('university_id');
+
+            $nextId = $last ? ((int)$last + 1) : $base;
+            $generatedUniversityId = (string) $nextId;
+
+            $user->university_id = $generatedUniversityId;
+
+            DB::table('university_ids')->insertOrIgnore([
+                'university_id' => $generatedUniversityId,
+                'full_name'     => $user->full_name,
+                'first_name'    => $user->first_name,
+                'last_name'     => $user->last_name,
+                'role'          => 'student',
+                'is_used'       => true,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+
+            DB::table('students')->where('user_id', $user->user_id)->update([
+                'student_code' => $generatedUniversityId
+            ]);
+        }
+
+        $user->status = 'active';
+        $user->save();
 
         // ---- إضافة ربط الأبناء بولي الأمر عند الموافقة ----
         if ($user->role_id == 4 && !empty($user->children_ids)) {
@@ -591,7 +622,8 @@ class AffairsWebController extends Controller
                 $telegram = new TelegramService();
                 $text = "🎓 <b>تفعيل الحساب - Edu Bridge</b>\n\n"
                       . "مرحباً <b>{$user->full_name}</b>،\n\n"
-                      . "🎉 لقد تم <b>الموافقة وتفعيل حسابك بنجاح</b> من قِبل إدارة شؤون الطلاب!\n\n"
+                      . "🎉 لقد تم <b>الموافقة وتفعيل حسابك بنجاح</b> من قِبل إدارة شؤون الطلاب!\n"
+                      . ($user->university_id ? "🆔 <b>الرقم الجامعي الخاص بك:</b> <code>{$user->university_id}</code>\n\n" : "\n")
                       . "📲 يمكنك الآن فتح التطبيق وتسجيل الدخول مباشرة.";
                 $telegram->sendMessage((int) $user->telegram_chat_id, $text);
             } catch (\Exception $e) {
@@ -949,7 +981,8 @@ class AffairsWebController extends Controller
     // ─────────────────────────── Notifications ───────────────────────────
     public function notifications()
     {
-        $notifications = Notification::where('user_id', Auth::id())
+        $notifications = Notification::with('sender')
+            ->where('user_id', Auth::id())
             ->latest()
             ->get();
 
@@ -1208,6 +1241,96 @@ class AffairsWebController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'تم إرسال طلب التقرير للمدرب وتم إشعاره بنجاح!');
+    }
+
+    // ─────────────────────────── طلبات تغيير الصورة ────────────────────
+    public function photoRequests()
+    {
+        $requests = DB::table('photo_change_requests')
+            ->join('users', 'photo_change_requests.user_id', '=', 'users.user_id')
+            ->where('photo_change_requests.status', 'pending')
+            ->select(
+                'photo_change_requests.id',
+                'photo_change_requests.user_id',
+                'photo_change_requests.old_photo',
+                'photo_change_requests.new_photo',
+                'photo_change_requests.status',
+                'photo_change_requests.created_at',
+                'users.full_name',
+                'users.email',
+                'users.department'
+            )
+            ->orderByDesc('photo_change_requests.created_at')
+            ->get();
+
+        return view('affairs.photo_requests', compact('requests'));
+    }
+
+    public function approvePhotoRequest($id)
+    {
+        $req = DB::table('photo_change_requests')->where('id', $id)->where('status', 'pending')->first();
+        if (!$req) {
+            return back()->with('error', 'الطلب غير موجود.');
+        }
+
+        if ($req->old_photo) {
+            Storage::disk('public')->delete($req->old_photo);
+        }
+
+        DB::table('users')->where('user_id', $req->user_id)->update(['avatar' => $req->new_photo]);
+        DB::table('students')->where('user_id', $req->user_id)->update(['reference_photo' => $req->new_photo]);
+        DB::table('photo_change_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
+
+        // إرسال إشعار للطالب
+        DB::table('notifications')->insert([
+            'user_id'    => $req->user_id,
+            'sender_id'  => Auth::id(),
+            'title'      => 'تمت الموافقة على تغيير صورة الوجه',
+            'message'    => 'تمت الموافقة من قبل شؤون الطلاب على طلب تحديث صورة بصمة الوجه الخاصة بك.',
+            'type'       => 'academic',
+            'category'   => 'academic',
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \App\Services\FcmService::sendToUser($req->user_id, 'تمت الموافقة على تغيير صورة الوجه', 'تمت الموافقة من قبل شؤون الطلاب على طلب تحديث صورة بصمة الوجه الخاصة بك.', ['type' => 'academic']);
+
+        return back()->with('success', 'تمت الموافقة على تغيير الصورة وتحديث البصمة بنجاح.');
+    }
+
+    public function rejectPhotoRequest($id)
+    {
+        $req = DB::table('photo_change_requests')->where('id', $id)->where('status', 'pending')->first();
+        if (!$req) {
+            return back()->with('error', 'الطلب غير موجود.');
+        }
+
+        if ($req->new_photo) {
+            Storage::disk('public')->delete($req->new_photo);
+        }
+
+        DB::table('photo_change_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => now()]);
+
+        // إرسال إشعار للطالب بالرفض
+        DB::table('notifications')->insert([
+            'user_id'    => $req->user_id,
+            'sender_id'  => Auth::id(),
+            'title'      => 'تم رفض طلب تغيير الصورة',
+            'message'    => 'تم رفض طلب تحديث صورة بصمة الوجه الخاصة بك من قبل شؤون الطلاب.',
+            'type'       => 'alert',
+            'category'   => 'academic',
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \App\Services\FcmService::sendToUser(
+            $req->user_id,
+            'تم رفض طلب تغيير الصورة',
+            'تم رفض طلب تحديث صورة بصمة الوجه الخاصة بك من قبل شؤون الطلاب.',
+            ['type' => 'photo_request', 'status' => 'rejected']
+        );
+
+        return back()->with('success', 'تم رفض طلب تغيير الصورة وإشعاره بنجاح.');
     }
 }
 

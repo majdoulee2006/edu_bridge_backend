@@ -13,6 +13,7 @@ class Assignment extends Model
         'teacher_id',
         'title',
         'description',
+        'notes',
         'type',
         'due_date',
         'max_points',

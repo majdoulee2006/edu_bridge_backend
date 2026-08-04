@@ -173,7 +173,7 @@
                 <span class="material-symbols-outlined text-slate-400 text-[13px]">schedule</span>
                 <span class="text-[10px] text-slate-400 font-medium">منذ ساعتين</span>
             </div>
-            <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-1">موعد الامتحانات النهائية لل�صل الأول</h4>
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-1">موعد الامتحانات النهائية للفصل الأول</h4>
             <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">تم اعتماد جدول الامتحانات النهائية وسيتم نشره على جميع المنصات الرسمية.</p>
         </div>
     </div>

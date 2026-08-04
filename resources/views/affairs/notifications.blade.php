@@ -229,36 +229,69 @@
 
         @forelse($notifications as $notif)
             @php
-                $iconClass = match($notif->type ?? 'system') {
-                    'leave'   => 'icon-leave',
-                    'message' => 'icon-msg',
-                    'alert'   => 'icon-alert',
-                    default   => 'icon-system',
+                $titleLower = mb_strtolower(($notif->title ?? '') . ' ' . ($notif->message ?? ''));
+                $type = $notif->type ?? '';
+
+                $targetUrl = null;
+                if (in_array($type, ['photo_request', 'photo_change_request']) || str_contains($titleLower, 'صورة') || str_contains($titleLower, 'وجه')) {
+                    $targetUrl = route('affairs.photo_requests');
+                } elseif (in_array($type, ['leave', 'leave_request']) || str_contains($titleLower, 'إجازة') || str_contains($titleLower, 'مبرر') || str_contains($titleLower, 'غياب')) {
+                    $targetUrl = route('affairs.leaves');
+                } elseif (in_array($type, ['pending_account', 'account', 'registration']) || str_contains($titleLower, 'تسجيل') || str_contains($titleLower, 'تفعيل') || str_contains($titleLower, 'حساب')) {
+                    $targetUrl = route('affairs.pending_accounts');
+                } elseif (in_array($type, ['message', 'chat']) || str_contains($titleLower, 'رسالة')) {
+                    $targetUrl = route('affairs.messages');
+                } elseif (in_array($type, ['student_service', 'service']) || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'خدمات')) {
+                    $targetUrl = route('affairs.student_services');
+                }
+
+                $iconClass = match($type) {
+                    'leave', 'leave_request' => 'icon-leave',
+                    'message', 'chat'        => 'icon-msg',
+                    'photo_request'          => 'icon-system',
+                    'alert'                  => 'icon-alert',
+                    default                  => 'icon-system',
                 };
-                $iconName = match($notif->type ?? 'system') {
-                    'leave'   => 'fa-plane-departure',
-                    'message' => 'fa-envelope',
-                    'alert'   => 'fa-triangle-exclamation',
-                    default   => 'fa-bell',
+                $iconName = match($type) {
+                    'leave', 'leave_request' => 'fa-plane-departure',
+                    'message', 'chat'        => 'fa-envelope',
+                    'photo_request'          => 'fa-camera',
+                    'alert'                  => 'fa-triangle-exclamation',
+                    default                  => 'fa-bell',
                 };
             @endphp
-            <div class="notif-card {{ !$notif->is_read ? 'unread' : '' }}" data-status="{{ !$notif->is_read ? 'unread' : 'read' }}">
+            <div class="notif-card {{ !$notif->is_read ? 'unread' : '' }}" 
+                 data-status="{{ !$notif->is_read ? 'unread' : 'read' }}"
+                 style="{{ $targetUrl ? 'cursor:pointer;' : '' }}"
+                 onclick="handleNotifClick(event, '{{ $targetUrl }}', {{ $notif->id }}, {{ !$notif->is_read ? 'true' : 'false' }})">
                 <div class="unread-dot"></div>
-                <div class="notif-icon {{ $iconClass }}"><i class="fa-solid {{ $iconName }}"></i></div>
+                @php
+                    $senderAvatar = $notif->sender?->avatar ? asset('storage/' . $notif->sender->avatar) : null;
+                @endphp
+                @if($senderAvatar)
+                    <img src="{{ $senderAvatar }}" alt="صورة الطالب" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border:2px solid #ffcc00; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                @else
+                    <div class="notif-icon {{ $iconClass }}"><i class="fa-solid {{ $iconName }}"></i></div>
+                @endif
                 <div class="notif-content">
                     <div class="notif-header">
                         <h3 class="notif-title">{{ $notif->title }}</h3>
                         <span class="notif-time">{{ $notif->created_at->diffForHumans() }}</span>
                     </div>
                     <p class="notif-body">{{ $notif->message }}</p>
-                    @if(!$notif->is_read)
-                        <div class="notif-actions">
+                    <div class="notif-actions" onclick="event.stopPropagation()">
+                        @if($targetUrl)
+                            <a href="{{ $targetUrl }}" class="action-btn action-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem;">
+                                الانتقال للطلب <i class="fa-solid fa-arrow-left"></i>
+                            </a>
+                        @endif
+                        @if(!$notif->is_read)
                             <form method="POST" action="{{ route('affairs.notifications.read', $notif->id) }}" style="display:inline;">
                                 @csrf
                                 <button type="submit" class="action-btn action-secondary">تحديد كمقروء</button>
                             </form>
-                        </div>
-                    @endif
+                        @endif
+                    </div>
                 </div>
             </div>
         @empty
@@ -335,12 +368,34 @@
         }
     }
 
+    // Handle click on notification card
+    function handleNotifClick(event, targetUrl, notifId, isUnread) {
+        if (!targetUrl || targetUrl === '#' || targetUrl === 'null') return;
+
+        if (isUnread) {
+            // Send async POST request to mark read before redirecting
+            fetch(`/affairs/notifications/${notifId}/read`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json'
+                }
+            }).finally(() => {
+                window.location.href = targetUrl;
+            });
+        } else {
+            window.location.href = targetUrl;
+        }
+    }
+
     // Update Counter
     function updateUnreadCount() {
         const unreadCount = document.querySelectorAll('.notif-card.unread').length;
-        unreadCountBadge.innerText = unreadCount;
-        if (unreadCount === 0) {
-            unreadCountBadge.style.display = 'none';
+        if (unreadCountBadge) {
+            unreadCountBadge.innerText = unreadCount;
+            if (unreadCount === 0) {
+                unreadCountBadge.style.display = 'none';
+            }
         }
     }
 </script>
