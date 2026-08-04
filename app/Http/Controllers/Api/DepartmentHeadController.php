@@ -448,6 +448,31 @@ class DepartmentHeadController extends Controller
         DB::table('leave_requests')
             ->where('id', $id)
             ->update(['status' => $newStatus, 'updated_at' => now()]);
+            
+        // إشعار موظف الشؤون في حال القبول
+        if ($newStatus === 'pending_affairs') {
+            try {
+                // جلب اسم صاحب الطلب
+                $requesterName = DB::table('users')->where('user_id', $leaveRequest->student_id)->value('full_name') 
+                              ?? DB::table('users')->where('user_id', $leaveRequest->teacher_id)->value('full_name') 
+                              ?? 'شخص ما';
+                
+                // البحث عن موظف الشؤون (role_id = 6)
+                $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
+                
+                foreach ($affairsUserIds as $affairsId) {
+                    \App\Models\Notification::create([
+                        'user_id'    => $affairsId,
+                        'sender_id'  => auth()->id(),
+                        'title'      => 'طلب إجازة بانتظار اعتمادك',
+                        'message'    => "وافق رئيس القسم على طلب إجازة لـ $requesterName، يرجى مراجعته واعتماده.",
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => false,
+                    ]);
+                }
+            } catch (\Exception $e) {}
+        }
 
         $studentName = DB::table('users')->where('user_id', $leaveRequest->student_id)->value('full_name') ?? 'الطالب';
 

@@ -84,6 +84,35 @@ class AttendanceController extends Controller
             'reason'     => $request->reason,
             'status'     => 'pending',
         ]);
+        
+        // إشعار رئيس القسم بطلب الإجازة
+        try {
+            $studentName = $student->user->full_name ?? 'طالب';
+            
+            // إيجاد رئيس القسم الخاص بالطالب (بناءً على التخصص أو رئيس القسم العام)
+            $hodId = null;
+            if ($student->program_id) {
+                $departmentId = \App\Models\Program::where('id', $student->program_id)->value('department_id');
+                if ($departmentId) {
+                    $hodId = \App\Models\Head::where('department_id', $departmentId)->value('user_id');
+                }
+            }
+            if (!$hodId) {
+                $hodId = \App\Models\User::where('role_id', 5)->value('user_id');
+            }
+            
+            if ($hodId) {
+                \App\Models\Notification::create([
+                    'user_id'    => $hodId,
+                    'sender_id'  => auth()->id(),
+                    'title'      => 'طلب إجازة جديد',
+                    'message'    => "قام الطالب $studentName بتقديم طلب إجازة جديد، يرجى مراجعته.",
+                    'type'       => 'leave_request',
+                    'related_id' => $leaveRequest->id,
+                    'is_read'    => false,
+                ]);
+            }
+        } catch (\Exception $e) {}
 
         return response()->json([
             'status'  => 'success',
