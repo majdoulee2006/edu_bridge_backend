@@ -464,9 +464,13 @@ class ParentWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Notify HOD
-        $headUserId = DB::table('heads')->value('user_id');
-        if ($headUserId) {
+        // Notify all HOD users
+        $headUserIds = DB::table('users')->where('role_id', 5)
+            ->pluck('user_id')
+            ->merge(DB::table('heads')->pluck('user_id'))
+            ->unique();
+
+        foreach ($headUserIds as $headUserId) {
             DB::table('notifications')->insert([
                 'user_id'    => $headUserId,
                 'title'      => 'طلب إجازة من ولي الأمر',

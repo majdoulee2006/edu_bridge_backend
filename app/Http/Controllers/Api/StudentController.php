@@ -1496,13 +1496,42 @@ class StudentController extends Controller
                 ->where('student_id', $student->student_id)
                 ->pluck('parent_id');
 
-            foreach ($parentIds as $parentId) {
-                $parent = \DB::table('parents')->where('parent_id', $parentId)->first();
-                if ($parent) {
+            if ($parentIds->isNotEmpty()) {
+                foreach ($parentIds as $parentId) {
+                    $parent = \DB::table('parents')->where('parent_id', $parentId)->first();
+                    if ($parent) {
+                        \DB::table('notifications')->insert([
+                            'user_id'    => $parent->user_id,
+                            'title'      => 'طلب إجازة يحتاج موافقتك',
+                            'message'    => 'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
+                            'type'       => 'leave_request',
+                            'related_id' => $leaveRequest->id,
+                            'is_read'    => 0,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        \App\Services\FcmService::sendToUser(
+                            $parent->user_id,
+                            'طلب إجازة يحتاج موافقتك',
+                            'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
+                            ['type' => 'leave_request', 'related_id' => (string)$leaveRequest->id]
+                        );
+                    }
+                }
+            } else {
+                $leaveRequest->status = 'pending_hod';
+                $leaveRequest->save();
+
+                $headUserIds = \DB::table('users')->where('role_id', 5)
+                    ->pluck('user_id')
+                    ->merge(\DB::table('heads')->pluck('user_id'))
+                    ->unique();
+
+                foreach ($headUserIds as $hId) {
                     \DB::table('notifications')->insert([
-                        'user_id'    => $parent->user_id,
-                        'title'      => 'طلب إجازة يحتاج موافقتك',
-                        'message'    => 'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
+                        'user_id'    => $hId,
+                        'title'      => 'طلب إجازة جديد بانتظار موافقتك',
+                        'message'    => 'قدّم الطالب ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعته',
                         'type'       => 'leave_request',
                         'related_id' => $leaveRequest->id,
                         'is_read'    => 0,
@@ -1510,9 +1539,9 @@ class StudentController extends Controller
                         'updated_at' => now(),
                     ]);
                     \App\Services\FcmService::sendToUser(
-                        $parent->user_id,
-                        'طلب إجازة يحتاج موافقتك',
-                        'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
+                        $hId,
+                        'طلب إجازة جديد بانتظار موافقتك',
+                        'قدّم الطالب ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعته',
                         ['type' => 'leave_request', 'related_id' => (string)$leaveRequest->id]
                     );
                 }

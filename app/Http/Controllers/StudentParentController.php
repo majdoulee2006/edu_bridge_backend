@@ -383,9 +383,12 @@ class StudentParentController extends Controller
             $studentUser = DB::table('users')->where('user_id', $leaveRequest->student_id)->first();
             $studentName = $studentUser->full_name ?? 'الطالب';
 
-            $headUserId = DB::table('heads')->value('user_id')
-                ?? DB::table('users')->where('role_id', 5)->value('user_id');
-            if ($headUserId) {
+            $headUserIds = DB::table('users')->where('role_id', 5)
+                ->pluck('user_id')
+                ->merge(DB::table('heads')->pluck('user_id'))
+                ->unique();
+
+            foreach ($headUserIds as $headUserId) {
                 $alreadyNotified = DB::table('notifications')
                     ->where('user_id', $headUserId)
                     ->where('type', 'leave_request')
@@ -579,21 +582,23 @@ class StudentParentController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Notify dept head
-        $headUserId = DB::table('heads')->value('user_id')
-            ?? DB::table('users')->where('role_id', 5)->value('user_id');
+        // Notify all dept heads
+        $headUserIds = DB::table('users')->where('role_id', 5)
+            ->pluck('user_id')
+            ->merge(DB::table('heads')->pluck('user_id'))
+            ->unique();
 
-        if ($headUserId) {
-            $isJustification = $request->type === 'justification';
-            $title = $isJustification ? 'تبرير غياب من ولي الأمر' : 'طلب إجازة من ولي الأمر';
-            
-            $subjText = $request->has('subject_name') ? ' لمادة ' . $request->subject_name : '';
-            $message = $isJustification
-                ? 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' تبريراً لغياب' . $subjText . ' بتاريخ ' . $request->date
-                : 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date;
+        $isJustification = $request->type === 'justification';
+        $title = $isJustification ? 'تبرير غياب من ولي الأمر' : 'طلب إجازة من ولي الأمر';
+        
+        $subjText = $request->has('subject_name') ? ' لمادة ' . $request->subject_name : '';
+        $message = $isJustification
+            ? 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' تبريراً لغياب' . $subjText . ' بتاريخ ' . $request->date
+            : 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date;
 
+        foreach ($headUserIds as $hId) {
             DB::table('notifications')->insert([
-                'user_id'    => $headUserId,
+                'user_id'    => $hId,
                 'title'      => $title,
                 'message'    => $message,
                 'type'       => 'leave_request',
@@ -603,11 +608,12 @@ class StudentParentController extends Controller
                 'updated_at' => now(),
             ]);
             \App\Services\FcmService::sendToUser(
-                $headUserId,
+                $hId,
                 $title,
                 $message,
                 ['type' => 'leave_request', 'related_id' => (string)$leaveId]
             );
+        }
 
             // Notify teachers if it's a justification for a past absence
             if ($isJustification) {
@@ -634,7 +640,6 @@ class StudentParentController extends Controller
                     }
                 }
             }
-        }
 
         return response()->json(['success' => true, 'message' => 'تم إرسال طلب الإجازة بنجاح، بانتظار موافقة رئيس القسم']);
     }
