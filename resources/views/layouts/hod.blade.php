@@ -85,6 +85,10 @@
                     <i class="fa-solid fa-boxes-stacked"></i>
                     الخدمات الطلابية
                 </a>
+                <a href="{{ url('/hod/appointments') }}" class="nav-item {{ Request::is('hod/appointments*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    المواعيد واللقاءات
+                </a>
                 <a href="{{ url('/hod/settings') }}" class="nav-item {{ Request::is('hod/settings') ? 'active' : '' }}">
                     <i class="fa-solid fa-gear"></i>
                     الإعدادات

@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\ParentController;
 use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
+use App\Http\Controllers\Api\ParentMeetingController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Api\AffairsController;
 
@@ -236,6 +237,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/assignments/{assignmentId}/submissions', [TeacherController::class, 'getAssignmentSubmissions']);
         Route::post('/assignments/{submissionId}/grade', [TeacherController::class, 'gradeAssignment']);
         Route::post('/parent-summons/send', [TeacherController::class, 'sendParentSummon']);
+        Route::get('/parent-summons', [ParentMeetingController::class, 'listSummons']);
 
         // الإعلانات
         Route::get('/announcements', [TeacherController::class, 'getAnnouncements']);
@@ -319,6 +321,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Send notification to students / students+teachers
         Route::post('/notifications/send', [DepartmentHeadController::class, 'sendNotification']);
+
+        // Parent Meetings & Summons
+        Route::get('/parent-meetings', [ParentMeetingController::class, 'listMeetingRequests']);
+        Route::put('/parent-meetings/{id}/respond', [ParentMeetingController::class, 'respondToMeetingRequest']);
+        Route::get('/parent-summons', [ParentMeetingController::class, 'listSummons']);
+        Route::post('/parent-summons', [ParentMeetingController::class, 'sendSummon']);
     });
 
     #========= روابط الأدمن ==========
@@ -378,6 +386,12 @@ Route::middleware('auth:sanctum')->group(function () {
             // Student Services Management
             Route::get('/student-services', [AdminController::class, 'getStudentServices']);
             Route::post('/student-services/{id}/process', [AdminController::class, 'processStudentService']);
+
+            // Parent Meetings & Summons Management
+            Route::get('/parent-meetings', [ParentMeetingController::class, 'listMeetingRequests']);
+            Route::put('/parent-meetings/{id}/respond', [ParentMeetingController::class, 'respondToMeetingRequest']);
+            Route::get('/parent-summons', [ParentMeetingController::class, 'listSummons']);
+            Route::post('/parent-summons', [ParentMeetingController::class, 'sendSummon']);
         });
     });
 
@@ -404,6 +418,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/request-meeting', [ParentController::class, 'requestMeeting']);
         Route::get('/meeting-requests', [ParentController::class, 'getMyMeetingRequests']);
         Route::get('/summons', [ParentController::class, 'getMySummons']);
+        Route::post('/summons/{id}/respond', [ParentMeetingController::class, 'respondToSummon']);
 
         // Notifications
         Route::get('/notifications', [NotificationController::class, 'getNotifications']);

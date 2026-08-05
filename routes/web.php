@@ -154,6 +154,11 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     // الخدمات الطلابية
     Route::get('/student-services', [HODWebController::class, 'studentServices'])->name('hod.student_services');
     Route::post('/student-services/{id}/process', [HODWebController::class, 'processStudentService'])->name('hod.student_services.process');
+
+    // المواعيد واللقاءات لرئيس القسم
+    Route::get('/appointments', [App\Http\Controllers\Web\AppointmentWebController::class, 'index'])->name('hod.appointments');
+    Route::post('/appointments/{id}/respond', [App\Http\Controllers\Web\AppointmentWebController::class, 'respondToMeeting'])->name('hod.appointments.respond');
+    Route::post('/summons', [App\Http\Controllers\Web\AppointmentWebController::class, 'storeSummon'])->name('hod.summons.store');
     
     // واجهات الـ Mockup القديمة
     Route::get('/notifications', [HODWebController::class, 'notifications'])->name('hod.notifications');
@@ -275,6 +280,11 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     // الخدمات الطلابية للإدارة
     Route::get('/student-services', [AdminWebController::class, 'studentServices'])->name('admin.student_services');
     Route::post('/student-services/{id}/process', [AdminWebController::class, 'processStudentService'])->name('admin.student_services.process');
+
+    // المواعيد واللقاءات للإدارة
+    Route::get('/appointments', [App\Http\Controllers\Web\AppointmentWebController::class, 'index'])->name('admin.appointments');
+    Route::post('/appointments/{id}/respond', [App\Http\Controllers\Web\AppointmentWebController::class, 'respondToMeeting'])->name('admin.appointments.respond');
+    Route::post('/summons', [App\Http\Controllers\Web\AppointmentWebController::class, 'storeSummon'])->name('admin.summons.store');
     Route::get('/announcements/create', [AdminWebController::class, 'createAnnouncement'])->name('admin.announcements.create');
     Route::post('/announcements', [AdminWebController::class, 'storeAnnouncement'])->name('admin.announcements.store');
     Route::get('/announcements/{id}/edit', [AdminWebController::class, 'editAnnouncement'])->name('admin.announcements.edit');
