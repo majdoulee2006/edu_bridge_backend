@@ -104,8 +104,8 @@
                             </form>
                         @endif
                         
-                        <button class="action-btn btn-absentees" onclick="showAbsenteesModal('{{ $session->id }}')">
-                            <i class="fa-solid fa-users-slash"></i> الغائبين
+                        <button class="action-btn btn-absentees" style="background: #fefce8; color: #854d0e;" onclick="showAbsenteesModal('{{ $session->id }}', 'all')">
+                            <i class="fa-solid fa-users"></i> كشف الطلاب (الكل / الحاضرين / الغائبين)
                         </button>
 
                         <a href="{{ route('teacher.attendance.export', $session->id) }}" class="action-btn btn-export">
@@ -227,13 +227,26 @@
         </div>
     </div>
 
-    <!-- Absentees Modal -->
+    <!-- Student List Modal -->
     <div id="absentees-modal" class="modal-overlay">
-        <div class="modal-card">
+        <div class="modal-card" style="max-width: 520px;">
             <button class="close-btn" onclick="closeModal('absentees-modal')"><i class="fa-solid fa-xmark"></i></button>
-            <h3 style="font-weight: 800; margin-bottom: 1.5rem; font-size: 1.2rem; color: #b91c1c;">
-                <i class="fa-solid fa-users-slash"></i> قائمة الغائبين
+            <h3 style="font-weight: 800; margin-bottom: 1rem; font-size: 1.15rem; color: var(--text-primary);">
+                <i class="fa-solid fa-clipboard-user" style="color: var(--accent-color);"></i> كشف الطلاب للجلسة
             </h3>
+
+            <!-- Filter Tabs -->
+            <div style="display: flex; gap: 0.4rem; margin-bottom: 1.25rem; background: var(--bg-primary); padding: 4px; border-radius: 0.75rem; border: 1px solid var(--border-color);">
+                <button type="button" id="tab-btn-all" onclick="filterModalStudents('all')" style="flex: 1; padding: 0.5rem; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: var(--accent-color); color: #1a1a1a; font-family: inherit;">
+                    الكل <span id="count-all" style="font-size: 0.75rem;">(0)</span>
+                </button>
+                <button type="button" id="tab-btn-present" onclick="filterModalStudents('present')" style="flex: 1; padding: 0.5rem; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: transparent; color: var(--text-secondary); font-family: inherit;">
+                    الحاضرون (تم المسح) <span id="count-present" style="font-size: 0.75rem;">(0)</span>
+                </button>
+                <button type="button" id="tab-btn-absent" onclick="filterModalStudents('absent')" style="flex: 1; padding: 0.5rem; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: transparent; color: var(--text-secondary); font-family: inherit;">
+                    الغائبون <span id="count-absent" style="font-size: 0.75rem;">(0)</span>
+                </button>
+            </div>
             
             <div id="absentees-loader" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                 <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem;"></i>
@@ -431,7 +444,9 @@
         currentToken = null;
     }
 
-    function showAbsenteesModal(sessionId) {
+    let currentSessionStudentsData = [];
+
+    function showAbsenteesModal(sessionId, initialFilter = 'all') {
         openModal('absentees-modal');
         const loader = document.getElementById('absentees-loader');
         const list = document.getElementById('absentees-list');
@@ -439,35 +454,81 @@
         loader.style.display = 'block';
         list.style.display = 'none';
         list.innerHTML = '';
+        currentSessionStudentsData = [];
 
         fetch('{{ url("teacher/attendance/absentees") }}/' + sessionId)
             .then(res => res.json())
             .then(data => {
                 loader.style.display = 'none';
                 list.style.display = 'block';
-                
-                if (data.length === 0) {
-                    list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 1rem;">لا يوجد غائبين (جميع الطلاب حاضرون)</div>';
-                    return;
-                }
+                currentSessionStudentsData = data || [];
 
-                data.forEach(student => {
-                    list.innerHTML += `
-                        <div class="absentee-item">
-                            <div>
-                                <div style="font-weight: 700; font-size: 0.95rem;">${student.full_name}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-secondary);">${student.level || 'غير محدد'}</div>
-                            </div>
-                            <span style="background: #fef2f2; color: #b91c1c; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">غائب</span>
-                        </div>
-                    `;
-                });
+                const total = currentSessionStudentsData.length;
+                const present = currentSessionStudentsData.filter(s => s.status === 'present').length;
+                const absent = currentSessionStudentsData.filter(s => s.status === 'absent').length;
+
+                document.getElementById('count-all').innerText = `(${total})`;
+                document.getElementById('count-present').innerText = `(${present})`;
+                document.getElementById('count-absent').innerText = `(${absent})`;
+
+                filterModalStudents(initialFilter);
             })
             .catch(err => {
                 loader.style.display = 'none';
                 list.style.display = 'block';
                 list.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 1rem;">حدث خطأ أثناء جلب البيانات.</div>';
             });
+    }
+
+    function filterModalStudents(filter) {
+        const list = document.getElementById('absentees-list');
+        
+        ['all', 'present', 'absent'].forEach(f => {
+            const btn = document.getElementById('tab-btn-' + f);
+            if (f === filter) {
+                btn.style.background = 'var(--accent-color)';
+                btn.style.color = '#1a1a1a';
+            } else {
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--text-secondary)';
+            }
+        });
+
+        const filtered = currentSessionStudentsData.filter(s => {
+            if (filter === 'present') return s.status === 'present';
+            if (filter === 'absent') return s.status === 'absent';
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">لا يوجد طلاب في هذه الفئة.</div>';
+            return;
+        }
+
+        let html = '';
+        filtered.forEach(student => {
+            const isPresent = student.status === 'present';
+            const badgeBg = isPresent ? '#dcfce7' : '#fef2f2';
+            const badgeColor = isPresent ? '#166534' : '#b91c1c';
+            const badgeText = isPresent ? 'حاضر (تم المسح)' : 'غائب';
+            const icon = isPresent ? 'fa-check-circle' : 'fa-times-circle';
+
+            html += `
+                <div class="absentee-item">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: ${badgeBg}; display: flex; align-items: center; justify-content: center; color: ${badgeColor}; font-size: 0.85rem;">
+                            <i class="fa-solid ${icon}"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.95rem;">${student.full_name}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">${student.level || 'غير محدد'}</div>
+                        </div>
+                    </div>
+                    <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">${badgeText}</span>
+                </div>
+            `;
+        });
+        list.innerHTML = html;
     }
 </script>
 @endpush

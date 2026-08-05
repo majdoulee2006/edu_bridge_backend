@@ -950,14 +950,13 @@ class TeacherWebController extends Controller
             ->where('status', 'present')
             ->pluck('student_id')->toArray();
 
-        $absentees = [];
+        $result = [];
         foreach ($studentsQuery as $student) {
-            if (!in_array($student->student_id, $attendances)) {
-                $absentees[] = $student;
-            }
+            $student->status = in_array($student->student_id, $attendances) ? 'present' : 'absent';
+            $result[] = $student;
         }
 
-        return response()->json($absentees);
+        return response()->json($result);
     }
 
     // ────────────────────────────────────────────────────────────
