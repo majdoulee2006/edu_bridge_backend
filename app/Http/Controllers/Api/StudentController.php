@@ -421,12 +421,22 @@ class StudentController extends Controller
         $query = $student->courses()
             ->with(['teacher.user', 'schedule']);
 
+        $studentLevel = trim($student->level ?? $student->user->academic_year ?? 'السنة الأولى');
+        $map = [
+            'السنة الأولى' => 1, 'أولى' => 1, '1' => 1,
+            'السنة الثانية' => 2, 'ثانية' => 2, '2' => 2,
+            'السنة الثالثة' => 3, 'ثالثة' => 3, '3' => 3,
+            'السنة الرابعة' => 4, 'رابعة' => 4, '4' => 4,
+            'السنة الخامسة' => 5, 'خامسة' => 5, '5' => 5
+        ];
+        $studentYearInt = $map[$studentLevel] ?? 1;
+
         if ($request->filled('year')) {
             $query->where('courses.year', $request->year);
-        } elseif (!empty($student->year_level)) {
-            // تصفية المواد لتطابق السنة الدراسية للطالب تلقائياً إذا لم يُحدد سنة بالطلب
-            $query->where(function($q) use ($student) {
-                $q->where('courses.year', $student->year_level)
+        } else {
+            // تصفية المواد لتطابق السنة الدراسية للطالب حصراً (مع إبقاء المواد العامة/المستقلة)
+            $query->where(function($q) use ($studentYearInt) {
+                $q->where('courses.year', $studentYearInt)
                   ->orWhereNull('courses.year');
             });
         }
@@ -492,8 +502,25 @@ class StudentController extends Controller
         }
 
         $courseQuery = $program->courses();
+        
+        $studentLevel = trim($student->level ?? $user->academic_year ?? 'السنة الأولى');
+        $map = [
+            'السنة الأولى' => 1, 'أولى' => 1, '1' => 1,
+            'السنة الثانية' => 2, 'ثانية' => 2, '2' => 2,
+            'السنة الثالثة' => 3, 'ثالثة' => 3, '3' => 3,
+            'السنة الرابعة' => 4, 'رابعة' => 4, '4' => 4,
+            'السنة الخامسة' => 5, 'خامسة' => 5, '5' => 5
+        ];
+        $studentYearInt = $map[$studentLevel] ?? 1;
+
         if ($request->filled('year')) {
             $courseQuery->where('courses.year', $request->year);
+        } else {
+            // تصفية المواد لتطابق السنة الدراسية للطالب حصراً (مع إبقاء المواد العامة/المستقلة)
+            $courseQuery->where(function($q) use ($studentYearInt) {
+                $q->where('courses.year', $studentYearInt)
+                  ->orWhereNull('courses.year');
+            });
         }
 
         $courses = $courseQuery->get()->map(function ($course) {
