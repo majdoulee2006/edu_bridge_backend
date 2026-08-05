@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\StudentController;
+
+
 use App\Http\Controllers\Api\TeacherController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AdminController;
@@ -350,6 +352,7 @@ Route::middleware('auth:sanctum')->group(function () {
             // Departments
             Route::get('/departments', [AdminController::class, 'getDepartments']);
             Route::post('/departments', [AdminController::class, 'createDepartment']);
+            Route::post('/departments/assign-programs', [AdminController::class, 'assignProgramsToDepartment']);
             Route::put('/departments/{id}', [AdminController::class, 'updateDepartment']);
             Route::delete('/departments/{id}', [AdminController::class, 'deleteDepartment']);
 

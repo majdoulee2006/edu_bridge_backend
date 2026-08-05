@@ -160,6 +160,23 @@ class Student extends Model
             });
         }
 
+        // استخراج سنة الطالب كـ رقم
+        $studentLevel = trim($student->level ?? $user->academic_year ?? 'السنة الأولى');
+        $map = [
+            'السنة الأولى' => 1, 'أولى' => 1, '1' => 1,
+            'السنة الثانية' => 2, 'ثانية' => 2, '2' => 2,
+            'السنة الثالثة' => 3, 'ثالثة' => 3, '3' => 3,
+            'السنة الرابعة' => 4, 'رابعة' => 4, '4' => 4,
+            'السنة الخامسة' => 5, 'خامسة' => 5, '5' => 5
+        ];
+        $studentYearInt = $map[$studentLevel] ?? 1;
+
+        // تسجيل الطالب فقط في مواد سنته الدراسية والمواد العامة
+        $query->where(function($q) use ($studentYearInt) {
+            $q->where('year', $studentYearInt)
+              ->orWhereNull('year');
+        });
+
         $courses = $query->get();
 
         foreach ($courses as $course) {

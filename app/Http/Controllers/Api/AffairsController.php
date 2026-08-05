@@ -1170,4 +1170,6 @@ class AffairsController extends Controller
 
         return response()->json(['success' => true, 'message' => 'تم رفض طلب تغيير الصورة وإشعاره بنجاح']);
     }
+
+
 }
