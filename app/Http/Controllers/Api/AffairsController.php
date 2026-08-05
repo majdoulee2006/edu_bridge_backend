@@ -1171,43 +1171,5 @@ class AffairsController extends Controller
         return response()->json(['success' => true, 'message' => 'تم رفض طلب تغيير الصورة وإشعاره بنجاح']);
     }
 
-    // ── Notifications ───────────────────────────────────────────────
-    public function listNotifications(Request $request)
-    {
-        $notifications = DB::table('notifications')
-            ->where('notifications.user_id', $request->user()->user_id)
-            ->orderBy('notifications.created_at', 'desc')
-            ->limit(30)
-            ->get()
-            ->map(fn($n) => [
-                'id'           => $n->id,
-                'title'        => $n->title,
-                'message'      => $n->message,
-                'type'         => $n->type ?? 'general',
-                'related_id'   => $n->related_id,
-                'is_read'      => (bool) $n->is_read,
-                'created_at'   => $n->created_at,
-            ]);
 
-        return response()->json(['success' => true, 'data' => $notifications]);
-    }
-
-    public function markNotificationRead(Request $request, $id)
-    {
-        DB::table('notifications')
-            ->where('id', $id)
-            ->where('user_id', $request->user()->user_id)
-            ->update(['is_read' => true, 'updated_at' => now()]);
-
-        return response()->json(['success' => true]);
-    }
-
-    public function markAllNotificationsRead(Request $request)
-    {
-        DB::table('notifications')
-            ->where('user_id', $request->user()->user_id)
-            ->update(['is_read' => true, 'updated_at' => now()]);
-
-        return response()->json(['success' => true]);
-    }
 }
