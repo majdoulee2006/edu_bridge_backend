@@ -589,6 +589,11 @@ class AuthController extends Controller
 
         $fields = $request->only(['full_name', 'email', 'phone']);
 
+        // منع تعديل البريد الإلكتروني للحسابات: الأهل، المعلمين، موظف الشؤون، رئيس القسم، الإدارة
+        if (in_array((int)$user->role_id, [1, 2, 4, 5, 6])) {
+            unset($fields['email']);
+        }
+
         // لما يتغير رقم الهاتف يتغير الـ username معه تلقائياً
         if ($request->filled('phone')) {
             $fields['username'] = $request->phone;
@@ -629,6 +634,13 @@ class AuthController extends Controller
     public function requestChangeEmail(Request $request)
     {
         $user = $request->user();
+
+        if (in_array((int)$user->role_id, [1, 2, 4, 5, 6])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مسموح بتعديل البريد الإلكتروني لهذا الحساب',
+            ], 403);
+        }
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|unique:users,email',

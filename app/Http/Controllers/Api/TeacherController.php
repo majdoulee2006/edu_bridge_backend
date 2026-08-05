@@ -1360,29 +1360,26 @@ class TeacherController extends Controller
             ->get()
             ->filter(function ($lesson) {
                 $title = mb_strtolower($lesson->title);
-                $url = mb_strtolower($lesson->content_url ?? '');
+                $url = mb_strtolower($lesson->content_url ?? $lesson->file_path ?? '');
                 $type = mb_strtolower($lesson->type ?? '');
 
-                if (str_contains($title, 'حضور') || 
-                    str_contains($title, 'غياب') || 
-                    str_contains($title, 'تفقد') || 
-                    str_contains($title, 'حصة') ||
-                    str_contains($url, 'attendance') || 
-                    $type === 'session') {
+                if ($type === 'session') {
                     return false;
                 }
                 return true;
             })
             ->values()
             ->map(function($lesson) {
+                $url = $lesson->content_url ?? $lesson->file_path;
                 return [
                     'id'          => $lesson->lesson_id,
                     'title'       => $lesson->title,
                     'description' => $lesson->description,
-                    'content_url' => $lesson->content_url,
+                    'content_url' => $url,
+                    'file_path'   => $lesson->file_path ?? $lesson->content_url,
                     'course_id'   => $lesson->course_id,
                     'course_name' => $lesson->course ? $lesson->course->title : null,
-                    'created_at'  => $lesson->created_at->format('Y-m-d'),
+                    'created_at'  => $lesson->created_at ? $lesson->created_at->format('Y-m-d') : null,
                 ];
             });
 
@@ -1414,6 +1411,7 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'هذه الدورة غير مرتبطة بك'], 403);
         }
 
+        $filePath = null;
         if ($request->hasFile('content_file')) {
             $file     = $request->file('content_file');
             $filePath = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
@@ -1431,6 +1429,7 @@ class TeacherController extends Controller
             'teacher_id'  => $teacher->teacher_id,
             'description' => $request->description,
             'content_url' => $contentUrl,
+            'file_path'   => $filePath,
             'type'        => $type,
         ]);
 
@@ -2385,16 +2384,10 @@ class TeacherController extends Controller
 
         if (!$assigned) return response()->json(['success' => false, 'message' => 'هذه المادة غير مسندة إليك'], 403);
 
-        $duplicate = DB::table('grade_events')
-            ->where('course_id', $validated['course_id'])
-            ->where('type', '!=', 'oral')
-            ->where('date', $validated['date'])
-            ->exists();
-
-        if ($duplicate) {
+        if (\Carbon\Carbon::parse($validated['date'])->startOfDay()->lt(now()->startOfDay())) {
             return response()->json([
                 'success' => false,
-                'message' => 'يوجد تقييم آخر لهذه المادة في نفس اليوم، يرجى اختيار يوم مختلف.',
+                'message' => 'لا يمكن إنشاء تقييم بتاريخ قديم (سابق للتاريخ الحالي).',
             ], 422);
         }
 
@@ -2437,45 +2430,78 @@ class TeacherController extends Controller
     private function _createOralEvent(Request $request, $teacher)
     {
         $validated = $request->validate([
-            'program_id' => 'required|exists:programs,id',
-            'year_level' => 'required|integer|min:1|max:5',
+            'program_id' => 'nullable|exists:programs,id',
+            'year_level' => 'nullable|integer|min:1|max:5',
             'course_id'  => 'nullable|exists:courses,course_id',
             'title'      => 'required|string|max:255',
+            'max_score'  => 'nullable|numeric|min:1',
             'date'       => 'required|date',
             'notes'      => 'nullable|string|max:500',
             'student_id' => 'nullable|exists:students,student_id',
         ]);
 
+        if (\Carbon\Carbon::parse($validated['date'])->startOfDay()->lt(now()->startOfDay())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يمكن إنشاء تقييم بتاريخ قديم (سابق للتاريخ الحالي).',
+            ], 422);
+        }
+
+        $courseId  = $validated['course_id'] ?? null;
+        $programId = $validated['program_id'] ?? null;
+        $yearLevel = $validated['year_level'] ?? null;
+
+        if ($courseId) {
+            $course = DB::table('courses')->where('course_id', $courseId)->first();
+            if ($course) {
+                if (!$yearLevel) $yearLevel = $course->year ?? 1;
+                if (!$programId) {
+                    $programId = DB::table('course_program')->where('course_id', $courseId)->value('program_id') ?? 1;
+                }
+            }
+        }
+
         $id = DB::table('grade_events')->insertGetId([
             'teacher_id' => $teacher->teacher_id,
-            'course_id'  => $validated['course_id'] ?? null,
-            'program_id' => $validated['program_id'],
-            'year_level' => $validated['year_level'],
+            'course_id'  => $courseId,
+            'program_id' => $programId ?? 1,
+            'year_level' => $yearLevel ?? 1,
             'type'       => 'oral',
             'title'      => $validated['title'],
-            'max_score'  => 25,
+            'max_score'  => $validated['max_score'] ?? 25,
             'notes'      => $validated['notes'] ?? null,
             'date'       => $validated['date'],
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        // جلب الطلاب: كل طلاب البرنامج/السنة أو طالب محدد
+        // جلب الطلاب: كل طلاب المادة أو برنامج/سنة أو طالب محدد
         if (!empty($validated['student_id'])) {
             $studentIds = collect([$validated['student_id']]);
+        } elseif ($courseId) {
+            $studentIds = DB::table('enrollments')
+                ->where('course_id', $courseId)
+                ->pluck('student_id')
+                ->unique();
+            if ($studentIds->isEmpty()) {
+                $studentIds = DB::table('students')->pluck('student_id');
+            }
         } else {
             // الطلاب المسجلين في مواد البرنامج في هذه السنة
-            $courseIds = DB::table('course_program')
-                ->where('program_id', $validated['program_id'])
+            $cIds = DB::table('course_program')
+                ->where('program_id', $programId)
                 ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
-                ->where('courses.year', $validated['year_level'])
+                ->where('courses.year', $yearLevel)
                 ->pluck('course_program.course_id');
 
             $studentIds = DB::table('enrollments')
-                ->whereIn('course_id', $courseIds)
+                ->whereIn('course_id', $cIds)
                 ->join('students', 'enrollments.student_id', '=', 'students.student_id')
                 ->pluck('students.student_id')
                 ->unique();
+            if ($studentIds->isEmpty()) {
+                $studentIds = DB::table('students')->pluck('student_id');
+            }
         }
 
         $entries = $studentIds->map(fn($sid) => [
@@ -2496,8 +2522,28 @@ class TeacherController extends Controller
         $teacher = $request->user()->teacher;
         if (!$teacher) return response()->json(['success' => false], 403);
 
+        $courseId  = $request->query('course_id');
         $programId = $request->query('program_id');
         $yearLevel = $request->query('year_level');
+
+        if ($courseId) {
+            $students = DB::table('enrollments')
+                ->where('enrollments.course_id', $courseId)
+                ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->select('students.student_id', 'users.full_name', 'users.university_id')
+                ->distinct()
+                ->get();
+
+            if ($students->isEmpty()) {
+                $students = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->select('students.student_id', 'users.full_name', 'users.university_id')
+                    ->get();
+            }
+
+            return response()->json(['success' => true, 'data' => $students]);
+        }
 
         $courseIds = DB::table('course_program')
             ->where('program_id', $programId)

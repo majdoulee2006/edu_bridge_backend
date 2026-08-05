@@ -1578,7 +1578,6 @@ class AdminWebController extends Controller
             ->where('lessons.title', 'not like', '%حضور%')
             ->where('lessons.title', 'not like', '%غياب%')
             ->where('lessons.title', 'not like', '%تفقد%')
-            ->where('lessons.title', 'not like', '%حصة%')
             ->where(function($q) {
                 $q->whereNull('lessons.content_url')
                   ->orWhere('lessons.content_url', 'not like', '%attendance%');

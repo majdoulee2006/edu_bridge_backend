@@ -846,8 +846,32 @@ class DepartmentHeadController extends Controller
     }
 
     // ─── Announcements ────────────────────────────────────────────
+    public function getMetadata()
+    {
+        $departments = DB::table('departments')->select('department_id', 'name')->get();
+        $courses = DB::table('courses')
+            ->select('course_id', 'title', 'code', 'level')
+            ->get();
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'departments' => $departments,
+                'courses'     => $courses,
+            ]
+        ]);
+    }
+
     public function createAnnouncement(Request $request)
     {
+        $input = $request->all();
+        if (isset($input['department_id']) && ($input['department_id'] === 'null' || $input['department_id'] === '' || $input['department_id'] === 0 || $input['department_id'] === '0')) {
+            $input['department_id'] = null;
+        }
+        if (isset($input['course_id']) && ($input['course_id'] === 'null' || $input['course_id'] === '' || $input['course_id'] === 0 || $input['course_id'] === '0')) {
+            $input['course_id'] = null;
+        }
+        $request->merge($input);
+
         $request->validate([
             'title'   => 'required|string|max:255',
             'content' => 'required|string',
@@ -867,14 +891,21 @@ class DepartmentHeadController extends Controller
         }
 
         $announcementId = DB::table('announcements')->insertGetId([
-            'user_id'     => $request->user()->user_id,
-            'title'       => $request->title,
-            'content'     => $request->content,
-            'target_role' => $targetRole,
-            'image'       => $imagePath,
-            'link_url'    => $request->link_url ?? null,
-            'created_at'  => now(),
-            'updated_at'  => now(),
+            'user_id'         => $request->user()->user_id,
+            'title'           => $request->title,
+            'content'         => $request->content,
+            'target_role'     => $targetRole,
+            'target_audience' => $audienceInput,
+            'category'        => $request->input('category', 'عام'),
+            'department_id'   => $request->input('department_id'),
+            'course_id'       => $request->input('course_id'),
+            'event_date'      => $request->input('event_date'),
+            'event_time'      => $request->input('event_time'),
+            'location'        => $request->input('location'),
+            'image'           => $imagePath,
+            'link_url'        => $request->link_url ?? null,
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
 
         $audience = $audienceInput;

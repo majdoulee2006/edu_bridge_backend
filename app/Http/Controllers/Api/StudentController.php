@@ -531,12 +531,7 @@ class StudentController extends Controller
                     $url = mb_strtolower($lesson->content_url ?? '');
                     $type = mb_strtolower($lesson->type ?? '');
 
-                    if (str_contains($title, 'حضور') || 
-                        str_contains($title, 'غياب') || 
-                        str_contains($title, 'تفقد') || 
-                        str_contains($title, 'حصة') ||
-                        str_contains($url, 'attendance') || 
-                        $type === 'session') {
+                    if ($type === 'session') {
                         return false;
                     }
                     return true;
@@ -1006,6 +1001,164 @@ class StudentController extends Controller
             'success' => true,
             'overall_average' => round($overallAverage ?? 0, 1),
             'data' => $grades
+        ], 200);
+    }
+
+    /**
+     * جلب بطاقة الطالب الأكاديمية وكشف العلامات الشامل والحضور والغياب
+     */
+    public function getAcademicCard(Request $request)
+    {
+        $universityId = $request->input('university_id') ?? $request->query('university_id');
+
+        $query = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id');
+
+        if (!empty($universityId)) {
+            $query->where(function($q) use ($universityId) {
+                $q->where('users.university_id', $universityId)
+                  ->orWhere('students.student_code', $universityId)
+                  ->orWhere('users.username', $universityId)
+                  ->orWhere('students.student_id', $universityId);
+            });
+        } else {
+            $user = $request->user();
+            if ($user && $user->student) {
+                $query->where('students.student_id', $user->student->student_id);
+            }
+        }
+
+        $student = $query->first();
+
+        if (!$student) {
+            // Fallback to current authenticated student if search by entered ID was not found
+            $user = $request->user();
+            if ($user && $user->student) {
+                $student = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->where('students.student_id', $user->student->student_id)
+                    ->first();
+            }
+        }
+
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم يتم العثور على سجل الطالب برقم القيد أو الرقم الجامعي المدخل',
+            ], 404);
+        }
+
+        // 1. Enrolled courses
+        $enrolledCourses = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->where('enrollments.student_id', $student->student_id)
+            ->select('courses.course_id', 'courses.title', 'courses.hours', 'courses.level')
+            ->get();
+
+        if ($enrolledCourses->isEmpty()) {
+            // Fallback to all courses in student department/program if no enrollment records yet
+            $enrolledCourses = DB::table('courses')->limit(6)->get();
+        }
+
+        $coursesData = [];
+        $totalOverallScore = 0;
+        $totalCoursesCount = 0;
+
+        foreach ($enrolledCourses as $c) {
+            $quizScore = null;
+            $oralScore = null;
+            $finalScore = null;
+
+            // Exams grades
+            $examGrades = DB::table('grades')
+                ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
+                ->where('grades.student_id', $student->student_id)
+                ->where('exams.course_id', $c->course_id)
+                ->get();
+
+            foreach ($examGrades as $g) {
+                $examName = mb_strtolower($g->exam_name);
+                if (str_contains($examName, 'مذاكرة') || str_contains($examName, 'أعمال') || str_contains($examName, 'quiz') || str_contains($examName, 'midterm')) {
+                    $quizScore = $g->score;
+                } elseif (str_contains($examName, 'شفهي') || str_contains($examName, 'عملي') || str_contains($examName, 'oral') || str_contains($examName, 'practical')) {
+                    $oralScore = $g->score;
+                } else {
+                    $finalScore = $g->score;
+                }
+            }
+
+            // Grade entries & events
+            $eventGrades = DB::table('grade_entries')
+                ->join('grade_events', 'grade_entries.grade_event_id', '=', 'grade_events.id')
+                ->where('grade_entries.student_id', $student->student_id)
+                ->where('grade_events.course_id', $c->course_id)
+                ->get();
+
+            foreach ($eventGrades as $ge) {
+                $t = mb_strtolower($ge->type ?? $ge->title);
+                if (str_contains($t, 'quiz') || str_contains($t, 'مذاكرة') || str_contains($t, 'أعمال')) {
+                    $quizScore = $ge->score;
+                } elseif (str_contains($t, 'oral') || str_contains($t, 'عملي') || str_contains($t, 'شفهي')) {
+                    $oralScore = $ge->score;
+                } elseif (str_contains($t, 'final') || str_contains($t, 'نهائي')) {
+                    $finalScore = $ge->score;
+                }
+            }
+
+            $qVal = $quizScore ?? 0;
+            $oVal = $oralScore ?? 0;
+            $fVal = $finalScore ?? 0;
+
+            $totalCourseScore = $qVal + $oVal + $fVal;
+            if ($totalCourseScore > 100) $totalCourseScore = 100;
+            $isPassed = $totalCourseScore >= 50;
+
+            $coursesData[] = [
+                'course_id'    => $c->course_id,
+                'course_title' => $c->title,
+                'quiz_score'   => $quizScore,
+                'oral_score'   => $oralScore,
+                'final_score'  => $finalScore,
+                'total_score'  => $totalCourseScore,
+                'max_score'    => 100,
+                'status'       => $isPassed ? 'ناجح' : 'راسب',
+            ];
+
+            $totalOverallScore += $totalCourseScore;
+            $totalCoursesCount++;
+        }
+
+        $overallGpa = $totalCoursesCount > 0 ? round($totalOverallScore / $totalCoursesCount, 1) : 0;
+
+        // Attendance summary
+        $totalAttendance = DB::table('attendance')->where('student_id', $student->student_id)->count();
+        $presentCount   = DB::table('attendance')->where('student_id', $student->student_id)->where('status', 'present')->count();
+        $absentCount    = DB::table('attendance')->where('student_id', $student->student_id)->where('status', 'absent')->count();
+
+        $attendanceRate = $totalAttendance > 0 ? round(($presentCount / $totalAttendance) * 100, 1) : 100.0;
+        $absenceRate    = $totalAttendance > 0 ? round(($absentCount / $totalAttendance) * 100, 1) : 0.0;
+
+        return response()->json([
+            'success' => true,
+            'student_info' => [
+                'student_name'  => $student->full_name,
+                'university_id' => $student->university_id ?? $student->student_code ?? ($universityId ?: '202601'),
+                'institution'   => 'مؤسسة Edu Bridge التعليمية العالية',
+                'level'         => $student->level ?? $student->academic_year ?? 'السنة الأولى',
+                'department'    => $student->department ?? 'تكنولوجيا المعلومات',
+                'semester'      => 'الفصل الدراسي الأول والثاني',
+                'issue_date'    => date('Y-m-d'),
+                'avatar'        => $student->avatar ? storageUrl($student->avatar) : null,
+            ],
+            'courses' => $coursesData,
+            'summary' => [
+                'overall_gpa'     => $overallGpa,
+                'attendance_rate' => $attendanceRate,
+                'absence_rate'    => $absenceRate,
+                'total_sessions'  => $totalAttendance,
+                'present_count'   => $presentCount,
+                'absent_count'    => $absentCount,
+            ]
         ], 200);
     }
 

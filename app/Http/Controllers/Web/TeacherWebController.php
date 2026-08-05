@@ -137,14 +137,9 @@ class TeacherWebController extends Controller
         // المحاضرات الخاصة بالمواد
         $lectures = DB::table('lessons')
             ->whereIn('course_id', $courseIds)
-            ->where('lessons.type', '!=', 'session')
-            ->where('lessons.title', 'not like', '%حضور%')
-            ->where('lessons.title', 'not like', '%غياب%')
-            ->where('lessons.title', 'not like', '%تفقد%')
-            ->where('lessons.title', 'not like', '%حصة%')
-            ->where(function($query) {
-                $query->whereNull('lessons.content_url')
-                      ->orWhere('lessons.content_url', 'not like', '%attendance%');
+            ->where(function($q) {
+                $q->whereNull('lessons.type')
+                  ->orWhere('lessons.type', '!=', 'session');
             })
             ->orderByDesc('created_at')
             ->get();
@@ -1242,12 +1237,6 @@ class TeacherWebController extends Controller
                 $q->where('lessons.type', '!=', 'session')
                   ->orWhereNull('lessons.type');
             })
-            ->where('lessons.title', 'not like', '%حضور%')
-            ->where('lessons.title', 'not like', '%غياب%')
-            ->where(function($query) {
-                $query->whereNull('lessons.content_url')
-                      ->orWhere('lessons.content_url', 'not like', '%attendance%');
-            })
             ->select('lessons.*', 'courses.title as course_title')
             ->orderByDesc('lessons.created_at')
             ->get();
@@ -1306,6 +1295,7 @@ class TeacherWebController extends Controller
             'file_path'   => $filePath,
             'file_name'   => $fileName,
             'file_type'   => $fileType,
+            'content_url' => $filePath,
             'type'        => 'lecture',
             'created_at'  => now(),
             'updated_at'  => now(),

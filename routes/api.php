@@ -147,6 +147,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/courses', [StudentController::class, 'getMyCourses']);
         Route::get('/program-courses', [StudentController::class, 'getProgramCourses']);
         Route::get('/grades', [StudentController::class, 'getMyGrades']);
+        Route::match(['get', 'post'], '/academic-card', [StudentController::class, 'getAcademicCard']);
         Route::get('/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
 
         // مسارات الحضور والإجازات
@@ -304,6 +305,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/all-schedule',      [DepartmentHeadController::class, 'getAllSchedule']);
         Route::get('/all-exams',         [DepartmentHeadController::class, 'getAllExams']);
         Route::get('/programs-schedule', [DepartmentHeadController::class, 'getProgramsSchedule']);
+
+        // Metadata
+        Route::get('/metadata',              [DepartmentHeadController::class, 'getMetadata']);
 
         // Announcements
         Route::get('/announcements',          [DepartmentHeadController::class, 'getAnnouncements']);
