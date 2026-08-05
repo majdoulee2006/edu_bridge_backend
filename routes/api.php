@@ -346,6 +346,7 @@ Route::middleware('auth:sanctum')->group(function () {
             // Departments
             Route::get('/departments', [AdminController::class, 'getDepartments']);
             Route::post('/departments', [AdminController::class, 'createDepartment']);
+            Route::post('/departments/assign-programs', [AdminController::class, 'assignProgramsToDepartment']);
             Route::put('/departments/{id}', [AdminController::class, 'updateDepartment']);
             Route::delete('/departments/{id}', [AdminController::class, 'deleteDepartment']);
 

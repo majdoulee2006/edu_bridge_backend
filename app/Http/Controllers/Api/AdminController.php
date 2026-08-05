@@ -326,7 +326,10 @@ class AdminController extends Controller
             $course->semester_name = $semInfo ? $semInfo->name : 'غير محدد';
         }
 
-        $programs = \DB::table('programs')->get();
+        $programs = \DB::table('programs')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
+            ->select('programs.*', 'departments.name as department_name')
+            ->get();
         $departments = \DB::table('departments')->get();
         $semesters = \DB::table('semesters')->get();
 
@@ -669,6 +672,28 @@ class AdminController extends Controller
         $department->delete();
 
         return response()->json(['success' => true, 'message' => 'تم حذف القسم بنجاح'], 200);
+    }
+
+    public function assignProgramsToDepartment(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'department_id' => 'required|exists:departments,department_id',
+            'program_ids' => 'required|array',
+            'program_ids.*' => 'exists:programs,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        \DB::table('programs')
+            ->whereIn('id', $request->program_ids)
+            ->update([
+                'department_id' => $request->department_id,
+                'updated_at' => now(),
+            ]);
+
+        return response()->json(['success' => true, 'message' => 'تم نقل وتخصيص الدورات للقسم الجديد بنجاح']);
     }
 
     // ========== Reports ==========

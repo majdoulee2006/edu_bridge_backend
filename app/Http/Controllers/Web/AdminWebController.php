@@ -1179,15 +1179,28 @@ class AdminWebController extends Controller
     public function courses()
     {
         $departments = DB::table('departments')->orderBy('name')->get();
+        foreach ($departments as $dept) {
+            $head = DB::table('heads')
+                ->join('users', 'heads.user_id', '=', 'users.user_id')
+                ->where('heads.department_id', $dept->department_id)
+                ->select('users.user_id', 'users.full_name')
+                ->first();
+
+            $dept->current_hod_name = $head ? $head->full_name : 'غير مخصص حالياً';
+            $dept->current_hod_user_id = $head ? $head->user_id : null;
+            $dept->courses_count = DB::table('programs')->where('department_id', $dept->department_id)->count();
+        }
 
         $programs = DB::table('programs')
-            ->join('departments', 'programs.department_id', '=', 'departments.department_id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
             ->select('programs.*', 'departments.name as department_name')
+            ->orderByRaw('CASE WHEN programs.department_id IS NULL THEN 0 ELSE 1 END')
             ->orderByDesc('programs.created_at')
             ->get();
 
         // Enrich with course count, total hours, and subjects list
         foreach ($programs as $program) {
+            $program->department_name = $program->department_name ?? 'غير مخصصة (دورة مستقلة)';
             $coursesInProgram = DB::table('course_program')
                 ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
                 ->where('course_program.program_id', $program->id)
@@ -1212,40 +1225,77 @@ class AdminWebController extends Controller
     {
         $request->validate([
             'name'        => 'required|string|max:255|unique:departments,name',
-            'code'        => 'nullable|string|max:50',
             'description' => 'nullable|string|max:1000',
         ], [
             'name.required' => 'اسم القسم مطلوب.',
             'name.unique'   => 'هذا القسم موجود مسبقاً.'
         ]);
 
-        DB::table('departments')->insert([
+        $id = DB::table('departments')->insertGetId([
             'name'        => $request->name,
-            'code'        => $request->code,
             'description' => $request->description,
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تم إضافة القسم الجديد بنجاح!');
+        return redirect()->back()->with([
+            'success' => 'تم إضافة القسم الجديد بنجاح!',
+            'new_department_id' => $id,
+            'new_department_name' => $request->name,
+        ]);
+    }
+
+    public function updateDepartment(Request $request, $id)
+    {
+        $request->validate([
+            'name'        => 'required|string|max:255|unique:departments,name,' . $id . ',department_id',
+            'description' => 'nullable|string|max:1000',
+        ], [
+            'name.required' => 'اسم القسم مطلوب.',
+            'name.unique'   => 'هذا القسم موجود مسبقاً.'
+        ]);
+
+        DB::table('departments')->where('department_id', $id)->update([
+            'name'        => $request->name,
+            'description' => $request->description,
+            'updated_at'  => now(),
+        ]);
+
+        return redirect()->route('admin.courses')->with('success', 'تم تعديل بيانات القسم بنجاح!');
+    }
+
+    public function deleteDepartment($id)
+    {
+        $dept = DB::table('departments')->where('department_id', $id)->first();
+        if (!$dept) {
+            return redirect()->back()->with('error', 'القسم غير موجود.');
+        }
+
+        DB::table('programs')->where('department_id', $id)->update(['department_id' => null]);
+        DB::table('heads')->where('department_id', $id)->delete();
+        DB::table('departments')->where('department_id', $id)->delete();
+
+        return redirect()->route('admin.courses')->with('success', 'تم حذف قسم (' . $dept->name . ') بنجاح!');
     }
 
     public function storeCourse(Request $request)
     {
         $request->validate([
             'name'          => 'required|string|max:255',
-            'department_id' => 'required|exists:departments,department_id',
+            'department_id' => 'nullable|exists:departments,department_id',
             'description'   => 'nullable|string',
             'duration'      => 'nullable|string|max:100',
             'start_date'    => 'nullable|date',
         ], [
-            'name.required'          => 'اسم الدورة مطلوب.',
-            'department_id.required' => 'يرجى اختيار القسم.',
+            'name.required' => 'اسم الدورة مطلوب.',
         ]);
 
         DB::table('programs')->insert([
             'name'          => $request->name,
-            'department_id' => $request->department_id,
+            'department_id' => $request->filled('department_id') ? $request->department_id : null,
+            'description'   => $request->description,
+            'year'          => $request->year,
+            'semester'      => $request->semester,
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
@@ -1259,6 +1309,30 @@ class AdminWebController extends Controller
         DB::table('programs')->where('id', $id)->delete();
 
         return redirect()->route('admin.courses')->with('success', 'تم حذف الدورة بنجاح.');
+    }
+
+    public function assignProgramsToDepartment(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departments,department_id',
+            'program_ids'   => 'required|array',
+            'program_ids.*' => 'exists:programs,id',
+        ], [
+            'department_id.required' => 'يرجى تحديد القسم الهدف.',
+            'program_ids.required'   => 'يرجى اختيار دورة واحدة على الأقل لتخصيصها.',
+        ]);
+
+        DB::table('programs')
+            ->whereIn('id', $request->program_ids)
+            ->update([
+                'department_id' => $request->department_id,
+                'updated_at'    => now(),
+            ]);
+
+        $dept = DB::table('departments')->where('department_id', $request->department_id)->first();
+
+        return redirect()->route('admin.courses', ['department_id' => $request->department_id])
+            ->with('success', 'تم نقل وتخصيص الدورات المختارة لقسم (' . ($dept ? $dept->name : '') . ') بنجاح!');
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1279,11 +1353,34 @@ class AdminWebController extends Controller
             $dept->current_hod_user_id = $head ? $head->user_id : null;
         }
 
-        // Get users who could be HODs (teachers and existing HODs)
+        // Get users who could be HODs (teachers and existing HODs) with exact specialization & dept names
         $availableUsers = DB::table('users')
-            ->whereIn('role_id', [2, 5]) // teachers and HODs
-            ->where('status', 'active')
+            ->leftJoin('teachers', 'users.user_id', '=', 'teachers.user_id')
+            ->leftJoin('heads', 'users.user_id', '=', 'heads.user_id')
+            ->leftJoin('departments', 'heads.department_id', '=', 'departments.department_id')
+            ->whereIn('users.role_id', [2, 5]) // teachers (2) and HODs (5)
+            ->where('users.status', 'active')
+            ->select(
+                'users.user_id',
+                'users.full_name',
+                'users.email',
+                'users.phone',
+                'users.role_id',
+                'users.department as user_dept',
+                'teachers.specialization',
+                'departments.name as head_dept_name'
+            )
             ->get();
+
+        foreach ($availableUsers as $u) {
+            if ($u->role_id == 5) {
+                $u->department = $u->head_dept_name ?? $u->user_dept ?? 'قسم أكاديمي';
+                $u->role_title = 'رئيس قسم (' . $u->department . ')';
+            } else {
+                $u->department = $u->specialization ?? $u->user_dept ?? '';
+                $u->role_title = 'مدرب / مدرس أكاديمي' . ($u->specialization ? ' (تخصص: ' . $u->specialization . ')' : '');
+            }
+        }
 
         return view('admin.courses.assign_hod', compact('departments', 'availableUsers'));
     }
@@ -1345,7 +1442,7 @@ class AdminWebController extends Controller
             ['type' => 'system']
         );
 
-        return redirect()->route('admin.courses.assign-hod')->with('success', 'تم تعيين ' . $user->full_name . ' رئيساً لقسم ' . $dept->name . ' بنجاح!');
+        return redirect()->route('admin.courses', ['department_id' => $request->department_id])->with('success', 'تم تعيين ' . $user->full_name . ' رئيساً لقسم ' . $dept->name . ' بنجاح! يمكنك الآن إضافة وتخصيص الدورات لهذا القسم.');
     }
 
     public function storeNewHOD(Request $request)
@@ -1414,7 +1511,29 @@ class AdminWebController extends Controller
             'updated_at'    => now(),
         ]);
 
-        return redirect()->route('admin.courses.assign-hod')->with('success', 'تم إنشاء حساب رئيس القسم الجديد (' . $fullName . ') لقسم ' . $dept->name . ' وتعيينه بنجاح!');
+        return redirect()->route('admin.courses', ['department_id' => $request->department_id])->with('success', 'تم إنشاء حساب رئيس القسم الجديد (' . $fullName . ') لقسم ' . $dept->name . ' وتعيينه بنجاح! يمكنك الآن إضافة وتخصيص الدورات لهذا القسم.');
+    }
+
+    public function unassignHOD(Request $request)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departments,department_id',
+        ]);
+
+        $dept = DB::table('departments')->where('department_id', $request->department_id)->first();
+        $oldHead = DB::table('heads')->where('department_id', $request->department_id)->first();
+
+        if ($oldHead) {
+            DB::table('users')->where('user_id', $oldHead->user_id)->update([
+                'role_id'    => 2, // Revert to teacher
+                'department' => null,
+                'updated_at' => now(),
+            ]);
+            DB::table('heads')->where('department_id', $request->department_id)->delete();
+        }
+
+        return redirect()->route('admin.courses.assign-hod')
+            ->with('success', 'تم إبطال وإلغاء تعيين رئيس القسم لقسم (' . ($dept ? $dept->name : '') . ') بنجاح.');
     }
 
     // ────────────────────────────────────────────────────────────

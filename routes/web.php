@@ -309,17 +309,21 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/accounts/delete-list/{role_id}', [AdminWebController::class, 'deleteList'])->name('admin.accounts.delete-list');
     Route::post('/accounts/delete/{role_id}', [AdminWebController::class, 'deleteAccounts'])->name('admin.accounts.delete');
 
-    // الدورات
+    // الدورات والأقسام الأكاديمية
     Route::get('/courses', [AdminWebController::class, 'courses'])->name('admin.courses');
     Route::post('/departments/store', [AdminWebController::class, 'storeDepartment'])->name('admin.departments.store');
+    Route::post('/departments/update/{id}', [AdminWebController::class, 'updateDepartment'])->name('admin.departments.update');
+    Route::post('/departments/delete/{id}', [AdminWebController::class, 'deleteDepartment'])->name('admin.departments.delete');
     Route::get('/courses/create', [AdminWebController::class, 'createCourse'])->name('admin.courses.create');
     Route::post('/courses', [AdminWebController::class, 'storeCourse'])->name('admin.courses.store');
     Route::post('/courses/delete/{id}', [AdminWebController::class, 'deleteCourse'])->name('admin.courses.delete');
+    Route::post('/courses/assign-programs', [AdminWebController::class, 'assignProgramsToDepartment'])->name('admin.courses.assign-programs');
 
     // تخصيص رئيس قسم
     Route::get('/courses/assign-hod', [AdminWebController::class, 'assignHODForm'])->name('admin.courses.assign-hod');
     Route::post('/courses/assign-hod', [AdminWebController::class, 'assignHOD'])->name('admin.courses.assign-hod.store');
     Route::post('/courses/assign-hod/store-new', [AdminWebController::class, 'storeNewHOD'])->name('admin.courses.assign-hod.store-new');
+    Route::post('/courses/assign-hod/unassign', [AdminWebController::class, 'unassignHOD'])->name('admin.courses.assign-hod.unassign');
 
     // الفصول والمواد
     Route::get('/semesters-subjects', [AdminWebController::class, 'semestersSubjects'])->name('admin.semesters-subjects');

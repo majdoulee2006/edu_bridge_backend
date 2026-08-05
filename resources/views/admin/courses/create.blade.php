@@ -31,13 +31,13 @@
 
         {{-- Department --}}
         <div class="flex flex-col gap-2">
-            <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">القسم</label>
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">القسم (اختياري)</label>
             <div class="relative">
                 <select name="department_id"
-                        class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer" required>
-                    <option value="" disabled selected>اختر القسم التابع للدورة</option>
-                    @foreach($departments as $dept)
-                        <option value="{{ $dept->department_id }}" {{ old('department_id') == $dept->department_id ? 'selected' : '' }}>
+                        class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
+                    <option value="" selected>بدون قسم محدد (دورة مستقلة / غير مخصصة)</option>
+                     @foreach($departments as $dept)
+                        <option value="{{ $dept->department_id }}" {{ (old('department_id', request('department_id')) == $dept->department_id) ? 'selected' : '' }}>
                             {{ $dept->name }}
                         </option>
                     @endforeach
