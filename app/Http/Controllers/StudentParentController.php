@@ -410,6 +410,34 @@ class StudentParentController extends Controller
                     );
                 }
             }
+
+            // إشعار موظف الشؤون أيضاً
+            $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
+            foreach ($affairsUserIds as $affairsId) {
+                $alreadyNotifiedAffairs = DB::table('notifications')
+                    ->where('user_id', $affairsId)
+                    ->where('type', 'leave_request')
+                    ->where('related_id', $id)
+                    ->exists();
+                if (!$alreadyNotifiedAffairs) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $affairsId,
+                        'title'      => 'طلب إجازة بانتظار الاعتماد',
+                        'message'    => 'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، الطلب الآن عند رئيس القسم',
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    \App\Services\FcmService::sendToUser(
+                        $affairsId,
+                        'طلب إجازة بانتظار الاعتماد',
+                        'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، الطلب الآن عند رئيس القسم',
+                        ['type' => 'leave_request', 'related_id' => (string)$id]
+                    );
+                }
+            }
         } else {
             // ولي الأمر رفض → إشعار الطالب
             DB::table('leave_requests')
@@ -552,7 +580,8 @@ class StudentParentController extends Controller
         ]);
 
         // Notify dept head
-        $headUserId = DB::table('heads')->value('user_id');
+        $headUserId = DB::table('heads')->value('user_id')
+            ?? DB::table('users')->where('role_id', 5)->value('user_id');
 
         if ($headUserId) {
             $isJustification = $request->type === 'justification';

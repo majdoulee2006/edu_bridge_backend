@@ -112,6 +112,20 @@ class AttendanceController extends Controller
                     'is_read'    => false,
                 ]);
             }
+            
+            // إشعار موظف الشؤون أيضاً
+            $affairsUserIds = \App\Models\User::where('role_id', 6)->pluck('user_id');
+            foreach ($affairsUserIds as $affairsId) {
+                \App\Models\Notification::create([
+                    'user_id'    => $affairsId,
+                    'sender_id'  => auth()->id(),
+                    'title'      => 'طلب إجازة جديد',
+                    'message'    => "قام الطالب $studentName بتقديم طلب إجازة جديد، يرجى مراجعته.",
+                    'type'       => 'leave_request',
+                    'related_id' => $leaveRequest->id,
+                    'is_read'    => false,
+                ]);
+            }
         } catch (\Exception $e) {}
 
         return response()->json([
