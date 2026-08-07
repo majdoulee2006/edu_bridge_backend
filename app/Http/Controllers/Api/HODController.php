@@ -330,4 +330,326 @@ class HODController extends Controller
             return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
+
+    /**
+     * 1️⃣ جلب بيانات الفلترة لإنشاء استدعاء (الدورات، السنوات، والطلاب)
+     */
+    public function getAppointmentsMetadata(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $dept = $user ? $user->department : null;
+
+            $head = DB::table('heads')->where('user_id', auth()->id())->first();
+
+            // 1. الدورات/البرامج الخاصة بقسم رئيس القسم فقط
+            $courses = collect();
+            if ($head && !empty($head->department_id)) {
+                $courses = DB::table('programs')
+                    ->where('department_id', $head->department_id)
+                    ->select('id as course_id', 'name as title')
+                    ->get();
+            }
+
+            if ($courses->isEmpty() && !empty($dept)) {
+                $courses = DB::table('programs')
+                    ->join('departments', 'programs.department_id', '=', 'departments.department_id')
+                    ->where('departments.name', 'LIKE', '%' . $dept . '%')
+                    ->select('programs.id as course_id', 'programs.name as title')
+                    ->get();
+            }
+
+            if ($courses->isEmpty()) {
+                $courses = DB::table('programs')->select('id as course_id', 'name as title')->get();
+            }
+
+            // 2. قائمة السنوات الدراسية لنظام المعهد (سنتين فقط)
+            $years = [
+                'السنة الأولى',
+                'السنة الثانية',
+            ];
+
+            // 3. جلب الطلاب مع بيانات القسم واسم البرنامج المرتبط واسم ولي الأمر
+            $studentsQuery = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('parent_students', 'students.student_id', '=', 'parent_students.student_id')
+                ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                ->leftJoin('users as parent_users', 'parents.user_id', '=', 'parent_users.user_id')
+                ->select(
+                    'students.student_id',
+                    'users.full_name as student_name',
+                    'students.program_id',
+                    'programs.name as program_name',
+                    'users.department',
+                    'students.level as raw_level',
+                    'students.student_code',
+                    'parent_users.full_name as parent_name',
+                    'parent_users.user_id as parent_user_id'
+                );
+
+            if ($head && !empty($head->department_id)) {
+                $deptName = DB::table('departments')->where('department_id', $head->department_id)->value('name');
+                if ($deptName) {
+                    $studentsQuery->where(function($q) use ($deptName, $head) {
+                        $q->where('users.department', 'LIKE', '%' . $deptName . '%')
+                          ->orWhere('programs.department_id', $head->department_id)
+                          ->orWhereNull('students.program_id');
+                    });
+                }
+            } elseif (!empty($dept)) {
+                $studentsQuery->where('users.department', 'LIKE', '%' . $dept . '%');
+            }
+
+            $studentsRaw = $studentsQuery->get();
+
+            // خيار الاحتياط النهائي لجلب كافة الطلاب إن كانت الشروط مشددة جداً
+            if ($studentsRaw->isEmpty()) {
+                $studentsRaw = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                    ->leftJoin('parent_students', 'students.student_id', '=', 'parent_students.student_id')
+                    ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                    ->leftJoin('users as parent_users', 'parents.user_id', '=', 'parent_users.user_id')
+                    ->select(
+                        'students.student_id',
+                        'users.full_name as student_name',
+                        'students.program_id',
+                        'programs.name as program_name',
+                        'users.department',
+                        'students.level as raw_level',
+                        'students.student_code',
+                        'parent_users.full_name as parent_name',
+                        'parent_users.user_id as parent_user_id'
+                    )
+                    ->get();
+            }
+
+            // تجهيز قائمة الطلاب وتوحيد صيغة السنة والدورات
+            $students = $studentsRaw->map(function ($st) {
+                $lvl = trim((string)$st->raw_level);
+                if (in_array($lvl, ['1', 'الأولى', 'السنة الأولى', 'السنة الاولى', 'first'])) {
+                    $year = 'السنة الأولى';
+                } elseif (in_array($lvl, ['2', 'الثانية', 'السنة الثانية', 'second'])) {
+                    $year = 'السنة الثانية';
+                } else {
+                    $year = !empty($lvl) ? $lvl : 'السنة الأولى';
+                }
+
+                return [
+                    'student_id'   => $st->student_id,
+                    'student_name' => $st->student_name,
+                    'program_id'   => $st->program_id,
+                    'program_name' => !empty($st->program_name) ? $st->program_name : ($st->department ?? ''),
+                    'department'   => $st->department ?? '',
+                    'year'         => $year,
+                    'parent_name'  => $st->parent_name ?? 'غير مسجل',
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'courses'  => $courses,
+                    'years'    => $years,
+                    'students' => $students,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * 2️⃣ جلب جميع الاستدعاءات الصادرة من رئيس القسم
+     */
+    public function getSummons(Request $request)
+    {
+        try {
+            $userId = auth()->id();
+            $summons = DB::table('parent_summons')
+                ->join('students', 'parent_summons.student_id', '=', 'students.student_id')
+                ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+                ->leftJoin('users as parent_users', 'parent_summons.parent_user_id', '=', 'parent_users.user_id')
+                ->select(
+                    'parent_summons.*',
+                    'student_users.full_name as student_name',
+                    'students.level as year',
+                    'student_users.department',
+                    'parent_users.full_name as parent_name'
+                )
+                ->where('parent_summons.sender_user_id', $userId)
+                ->orderBy('parent_summons.created_at', 'desc')
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $summons]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * 3️⃣ إنشاء وإرسال استدعاء جديد لولي أمر طالب
+     */
+    public function storeSummon(Request $request)
+    {
+        $request->validate([
+            'student_id'   => 'required|exists:students,student_id',
+            'reason_title' => 'required|string|max:255',
+            'details'      => 'required|string',
+            'summon_date'  => 'nullable|string',
+        ]);
+
+        try {
+            $student = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->where('students.student_id', $request->student_id)
+                ->first();
+
+            if (!$student) {
+                return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
+            }
+
+            // جلب ولي أمر الطالب
+            $parentUserId = DB::table('parent_students')
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                ->where('parent_students.student_id', $request->student_id)
+                ->value('parents.user_id');
+
+            if (!$parentUserId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'تعذر العثور على حساب ولي أمر مرتبط بهذا الطالب في النظام.'
+                ], 422);
+            }
+
+            $id = DB::table('parent_summons')->insertGetId([
+                'sender_user_id' => auth()->id(),
+                'student_id'     => $request->student_id,
+                'parent_user_id' => $parentUserId,
+                'reason_title'   => $request->reason_title,
+                'details'        => $request->details,
+                'summon_date'    => $request->summon_date ? date('Y-m-d H:i:s', strtotime($request->summon_date)) : null,
+                'status'         => 'sent',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+
+            $title = 'استدعاء رسمي من رئيس القسم';
+            $message = "لديك استدعاء رسميا بخصوص الطالب ({$student->full_name}) - الموضوع: " . $request->reason_title;
+
+            // إرسال إشعار لولي الأمر بجدول Notifications
+            DB::table('notifications')->insert([
+                'user_id'    => $parentUserId,
+                'sender_id'  => auth()->id(),
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'summon',
+                'category'   => 'administrative',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // إرسال FCM Push Notification
+            \App\Services\FcmService::sendToUser($parentUserId, $title, $message, [
+                'type'       => 'summon',
+                'related_id' => (string)$id,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'تم إرسال الاستدعاء بنجاح', 'id' => $id], 201);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * 4️⃣ جلب المواعيد الواردة الموجهة لرئيس القسم
+     */
+    public function getMeetingRequests(Request $request)
+    {
+        try {
+            $query = DB::table('parent_meeting_requests')
+                ->join('users as parent_users', 'parent_meeting_requests.parent_user_id', '=', 'parent_users.user_id')
+                ->leftJoin('students', 'parent_meeting_requests.student_id', '=', 'students.student_id')
+                ->leftJoin('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+                ->select(
+                    'parent_meeting_requests.*',
+                    'parent_users.full_name as parent_name',
+                    'parent_users.phone as parent_phone',
+                    'student_users.full_name as student_name'
+                );
+
+            $query->where(function($q) {
+                $q->where('parent_meeting_requests.target_role', 'head')
+                  ->orWhere('parent_meeting_requests.target_role', 'hod');
+            });
+
+            $meetings = $query->orderBy('parent_meeting_requests.created_at', 'desc')->get();
+
+            return response()->json(['success' => true, 'data' => $meetings]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * 5️⃣ الرد على طلب الموعد (قبول / رفض مع ملاحظات وتحديد موعد)
+     */
+    public function respondToMeetingRequest(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status'         => 'required|string|in:approved,rejected',
+            'admin_response' => 'nullable|string',
+            'scheduled_at'   => 'nullable|string',
+        ]);
+
+        $meeting = DB::table('parent_meeting_requests')->where('id', $id)->first();
+        if (!$meeting) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        $scheduledAt = $validated['scheduled_at'] ? date('Y-m-d H:i:s', strtotime($validated['scheduled_at'])) : null;
+
+        DB::table('parent_meeting_requests')->where('id', $id)->update([
+            'status'         => $validated['status'],
+            'admin_response' => $validated['admin_response'] ?? null,
+            'scheduled_at'   => $scheduledAt,
+            'updated_at'     => now(),
+        ]);
+
+        // 🔔 إرسال إشعار فوري لولي الأمر بجدول Notifications و FCM
+        $parentUserId = $meeting->parent_user_id;
+        if ($parentUserId) {
+            $statusLabel = $validated['status'] === 'approved' ? 'قبول' : 'رفض';
+            $title = "تم الرد على طلب الموعد من رئيس القسم";
+            $notes = $validated['admin_response'] ? " - الملاحظات: " . $validated['admin_response'] : "";
+            $timeInfo = $scheduledAt ? " - الموعد المحدد: " . $scheduledAt : "";
+            $message = "تم {$statusLabel} طلب الموعد الخاص بك{$notes}{$timeInfo}";
+
+            DB::table('notifications')->insert([
+                'user_id'    => $parentUserId,
+                'sender_id'  => auth()->id(),
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'meeting_request',
+                'category'   => 'administrative',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser($parentUserId, $title, $message, [
+                'type'       => 'meeting_request',
+                'related_id' => (string)$id,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حفظ الرد وإشعاره لولي الأمر بنجاح'
+        ]);
+    }
 }

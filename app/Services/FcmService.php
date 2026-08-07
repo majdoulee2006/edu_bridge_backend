@@ -72,11 +72,21 @@ class FcmService
                 ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
                     'message' => [
                         'token' => $token,
-                        'notification' => ['title' => $title, 'body' => $body],
+                        'notification' => [
+                            'title' => $title,
+                            'body'  => $body,
+                        ],
                         'data' => array_map('strval', $data),
                         'android' => [
                             'priority' => 'high',
-                            'notification' => ['sound' => 'default', 'channel_id' => 'edu_bridge'],
+                            'notification' => [
+                                'sound' => 'default',
+                                'channel_id' => 'edu_bridge',
+                                'notification_priority' => 'PRIORITY_MAX',
+                                'default_sound' => true,
+                                'default_vibrate_timings' => true,
+                                'default_light_settings' => true,
+                            ],
                         ],
                     ],
                 ]);

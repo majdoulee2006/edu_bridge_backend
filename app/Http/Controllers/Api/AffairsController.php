@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class AffairsController extends Controller
 {
@@ -409,21 +410,64 @@ class AffairsController extends Controller
     {
         $departments = DB::table('departments')->orderBy('name')->get();
         
-        $pivots = DB::table('course_departments')->get()->groupBy('course_id');
+        $programs = collect([]);
+        if (Schema::hasTable('programs')) {
+            $programs = DB::table('programs')->orderBy('name')->get()->map(function ($p) {
+                return [
+                    'course_id'      => $p->id,
+                    'program_id'     => $p->id,
+                    'id'             => $p->id,
+                    'title'          => $p->name,
+                    'name'           => $p->name,
+                    'department_id'  => $p->department_id,
+                    'department_ids' => $p->department_id ? [(int)$p->department_id] : [],
+                ];
+            });
+        }
+
+        $courseDeptMap = [];
+        if (Schema::hasTable('course_departments')) {
+            $pivots = DB::table('course_departments')->get()->groupBy('course_id');
+            foreach ($pivots as $cId => $items) {
+                $courseDeptMap[$cId] = $items->pluck('department_id')->toArray();
+            }
+        }
+
+        if (Schema::hasTable('course_program') && Schema::hasTable('programs')) {
+            $progPivots = DB::table('course_program')
+                ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                ->select('course_program.course_id', 'programs.department_id')
+                ->get()
+                ->groupBy('course_id');
+
+            foreach ($progPivots as $cId => $items) {
+                $deptIds = $items->pluck('department_id')->filter()->toArray();
+                if (!isset($courseDeptMap[$cId])) {
+                    $courseDeptMap[$cId] = [];
+                }
+                $courseDeptMap[$cId] = array_values(array_unique(array_merge($courseDeptMap[$cId], $deptIds)));
+            }
+        }
         
-        $courses = DB::table('courses')->orderBy('title')->get()->map(function ($course) use ($pivots) {
+        $courses = DB::table('courses')->orderBy('title')->get()->map(function ($course) use ($courseDeptMap) {
             $courseId = $course->course_id;
-            $course->department_ids = isset($pivots[$courseId])
-                ? $pivots[$courseId]->pluck('department_id')->toArray()
-                : [];
+            $deptIds = $courseDeptMap[$courseId] ?? [];
+            if (isset($course->department_id) && $course->department_id) {
+                $deptIds[] = (int)$course->department_id;
+            }
+            $course->department_ids = array_values(array_unique(array_map('intval', $deptIds)));
             return $course;
         });
+
+        $coursesList = $programs->isNotEmpty() ? $programs : $courses;
         
         return response()->json([
             'success' => true,
             'data' => [
                 'departments' => $departments,
-                'courses' => $courses,
+                'programs'    => $programs,
+                'courses'     => $coursesList,
+                'subjects'    => $courses,
             ]
         ]);
     }
@@ -1054,8 +1098,8 @@ class AffairsController extends Controller
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'link_url'        => 'nullable|url|max:500',
             'target_audience' => 'nullable|in:all,students,teachers,heads',
-            'department_id'   => 'nullable|exists:departments,department_id',
-            'course_id'       => 'nullable|exists:courses,course_id',
+            'department_id'   => 'nullable',
+            'course_id'       => 'nullable',
         ]);
 
         if ($validator->fails()) {
@@ -1171,5 +1215,280 @@ class AffairsController extends Controller
         return response()->json(['success' => true, 'message' => 'تم رفض طلب تغيير الصورة وإشعاره بنجاح']);
     }
 
+    // ==========================================
+    // إدارة المواعيد والاستدعاءات لشؤون الطلاب / الإدارة
+    // ==========================================
 
+    public function getAppointmentsMetadata(Request $request)
+    {
+        try {
+            // 1. جميع الأقسام المتاحة بالمعهد
+            $departments = DB::table('departments')
+                ->select('department_id', 'name as title')
+                ->get();
+
+            // 2. جميع الدورات والبرامج المتاحة بالمعهد مرادفة لأقسامها
+            $courses = DB::table('programs')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
+                ->select(
+                    'programs.id as course_id',
+                    'programs.name as title',
+                    'programs.department_id',
+                    'departments.name as department_name'
+                )
+                ->get();
+
+            if ($courses->isEmpty()) {
+                $courses = DB::table('courses')
+                    ->select('course_id', 'title', DB::raw("NULL as department_id"), DB::raw("NULL as department_name"))
+                    ->get();
+            }
+
+            // 3. السنوات الدراسية المعتمدة بالمعهد
+            $years = [
+                'السنة الأولى',
+                'السنة الثانية',
+            ];
+
+            // 4. جميع الطلاب مع بيانات القسم والسنة واسم ولي الأمر
+            $studentsRaw = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
+                ->leftJoin('parent_students', 'students.student_id', '=', 'parent_students.student_id')
+                ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                ->leftJoin('users as parent_users', 'parents.user_id', '=', 'parent_users.user_id')
+                ->select(
+                    'students.student_id',
+                    'users.full_name as student_name',
+                    'students.program_id',
+                    'programs.name as program_name',
+                    'programs.department_id',
+                    'departments.name as program_dept_name',
+                    'users.department as user_dept_name',
+                    'students.level as raw_level',
+                    'students.student_code',
+                    'parent_users.full_name as parent_name',
+                    'parent_users.user_id as parent_user_id'
+                )
+                ->get();
+
+            $students = $studentsRaw->map(function ($st) {
+                $lvl = trim((string)$st->raw_level);
+                if (in_array($lvl, ['1', 'الأولى', 'السنة الأولى', 'السنة الاولى', 'first'])) {
+                    $year = 'السنة الأولى';
+                } elseif (in_array($lvl, ['2', 'الثانية', 'السنة الثانية', 'second'])) {
+                    $year = 'السنة الثانية';
+                } else {
+                    $year = !empty($lvl) ? $lvl : 'السنة الأولى';
+                }
+
+                $deptName = !empty($st->program_dept_name) ? $st->program_dept_name : ($st->user_dept_name ?? '');
+
+                return [
+                    'student_id'      => $st->student_id,
+                    'student_name'    => $st->student_name,
+                    'program_id'      => $st->program_id,
+                    'program_name'    => !empty($st->program_name) ? $st->program_name : $deptName,
+                    'department'      => $deptName,
+                    'department_id'   => $st->department_id,
+                    'year'            => $year,
+                    'parent_name'     => $st->parent_name ?? 'غير مسجل',
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'departments' => $departments,
+                    'courses'     => $courses,
+                    'years'       => $years,
+                    'students'    => $students,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getSummons(Request $request)
+    {
+        try {
+            $summons = DB::table('parent_summons')
+                ->join('students', 'parent_summons.student_id', '=', 'students.student_id')
+                ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+                ->leftJoin('users as parent_users', 'parent_summons.parent_user_id', '=', 'parent_users.user_id')
+                ->select(
+                    'parent_summons.*',
+                    'student_users.full_name as student_name',
+                    'parent_users.full_name as parent_name'
+                )
+                ->orderByDesc('parent_summons.created_at')
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $summons]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function storeSummon(Request $request)
+    {
+        $validated = $request->validate([
+            'student_id'   => 'required|exists:students,student_id',
+            'subject'      => 'nullable|string|max:255',
+            'reason_title' => 'nullable|string|max:255',
+            'reason'       => 'nullable|string',
+            'details'      => 'nullable|string',
+            'date'         => 'nullable|string',
+            'summon_date'  => 'nullable|string',
+            'time'         => 'nullable|string',
+            'urgency'      => 'nullable|string',
+        ]);
+
+        $subject = $validated['reason_title'] ?? $validated['subject'] ?? 'استدعاء ولي أمر';
+        $reason  = $validated['details'] ?? $validated['reason'] ?? 'يرجى مراجعة الإدارة';
+        $fullDate = $validated['summon_date'] ?? $validated['date'] ?? now()->toDateTimeString();
+        $time    = $validated['time'] ?? '10:00';
+
+        try {
+            $student = DB::table('students')->where('student_id', $validated['student_id'])->first();
+            if (!$student) {
+                return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
+            }
+
+            $parentStudent = DB::table('parent_students')->where('student_id', $student->student_id)->first();
+            $parentUserId = null;
+            if ($parentStudent) {
+                $parent = DB::table('parents')->where('parent_id', $parentStudent->parent_id)->first();
+                if ($parent) {
+                    $parentUserId = $parent->user_id;
+                }
+            }
+
+            $summonId = DB::table('parent_summons')->insertGetId([
+                'sender_user_id' => auth()->id(),
+                'parent_user_id' => $parentUserId,
+                'student_id'     => $student->student_id,
+                'subject'        => $subject,
+                'reason'         => $reason,
+                'date'           => $fullDate,
+                'time'           => $time,
+                'status'         => 'pending',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+
+            if ($parentUserId) {
+                $title = 'استدعاء رسمي من الإدارة';
+                $message = "تم إصدار استدعاء لولي أمر الطالب وذلك بخصوص: {$subject}";
+
+                DB::table('notifications')->insert([
+                    'user_id'    => $parentUserId,
+                    'sender_id'  => auth()->id(),
+                    'title'      => $title,
+                    'message'    => $message,
+                    'type'       => 'summon',
+                    'category'   => 'administrative',
+                    'related_id' => $summonId,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                \App\Services\FcmService::sendToUser($parentUserId, $title, $message, [
+                    'type'       => 'summon',
+                    'related_id' => (string)$summonId,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال استدعاء ولي الأمر بنجاح',
+                'id'      => $summonId
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'حدث خطأ: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getMeetingRequests(Request $request)
+    {
+        try {
+            $requests = DB::table('parent_meeting_requests')
+                ->join('users as parent_users', 'parent_meeting_requests.parent_user_id', '=', 'parent_users.user_id')
+                ->leftJoin('students', 'parent_meeting_requests.student_id', '=', 'students.student_id')
+                ->leftJoin('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+                ->where(function($q) {
+                    $q->whereIn('parent_meeting_requests.target_role', ['affairs', 'admin'])
+                      ->orWhereNull('parent_meeting_requests.target_role');
+                })
+                ->select(
+                    'parent_meeting_requests.*',
+                    'parent_users.full_name as parent_name',
+                    'student_users.full_name as student_name'
+                )
+                ->orderByDesc('parent_meeting_requests.created_at')
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $requests]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function respondToMeetingRequest(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status'         => 'required|string|in:approved,rejected',
+            'admin_response' => 'nullable|string',
+            'scheduled_at'   => 'nullable|string',
+        ]);
+
+        $meeting = DB::table('parent_meeting_requests')->where('id', $id)->first();
+        if (!$meeting) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        $scheduledAt = $validated['scheduled_at'] ? date('Y-m-d H:i:s', strtotime($validated['scheduled_at'])) : null;
+
+        DB::table('parent_meeting_requests')->where('id', $id)->update([
+            'status'         => $validated['status'],
+            'admin_response' => $validated['admin_response'] ?? null,
+            'scheduled_at'   => $scheduledAt,
+            'updated_at'     => now(),
+        ]);
+
+        $parentUserId = $meeting->parent_user_id;
+        if ($parentUserId) {
+            $statusLabel = $validated['status'] === 'approved' ? 'قبول' : 'رفض';
+            $title = "تم الرد على طلب الموعد من الإدارة العامة";
+            $notes = $validated['admin_response'] ? " - الملاحظات: " . $validated['admin_response'] : "";
+            $timeInfo = $scheduledAt ? " - الموعد المحدد: " . $scheduledAt : "";
+            $message = "تم {$statusLabel} طلب الموعد الخاص بك{$notes}{$timeInfo}";
+
+            DB::table('notifications')->insert([
+                'user_id'    => $parentUserId,
+                'sender_id'  => auth()->id(),
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'meeting_request',
+                'category'   => 'administrative',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser($parentUserId, $title, $message, [
+                'type'       => 'meeting_request',
+                'related_id' => (string)$id,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حفظ الرد وإشعاره لولي الأمر بنجاح'
+        ]);
+    }
 }

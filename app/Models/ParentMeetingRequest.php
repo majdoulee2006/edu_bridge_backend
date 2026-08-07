@@ -14,6 +14,9 @@ class ParentMeetingRequest extends Model
     protected $fillable = [
         'parent_user_id',
         'student_id',
+        'target_role',
+        'department_id',
+        'target_user_id',
         'subject',
         'reason',
         'preferred_date',

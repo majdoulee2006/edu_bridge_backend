@@ -319,6 +319,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/announcements/{id}',    [DepartmentHeadController::class, 'updateAnnouncement']);
         Route::delete('/announcements/{id}',  [DepartmentHeadController::class, 'deleteAnnouncement']);
 
+        // Appointments & Summons (المواعيد واستدعاء الأهل)
+        Route::get('/appointments/metadata', [HODController::class, 'getAppointmentsMetadata']);
+        Route::get('/appointments/summons',  [HODController::class, 'getSummons']);
+        Route::post('/appointments/summons', [HODController::class, 'storeSummon']);
+        Route::get('/appointments/meetings', [HODController::class, 'getMeetingRequests']);
+        Route::post('/appointments/meetings/{id}/respond', [HODController::class, 'respondToMeetingRequest']);
+        Route::put('/appointments/meetings/{id}/respond',  [HODController::class, 'respondToMeetingRequest']);
+
         // Send notification to students / students+teachers
         Route::post('/notifications/send', [DepartmentHeadController::class, 'sendNotification']);
 
@@ -442,7 +450,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // ── Affairs API ────────────────────────────────────────────────────
 
 
-Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(function () {
+Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs,admin'])->group(function () {
     // Dashboard Stats
     Route::get('/dashboard',                             [AffairsController::class, 'getDashboardStats']);
 
@@ -503,6 +511,14 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs'])->group(fu
     Route::get('/photo-change-requests',                 [AffairsController::class, 'listPhotoChangeRequests']);
     Route::post('/photo-change-requests/{id}/approve',   [AffairsController::class, 'approvePhotoChange']);
     Route::post('/photo-change-requests/{id}/reject',    [AffairsController::class, 'rejectPhotoChange']);
+
+    // Appointments & Summons (المواعيد واستدعاء الأهل للإدارة)
+    Route::get('/appointments/metadata', [AffairsController::class, 'getAppointmentsMetadata']);
+    Route::get('/appointments/summons',  [AffairsController::class, 'getSummons']);
+    Route::post('/appointments/summons', [AffairsController::class, 'storeSummon']);
+    Route::get('/appointments/meetings', [AffairsController::class, 'getMeetingRequests']);
+    Route::post('/appointments/meetings/{id}/respond', [AffairsController::class, 'respondToMeetingRequest']);
+    Route::put('/appointments/meetings/{id}/respond',  [AffairsController::class, 'respondToMeetingRequest']);
 
     // Broadcasting channel authorization for Sanctum
     Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {

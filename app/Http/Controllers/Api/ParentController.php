@@ -655,13 +655,43 @@ class ParentController extends Controller
             'reason'         => 'required|string',
             'student_id'     => 'nullable|exists:students,student_id',
             'preferred_date' => 'nullable|date',
+            'target_person'  => 'nullable|string',
+            'target_role'    => 'nullable|string',
+            'target'         => 'nullable|string',
         ]);
 
         $user = $request->user();
+        $studentId = $validated['student_id'] ?? null;
+        $rawTarget = $request->input('target_person') ?? $request->input('target_role') ?? $request->input('target') ?? 'affairs';
+
+        // توحيد تحديد الجهة: head لرئيس القسم و affairs للإدارة
+        if (in_array(strtolower(trim($rawTarget)), ['head', 'hod', 'department_head', 'رئيس القسم'])) {
+            $targetRole = 'head';
+        } else {
+            $targetRole = 'affairs';
+        }
+
+        $departmentId = null;
+        $studentName = 'طالب';
+        if ($studentId) {
+            $student = \DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->where('students.student_id', $studentId)
+                ->select('students.*', 'users.full_name as student_name', 'programs.department_id')
+                ->first();
+
+            if ($student) {
+                $studentName = $student->student_name;
+                $departmentId = $student->department_id;
+            }
+        }
 
         $requestId = \DB::table('parent_meeting_requests')->insertGetId([
             'parent_user_id' => $user->user_id,
-            'student_id'     => $validated['student_id'] ?? null,
+            'student_id'     => $studentId,
+            'target_role'    => $targetRole,
+            'department_id'   => $departmentId,
             'subject'        => $validated['subject'],
             'reason'         => $validated['reason'],
             'preferred_date' => $validated['preferred_date'] ?? null,
@@ -670,9 +700,70 @@ class ParentController extends Controller
             'updated_at'     => now(),
         ]);
 
+        // 🔔 إرسال إشعار فوري للشخص / الجهة المستلمة فقط
+        if ($targetRole === 'head') {
+            $hodList = \DB::table('users')
+                ->leftJoin('heads', 'users.user_id', '=', 'heads.user_id')
+                ->where('users.role_id', 5)
+                ->orWhereNotNull('heads.user_id')
+                ->select('users.user_id')
+                ->distinct()
+                ->get();
+
+            foreach ($hodList as $hod) {
+                $title = 'طلب موعد لقاء جديد من ولي أمر';
+                $message = "قدم ولي أمر الطالب ({$studentName}) طلباً للقاء رئيس القسم بخصوص: " . $validated['subject'];
+
+                \DB::table('notifications')->insert([
+                    'user_id'    => $hod->user_id,
+                    'sender_id'  => $user->user_id,
+                    'title'      => $title,
+                    'message'    => $message,
+                    'type'       => 'meeting_request',
+                    'category'   => 'administrative',
+                    'related_id' => $requestId,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                \App\Services\FcmService::sendToUser($hod->user_id, $title, $message, [
+                    'type'       => 'meeting_request',
+                    'related_id' => (string)$requestId,
+                ]);
+            }
+        } else {
+            // الإدارة (مدير المعهد - role_id 1 فقط)
+            $admins = \DB::table('users')->where('role_id', 1)->get();
+            foreach ($admins as $admin) {
+                $title = 'طلب موعد لقاء جديد من ولي أمر';
+                $message = "قدم ولي أمر الطالب ({$studentName}) طلباً للقاء الإدارة بخصوص: " . $validated['subject'];
+
+                \DB::table('notifications')->insert([
+                    'user_id'    => $admin->user_id,
+                    'sender_id'  => $user->user_id,
+                    'title'      => $title,
+                    'message'    => $message,
+                    'type'       => 'meeting_request',
+                    'category'   => 'administrative',
+                    'related_id' => $requestId,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                \App\Services\FcmService::sendToUser($admin->user_id, $title, $message, [
+                    'type'       => 'meeting_request',
+                    'related_id' => (string)$requestId,
+                ]);
+            }
+        }
+
+        $targetLabel = ($targetRole === 'head') ? 'رئيس القسم' : 'الإدارة';
+
         return response()->json([
             'success' => true,
-            'message' => 'تم تقديم طلب موعد مع الإدارة بنجاح',
+            'message' => "تم تقديم طلب موعد مع {$targetLabel} بنجاح وإرسال الإشعار",
             'id'      => $requestId
         ], 201);
     }
@@ -696,24 +787,51 @@ class ParentController extends Controller
     }
 
     /**
-     * عرض الاستدعاءات الصادرة لولي الأمر من المعلمين ورؤساء الأقسام
+     * عرض الاستدعاءات الصادرة لولي الأمر من المعلمين ورؤساء الأقسام كـ سجل مؤرخ
      */
     public function getMySummons(Request $request)
     {
         $user = $request->user();
 
-        $summons = \DB::table('parent_summons')
-            ->join('students', 'parent_summons.student_id', '=', 'students.student_id')
-            ->join('users as student_user', 'students.user_id', '=', 'student_user.user_id')
-            ->join('users as sender_user', 'parent_summons.sender_user_id', '=', 'sender_user.user_id')
+        $rawSummons = \DB::table('parent_summons')
+            ->leftJoin('students', 'parent_summons.student_id', '=', 'students.student_id')
+            ->leftJoin('users as student_user', 'students.user_id', '=', 'student_user.user_id')
+            ->leftJoin('users as sender_user', 'parent_summons.sender_user_id', '=', 'sender_user.user_id')
             ->where('parent_summons.parent_user_id', $user->user_id)
             ->select(
                 'parent_summons.*',
                 'student_user.full_name as student_name',
-                'sender_user.full_name as sender_name'
+                'sender_user.full_name as sender_name',
+                'sender_user.department as sender_department'
             )
             ->orderByDesc('parent_summons.created_at')
             ->get();
+
+        $summons = $rawSummons->map(function ($s) {
+            $subject = $s->reason_title ?? $s->subject ?? 'استدعاء ولي أمر';
+            $details = $s->details ?? $s->reason ?? 'يرجى مراجعة المعهد';
+            $date = $s->summon_date ?? $s->date ?? ($s->created_at ? date('Y-m-d', strtotime($s->created_at)) : null);
+            $time = $s->time ?? '10:00';
+
+            return [
+                'id'            => $s->id,
+                'sender_id'     => $s->sender_user_id,
+                'sender_name'   => $s->sender_name ?? 'إدارة المعهد',
+                'sender_dept'   => $s->sender_department,
+                'student_id'    => $s->student_id,
+                'student_name'  => $s->student_name ?? 'الطالب',
+                'reason_title'  => $subject,
+                'subject'       => $subject,
+                'details'       => $details,
+                'reason'        => $details,
+                'summon_date'   => $date,
+                'date'          => $date,
+                'time'          => $time,
+                'status'        => $s->status ?? 'sent',
+                'created_at'    => $s->created_at,
+                'date_formatted'=> $s->created_at ? date('Y-m-d H:i', strtotime($s->created_at)) : null,
+            ];
+        });
 
         return response()->json([
             'success' => true,
