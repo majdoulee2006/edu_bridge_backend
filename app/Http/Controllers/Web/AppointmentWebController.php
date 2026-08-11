@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ParentMeetingRequest;
 use App\Models\ParentSummon;
 use App\Models\Student;
+use App\Models\Course;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,14 +36,26 @@ class AppointmentWebController extends Controller
                 $q->where('department', 'LIKE', '%' . $dept . '%');
             });
 
-            // جلب الأبناء (الطلاب) في هذا القسم لإمكانية استدعائهم
-            $students = Student::with('user')
+            // جلب الأبناء (الطلاب) في هذا القسم مع موادهم
+            $students = Student::with(['user', 'courses'])
                 ->whereHas('user', function($q) use ($dept) {
                     $q->where('department', 'LIKE', '%' . $dept . '%');
                 })->get();
+
+            // جلب الدورات/المواد المتاحة للقسم
+            $courses = Course::whereHas('students.user', function($q) use ($dept) {
+                if ($dept) {
+                    $q->where('department', 'LIKE', '%' . $dept . '%');
+                }
+            })->get();
+
+            if ($courses->isEmpty()) {
+                $courses = Course::select('course_id', 'title')->get();
+            }
         } else {
             // الأدمن يرى كل شيء
-            $students = Student::with('user')->get();
+            $students = Student::with(['user', 'courses'])->get();
+            $courses = Course::select('course_id', 'title')->get();
         }
 
         $meetings = $meetingsQuery->orderByDesc('created_at')->get();
@@ -50,7 +63,7 @@ class AppointmentWebController extends Controller
 
         $viewName = $isHOD ? 'hod.appointments' : 'admin.appointments';
 
-        return view($viewName, compact('meetings', 'summons', 'students'));
+        return view($viewName, compact('meetings', 'summons', 'students', 'courses'));
     }
 
     /**
