@@ -36,26 +36,31 @@ class AppointmentWebController extends Controller
                 $q->where('department', 'LIKE', '%' . $dept . '%');
             });
 
-            // جلب الأبناء (الطلاب) في هذا القسم مع موادهم
-            $students = Student::with(['user', 'courses'])
+            // جلب الطلاب في هذا القسم مع اختصاصاتهم
+            $students = Student::with(['user', 'program'])
                 ->whereHas('user', function($q) use ($dept) {
                     $q->where('department', 'LIKE', '%' . $dept . '%');
                 })->get();
 
-            // جلب الدورات/المواد المتاحة للقسم
-            $courses = Course::whereHas('students.user', function($q) use ($dept) {
-                if ($dept) {
-                    $q->where('department', 'LIKE', '%' . $dept . '%');
-                }
-            })->get();
+            // جلب الدورات / الاختصاصات التابعة لقسم رئيس القسم
+            $departmentId = DB::table('departments')
+                ->where('name', 'LIKE', '%' . $dept . '%')
+                ->orWhere('description', 'LIKE', '%' . $dept . '%')
+                ->value('department_id');
 
-            if ($courses->isEmpty()) {
-                $courses = Course::select('course_id', 'title')->get();
+            if ($departmentId) {
+                $programs = DB::table('programs')->where('department_id', $departmentId)->get();
+            } else {
+                $programs = DB::table('programs')->get();
+            }
+
+            if ($programs->isEmpty()) {
+                $programs = DB::table('programs')->get();
             }
         } else {
             // الأدمن يرى كل شيء
-            $students = Student::with(['user', 'courses'])->get();
-            $courses = Course::select('course_id', 'title')->get();
+            $students = Student::with(['user', 'program'])->get();
+            $programs = DB::table('programs')->get();
         }
 
         $meetings = $meetingsQuery->orderByDesc('created_at')->get();
@@ -63,7 +68,7 @@ class AppointmentWebController extends Controller
 
         $viewName = $isHOD ? 'hod.appointments' : 'admin.appointments';
 
-        return view($viewName, compact('meetings', 'summons', 'students', 'courses'));
+        return view($viewName, compact('meetings', 'summons', 'students', 'programs'));
     }
 
     /**
