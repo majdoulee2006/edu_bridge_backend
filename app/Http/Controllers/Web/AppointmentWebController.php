@@ -66,7 +66,7 @@ class AppointmentWebController extends Controller
         $meetings = $meetingsQuery->orderByDesc('created_at')->get();
         $summons = $summonsQuery->orderByDesc('created_at')->get();
 
-        $isAffairs = ($user->role_id == 4);
+        $isAffairs = ($user->role_id == 6 || request()->is('affairs*'));
         if ($isHOD) {
             $viewName = 'hod.appointments';
         } elseif ($isAffairs) {
