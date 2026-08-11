@@ -1653,7 +1653,28 @@ class TeacherWebController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('teacher.notifications', compact('notifications'));
+        $unreadCount = $notifications->where('is_read', false)->count();
+
+        return view('teacher.notifications', compact('notifications', 'unreadCount'));
+    }
+
+    public function markNotificationRead($id)
+    {
+        DB::table('notifications')
+            ->where('id', $id)
+            ->where('user_id', Auth::id())
+            ->update(['is_read' => true]);
+
+        return back()->with('success', 'تم تحديد الإشعار كمقروء.');
+    }
+
+    public function markAllNotificationsRead()
+    {
+        DB::table('notifications')
+            ->where('user_id', Auth::id())
+            ->update(['is_read' => true]);
+
+        return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 
     // ────────────────────────────────────────────────────────────
@@ -2320,6 +2341,20 @@ class TeacherWebController extends Controller
         $scores = $request->input('scores', []);
         $notes = $request->input('notes', []);
 
+        $courseTitle = 'المادة';
+        if ($event->course_id) {
+            $course = DB::table('courses')->where('course_id', $event->course_id)->first();
+            $courseTitle = $course?->title ?? 'المادة';
+        }
+
+        $eventType = match($event->type) {
+            'exam' => 'امتحان',
+            'quiz' => 'مذاكرة',
+            'oral' => 'شفهي',
+            default => 'تقييم',
+        };
+        $maxScore = $event->max_score ?? 100;
+
         foreach ($scores as $studentId => $score) {
             if ($score === null || $score === '') continue; // Skip empty inputs
 
@@ -2346,10 +2381,106 @@ class TeacherWebController extends Controller
                     'updated_at' => now(),
                 ]);
             }
+
+            // المزامنة مع جدول grades القديم لتضمن الظهور الفوري في بطاقة الطالب
+            if ($event->course_id) {
+                $examName = $event->title ?: ($eventType . ' ' . $courseTitle);
+                $exam = DB::table('exams')
+                    ->where('course_id', $event->course_id)
+                    ->where('exam_name', $examName)
+                    ->first();
+
+                if (!$exam) {
+                    $examId = DB::table('exams')->insertGetId([
+                        'course_id' => $event->course_id,
+                        'exam_name' => $examName,
+                        'date'      => $event->date ?? now()->toDateString(),
+                        'created_at'=> now(),
+                        'updated_at'=> now(),
+                    ]);
+                } else {
+                    $examId = $exam->exam_id;
+                }
+
+                $existingGrade = DB::table('grades')
+                    ->where('exam_id', $examId)
+                    ->where('student_id', $studentId)
+                    ->first();
+
+                if ($existingGrade) {
+                    DB::table('grades')->where('grade_id', $existingGrade->grade_id)->update([
+                        'score' => $score,
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    DB::table('grades')->insert([
+                        'exam_id' => $examId,
+                        'student_id' => $studentId,
+                        'score' => $score,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            // إرسال الإشعارات
+            $student = DB::table('students')->where('student_id', $studentId)->first();
+            if ($student) {
+                $studentUserId = $student->user_id;
+                $studentName = DB::table('users')->where('user_id', $studentUserId)->value('full_name') ?? 'الطالب';
+                $msgStudent = "علامتك في $eventType «{$event->title}» - $courseTitle: $score / $maxScore";
+                $msgParent  = "علامة $studentName في $eventType «{$event->title}» - $courseTitle: $score / $maxScore";
+
+                DB::table('notifications')->insert([
+                    'user_id'    => $studentUserId,
+                    'title'      => "نتيجة $eventType",
+                    'message'    => $msgStudent,
+                    'type'       => 'grade',
+                    'category'   => 'academic',
+                    'related_id' => $id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                \App\Services\FcmService::sendToUser(
+                    $studentUserId,
+                    "نتيجة $eventType",
+                    $msgStudent,
+                    ['type' => 'grade', 'event_id' => (string) $id, 'course_title' => $courseTitle]
+                );
+
+                $parentUserIds = DB::table('parent_students')
+                    ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                    ->where('parent_students.student_id', $studentId)
+                    ->pluck('parents.user_id');
+
+                foreach ($parentUserIds as $parentUserId) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $parentUserId,
+                        'title'      => "نتيجة $eventType",
+                        'message'    => $msgParent,
+                        'type'       => 'grade',
+                        'category'   => 'academic',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    \App\Services\FcmService::sendToUser(
+                        $parentUserId,
+                        "نتيجة $eventType",
+                        $msgParent,
+                        ['type' => 'grade', 'event_id' => (string) $id, 'course_title' => $courseTitle]
+                    );
+                }
+            }
         }
 
-        return redirect()->route('teacher.grade_events')->with('success', 'تم حفظ الدرجات بنجاح!');
+        return redirect()->route('teacher.grade_events')->with('success', 'تم حفظ الدرجات وإرسال الإشعارات بنجاح!');
     }
+
 
     public function deleteGradeEvent($id)
     {

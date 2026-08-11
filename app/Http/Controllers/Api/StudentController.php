@@ -151,6 +151,18 @@ class StudentController extends Controller
             }
         }
 
+        $activeSemRow = DB::table('semesters')->where('is_active', true)->first();
+        $currYearInt = (int)date('Y');
+        $academicYearRange = $currYearInt . ' - ' . ($currYearInt + 1);
+
+        $activeSemesterData = [
+            'is_active'     => $activeSemRow ? true : false,
+            'name'          => $activeSemRow ? $activeSemRow->name : 'لا يوجد فصل مفعّل حالياً',
+            'start_date'    => $activeSemRow?->start_date ?? null,
+            'end_date'      => $activeSemRow?->end_date ?? null,
+            'academic_year' => $academicYearRange,
+        ];
+
         return response()->json([
             'success' => true,
             'message' => 'تم جلب البيانات بنجاح',
@@ -161,12 +173,14 @@ class StudentController extends Controller
                     'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
                     'department' => $user->department ?? 'غير محدد',
                 ],
+                'active_semester' => $activeSemesterData,
                 'next_lecture' => $nextLecture,
                 'announcements' => $announcements,
                 'advisor_teacher' => $advisorTeacher,
             ]
         ], 200);
     }
+
 
     /**
      * جلب الملف الشخصي للطالب
@@ -431,9 +445,11 @@ class StudentController extends Controller
         ];
         $studentYearInt = $map[$studentLevel] ?? 1;
 
+        $failedOnly = $request->boolean('failed_only') || $request->input('failed_only') == '1' || $request->input('failed_only') == 'true';
+
         if ($request->filled('year')) {
             $query->where('courses.year', $request->year);
-        } else {
+        } elseif (!$failedOnly) {
             // تصفية المواد لتطابق السنة الدراسية للطالب حصراً (مع إبقاء المواد العامة/المستقلة)
             $query->where(function($q) use ($studentYearInt) {
                 $q->where('courses.year', $studentYearInt)
@@ -441,15 +457,72 @@ class StudentController extends Controller
             });
         }
 
-        $courses = $query->get()
-            ->map(function ($course) {
+        $coursesCollection = $query->get();
+
+        if ($failedOnly) {
+            $failedCourseIds = [];
+            foreach ($coursesCollection as $c) {
+                $quizScore = null;
+                $oralScore = null;
+                $finalScore = null;
+
+                $examGrades = DB::table('grades')
+                    ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
+                    ->where('grades.student_id', $student->student_id)
+                    ->where('exams.course_id', $c->course_id)
+                    ->get();
+
+                foreach ($examGrades as $g) {
+                    $examName = mb_strtolower($g->exam_name);
+                    if (str_contains($examName, 'مذاكرة') || str_contains($examName, 'أعمال') || str_contains($examName, 'quiz') || str_contains($examName, 'midterm')) {
+                        $quizScore = $g->score;
+                    } elseif (str_contains($examName, 'شفهي') || str_contains($examName, 'عملي') || str_contains($examName, 'oral') || str_contains($examName, 'practical')) {
+                        $oralScore = $g->score;
+                    } else {
+                        $finalScore = $g->score;
+                    }
+                }
+
+                $eventGrades = DB::table('grade_entries')
+                    ->join('grade_events', 'grade_entries.grade_event_id', '=', 'grade_events.id')
+                    ->where('grade_entries.student_id', $student->student_id)
+                    ->where('grade_events.course_id', $c->course_id)
+                    ->get();
+
+                foreach ($eventGrades as $ge) {
+                    $t = mb_strtolower($ge->type ?? '');
+                    $titleStr = mb_strtolower($ge->title ?? '');
+
+                    if (str_contains($t, 'quiz') || str_contains($t, 'مذاكرة') || str_contains($t, 'أعمال') || str_contains($titleStr, 'مذاكرة')) {
+                        $quizScore = $ge->score;
+                    } elseif (str_contains($t, 'oral') || str_contains($t, 'عملي') || str_contains($t, 'شفهي') || str_contains($titleStr, 'شفهي') || str_contains($titleStr, 'تقييم')) {
+                        $oralScore = $ge->score;
+                    } else {
+                        $finalScore = $ge->score;
+                    }
+                }
+
+                $hasGrades = ($quizScore !== null || $oralScore !== null || $finalScore !== null);
+                $totalCourseScore = ($quizScore ?? 0) + ($oralScore ?? 0) + ($finalScore ?? 0);
+                if ($totalCourseScore > 100) $totalCourseScore = 100;
+
+                if ($hasGrades && $totalCourseScore < 50) {
+                    $failedCourseIds[] = $c->course_id;
+                }
+            }
+
+            $coursesCollection = $coursesCollection->whereIn('course_id', $failedCourseIds)->values();
+        }
+
+        $courses = $coursesCollection->map(function ($course) {
                 return [
                     'id'          => $course->course_id,
                     'title'       => $course->title,
                     'description' => $course->description,
                     'level'       => $course->level,
                     'year'        => $course->year ?? 1,
-                    'teacher_name'=> $course->teacher->user->full_name ?? 'غير محدد',
+                    'teacher_name'=> $course->teacher->first()->user->full_name ?? 'غير محدد',
+
                     'schedule'    => $course->schedule ? [
                         'day'        => $course->schedule->day,
                         'start_time' => $course->schedule->start_time,
@@ -1036,12 +1109,16 @@ class StudentController extends Controller
      */
     public function getAcademicCard(Request $request)
     {
+        $user = $request->user();
         $universityId = $request->input('university_id') ?? $request->query('university_id');
 
         $query = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id');
 
-        if (!empty($universityId)) {
+        // إذا كان المستخدم طالباً: يحق له استعلام رقمه هو فقط وحصراً (لا يسمح له باستعلام زملائه)
+        if ($user && ($user->role === 'student' || !empty($user->student))) {
+            $query->where('students.user_id', $user->user_id);
+        } elseif (!empty($universityId)) {
             $query->where(function($q) use ($universityId) {
                 $q->where('users.university_id', $universityId)
                   ->orWhere('students.student_code', $universityId)
@@ -1049,7 +1126,6 @@ class StudentController extends Controller
                   ->orWhere('students.student_id', $universityId);
             });
         } else {
-            $user = $request->user();
             if ($user && $user->student) {
                 $query->where('students.student_id', $user->student->student_id);
             }
@@ -1057,15 +1133,12 @@ class StudentController extends Controller
 
         $student = $query->first();
 
-        if (!$student) {
-            // Fallback to current authenticated student if search by entered ID was not found
-            $user = $request->user();
-            if ($user && $user->student) {
-                $student = DB::table('students')
-                    ->join('users', 'students.user_id', '=', 'users.user_id')
-                    ->where('students.student_id', $user->student->student_id)
-                    ->first();
-            }
+        if (!$student && $user && $user->student) {
+            // Fallback to current authenticated student
+            $student = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->where('students.student_id', $user->student->student_id)
+                ->first();
         }
 
         if (!$student) {
@@ -1075,17 +1148,34 @@ class StudentController extends Controller
             ], 404);
         }
 
-        // 1. Enrolled courses
+        $studentLevel = trim($student->level ?? 'السنة الأولى');
+        $map = [
+            'السنة الأولى' => 1, 'أولى' => 1, '1' => 1,
+            'السنة الثانية' => 2, 'ثانية' => 2, '2' => 2,
+        ];
+        $studentYearInt = $map[$studentLevel] ?? 1;
+
+        if ($request->filled('year')) {
+            $reqYear = (int)$request->year;
+            if ($reqYear >= 1) $studentYearInt = $reqYear;
+        } elseif ($request->filled('level') && isset($map[trim($request->level)])) {
+            $studentYearInt = $map[trim($request->level)];
+        }
+
+        // 1. Enrolled courses (المواد المسجل بها الطالب فقط وفق سنته الأكاديمية الحالية)
         $enrolledCourses = DB::table('enrollments')
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
             ->where('enrollments.student_id', $student->student_id)
-            ->select('courses.course_id', 'courses.title', 'courses.hours', 'courses.level')
+            ->where('courses.year', '=', $studentYearInt)
+            ->select('courses.course_id', 'courses.title', 'courses.hours', 'courses.level', 'courses.year')
             ->get();
 
         if ($enrolledCourses->isEmpty()) {
-            // Fallback to all courses in student department/program if no enrollment records yet
-            $enrolledCourses = DB::table('courses')->limit(6)->get();
+            $enrolledCourses = DB::table('courses')
+                ->where('year', '=', $studentYearInt)
+                ->get();
         }
+
 
         $coursesData = [];
         $totalOverallScore = 0;
@@ -1122,23 +1212,29 @@ class StudentController extends Controller
                 ->get();
 
             foreach ($eventGrades as $ge) {
-                $t = mb_strtolower($ge->type ?? $ge->title);
-                if (str_contains($t, 'quiz') || str_contains($t, 'مذاكرة') || str_contains($t, 'أعمال')) {
+                $t = mb_strtolower($ge->type ?? '');
+                $titleStr = mb_strtolower($ge->title ?? '');
+
+                if (str_contains($t, 'quiz') || str_contains($t, 'مذاكرة') || str_contains($t, 'أعمال') || str_contains($titleStr, 'مذاكرة')) {
                     $quizScore = $ge->score;
-                } elseif (str_contains($t, 'oral') || str_contains($t, 'عملي') || str_contains($t, 'شفهي')) {
+                } elseif (str_contains($t, 'oral') || str_contains($t, 'عملي') || str_contains($t, 'شفهي') || str_contains($titleStr, 'شفهي') || str_contains($titleStr, 'تقييم')) {
                     $oralScore = $ge->score;
-                } elseif (str_contains($t, 'final') || str_contains($t, 'نهائي')) {
+                } elseif (str_contains($t, 'final') || str_contains($t, 'exam') || str_contains($t, 'نهائي') || str_contains($t, 'امتحان') || str_contains($titleStr, 'امتحان') || str_contains($titleStr, 'اختبار')) {
+                    $finalScore = $ge->score;
+                } else {
                     $finalScore = $ge->score;
                 }
             }
 
+            $hasGrades = ($quizScore !== null || $oralScore !== null || $finalScore !== null);
             $qVal = $quizScore ?? 0;
             $oVal = $oralScore ?? 0;
             $fVal = $finalScore ?? 0;
 
             $totalCourseScore = $qVal + $oVal + $fVal;
             if ($totalCourseScore > 100) $totalCourseScore = 100;
-            $isPassed = $totalCourseScore >= 50;
+
+            $statusText = $hasGrades ? ($totalCourseScore >= 50 ? 'ناجح' : 'راسب') : 'لم يتم التقدم';
 
             $coursesData[] = [
                 'course_id'    => $c->course_id,
@@ -1146,16 +1242,19 @@ class StudentController extends Controller
                 'quiz_score'   => $quizScore,
                 'oral_score'   => $oralScore,
                 'final_score'  => $finalScore,
-                'total_score'  => $totalCourseScore,
+                'total_score'  => $hasGrades ? $totalCourseScore : 0,
                 'max_score'    => 100,
-                'status'       => $isPassed ? 'ناجح' : 'راسب',
+                'status'       => $statusText,
             ];
 
-            $totalOverallScore += $totalCourseScore;
-            $totalCoursesCount++;
+            if ($hasGrades) {
+                $totalOverallScore += $totalCourseScore;
+                $totalCoursesCount++;
+            }
         }
 
         $overallGpa = $totalCoursesCount > 0 ? round($totalOverallScore / $totalCoursesCount, 1) : 0;
+
 
         // Attendance summary
         $totalAttendance = DB::table('attendance')->where('student_id', $student->student_id)->count();
@@ -1187,6 +1286,78 @@ class StudentController extends Controller
                 'absent_count'    => $absentCount,
             ]
         ], 200);
+    }
+
+    /**
+     * تصدير بطاقة الطالب كشف العلامات PDF
+     */
+    public function exportAcademicCardPdf(Request $request)
+    {
+        $cardResponse = $this->getAcademicCard($request);
+        $content = json_decode($cardResponse->getContent(), true);
+
+        if (!$content || !($content['success'] ?? false)) {
+            return response()->json(['success' => false, 'message' => 'فشل جلب بيانات كشف العلامات للتصدير'], 400);
+        }
+
+        $studentInfo = $content['student_info'] ?? [];
+        $student = [
+            'full_name' => $studentInfo['student_name'] ?? 'طالب',
+            'university_id' => $studentInfo['university_id'] ?? '',
+            'department' => $studentInfo['department'] ?? '',
+            'level' => $studentInfo['level'] ?? '',
+        ];
+
+        $courses = $content['courses'] ?? [];
+        $passedCount = count(array_filter($courses, fn($c) => ($c['status'] ?? '') === 'ناجح'));
+        $notAttendedCount = count(array_filter($courses, fn($c) => ($c['status'] ?? '') === 'لم يتم التقدم'));
+
+        $summary = [
+            'average' => $content['summary']['overall_gpa'] ?? 0,
+            'total_courses' => count($courses),
+            'passed_courses' => $passedCount,
+            'not_attended' => $notAttendedCount,
+        ];
+
+        $academicCard = array_map(function($c) {
+            return [
+                'title' => $c['course_title'] ?? '',
+                'year' => '',
+                'quiz_score' => $c['quiz_score'],
+                'oral_score' => $c['oral_score'],
+                'final_score' => $c['final_score'],
+                'total_score' => $c['total_score'],
+                'status' => $c['status'] ?? 'لم يتم التقدم',
+            ];
+        }, $courses);
+
+        $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard'))->render();
+
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'orientation' => 'P',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+        ]);
+        $mpdf->SetDirectionality('rtl');
+        $mpdf->WriteHTML($html);
+
+        $fileName = 'academic_card_student_' . time() . '.pdf';
+        $directory = public_path('exports');
+        if (!file_exists($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        $filePath = $directory . '/' . $fileName;
+        file_put_contents($filePath, $mpdf->Output('', 'S'));
+
+        $pdfUrl = url('exports/' . $fileName);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إنشاء ملف PDF بنجاح',
+            'file_url' => $pdfUrl,
+        ]);
     }
 
     /**
@@ -2103,7 +2274,7 @@ class StudentController extends Controller
     public function submitRequest(Request $request)
     {
         $request->validate([
-            'type' => 'required|in:mercy,document,makeup',
+            'type' => 'required|in:mercy,document,makeup,device_reset',
             'details' => 'required|string|max:1000',
         ]);
 

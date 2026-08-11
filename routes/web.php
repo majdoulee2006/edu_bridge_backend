@@ -74,6 +74,8 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
 
     // الإشعارات
     Route::get('/notifications', [TeacherWebController::class, 'notifications'])->name('teacher.notifications');
+    Route::post('/notifications/{id}/read', [TeacherWebController::class, 'markNotificationRead'])->name('teacher.notifications.read');
+    Route::post('/notifications/read-all', [TeacherWebController::class, 'markAllNotificationsRead'])->name('teacher.notifications.read_all');
 
     // التقارير
     Route::get('/reports', [TeacherWebController::class, 'reports'])->name('teacher.reports');
@@ -162,6 +164,8 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     
     // واجهات الـ Mockup القديمة
     Route::get('/notifications', [HODWebController::class, 'notifications'])->name('hod.notifications');
+    Route::post('/notifications/{id}/read', [HODWebController::class, 'markNotificationRead'])->name('hod.notifications.read');
+    Route::post('/notifications/read-all', [HODWebController::class, 'markAllNotificationsRead'])->name('hod.notifications.read_all');
     Route::post('/notifications/send', [HODWebController::class, 'sendNotification'])->name('hod.notifications.send');
     Route::get('/settings', [HODWebController::class, 'settings'])->name('hod.settings');
     Route::post('/settings/attendance-policy', [HODWebController::class, 'updateAttendancePolicy'])->name('hod.settings.attendance_policy');
@@ -251,7 +255,20 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     // التقارير
     Route::get('/reports', [AffairsWebController::class, 'reports'])->name('affairs.reports');
     Route::post('/reports', [AffairsWebController::class, 'storeReport'])->name('affairs.reports.store');
+
+    // تفعيل الفصل الدراسي والترفيع الأكاديمي
+    Route::post('/semesters/store', [AffairsWebController::class, 'storeSemesterWeb'])->name('affairs.semesters.store');
+    Route::post('/semesters/activate', [AffairsWebController::class, 'activateSemesterWeb'])->name('affairs.semesters.activate');
+    Route::post('/students/promote', [AffairsWebController::class, 'promoteStudentsWeb'])->name('affairs.students.promote');
+
+    // كشف العلامات الأكاديمي
+    Route::get('/academic-card/students', [AffairsWebController::class, 'getFilteredStudents'])->name('affairs.academic_card.students');
+    Route::get('/academic-card/data', [AffairsWebController::class, 'getAcademicCardData'])->name('affairs.academic_card.data');
+    Route::get('/academic-card/export-pdf', [AffairsWebController::class, 'exportAcademicCardPdf'])->name('affairs.academic_card.pdf');
+    Route::get('/academic-card/export-excel', [AffairsWebController::class, 'exportAcademicCardExcel'])->name('affairs.academic_card.excel');
 });
+
+
 
 // ===== مسارات الإدارة (Admin) =====
 use App\Http\Controllers\Web\AdminWebController;
@@ -376,8 +393,10 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::get('/assignments', [StudentWebController::class, 'assignments'])->name('student.assignments');
     Route::post('/assignments/{id}/submit', [StudentWebController::class, 'submitAssignment'])->name('student.assignments.submit');
 
-    // الدرجات
+    // الدرجات وكشف العلامات
     Route::get('/grades', [StudentWebController::class, 'grades'])->name('student.grades');
+    Route::get('/academic-card/export-pdf', [StudentWebController::class, 'exportAcademicCardPdf'])->name('student.academic_card.pdf');
+    Route::get('/academic-card/export-excel', [StudentWebController::class, 'exportAcademicCardExcel'])->name('student.academic_card.excel');
 
 
 
@@ -395,6 +414,8 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 
     // الإشعارات
     Route::get('/notifications', [StudentWebController::class, 'notifications'])->name('student.notifications');
+    Route::post('/notifications/{id}/read', [StudentWebController::class, 'markNotificationRead'])->name('student.notifications.read');
+    Route::post('/notifications/read-all', [StudentWebController::class, 'markAllNotificationsRead'])->name('student.notifications.read_all');
 
     // الرسائل
     Route::get('/messages', [StudentWebController::class, 'messages'])->name('student.messages');
@@ -432,8 +453,10 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     // الواجبات
     Route::get('/assignments', [ParentWebController::class, 'assignments'])->name('parent.assignments');
     
-    // الدرجات والتقييمات
+    // الدرجات والتقييمات وكشف العلامات
     Route::get('/grades', [ParentWebController::class, 'grades'])->name('parent.grades');
+    Route::get('/academic-card/export-pdf', [ParentWebController::class, 'exportAcademicCardPdf'])->name('parent.academic_card.pdf');
+    Route::get('/academic-card/export-excel', [ParentWebController::class, 'exportAcademicCardExcel'])->name('parent.academic_card.excel');
     
     // الأذونات والطلبات
     Route::get('/permissions', [ParentWebController::class, 'permissions'])->name('parent.permissions');

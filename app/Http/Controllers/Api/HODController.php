@@ -461,31 +461,91 @@ class HODController extends Controller
     }
 
     /**
-     * 2️⃣ جلب جميع الاستدعاءات الصادرة من رئيس القسم
+     * 2️⃣ جلب جميع الاستدعاءات الصادرة والواردة لرئيس القسم مع الفلترة
      */
     public function getSummons(Request $request)
     {
         try {
             $userId = auth()->id();
-            $summons = DB::table('parent_summons')
+            $status = $request->query('status', 'all');
+
+            $query = DB::table('parent_summons')
                 ->join('students', 'parent_summons.student_id', '=', 'students.student_id')
                 ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
                 ->leftJoin('users as parent_users', 'parent_summons.parent_user_id', '=', 'parent_users.user_id')
+                ->leftJoin('users as sender_users', 'parent_summons.sender_user_id', '=', 'sender_users.user_id')
+                ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
                 ->select(
                     'parent_summons.*',
                     'student_users.full_name as student_name',
+                    'students.student_code',
                     'students.level as year',
-                    'student_users.department',
-                    'parent_users.full_name as parent_name'
-                )
-                ->where('parent_summons.sender_user_id', $userId)
-                ->orderBy('parent_summons.created_at', 'desc')
-                ->get();
+                    'departments.name_ar as department_name',
+                    'parent_users.full_name as parent_name',
+                    'sender_users.full_name as teacher_name'
+                );
+
+            if ($status === 'pending') {
+                $query->whereIn('parent_summons.status', ['pending_hod', 'pending_affairs']);
+            } else if ($status === 'completed') {
+                $query->whereIn('parent_summons.status', ['sent', 'approved', 'rejected', 'completed', 'cancelled']);
+            }
+
+            $summons = $query->orderBy('parent_summons.created_at', 'desc')->get();
 
             return response()->json(['success' => true, 'data' => $summons]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * تحويل مباشر لطلب استدعاء المعلم من رئيس القسم إلى موظفي الشؤون
+     */
+    public function forwardSummonToAffairs(Request $request, $id)
+    {
+        $summon = DB::table('parent_summons')->where('summon_id', $id)->first();
+        if (!$summon) {
+            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        DB::table('parent_summons')->where('summon_id', $id)->update([
+            'status'     => 'pending_affairs',
+            'updated_at' => now(),
+        ]);
+
+        $studentName = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $summon->student_id)
+            ->value('users.full_name') ?? 'طالب';
+
+        $title = 'تحويل طلب استدعاء ولي أمر للشؤون';
+        $msg   = 'قام رئيس القسم بتحويل طلب استدعاء ولي أمر الطالب: ' . $studentName . ' لاستكمال الإجراءات وتحديد الموعد.';
+
+        // إشعار موظفي الشؤون (role_id = 6)
+        $affairsUsers = User::where('role_id', 6)->get();
+        foreach ($affairsUsers as $affUser) {
+            DB::table('notifications')->insert([
+                'user_id'    => $affUser->user_id,
+                'sender_id'  => auth()->id(),
+                'title'      => $title,
+                'message'    => $msg,
+                'type'       => 'summon_request',
+                'category'   => 'administrative',
+                'related_id' => $id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            \App\Services\FcmService::sendToUser($affUser->user_id, $title, $msg, [
+                'type' => 'summon_request', 'related_id' => (string) $id, 'screen' => 'affairs_appointments'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحويل الطلب المباشر للشؤون بنجاح لإكمال الإجراءات وإشعار ولي الأمر.'
+        ]);
     }
 
     /**
@@ -565,11 +625,12 @@ class HODController extends Controller
     }
 
     /**
-     * 4️⃣ جلب المواعيد الواردة الموجهة لرئيس القسم
+     * 4️⃣ جلب المواعيد الواردة الموجهة لرئيس القسم مع الدعم للفلترة
      */
     public function getMeetingRequests(Request $request)
     {
         try {
+            $status = $request->query('status', 'all');
             $query = DB::table('parent_meeting_requests')
                 ->join('users as parent_users', 'parent_meeting_requests.parent_user_id', '=', 'parent_users.user_id')
                 ->leftJoin('students', 'parent_meeting_requests.student_id', '=', 'students.student_id')
@@ -585,6 +646,12 @@ class HODController extends Controller
                 $q->where('parent_meeting_requests.target_role', 'head')
                   ->orWhere('parent_meeting_requests.target_role', 'hod');
             });
+
+            if ($status === 'pending') {
+                $query->where('parent_meeting_requests.status', 'pending');
+            } else if ($status === 'completed') {
+                $query->whereIn('parent_meeting_requests.status', ['approved', 'rejected', 'completed', 'cancelled']);
+            }
 
             $meetings = $query->orderBy('parent_meeting_requests.created_at', 'desc')->get();
 

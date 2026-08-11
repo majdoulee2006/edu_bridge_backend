@@ -382,7 +382,14 @@ class ParentWebController extends Controller
 
         $grades = $allGrades->groupBy('course_title');
 
-        return $this->parentView('parent.grades', compact('grades', 'overallAverage'));
+        $academicCardData = null;
+        if ($studentId) {
+            $cardReq = new \Illuminate\Http\Request(['student_id' => $studentId]);
+            $academicCardResponse = app(\App\Http\Controllers\Api\AffairsController::class)->getStudentAcademicCardForAffairs($cardReq);
+            $academicCardData = json_decode($academicCardResponse->getContent(), true);
+        }
+
+        return $this->parentView('parent.grades', compact('grades', 'overallAverage', 'academicCardData'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1005,5 +1012,34 @@ class ParentWebController extends Controller
         $message->delete();
 
         return response()->json(['status' => 'success', 'message' => 'تم حذف الرسالة بنجاح']);
+    }
+
+    // ─────────────────────────── Academic Card Exports ───────────────────────────
+    public function exportAcademicCardPdf(Request $request)
+    {
+        $studentId = $request->input('student_id') ?? session('selected_child_id');
+        if (!$studentId) {
+            $common = $this->getCommonData();
+            $studentId = $common['selected_child_id'];
+        }
+        if (!$studentId) abort(404, 'الابن غير محدد');
+
+        $request->merge(['student_id' => $studentId]);
+        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
+        return $apiController->exportStudentAcademicCardPdf($request);
+    }
+
+    public function exportAcademicCardExcel(Request $request)
+    {
+        $studentId = $request->input('student_id') ?? session('selected_child_id');
+        if (!$studentId) {
+            $common = $this->getCommonData();
+            $studentId = $common['selected_child_id'];
+        }
+        if (!$studentId) abort(404, 'الابن غير محدد');
+
+        $request->merge(['student_id' => $studentId]);
+        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
+        return $apiController->exportStudentAcademicCardExcel($request);
     }
 }

@@ -430,7 +430,11 @@ class StudentWebController extends Controller
 
         $avgGrade = count($allPercentages) > 0 ? round(array_sum($allPercentages) / count($allPercentages), 1) : 0;
 
-        return view('student.grades', compact('courseGradesData', 'avgGrade'));
+        $cardReq = new \Illuminate\Http\Request(['student_id' => $student->student_id]);
+        $academicCardResponse = app(\App\Http\Controllers\Api\AffairsController::class)->getStudentAcademicCardForAffairs($cardReq);
+        $academicCardData = json_decode($academicCardResponse->getContent(), true);
+
+        return view('student.grades', compact('courseGradesData', 'avgGrade', 'academicCardData'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -787,7 +791,26 @@ class StudentWebController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('student.notifications', compact('notifications'));
+        $unreadCount = $notifications->where('is_read', false)->count();
+
+        return view('student.notifications', compact('notifications', 'unreadCount'));
+    }
+
+    public function markNotificationRead($id)
+    {
+        \App\Models\Notification::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->update(['is_read' => true]);
+
+        return back()->with('success', 'تم تحديد الإشعار كمقروء.');
+    }
+
+    public function markAllNotificationsRead()
+    {
+        \App\Models\Notification::where('user_id', Auth::id())
+            ->update(['is_read' => true]);
+
+        return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 
     // ────────────────────────────────────────────────────────────
@@ -986,5 +1009,24 @@ class StudentWebController extends Controller
 
         $message->delete();
         return response()->json(['status' => 'success']);
+    }
+
+    // ─────────────────────────── Academic Card Exports ───────────────────────────
+    public function exportAcademicCardPdf(Request $request)
+    {
+        $student = $this->getStudent();
+        if (!$student) abort(403);
+        $request->merge(['student_id' => $student->student_id]);
+        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
+        return $apiController->exportStudentAcademicCardPdf($request);
+    }
+
+    public function exportAcademicCardExcel(Request $request)
+    {
+        $student = $this->getStudent();
+        if (!$student) abort(403);
+        $request->merge(['student_id' => $student->student_id]);
+        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
+        return $apiController->exportStudentAcademicCardExcel($request);
     }
 }

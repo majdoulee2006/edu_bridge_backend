@@ -322,7 +322,7 @@
                         </td>
                         <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
                         <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
                         <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_hod')
@@ -342,7 +342,7 @@
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
                                     data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
                                     data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
-                                    data-details="{{ $req->details }}"
+                                    data-details="{{ $req->formatted_details }}"
                                     data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
@@ -386,7 +386,7 @@
                         </td>
                         <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
                         <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
                         <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_hod')
@@ -406,7 +406,7 @@
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
                                     data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
                                     data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
-                                    data-details="{{ $req->details }}"
+                                    data-details="{{ $req->formatted_details }}"
                                     data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
@@ -450,7 +450,7 @@
                         </td>
                         <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
                         <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
                         <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_hod')
@@ -470,7 +470,7 @@
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
                                     data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
                                     data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
-                                    data-details="{{ $req->details }}"
+                                    data-details="{{ $req->formatted_details }}"
                                     data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
@@ -602,7 +602,18 @@
         document.getElementById('modal-student-department').innerText = department;
         document.getElementById('modal-student-specialization').innerText = specialization;
         document.getElementById('modal-student-year').innerText = year;
-        document.getElementById('modal-request-details').innerText = details;
+        
+        let displayDetails = details;
+        if (details && (details.trim().startsWith('{') || details.trim().startsWith('['))) {
+            try {
+                const parsed = JSON.parse(details);
+                let parts = [];
+                if (parsed.reason) parts.push('سبب الطلب: ' + parsed.reason);
+                if (parsed.new_device_id) parts.push('معرف الجهاز الجديد: ' + parsed.new_device_id);
+                if (parts.length > 0) displayDetails = parts.join('\n');
+            } catch(e) {}
+        }
+        document.getElementById('modal-request-details').innerText = displayDetails;
         document.getElementById('modal-affairs-notes').innerText = affairsNotes;
         
         document.getElementById('decisionForm').action = '/hod/student-services/' + reqId + '/process';

@@ -106,6 +106,9 @@ class AffairsWebController extends Controller
             ->take(5)
             ->get();
 
+        $activeSemester = DB::table('semesters')->where('is_active', true)->first();
+        $semestersList  = DB::table('semesters')->orderBy('semester_id')->get();
+
         return view('affairs.dashboard', compact(
             'totalStudents',
             'totalTeachers',
@@ -115,9 +118,93 @@ class AffairsWebController extends Controller
             'recentLeaves',
             'carouselAnnouncements',
             'posts',
-            'recentNotifications'
+            'recentNotifications',
+            'activeSemester',
+            'semestersList'
         ));
     }
+
+    public function storeSemesterWeb(Request $request)
+    {
+        $request->validate([
+            'name'       => 'required|string|max:255',
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date',
+            'is_active'  => 'nullable|boolean',
+        ]);
+
+        if ($request->boolean('is_active')) {
+            DB::table('semesters')->update(['is_active' => false]);
+        }
+
+        DB::table('semesters')->insert([
+            'name'       => $request->name,
+            'start_date' => $request->start_date,
+            'end_date'   => $request->end_date,
+            'is_active'  => $request->boolean('is_active'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'تم إنشاء وتعيين الفصل الدراسي بنجاح.');
+    }
+
+    public function activateSemesterWeb(Request $request)
+    {
+        $semesterId = $request->input('semester_id');
+        $startDate  = $request->input('start_date');
+        $endDate    = $request->input('end_date');
+
+        if ($semesterId === 'none') {
+            DB::table('semesters')->update(['is_active' => false]);
+            return back()->with('success', 'تم إيقاف تفعيل جميع الفصول الدراسية حالياً (لا يوجد فصل مفعل).');
+        }
+
+        $target = DB::table('semesters')->where('semester_id', $semesterId)->first();
+        if (!$target) {
+            return back()->with('error', 'الفصل الدراسي غير موجود.');
+        }
+
+        DB::table('semesters')->update(['is_active' => false]);
+
+        $updates = ['is_active' => true, 'updated_at' => now()];
+        if ($startDate) $updates['start_date'] = $startDate;
+        if ($endDate)   $updates['end_date']   = $endDate;
+
+        DB::table('semesters')->where('semester_id', $semesterId)->update($updates);
+
+        return back()->with('success', 'تم تفعيل ' . $target->name . ' وتحديث تواريخه بنجاح!');
+    }
+
+    public function promoteStudentsWeb(Request $request)
+    {
+        $query = Student::query();
+
+        if ($request->filled('student_ids')) {
+            $studentIds = is_array($request->student_ids) ? $request->student_ids : explode(',', $request->student_ids);
+            $query->whereIn('student_id', $studentIds);
+        } elseif ($request->filled('student_id')) {
+            $query->where('student_id', $request->student_id);
+        } else {
+            $query->whereIn('level', ['السنة الأولى', 'أولى', '1']);
+        }
+
+        $students = $query->get();
+        $targetLevel = $request->input('target_level', 'السنة الثانية');
+        $count = 0;
+
+        foreach ($students as $st) {
+            $st->update(['level' => $targetLevel, 'updated_at' => now()]);
+            DB::table('users')->where('user_id', $st->user_id)->update(['academic_year' => $targetLevel]);
+            Student::autoEnrollCourses($st->student_id);
+            $count++;
+        }
+
+        return back()->with('success', "تم ترفيع {$count} طالباً بنجاح إلى {$targetLevel} وتسجيل موادهم تلقائياً.");
+    }
+
+
+
 
     // ─────────────────────────── Calendar ───────────────────────────
     public function calendar()
@@ -201,7 +288,7 @@ class AffairsWebController extends Controller
     {
         $studentReq = \App\Models\StudentRequest::findOrFail($id);
 
-        if ($studentReq->status !== 'pending_affairs') {
+        if (!in_array($studentReq->status, ['pending_affairs', 'pending'])) {
             return back()->with('error', 'لقد قمت بإبداء رأيك وسحب صلاحية التعديل على هذا الطلب مسبقاً (مسموح برد واحد فقط).');
         }
 
@@ -1331,6 +1418,31 @@ class AffairsWebController extends Controller
         );
 
         return back()->with('success', 'تم رفض طلب تغيير الصورة وإشعاره بنجاح.');
+    }
+
+    // ─────────────────────────── Academic Card Methods ───────────────────────────
+    public function getFilteredStudents(Request $request)
+    {
+        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
+        return $apiController->getFilteredStudentsForAcademicCard($request);
+    }
+
+    public function getAcademicCardData(Request $request)
+    {
+        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
+        return $apiController->getStudentAcademicCardForAffairs($request);
+    }
+
+    public function exportAcademicCardPdf(Request $request)
+    {
+        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
+        return $apiController->exportStudentAcademicCardPdf($request);
+    }
+
+    public function exportAcademicCardExcel(Request $request)
+    {
+        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
+        return $apiController->exportStudentAcademicCardExcel($request);
     }
 }
 

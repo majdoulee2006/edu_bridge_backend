@@ -1032,7 +1032,7 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => 'لديك طلب فك قفل جهاز قيد المراجعة حالياً من قبل شؤون الطلاب.'], 400);
         }
 
-        \App\Models\StudentRequest::create([
+        $reqObj = \App\Models\StudentRequest::create([
             'student_id' => $student->student_id,
             'type'       => 'device_reset',
             'details'    => json_encode([
@@ -1041,6 +1041,30 @@ class AuthController extends Controller
             ], JSON_UNESCAPED_UNICODE),
             'status'     => 'pending_affairs',
         ]);
+
+        // إشعار داخل DB + FCM لموظفي الشؤون
+        $fcmTitle = 'طلب فك قفل الجهاز';
+        $fcmBody  = 'قدّم الطالب ' . $user->full_name . ' طلب فك ربط/قفل جهازه الإلكتروني.';
+        $affairsUsers = User::where('role_id', 6)->get();
+        foreach ($affairsUsers as $affairsUser) {
+            DB::table('notifications')->insert([
+                'user_id'    => $affairsUser->user_id,
+                'sender_id'  => $user->user_id,
+                'title'      => $fcmTitle,
+                'message'    => $fcmBody,
+                'type'       => 'device_reset',
+                'category'   => 'administrative',
+                'related_id' => $reqObj->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            \App\Services\FcmService::sendToUser($affairsUser->user_id, $fcmTitle, $fcmBody, [
+                'type'       => 'device_reset',
+                'related_id' => (string) $reqObj->id,
+                'screen'     => 'admin_student_services',
+            ]);
+        }
 
         return response()->json([
             'success' => true,

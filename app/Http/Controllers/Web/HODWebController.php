@@ -95,13 +95,28 @@ class HODWebController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        // تحديد كل الإشعارات كمقروءة
+        $unreadCount = $notifications->where('is_read', false)->count();
+
+        return view('hod.notifications', compact('notifications', 'unreadCount'));
+    }
+
+    public function markNotificationRead($id)
+    {
+        DB::table('notifications')
+            ->where('id', $id)
+            ->where('user_id', auth()->id())
+            ->update(['is_read' => true]);
+
+        return back()->with('success', 'تم تحديد الإشعار كمقروء.');
+    }
+
+    public function markAllNotificationsRead()
+    {
         DB::table('notifications')
             ->where('user_id', auth()->id())
-            ->where('is_read', false)
-            ->update(['is_read' => true, 'updated_at' => now()]);
+            ->update(['is_read' => true]);
 
-        return view('hod.notifications', compact('notifications'));
+        return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 
     /**
@@ -1029,8 +1044,13 @@ class HODWebController extends Controller
             'exam_date' => 'required',
             'max_score' => 'required|integer',
             'room' => 'nullable|string',
-            'class_group' => 'nullable|string|max:100',
+            'department' => 'nullable|string',
+            'year' => 'nullable|string',
         ]);
+
+        $classGroup = $request->department && $request->year 
+            ? $request->department . ' - ' . $request->year 
+            : $request->class_group;
 
         DB::table('exams')->insert([
             'course_id' => $request->course_id,
@@ -1038,7 +1058,7 @@ class HODWebController extends Controller
             'exam_date' => $request->exam_date,
             'max_score' => $request->max_score,
             'room' => $request->room,
-            'class_group' => $request->class_group,
+            'class_group' => $classGroup,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

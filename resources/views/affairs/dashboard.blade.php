@@ -1,4 +1,4 @@
-﻿@extends('layouts.affairs')
+@extends('layouts.affairs')
 @section('title', 'الرئيسية')
 @section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'موظف الشؤون'))
 
@@ -240,6 +240,89 @@
         </div>
     </div>
 </div>
+
+{{-- ── لوحة التحكم في الفصل الدراسي والتواريخ والترفيع ── --}}
+<div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.05);">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.8rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(59,130,246,0.15); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                <i class="fa-solid fa-calendar-days"></i>
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">الحالة الأكاديمية الحالية:</div>
+                <div style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-top: 0.1rem;">
+                    @if($activeSemester)
+                        <span style="color: #10b981;">● {{ $activeSemester->name }}</span>
+                        @if($activeSemester->start_date && $activeSemester->end_date)
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-right: 0.5rem;">
+                                (من {{ $activeSemester->start_date }} إلى {{ $activeSemester->end_date }})
+                            </span>
+                        @endif
+                    @else
+                        <span style="color: #ef4444;">● لا يوجد أي فصل مفعّل حالياً بالمعهد</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <form action="{{ route('affairs.students.promote') }}" method="POST" onsubmit="return confirm('هل أنت تأكد من ترقية جميع طلاب السنة الأولى إلى السنة الثانية وتلقين موادهم تلقائياً؟');">
+            @csrf
+            <button type="submit" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 0.6rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-graduation-cap"></i> الترفيع الأكاديمي لسنة ثانية
+            </button>
+        </form>
+    </div>
+
+    {{-- نموذج تفعيل وتحديد تواريخ الفصل --}}
+    <form action="{{ route('affairs.semesters.activate') }}" method="POST" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+        @csrf
+        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary);">اختر الفصل المراد تفعيله:</label>
+            <select name="semester_id" style="padding: 0.55rem 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15); background: var(--bg-primary); color: var(--text-primary); font-weight: 700; outline: none; min-width: 180px;">
+                <option value="none">-- إيقاف تفعيل جميع الفصول --</option>
+                @foreach($semestersList as $sem)
+                    <option value="{{ $sem->semester_id }}" {{ $sem->is_active ? 'selected' : '' }}>
+                        {{ $sem->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary);">تاريخ البداية (من):</label>
+            <input type="date" name="start_date" value="{{ $activeSemester?->start_date }}" style="padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15); background: var(--bg-primary); color: var(--text-primary); font-weight: 700; outline: none;">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary);">تاريخ النهاية (إلى):</label>
+            <input type="date" name="end_date" value="{{ $activeSemester?->end_date }}" style="padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15); background: var(--bg-primary); color: var(--text-primary); font-weight: 700; outline: none;">
+        </div>
+
+        <div style="display: flex; align-items: flex-end;">
+            <button type="submit" style="background: #3b82f6; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 0.5rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; height: 38px; margin-top: auto;">
+                <i class="fa-solid fa-check"></i> اعتماد وتفعيل الفصل
+            </button>
+        </div>
+    </form>
+
+    {{-- نموذج إضافة فصل دراسي جديد لسنة جديدة --}}
+    <details style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.1);">
+        <summary style="cursor: pointer; font-size: 0.85rem; font-weight: 700; color: #3b82f6;">
+            <i class="fa-solid fa-plus-circle"></i> إضافة فصل دراسي جديد (لسنة 2027، 2028...)
+        </summary>
+        <form action="{{ route('affairs.semesters.store') }}" method="POST" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.8rem;">
+            @csrf
+            <input type="text" name="name" placeholder="اسم الفصل (مثال: الفصل الأول 2027)" required style="padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15); background: var(--bg-primary); color: var(--text-primary); font-weight: 700; outline: none; min-width: 220px;">
+            <input type="date" name="start_date" style="padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15); background: var(--bg-primary); color: var(--text-primary); font-weight: 700; outline: none;">
+            <input type="date" name="end_date" style="padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15); background: var(--bg-primary); color: var(--text-primary); font-weight: 700; outline: none;">
+            <button type="submit" style="background: rgba(255,255,255,0.1); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 700; cursor: pointer;">
+                حفظ الفصل الجديد
+            </button>
+        </form>
+    </details>
+</div>
+
+
 
 {{-- ── تنبيه طلبات الإجازة ── --}}
 @if($pendingLeaves > 0)

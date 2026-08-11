@@ -401,11 +401,36 @@
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الفصل الدراسي</label>
+                    <select id="exam-modal-semester-select" name="semester" onchange="populateExamModal()" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                        <option value="1">الفصل الأول</option>
+                        <option value="2">الفصل الثاني</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القسم</label>
+                        <select id="exam-modal-dept-select" name="department" onchange="populateExamModal()" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                            <option value="اتصالات">اتصالات</option>
+                            <option value="معلوماتية">معلوماتية</option>
+                            <option value="الكترون">الكترون</option>
+                            <option value="ذكاء">ذكاء</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">السنة الدراسية</label>
+                        <select id="exam-modal-year-select" name="year" onchange="populateExamModal()" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                            <option value="سنة أولى">سنة أولى</option>
+                            <option value="سنة ثانية">سنة ثانية</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">المادة الدراسية</label>
-                    <select name="course_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        @foreach($courses as $c)
-                            <option value="{{ $c->course_id }}">{{ $c->title }}</option>
-                        @endforeach
+                    <select id="exam-modal-course-select" name="course_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                        <option value="">-- اختر المادة --</option>
                     </select>
                 </div>
 
@@ -418,10 +443,6 @@
                     <div class="form-group" style="flex: 1;">
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القاعة</label>
                         <input type="text" name="room" placeholder="مثال: مدرج 2" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الشعبة</label>
-                        <input type="text" name="class_group" placeholder="مثال: شعبة 2" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الدرجة الكبرى</label>
@@ -630,9 +651,32 @@
         });
     }
 
+    function populateExamModal() {
+        const courseSelect = document.getElementById('exam-modal-course-select');
+        const semesterSelect = document.getElementById('exam-modal-semester-select');
+        const deptSelect = document.getElementById('exam-modal-dept-select');
+        const yearSelect = document.getElementById('exam-modal-year-select');
+
+        courseSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+
+        const yearInt = yearSelect.value === 'سنة أولى' ? 1 : (yearSelect.value === 'سنة ثانية' ? 2 : 3);
+        const semesterInt = parseInt(semesterSelect.value);
+        const branchName = deptSelect.value;
+
+        const filteredCourses = allCoursesData.filter(c => c.branch_name === branchName && c.year == yearInt && c.semester_id == semesterInt);
+        filteredCourses.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.course_id;
+            opt.textContent = c.title;
+            courseSelect.appendChild(opt);
+        });
+    }
+
     function openModal(modalId) {
         if (modalId === 'schedule-modal') {
             populateScheduleModal();
+        } else if (modalId === 'exam-modal') {
+            populateExamModal();
         }
         document.getElementById(modalId).classList.add('active');
     }

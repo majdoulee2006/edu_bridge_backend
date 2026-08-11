@@ -189,6 +189,86 @@
         </div>
     </div>
 
+{{-- Academic Card Section for Child --}}
+@if(!empty($academicCardData) && isset($academicCardData['academic_card']))
+<div style="background: var(--bg-secondary); border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 2rem; border: 1px solid var(--border-color); box-shadow: var(--shadow);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-id-card" style="color: var(--accent-color);"></i> كشف العلامات الأكاديمي للابن (البطاقة الأكاديمية)
+            </h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">سجل أكاديمي موحد لجميع المواد المسجلة والحالة الإجمالية</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{{ route('parent.academic_card.pdf', ['student_id' => $selected_child_id]) }}" target="_blank" style="background: #ef4444; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 10px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
+                <i class="fa-solid fa-file-pdf"></i> تصدير PDF
+            </a>
+            <a href="{{ route('parent.academic_card.excel', ['student_id' => $selected_child_id]) }}" target="_blank" style="background: #10b981; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 10px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
+                <i class="fa-solid fa-file-excel"></i> تصدير Excel
+            </a>
+        </div>
+    </div>
+
+    {{-- Stats Grid --}}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+        <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">المعدل التراكمي</div>
+            <div style="font-size: 1.6rem; font-weight: 900; color: var(--accent-color); margin-top: 0.2rem;">{{ $academicCardData['summary']['average'] ?? 0 }}%</div>
+        </div>
+        <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">المواد المجتازة</div>
+            <div style="font-size: 1.6rem; font-weight: 900; color: #10b981; margin-top: 0.2rem;">{{ $academicCardData['summary']['passed_courses'] ?? 0 }}</div>
+        </div>
+        <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">المواد المتبقية / راسب</div>
+            <div style="font-size: 1.6rem; font-weight: 900; color: #ef4444; margin-top: 0.2rem;">{{ $academicCardData['summary']['failed_courses'] ?? 0 }}</div>
+        </div>
+        <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
+            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">لم يتم التقدم لها</div>
+            <div style="font-size: 1.6rem; font-weight: 900; color: #6b7280; margin-top: 0.2rem;">{{ $academicCardData['summary']['not_attended'] ?? 0 }}</div>
+        </div>
+    </div>
+
+    {{-- Academic Card Table --}}
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 750px;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color);">
+                    <th style="padding: 0.75rem; text-align: right; color: var(--text-secondary); font-size: 0.85rem;">#</th>
+                    <th style="padding: 0.75rem; text-align: right; color: var(--text-secondary); font-size: 0.85rem;">المادة الدراسية</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">المذاكرة (20)</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الشفهي/العملي (20)</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الامتحان (60)</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">المجموع (100)</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الحالة</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($academicCardData['academic_card'] as $idx => $row)
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 0.75rem;">{{ $idx + 1 }}</td>
+                    <td style="padding: 0.75rem; font-weight: 700;">{{ $row['title'] }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ $row['quiz_score'] ?? '-' }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ $row['oral_score'] ?? '-' }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ $row['final_score'] ?? '-' }}</td>
+                    <td style="padding: 0.75rem; text-align: center; font-weight: 800;">{{ $row['total_score'] ?? '-' }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        @if($row['status'] === 'ناجح')
+                            <span style="background: #bbf7d0; color: #166534; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">ناجح</span>
+                        @elseif($row['status'] === 'راسب')
+                            <span style="background: #fecaca; color: #991b1b; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">راسب</span>
+                        @else
+                            <span style="background: #fef08a; color: #854d0e; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">لم يتم التقدم</span>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
     <h3 class="section-title" style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
         <i class="fa-solid fa-graduation-cap" style="color: var(--accent-color);"></i> تفصيل نتائج المواد الدراسية
     </h3>

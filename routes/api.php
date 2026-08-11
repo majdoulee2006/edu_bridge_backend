@@ -151,6 +151,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/program-courses', [StudentController::class, 'getProgramCourses']);
         Route::get('/grades', [StudentController::class, 'getMyGrades']);
         Route::match(['get', 'post'], '/academic-card', [StudentController::class, 'getAcademicCard']);
+        Route::get('/academic-card/export-pdf', [StudentController::class, 'exportAcademicCardPdf']);
         Route::get('/courses/{courseId}/materials', [StudentController::class, 'getCourseMaterials']);
 
         // مسارات الحضور والإجازات
@@ -237,7 +238,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/assignments/{assignmentId}/submissions', [TeacherController::class, 'getAssignmentSubmissions']);
         Route::post('/assignments/{submissionId}/grade', [TeacherController::class, 'gradeAssignment']);
         Route::post('/parent-summons/send', [TeacherController::class, 'sendParentSummon']);
+        Route::post('/parent-summons/request', [TeacherController::class, 'requestParentSummon']);
         Route::get('/parent-summons', [ParentMeetingController::class, 'listSummons']);
+        Route::get('/parent-summons-history', [TeacherController::class, 'getTeacherSummonsHistory']);
+        Route::get('/educator-students', [TeacherController::class, 'getEducatorStudents']);
 
         // الإعلانات
         Route::get('/announcements', [TeacherController::class, 'getAnnouncements']);
@@ -323,6 +327,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/appointments/metadata', [HODController::class, 'getAppointmentsMetadata']);
         Route::get('/appointments/summons',  [HODController::class, 'getSummons']);
         Route::post('/appointments/summons', [HODController::class, 'storeSummon']);
+        Route::post('/appointments/summons/{id}/forward', [HODController::class, 'forwardSummonToAffairs']);
         Route::get('/appointments/meetings', [HODController::class, 'getMeetingRequests']);
         Route::post('/appointments/meetings/{id}/respond', [HODController::class, 'respondToMeetingRequest']);
         Route::put('/appointments/meetings/{id}/respond',  [HODController::class, 'respondToMeetingRequest']);
@@ -412,6 +417,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/children/{id}/details', [ParentController::class, 'getChildDetails']);
         Route::get('/children/{id}/attendance', [ParentController::class, 'getChildAttendance']);
         Route::get('/children/{id}/grades', [ParentController::class, 'getChildGrades']);
+        Route::get('/children/{id}/academic-card', [ParentController::class, 'getChildAcademicCard']);
+        Route::get('/children/{id}/academic-card/export-pdf', [ParentController::class, 'exportChildAcademicCardPdf']);
+        Route::get('/children/{id}/academic-card/export-excel', [ParentController::class, 'exportChildAcademicCardExcel']);
+
         Route::get('/children/{id}/schedule', [ParentController::class, 'getChildSchedule']);
         Route::get('/children/{id}/assignments', [ParentController::class, 'getChildAssignments']);
         Route::post('/request-report', [ParentController::class, 'requestReport']);
@@ -432,6 +441,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'getNotifications']);
         Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::put('/notifications/read-by-type', [NotificationController::class, 'markByTypeAndRelatedId']);
         Route::post('/notifications/toggle-mute', [NotificationController::class, 'toggleMute']);
     });
 
@@ -516,11 +526,26 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs,admin'])->gr
     Route::get('/appointments/metadata', [AffairsController::class, 'getAppointmentsMetadata']);
     Route::get('/appointments/summons',  [AffairsController::class, 'getSummons']);
     Route::post('/appointments/summons', [AffairsController::class, 'storeSummon']);
+    Route::post('/appointments/summons/{id}/issue', [AffairsController::class, 'issueParentSummon']);
     Route::get('/appointments/meetings', [AffairsController::class, 'getMeetingRequests']);
     Route::post('/appointments/meetings/{id}/respond', [AffairsController::class, 'respondToMeetingRequest']);
     Route::put('/appointments/meetings/{id}/respond',  [AffairsController::class, 'respondToMeetingRequest']);
 
+    // Semesters & Academic Promotion
+    Route::get('/semesters',                             [AffairsController::class, 'listSemesters']);
+    Route::post('/semesters/{id}/activate',              [AffairsController::class, 'activateSemester']);
+    Route::post('/students/promote',                     [AffairsController::class, 'promoteStudentsYear']);
+
+    // Academic Card & Export for Affairs Officer
+    Route::get('/students-academic',                     [AffairsController::class, 'getFilteredStudentsForAcademicCard']);
+    Route::get('/academic-card',                         [AffairsController::class, 'getStudentAcademicCardForAffairs']);
+    Route::get('/academic-card/export-pdf',              [AffairsController::class, 'exportStudentAcademicCardPdf']);
+    // Student Service Requests
+    Route::get('/student-service-requests',               [AffairsController::class, 'listStudentRequests']);
+    Route::post('/student-service-requests/{id}/process', [AffairsController::class, 'processStudentRequest']);
+
     // Broadcasting channel authorization for Sanctum
+
     Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {
         return \Illuminate\Support\Facades\Broadcast::auth($request);
     });
