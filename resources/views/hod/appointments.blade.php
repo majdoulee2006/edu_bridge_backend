@@ -95,6 +95,14 @@
         background: var(--surface-dark, #1a2633);
         border-color: #334155;
     }
+    select option {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
+    [data-theme="dark"] select option {
+        background-color: #1a2633 !important;
+        color: #f8fafc !important;
+    }
 </style>
 @endpush
 
@@ -254,11 +262,27 @@
                 <form action="{{ route('hod.summons.store') }}" method="POST" style="display: flex; flex-direction: column; gap: 1rem; font-size: 0.85rem;">
                     @csrf
                     <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الدورة / المادة أولاً:</label>
+                        <select id="course_filter_select" onchange="filterStudentsByCourse(this.value)" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
+                            <option value="all" selected>-- جميع الدورات / المواد --</option>
+                            @foreach($courses as $course)
+                                <option value="{{ $course->course_id }}">{{ $course->title }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الطالب:</label>
-                        <select name="student_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
+                        <select name="student_id" id="student_select" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
                             <option value="" disabled selected>-- اختر الطالب للاستدعاء --</option>
                             @foreach($students as $st)
-                                <option value="{{ $st->student_id }}">{{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->level }}]</option>
+                                @php
+                                    $cIds = $st->courses ? $st->courses->pluck('course_id')->toArray() : [];
+                                    $cIdsJson = json_encode($cIds);
+                                @endphp
+                                <option value="{{ $st->student_id }}" data-courses="{{ $cIdsJson }}">
+                                    {{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->level }}]
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -373,5 +397,30 @@
             container.style.display = 'block';
         }
     });
+
+    function filterStudentsByCourse(selectedCourseId) {
+        const studentSelect = document.getElementById('student_select');
+        const options = studentSelect.querySelectorAll('option');
+
+        options.forEach(opt => {
+            if (!opt.value) return; // skip placeholder option
+
+            if (selectedCourseId === 'all') {
+                opt.style.display = '';
+                opt.disabled = false;
+            } else {
+                const courseIds = JSON.parse(opt.getAttribute('data-courses') || '[]');
+                if (courseIds.includes(parseInt(selectedCourseId))) {
+                    opt.style.display = '';
+                    opt.disabled = false;
+                } else {
+                    opt.style.display = 'none';
+                    opt.disabled = true;
+                }
+            }
+        });
+
+        studentSelect.value = '';
+    }
 </script>
 @endsection
