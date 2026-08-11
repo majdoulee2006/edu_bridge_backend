@@ -199,6 +199,11 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::get('/student-services', [AffairsWebController::class, 'studentServices'])->name('affairs.student_services');
     Route::post('/student-services/{id}/process', [AffairsWebController::class, 'processStudentService'])->name('affairs.student_services.process');
 
+    // المواعيد واللقاءات للشؤون
+    Route::get('/appointments', [App\Http\Controllers\Web\AppointmentWebController::class, 'index'])->name('affairs.appointments');
+    Route::post('/appointments/{id}/respond', [App\Http\Controllers\Web\AppointmentWebController::class, 'respondToMeeting'])->name('affairs.appointments.respond');
+    Route::post('/summons', [App\Http\Controllers\Web\AppointmentWebController::class, 'storeSummon'])->name('affairs.summons.store');
+
     // الحسابات
     Route::get('/accounts', [AffairsWebController::class, 'accounts'])->name('affairs.accounts');
     Route::post('/accounts', [AffairsWebController::class, 'storeAccount'])->name('affairs.accounts.store');

@@ -133,6 +133,9 @@
                 <a href="{{ url('/affairs/calendar') }}" class="nav-item {{ Request::is('affairs/calendar') ? 'active' : '' }}">
                     <i class="fa-solid fa-calendar-days"></i> التقويم
                 </a>
+                <a href="{{ route('affairs.appointments') }}" class="nav-item {{ Request::is('affairs/appointments*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-calendar-check"></i> المواعيد واللقاءات
+                </a>
                 <a href="{{ url('/affairs/activities') }}" class="nav-item {{ Request::is('affairs/activities') ? 'active' : '' }}">
                     <i class="fa-solid fa-clipboard-list"></i> الأنشطة
                 </a>
