@@ -26,6 +26,13 @@ class Course extends Model
         return $this->belongsToMany(Teacher::class, 'course_teachers', 'course_id', 'teacher_id')
                     ->withPivot('role');
     }
+
+    public function teacher()
+    {
+        return $this->belongsToMany(Teacher::class, 'course_teachers', 'course_id', 'teacher_id')
+                    ->withPivot('role');
+    }
+
     
     // إضافة علاقة المادة مع الطلاب
     public function students()

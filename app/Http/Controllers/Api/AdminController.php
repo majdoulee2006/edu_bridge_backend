@@ -1013,8 +1013,9 @@ class AdminController extends Controller
             'content'         => 'required|string',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'link_url'        => 'nullable|url|max:500',
-            'target_audience' => 'nullable|in:all,students,teachers,department',
+            'target_audience' => 'nullable|in:all,students,teachers,heads,department',
             'department_id'   => 'nullable|exists:departments,department_id',
+            'course_id'       => 'nullable|exists:courses,course_id',
         ]);
 
         if ($validator->fails()) {
@@ -1033,6 +1034,8 @@ class AdminController extends Controller
             'image'           => $imagePath,
             'link_url'        => $request->input('link_url'),
             'target_audience' => $request->input('target_audience', 'all'),
+            'department_id'   => $request->input('department_id'),
+            'course_id'       => $request->input('course_id'),
             'type'            => 'general',
         ]);
 

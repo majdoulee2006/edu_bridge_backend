@@ -55,6 +55,26 @@ class NotificationController extends Controller
       return response()->json(['success' => true, 'message' => 'تم تحديد جميع الإشعارات كمقروءة']);
   }
 
+  public function markByTypeAndRelatedId(Request $request)
+  {
+      $type = $request->input('type');
+      $relatedId = $request->input('related_id');
+
+      if ($type) {
+          $query = DB::table('notifications')
+              ->where('user_id', auth()->id())
+              ->where('type', $type);
+          
+          if ($relatedId) {
+              $query->where('related_id', $relatedId);
+          }
+          
+          $query->update(['is_read' => true]);
+      }
+
+      return response()->json(['success' => true]);
+  }
+
   public function toggleMute(Request $request)
   {
       $user = $request->user();

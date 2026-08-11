@@ -34,8 +34,16 @@ class ParentController extends Controller
             ->with(['user', 'attendances', 'grades'])
             ->get()
             ->map(function($student) {
-                // استخدام نفس الميثود الخاصة بشاشة الأداء لضمان تطابق الأرقام في كل مكان
                 $performance = json_decode(app(\App\Http\Controllers\StudentParentController::class)->getFullPerformance($student->student_id)->getContent(), true);
+
+                $deptInfo = \DB::table('students')
+                    ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                    ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
+                    ->leftJoin('heads', 'departments.department_id', '=', 'heads.department_id')
+                    ->leftJoin('users as hod_user', 'heads.user_id', '=', 'hod_user.user_id')
+                    ->where('students.student_id', $student->student_id)
+                    ->select('departments.name as department_name', 'hod_user.full_name as hod_name')
+                    ->first();
 
                 return [
                     'id'              => $student->user_id,
@@ -47,6 +55,8 @@ class ParentController extends Controller
                     'total_courses'   => $student->courses->count(),
                     'attendance_rate' => $performance['attendance_rate'] ?? 100,
                     'average_grade'   => $performance['gpa'] ?? 0,
+                    'department_name' => $deptInfo->department_name ?? 'عام',
+                    'hod_name'        => $deptInfo->hod_name ?? 'رئيس القسم المعني',
                 ];
             });
 
@@ -700,70 +710,48 @@ class ParentController extends Controller
             'updated_at'     => now(),
         ]);
 
-        // 🔔 إرسال إشعار فوري للشخص / الجهة المستلمة فقط
-        if ($targetRole === 'head') {
-            $hodList = \DB::table('users')
-                ->leftJoin('heads', 'users.user_id', '=', 'heads.user_id')
-                ->where('users.role_id', 5)
-                ->orWhereNotNull('heads.user_id')
-                ->select('users.user_id')
-                ->distinct()
-                ->get();
+        // 🔔 إرسال إشعار فوري لموظفي الشؤون والإدارة لمراجعة الطلب واتخاذ القرار
+        $affairsUsers = \DB::table('users')
+            ->whereIn('role_id', [1, 6])
+            ->orWhere('role', 'affairs')
+            ->select('user_id')
+            ->distinct()
+            ->get();
 
-            foreach ($hodList as $hod) {
-                $title = 'طلب موعد لقاء جديد من ولي أمر';
-                $message = "قدم ولي أمر الطالب ({$studentName}) طلباً للقاء رئيس القسم بخصوص: " . $validated['subject'];
-
-                \DB::table('notifications')->insert([
-                    'user_id'    => $hod->user_id,
-                    'sender_id'  => $user->user_id,
-                    'title'      => $title,
-                    'message'    => $message,
-                    'type'       => 'meeting_request',
-                    'category'   => 'administrative',
-                    'related_id' => $requestId,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                \App\Services\FcmService::sendToUser($hod->user_id, $title, $message, [
-                    'type'       => 'meeting_request',
-                    'related_id' => (string)$requestId,
-                ]);
-            }
-        } else {
-            // الإدارة (مدير المعهد - role_id 1 فقط)
-            $admins = \DB::table('users')->where('role_id', 1)->get();
-            foreach ($admins as $admin) {
-                $title = 'طلب موعد لقاء جديد من ولي أمر';
-                $message = "قدم ولي أمر الطالب ({$studentName}) طلباً للقاء الإدارة بخصوص: " . $validated['subject'];
-
-                \DB::table('notifications')->insert([
-                    'user_id'    => $admin->user_id,
-                    'sender_id'  => $user->user_id,
-                    'title'      => $title,
-                    'message'    => $message,
-                    'type'       => 'meeting_request',
-                    'category'   => 'administrative',
-                    'related_id' => $requestId,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                \App\Services\FcmService::sendToUser($admin->user_id, $title, $message, [
-                    'type'       => 'meeting_request',
-                    'related_id' => (string)$requestId,
-                ]);
-            }
+        $hodName = 'رئيس القسم المعني';
+        if ($departmentId) {
+            $hodName = \DB::table('heads')
+                ->join('users', 'heads.user_id', '=', 'users.user_id')
+                ->where('heads.department_id', $departmentId)
+                ->value('users.full_name') ?? 'رئيس القسم';
         }
 
-        $targetLabel = ($targetRole === 'head') ? 'رئيس القسم' : 'الإدارة';
+        foreach ($affairsUsers as $affairs) {
+            $title = 'طلب موعد لقاء جديد من ولي أمر';
+            $message = "قدم ولي أمر الطالب ({$studentName}) طلباً للقاء رئيس القسم ({$hodName}) بخصوص: " . $validated['subject'];
+
+            \DB::table('notifications')->insert([
+                'user_id'    => $affairs->user_id,
+                'sender_id'  => $user->user_id,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'meeting_request',
+                'category'   => 'administrative',
+                'related_id' => $requestId,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \App\Services\FcmService::sendToUser($affairs->user_id, $title, $message, [
+                'type'       => 'meeting_request',
+                'related_id' => (string)$requestId,
+            ]);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => "تم تقديم طلب موعد مع {$targetLabel} بنجاح وإرسال الإشعار",
+            'message' => 'تم إرسال طلب الموعد لموظف الشؤون بنجاح وسيتم إشعاركم فور المعالجة',
             'id'      => $requestId
         ], 201);
     }
@@ -838,4 +826,65 @@ class ParentController extends Controller
             'data'    => $summons
         ]);
     }
+
+    /**
+     * كشف علامات الطفل الأكاديمي لولي الأمر
+     */
+    public function getChildAcademicCard(Request $request, $childId)
+    {
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $child = $parent->students()->where('students.student_id', $childId)->first();
+
+        if (!$child) {
+            return response()->json(['success' => false, 'message' => 'الطالب غير مرتبط بحسابك'], 404);
+        }
+
+        $affairsController = new AffairsController();
+        $subRequest = new Request(['student_id' => $childId]);
+        return $affairsController->getStudentAcademicCardForAffairs($subRequest);
+    }
+
+    public function exportChildAcademicCardPdf(Request $request, $childId)
+    {
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $child = $parent->students()->where('students.student_id', $childId)->first();
+
+        if (!$child) {
+            return response()->json(['success' => false, 'message' => 'الطالب غير مرتبط بحسابك'], 404);
+        }
+
+        $affairsController = new AffairsController();
+        $subRequest = new Request(['student_id' => $childId]);
+        return $affairsController->exportStudentAcademicCardPdf($subRequest);
+    }
+
+    public function exportChildAcademicCardExcel(Request $request, $childId)
+    {
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $child = $parent->students()->where('students.student_id', $childId)->first();
+
+        if (!$child) {
+            return response()->json(['success' => false, 'message' => 'الطالب غير مرتبط بحسابك'], 404);
+        }
+
+        $affairsController = new AffairsController();
+        $subRequest = new Request(['student_id' => $childId]);
+        return $affairsController->exportStudentAcademicCardExcel($subRequest);
+    }
 }
+

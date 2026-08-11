@@ -2649,6 +2649,48 @@ class TeacherController extends Controller
 
             if ($score === null) continue;
 
+            // المزامنة مع جدول grades المباشر لتضمن الظهور السريع ببطاقة الطالب
+            if ($event->course_id) {
+                $examName = $event->title ?: ($eventType . ' ' . $courseTitle);
+                $exam = DB::table('exams')
+                    ->where('course_id', $event->course_id)
+                    ->where('exam_name', $examName)
+                    ->first();
+
+                if (!$exam) {
+                    $examId = DB::table('exams')->insertGetId([
+                        'course_id' => $event->course_id,
+                        'exam_name' => $examName,
+                        'date'      => $event->date ?? now()->toDateString(),
+                        'created_at'=> now(),
+                        'updated_at'=> now(),
+                    ]);
+                } else {
+                    $examId = $exam->exam_id;
+                }
+
+                $existingGrade = DB::table('grades')
+                    ->where('exam_id', $examId)
+                    ->where('student_id', $entry['student_id'])
+                    ->first();
+
+                if ($existingGrade) {
+                    DB::table('grades')->where('grade_id', $existingGrade->grade_id)->update([
+                        'score' => $score,
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    DB::table('grades')->insert([
+                        'exam_id' => $examId,
+                        'student_id' => $entry['student_id'],
+                        'score' => $score,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+
             // جلب الطالب وuser_id الخاص به
             $student = DB::table('students')
                 ->where('student_id', $entry['student_id'])
@@ -2855,7 +2897,13 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
         }
 
-        // جلب ولي أمر الطالب
+        // جلب رئيس قسم الطالب (HOD)
+        $hodUserId = null;
+        if ($student->department_id) {
+            $hodUserId = DB::table('departments')->where('department_id', $student->department_id)->value('hod_user_id');
+        }
+
+        // جلب ولي أمر الطالب للتسجيل المبدئي
         $parentUserId = DB::table('parent_students')
             ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
             ->where('parent_students.student_id', $student->student_id)
@@ -2868,36 +2916,136 @@ class TeacherController extends Controller
             'reason_title'   => $validated['reason_title'],
             'details'        => $validated['details'],
             'summon_date'    => $validated['summon_date'] ?? null,
-            'status'         => 'sent',
+            'status'         => 'pending_hod',
             'created_at'     => now(),
             'updated_at'     => now(),
         ]);
 
-        if ($parentUserId) {
-            $title = 'استدعاء ولي أمر عاجل';
-            $msg   = 'لديك استدعاء رسمي بخصوص الطالب: ' . $validated['reason_title'];
+        if ($hodUserId) {
+            $studentName = DB::table('users')->where('user_id', $student->user_id)->value('full_name') ?? 'طالب';
+            $title = 'طلب استدعاء ولي أمر من مربي الدورة';
+            $msg   = 'طلب المعلم/مربي الدورة استدعاء ولي أمر الطالب: ' . $studentName . ' - السبب: ' . $validated['reason_title'];
             DB::table('notifications')->insert([
-                'user_id'    => $parentUserId,
+                'user_id'    => $hodUserId,
                 'sender_id'  => $sender->user_id,
                 'title'      => $title,
                 'message'    => $msg,
-                'type'       => 'summon',
+                'type'       => 'summon_request',
                 'category'   => 'administrative',
                 'related_id' => $summonId,
                 'is_read'    => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            \App\Services\FcmService::sendToUser($parentUserId, $title, $msg, [
-                'type' => 'summon', 'related_id' => (string) $summonId
+            \App\Services\FcmService::sendToUser($hodUserId, $title, $msg, [
+                'type' => 'summon_request', 'related_id' => (string) $summonId, 'screen' => 'hod_appointments'
             ]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال استدعاء ولي الأمر بنجاح',
+            'message' => 'تم إرسال طلب استدعاء ولي الأمر إلى رئيس القسم بنجاح المراجعة والتحويل للشؤون.',
             'id'      => $summonId
         ], 201);
+    }
+
+    /**
+     * جلب قائمة الطلاب التابعين للمعلم/مربي الدورة
+     */
+    public function getEducatorStudents(Request $request)
+    {
+        $user = $request->user();
+        $teacher = DB::table('teachers')->where('user_id', $user->user_id)->first();
+        if (!$teacher) {
+            return response()->json(['success' => false, 'message' => 'حساب غير مخصص كمعلم'], 403);
+        }
+
+        // المواد التي يدرسها المعلم
+        $courseIds = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->pluck('course_id');
+
+        $studentQuery = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id');
+
+        if ($courseIds->isNotEmpty()) {
+            $studentIds = DB::table('enrollments')
+                ->whereIn('course_id', $courseIds)
+                ->pluck('student_id');
+
+            if ($studentIds->isNotEmpty()) {
+                $studentQuery->whereIn('students.student_id', $studentIds);
+            }
+        }
+
+        $students = $studentQuery->select(
+            'students.student_id',
+            'students.student_code',
+            'students.academic_year',
+            'users.full_name as student_name',
+            'departments.name as department_name',
+            'programs.name as program_name'
+        )->distinct()->get();
+
+        if ($students->isEmpty()) {
+            $students = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->select(
+                    'students.student_id',
+                    'students.student_code',
+                    'students.academic_year',
+                    'users.full_name as student_name',
+                    'departments.name as department_name',
+                    'programs.name as program_name'
+                )->distinct()->get();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => $students
+        ]);
+    }
+
+    /**
+     * جلب سجل طلبات الاستدعاء المرسلة من قبل المعلم مع إمكانية الفلترة
+     */
+    public function getTeacherSummonsHistory(Request $request)
+    {
+        $user = $request->user();
+        $status = $request->query('status', 'all');
+
+        $query = DB::table('parent_summons')
+            ->join('students', 'parent_summons.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
+            ->where('parent_summons.sender_user_id', $user->user_id);
+
+        if ($status === 'pending') {
+            $query->whereIn('parent_summons.status', ['pending_hod', 'pending_affairs']);
+        } else if ($status === 'completed') {
+            $query->whereIn('parent_summons.status', ['sent', 'approved', 'rejected', 'completed', 'cancelled']);
+        }
+
+        $summons = $query->select(
+            'parent_summons.summon_id as id',
+            'parent_summons.reason_title',
+            'parent_summons.details',
+            'parent_summons.summon_date',
+            'parent_summons.status',
+            'parent_summons.created_at',
+            'users.full_name as student_name',
+            'students.student_code',
+            'departments.name as department_name'
+        )->orderBy('parent_summons.created_at', 'desc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $summons
+        ]);
     }
 }
 

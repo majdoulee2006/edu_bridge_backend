@@ -121,19 +121,23 @@
         gap: 0.5rem;
     }
     .btn-action {
-        width: 35px;
-        height: 35px;
-        border-radius: 50%;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
         border: none;
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
+        gap: 0.5rem;
         cursor: pointer;
-        transition: transform 0.2s;
+        transition: all 0.2s ease;
         color: white;
+        font-size: 0.85rem;
+        font-weight: 700;
+        white-space: nowrap;
+        font-family: 'Cairo', sans-serif;
     }
     .btn-action:hover {
-        transform: scale(1.1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
     .btn-view { background: #3b82f6; }
 
@@ -272,6 +276,12 @@
         <button class="tab-btn" onclick="switchTab(this, 'makeup')">
             <i class="fa-solid fa-pen-to-square"></i> امتحانات الإكمال
         </button>
+        <button class="tab-btn" onclick="switchTab(this, 'device-reset')">
+            <i class="fa-solid fa-mobile-screen-button"></i> فك قفل الجهاز
+        </button>
+        <button class="tab-btn" onclick="switchTab(this, 'academic-card')">
+            <i class="fa-solid fa-graduation-cap"></i> كشف علامات الطلاب
+        </button>
     </div>
 
     <!-- 1. Mercy Petitions Tab -->
@@ -300,7 +310,7 @@
                         </td>
                         <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
                         <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
                         <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_affairs')
@@ -319,7 +329,7 @@
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
                                     data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
                                     data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
-                                    data-details="{{ $req->details }}"
+                                    data-details="{{ $req->formatted_details }}"
                                     data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إرسال الرأي مسبقاً') }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
@@ -364,7 +374,7 @@
                         </td>
                         <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
                         <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
                         <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_affairs')
@@ -383,7 +393,7 @@
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
                                     data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
                                     data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
-                                    data-details="{{ $req->details }}"
+                                    data-details="{{ $req->formatted_details }}"
                                     data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إرسال الرأي مسبقاً') }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
@@ -428,7 +438,7 @@
                         </td>
                         <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
                         <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->details, 30) }}</td>
+                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
                         <td>{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td>
                             @if($req->status == 'pending_affairs')
@@ -447,7 +457,7 @@
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
                                     data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
                                     data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
-                                    data-details="{{ $req->details }}"
+                                    data-details="{{ $req->formatted_details }}"
                                     data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إرسال الرأي مسبقاً') }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
@@ -463,6 +473,181 @@
                     @endif
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Device Reset Tab -->
+    <div id="tab-device-reset" class="tab-content">
+        <div class="table-container">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>الطالب</th>
+                        <th>الرقم الجامعي</th>
+                        <th>العام الدراسي</th>
+                        <th>السبب / التفاصيل</th>
+                        <th>تاريخ الطلب</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($requests->where('type', 'device_reset') as $req)
+                    <tr>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:0.8rem;">
+                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                            </div>
+                        </td>
+                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
+                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
+                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td>
+                            @if($req->status == 'pending_affairs' || $req->status == 'pending')
+                                <span class="badge badge-pending">بانتظار قرارك</span>
+                            @elseif($req->status == 'approved')
+                                <span class="badge badge-approved">تمت الموافقة وفك القفل</span>
+                            @else
+                                <span class="badge badge-rejected">مرفوض</span>
+                            @endif
+                        </td>
+                        <td>
+                            @php $canRespond = ($req->status == 'pending_affairs' || $req->status == 'pending'); @endphp
+                            <div class="action-btns">
+                                <button class="btn-action {{ $canRespond ? 'btn-view' : '' }}" style="{{ $canRespond ? '' : 'background:#6b7280;' }}"
+                                    title="{{ $canRespond ? 'معالجة فك القفل' : 'معاينة (قراءة فقط)' }}"
+                                    data-type="فك قفل الجهاز"
+                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-id="{{ $req->student?->student_code ?? 'N/A' }}"
+                                    data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-details="{{ $req->formatted_details }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إتخاذ القرار مسبقاً') }}"
+                                    data-req-id="{{ $req->id }}"
+                                    data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
+                                    onclick="openRequestModalFromBtn(this)">
+                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i> {{ $canRespond ? 'معالجة طلب فك القفل' : 'معاينة (قراءة فقط)' }}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                    @if($requests->where('type', 'device_reset')->isEmpty())
+                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات فك قفل جهاز</td></tr>
+                    @endif
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. Academic Student Card Tab -->
+    <div id="tab-academic-card" class="tab-content">
+        <div style="background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); box-shadow: var(--shadow);">
+            <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-filter" style="color: var(--accent-color);"></i> تصفية واستعلام كشف العلامات للأداء الأكاديمي
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: end;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-secondary);">1. القسم:</label>
+                    <select id="affairs-filter-department" onchange="loadFilteredStudents()" style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
+                        <option value="">جميع الأقسام</option>
+                        @foreach(DB::table('departments')->get() as $dept)
+                            <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-secondary);">2. الدورة / الفصل الدراسي:</label>
+                    <select id="affairs-filter-semester" onchange="loadFilteredStudents()" style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
+                        <option value="الكل">جميع الدورات / الفصول</option>
+                        @foreach(DB::table('semesters')->get() as $sem)
+                            <option value="{{ $sem->semester_id }}">{{ $sem->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-secondary);">3. السنة الدراسية:</label>
+                    <select id="affairs-filter-year" onchange="loadFilteredStudents()" style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
+                        <option value="الكل">جميع السنوات (السنة الأولى والسنة الثانية)</option>
+                        <option value="السنة الأولى">السنة الأولى</option>
+                        <option value="السنة الثانية">السنة الثانية</option>
+                    </select>
+                </div>
+                <div style="grid-column: span 3;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الطالب (مرتب أبجدياً):</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="affairs-student-search" placeholder="بحث باسم الطالب أو الرقم الجامعي..." onkeyup="filterStudentDropdownList()" style="flex: 1; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 600;">
+                        <select id="affairs-student-select" onchange="fetchAcademicCardForSelectedStudent()" style="flex: 2; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
+                            <option value="">-- اختر طالباً من القائمة --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container for Academic Card Result -->
+        <div id="academic-card-display" style="display: none;">
+            <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 1.25rem; padding: 1.5rem 2rem; color: white; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 id="card-student-name" style="font-size: 1.4rem; font-weight: 800; color: #facc15; margin: 0 0 0.5rem 0;">--</h3>
+                    <p style="margin: 0; font-size: 0.95rem; opacity: 0.85;">
+                        الرقم الجامعي: <span id="card-student-code" style="font-weight: 800; color: white;">--</span> &nbsp;|&nbsp;
+                        التخصص: <span id="card-student-dept" style="font-weight: 800; color: white;">--</span> &nbsp;|&nbsp;
+                        السنة: <span id="card-student-level" style="font-weight: 800; color: white;">--</span>
+                    </p>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" onclick="exportCard('pdf')" style="background: #ef4444; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 10px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-file-pdf"></i> تصدير PDF
+                    </button>
+                    <button type="button" onclick="exportCard('excel')" style="background: #10b981; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 10px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-file-excel"></i> تصدير Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.2rem; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">المعدل التراكمي</div>
+                    <div id="card-stat-gpa" style="font-size: 1.8rem; font-weight: 900; color: var(--accent-color); margin-top: 0.25rem;">0%</div>
+                </div>
+                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.2rem; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">المواد المجتازة</div>
+                    <div id="card-stat-passed" style="font-size: 1.8rem; font-weight: 900; color: #10b981; margin-top: 0.25rem;">0</div>
+                </div>
+                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.2rem; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">المواد المتبقية / راسب</div>
+                    <div id="card-stat-failed" style="font-size: 1.8rem; font-weight: 900; color: #ef4444; margin-top: 0.25rem;">0</div>
+                </div>
+                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.2rem; border: 1px solid var(--border-color); text-align: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">لم يتم التقدم لها</div>
+                    <div id="card-stat-notattended" style="font-size: 1.8rem; font-weight: 900; color: #6b7280; margin-top: 0.25rem;">0</div>
+                </div>
+            </div>
+
+            <!-- Academic Card Table -->
+            <div class="table-container">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>اسم المادة الدراسية</th>
+                            <th>السنة/الفصل</th>
+                            <th style="text-align: center;">علامة المذاكرة (20)</th>
+                            <th style="text-align: center;">علامة الشفهي/العملي (20)</th>
+                            <th style="text-align: center;">علامة الامتحان (60)</th>
+                            <th style="text-align: center;">المجموع الكلي (100)</th>
+                            <th style="text-align: center;">الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="academic-card-table-body">
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -564,7 +749,18 @@
         document.getElementById('modal-student-department').innerText = department;
         document.getElementById('modal-student-specialization').innerText = specialization;
         document.getElementById('modal-student-year').innerText = year;
-        document.getElementById('modal-request-details').innerText = details;
+        
+        let displayDetails = details;
+        if (details && (details.trim().startsWith('{') || details.trim().startsWith('['))) {
+            try {
+                const parsed = JSON.parse(details);
+                let parts = [];
+                if (parsed.reason) parts.push('سبب الطلب: ' + parsed.reason);
+                if (parsed.new_device_id) parts.push('معرف الجهاز الجديد: ' + parsed.new_device_id);
+                if (parts.length > 0) displayDetails = parts.join('\n');
+            } catch(e) {}
+        }
+        document.getElementById('modal-request-details').innerText = displayDetails;
         document.getElementById('decisionForm').action = '/affairs/student-services/' + reqId + '/process';
         
         const notesElement = document.getElementById('modal-notes');
@@ -618,6 +814,139 @@
         
         document.getElementById('decisionInput').value = decision;
         document.getElementById('decisionForm').submit();
+    }
+
+    // ─────────────────────────── Academic Card JS ───────────────────────────
+    let allLoadedStudents = [];
+    let currentSelectedStudentId = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        if (document.getElementById('tab-academic-card')) {
+            loadFilteredStudents();
+        }
+    });
+
+    function loadFilteredStudents() {
+        const departmentId = document.getElementById('affairs-filter-department')?.value || '';
+        const semesterId = document.getElementById('affairs-filter-semester')?.value || '';
+        const level = document.getElementById('affairs-filter-year')?.value || '';
+        const search = document.getElementById('affairs-student-search')?.value || '';
+
+        fetch(`/affairs/academic-card/students?department_id=${departmentId}&semester_id=${semesterId}&level=${encodeURIComponent(level)}&search=${encodeURIComponent(search)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.students) {
+                    allLoadedStudents = data.students;
+                    renderStudentDropdownOptions(allLoadedStudents);
+                }
+            })
+            .catch(err => console.error(err));
+    }
+
+    function filterStudentDropdownList() {
+        const search = document.getElementById('affairs-student-search').value.toLowerCase();
+        const filtered = allLoadedStudents.filter(st => 
+            (st.full_name && st.full_name.toLowerCase().includes(search)) ||
+            (st.university_id && st.university_id.toLowerCase().includes(search)) ||
+            (st.student_code && st.student_code.toLowerCase().includes(search))
+        );
+        renderStudentDropdownOptions(filtered);
+    }
+
+    function renderStudentDropdownOptions(students) {
+        const select = document.getElementById('affairs-student-select');
+        if (!select) return;
+        select.innerHTML = '<option value="">-- اختر طالباً من القائمة (إجمالي ' + students.length + ') --</option>';
+        students.forEach(st => {
+            const code = st.university_id || st.student_code || '';
+            const yearStr = st.level || '';
+            select.innerHTML += `<option value="${st.student_id}">${st.full_name} (${code}) - ${yearStr}</option>`;
+        });
+    }
+
+    function fetchAcademicCardForSelectedStudent() {
+        const select = document.getElementById('affairs-student-select');
+        const studentId = select.value;
+        if (!studentId) {
+            document.getElementById('academic-card-display').style.display = 'none';
+            return;
+        }
+        currentSelectedStudentId = studentId;
+
+        const level = document.getElementById('affairs-filter-year')?.value || '';
+
+        fetch(`/affairs/academic-card/data?student_id=${studentId}&level=${encodeURIComponent(level)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    renderAcademicCard(data);
+                } else {
+                    alert(data.message || 'تعذر جلب بيانات كشف العلامات');
+                }
+            })
+            .catch(err => alert('حدث خطأ أثناء تحميل الكشف: ' + err));
+    }
+
+    function renderAcademicCard(data) {
+        const st = data.student;
+        const summary = data.summary;
+        const card = data.academic_card;
+
+        document.getElementById('card-student-name').innerText = st.full_name || '';
+        document.getElementById('card-student-code').innerText = st.university_id || st.student_code || '';
+        document.getElementById('card-student-dept').innerText = st.department || st.branch || '';
+        document.getElementById('card-student-level').innerText = st.level || '';
+
+        document.getElementById('card-stat-gpa').innerText = summary.average + '%';
+        document.getElementById('card-stat-passed').innerText = summary.passed_courses;
+        document.getElementById('card-stat-failed').innerText = summary.failed_courses;
+        document.getElementById('card-stat-notattended').innerText = summary.not_attended;
+
+        const tbody = document.getElementById('academic-card-table-body');
+        tbody.innerHTML = '';
+
+        if (!card || card.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-secondary);">لا توجد مواد مسجلة لهذا الطالب</td></tr>';
+        } else {
+            card.forEach((row, idx) => {
+                let statusBadge = '<span class="badge badge-pending">لم يتم التقدم</span>';
+                if (row.status === 'ناجح') {
+                    statusBadge = '<span class="badge badge-approved">ناجح</span>';
+                } else if (row.status === 'راسب') {
+                    statusBadge = '<span class="badge badge-rejected">راسب</span>';
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td style="font-weight:700;">${row.title}</td>
+                        <td style="color:var(--text-secondary); font-size:0.85rem;">سنة ${row.year || 1} - فصل ${row.semester || 1}</td>
+                        <td style="text-align:center;">${row.quiz_score !== null ? row.quiz_score : '-'}</td>
+                        <td style="text-align:center;">${row.oral_score !== null ? row.oral_score : '-'}</td>
+                        <td style="text-align:center;">${row.final_score !== null ? row.final_score : '-'}</td>
+                        <td style="text-align:center; font-weight:800; font-size:1.05rem;">${row.total_score !== null ? row.total_score : '-'}</td>
+                        <td style="text-align:center;">${statusBadge}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        document.getElementById('academic-card-display').style.display = 'block';
+    }
+
+    function exportCard(type) {
+        if (!currentSelectedStudentId) return;
+        const url = `/affairs/academic-card/export-${type}?student_id=${currentSelectedStudentId}`;
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (data.file_url) {
+                    window.open(data.file_url, '_blank');
+                } else {
+                    alert('حدث خطأ أثناء التصدير');
+                }
+            })
+            .catch(err => alert('تعذر التصدير: ' + err));
     }
 </script>
 @endpush

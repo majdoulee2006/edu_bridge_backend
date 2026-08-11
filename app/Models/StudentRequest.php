@@ -24,11 +24,40 @@ class StudentRequest extends Model
         'admin_notes',
     ];
 
+    protected $appends = ['formatted_details'];
+
     /**
      * ربط الطلب مع الطالب صاحب الطلب
      */
     public function student()
     {
         return $this->belongsTo(Student::class, 'student_id', 'student_id');
+    }
+
+    /**
+     * تنسيق تفاصيل الطلب بشكل مفهوم للإنسان
+     */
+    public function getFormattedDetailsAttribute()
+    {
+        $raw = $this->details;
+        if (empty($raw)) return '';
+
+        $trimmed = trim($raw);
+        if (str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[')) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $parts = [];
+                if (!empty($decoded['reason'])) {
+                    $parts[] = "السبب: " . $decoded['reason'];
+                }
+                if (!empty($decoded['new_device_id'])) {
+                    $parts[] = "معرف الجهاز الجديد: " . $decoded['new_device_id'];
+                }
+                if (!empty($parts)) {
+                    return implode(' | ', $parts);
+                }
+            }
+        }
+        return $raw;
     }
 }

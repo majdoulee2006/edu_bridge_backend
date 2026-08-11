@@ -1122,6 +1122,7 @@ class DepartmentHeadController extends Controller
                 $schedules = DB::table('schedules')
                     ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
                     ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                    ->leftJoin('semesters', 'courses.semester_id', '=', 'semesters.semester_id')
                     ->where('course_program.program_id', $program->id)
                     ->where('courses.year', $year)
                     ->orderByRaw("FIELD(schedules.day,'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')")
@@ -1134,6 +1135,8 @@ class DepartmentHeadController extends Controller
                         'schedules.room',
                         'courses.title as course_name',
                         'courses.year',
+                        'courses.semester_id',
+                        'semesters.name as semester_name',
                     ]);
                 $yearData[(string)$year] = $schedules;
             }
@@ -1152,6 +1155,7 @@ class DepartmentHeadController extends Controller
     {
         $schedules = DB::table('schedules')
             ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
+            ->leftJoin('semesters', 'courses.semester_id', '=', 'semesters.semester_id')
             ->orderByRaw("FIELD(schedules.day,'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')")
             ->orderBy('schedules.start_time')
             ->get([
@@ -1161,6 +1165,8 @@ class DepartmentHeadController extends Controller
                 'schedules.end_time',
                 'schedules.room',
                 'courses.title as course_name',
+                'courses.semester_id',
+                'semesters.name as semester_name',
             ]);
 
         return response()->json(['success' => true, 'data' => $schedules]);
@@ -1172,6 +1178,7 @@ class DepartmentHeadController extends Controller
             ->join('courses', 'exams.course_id', '=', 'courses.course_id')
             ->leftJoin('course_program', 'courses.course_id', '=', 'course_program.course_id')
             ->leftJoin('programs', 'course_program.program_id', '=', 'programs.id')
+            ->leftJoin('semesters', 'courses.semester_id', '=', 'semesters.semester_id')
             ->orderBy('exams.exam_date')
             ->selectRaw('
                 exams.exam_id as id,
@@ -1181,9 +1188,11 @@ class DepartmentHeadController extends Controller
                 exams.room,
                 courses.title as course_name,
                 courses.year,
+                courses.semester_id,
+                semesters.name as semester_name,
                 MIN(programs.name) as program_name
             ')
-            ->groupBy('exams.exam_id', 'exams.exam_name', 'exams.exam_date', 'exams.max_score', 'exams.room', 'courses.title', 'courses.year')
+            ->groupBy('exams.exam_id', 'exams.exam_name', 'exams.exam_date', 'exams.max_score', 'exams.room', 'courses.title', 'courses.year', 'courses.semester_id', 'semesters.name')
             ->get();
 
         return response()->json(['success' => true, 'data' => $exams]);
