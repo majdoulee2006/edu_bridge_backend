@@ -80,11 +80,6 @@
         grid-template-cols: 1fr;
         gap: 1.5rem;
     }
-    @media(min-width: 1024px) {
-        .grid-layout {
-            grid-template-cols: 2fr 1fr;
-        }
-    }
     .card-panel {
         background: var(--surface-light, #ffffff);
         border-radius: 1.25rem;
@@ -119,13 +114,20 @@
         </div>
     @endif
 
-    <div class="custom-tabs">
-        <button class="tab-btn active" onclick="switchTab(event, 'meetings-tab')">طلبات المواعيد من الأهالي</button>
-        <button class="tab-btn" onclick="switchTab(event, 'summons-tab')">استدعاءات أولياء الأمور</button>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div class="custom-tabs" style="margin-bottom: 0;">
+            <button class="tab-btn active" onclick="switchTab(event, 'meetings-tab')">طلبات المواعيد من الأهالي</button>
+            <button class="tab-btn" onclick="switchTab(event, 'summons-tab')">استدعاءات أولياء الأمور</button>
+        </div>
+
+        <button onclick="openCreateSummonModal()" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background-color: #ef4444; color: white; border: none; border-radius: 0.75rem; font-weight: bold; font-size: 0.95rem; cursor: pointer; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 12px rgba(239,68,68,0.25);">
+            <i class="fa-solid fa-plus" style="font-size: 1.1rem;"></i>
+            استدعاء ولي أمر جديد
+        </button>
     </div>
 
     <div class="grid-layout">
-        {{-- اليسار: الجداول --}}
+        {{-- الجداول --}}
         <div>
             {{-- تبويب طلبات الأهالي --}}
             <div id="meetings-tab" class="tab-content active">
@@ -250,68 +252,73 @@
                 </div>
             </div>
         </div>
-
-        {{-- اليمين: إرسال استدعاء جديد --}}
-        <div>
-            <div class="card-panel">
-                <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #ef4444;">
-                    <span style="width: 5px; height: 20px; background-color: #ef4444; border-radius: 5px;"></span>
-                    استدعاء ولي أمر جديد
-                </h3>
-
-                <form action="{{ route('hod.summons.store') }}" method="POST" style="display: flex; flex-direction: column; gap: 1rem; font-size: 0.85rem;">
-                    @csrf
-                    <div>
-                        <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الدورة / المادة أولاً:</label>
-                        <select id="course_filter_select" onchange="filterStudentsByCourse(this.value)" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
-                            <option value="all" selected>-- جميع الدورات / المواد --</option>
-                            @foreach($courses as $course)
-                                <option value="{{ $course->course_id }}">{{ $course->title }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الطالب:</label>
-                        <select name="student_id" id="student_select" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
-                            <option value="" disabled selected>-- اختر الطالب للاستدعاء --</option>
-                            @foreach($students as $st)
-                                @php
-                                    $cIds = $st->courses ? $st->courses->pluck('course_id')->toArray() : [];
-                                    $cIdsJson = json_encode($cIds);
-                                @endphp
-                                <option value="{{ $st->student_id }}" data-courses="{{ $cIdsJson }}">
-                                    {{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->level }}]
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">سبب الاستدعاء المباشر:</label>
-                        <input type="text" name="reason_title" required placeholder="مثال: مناقشة أداء الطالب الأكاديمي"
-                               style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);" />
-                    </div>
-
-                    <div>
-                        <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">تفاصيل إضافية للوالدين:</label>
-                        <textarea name="details" required rows="4" placeholder="يرجى كتابة التفاصيل التي ستظهر للأهل لمساعدتهم على فهم الموضوع وتنسيق اللقاء..."
-                                  style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);"></textarea>
-                    </div>
-
-                    <div>
-                        <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">التاريخ المطلوب للحضور:</label>
-                        <input type="date" name="summon_date"
-                               style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);" />
-                    </div>
-
-                    <button type="submit" style="width: 100%; padding: 0.75rem; border: none; border-radius: 0.5rem; background-color: #ef4444; color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s;">
-                        إرسال الاستدعاء الآن
-                    </button>
-                </form>
-            </div>
-        </div>
     </div>
+</div>
+
+{{-- مودال إضافة استدعاء جديد --}}
+<div id="createSummonModal" style="position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px);">
+    <div style="background-color: var(--surface-light); border: 1px solid var(--border-color); border-radius: 1.25rem; padding: 1.75rem; width: 100%; max-width: 520px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); font-size: 0.85rem; display: flex; flex-direction: column; gap: 1.2rem; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-user-plus"></i>
+                استدعاء ولي أمر جديد
+            </h3>
+            <button onclick="closeCreateSummonModal()" style="border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; line-height: 1;">&times;</button>
+        </div>
+
+        <form action="{{ route('hod.summons.store') }}" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
+            @csrf
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الدورة / المادة أولاً:</label>
+                <select id="course_filter_select" onchange="filterStudentsByCourse(this.value)" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
+                    <option value="all" selected>-- جميع الدورات / المواد --</option>
+                    @foreach($courses as $course)
+                        <option value="{{ $course->course_id }}">{{ $course->title }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الطالب:</label>
+                <select name="student_id" id="student_select" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
+                    <option value="" disabled selected>-- اختر الطالب للاستدعاء --</option>
+                    @foreach($students as $st)
+                        @php
+                            $cIds = $st->courses ? $st->courses->pluck('course_id')->toArray() : [];
+                            $cIdsJson = json_encode($cIds);
+                        @endphp
+                        <option value="{{ $st->student_id }}" data-courses="{{ $cIdsJson }}">
+                            {{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->level }}]
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">سبب الاستدعاء المباشر:</label>
+                <input type="text" name="reason_title" required placeholder="مثال: مناقشة أداء الطالب الأكاديمي"
+                       style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);" />
+            </div>
+
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">تفاصيل إضافية للوالدين:</label>
+                <textarea name="details" required rows="4" placeholder="يرجى كتابة التفاصيل التي ستظهر للأهل لمساعدتهم على فهم الموضوع وتنسيق اللقاء..."
+                          style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);"></textarea>
+            </div>
+
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">التاريخ المطلوب للحضور:</label>
+                <input type="date" name="summon_date"
+                       style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);" />
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+                <button type="button" onclick="closeCreateSummonModal()" style="padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); font-weight: bold; cursor: pointer;">إلغاء</button>
+                <button type="submit" style="padding: 0.6rem 1.4rem; border: none; border-radius: 0.5rem; background-color: #ef4444; color: white; font-weight: bold; cursor: pointer;">إرسال الاستدعاء الآن</button>
+            </div>
+        </form>
+    </div>
+</div>
 </div>
 
 {{-- مودال الرد على طلب الموعد --}}
@@ -397,6 +404,14 @@
             container.style.display = 'block';
         }
     });
+
+    function openCreateSummonModal() {
+        document.getElementById('createSummonModal').style.display = 'flex';
+    }
+
+    function closeCreateSummonModal() {
+        document.getElementById('createSummonModal').style.display = 'none';
+    }
 
     function filterStudentsByCourse(selectedCourseId) {
         const studentSelect = document.getElementById('student_select');
