@@ -66,7 +66,14 @@ class AppointmentWebController extends Controller
         $meetings = $meetingsQuery->orderByDesc('created_at')->get();
         $summons = $summonsQuery->orderByDesc('created_at')->get();
 
-        $viewName = $isHOD ? 'hod.appointments' : 'admin.appointments';
+        $isAffairs = ($user->role_id == 4);
+        if ($isHOD) {
+            $viewName = 'hod.appointments';
+        } elseif ($isAffairs) {
+            $viewName = 'affairs.appointments';
+        } else {
+            $viewName = 'admin.appointments';
+        }
 
         return view($viewName, compact('meetings', 'summons', 'students', 'programs'));
     }
