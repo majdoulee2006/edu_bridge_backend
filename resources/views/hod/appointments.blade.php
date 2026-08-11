@@ -98,6 +98,34 @@
         background-color: #1a2633 !important;
         color: #f8fafc !important;
     }
+
+    /* Solid opaque background for modals */
+    .modal-card {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
+    }
+    [data-theme="dark"] .modal-card {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border: 1px solid #334155 !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9) !important;
+    }
+    .modal-card input,
+    .modal-card select,
+    .modal-card textarea {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    [data-theme="dark"] .modal-card input,
+    [data-theme="dark"] .modal-card select,
+    [data-theme="dark"] .modal-card textarea {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border: 1px solid #334155 !important;
+    }
 </style>
 @endpush
 
@@ -256,64 +284,60 @@
 </div>
 
 {{-- مودال إضافة استدعاء جديد --}}
-<div id="createSummonModal" style="position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px);">
-    <div style="background-color: var(--surface-light); border: 1px solid var(--border-color); border-radius: 1.25rem; padding: 1.75rem; width: 100%; max-width: 520px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); font-size: 0.85rem; display: flex; flex-direction: column; gap: 1.2rem; max-height: 90vh; overflow-y: auto;">
+<div id="createSummonModal" style="position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(8px);">
+    <div class="modal-card" style="border-radius: 1.25rem; padding: 1.75rem; width: 100%; max-width: 520px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 1.2rem; max-height: 90vh; overflow-y: auto;">
         <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem;">
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fa-solid fa-user-plus"></i>
                 استدعاء ولي أمر جديد
             </h3>
-            <button onclick="closeCreateSummonModal()" style="border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.5rem; line-height: 1;">&times;</button>
+            <button onclick="closeCreateSummonModal()" style="border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.6rem; line-height: 1;">&times;</button>
         </div>
 
         <form action="{{ route('hod.summons.store') }}" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
             @csrf
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الدورة / المادة أولاً:</label>
-                <select id="course_filter_select" onchange="filterStudentsByCourse(this.value)" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
-                    <option value="all" selected>-- جميع الدورات / المواد --</option>
-                    @foreach($courses as $course)
-                        <option value="{{ $course->course_id }}">{{ $course->title }}</option>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">اختر الدورة / الاختصاص أولاً:</label>
+                <select id="program_filter_select" onchange="filterStudentsByProgram(this.value)" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;">
+                    <option value="all" selected>-- جميع الدورات / الاختصاصات بالقسم --</option>
+                    @foreach($programs as $prog)
+                        <option value="{{ $prog->id }}">{{ $prog->name }}</option>
                     @endforeach
                 </select>
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الطالب:</label>
-                <select name="student_id" id="student_select" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">اختر الطالب:</label>
+                <select name="student_id" id="student_select" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;">
                     <option value="" disabled selected>-- اختر الطالب للاستدعاء --</option>
                     @foreach($students as $st)
-                        @php
-                            $cIds = $st->courses ? $st->courses->pluck('course_id')->toArray() : [];
-                            $cIdsJson = json_encode($cIds);
-                        @endphp
-                        <option value="{{ $st->student_id }}" data-courses="{{ $cIdsJson }}">
-                            {{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->level }}]
+                        <option value="{{ $st->student_id }}" data-program-id="{{ $st->program_id }}">
+                            {{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->program->name ?? $st->level }}]
                         </option>
                     @endforeach
                 </select>
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">سبب الاستدعاء المباشر:</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">سبب الاستدعاء المباشر:</label>
                 <input type="text" name="reason_title" required placeholder="مثال: مناقشة أداء الطالب الأكاديمي"
-                       style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);" />
+                       style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;" />
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">تفاصيل إضافية للوالدين:</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">تفاصيل إضافية للوالدين:</label>
                 <textarea name="details" required rows="4" placeholder="يرجى كتابة التفاصيل التي ستظهر للأهل لمساعدتهم على فهم الموضوع وتنسيق اللقاء..."
-                          style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);"></textarea>
+                          style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;"></textarea>
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem; color: var(--text-secondary);">التاريخ المطلوب للحضور:</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">التاريخ المطلوب للحضور:</label>
                 <input type="date" name="summon_date"
-                       style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);" />
+                       style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;" />
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
-                <button type="button" onclick="closeCreateSummonModal()" style="padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); font-weight: bold; cursor: pointer;">إلغاء</button>
+                <button type="button" onclick="closeCreateSummonModal()" style="padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: inherit; font-weight: bold; cursor: pointer;">إلغاء</button>
                 <button type="submit" style="padding: 0.6rem 1.4rem; border: none; border-radius: 0.5rem; background-color: #ef4444; color: white; font-weight: bold; cursor: pointer;">إرسال الاستدعاء الآن</button>
             </div>
         </form>
@@ -322,8 +346,8 @@
 </div>
 
 {{-- مودال الرد على طلب الموعد --}}
-<div id="responseModal" style="position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px);">
-    <div style="background-color: var(--surface-light); border: 1px solid var(--border-color); border-radius: 1rem; padding: 1.5rem; width: 100%; max-width: 450px; box-shadow: var(--shadow); font-size: 0.85rem; display: flex; flex-direction: column; gap: 1rem;">
+<div id="responseModal" style="position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(8px);">
+    <div class="modal-card" style="border-radius: 1.25rem; padding: 1.5rem; width: 100%; max-width: 450px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 1rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
             <h3 id="modalTitle" style="font-size: 1rem; font-weight: 700;">الرد على موعد ولي الأمر</h3>
             <button onclick="closeResponseModal()" style="border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.25rem;">&times;</button>
@@ -413,19 +437,19 @@
         document.getElementById('createSummonModal').style.display = 'none';
     }
 
-    function filterStudentsByCourse(selectedCourseId) {
+    function filterStudentsByProgram(selectedProgramId) {
         const studentSelect = document.getElementById('student_select');
         const options = studentSelect.querySelectorAll('option');
 
         options.forEach(opt => {
             if (!opt.value) return; // skip placeholder option
 
-            if (selectedCourseId === 'all') {
+            if (selectedProgramId === 'all') {
                 opt.style.display = '';
                 opt.disabled = false;
             } else {
-                const courseIds = JSON.parse(opt.getAttribute('data-courses') || '[]');
-                if (courseIds.includes(parseInt(selectedCourseId))) {
+                const progId = opt.getAttribute('data-program-id');
+                if (progId == selectedProgramId) {
                     opt.style.display = '';
                     opt.disabled = false;
                 } else {
