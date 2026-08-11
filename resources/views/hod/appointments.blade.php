@@ -399,18 +399,46 @@
         evt.currentTarget.classList.add("active");
     }
 
+    function getCurrentLocalDateTimeString() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    function getCurrentLocalDateString() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     function openResponseModal(meeting) {
         document.getElementById('modalForm').action = `/hod/appointments/${meeting.id}/respond`;
-        document.getElementById('modalTitle').innerText = `الرد على اللقاء لـ: ${meeting.parent.full_name}`;
+        document.getElementById('modalTitle').innerText = `الرد على اللقاء لـ: ${meeting.parent ? meeting.parent.full_name : ''}`;
         document.getElementById('modalStatus').value = meeting.status;
         document.getElementById('modalAdminResponse').value = meeting.admin_response || '';
         
+        const scheduledInput = document.getElementById('modalScheduledAt');
+        const currentNowStr = getCurrentLocalDateTimeString();
+        
+        // ضبط الحد الأدنى لمنع اختيار تاريخ أو وقت سابق للوقت الحالي
+        scheduledInput.min = currentNowStr;
+
         if(meeting.scheduled_at) {
             const date = new Date(meeting.scheduled_at);
-            const formatted = date.toISOString().slice(0, 16);
-            document.getElementById('modalScheduledAt').value = formatted;
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            scheduledInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
         } else {
-            document.getElementById('modalScheduledAt').value = '';
+            scheduledInput.value = currentNowStr;
         }
 
         document.getElementById('responseModal').style.display = 'flex';
@@ -429,7 +457,29 @@
         }
     });
 
+    document.getElementById('modalForm').addEventListener('submit', function(e) {
+        const status = document.getElementById('modalStatus').value;
+        const scheduledInput = document.getElementById('modalScheduledAt');
+        if (status === 'approved' && scheduledInput.value) {
+            const selectedDate = new Date(scheduledInput.value);
+            const now = new Date();
+            if (selectedDate.getTime() < now.getTime() - 60000) {
+                e.preventDefault();
+                alert('تنبيه: لا يمكنك اختيار موعد بتاريخ أو وقت سابق للوقت الحالي!');
+                return false;
+            }
+        }
+    });
+
     function openCreateSummonModal() {
+        const summonDateInput = document.querySelector('input[name="summon_date"]');
+        if (summonDateInput) {
+            const todayStr = getCurrentLocalDateString();
+            summonDateInput.min = todayStr;
+            if (!summonDateInput.value) {
+                summonDateInput.value = todayStr;
+            }
+        }
         document.getElementById('createSummonModal').style.display = 'flex';
     }
 

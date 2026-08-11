@@ -79,8 +79,15 @@ class AppointmentWebController extends Controller
         $request->validate([
             'status'         => 'required|in:approved,rejected,completed',
             'admin_response' => 'nullable|string',
-            'scheduled_at'   => 'nullable|date_format:Y-m-d\TH:i', // Format matches datetime-local input
+            'scheduled_at'   => 'nullable|date_format:Y-m-d\TH:i',
         ]);
+
+        if ($request->status === 'approved' && $request->scheduled_at) {
+            $scheduledTime = strtotime($request->scheduled_at);
+            if ($scheduledTime < time() - 60) {
+                return redirect()->back()->with('error', 'خطأ: لا يمكن تحديد تاريخ ووقت سابق عن الوقت الحالي.');
+            }
+        }
 
         $meeting = ParentMeetingRequest::findOrFail($id);
         
@@ -128,6 +135,13 @@ class AppointmentWebController extends Controller
             'details'      => 'required|string',
             'summon_date'  => 'nullable|date',
         ]);
+
+        if ($request->summon_date) {
+            $summonTime = strtotime($request->summon_date);
+            if ($summonTime < strtotime(date('Y-m-d'))) {
+                return redirect()->back()->with('error', 'خطأ: لا يمكن إرسال استدعاء في تاريخ سابق عن اليوم الحالي.');
+            }
+        }
 
         $student = Student::findOrFail($request->student_id);
 
