@@ -631,6 +631,18 @@
 
     searchInput.addEventListener('input', filterAccounts);
 
+    // Read role query parameter from URL (e.g. ?role=student or ?role=teacher)
+    const urlParams = new URLSearchParams(window.location.search);
+    const roleParam = urlParams.get('role');
+    if (roleParam) {
+        const targetChip = document.querySelector(`.filter-chip[data-role="${roleParam}"]`);
+        if (targetChip) {
+            filterChips.forEach(c => c.classList.remove('active'));
+            targetChip.classList.add('active');
+            filterAccounts();
+        }
+    }
+
     // تأكيد إعادة تسجيل الجهاز
     function confirmResetDevice(studentName) {
         return confirm(
