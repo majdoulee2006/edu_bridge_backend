@@ -6,19 +6,21 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Web\UnifiedAuthController;
 
 class CheckAdminRole
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!Auth::check() || Auth::user()->role_id != 1) {
-            return redirect('/admin/login')->withErrors(['login' => 'يرجى تسجيل الدخول كمدير أولاً.']);
+        if (!Auth::check()) {
+            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول كمدير أولاً.']);
         }
+
+        $user = Auth::user();
+        if ($user->role_id != 1 && strtolower($user->role ?? '') !== 'admin' && empty($user->is_admin)) {
+            return (new UnifiedAuthController)->redirectUserByRole($user);
+        }
+
         return $next($request);
     }
 }
