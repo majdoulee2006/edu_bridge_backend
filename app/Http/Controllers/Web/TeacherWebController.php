@@ -95,6 +95,13 @@ class TeacherWebController extends Controller
     {
         $teacher = $this->getTeacher();
 
+        // استخدام الـ MySQL View مع الـ Caching لسرعة الأداء
+        $dashboardStats = Cache::remember('teacher_dashboard_stats_' . $teacher->teacher_id, 60, function () use ($teacher) {
+            return DB::table('teacher_dashboard_stats_view')
+                ->where('teacher_id', $teacher->teacher_id)
+                ->first();
+        });
+
         // المواد التي يدرسها المعلم
         $courses = DB::table('course_teachers')
             ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
