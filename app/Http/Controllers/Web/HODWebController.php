@@ -320,19 +320,45 @@ class HODWebController extends Controller
      */
     public function leaves()
     {
-        $allLeaves = DB::table('absence_requests')
+        $fromLeaveTable = DB::table('leave_requests')
+            ->leftJoin('users as su', 'leave_requests.student_id', '=', 'su.user_id')
+            ->leftJoin('students', 'su.user_id', '=', 'students.user_id')
+            ->leftJoin('teachers', 'leave_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as tu', 'teachers.user_id', '=', 'tu.user_id')
+            ->select(
+                'leave_requests.id',
+                'leave_requests.type',
+                'leave_requests.date',
+                'leave_requests.reason',
+                'leave_requests.status',
+                'leave_requests.created_at',
+                'leave_requests.updated_at',
+                DB::raw('COALESCE(su.full_name, tu.full_name, "غير محدد") as student_name'),
+                'students.level',
+                'students.student_code'
+            )
+            ->where('leave_requests.status', '!=', 'pending_parent')
+            ->get();
+
+        $fromAbsenceTable = DB::table('absence_requests')
             ->join('students', 'absence_requests.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->select(
-                'absence_requests.*',
                 'absence_requests.request_id as id',
+                DB::raw('"طلب غياب" as type'),
+                'absence_requests.date',
+                'absence_requests.reason',
+                'absence_requests.status',
+                'absence_requests.created_at',
+                'absence_requests.updated_at',
                 'users.full_name as student_name',
                 'students.level',
                 'students.student_code'
             )
             ->where('absence_requests.status', '!=', 'pending_parent')
-            ->orderBy('absence_requests.created_at', 'desc')
             ->get();
+
+        $allLeaves = $fromLeaveTable->concat($fromAbsenceTable)->sortByDesc('created_at');
 
         return view('hod.leaves', compact('allLeaves'));
     }
@@ -344,59 +370,64 @@ class HODWebController extends Controller
     {
         $status = $request->input('status'); // 'approved' or 'rejected'
 
-        $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
-        if (!$absenceRequest) {
-            return back()->with('error', 'الطلب غير موجود.');
+        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
+        $table = 'leave_requests';
+        $idCol = 'id';
+        $studentUserId = null;
+        $reqDate = null;
+
+        if ($leaveRequest) {
+            $studentUserId = $leaveRequest->student_id;
+            $reqDate = $leaveRequest->date;
+        } else {
+            $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
+            if ($absenceRequest) {
+                $leaveRequest = $absenceRequest;
+                $table = 'absence_requests';
+                $idCol = 'request_id';
+                $studentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
+                $reqDate = $absenceRequest->date;
+            } else {
+                return back()->with('error', 'الطلب غير موجود.');
+            }
         }
 
         if ($status === 'rejected') {
-            // إذا رفض رئيس القسم: تتوقف السلسلة فوراً وتصل الإشعارات للطالب فقط
-            DB::table('absence_requests')
-                ->where('request_id', $id)
+            DB::table($table)
+                ->where($idCol, $id)
                 ->update(['status' => 'rejected', 'updated_at' => now()]);
 
-            if ($absenceRequest->student_id) {
-                $studentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
-                if ($studentUserId) {
-                    DB::table('notifications')->insert([
-                        'user_id'    => $studentUserId,
-                        'title'      => 'تم رفض طلب الإذن',
-                        'message'    => 'تم رفض طلب إذنك بتاريخ ' . $absenceRequest->date . ' من قِبل رئيس القسم.',
-                        'type'       => 'leave_request',
-                        'related_id' => $id,
-                        'is_read'    => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
+            if ($studentUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $studentUserId,
+                    'title'      => 'تم رفض طلب الإذن/الإجازة',
+                    'message'    => 'تم رفض طلب إذنك بتاريخ ' . $reqDate . ' من قِبل رئيس القسم.',
+                    'type'       => 'leave_request',
+                    'related_id' => (string)$id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
 
             return back()->with('success', 'تم رفض طلب الإذن وإيقاف مساره بنجاح.');
         } else {
-            // إذا وافق رئيس القسم: ينتقل الطلب لمرحلة موافقة واعتماد شؤون الطلاب (pending_affairs)
-            DB::table('absence_requests')
-                ->where('request_id', $id)
+            DB::table($table)
+                ->where($idCol, $id)
                 ->update(['status' => 'pending_affairs', 'updated_at' => now()]);
 
-            $studentName = 'الطالب';
-            if ($absenceRequest->student_id) {
-                $studentName = DB::table('students')
-                    ->join('users', 'students.user_id', '=', 'users.user_id')
-                    ->where('students.student_id', $absenceRequest->student_id)
-                    ->value('users.full_name') ?? 'الطالب';
-            }
+            $studentName = DB::table('users')->where('user_id', $studentUserId)->value('full_name') ?? 'الطالب';
 
-            // إرسال الإشعار لموظفي شؤون الطلاب (Affairs) - الخطوة 3 في المسار
             $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
             foreach ($affairsUserIds as $aId) {
                 if ($aId) {
                     DB::table('notifications')->insert([
                         'user_id'    => $aId,
                         'title'      => 'طلب إذن جديد بانتظار الاعتماد النهائي',
-                        'message'    => 'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $absenceRequest->date . '، يرجى مراجعته والتثبيت النهائي.',
+                        'message'    => 'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $reqDate . '، يرجى مراجعته والتثبيت النهائي.',
                         'type'       => 'leave_request',
                         'category'   => 'administrative',
-                        'related_id' => $id,
+                        'related_id' => (string)$id,
                         'is_read'    => 0,
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -404,7 +435,7 @@ class HODWebController extends Controller
                     \App\Services\FcmService::sendToUser(
                         $aId,
                         'طلب إذن بانتظار الاعتماد',
-                        'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $absenceRequest->date . '، يرجى التثبيت.',
+                        'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $reqDate . '، يرجى التثبيت.',
                         ['type' => 'leave_request', 'related_id' => (string)$id]
                     );
                 }

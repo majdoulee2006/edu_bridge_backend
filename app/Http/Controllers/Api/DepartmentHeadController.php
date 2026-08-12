@@ -659,7 +659,7 @@ class DepartmentHeadController extends Controller
             ->get([
                 'report_requests.id',
                 'report_requests.report_type',
-                DB::raw("CASE WHEN report_requests.status = 'completed' THEN COALESCE(performance_reports.recommendations, '') ELSE COALESCE(report_requests.notes, '') END as notes"),
+                DB::raw("CASE WHEN report_requests.status = 'completed' AND report_requests.report_type = 'academic' THEN COALESCE(performance_reports.recommendations, report_requests.notes, '') ELSE COALESCE(report_requests.notes, '') END as notes"),
                 'report_requests.status',
                 'report_requests.sent_to_parent',
                 'report_requests.year',

@@ -7,23 +7,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
+use App\Http\Controllers\Web\UnifiedAuthController;
 
 class CheckParentRole
 {
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
-            return redirect('/student/login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
+            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
         }
 
         $user = Auth::user();
+        if ($user->role_id != 4 && strtolower($user->role ?? '') !== 'parent') {
+            return (new UnifiedAuthController)->redirectUserByRole($user);
+        }
         
-        // التحقق من أن المستخدم مسجل في جدول parents
         $parentExists = DB::table('parents')->where('user_id', $user->user_id)->exists();
-
         if (!$parentExists) {
-            Auth::logout();
-            return redirect('/student/login')->withErrors(['login' => 'هذا الحساب ليس حساب ولي أمر.']);
+            return (new UnifiedAuthController)->redirectUserByRole($user);
         }
 
         return $next($request);

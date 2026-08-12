@@ -159,22 +159,22 @@ class UnifiedAuthController extends Controller
         $roleStr = strtolower($user->role ?? '');
 
         if ($roleId === 6 || $roleStr === 'affairs') {
-            return redirect()->intended('/affairs/dashboard');
+            return redirect('/affairs/dashboard');
         }
         if ($roleId === 5 || $roleStr === 'head' || $roleStr === 'hod') {
-            return redirect()->intended('/hod/dashboard');
+            return redirect('/hod/dashboard');
         }
         if ($roleId === 1 || $roleStr === 'admin' || !empty($user->is_admin)) {
-            return redirect()->intended('/admin/dashboard');
+            return redirect('/admin/dashboard');
         }
         if ($roleId === 2 || $roleStr === 'teacher' || $roleStr === 'instructor') {
-            return redirect()->intended('/teacher/dashboard');
+            return redirect('/teacher/dashboard');
         }
         if ($roleId === 3 || $roleStr === 'student' || Student::where('user_id', $user->user_id)->exists()) {
-            return redirect()->intended('/student/dashboard');
+            return redirect('/student/dashboard');
         }
         if ($roleId === 4 || $roleStr === 'parent' || Parents::where('user_id', $user->user_id)->exists()) {
-            return redirect()->intended('/parent/dashboard');
+            return redirect('/parent/dashboard');
         }
 
         return redirect('/login');
