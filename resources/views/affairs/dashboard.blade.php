@@ -39,6 +39,14 @@
         display: flex;
         align-items: center;
         gap: 1rem;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
     }
     .stat-icon {
         width: 50px; height: 50px;
@@ -198,9 +206,9 @@
 
 @section('content')
 
-{{-- â”€â”€ Stats â”€â”€ --}}
+{{-- ── Stats ── --}}
 <div class="stats-grid">
-    <div class="stat-card">
+    <a href="{{ route('affairs.accounts') }}?role=student" class="stat-card">
         <div class="stat-icon" style="background:rgba(252,227,0,0.15); color:var(--accent-color);">
             <i class="fa-solid fa-user-graduate"></i>
         </div>
@@ -208,9 +216,9 @@
             <div class="stat-number" style="color:var(--accent-color);">{{ $totalStudents }}</div>
             <div class="stat-label">إجمالي الطلاب</div>
         </div>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="{{ route('affairs.accounts') }}?role=teacher" class="stat-card">
         <div class="stat-icon" style="background:rgba(59,130,246,0.1); color:#3b82f6;">
             <i class="fa-solid fa-chalkboard-user"></i>
         </div>
@@ -218,9 +226,9 @@
             <div class="stat-number" style="color:#3b82f6;">{{ $totalTeachers }}</div>
             <div class="stat-label">إجمالي المعلمين</div>
         </div>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="{{ route('affairs.leaves') }}" class="stat-card">
         <div class="stat-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;">
             <i class="fa-solid fa-plane-departure"></i>
         </div>
@@ -228,17 +236,7 @@
             <div class="stat-number" style="color:#ef4444;">{{ $pendingLeaves }}</div>
             <div class="stat-label">طلبات إجازة معلقة</div>
         </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(16,185,129,0.1); color:#10b981;">
-            <i class="fa-solid fa-users"></i>
-        </div>
-        <div>
-            <div class="stat-number" style="color:#10b981;">{{ $totalUsers }}</div>
-            <div class="stat-label">إجمالي المستخدمين</div>
-        </div>
-    </div>
+    </a>
 </div>
 
 {{-- ── لوحة التحكم في الفصل الدراسي والتواريخ والترفيع ── --}}
