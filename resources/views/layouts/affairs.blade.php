@@ -330,6 +330,7 @@
     document.getElementById('logoutModal').addEventListener('click', function(e) {
         if (e.target === this) closeLogoutModal();
     });
-</script></body>
+    @include('partials.inactivity_logout')
+</body>
 </html>
 
