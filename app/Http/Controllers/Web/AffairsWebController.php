@@ -72,12 +72,16 @@ class AffairsWebController extends Controller
     // ─────────────────────────── Dashboard ───────────────────────────
     public function dashboard()
     {
-        // role_id: 2=teacher, 3=student, 5=head, 6=affairs
-        $totalStudents = User::where('role_id', 3)->count();
-        $totalTeachers = User::where('role_id', 2)->count();
-        $totalStaff    = User::whereIn('role_id', [2, 5, 6])->count();
-        $pendingLeaves = DB::table('leave_requests')->whereIn('status', ['pending', 'pending_affairs'])->count();
-        $totalUsers    = User::count();
+        // جلب الإحصائيات من الـ MySQL View مع تخزين مؤقت (Cache) لمدة 60 ثانية لحماية قاعدة البيانات
+        $stats = \Illuminate\Support\Facades\Cache::remember('affairs_dashboard_stats', 60, function () {
+            return DB::table('affairs_dashboard_stats_view')->first();
+        });
+
+        $totalStudents = $stats->total_students ?? 0;
+        $totalTeachers = $stats->total_teachers ?? 0;
+        $totalStaff    = $stats->total_staff ?? 0;
+        $pendingLeaves = $stats->pending_leaves ?? 0;
+        $totalUsers    = $stats->total_users ?? 0;
 
         // آخر 5 طلبات إجازة
         $recentLeaves = DB::table('leave_requests')
