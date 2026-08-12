@@ -2358,6 +2358,12 @@ class TeacherWebController extends Controller
         foreach ($scores as $studentId => $score) {
             if ($score === null || $score === '') continue; // Skip empty inputs
 
+            // حماية السيرفر: عدم تقبل قيم سالبة أو أكبر من العلامة القصوى
+            $scoreNum = floatval($score);
+            if ($scoreNum < 0) $scoreNum = 0;
+            if ($scoreNum > $maxScore) $scoreNum = $maxScore;
+            $score = $scoreNum;
+
             $existing = DB::table('grade_entries')
                 ->where('grade_event_id', $id)
                 ->where('student_id', $studentId)

@@ -95,6 +95,19 @@
         align-items: center;
         gap: 0.5rem;
     }
+    .form-input.grade-fail {
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
+        background-color: rgba(239, 68, 68, 0.12) !important;
+        font-weight: 700 !important;
+    }
+
+    .form-input.grade-pass {
+        border-color: #10b981 !important;
+        color: #10b981 !important;
+        background-color: rgba(16, 185, 129, 0.12) !important;
+        font-weight: 700 !important;
+    }
 </style>
 @endpush
 
@@ -134,7 +147,7 @@
                     <td style="font-weight: 600;">{{ $student->full_name }}</td>
                     <td style="color: var(--text-secondary);">{{ $student->student_code }}</td>
                     <td style="text-align: center;">
-                        <input type="number" name="scores[{{ $student->student_id }}]" value="{{ $student->score }}" class="form-input" min="0" max="{{ $event->max_score }}" step="0.5" placeholder="—">
+                        <input type="number" name="scores[{{ $student->student_id }}]" value="{{ $student->score }}" class="form-input grade-input" min="0" max="{{ $event->max_score }}" step="0.5" placeholder="—" data-max="{{ $event->max_score }}">
                     </td>
                     <td>
                         <input type="text" name="notes[{{ $student->student_id }}]" value="{{ $student->notes }}" class="form-input" style="width: 100%; text-align: right;" placeholder="ملاحظات اختيارية...">
@@ -160,3 +173,70 @@
 </form>
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const maxScore = parseFloat("{{ $event->max_score }}") || 100;
+    const halfScore = maxScore / 2;
+    const gradeInputs = document.querySelectorAll('.grade-input');
+
+    function validateAndColorInput(input) {
+        let valStr = input.value.trim();
+
+        // 1. حظر العلامات السالبة وإزالة إشارة السلب تلقائياً
+        if (valStr.includes('-')) {
+            valStr = valStr.replace(/-/g, '');
+            input.value = valStr;
+        }
+
+        if (valStr === '') {
+            input.classList.remove('grade-fail', 'grade-pass');
+            return;
+        }
+
+        let val = parseFloat(valStr);
+
+        if (isNaN(val)) {
+            input.classList.remove('grade-fail', 'grade-pass');
+            return;
+        }
+
+        // 2. حظر العلامات أقل من 0
+        if (val < 0) {
+            val = 0;
+            input.value = 0;
+        }
+
+        // 3. حظر العلامات التي تتجاوز العلامة الكلية (Max Score)
+        if (val > maxScore) {
+            val = maxScore;
+            input.value = maxScore;
+        }
+
+        // 4. التلوين الفوري: أقل من نصف العلامة أحمر، النصف فأكثر أخضر
+        if (val < halfScore) {
+            input.classList.add('grade-fail');
+            input.classList.remove('grade-pass');
+        } else {
+            input.classList.add('grade-pass');
+            input.classList.remove('grade-fail');
+        }
+    }
+
+    gradeInputs.forEach(input => {
+        // فحص وتلوين أولي عند تحميل البيانات المسجلة سابقاً
+        validateAndColorInput(input);
+
+        // فحص ديناميكي لحظة كتابة أو تغيير أي رقم
+        input.addEventListener('input', function() {
+            validateAndColorInput(this);
+        });
+
+        input.addEventListener('change', function() {
+            validateAndColorInput(this);
+        });
+    });
+});
+</script>
+@endpush
