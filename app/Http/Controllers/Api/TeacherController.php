@@ -2661,7 +2661,7 @@ class TeacherController extends Controller
                     $examId = DB::table('exams')->insertGetId([
                         'course_id' => $event->course_id,
                         'exam_name' => $examName,
-                        'date'      => $event->date ?? now()->toDateString(),
+                        'exam_date' => $event->date ?? now()->toDateTimeString(),
                         'created_at'=> now(),
                         'updated_at'=> now(),
                     ]);
