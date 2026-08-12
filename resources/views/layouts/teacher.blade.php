@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -217,6 +217,7 @@
     document.getElementById('logoutModal').addEventListener('click', function(e) {
         if (e.target === this) closeLogoutModal();
     });
-</script></body>
+    @include('partials.inactivity_logout')
+</body>
 </html>
 
