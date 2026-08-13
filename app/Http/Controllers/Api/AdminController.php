@@ -922,7 +922,7 @@ class AdminController extends Controller
         </html>";
 
         if ($format == 'pdf') {
-            $mpdf = new \Mpdf\Mpdf(['mode' => 'utf-8', 'format' => 'A4', 'autoScriptToLang' => true, 'autoLangToFont' => true]);
+            $mpdf = new \Mpdf\Mpdf(['mode' => 'utf-8', 'format' => 'A4', 'autoScriptToLang' => true, 'autoLangToFont' => true, 'useSubsets' => false]);
             $mpdf->SetDirectionality('rtl');
             $mpdf->WriteHTML($htmlContent);
             return response($mpdf->Output('', 'S'), 200, [
