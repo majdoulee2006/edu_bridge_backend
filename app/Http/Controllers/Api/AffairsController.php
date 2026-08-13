@@ -2037,19 +2037,20 @@ class AffairsController extends Controller
         $mpdf->WriteHTML($html);
 
         $fileName = 'academic_card_' . ($student['university_id'] ?? $student['student_id']) . '.pdf';
-        $directory = public_path('exports');
-        if (!file_exists($directory)) {
-            mkdir($directory, 0755, true);
-        }
-        $filePath = $directory . '/' . $fileName;
+        $pdfContent = $mpdf->Output('', 'S');
 
         if (ob_get_length()) {
             ob_end_clean();
         }
 
-        file_put_contents($filePath, $mpdf->Output('', 'S'));
-
         if ($request->expectsJson() || $request->is('api/*')) {
+            $directory = public_path('exports');
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            $filePath = $directory . '/' . $fileName;
+            file_put_contents($filePath, $pdfContent);
+
             return response()->json([
                 'success' => true,
                 'file_url' => url('exports/' . $fileName),
@@ -2057,10 +2058,14 @@ class AffairsController extends Controller
             ]);
         }
 
-        // Return BinaryFileResponse so Google PDF Viewer & Mobile Browsers support HTTP Byte-Ranges & PDF Trailer parsing
-        return response()->file($filePath, [
+        // Stream PDF directly to browser downloads without creating files on server disk
+        return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Length' => strlen($pdfContent),
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
         ]);
     }
 
@@ -2196,6 +2201,10 @@ class AffairsController extends Controller
         return response($xlsContent, 200, [
             'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
             'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Length' => strlen($xlsContent),
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
         ]);
     }
 
