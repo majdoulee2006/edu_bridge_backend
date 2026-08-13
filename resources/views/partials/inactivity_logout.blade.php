@@ -21,6 +21,13 @@
         alert('🔒 تم تسجيل الخروج تلقائياً لحماية حسابك بسبب عدم وجود أي نشاط لمدة 20 دقيقة.');
 
         if (logoutForm) {
+            // إلحاق حقل مخفي يخبر السيرفر أن الخروج تم بسبب الخمول
+            let input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'is_inactivity_logout';
+            input.value = '1';
+            logoutForm.appendChild(input);
+
             logoutForm.submit();
         } else {
             window.location.href = '/';

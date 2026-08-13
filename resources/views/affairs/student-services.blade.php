@@ -637,9 +637,9 @@
                             <th>#</th>
                             <th>اسم المادة الدراسية</th>
                             <th>السنة/الفصل</th>
-                            <th style="text-align: center;">علامة المذاكرة (20)</th>
-                            <th style="text-align: center;">علامة الشفهي/العملي (20)</th>
-                            <th style="text-align: center;">علامة الامتحان (60)</th>
+                            <th style="text-align: center;">علامة المذاكرة (25)</th>
+                            <th style="text-align: center;">علامة الشفهي/العملي (25)</th>
+                            <th style="text-align: center;">علامة الامتحان (50)</th>
                             <th style="text-align: center;">المجموع الكلي (100)</th>
                             <th style="text-align: center;">الحالة</th>
                         </tr>
@@ -691,7 +691,7 @@
 
             <div class="detail-row">
                 <label>تفاصيل الطلب:</label>
-                <div class="detail-value" id="modal-request-details"></div>
+                <div class="detail-value" id="modal-request-details" style="word-break: break-all; overflow-wrap: anywhere; white-space: pre-wrap; background: var(--bg-secondary); padding: 0.75rem 1rem; border-radius: 0.6rem; border: 1px solid var(--border-color); font-size: 0.88rem; max-width: 100%;"></div>
             </div>
             
             <div class="detail-row">
@@ -755,8 +755,8 @@
             try {
                 const parsed = JSON.parse(details);
                 let parts = [];
-                if (parsed.reason) parts.push('سبب الطلب: ' + parsed.reason);
-                if (parsed.new_device_id) parts.push('معرف الجهاز الجديد: ' + parsed.new_device_id);
+                if (parsed.reason) parts.push('السبب: ' + parsed.reason);
+                if (parsed.new_device_id) parts.push('رمز تعريف الجهاز الجديد (Device ID): ' + parsed.new_device_id);
                 if (parts.length > 0) displayDetails = parts.join('\n');
             } catch(e) {}
         }
@@ -835,8 +835,9 @@
         fetch(`/affairs/academic-card/students?department_id=${departmentId}&semester_id=${semesterId}&level=${encodeURIComponent(level)}&search=${encodeURIComponent(search)}`)
             .then(res => res.json())
             .then(data => {
-                if (data.success && data.students) {
-                    allLoadedStudents = data.students;
+                const studentsList = data.data || data.students || [];
+                if (data.success && studentsList) {
+                    allLoadedStudents = studentsList;
                     renderStudentDropdownOptions(allLoadedStudents);
                 }
             })
@@ -935,18 +936,13 @@
     }
 
     function exportCard(type) {
-        if (!currentSelectedStudentId) return;
-        const url = `/affairs/academic-card/export-${type}?student_id=${currentSelectedStudentId}`;
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                if (data.file_url) {
-                    window.open(data.file_url, '_blank');
-                } else {
-                    alert('حدث خطأ أثناء التصدير');
-                }
-            })
-            .catch(err => alert('تعذر التصدير: ' + err));
+        if (!currentSelectedStudentId) {
+            alert('يرجى اختيار طالب أولاً');
+            return;
+        }
+        const level = document.getElementById('affairs-filter-year')?.value || '';
+        const url = `/affairs/academic-card/export-${type}?student_id=${currentSelectedStudentId}&level=${encodeURIComponent(level)}`;
+        window.location.href = url;
     }
 </script>
 @endpush

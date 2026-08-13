@@ -48,6 +48,8 @@ class HODController extends Controller
                 ->where('id', $id)
                 ->update(['status' => $request->status, 'updated_at' => now()]);
 
+            \App\Models\UserActivity::log('معالجة طلب إجازة', "قام رئيس القسم بتحديث حالة طلب الإجازة رقم {$id} إلى: {$request->status}");
+
             return response()->json(['message' => 'Status updated successfully']);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
@@ -617,6 +619,8 @@ class HODController extends Controller
                 'type'       => 'summon',
                 'related_id' => (string)$id,
             ]);
+
+            \App\Models\UserActivity::log('إرسال استدعاء لولي أمر', "قام رئيس القسم بإرسال استدعاء لولي أمر الطالب: {$student->full_name} - السبب: {$request->reason_title}");
 
             return response()->json(['success' => true, 'message' => 'تم إرسال الاستدعاء بنجاح', 'id' => $id], 201);
         } catch (\Exception $e) {

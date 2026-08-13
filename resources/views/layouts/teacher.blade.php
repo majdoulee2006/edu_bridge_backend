@@ -135,6 +135,18 @@
                     @endif
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
+                    @php
+                        $unreadTeacherNotifs = \Illuminate\Support\Facades\DB::table('notifications')
+                            ->where('user_id', auth()->id())
+                            ->where('is_read', 0)
+                            ->count();
+                    @endphp
+                    <a href="{{ url('/teacher/notifications') }}" style="position: relative; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; text-decoration: none;" title="الإشعارات">
+                        <i class="fa-solid fa-bell"></i>
+                        @if($unreadTeacherNotifs > 0)
+                            <span style="position: absolute; top: 2px; right: 2px; width: 11px; height: 11px; background-color: #ef4444; border-radius: 50%; border: 2px solid var(--bg-secondary); box-shadow: 0 0 8px #ef4444;"></span>
+                        @endif
+                    </a>
                     <!-- Dark Mode Toggle -->
                     <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>

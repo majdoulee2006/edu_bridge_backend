@@ -56,15 +56,18 @@ class TeacherWebController extends Controller
                 if ($user->role === 'teacher') {
                     $teacher = Teacher::create(['user_id' => $user->user_id]);
                 } else {
+                    \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'هذا الحساب ليس حساب معلم', $user);
                     Auth::logout();
                     return back()->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
                 }
             }
             if (Auth::user()->status !== 'active') {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب المعلم موقوف مؤقتاً', $user);
                 Auth::logout();
                 return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
             }
             $request->session()->regenerate();
+            \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح لوحة التحكم للمعلم');
             return redirect('/teacher/dashboard');
         }
 
@@ -73,6 +76,13 @@ class TeacherWebController extends Controller
 
     public function logout(Request $request)
     {
+        if (Auth::check()) {
+            if ($request->has('is_inactivity_logout')) {
+                \App\Models\UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
+            } else {
+                \App\Models\UserActivity::log('تسجيل خروج', 'قام المعلم بتسجيل الخروج يدوياً');
+            }
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

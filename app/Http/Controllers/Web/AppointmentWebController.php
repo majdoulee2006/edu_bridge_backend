@@ -128,7 +128,38 @@ class AppointmentWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تم حفظ الرد وإشعار ولي الأمر بنجاح.');
+        // إذا تم الاعتذار عن الموعد، إرسال إشعار لرئيس قسم الطالب
+        if ($request->status === 'rejected') {
+            $student = Student::with('user')->find($meeting->student_id);
+            if ($student && $student->user && $student->user->department) {
+                $parentUser = DB::table('users')->where('user_id', $meeting->parent_user_id)->first();
+                $parentName = $parentUser ? $parentUser->full_name : 'ولي الأمر';
+                $studentName = $student->user->full_name;
+
+                // البحث عن رئيس القسم المعني
+                $hodUsers = DB::table('users')
+                    ->where('role_id', 5)
+                    ->where('department', 'LIKE', '%' . $student->user->department . '%')
+                    ->pluck('user_id');
+
+                foreach ($hodUsers as $hodId) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $hodId,
+                        'sender_id'  => Auth::id(),
+                        'title'      => 'اعتذار موظف الشؤون عن طلب مقابلة ولي أمر',
+                        'message'    => "قدّم ولي الأمر ({$parentName}) طلب موعد مقابلة بخصوص الطالب ({$studentName})، واعتذر موظف الشؤون عن الطلب. السبب/الرد: " . ($request->admin_response ?? 'بدون سبب مذكور'),
+                        'type'       => 'meeting_rejected_hod',
+                        'category'   => 'administrative',
+                        'related_id' => $meeting->id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        }
+
+        return redirect()->back()->with('success', 'تم حفظ الرد وإشعار ولي الأمر ورئيس القسم بنجاح.');
     }
 
     /**
@@ -186,6 +217,22 @@ class AppointmentWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تم إرسال طلب الاستدعاء وإشعار ولي الأمر بنجاح.');
+        // إرسال إشعار للطالب
+        if ($student->user_id) {
+            DB::table('notifications')->insert([
+                'user_id'    => $student->user_id,
+                'sender_id'  => Auth::id(),
+                'title'      => 'استدعاء ولي أمر',
+                'message'    => "تم إرسال طلب استدعاء رسمي لولي أمرك من قبل إدارة المعهد بخصوص: " . $request->reason_title,
+                'type'       => 'parent_summon_student',
+                'category'   => 'administrative',
+                'related_id' => $summon->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'تم إرسال طلب الاستدعاء وإشعار ولي الأمر والطالب بنجاح.');
     }
 }

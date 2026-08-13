@@ -62,18 +62,22 @@ class AuthController extends Controller
         }
 
         if (!Hash::check($request->password, $user->password)) {
+            \App\Models\UserActivity::log('محاولة دخول فاشلة', 'كلمة مرور غير صحيحة عبر التطبيق', $user);
             return response()->json(['success' => false, 'message' => 'كلمة المرور غير صحيحة. يرجى التأكد وإعادة المحاولة.'], 401);
         }
 
         if ($user->status === 'pending') {
+            \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب قيد المراجعة عبر التطبيق', $user);
             return response()->json(['success' => false, 'message' => 'حسابك قيد المراجعة حالياً، يرجى الانتظار حتى يتم اعتماده وتفعيله من الشؤون أو الإدارة.'], 403);
         }
 
         if ($user->status === 'inactive') {
+            \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب غير مفعل عبر التطبيق', $user);
             return response()->json(['success' => false, 'message' => 'الحساب غير مفعّل. يرجى التواصل مع إدارة المعهد لإنشائه/تفعيله.'], 403);
         }
 
         $user->update(['last_login' => now()]);
+        \App\Models\UserActivity::log('تسجيل دخول (تطبيق)', 'تسجيل دخول ناجح عبر التطبيق المحمول', $user);
 
         // ── ربط الجهاز والإنهاء التلقائي لتسجيل المواد للطالب ──────────────────
         if ($user->role_id === 3) {
@@ -535,8 +539,11 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $user = $request->user();
-        if ($user && $user->currentAccessToken()) {
-            $user->currentAccessToken()->delete();
+        if ($user) {
+            \App\Models\UserActivity::log('تسجيل خروج (تطبيق)', 'قام المستخدم بتسجيل الخروج من التطبيق', $user);
+            if ($user->currentAccessToken()) {
+                $user->currentAccessToken()->delete();
+            }
         }
 
         return response()->json(['success' => true, 'message' => 'تم تسجيل الخروج بنجاح'], 200);

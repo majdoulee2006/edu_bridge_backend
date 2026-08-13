@@ -322,6 +322,8 @@ class AffairsController extends Controller
             }
         }
 
+        \App\Models\UserActivity::log('تفعيل حساب', "قام موظف الشؤون بتفعيل حساب: {$user->full_name} ({$user->email})", $user);
+
         return response()->json([
             'success'       => true,
             'message'       => 'تم تفعيل الحساب بنجاح',
@@ -358,6 +360,7 @@ class AffairsController extends Controller
         // حذف الطالب/الولي والحساب
         DB::table('students')->where('user_id', $userId)->delete();
         DB::table('parents')->where('user_id', $userId)->delete();
+        \App\Models\UserActivity::log('رفض حساب', "قام موظف الشؤون برفض وحذف حساب: {$user->full_name} ({$user->email})", $user);
         $user->delete();
 
         return response()->json(['success' => true, 'message' => 'تم رفض وحذف الطلب']);
@@ -376,6 +379,8 @@ class AffairsController extends Controller
             'device_id'        => null,
             'is_device_locked' => 0,
         ]);
+
+        \App\Models\UserActivity::log('فك قفل جهاز', "قام موظف الشؤون بفك قفل الجهاز المقترن بحساب الطالب رقم: {$studentId}");
 
         return response()->json([
             'success' => true,
@@ -1662,6 +1667,8 @@ class AffairsController extends Controller
             ]);
         }
 
+        \App\Models\UserActivity::log('تفعيل فصل دراسي', "قام موظف الشؤون بتفعيل الفصل الدراسي: {$target->name}");
+
         return response()->json([
             'success' => true,
             'message' => 'تم تفعيل ' . $target->name . ' بنجاح وإشعار كادر المعهد والطلاب.'
@@ -1679,7 +1686,9 @@ class AffairsController extends Controller
         } elseif ($request->filled('student_id')) {
             $query->where('student_id', $request->student_id);
         } else {
-            $query->whereIn('level', ['السنة الأولى', 'أولى', '1']);
+            $query->where(function($q) {
+                $q->whereIn('level', ['السنة الأولى', 'أولى', '1'])->orWhereNull('level')->orWhere('level', '');
+            });
         }
 
         $students = $query->get();
@@ -1718,6 +1727,8 @@ class AffairsController extends Controller
 
             $promotedCount++;
         }
+
+        \App\Models\UserActivity::log('ترفيع الطلاب أكاديمياً', "قام موظف الشؤون بترفيع عدد {$promotedCount} طالباً للمرحلة الأكاديمية التالية");
 
         return response()->json([
             'success' => true,
@@ -2002,7 +2013,10 @@ class AffairsController extends Controller
         $content = json_decode($cardResponse->getContent(), true);
 
         if (!$content || !($content['success'] ?? false)) {
-            return response()->json(['success' => false, 'message' => 'فشل جلب بيانات كشف العلامات للتصدير'], 400);
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'فشل جلب بيانات كشف العلامات للتصدير'], 400);
+            }
+            return back()->with('error', 'فشل جلب بيانات كشف العلامات للتصدير');
         }
 
         $student = $content['student'];
@@ -2021,25 +2035,32 @@ class AffairsController extends Controller
         $mpdf->SetDirectionality('rtl');
         $mpdf->WriteHTML($html);
 
-        $fileName = 'academic_card_' . $student['student_id'] . '_' . time() . '.pdf';
-        $directory = public_path('exports');
-        if (!file_exists($directory)) {
-            mkdir($directory, 0755, true);
+        $fileName = 'academic_card_' . ($student['university_id'] ?? $student['student_id']) . '.pdf';
+
+        if ($request->expectsJson() || $request->is('api/*')) {
+            $directory = public_path('exports');
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            $filePath = $directory . '/' . $fileName;
+            file_put_contents($filePath, $mpdf->Output('', 'S'));
+
+            return response()->json([
+                'success' => true,
+                'file_url' => url('exports/' . $fileName),
+                'file_name' => $fileName,
+            ]);
         }
-        $filePath = $directory . '/' . $fileName;
-        file_put_contents($filePath, $mpdf->Output('', 'S'));
 
-        $pdfUrl = url('exports/' . $fileName);
-
-        return response()->json([
-            'success' => true,
-            'file_url' => $pdfUrl,
-            'file_name' => $fileName,
+        // Direct PDF download response for browser requests
+        return response($mpdf->Output($fileName, 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
         ]);
     }
 
     /**
-     * تصدير بطاقة الطالب بصيغة Excel (CSV formatted with UTF-8 BOM for Excel)
+     * تصدير بطاقة الطالب بصيغة Excel (.xls formatted RTL HTML Table)
      */
     public function exportStudentAcademicCardExcel(Request $request)
     {
@@ -2047,57 +2068,129 @@ class AffairsController extends Controller
         $content = json_decode($cardResponse->getContent(), true);
 
         if (!$content || !($content['success'] ?? false)) {
-            return response()->json(['success' => false, 'message' => 'فشل جلب بيانات كشف العلامات للتصدير'], 400);
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'فشل جلب بيانات كشف العلامات للتصدير'], 400);
+            }
+            return back()->with('error', 'فشل جلب بيانات كشف العلامات للتصدير');
         }
 
         $student = $content['student'];
         $summary = $content['summary'];
         $academicCard = $content['academic_card'];
 
-        $directory = public_path('exports');
-        if (!file_exists($directory)) {
-            mkdir($directory, 0755, true);
+        $fileName = 'academic_card_' . ($student['university_id'] ?? $student['student_id']) . '.xls';
+
+        $xlsContent = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!--[if gte mso 9]>
+    <xml>
+     <x:ExcelWorkbook>
+      <x:ExcelWorksheets>
+       <x:ExcelWorksheet>
+        <x:Name>كشف العلامات الأكاديمي</x:Name>
+        <x:WorksheetOptions>
+         <x:DisplayRightToLeft/>
+        </x:WorksheetOptions>
+       </x:ExcelWorksheet>
+      </x:ExcelWorksheets>
+     </x:ExcelWorkbook>
+    </xml>
+    <![endif]-->
+    <style>
+        body { font-family: Segoe UI, Tahoma, Arial, sans-serif; direction: rtl; text-align: right; }
+        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+        th { background-color: #1e293b; color: #ffffff; font-weight: bold; border: 1px solid #000000; padding: 10px; text-align: center; font-size: 11pt; }
+        td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: middle; font-size: 10pt; }
+        .header-title { font-size: 16pt; font-weight: bold; color: #0f172a; text-align: center; padding: 10px; }
+        .info-label { font-weight: bold; background-color: #f1f5f9; text-align: right; width: 18%; }
+        .info-val { text-align: right; width: 32%; }
+        .pass { color: #15803d; font-weight: bold; background-color: #dcfce7; }
+        .fail { color: #b91c1c; font-weight: bold; background-color: #fee2e2; }
+        .pending { color: #854d0e; background-color: #fef9c3; }
+    </style>
+</head>
+<body>
+    <div class="header-title">معهد الجسر التعليمي (Edu Bridge) - كشف العلامات الأكاديمي</div>
+    <br>
+    <table style="width: 100%;">
+        <tr>
+            <td class="info-label">اسم الطالب:</td>
+            <td class="info-val"><b>' . htmlspecialchars($student['full_name'] ?? '') . '</b></td>
+            <td class="info-label">الرقم الجامعي:</td>
+            <td class="info-val"><b>' . htmlspecialchars($student['university_id'] ?? '') . '</b></td>
+        </tr>
+        <tr>
+            <td class="info-label">التخصص / القسم:</td>
+            <td class="info-val">' . htmlspecialchars($student['department'] ?? '') . '</td>
+            <td class="info-label">السنة الدراسية:</td>
+            <td class="info-val">' . htmlspecialchars($student['level'] ?? '') . '</td>
+        </tr>
+        <tr>
+            <td class="info-label">المعدل التراكمي:</td>
+            <td class="info-val"><b>' . htmlspecialchars($summary['average'] ?? '0') . '%</b></td>
+            <td class="info-label">المواد المجتازة:</td>
+            <td class="info-val"><b>' . htmlspecialchars($summary['passed_courses'] ?? '0') . ' من ' . htmlspecialchars($summary['total_courses'] ?? '0') . '</b></td>
+        </tr>
+    </table>
+    <br>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 30%;">اسم المادة الدراسية</th>
+                <th style="width: 15%;">السنة / الفصل</th>
+                <th style="width: 10%;">المذاكرة (25)</th>
+                <th style="width: 10%;">الشفهي/العملي (25)</th>
+                <th style="width: 10%;">الامتحان النهائي (50)</th>
+                <th style="width: 10%;">المجموع الكلي (100)</th>
+                <th style="width: 10%;">الحالة</th>
+            </tr>
+        </thead>
+        <tbody>';
+
+        foreach ($academicCard as $idx => $c) {
+            $statusClass = 'pending';
+            if ($c['status'] === 'ناجح') $statusClass = 'pass';
+            elseif ($c['status'] === 'راسب') $statusClass = 'fail';
+
+            $xlsContent .= '
+            <tr>
+                <td>' . ($idx + 1) . '</td>
+                <td style="text-align: right;"><b>' . htmlspecialchars($c['title']) . '</b></td>
+                <td>سنة ' . htmlspecialchars($c['year'] ?? 1) . ' - فصل ' . htmlspecialchars($c['semester'] ?? 1) . '</td>
+                <td>' . ($c['quiz_score'] !== null ? $c['quiz_score'] : '-') . '</td>
+                <td>' . ($c['oral_score'] !== null ? $c['oral_score'] : '-') . '</td>
+                <td>' . ($c['final_score'] !== null ? $c['final_score'] : '-') . '</td>
+                <td><b>' . ($c['total_score'] !== null ? $c['total_score'] : '-') . '</b></td>
+                <td class="' . $statusClass . '">' . htmlspecialchars($c['status']) . '</td>
+            </tr>';
         }
-        $fileName = 'academic_card_' . $student['student_id'] . '_' . time() . '.csv';
-        $filePath = $directory . '/' . $fileName;
 
-        $fp = fopen($filePath, 'w');
-        // كتابة UTF-8 BOM لفتح الملف مباشرة باللغة العربية بشكل صحيح في Excel
-        fprintf($fp, chr(0xEF).chr(0xBB).chr(0xBF));
+        $xlsContent .= '
+        </tbody>
+    </table>
+</body>
+</html>';
 
-        // معلومات الطالب
-        fputcsv($fp, ['كشف العلامات الأكاديمي - معهد الجسر التعليمي']);
-        fputcsv($fp, ['اسم الطالب', $student['full_name']]);
-        fputcsv($fp, ['الرقم الجامعي', $student['university_id']]);
-        fputcsv($fp, ['السنة الدراسية', $student['level']]);
-        fputcsv($fp, ['التخصص / القسم', $student['department']]);
-        fputcsv($fp, ['المعدل العام', $summary['average']]);
-        fputcsv($fp, []);
+        if ($request->expectsJson() || $request->is('api/*')) {
+            $directory = public_path('exports');
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            $filePath = $directory . '/' . $fileName;
+            file_put_contents($filePath, $xlsContent);
 
-        // ترويسة الجدول
-        fputcsv($fp, ['اسم المادة', 'السنة', 'الفصل', 'المذاكرة', 'العملي/الشفهي', 'الامتحان النهائي', 'المجموع', 'الحالة']);
-
-        foreach ($academicCard as $c) {
-            fputcsv($fp, [
-                $c['title'],
-                $c['year'] ?? '-',
-                $c['semester'] ?? '-',
-                $c['quiz_score'] !== null ? $c['quiz_score'] : '-',
-                $c['oral_score'] !== null ? $c['oral_score'] : '-',
-                $c['final_score'] !== null ? $c['final_score'] : '-',
-                $c['total_score'] !== null ? $c['total_score'] : '-',
-                $c['status']
+            return response()->json([
+                'success' => true,
+                'file_url' => url('exports/' . $fileName),
+                'file_name' => $fileName,
             ]);
         }
 
-        fclose($fp);
-
-        $fileUrl = url('exports/' . $fileName);
-
-        return response()->json([
-            'success'   => true,
-            'file_url'  => $fileUrl,
-            'file_name' => $fileName,
+        return response($xlsContent, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
         ]);
     }
 

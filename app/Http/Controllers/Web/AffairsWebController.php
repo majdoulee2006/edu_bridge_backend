@@ -40,12 +40,14 @@ class AffairsWebController extends Controller
         if (Auth::attempt($credentials)) {
             // تحقق أن المستخدم لديه دور موظف الشؤون
             if (Auth::user()->role_id !== 6) {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب لا يملك صلاحية موظف الشؤون', Auth::user());
                 Auth::logout();
                 return back()->withErrors(['email' => 'هذا الحساب ليس حساب موظف شؤون.']);
             }
 
             // تحقق أن الحساب نشط
             if (Auth::user()->status !== 'active') {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب موظف الشؤون موقوف', Auth::user());
                 Auth::logout();
                 return back()->withErrors(['email' => 'حسابك موقوف. يرجى التواصل مع الإدارة.']);
             }
@@ -55,6 +57,8 @@ class AffairsWebController extends Controller
             // تحديث آخر تسجيل دخول
             Auth::user()->update(['last_login' => now()]);
 
+            \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح إلى لوحة شؤون الطلاب');
+
             return redirect()->route('affairs.dashboard');
         }
 
@@ -63,6 +67,13 @@ class AffairsWebController extends Controller
 
     public function logout(Request $request)
     {
+        if (Auth::check()) {
+            if ($request->has('is_inactivity_logout')) {
+                \App\Models\UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
+            } else {
+                \App\Models\UserActivity::log('تسجيل خروج', 'قام موظف الشؤون بتسجيل الخروج يدوياً');
+            }
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -190,7 +201,9 @@ class AffairsWebController extends Controller
         } elseif ($request->filled('student_id')) {
             $query->where('student_id', $request->student_id);
         } else {
-            $query->whereIn('level', ['السنة الأولى', 'أولى', '1']);
+            $query->where(function($q) {
+                $q->whereIn('level', ['السنة الأولى', 'أولى', '1'])->orWhereNull('level')->orWhere('level', '');
+            });
         }
 
         $students = $query->get();
@@ -201,10 +214,99 @@ class AffairsWebController extends Controller
             $st->update(['level' => $targetLevel, 'updated_at' => now()]);
             DB::table('users')->where('user_id', $st->user_id)->update(['academic_year' => $targetLevel]);
             Student::autoEnrollCourses($st->student_id);
+
+            // إرسال إشعار للطالب بالترفيع
+            Notification::create([
+                'user_id'   => $st->user_id,
+                'title'     => 'مبروك! تم الترفيع الأكاديمي 🎓',
+                'message'   => "قام موظف الشؤون بترفيعك بنجاح إلى ({$targetLevel}) وتسجيل جميع المواد المقررة لك.",
+                'type'      => 'academic',
+                'category'  => 'academic',
+                'is_read'   => 0,
+            ]);
+            \App\Services\FcmService::sendToUser($st->user_id, 'مبروك! تم الترفيع الأكاديمي 🎓', "قام موظف الشؤون بترفيعك بنجاح إلى ({$targetLevel}) وتسجيل جميع المواد المقررة لك.", ['type' => 'academic']);
+
             $count++;
         }
 
         return back()->with('success', "تم ترفيع {$count} طالباً بنجاح إلى {$targetLevel} وتسجيل موادهم تلقائياً.");
+    }
+
+    public function academicManagement(Request $request)
+    {
+        $activeSemester = DB::table('semesters')->where('is_active', true)->first();
+        $semestersList  = DB::table('semesters')->orderBy('semester_id', 'desc')->get();
+
+        // جلب قائمة الطلاب مع بيناتهم وسنتهم الأكاديمية
+        $studentsQuery = Student::with(['user', 'program']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $studentsQuery->whereHas('user', function ($q) use ($search) {
+                $q->where('full_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })->orWhere('student_code', 'like', "%{$search}%");
+        }
+
+        if ($request->filled('level_filter')) {
+            if ($request->level_filter === 'first_year') {
+                $studentsQuery->where(function($q) {
+                    $q->whereIn('level', ['السنة الأولى', 'أولى', '1'])->orWhereNull('level')->orWhere('level', '');
+                });
+            } elseif ($request->level_filter === 'second_year') {
+                $studentsQuery->whereIn('level', ['السنة الثانية', 'ثانية', '2']);
+            }
+        }
+
+        $students = $studentsQuery->paginate(20)->appends($request->all());
+
+        $firstYearCount = Student::where(function($q) {
+            $q->whereIn('level', ['السنة الأولى', 'أولى', '1'])->orWhereNull('level')->orWhere('level', '');
+        })->count();
+
+        $secondYearCount = Student::whereIn('level', ['السنة الثانية', 'ثانية', '2'])->count();
+        $totalStudents = Student::count();
+
+        return view('affairs.academic_management', compact(
+            'activeSemester',
+            'semestersList',
+            'students',
+            'firstYearCount',
+            'secondYearCount',
+            'totalStudents'
+        ));
+    }
+
+    public function updateStudentLevel(Request $request, $id)
+    {
+        $request->validate([
+            'level' => 'required|string|in:السنة الأولى,السنة الثانية',
+        ]);
+
+        $student = Student::findOrFail($id);
+        $oldLevel = $student->level ?? 'غير محدد';
+        $newLevel = $request->level;
+
+        $student->update(['level' => $newLevel, 'updated_at' => now()]);
+        DB::table('users')->where('user_id', $student->user_id)->update(['academic_year' => $newLevel, 'updated_at' => now()]);
+
+        // تلقين المواد المناسبة للـ level الجديد
+        Student::autoEnrollCourses($student->student_id);
+
+        // إرسال إشعار للطالب بتعديل السنة الدراسية
+        Notification::create([
+            'user_id'  => $student->user_id,
+            'title'    => 'تعديل السنة الدراسية ℹ️',
+            'message'  => "تم تعديل سنتك الدراسية إلى ({$newLevel}) وتحديث موادك الدراسية المسجلة.",
+            'type'     => 'academic',
+            'category' => 'academic',
+            'is_read'  => 0,
+        ]);
+        \App\Services\FcmService::sendToUser($student->user_id, 'تعديل السنة الدراسية ℹ️', "تم تعديل سنتك الدراسية إلى ({$newLevel}) وتحديث موادك الدراسية المسجلة.", ['type' => 'academic']);
+
+        \App\Models\UserActivity::log('تغيير السنة الدراسية لطالب', "تم تغيير سنة الطالب {$student->user->full_name} من {$oldLevel} إلى {$newLevel}");
+
+        return back()->with('success', "تم تعديل السنة الدراسية للطالب ({$student->user->full_name}) إلى [{$newLevel}] وتحديث تسجيل المواد بنجاح.");
     }
 
 
@@ -228,11 +330,22 @@ class AffairsWebController extends Controller
             'location'   => 'nullable|string|max:255',
         ]);
 
+        // حماية من التكرار عند النقر المتعدد أو البطء في الاتصال
+        $existing = CalendarEvent::where('user_id', Auth::id())
+            ->where('event_date', $request->event_date)
+            ->where('title', $request->title)
+            ->where('created_at', '>=', now()->subSeconds(10))
+            ->first();
+
+        if ($existing) {
+            return back()->with('success', 'تم إضافة الحدث بنجاح.');
+        }
+
         CalendarEvent::create([
             'user_id'    => Auth::id(),
             'event_date' => $request->event_date,
             'title'      => $request->title,
-            'event_time' => $request->event_time,
+            'event_time' => $request->filled('event_time') ? $request->event_time : null,
             'location'   => $request->location,
         ]);
 
@@ -252,7 +365,7 @@ class AffairsWebController extends Controller
         $event->update([
             'event_date' => $request->event_date,
             'title'      => $request->title,
-            'event_time' => $request->event_time,
+            'event_time' => $request->filled('event_time') ? $request->event_time : null,
             'location'   => $request->location,
         ]);
 
@@ -780,6 +893,7 @@ class AffairsWebController extends Controller
                 'students.level',
                 'students.student_code'
             )
+            ->where('leave_requests.status', '!=', 'pending_parent')
             ->orderBy('leave_requests.created_at', 'desc')
             ->get();
 

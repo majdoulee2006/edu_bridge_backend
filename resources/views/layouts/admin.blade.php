@@ -202,6 +202,12 @@
                     الاعدادات
                 </a>
 
+                {{-- Activity Logs --}}
+                <a href="{{ route('admin.activity_logs') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/activity-logs*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                    <i class="fa-solid fa-shield-halved text-base"></i>
+                    سجل النشاطات والأمان
+                </a>
+
                 <!-- Logout Button -->
                 <div class="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800">
                     <form id="admin-logout-form" action="{{ route('admin.logout') }}" method="POST">
@@ -251,6 +257,20 @@
                 </div>
                 
                 <div class="flex items-center gap-4">
+                    @php
+                        $unreadAdminNotifs = \Illuminate\Support\Facades\DB::table('notifications')
+                            ->where('user_id', auth()->id())
+                            ->where('is_read', 0)
+                            ->count();
+                    @endphp
+                    <!-- Notifications Bell -->
+                    <a href="{{ route('admin.notifications') }}" class="relative w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all" title="الإشعارات">
+                        <i class="fa-solid fa-bell text-base"></i>
+                        @if($unreadAdminNotifs > 0)
+                            <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-800 animate-pulse"></span>
+                        @endif
+                    </a>
+
                     <!-- Theme Toggle Switch -->
                     <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all">
                         <i class="fa-solid fa-moon text-base dark:hidden"></i>

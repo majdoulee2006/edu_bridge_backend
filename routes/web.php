@@ -261,10 +261,12 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::get('/reports', [AffairsWebController::class, 'reports'])->name('affairs.reports');
     Route::post('/reports', [AffairsWebController::class, 'storeReport'])->name('affairs.reports.store');
 
-    // تفعيل الفصل الدراسي والترفيع الأكاديمي
+    // تفعيل الفصل الدراسي والترقية والأدوات الأكاديمية
+    Route::get('/academic-management', [AffairsWebController::class, 'academicManagement'])->name('affairs.academic_management');
     Route::post('/semesters/store', [AffairsWebController::class, 'storeSemesterWeb'])->name('affairs.semesters.store');
     Route::post('/semesters/activate', [AffairsWebController::class, 'activateSemesterWeb'])->name('affairs.semesters.activate');
     Route::post('/students/promote', [AffairsWebController::class, 'promoteStudentsWeb'])->name('affairs.students.promote');
+    Route::post('/students/{id}/update-level', [AffairsWebController::class, 'updateStudentLevel'])->name('affairs.students.update-level');
 
     // كشف العلامات الأكاديمي
     Route::get('/academic-card/students', [AffairsWebController::class, 'getFilteredStudents'])->name('affairs.academic_card.students');
@@ -291,6 +293,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/profile/send-otp', [AdminWebController::class, 'sendOTP'])->name('admin.profile.send_otp');
     Route::post('/profile/verify-otp', [AdminWebController::class, 'verifyOTP'])->name('admin.profile.verify_otp');
     Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
+    Route::get('/activity-logs', [AdminWebController::class, 'activityLogs'])->name('admin.activity_logs');
+    Route::post('/activity-logs/clean', [AdminWebController::class, 'cleanActivityLogs'])->name('admin.activity_logs.clean');
     Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
     Route::get('/messages/contacts', [AdminWebController::class, 'getContacts'])->name('admin.messages.contacts');
     Route::get('/messages/conversation/{userId}', [AdminWebController::class, 'getConversation'])->name('admin.messages.conversation');
@@ -478,6 +482,15 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::post('/profile/password', [ParentWebController::class, 'updatePassword'])->name('parent.profile.password');
     Route::post('/profile/send-otp', [ParentWebController::class, 'sendOTP'])->name('parent.profile.send_otp');
     Route::post('/profile/verify-otp', [ParentWebController::class, 'verifyOTP'])->name('parent.profile.verify_otp');
+
+    // المواعيد والاستدعاءات
+    Route::get('/appointments', [ParentWebController::class, 'appointments'])->name('parent.appointments');
+    Route::post('/appointments/request', [ParentWebController::class, 'requestMeeting'])->name('parent.appointments.request');
+
+    // الإشعارات
+    Route::get('/notifications', [ParentWebController::class, 'notifications'])->name('parent.notifications');
+    Route::post('/notifications/{id}/read', [ParentWebController::class, 'markNotificationRead'])->name('parent.notifications.read');
+    Route::post('/notifications/read-all', [ParentWebController::class, 'markAllNotificationsRead'])->name('parent.notifications.read_all');
 
     // الرسائل
     Route::get('/messages', [ParentWebController::class, 'messages'])->name('parent.messages');

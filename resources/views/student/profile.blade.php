@@ -223,6 +223,10 @@
                 <div class="stat-label">السنة الدراسية</div>
             </div>
             <div class="stat-box">
+                <div class="stat-value" style="color: var(--accent-color); font-size: 0.95rem;">{{ ($activeSemester ?? null) ? $activeSemester->name : 'لا يوجد فصل' }}</div>
+                <div class="stat-label">الفصل الدراسي النشط</div>
+            </div>
+            <div class="stat-box">
                 <div class="stat-value" style="font-size: 0.95rem;">{{ $user->department ?? '—' }}</div>
                 <div class="stat-label">التخصص</div>
             </div>

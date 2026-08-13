@@ -34,13 +34,20 @@ class ParentWebController extends Controller
             ];
         }
 
+        $activeSemester = DB::table('semesters')->where('is_active', true)->first();
+
         // Get children linked to parent
         $children = DB::table('parent_students')
             ->join('students', 'parent_students.student_id', '=', 'students.student_id')
             ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
             ->where('parent_students.parent_id', $parent->parent_id)
-            ->select('students.student_id', 'students.level', 'student_users.full_name', 'student_users.department', 'student_users.avatar', 'students.student_code')
+            ->select('students.student_id', 'students.level', 'student_users.academic_year', 'student_users.full_name', 'student_users.department', 'student_users.avatar', 'students.student_code')
             ->get();
+
+        foreach ($children as $child) {
+            $child->active_semester_name = $activeSemester ? $activeSemester->name : 'لا يوجد فصل مفعّل';
+            $child->display_level = $child->level ?? $child->academic_year ?? 'غير محدد';
+        }
 
         $selectedChildId = session('selected_child_id');
         if (!$selectedChildId && $children->isNotEmpty()) {
@@ -50,12 +57,18 @@ class ParentWebController extends Controller
 
         $selectedChild = $children->firstWhere('student_id', $selectedChildId);
 
+        $unreadNotificationsCount = DB::table('notifications')
+            ->where('user_id', $user->user_id)
+            ->where('is_read', 0)
+            ->count();
+
         return [
             'parent_children' => $children,
             'selected_child_id' => $selectedChildId,
             'selected_child' => $selectedChild,
             'user' => $user,
-            'parent' => $parent
+            'parent' => $parent,
+            'unread_notifications_count' => $unreadNotificationsCount,
         ];
     }
 
@@ -98,14 +111,17 @@ class ParentWebController extends Controller
         if (Auth::attempt([$loginField => $input, 'password' => $request->password])) {
             $parent = DB::table('parents')->where('user_id', Auth::user()->getKey())->first();
             if (!$parent) {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'هذا الحساب ليس حساب ولي أمر', Auth::user());
                 Auth::logout();
                 return back()->withErrors(['login' => 'هذا الحساب ليس حساب ولي أمر.']);
             }
             if (Auth::user()->status !== 'active') {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب ولي الأمر موقوف مؤقتاً', Auth::user());
                 Auth::logout();
                 return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
             }
             $request->session()->regenerate();
+            \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح عبر موقع ولي الأمر الإلكتروني');
             return redirect('/parent/dashboard');
         }
 
@@ -114,6 +130,13 @@ class ParentWebController extends Controller
 
     public function logout(Request $request)
     {
+        if (Auth::check()) {
+            if ($request->has('is_inactivity_logout')) {
+                \App\Models\UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
+            } else {
+                \App\Models\UserActivity::log('تسجيل خروج', 'قام ولي الأمر بتسجيل الخروج يدوياً من الموقع');
+            }
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -1041,5 +1064,133 @@ class ParentWebController extends Controller
         $request->merge(['student_id' => $studentId]);
         $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
         return $apiController->exportStudentAcademicCardExcel($request);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    //  APPOINTMENTS & SUMMONS (المواعيد والاستدعاءات)
+    // ────────────────────────────────────────────────────────────
+    public function appointments()
+    {
+        $common = $this->getCommonData();
+        $user = auth()->user();
+        $studentId = $common['selected_child_id'];
+
+        // 1. الاستدعاءات الواردة لولي الأمر
+        $rawSummons = DB::table('parent_summons')
+            ->leftJoin('students', 'parent_summons.student_id', '=', 'students.student_id')
+            ->leftJoin('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+            ->leftJoin('users as sender_user', 'parent_summons.sender_user_id', '=', 'sender_user.user_id')
+            ->where(function($q) use ($user, $studentId) {
+                $q->where('parent_summons.parent_user_id', $user->user_id);
+                if ($studentId) {
+                    $q->orWhere('parent_summons.student_id', $studentId);
+                }
+            })
+            ->select(
+                'parent_summons.*',
+                'sender_user.full_name as sender_name',
+                'student_users.full_name as student_name'
+            )
+            ->orderByDesc('parent_summons.created_at')
+            ->get();
+
+        $summons = $rawSummons->map(function ($s) {
+            $date = $s->summon_date ?? $s->date ?? ($s->created_at ? date('Y-m-d', strtotime($s->created_at)) : null);
+            $s->formatted_date = $date;
+            $s->title = $s->reason_title ?? $s->subject ?? 'استدعاء ولي أمر رسمي';
+            $s->details_text = $s->details ?? $s->reason ?? 'يرجى مراجعة إدارة المعهد/القسم.';
+            return $s;
+        });
+
+        // 2. طلبات المواعيد المرسلة من ولي الأمر للإدارة
+        $meetings = DB::table('parent_meeting_requests')
+            ->leftJoin('students', 'parent_meeting_requests.student_id', '=', 'students.student_id')
+            ->leftJoin('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+            ->where('parent_meeting_requests.parent_user_id', $user->user_id)
+            ->select('parent_meeting_requests.*', 'student_users.full_name as student_name')
+            ->orderByDesc('parent_meeting_requests.created_at')
+            ->get();
+
+        return $this->parentView('parent.appointments', compact('summons', 'meetings'));
+    }
+
+    public function requestMeeting(Request $request)
+    {
+        $request->validate([
+            'student_id'     => 'required|exists:students,student_id',
+            'subject'        => 'required|string|max:255',
+            'reason'         => 'required|string|min:5',
+            'preferred_date' => 'nullable|date|after_or_equal:today',
+        ], [
+            'subject.required' => 'موضوع الموعد مطلوب.',
+            'reason.required'  => 'سبب طلب الموعد مطلوب.',
+            'preferred_date.after_or_equal' => 'تاريخ المقابلة يفضل أن يكون اليوم أو في المستقبل.'
+        ]);
+
+        $user = auth()->user();
+
+        $meetingId = DB::table('parent_meeting_requests')->insertGetId([
+            'parent_user_id' => $user->user_id,
+            'student_id'     => $request->student_id,
+            'subject'        => $request->subject,
+            'reason'         => $request->reason,
+            'preferred_date' => $request->preferred_date,
+            'status'         => 'pending',
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        // إشعار لموظف الشؤون والأدمن
+        $affairsUsers = DB::table('users')->whereIn('role_id', [1, 6])->pluck('user_id');
+        foreach ($affairsUsers as $affairsUserId) {
+            DB::table('notifications')->insert([
+                'user_id'    => $affairsUserId,
+                'sender_id'  => $user->user_id,
+                'title'      => 'طلب موعد مقابلة جديد من ولي أمر',
+                'message'    => "قدّم ولي الأمر ({$user->full_name}) طلب موعد مقابلة بموضوع: " . $request->subject,
+                'type'       => 'meeting_request',
+                'category'   => 'administrative',
+                'related_id' => $meetingId,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return back()->with('success', 'تم إرسال طلب الموعد للإدارة بنجاح. سيتم الرد عليك وتحديد الوقت المناسب قريباً.');
+    }
+
+    // ────────────────────────────────────────────────────────────
+    //  NOTIFICATIONS
+    // ────────────────────────────────────────────────────────────
+    public function notifications()
+    {
+        $user = auth()->user();
+        $notifications = DB::table('notifications')
+            ->where('user_id', $user->user_id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return $this->parentView('parent.notifications', compact('notifications'));
+    }
+
+    public function markNotificationRead($id)
+    {
+        DB::table('notifications')
+            ->where('id', $id)
+            ->where('user_id', auth()->id())
+            ->update(['is_read' => 1, 'updated_at' => now()]);
+
+        return back()->with('success', 'تم تمييز الإشعار كمقروء.');
+    }
+
+    public function markAllNotificationsRead()
+    {
+        DB::table('notifications')
+            ->where('user_id', auth()->id())
+            ->where('is_read', 0)
+            ->update(['is_read' => 1, 'updated_at' => now()]);
+
+        return back()->with('success', 'تم تمييز جميع الإشعارات كمقروءة.');
     }
 }

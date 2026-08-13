@@ -527,7 +527,7 @@
 
             <div class="detail-row">
                 <label>تفاصيل الطلب:</label>
-                <div class="detail-value" id="modal-request-details"></div>
+                <div class="detail-value" id="modal-request-details" style="word-break: break-all; overflow-wrap: anywhere; white-space: pre-wrap; background: var(--bg-secondary, rgba(0,0,0,0.03)); padding: 0.75rem 1rem; border-radius: 0.6rem; border: 1px solid var(--border-color, #334155); font-size: 0.88rem; max-width: 100%;"></div>
             </div>
             
             <!-- ملاحظات الشؤون (Read-only) -->
