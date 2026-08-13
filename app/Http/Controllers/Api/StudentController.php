@@ -921,6 +921,7 @@ class StudentController extends Controller
             'orientation' => 'P',
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
+            'useSubsets' => false,
         ]);
         $mpdf->SetDirectionality('rtl');
         $mpdf->WriteHTML($html);
@@ -979,6 +980,7 @@ class StudentController extends Controller
             'orientation' => 'L',
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
+            'useSubsets' => false,
         ]);
         $mpdf->SetDirectionality('rtl');
         $mpdf->WriteHTML($html);
@@ -1346,6 +1348,7 @@ class StudentController extends Controller
             'orientation' => 'P',
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
+            'useSubsets' => false,
         ]);
         $mpdf->SetDirectionality('rtl');
         $mpdf->WriteHTML($html);

@@ -2031,20 +2031,25 @@ class AffairsController extends Controller
             'orientation' => 'P',
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
+            'useSubsets' => false,
         ]);
         $mpdf->SetDirectionality('rtl');
         $mpdf->WriteHTML($html);
 
         $fileName = 'academic_card_' . ($student['university_id'] ?? $student['student_id']) . '.pdf';
+        $directory = public_path('exports');
+        if (!file_exists($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        $filePath = $directory . '/' . $fileName;
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        file_put_contents($filePath, $mpdf->Output('', 'S'));
 
         if ($request->expectsJson() || $request->is('api/*')) {
-            $directory = public_path('exports');
-            if (!file_exists($directory)) {
-                mkdir($directory, 0755, true);
-            }
-            $filePath = $directory . '/' . $fileName;
-            file_put_contents($filePath, $mpdf->Output('', 'S'));
-
             return response()->json([
                 'success' => true,
                 'file_url' => url('exports/' . $fileName),
@@ -2052,10 +2057,10 @@ class AffairsController extends Controller
             ]);
         }
 
-        // Direct PDF download response for browser requests
-        return response($mpdf->Output($fileName, 'S'), 200, [
+        // Return BinaryFileResponse so Google PDF Viewer & Mobile Browsers support HTTP Byte-Ranges & PDF Trailer parsing
+        return response()->file($filePath, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
         ]);
     }
 

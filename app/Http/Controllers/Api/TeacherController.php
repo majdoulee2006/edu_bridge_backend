@@ -2310,6 +2310,7 @@ class TeacherController extends Controller
             'orientation' => 'P',
             'autoScriptToLang' => true,
             'autoLangToFont' => true,
+            'useSubsets' => false,
         ]);
         $mpdf->SetDirectionality('rtl');
         $mpdf->WriteHTML($html);
