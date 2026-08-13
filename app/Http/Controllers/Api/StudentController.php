@@ -227,6 +227,9 @@ class StudentController extends Controller
             }
         }
 
+        $activeSemRow = \DB::table('semesters')->where('is_active', true)->first();
+        $activeSemesterName = $activeSemRow ? $activeSemRow->name : 'لا يوجد فصل نشط حالياً';
+
         return response()->json([
             'success' => true,
             'message' => 'تم جلب بيانات الملف الشخصي بنجاح',
@@ -237,10 +240,12 @@ class StudentController extends Controller
                 'phone' => $user->phone ?? 'غير متوفر',
                 'email' => $user->email ?? 'غير متوفر',
                 'department' => $user->department ?? 'غير محدد',
-                'academic_year' => $user->academic_year ?? 'غير محدد',
+                'academic_year' => $user->academic_year ?? $student?->level ?? 'غير محدد',
                 'birth_date' => $user->birth_date ? $user->birth_date->format('Y-m-d') : null,
                 'gender' => $user->gender ?? 'غير محدد',
-                'level' => $student->level ?? 'غير محدد',
+                'level' => $student?->level ?? $user->academic_year ?? 'غير محدد',
+                'semester' => $activeSemesterName,
+                'active_semester' => $activeSemesterName,
                 'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
                 'reference_photo_url' => $student?->reference_photo ? url('storage/' . $student->reference_photo) : null,
                 'has_face_embedding' => (!empty($student?->face_embedding) && !$student?->requires_face_reset),
@@ -290,6 +295,8 @@ class StudentController extends Controller
 
     // 🌟 4. تحديث قاعدة البيانات
     $user->update($dataToUpdate);
+
+    \App\Models\UserActivity::log('تحديث الملف الشخصي', 'قام الطالب بتحديث بيانات ملفه الشخصي عبر التطبيق المحمول');
 
     return response()->json([
         'success' => true,
@@ -1517,6 +1524,8 @@ class StudentController extends Controller
             ]);
         }
 
+        \App\Models\UserActivity::log('تسليم واجب (تطبيق)', "قام الطالب بتسليم الواجب: {$assignment->title}");
+
         return response()->json([
             'success' => true,
             'message' => 'تم تقديم الواجب بنجاح',
@@ -1718,6 +1727,8 @@ class StudentController extends Controller
                 }
             }
         }
+
+        \App\Models\UserActivity::log('تقديم طلب إجازة (تطبيق)', "قام الطالب بتقديم طلب إجازة بتاريخ {$request->date} والسبب: {$request->reason}");
 
         return response()->json([
             'success' => true,

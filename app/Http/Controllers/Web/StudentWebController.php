@@ -45,14 +45,17 @@ class StudentWebController extends Controller
             Auth::login($user);
             $student = Student::where('user_id', Auth::user()->getKey())->first();
             if (!$student) {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'هذا الحساب ليس حساب طالب', $user);
                 Auth::logout();
                 return back()->withErrors(['login' => 'هذا الحساب ليس حساب طالب.']);
             }
             if (Auth::user()->status !== 'active') {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب الطالب موقوف مؤقتاً', $user);
                 Auth::logout();
                 return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
             }
             $request->session()->regenerate();
+            \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح عبر موقع الطالب الإلكتروني');
             return redirect('/student/dashboard');
         }
 
@@ -61,6 +64,13 @@ class StudentWebController extends Controller
 
     public function logout(Request $request)
     {
+        if (Auth::check()) {
+            if ($request->has('is_inactivity_logout')) {
+                \App\Models\UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
+            } else {
+                \App\Models\UserActivity::log('تسجيل خروج', 'قام الطالب بتسجيل الخروج يدوياً من الموقع');
+            }
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -644,7 +654,8 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
         $user    = Auth::user();
-        return view('student.profile', compact('student', 'user'));
+        $activeSemester = DB::table('semesters')->where('is_active', true)->first();
+        return view('student.profile', compact('student', 'user', 'activeSemester'));
     }
 
     public function updateProfile(Request $request)

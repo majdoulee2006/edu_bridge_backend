@@ -290,7 +290,7 @@
                             <button type="submit" class="btn-action btn-reject" style="width:100%;"><i class="fa-solid fa-xmark"></i> رفض</button>
                         </form>
                     @else
-                        <button class="btn-action btn-view" style="flex:1;"><i class="fa-solid fa-eye"></i> تمت المعالجة</button>
+                        <button type="button" onclick="openLeaveDetails('{{ addslashes($userName) }}', '{{ $leave->date ? \Carbon\Carbon::parse($leave->date)->translatedFormat('d F Y') : 'غير محدد' }}', '{{ addslashes($leave->reason ?? 'لم يذكر سبب.') }}', '{{ $statusLabel }}', '{{ $leave->status }}')" class="btn-action btn-view" style="flex:1;"><i class="fa-solid fa-eye"></i> تمت المعالجة (عرض التفاصيل)</button>
                     @endif
                 </div>
             </div>
@@ -304,16 +304,41 @@
     </div>
 </div>
 
-<!-- Confirmation Modal -->
-<div class="modal-overlay" id="confirmModal">
-    <div class="modal-content">
-        <div class="modal-icon" id="modalIcon"><i class="fa-solid fa-circle-question"></i></div>
-        <h3 class="modal-title" id="modalTitle">تأكيد الإجراء</h3>
-        <p class="modal-desc" id="modalDesc">هل أنت متأكد من رغبتك في اتخاذ هذا الإجراء على طلب الإجازة؟</p>
-        <div class="modal-actions">
-            <button class="modal-btn modal-btn-cancel" onclick="closeConfirmModal()">إلغاء</button>
-            <button class="modal-btn modal-btn-confirm" onclick="closeConfirmModal()">تأكيد</button>
+<!-- Details Modal -->
+<div class="modal-overlay" id="detailsModal">
+    <div class="modal-content" style="text-align: right;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+            <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin: 0;">
+                <i class="fa-solid fa-file-medical" style="color: var(--accent-color); margin-left: 0.5rem;"></i> تفاصيل طلب الغياب
+            </h3>
+            <button onclick="closeDetailsModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fa-solid fa-xmark"></i></button>
         </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="background: var(--bg-primary); padding: 0.85rem 1rem; border-radius: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-secondary); font-size: 0.9rem; font-weight: 700;">اسم الطالب:</span>
+                <span id="dtStudentName" style="color: var(--text-primary); font-size: 0.95rem; font-weight: 800;"></span>
+            </div>
+
+            <div style="background: var(--bg-primary); padding: 0.85rem 1rem; border-radius: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-secondary); font-size: 0.9rem; font-weight: 700;">تاريخ الغياب:</span>
+                <span id="dtLeaveDate" style="color: var(--text-primary); font-size: 0.95rem; font-weight: 800;"></span>
+            </div>
+
+            <div style="background: var(--bg-primary); padding: 0.85rem 1rem; border-radius: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-secondary); font-size: 0.9rem; font-weight: 700;">الحالة:</span>
+                <span id="dtStatus" class="status-badge"></span>
+            </div>
+
+            <div style="background: var(--bg-primary); padding: 1rem; border-radius: 0.8rem;">
+                <div style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem;">سبب الغياب:</div>
+                <div id="dtReason" style="color: var(--text-primary); font-size: 0.9rem; line-height: 1.5; font-weight: 600;"></div>
+            </div>
+        </div>
+
+        <button onclick="closeDetailsModal()" style="width: 100%; margin-top: 1.5rem; padding: 0.8rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.8rem; font-weight: 800; cursor: pointer;">
+            إغلاق
+        </button>
     </div>
 </div>
 @endsection
@@ -367,12 +392,29 @@
         }
     }
 
-    function closeConfirmModal() {
-        modal.classList.remove('active');
+    function openLeaveDetails(name, date, reason, statusLabel, statusVal) {
+        document.getElementById('dtStudentName').textContent = name;
+        document.getElementById('dtLeaveDate').textContent = date;
+        document.getElementById('dtReason').textContent = reason;
+        
+        const dtStatus = document.getElementById('dtStatus');
+        dtStatus.textContent = statusLabel;
+        dtStatus.className = 'status-badge ' + (statusVal === 'approved' ? 'status-approved' : 'status-rejected');
+
+        const dtModal = document.getElementById('detailsModal');
+        if (dtModal) dtModal.classList.add('active');
     }
 
-    modal.addEventListener('click', (e) => {
-        if(e.target === modal) closeConfirmModal();
-    });
+    function closeDetailsModal() {
+        const dtModal = document.getElementById('detailsModal');
+        if (dtModal) dtModal.classList.remove('active');
+    }
+
+    const detailsModal = document.getElementById('detailsModal');
+    if (detailsModal) {
+        detailsModal.addEventListener('click', (e) => {
+            if (e.target === detailsModal) closeDetailsModal();
+        });
+    }
 </script>
 @endpush

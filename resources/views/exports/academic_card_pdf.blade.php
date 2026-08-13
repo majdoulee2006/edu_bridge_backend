@@ -146,9 +146,9 @@
             <tr>
                 <th style="width: 32%;">اسم المادة</th>
                 <th style="width: 10%;">السنة</th>
-                <th style="width: 12%;">المذاكرة</th>
-                <th style="width: 14%;">عملي / شفهي</th>
-                <th style="width: 14%;">امتحان نهائي</th>
+                <th style="width: 12%;">المذاكرة (25)</th>
+                <th style="width: 14%;">عملي / شفهي (25)</th>
+                <th style="width: 14%;">امتحان نهائي (50)</th>
                 <th style="width: 10%;">المجموع</th>
                 <th style="width: 8%;">الحالة</th>
             </tr>
@@ -183,7 +183,23 @@
     </table>
 
     <div class="footer">
-        <p>هذا المستند وثيقة أكاديمية رسمية صادرة الكترونياً عن إدارة شؤون الطلاب بمعهد Edu Bridge.</p>
+        <table style="width: 100%; border: none; margin-top: 25px; text-align: center;">
+            <tr>
+                <td style="border: none; width: 33%;">
+                    <strong>موظف الشؤون الطلابية</strong><br><br>
+                    ...................................
+                </td>
+                <td style="border: none; width: 33%;">
+                    <strong>ختم المعهد الرسمي</strong><br><br>
+                    <div style="border: 2px dashed #ccc; width: 80px; height: 80px; border-radius: 50%; margin: 0 auto; line-height: 80px; color: #aaa; font-size: 10px;">الختم</div>
+                </td>
+                <td style="border: none; width: 33%;">
+                    <strong>مدير المعهد</strong><br><br>
+                    ...................................
+                </td>
+            </tr>
+        </table>
+        <p style="margin-top: 20px;">هذا المستند وثيقة أكاديمية رسمية صادرة إلكترونياً عن إدارة شؤون الطلاب بمعهد Edu Bridge.</p>
     </div>
 
 </body>

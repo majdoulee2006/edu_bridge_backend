@@ -46,11 +46,14 @@ class HODWebController extends Controller
             // 5 represents Head of Department
             if ($user->role_id == 5) {
                 if ($user->status !== 'active') {
+                    \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب رئيس القسم موقوف', $user);
                     Auth::logout();
                     return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
                 }
+                \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح لوحة تحكم رئيس القسم');
                 return redirect('/hod/dashboard');
             } else {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'ليس لديك صلاحية الدخول كـ رئيس قسم', $user);
                 Auth::logout();
                 return back()->withErrors(['login' => 'ليس لديك صلاحية الدخول كـ رئيس قسم.']);
             }
@@ -64,6 +67,13 @@ class HODWebController extends Controller
      */
     public function logout(Request $request)
     {
+        if (Auth::check()) {
+            if ($request->has('is_inactivity_logout')) {
+                \App\Models\UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
+            } else {
+                \App\Models\UserActivity::log('تسجيل خروج', 'قام رئيس القسم بتسجيل الخروج يدوياً');
+            }
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -575,6 +585,8 @@ class HODWebController extends Controller
                     'updated_at'      => now(),
                 ]);
 
+            \App\Models\UserActivity::log('تعيين مربي دفعة', "قام رئيس القسم بتعيين المربي للدورة: {$request->branch} - {$request->year}");
+
             return back()->with('success', 'تم تعيين المربي بنجاح.');
         }
 
@@ -587,6 +599,8 @@ class HODWebController extends Controller
                 'advisor_section' => null,
                 'updated_at'      => now(),
             ]);
+
+        \App\Models\UserActivity::log('إزالة صفة المربي', "قام رئيس القسم بإزالة صفة المربي عن المعلم رقم: {$teacherId}");
 
         return back()->with('success', 'تم إزالة صفة المربي عن المعلم.');
     }

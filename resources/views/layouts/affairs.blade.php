@@ -130,6 +130,9 @@
                 <a href="{{ url('/affairs/dashboard') }}" class="nav-item {{ Request::is('affairs/dashboard') ? 'active' : '' }}">
                     <i class="fa-solid fa-house"></i> الرئيسية
                 </a>
+                <a href="{{ route('affairs.academic_management') }}" class="nav-item {{ Request::is('affairs/academic-management*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-graduation-cap"></i> الأعوام والفصول الدراسية
+                </a>
                 <a href="{{ url('/affairs/calendar') }}" class="nav-item {{ Request::is('affairs/calendar') ? 'active' : '' }}">
                     <i class="fa-solid fa-calendar-days"></i> التقويم
                 </a>
@@ -158,9 +161,6 @@
                 </a>
                 <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-signature"></i> طلبات الإجازة
-                </a>
-                <a href="{{ url('/affairs/reports') }}" class="nav-item {{ Request::is('affairs/reports') ? 'active' : '' }}">
-                    <i class="fa-solid fa-file-lines"></i> التقارير
                 </a>
                 <a href="{{ url('/affairs/student-services') }}" class="nav-item {{ Request::is('affairs/student-services*') ? 'active' : '' }}">
                     <i class="fa-solid fa-boxes-stacked"></i> الخدمات الطلابية
@@ -215,6 +215,14 @@
                     </div>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
+                    <!-- Notification Bell Icon for Quick Access -->
+                    <a href="{{ url('/affairs/notifications') }}" style="position: relative; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; text-decoration: none;" title="الإشعارات">
+                        <i class="fa-solid fa-bell"></i>
+                        @php $headerUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
+                        @if($headerUnread > 0)
+                            <span style="position: absolute; top: 2px; right: 2px; width: 11px; height: 11px; background-color: #ef4444; border-radius: 50%; border: 2px solid var(--bg-secondary); box-shadow: 0 0 8px #ef4444;"></span>
+                        @endif
+                    </a>
                     <!-- Dark Mode Toggle -->
                     <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>

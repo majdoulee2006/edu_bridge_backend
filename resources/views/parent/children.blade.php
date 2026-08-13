@@ -176,7 +176,7 @@
                 </div>
                 <div class="child-details">
                     <div class="child-name">{{ $child->full_name }}</div>
-                    <div class="child-meta">{{ $child->department ?? 'تخصص عام' }} • {{ $child->level ?? 'غير محدد' }}</div>
+                    <div class="child-meta">{{ $child->department ?? 'تخصص عام' }} • {{ $child->display_level ?? $child->level ?? 'غير محدد' }} • <span style="color: var(--accent-color); font-weight: 700;">{{ $child->active_semester_name ?? '' }}</span></div>
                     <div class="child-code">الرقم الجامعي: {{ $child->student_code }}</div>
                 </div>
             </div>

@@ -293,13 +293,19 @@
                 <input type="hidden" name="event_time" id="event-time-hidden">
 
                 {{-- زر يفتح الـ picker --}}
-                <div id="time-display-btn" onclick="openTimePicker()"
+                <div id="time-display-btn"
                      style="width:100%; padding:0.8rem 1rem; border-radius:0.8rem;
                             border:1px solid var(--border-color); background:var(--bg-primary);
                             color:var(--text-primary); font-family:inherit; font-size:0.95rem;
-                            cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
-                    <span id="time-display-text" style="color:var(--text-secondary);">اختر الوقت</span>
-                    <i class="fa-solid fa-clock" style="color:var(--accent-color);"></i>
+                            display:flex; align-items:center; justify-content:space-between;">
+                    <span id="time-display-text" onclick="openTimePicker()" style="color:var(--text-secondary); flex:1; cursor:pointer;">اختر الوقت</span>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <button type="button" id="clear-time-btn" onclick="clearTime(event)" title="حذف الوقت"
+                                style="display:none; background:rgba(239, 68, 68, 0.15); border:none; color:#ef4444; width:32px; height:32px; border-radius:50%; align-items:center; justify-content:center; font-size:0.9rem; cursor:pointer; transition:background 0.2s;">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                        <i class="fa-solid fa-clock" onclick="openTimePicker()" style="color:var(--accent-color); cursor:pointer;"></i>
+                    </div>
                 </div>
             </div>
 
@@ -333,14 +339,14 @@
             <div style="display:flex; justify-content:center; gap:0.5rem; margin-top:0.75rem;">
                 <button onclick="setAmPm('AM')" id="btn-am"
                         style="padding:0.4rem 1.5rem; border-radius:2rem; border:2px solid var(--accent-color);
-                               font-weight:800; cursor:pointer; transition:all 0.2s;
-                               background:var(--accent-color); color:var(--primary-dark);">
+                                font-weight:800; cursor:pointer; transition:all 0.2s;
+                                background:var(--accent-color); color:var(--primary-dark);">
                     صباحاً
                 </button>
                 <button onclick="setAmPm('PM')" id="btn-pm"
                         style="padding:0.4rem 1.5rem; border-radius:2rem; border:2px solid var(--border-color);
-                               font-weight:800; cursor:pointer; transition:all 0.2s;
-                               background:transparent; color:var(--text-secondary);">
+                                font-weight:800; cursor:pointer; transition:all 0.2s;
+                                background:transparent; color:var(--text-secondary);">
                     مساءً
                 </button>
             </div>
@@ -362,14 +368,23 @@
             </div>
         </div>
 
-        {{-- Confirm --}}
-        <button onclick="confirmTime()"
-                style="width:100%; padding:0.9rem; background:var(--accent-color);
-                       color:var(--primary-dark); border:none; border-radius:0.8rem;
-                       font-weight:800; font-size:1rem; cursor:pointer; transition:opacity 0.2s;">
-            <i class="fa-solid fa-check" style="margin-left:0.5rem;"></i>
-            تأكيد الوقت
-        </button>
+        {{-- Buttons --}}
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+            <button onclick="confirmTime()"
+                    style="flex:2; padding:0.9rem; background:var(--accent-color);
+                           color:var(--primary-dark); border:none; border-radius:0.8rem;
+                           font-weight:800; font-size:1rem; cursor:pointer; transition:opacity 0.2s;">
+                <i class="fa-solid fa-check" style="margin-left:0.5rem;"></i>
+                تأكيد الوقت
+            </button>
+            <button onclick="clearTime(event); closeTimePicker();"
+                    style="flex:1; padding:0.9rem; background:rgba(239, 68, 68, 0.15);
+                           color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); border-radius:0.8rem;
+                           font-weight:800; font-size:0.85rem; cursor:pointer; transition:all 0.2s;">
+                <i class="fa-solid fa-trash-can" style="margin-left:0.3rem;"></i>
+                بدون وقت
+            </button>
+        </div>
     </div>
 </div>
 
@@ -504,7 +519,21 @@
     }
 
     // Modal Functions
+    let isSubmittingEvent = false;
+
+    function resetSubmitButton() {
+        isSubmittingEvent = false;
+        const btn = document.querySelector('#addEventForm .submit-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.innerHTML = 'حفظ الحدث';
+        }
+    }
+
     function openEventModal(dateStr = null) {
+        resetSubmitButton();
         const modal = document.getElementById('eventModal');
         const dateInput = document.getElementById('event-date');
         
@@ -525,6 +554,7 @@
     }
 
     function editEvent(id) {
+        resetSubmitButton();
         const event = events.find(e => e.id === id);
         if(!event) return;
 
@@ -549,11 +579,28 @@
         const modal = document.getElementById('eventModal');
         modal.classList.remove('active');
         document.getElementById('addEventForm').reset();
+        resetSubmitButton();
     }
 
     // إغلاق النافذة المنبثقة عند النقر خارجها
     document.getElementById('eventModal').addEventListener('click', function(e) {
         if(e.target === this) closeEventModal();
+    });
+
+    // منع التكرار وتعطيل الزر فور الضغط
+    document.getElementById('addEventForm').addEventListener('submit', function(e) {
+        if (isSubmittingEvent) {
+            e.preventDefault();
+            return false;
+        }
+        isSubmittingEvent = true;
+        const btn = this.querySelector('.submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            btn.style.cursor = 'not-allowed';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-left:0.5rem;"></i> جاري الحفظ...';
+        }
     });
 
     // رسم التقويم لأول مرة عند تحميل الصفحة
@@ -680,6 +727,15 @@
         document.getElementById('timePickerOverlay').style.display = 'none';
     }
 
+    function clearTime(e) {
+        if(e && e.stopPropagation) e.stopPropagation();
+        document.getElementById('event-time-hidden').value = '';
+        document.getElementById('time-display-text').textContent = 'اختر الوقت';
+        document.getElementById('time-display-text').style.color = 'var(--text-secondary)';
+        const clearBtn = document.getElementById('clear-time-btn');
+        if(clearBtn) clearBtn.style.display = 'none';
+    }
+
     function confirmTime() {
         // تحويل للصيغة 24 ساعة للحفظ
         let h24 = tp_hour;
@@ -700,13 +756,25 @@
         document.getElementById('time-display-text').textContent = `${hDisplay}:${mDisplay} ${ampmAr}`;
         document.getElementById('time-display-text').style.color = 'var(--text-primary)';
 
+        const clearBtn = document.getElementById('clear-time-btn');
+        if(clearBtn) clearBtn.style.display = 'inline-flex';
+
         closeTimePicker();
     }
 
     // تعيين الوقت عند التعديل
     function setTimeFromStr(timeStr) {
-        if(!timeStr) return;
-        const [hh, mm] = timeStr.split(':');
+        if(!timeStr || timeStr === 'null' || timeStr === '') {
+            clearTime();
+            return;
+        }
+        const parts = timeStr.split(':');
+        if(parts.length < 2) {
+            clearTime();
+            return;
+        }
+        const hh = parts[0];
+        const mm = parts[1];
         let h = parseInt(hh);
         const m = parseInt(mm);
         tp_ampm = h >= 12 ? 'PM' : 'AM';

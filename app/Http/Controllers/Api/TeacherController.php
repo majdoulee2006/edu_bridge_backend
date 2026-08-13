@@ -466,6 +466,8 @@ class TeacherController extends Controller
             'requires_face_reset' => false,
         ]);
 
+        \App\Models\UserActivity::log('إعادة تعيين بصمة الوجه', "قام المعلم بإعادة تعيين بصمة الوجه للطالب ID: {$studentId}");
+
         return response()->json(['success' => true, 'message' => 'تم إعادة تعيين صورة الوجه. سيتم التسجيل من جديد عند أول حضور.']);
     }
 
@@ -642,6 +644,8 @@ class TeacherController extends Controller
                 );
             }
         }
+
+        \App\Models\UserActivity::log('رصد درجات امتحان', "قام المعلم برصد علامات لعدد {$saved} طالب في مادة: {$courseName}");
 
         return response()->json([
             'success' => true,
@@ -1054,9 +1058,11 @@ class TeacherController extends Controller
             \App\Services\FcmService::sendToUser($studentUserId, 'Grade', (string)$request->grade, ['type' => 'assignment', 'related_id' => (string)$submission->assignment->assignment_id]);
         }
 
+        \App\Models\UserActivity::log('تصحيح واجب', "قام المعلم بتصحيح واجب الطالب ورصد العلامة ({$request->grade}/{$maxPoints}) للواجب: {$submission->assignment->title}");
+
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الواجب بنجاح',
+            'message' => 'تم تصحيح الواجب بنجاح',
             'data' => $submission
         ], 200);
     }

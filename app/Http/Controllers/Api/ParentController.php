@@ -375,6 +375,8 @@ class ParentController extends Controller
             'relationship' => $request->input('relationship', 'father'),
         ]);
 
+        \App\Models\UserActivity::log('ربط طالب بولي أمر', "قام ولي الأمر بربط حساب الطالب: {$studentUser->full_name} ({$student->student_code})");
+
         return response()->json([
             'success' => true,
             'message' => 'تم ربط الطالب بنجاح',
@@ -748,6 +750,8 @@ class ParentController extends Controller
                 'related_id' => (string)$requestId,
             ]);
         }
+
+        \App\Models\UserActivity::log('طلب موعد مقابلة', "قام ولي الأمر بطلب موعد لقاء بخصوص: {$validated['subject']}");
 
         return response()->json([
             'success' => true,

@@ -41,14 +41,17 @@ class AdminWebController extends Controller
         if (Auth::attempt([$loginField => $request->login, 'password' => $request->password])) {
             $user = Auth::user();
             if ($user->role_id != 1) {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب لا يملك صلاحيات الإدارة', $user);
                 Auth::logout();
                 return back()->withErrors(['login' => 'عذراً! هذا الحساب لا يملك صلاحيات الإدارة.']);
             }
             if ($user->status !== 'active') {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب موقوف مؤقتاً', $user);
                 Auth::logout();
                 return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
             }
             $request->session()->regenerate();
+            \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح إلى لوحة الإدارة العامة');
             return redirect('/admin/dashboard');
         }
 
@@ -57,6 +60,13 @@ class AdminWebController extends Controller
 
     public function logout(Request $request)
     {
+        if (Auth::check()) {
+            if ($request->has('is_inactivity_logout')) {
+                \App\Models\UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
+            } else {
+                \App\Models\UserActivity::log('تسجيل خروج', 'قام المستخدم بتسجيل الخروج يدوياً من لوحة الإدارة');
+            }
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -100,6 +110,97 @@ class AdminWebController extends Controller
     {
         $user = Auth::user();
         return view('admin.settings', compact('user'));
+    }
+
+    public function activityLogs(Request $request)
+    {
+        $query = \App\Models\UserActivity::orderByDesc('created_at');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('user_name', 'LIKE', "%{$search}%")
+                  ->orWhere('action', 'LIKE', "%{$search}%")
+                  ->orWhere('description', 'LIKE', "%{$search}%")
+                  ->orWhere('ip_address', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $roleMap = [
+                'إدارة'     => ['إدارة', 'admin'],
+                'معلم'     => ['معلم', 'teacher'],
+                'طالب'     => ['طالب', 'student'],
+                'ولي أمر'   => ['ولي أمر', 'parent'],
+                'رئيس قسم' => ['رئيس قسم', 'head'],
+                'شؤون طلاب' => ['شؤون طلاب', 'affairs'],
+            ];
+            $searchRoles = $roleMap[$request->role] ?? [$request->role];
+            $query->whereIn('role_name', $searchRoles);
+        }
+
+        if ($request->filled('action_type')) {
+            $query->where('action', 'LIKE', "%{$request->action_type}%");
+        }
+
+        $activities = $query->paginate(20)->withQueryString();
+
+        $distinctActions = \Illuminate\Support\Facades\Cache::remember('distinct_user_actions', 300, function () {
+            return \App\Models\UserActivity::select('action')->distinct()->whereNotNull('action')->pluck('action')->toArray();
+        });
+        $standardActions = [
+            'تسجيل دخول',
+            'تسجيل خروج',
+            'خمول',
+            'تفعيل حساب',
+            'رفض حساب',
+            'فك قفل جهاز',
+            'تسليم واجب',
+            'تقديم طلب إجازة',
+            'رصد درجات',
+            'إعادة تعيين بصمة',
+            'تحديث الملف الشخصي',
+            'إرسال استدعاء',
+            'طلب موعد',
+        ];
+        $allActions = array_values(array_unique(array_merge($standardActions, $distinctActions)));
+
+        $roleActionsMap = [
+            'إدارة' => [
+                'تسجيل دخول', 'تسجيل خروج', 'خمول', 'إضافة حساب', 'محاولة دخول مرفوضة', 'تخصيص مربي دفعة'
+            ],
+            'شؤون طلاب' => [
+                'تسجيل دخول', 'تسجيل خروج', 'تفعيل حساب', 'رفض حساب', 'فك قفل جهاز', 'تفعيل فصل دراسي', 'ترفيع الطلاب أكاديمياً', 'موافقة على عذر غياب'
+            ],
+            'رئيس قسم' => [
+                'تسجيل دخول', 'تسجيل خروج', 'معالجة طلب إجازة', 'إرسال استدعاء لولي أمر', 'الرد على طلب موعد مقابلة', 'طلب تقرير أداء'
+            ],
+            'معلم' => [
+                'تسجيل دخول', 'تسجيل خروج', 'رصد درجات امتحان', 'تصحيح واجب', 'إعادة تعيين بصمة الوجه', 'إنشاء إعلان', 'تسجيل حضور'
+            ],
+            'طالب' => [
+                'تسجيل دخول', 'تسجيل خروج', 'تسليم واجب', 'تقديم طلب إجازة', 'تسجيل حضور (QR)', 'تحديث الملف الشخصي', 'تقديم طلب خدمة طلابية'
+            ],
+            'ولي أمر' => [
+                'تسجيل دخول', 'تسجيل خروج', 'ربط طالب بولي أمر', 'طلب موعد مقابلة', 'طلب تقرير أداء'
+            ]
+        ];
+
+        return view('admin.activity_logs', compact('activities', 'allActions', 'roleActionsMap'));
+    }
+
+    public function cleanActivityLogs(Request $request)
+    {
+        $days = (int) $request->input('days', 90);
+        $cutoffDate = now()->subDays($days);
+
+        $deletedCount = \App\Models\UserActivity::where('created_at', '<', $cutoffDate)->delete();
+
+        \Illuminate\Support\Facades\Cache::forget('distinct_user_actions');
+
+        \App\Models\UserActivity::log('تنظيف السجلات', "تم إزالة {$deletedCount} سجلاً قدامى يتجاوز تاريخها {$days} يوماً.");
+
+        return back()->with('success', "تم بنجاح تنظيف {$deletedCount} سجلاً قديماً يتجاوز تاريخها {$days} يوماً للحفاظ على سرعة النظام ومرونة قاعدة البيانات!");
     }
 
     public function updateProfile(Request $request)
@@ -639,6 +740,10 @@ class AdminWebController extends Controller
             ['type' => 'system']
         );
 
+        if ($user) {
+            \App\Models\UserActivity::log('قبول حساب', "قامت الإدارة بالموافقة على حساب: {$user->full_name} ({$user->email})");
+        }
+
         return redirect()->back()->with('success', 'تم قبول وتفعيل حساب المستخدم بنجاح!');
     }
 
@@ -647,6 +752,7 @@ class AdminWebController extends Controller
         // Fetch user first to see their role
         $usr = DB::table('users')->where('user_id', $id)->first();
         if ($usr) {
+            \App\Models\UserActivity::log('رفض حساب', "قامت الإدارة برفض وحذف طلب حساب: {$usr->full_name} ({$usr->email})");
             // Delete dynamic children mapping or role table details
             if ($usr->role_id == 3) {
                 DB::table('students')->where('user_id', $id)->delete();
@@ -785,6 +891,8 @@ class AdminWebController extends Controller
                 'updated_at'      => now(),
             ]);
         }
+
+        \App\Models\UserActivity::log('إنشاء حساب طالب', "قامت الإدارة بإنشاء حساب جديد للطالب: {$fullName} برقم جامعي ({$request->university_id})");
 
         return redirect()->route('admin.accounts')->with('success', 'تم إنشاء حساب الطالب وتسجيله في ' . $courseIds->count() . ' مادة تلقائياً!');
     }

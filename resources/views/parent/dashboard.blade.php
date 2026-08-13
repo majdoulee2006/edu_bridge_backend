@@ -351,7 +351,7 @@
             </div>
             <div class="child-name">{{ $child->full_name }}</div>
             <div class="child-info">
-                {{ $child->department ?? 'تخصص عام' }} • {{ $child->level ?? 'السنة الأولى' }}
+                {{ $child->department ?? 'تخصص عام' }} • {{ $child->display_level ?? $child->level ?? 'السنة الأولى' }} • <span style="color: var(--accent-color); font-weight: 700;">{{ $child->active_semester_name ?? '' }}</span>
             </div>
             <div class="child-btn">
                 {{ $selected_child_id == $child->student_id ? 'عرض التفاصيل والجدول' : 'متابعة الأداء' }} <i class="fa-solid fa-arrow-left" style="margin-right: 0.4rem; font-size: 0.8rem;"></i>
