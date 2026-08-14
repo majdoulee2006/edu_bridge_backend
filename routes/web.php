@@ -334,6 +334,7 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/announcements/{id}/update', [AdminWebController::class, 'updateAnnouncement'])->name('admin.announcements.update');
     Route::post('/announcements/{id}/delete', [AdminWebController::class, 'deleteAnnouncement'])->name('admin.announcements.delete');
     Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');
+    Route::post('/notifications/send', [AdminWebController::class, 'sendNotification'])->name('admin.notifications.send');
     Route::post('/notifications/{id}/read', [AdminWebController::class, 'markNotificationRead'])->name('admin.notifications.read');
     Route::post('/notifications/read-all', [AdminWebController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');
 

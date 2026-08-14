@@ -195,27 +195,37 @@
                 </button>
             </div>
 
-            <form action="{{ route('admin.messages.send') }}" method="POST" class="flex flex-col gap-4">
+            <form action="{{ route('admin.notifications.send') }}" method="POST" class="flex flex-col gap-4">
                 @csrf
 
-                {{-- الجمهور --}}
+                {{-- الجمهور / الفئة --}}
                 <div>
-                    <label class="text-xs font-bold text-zinc-300 block mb-2">جهة الإرسال</label>
-                    <div class="grid grid-cols-2 gap-3">
+                    <label class="text-xs font-bold text-zinc-300 block mb-2">جهة الإرسال (الفئة)</label>
+                    <div class="grid grid-cols-3 gap-2">
                         <label class="cursor-pointer">
                             <input checked class="peer sr-only" name="recipient_type" value="all" type="radio"
                                    onchange="document.getElementById('deptSelectorModal').classList.add('hidden')"/>
-                            <div class="flex items-center justify-center gap-2 p-3 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all">
-                                <i class="fa-solid fa-users text-zinc-400 peer-checked:text-[#f2f20d]"></i>
-                                <p class="text-xs font-bold text-white">كافة المستخدمين</p>
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
+                                <i class="fa-solid fa-users text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
+                                <p class="text-[11px] font-bold text-white leading-tight">كافة المستخدمين</p>
                             </div>
                         </label>
+
                         <label class="cursor-pointer">
                             <input class="peer sr-only" name="recipient_type" value="departments" type="radio"
                                    onchange="document.getElementById('deptSelectorModal').classList.remove('hidden')"/>
-                            <div class="flex items-center justify-center gap-2 p-3 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all">
-                                <i class="fa-solid fa-building-columns text-zinc-400 peer-checked:text-[#f2f20d]"></i>
-                                <p class="text-xs font-bold text-white">أقسام محددة</p>
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
+                                <i class="fa-solid fa-building-columns text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
+                                <p class="text-[11px] font-bold text-white leading-tight">قسم معين</p>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer">
+                            <input class="peer sr-only" name="recipient_type" value="heads" type="radio"
+                                   onchange="document.getElementById('deptSelectorModal').classList.add('hidden')"/>
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
+                                <i class="fa-solid fa-user-shield text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
+                                <p class="text-[11px] font-bold text-white leading-tight">رؤساء الأقسام بس</p>
                             </div>
                         </label>
                     </div>
