@@ -64,11 +64,6 @@
 @endpush
 
 @section('content')
-    @if(session('success'))
-        <div style="background: rgba(16,185,129,0.1); border: 1px solid #10b981; border-radius: 0.75rem; padding: 0.8rem 1.2rem; margin-bottom: 1.25rem; color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-        </div>
-    @endif
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
@@ -98,22 +93,26 @@
             $isRead = $n->is_read ?? false;
             $type   = $n->type ?? 'general';
             $iconMap = [
-                'assignment' => ['icon' => 'fa-book-open',  'color' => '#ffe600', 'bg' => '#fffbe6'],
-                'message'    => ['icon' => 'fa-envelope',   'color' => '#3b82f6', 'bg' => '#eff6ff'],
-                'admin'      => ['icon' => 'fa-calendar',   'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
-                'grade'      => ['icon' => 'fa-check',      'color' => '#10b981', 'bg' => '#ecfdf5'],
-                'attendance' => ['icon' => 'fa-clipboard-user', 'color' => '#f59e0b', 'bg' => '#fffbeb'],
-                'general'    => ['icon' => 'fa-bell',       'color' => '#f59e0b', 'bg' => '#fffbeb'],
+                'assignment'    => ['icon' => 'fa-book-open',      'color' => '#ffe600', 'bg' => '#fffbe6'],
+                'message'       => ['icon' => 'fa-envelope',       'color' => '#3b82f6', 'bg' => '#eff6ff'],
+                'admin'         => ['icon' => 'fa-calendar',       'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
+                'grade'         => ['icon' => 'fa-check',          'color' => '#10b981', 'bg' => '#ecfdf5'],
+                'attendance'    => ['icon' => 'fa-clipboard-user', 'color' => '#f59e0b', 'bg' => '#fffbeb'],
+                'leave_request' => ['icon' => 'fa-calendar-xmark', 'color' => '#ef4444', 'bg' => '#fef2f2'],
+                'leave'         => ['icon' => 'fa-calendar-xmark', 'color' => '#ef4444', 'bg' => '#fef2f2'],
+                'general'       => ['icon' => 'fa-bell',           'color' => '#f59e0b', 'bg' => '#fffbeb'],
             ];
             $style = $iconMap[$type] ?? $iconMap['general'];
 
             $linkMap = [
-                'assignment' => '/student/assignments',
-                'grade'      => '/student/grades',
-                'attendance' => '/student/attendance',
-                'message'    => '/student/messages',
-                'admin'      => '/student/dashboard',
-                'general'    => '/student/notifications',
+                'assignment'    => '/student/assignments',
+                'grade'         => '/student/grades',
+                'attendance'    => '/student/attendance',
+                'leave_request' => '/student/leave-requests',
+                'leave'         => '/student/leave-requests',
+                'message'       => '/student/messages',
+                'admin'         => '/student/dashboard',
+                'general'       => '/student/notifications',
             ];
             $link = $linkMap[$type] ?? '/student/notifications';
         @endphp

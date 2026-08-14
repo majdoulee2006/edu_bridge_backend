@@ -17,13 +17,6 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 mb-4">
-            <span class="material-symbols-outlined">check_circle</span>
-            <span class="text-sm font-semibold">{{ session('success') }}</span>
-        </div>
-    @endif
-
     {{-- ===== Form Card ===== --}}
     <div class="w-full">
         <form method="POST" action="{{ route('admin.announcements.store') }}" enctype="multipart/form-data"

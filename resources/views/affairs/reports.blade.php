@@ -90,10 +90,6 @@
 @section('content')
     <p class="page-subtitle">إدارة ومتابعة تقارير الأداء</p>
 
-    @if(session('success'))
-        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('success') }}</div>
-    @endif
-
     {{-- Header مع زر + --}}
     <div class="section-header">
         <h4 class="section-title"><i class="fa-solid fa-file-lines" style="color:var(--accent-color);margin-left:0.5rem;"></i> التقارير الصادرة</h4>

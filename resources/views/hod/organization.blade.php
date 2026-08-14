@@ -177,18 +177,6 @@
 @section('content')
     <p class="page-subtitle">إدارة الجداول الأكاديمية</p>
 
-    @if (session('success'))
-        <div style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <div class="type-switcher">
         <button class="type-btn active" id="btn-schedules" onclick="switchTab('schedules')"><i class="fa-solid fa-graduation-cap"></i> جدول دراسي</button>
         <button class="type-btn" id="btn-exams" onclick="switchTab('exams')"><i class="fa-solid fa-file-pen"></i> جدول امتحاني</button>

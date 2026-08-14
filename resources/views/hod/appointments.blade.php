@@ -131,16 +131,6 @@
 
 @section('content')
 <div style="margin-bottom: 2rem;">
-    @if(session('success'))
-        <div style="padding: 1rem; background-color: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #10b981; border-radius: 0.75rem; margin-bottom: 1.5rem; font-weight: bold; font-size: 0.9rem;">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div style="padding: 1rem; background-color: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; border-radius: 0.75rem; margin-bottom: 1.5rem; font-weight: bold; font-size: 0.9rem;">
-            {{ session('error') }}
-        </div>
-    @endif
 
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
         <div class="custom-tabs" style="margin-bottom: 0;">

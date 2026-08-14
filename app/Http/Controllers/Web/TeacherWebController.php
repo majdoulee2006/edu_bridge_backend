@@ -985,6 +985,50 @@ class TeacherWebController extends Controller
             ->where('teacher_id', $teacher->teacher_id)
             ->pluck('course_id');
 
+        $courses = DB::table('course_teachers')
+            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+            ->where('course_teachers.teacher_id', $teacher->teacher_id)
+            ->select('courses.*')
+            ->get();
+
+        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+
+        foreach ($courses as $c) {
+            $programNames = [];
+            $deptNames = [];
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('course_program') && \Illuminate\Support\Facades\Schema::hasTable('programs')) {
+                $programNames = DB::table('course_program')
+                    ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                    ->where('course_program.course_id', $c->course_id)
+                    ->pluck('programs.name')
+                    ->toArray();
+
+                if (\Illuminate\Support\Facades\Schema::hasTable('departments')) {
+                    $deptNames = DB::table('course_program')
+                        ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                        ->join('departments', 'programs.department_id', '=', 'departments.department_id')
+                        ->where('course_program.course_id', $c->course_id)
+                        ->pluck('departments.name')
+                        ->unique()
+                        ->toArray();
+                }
+            }
+
+            if (empty($deptNames) && \Illuminate\Support\Facades\Schema::hasTable('course_departments') && \Illuminate\Support\Facades\Schema::hasTable('departments')) {
+                $deptNames = DB::table('course_departments')
+                    ->join('departments', 'course_departments.department_id', '=', 'departments.department_id')
+                    ->where('course_departments.course_id', $c->course_id)
+                    ->pluck('departments.name')
+                    ->unique()
+                    ->toArray();
+            }
+
+            $c->programs_list = !empty($programNames) ? implode(' - ', $programNames) : 'جميع التخصصات';
+            $c->department_label = !empty($deptNames) ? implode(' - ', $deptNames) : 'هندسة المعلوماتية';
+            $c->year_label = (isset($c->year) && isset($yearMap[$c->year])) ? $yearMap[$c->year] : 'السنة الثانية';
+        }
+
         $assignments = DB::table('assignments')
             ->join('courses', 'assignments.course_id', '=', 'courses.course_id')
             ->whereIn('assignments.course_id', $courseIds)
@@ -997,11 +1041,64 @@ class TeacherWebController extends Controller
             ->orderByDesc('assignments.created_at')
             ->get();
 
-        $courses = DB::table('course_teachers')
-            ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
-            ->where('course_teachers.teacher_id', $teacher->teacher_id)
-            ->select('courses.course_id', 'courses.title')
-            ->get();
+        foreach ($assignments as $a) {
+            $enrolledStudents = DB::table('enrollments')
+                ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->where('enrollments.course_id', $a->course_id)
+                ->where('enrollments.status', 'active')
+                ->select('students.student_id', 'users.full_name as student_name')
+                ->distinct()
+                ->get();
+
+            if ($enrolledStudents->isEmpty()) {
+                $enrolledStudents = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->select('students.student_id', 'users.full_name as student_name')
+                    ->distinct()
+                    ->get();
+            }
+
+            $submissions = DB::table('assignment_submissions')
+                ->where('assignment_id', $a->assignment_id)
+                ->get()
+                ->keyBy('student_id');
+
+            $dueDate = \Carbon\Carbon::parse($a->due_date);
+            $isPast = $dueDate->isPast();
+
+            $studentStatusList = [];
+            foreach ($enrolledStudents as $s) {
+                $sub = $submissions->get($s->student_id);
+                if ($sub) {
+                    if ($sub->grade !== null) {
+                        $statusKey = 'graded';
+                        $statusText = 'تم التصحيح';
+                    } else {
+                        $statusKey = 'submitted';
+                        $statusText = 'بانتظار التصحيح';
+                    }
+                } else {
+                    if ($isPast) {
+                        $statusKey = 'overdue';
+                        $statusText = 'فائتة (لم يسلم)';
+                    } else {
+                        $statusKey = 'pending';
+                        $statusText = 'بانتظار التسليم';
+                    }
+                }
+
+                $studentStatusList[] = (object) [
+                    'student_id'   => $s->student_id,
+                    'student_name' => $s->student_name,
+                    'status_key'   => $statusKey,
+                    'status_text'  => $statusText,
+                    'submission'   => $sub,
+                ];
+            }
+
+            $a->student_statuses = collect($studentStatusList);
+        }
 
         $assignmentIds = $assignments->pluck('assignment_id');
 

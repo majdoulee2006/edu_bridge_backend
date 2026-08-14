@@ -165,8 +165,12 @@
                         <span style="background:#ffcc00; color:#1a1a1a; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $photoReqCount }}</span>
                     @endif
                 </a>
-                <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}">
-                    <i class="fa-solid fa-file-signature"></i> طلبات الإجازة
+                <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
+                    <span><i class="fa-solid fa-file-signature"></i> طلبات الإجازة</span>
+                    @php $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('absence_requests')->where('status', 'pending_affairs')->count(); @endphp
+                    @if($pendingLeavesCount > 0)
+                        <span style="background:#ef4444; color:white; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $pendingLeavesCount }}</span>
+                    @endif
                 </a>
                 <a href="{{ url('/affairs/student-services') }}" class="nav-item {{ Request::is('affairs/student-services*') ? 'active' : '' }}">
                     <i class="fa-solid fa-boxes-stacked"></i> الخدمات الطلابية
@@ -243,12 +247,12 @@
             </header>
 
             @if (session('success'))
-                <div style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                <div class="global-alert-box" style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.5s ease;">
                     <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
                 </div>
             @endif
             @if (session('error'))
-                <div style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                <div class="global-alert-box" style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.5s ease;">
                     <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
                 </div>
             @endif
@@ -292,7 +296,6 @@
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.getElementById('mobile-overlay');
             
-            // Remove any inline styles that might conflict with our CSS classes
             sidebar.style.display = '';
             sidebar.style.position = '';
             sidebar.style.width = '';
@@ -301,11 +304,23 @@
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.global-alert-box');
+                alerts.forEach(function(alert) {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateY(-10px)';
+                    setTimeout(function() { alert.remove(); }, 500);
+                });
+            }, 5000);
+        });
     </script>
     @stack('scripts')
 
     @include('partials.logout_modal')
     @include('partials.inactivity_logout')
+    @include('partials.web_toast_notifications')
 </body>
 </html>
 

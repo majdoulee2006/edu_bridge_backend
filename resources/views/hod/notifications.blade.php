@@ -108,12 +108,6 @@
 
 @section('content')
 
-    @if(session('success'))
-        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">
-            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-        </div>
-    @endif
-
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
             <p style="color:var(--text-secondary); margin: 0;">
@@ -146,6 +140,7 @@
                 'assignment'     => ['icon' => 'fa-book-open',      'color' => '#ca8a04', 'bg' => '#fefce8'],
                 'announcement'   => ['icon' => 'fa-bullhorn',        'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
                 'leave'          => ['icon' => 'fa-calendar-xmark',  'color' => '#ef4444', 'bg' => '#fef2f2'],
+                'leave_request'  => ['icon' => 'fa-calendar-check',  'color' => '#ef4444', 'bg' => '#fef2f2'],
                 'attendance'     => ['icon' => 'fa-clipboard-user',  'color' => '#f59e0b', 'bg' => '#fffbeb'],
                 'grade'          => ['icon' => 'fa-star',            'color' => '#10b981', 'bg' => '#ecfdf5'],
                 'message'        => ['icon' => 'fa-envelope',        'color' => '#3b82f6', 'bg' => '#eff6ff'],
@@ -158,6 +153,7 @@
                 'assignment'     => '/hod/dashboard',
                 'announcement'   => '/hod/dashboard',
                 'leave'          => '/hod/leaves',
+                'leave_request'  => '/hod/leaves',
                 'attendance'     => '/hod/dashboard',
                 'grade'          => '/hod/dashboard',
                 'message'        => '/hod/messages',

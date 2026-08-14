@@ -271,7 +271,7 @@
 
             <!-- Flash Toast Messages -->
             @if (session('success'))
-                <div class="px-8 pt-4 alert-toast">
+                <div class="px-8 pt-4 alert-toast global-alert-box" style="transition: all 0.5s ease;">
                     <div class="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400">
                         <i class="fa-solid fa-circle-check text-lg"></i>
                         <span class="text-sm font-semibold">{{ session('success') }}</span>
@@ -279,7 +279,7 @@
                 </div>
             @endif
             @if (session('error'))
-                <div class="px-8 pt-4 alert-toast">
+                <div class="px-8 pt-4 alert-toast global-alert-box" style="transition: all 0.5s ease;">
                     <div class="flex items-center gap-3 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/30 text-rose-700 dark:text-rose-400">
                         <i class="fa-solid fa-circle-xmark text-lg"></i>
                         <span class="text-sm font-semibold">{{ session('error') }}</span>
@@ -368,14 +368,17 @@
             if (btn) btn.textContent = newLang === 'ar' ? 'EN' : 'عر';
         }
 
-        // Restore language state on load
-        (function() {
-            const savedLang = localStorage.getItem('app-lang') || 'ar';
-            document.documentElement.setAttribute('dir', savedLang === 'ar' ? 'rtl' : 'ltr');
-            document.documentElement.setAttribute('lang', savedLang);
-            const btn = document.getElementById('admin-lang-btn-text');
-            if (btn) btn.textContent = savedLang === 'ar' ? 'EN' : 'عر';
-        })();
+        // Auto-dismiss alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.global-alert-box');
+                alerts.forEach(function(alert) {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateY(-10px)';
+                    setTimeout(function() { alert.remove(); }, 500);
+                });
+            }, 5000);
+        });
     </script>
 
 <!-- Logout Confirmation Modal -->
@@ -399,6 +402,7 @@
 
     @include('partials.logout_modal')
     @include('partials.inactivity_logout')
+    @include('partials.web_toast_notifications')
 </body>
 </html>
 

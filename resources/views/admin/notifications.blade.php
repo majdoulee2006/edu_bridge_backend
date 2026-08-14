@@ -85,13 +85,6 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="mb-6 p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-sm font-bold flex items-center gap-3">
-            <i class="fa-solid fa-circle-check text-lg"></i>
-            <span>{{ session('success') }}</span>
-        </div>
-    @endif
-
     {{-- ===== Filters Bar ===== --}}
     @php
         $unreadCount = $notifications->filter(fn($n) => !$n->is_read)->count();

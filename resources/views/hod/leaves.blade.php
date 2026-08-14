@@ -120,12 +120,6 @@
 
 @section('content')
 
-    @if(session('success'))
-        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">
-            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-        </div>
-    @endif
-
     {{-- فلتر الحالة --}}
     <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1.5rem;">
         <button class="status-btn active" onclick="setStatus('all',      this)">الكل</button>
@@ -138,7 +132,7 @@
     <div id="leaves-container">
         @forelse($allLeaves as $leave)
             @php
-                $cat    = $leave->leave_category ?? 'daily';
+                $cat    = $leave->leave_category ?? $leave->type ?? 'daily';
                 $status = $leave->status ?? 'pending';
                 $statusGroup = in_array($status, ['pending','pending_hod','pending_parent']) ? 'pending' : $status;
             @endphp

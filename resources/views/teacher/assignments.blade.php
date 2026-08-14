@@ -1,5 +1,5 @@
 @extends('layouts.teacher')
-@section('title', 'الواجبات والمشاريع')
+@section('title', 'الواجبات الموزعة حسب المواد، التخصصات، والسنة الدراسية')
 
 @push('styles')
 <style>
@@ -7,8 +7,51 @@
     .tab-btn { padding: 0.5rem 1.5rem; border-radius: 0.75rem; border: none; background: transparent; color: var(--text-secondary); font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
     .tab-btn.active { background: var(--accent-color); color: #1a1a1a; }
 
-    .assignment-card { background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.25rem 1.5rem; box-shadow: var(--shadow); margin-bottom: 0.75rem; border-right: 4px solid var(--accent-color); }
-    .status-badge { padding: 0.2rem 0.75rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 700; }
+    .course-accordion-item {
+        background: var(--bg-secondary);
+        border-radius: 1.25rem;
+        margin-bottom: 1.25rem;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+    .course-accordion-item:hover {
+        border-color: var(--accent-color);
+    }
+    .course-accordion-header {
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+        background: var(--bg-secondary);
+        transition: background 0.2s;
+    }
+    .course-accordion-header:hover {
+        background: var(--bg-primary);
+    }
+
+    .assignment-card {
+        background: var(--bg-primary);
+        border-radius: 1rem;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        border-right: 4px solid var(--accent-color);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .assignment-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+    .status-badge { padding: 0.25rem 0.75rem; border-radius: 2rem; font-size: 0.78rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    .badge-pending   { background: hsl(30,70%,90%);   color: hsl(30,50%,30%); }
+    .badge-overdue   { background: hsl(0,70%,90%);    color: hsl(0,50%,30%); }
+    .badge-submitted { background: hsl(200,70%,90%);  color: hsl(200,50%,30%); }
+    .badge-graded    { background: hsl(120,70%,90%);  color: hsl(120,50%,30%); }
 
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
     .modal-overlay.active { display: flex; }
@@ -55,107 +98,256 @@
     /* Attachment in card */
     .attach-chip {
         display: inline-flex; align-items: center; gap: 0.4rem;
-        padding: 0.2rem 0.65rem; border-radius: 2rem;
+        padding: 0.25rem 0.75rem; border-radius: 2rem;
         font-size: 0.78rem; font-weight: 700;
         text-decoration: none;
     }
     .attach-image    { background: #eff6ff; color: #1d4ed8; }
     .attach-video    { background: #fdf4ff; color: #7e22ce; }
     .attach-document { background: #fefce8; color: #854d0e; }
+
+    /* Students status list */
+    .students-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.85rem;
+        font-size: 0.85rem;
+    }
+    .students-table th, .students-table td {
+        padding: 0.65rem 0.85rem;
+        text-align: right;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .students-table th {
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        font-weight: 700;
+    }
 </style>
 @endpush
 
 @section('content')
 @php
     $pendingSubmissionsCount = isset($allSubmissions) ? $allSubmissions->whereNull('grade')->count() : 0;
+    $groupedAssignments = $assignments->groupBy('course_id');
 @endphp
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div class="tab-bar">
-            <button class="tab-btn active" onclick="switchTab('all', this)">الكل</button>
+            <button class="tab-btn active" onclick="switchTab('all', this)">المواد والتخصصات</button>
             <button class="tab-btn" onclick="switchTab('submissions', this)" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                الردود
+                الردود والتسليمات
                 @if($pendingSubmissionsCount > 0)
                     <span style="background: #ef4444; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.45rem; border-radius: 1rem; min-width: 18px; text-align: center; line-height: 1.2;">{{ $pendingSubmissionsCount }}</span>
                 @endif
             </button>
         </div>
         <button onclick="document.getElementById('add-modal').classList.add('active')"
-                style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; padding: 0.6rem 1.25rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fa-solid fa-plus"></i> واجب جديد
+                style="background: linear-gradient(135deg, #ffe600, #facc15); color: #111827; border: none; border-radius: 0.85rem; padding: 0.65rem 1.35rem; font-weight: 800; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 15px rgba(250, 204, 21, 0.35);">
+            <i class="fa-solid fa-plus"></i> إضافة واجب جديد
         </button>
     </div>
 
-    {{-- All Assignments --}}
+    {{-- All Assignments Grouped by Course / Specialization / Year --}}
     <div id="tab-all">
-        @forelse($assignments as $a)
-            <div class="assignment-card">
-                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;">
-                    <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
-                            @if($a->graded_count >= $a->submissions_count && $a->submissions_count > 0)
-                                <span class="status-badge" style="background: hsl(120,70%,90%); color: hsl(120,50%,30%);">تم التصحيح</span>
-                            @elseif($a->submissions_count > 0)
-                                <span class="status-badge" style="background: hsl(30,70%,90%); color: hsl(30,50%,30%);">قيد التصحيح</span>
-                            @else
-                                <span class="status-badge" style="background: var(--accent-color); color: #1a1a1a;">نشط</span>
-                            @endif
-                            <span style="font-weight: 800; font-size: 1rem;">{{ $a->title }}</span>
-                        </div>
-                        <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.4rem;">
-                            {{ $a->course_title }}
-                        </div>
-                        <div style="display: flex; gap: 1.25rem; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.82rem;">
-                            <span><i class="fa-solid fa-calendar"></i> {{ \Carbon\Carbon::parse($a->due_date)->format('Y-m-d') }}</span>
-                            <span><i class="fa-solid fa-users"></i> {{ $a->submissions_count }} تسليم</span>
-                            <span><i class="fa-solid fa-check-circle"></i> {{ $a->graded_count }} مصحح</span>
-                        </div>
+        @forelse($courses as $index => $c)
+            @php
+                $courseAssigns = $groupedAssignments->get($c->course_id, collect());
+                $shouldExpand = ($index === 0) || ($courseAssigns->count() > 0);
+            @endphp
 
-                        {{-- Attachment chip --}}
-                        @if($a->file_path)
-                            @php
-                                $chipClass = match($a->file_type) {
-                                    'image'    => 'attach-image',
-                                    'video'    => 'attach-video',
-                                    default    => 'attach-document',
-                                };
-                                $chipIcon = match($a->file_type) {
-                                    'image'    => 'fa-image',
-                                    'video'    => 'fa-video',
-                                    default    => 'fa-file-lines',
-                                };
-                            @endphp
-                            <div style="margin-top: 0.5rem;">
-                                <a href="{{ asset('storage/' . $a->file_path) }}"
-                                   target="_blank"
-                                   class="attach-chip {{ $chipClass }}">
-                                    <i class="fa-solid {{ $chipIcon }}"></i>
-                                    {{ $a->file_name ?? 'المرفق' }}
-                                </a>
+            <div class="course-accordion-item">
+                <!-- Accordion Header -->
+                <div class="course-accordion-header" onclick="toggleTeacherAccordion('teacher-course-body-{{ $c->course_id }}', 'teacher-chevron-{{ $c->course_id }}')">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 52px; height: 52px; border-radius: 1rem; background: rgba(234, 179, 8, 0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fa-solid fa-book-open" style="font-size: 1.4rem; color: #eab308;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                                {{ $c->title }}
+                                <span style="font-size: 0.78rem; background: rgba(234, 179, 8, 0.18); color: #eab308; padding: 0.2rem 0.75rem; border-radius: 1rem; font-weight: 800;">
+                                    {{ $c->year_label }}
+                                </span>
                             </div>
-                        @endif
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.3rem; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+                                <span><i class="fa-solid fa-building-columns" style="color: var(--accent-color);"></i> <strong>القسم:</strong> {{ $c->department_label }}</span>
+                                <span>&bull;</span>
+                                <span><i class="fa-solid fa-graduation-cap" style="color: var(--accent-color);"></i> <strong>التخصص:</strong> {{ $c->programs_list }}</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                        <a href="{{ route('teacher.assignments.submissions', $a->assignment_id) }}"
-                           style="background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.85rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 0.4rem;">
-                            <i class="fa-solid fa-eye"></i> الردود
-                        </a>
-                        <form action="{{ route('teacher.assignments.delete', $a->assignment_id) }}" method="POST"
-                              onsubmit="return confirm('هل أنت متأكد من حذف هذا الواجب؟')">
-                            @csrf
-                            <button type="submit"
-                                    style="background: hsl(0,70%,95%); border: none; color: hsl(0,50%,40%); border-radius: 0.5rem; padding: 0.4rem 0.75rem; cursor: pointer; font-size: 0.85rem;">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </form>
+                    <div style="display: flex; align-items: center; gap: 0.85rem;">
+                        <span style="font-size: 0.8rem; font-weight: 700; background: var(--bg-primary); padding: 0.35rem 0.85rem; border-radius: 2rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
+                            {{ $courseAssigns->count() }} واجب{{ $courseAssigns->count() == 1 ? '' : 'ات' }}
+                        </span>
+                        <div style="width: 34px; height: 34px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
+                            <i id="teacher-chevron-{{ $c->course_id }}" class="fa-solid fa-chevron-down toggle-icon" style="transition: transform 0.3s ease; color: var(--text-secondary); transform: {{ $shouldExpand ? 'rotate(180deg)' : 'rotate(0deg)' }};"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accordion Body -->
+                <div id="teacher-course-body-{{ $c->course_id }}" class="course-accordion-body" style="display: {{ $shouldExpand ? 'block' : 'none' }}; padding: 0 1.25rem 1.25rem 1.25rem; border-top: 1px solid var(--border-color);">
+                    <div style="padding-top: 1.25rem;">
+                        @forelse($courseAssigns as $a)
+                            <div class="assignment-card">
+                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                                    <div style="flex: 1; min-width: 250px;">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                                            @if($a->graded_count >= $a->submissions_count && $a->submissions_count > 0)
+                                                <span class="status-badge badge-graded"><i class="fa-solid fa-check-double"></i> تم تصحيح الكل</span>
+                                            @elseif($a->submissions_count > 0)
+                                                <span class="status-badge badge-submitted"><i class="fa-solid fa-clock"></i> قيد التصحيح</span>
+                                            @else
+                                                <span class="status-badge badge-pending"><i class="fa-solid fa-hourglass-start"></i> نشط (بانتظار تسليم الطلاب)</span>
+                                            @endif
+                                            <span style="font-weight: 800; font-size: 1.05rem; color: var(--text-primary);">{{ $a->title }}</span>
+                                        </div>
+
+                                        <div style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 0.6rem; line-height: 1.5;">
+                                            {{ Str::limit($a->description, 200) }}
+                                        </div>
+
+                                        <div style="display: flex; gap: 1.25rem; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.82rem;">
+                                            <span><i class="fa-solid fa-calendar" style="color: var(--accent-color);"></i> موعد التسليم: <strong>{{ \Carbon\Carbon::parse($a->due_date)->format('Y-m-d') }}</strong></span>
+                                            <span><i class="fa-solid fa-users" style="color: #3b82f6;"></i> <strong>{{ $a->submissions_count }}</strong> تسليم</span>
+                                            <span><i class="fa-solid fa-check-circle" style="color: #22c55e;"></i> <strong>{{ $a->graded_count }}</strong> مصحح</span>
+                                            <span><i class="fa-solid fa-star" style="color: #eab308;"></i> العلامة القصوى: <strong>{{ $a->max_points }}</strong></span>
+                                        </div>
+
+                                        {{-- Attachment chip --}}
+                                        @if($a->file_path)
+                                            @php
+                                                $chipClass = match($a->file_type) {
+                                                    'image'    => 'attach-image',
+                                                    'video'    => 'attach-video',
+                                                    default    => 'attach-document',
+                                                };
+                                                $chipIcon = match($a->file_type) {
+                                                    'image'    => 'fa-image',
+                                                    'video'    => 'fa-video',
+                                                    default    => 'fa-file-lines',
+                                                };
+                                            @endphp
+                                            <div style="margin-top: 0.6rem;">
+                                                <a href="{{ asset('storage/' . $a->file_path) }}"
+                                                   target="_blank"
+                                                   class="attach-chip {{ $chipClass }}">
+                                                    <i class="fa-solid {{ $chipIcon }}"></i>
+                                                    مرفق الواجب: {{ $a->file_name ?? 'الملف' }}
+                                                </a>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0; align-items: center;">
+                                        <a href="{{ route('teacher.assignments.submissions', $a->assignment_id) }}"
+                                           style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.65rem; padding: 0.5rem 0.9rem; font-size: 0.85rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 0.4rem; transition: background 0.2s;">
+                                            <i class="fa-solid fa-eye" style="color: var(--accent-color);"></i> الردود الكاملة ({{ $a->submissions_count }})
+                                        </a>
+                                        <form action="{{ route('teacher.assignments.delete', $a->assignment_id) }}" method="POST"
+                                              onsubmit="return confirm('هل أنت متأكد من حذف هذا الواجب؟')">
+                                            @csrf
+                                            <button type="submit"
+                                                    style="background: hsl(0,70%,95%); border: none; color: hsl(0,50%,40%); border-radius: 0.65rem; padding: 0.5rem 0.8rem; cursor: pointer; font-size: 0.85rem; font-weight: 700;" title="حذف الواجب">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                {{-- Students Individual Status Section --}}
+                                <div style="margin-top: 1rem; border-top: 1px dashed var(--border-color); padding-top: 0.85rem;">
+                                    <button onclick="toggleStudentTable('students-table-{{ $a->assignment_id }}', 'students-chevron-{{ $a->assignment_id }}')"
+                                        style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.45rem 0.9rem; border-radius: 0.65rem; font-weight: 700; font-size: 0.83rem; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fa-solid fa-users-gear" style="color: var(--accent-color);"></i>
+                                        قائمة طلاب هذا التخصص المطلوب منهم الواجب ({{ $a->student_statuses->count() }} طالب)
+                                        <i id="students-chevron-{{ $a->assignment_id }}" class="fa-solid fa-chevron-down" style="transition: transform 0.25s ease; margin-right: 0.3rem;"></i>
+                                    </button>
+
+                                    <div id="students-table-{{ $a->assignment_id }}" style="display: none; margin-top: 0.75rem; overflow-x: auto;">
+                                        <table class="students-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>اسم الطالب</th>
+                                                    <th>حالة الواجب والتسليم</th>
+                                                    <th>العلامة المقيمة</th>
+                                                    <th>الإجراءات / التفاصيل</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse($a->student_statuses as $stIndex => $st)
+                                                    <tr>
+                                                        <td>{{ $stIndex + 1 }}</td>
+                                                        <td style="font-weight: 700; color: var(--text-primary);">{{ $st->student_name }}</td>
+                                                        <td>
+                                                            @if($st->status_key === 'graded')
+                                                                <span class="status-badge badge-graded">
+                                                                    <i class="fa-solid fa-circle-check"></i> تم التصحيح
+                                                                </span>
+                                                            @elseif($st->status_key === 'submitted')
+                                                                <span class="status-badge badge-submitted">
+                                                                    <i class="fa-solid fa-clock"></i> بانتظار التصحيح
+                                                                </span>
+                                                            @elseif($st->status_key === 'overdue')
+                                                                <span class="status-badge badge-overdue">
+                                                                    <i class="fa-solid fa-circle-xmark"></i> فائتة (لم يتم التسليم)
+                                                                </span>
+                                                            @else
+                                                                <span class="status-badge badge-pending">
+                                                                    <i class="fa-solid fa-hourglass-half"></i> بانتظار التسليم
+                                                                </span>
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if($st->status_key === 'graded' && $st->submission)
+                                                                <span style="font-size: 0.95rem; font-weight: 800; color: #22c55e;">
+                                                                    {{ $st->submission->grade }} <span style="font-size: 0.78rem; color: var(--text-secondary);">/ {{ $a->max_points }}</span>
+                                                                </span>
+                                                            @else
+                                                                <span style="color: var(--text-secondary); font-size: 0.8rem;">--</span>
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if($st->submission)
+                                                                <a href="{{ route('teacher.assignments.submissions', $a->assignment_id) }}" 
+                                                                   style="color: var(--accent-color); font-weight: 700; text-decoration: none; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                                                    <i class="fa-solid fa-pen-to-square"></i> 
+                                                                    {{ $st->status_key === 'graded' ? 'تعديل الدرجة' : 'تصحيح الرد' }}
+                                                                </a>
+                                                            @else
+                                                                <span style="color: var(--text-secondary); font-size: 0.8rem;">لا يوجد رد</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                    <tr>
+                                                        <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 1rem;">
+                                                            لا يوجد طلاب مسجلون بهذا التخصص حالياً
+                                                        </td>
+                                                    </tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div style="text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.9rem;">
+                                <i class="fa-solid fa-folder-open" style="font-size: 2rem; opacity: 0.4; display: block; margin-bottom: 0.5rem;"></i>
+                                لا توجد واجبات مضافة لهذه المادة والتخصص حتى الآن
+                            </div>
+                        @endforelse
                     </div>
                 </div>
             </div>
         @empty
             <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
                 <i class="fa-solid fa-file-circle-plus" style="font-size: 2.5rem; margin-bottom: 0.75rem; display: block; color: var(--accent-color);"></i>
-                لا توجد واجبات حتى الآن
+                لا توجد مواد مسجلة لك حالياً
             </div>
         @endforelse
     </div>
@@ -261,13 +453,13 @@
             <form action="{{ route('teacher.assignments.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
-                {{-- المادة --}}
+                {{-- المادة والتخصص --}}
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة</label>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة والفرع / التخصص المستهدف</label>
                     <select name="course_id" class="form-input" required>
-                        <option value="">← اختر المادة</option>
+                        <option value="">← اختر المادة والتخصص</option>
                         @foreach($courses as $c)
-                            <option value="{{ $c->course_id }}">{{ $c->title }}</option>
+                            <option value="{{ $c->course_id }}">{{ $c->title }} — ({{ $c->department_label }} | {{ $c->programs_list }}) — {{ $c->year_label }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -331,7 +523,7 @@
                 {{-- أزرار --}}
                 <div style="display: flex; gap: 1rem;">
                     <button type="submit"
-                            style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
+                            style="flex: 1; padding: 0.85rem; background: linear-gradient(135deg, #ffe600, #facc15); color: #111827; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem; box-shadow: 0 4px 15px rgba(250, 204, 21, 0.35);">
                         <i class="fa-solid fa-floppy-disk"></i> حفظ الواجب
                     </button>
                     <button type="button" onclick="closeAddModal()"
@@ -347,6 +539,34 @@
 
 @push('scripts')
 <script>
+function toggleTeacherAccordion(bodyId, iconId) {
+    const body = document.getElementById(bodyId);
+    const icon = document.getElementById(iconId);
+    if (!body) return;
+    
+    if (body.style.display === 'none' || body.style.display === '') {
+        body.style.display = 'block';
+        if (icon) icon.style.transform = 'rotate(180deg)';
+    } else {
+        body.style.display = 'none';
+        if (icon) icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+function toggleStudentTable(tableId, chevronId) {
+    const table = document.getElementById(tableId);
+    const chevron = document.getElementById(chevronId);
+    if (!table) return;
+
+    if (table.style.display === 'none' || table.style.display === '') {
+        table.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    } else {
+        table.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
 /* ===== Tabs ===== */
 function switchTab(tab, btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));

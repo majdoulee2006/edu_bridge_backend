@@ -237,13 +237,6 @@
         <div style="background: var(--bg-secondary); border-radius: 0.75rem; padding: 0.8rem 1.5rem; font-weight: 700; color: #ef4444;">❌ مرفوضة: {{ $rejectedCount }}</div>
     </div>
 
-    {{-- Success/Error messages --}}
-    @if(session('success'))
-        <div style="background: rgba(16,185,129,0.1); border: 1px solid #10b981; border-radius: 0.75rem; padding: 1rem 1.5rem; margin-bottom: 1.5rem; color: #10b981; font-weight: 700;">
-            <i class="fa-solid fa-check-circle"></i> {{ session('success') }}
-        </div>
-    @endif
-
     <!-- Grid -->
     <div class="leaves-grid" id="leavesGrid">
 
@@ -276,16 +269,33 @@
                     <div class="leave-reason">
                         <strong>السبب:</strong> {{ $leave->reason ?? 'لم يذكر سبب.' }}
                     </div>
+
+                    {{-- إظهار رأي المراحل السابقة (موافقة ولي الأمر ورئيس القسم) --}}
+                    @if(in_array($leave->status, ['pending_affairs', 'approved']))
+                    <div style="margin-top:0.75rem;background:#f0fdf4;color:#16a34a;padding:0.5rem 0.8rem;border-radius:0.6rem;font-size:0.82rem;font-weight:700;display:flex;align-items:center;gap:0.4rem;border:1px solid #bbf7d0;">
+                        <i class="fa-solid fa-circle-check"></i> الآراء السابقة: موافقة ولي الأمر (تمت ✓) | موافقة رئيس القسم (تمت ✓)
+                    </div>
+                    @elseif($leave->status === 'pending_hod')
+                    <div style="margin-top:0.75rem;background:#eff6ff;color:#2563eb;padding:0.5rem 0.8rem;border-radius:0.6rem;font-size:0.82rem;font-weight:700;display:flex;align-items:center;gap:0.4rem;border:1px solid #bfdbfe;">
+                        <i class="fa-solid fa-clock"></i> الآراء السابقة: موافقة ولي الأمر (تمت ✓) | بانتظار رئيس القسم
+                    </div>
+                    @elseif($leave->status === 'pending_parent')
+                    <div style="margin-top:0.75rem;background:#fefce8;color:#ca8a04;padding:0.5rem 0.8rem;border-radius:0.6rem;font-size:0.82rem;font-weight:700;display:flex;align-items:center;gap:0.4rem;border:1px solid #fef08a;">
+                        <i class="fa-solid fa-clock"></i> في انتظار أولى المراحل: موافقة ولي الأمر
+                    </div>
+                    @endif
                 </div>
                 <div class="card-actions">
-                    @if(in_array($leave->status, ['pending', 'pending_hod', 'pending_affairs']))
+                    @if(in_array($leave->status, ['pending', 'pending_hod', 'pending_affairs', 'pending_parent']))
                         <form method="POST" action="{{ route('affairs.leaves.status', $leave->id) }}" style="flex:1;">
                             @csrf
+                            <input type="hidden" name="source_table" value="{{ $leave->source_table ?? 'absence_requests' }}">
                             <input type="hidden" name="status" value="approved">
-                            <button type="submit" class="btn-action btn-approve" style="width:100%;"><i class="fa-solid fa-check"></i> تسجيل المبرر</button>
+                            <button type="submit" class="btn-action btn-approve" style="width:100%;"><i class="fa-solid fa-check"></i> اعتماد المبرر</button>
                         </form>
                         <form method="POST" action="{{ route('affairs.leaves.status', $leave->id) }}" style="flex:1;">
                             @csrf
+                            <input type="hidden" name="source_table" value="{{ $leave->source_table ?? 'absence_requests' }}">
                             <input type="hidden" name="status" value="rejected">
                             <button type="submit" class="btn-action btn-reject" style="width:100%;"><i class="fa-solid fa-xmark"></i> رفض</button>
                         </form>

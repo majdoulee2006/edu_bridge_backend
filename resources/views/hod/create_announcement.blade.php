@@ -23,12 +23,6 @@
     <div class="max-w-2xl mx-auto card" style="max-width: 800px; margin: 2rem auto;">
         <h1 class="text-2xl font-semibold mb-6 text-gray-800" style="margin-bottom: 1.5rem;">إنشاء إعلان جديد</h1>
 
-        @if (session('success'))
-            <div class="alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
-
         <form method="POST" action="{{ route('hod.announcements.store') }}" enctype="multipart/form-data">
             @csrf
 

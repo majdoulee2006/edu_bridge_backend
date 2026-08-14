@@ -14,18 +14,6 @@
         <p class="text-xs text-slate-800/70 mt-1">تتيح لك هذه اللوحة إدارة طلبات اللقاءات الواردة من الأهالي واستدعائهم عند الضرورة.</p>
     </div>
 
-    {{-- رسائل التنبيه --}}
-    @if(session('success'))
-        <div class="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold">
-            {{ session('error') }}
-        </div>
-    @endif
-
     {{-- تقسيم الصفحة --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         

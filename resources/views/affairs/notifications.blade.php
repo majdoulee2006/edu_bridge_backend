@@ -215,14 +215,7 @@
             @if($unreadCount > 0)
                 <span class="badge-count" id="unreadCount">{{ $unreadCount }}</span>
             @endif
-        </button>
     </div>
-
-    @if(session('success'))
-        <div style="background: rgba(16,185,129,0.1); border: 1px solid #10b981; border-radius: 0.75rem; padding: 1rem 1.5rem; margin-bottom: 1.5rem; color: #10b981; font-weight: 700;">
-            <i class="fa-solid fa-check-circle"></i> {{ session('success') }}
-        </div>
-    @endif
 
     <!-- Notifications List -->
     <div class="notifications-list" id="notifList">

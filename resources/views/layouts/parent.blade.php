@@ -80,6 +80,19 @@
                     <i class="fa-solid fa-comments"></i>
                     الرسائل
                 </a>
+                <a href="{{ url('/parent/notifications') }}" class="nav-item {{ Request::is('parent/notifications*') ? 'active' : '' }}" style="position: relative;">
+                    <i class="fa-solid fa-bell"></i>
+                    الإشعارات
+                    @php
+                        $unreadParentNotifs = \Illuminate\Support\Facades\DB::table('notifications')
+                            ->where('user_id', auth()->id())
+                            ->where('is_read', 0)
+                            ->count();
+                    @endphp
+                    @if($unreadParentNotifs > 0)
+                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadParentNotifs }}</span>
+                    @endif
+                </a>
                 <a href="{{ url('/parent/profile') }}" class="nav-item {{ Request::is('parent/profile') ? 'active' : '' }}">
                     <i class="fa-solid fa-user"></i>
                     الملف الشخصي
@@ -148,17 +161,17 @@
             </header>
 
             @if (session('success'))
-                <div style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                <div class="global-alert-box" style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.5s ease;">
                     <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
                 </div>
             @endif
             @if (session('error'))
-                <div style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                <div class="global-alert-box" style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.5s ease;">
                     <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
                 </div>
             @endif
             @if($errors->any())
-                <div style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                <div class="global-alert-box" style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; transition: all 0.5s ease;">
                     <i class="fa-solid fa-circle-xmark"></i>
                     <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
                         @foreach($errors->all() as $error)
@@ -183,11 +196,23 @@
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.global-alert-box');
+                alerts.forEach(function(alert) {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateY(-10px)';
+                    setTimeout(function() { alert.remove(); }, 500);
+                });
+            }, 5000);
+        });
     </script>
     @stack('scripts')
 
     @include('partials.logout_modal')
     @include('partials.inactivity_logout')
+    @include('partials.web_toast_notifications')
 </body>
 </html>
 

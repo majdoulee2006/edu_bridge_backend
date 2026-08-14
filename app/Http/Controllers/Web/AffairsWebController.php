@@ -884,22 +884,52 @@ class AffairsWebController extends Controller
     }
 
     // ─────────────────────────── Leaves ───────────────────────────
+    // ─────────────────────────── Leaves ───────────────────────────
     public function leaves()
     {
-        $leaves = DB::table('leave_requests')
+        $leavesFromLeaveTable = DB::table('leave_requests')
             ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
             ->leftJoin('students', 'students.user_id', '=', 'users.user_id')
             ->select(
-                'leave_requests.*',
+                'leave_requests.id',
+                'leave_requests.student_id',
+                'leave_requests.type',
+                'leave_requests.date',
+                'leave_requests.reason',
+                'leave_requests.status',
+                'leave_requests.created_at',
+                'leave_requests.updated_at',
                 'users.full_name as student_name',
                 'students.level',
-                'students.student_code'
+                'students.student_code',
+                DB::raw("'leave_requests' as source_table")
             )
-            ->where('leave_requests.status', '!=', 'pending_parent')
-            ->orderBy('leave_requests.created_at', 'desc')
+            ->whereIn('leave_requests.status', ['pending_affairs', 'approved', 'rejected'])
             ->get();
 
-        $pendingCount  = $leaves->whereIn('status', ['pending', 'pending_hod', 'pending_affairs'])->count();
+        $leavesFromAbsenceTable = DB::table('absence_requests')
+            ->join('students', 'absence_requests.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select(
+                'absence_requests.request_id as id',
+                'students.user_id as student_id',
+                DB::raw("'full_day' as type"),
+                'absence_requests.date',
+                'absence_requests.reason',
+                'absence_requests.status',
+                'absence_requests.created_at',
+                'absence_requests.updated_at',
+                'users.full_name as student_name',
+                'students.level',
+                'students.student_code',
+                DB::raw("'absence_requests' as source_table")
+            )
+            ->whereIn('absence_requests.status', ['pending_affairs', 'approved', 'rejected'])
+            ->get();
+
+        $leaves = $leavesFromLeaveTable->concat($leavesFromAbsenceTable)->sortByDesc('created_at');
+
+        $pendingCount  = $leaves->where('status', 'pending_affairs')->count();
         $approvedCount = $leaves->where('status', 'approved')->count();
         $rejectedCount = $leaves->where('status', 'rejected')->count();
 
@@ -910,28 +940,41 @@ class AffairsWebController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,rejected,recorded']);
         $status = $request->status;
-        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
+        $sourceTable = $request->input('source_table', 'absence_requests');
+
+        if ($sourceTable === 'leave_requests') {
+            $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
+            if ($leaveRequest) {
+                DB::table('leave_requests')->where('id', $id)->update(['status' => $status, 'updated_at' => now()]);
+            }
+        } else {
+            $leaveRequest = DB::table('absence_requests')->where('request_id', $id)->first();
+            if ($leaveRequest) {
+                DB::table('absence_requests')->where('request_id', $id)->update(['status' => $status, 'updated_at' => now()]);
+            }
+        }
 
         if (!$leaveRequest) {
             return back()->with('error', 'الطلب غير موجود.');
         }
 
-        DB::table('leave_requests')
-            ->where('id', $id)
-            ->update([
-                'status' => $status,
-                'updated_at' => now()
-            ]);
+        // تحديد الطالب المستهدف لإشعاره بالقرار النهائي
+        $studentUserId = null;
+        if (isset($leaveRequest->student_id)) {
+            // إذا كان المعرف يخزن student_id الخاص بجدول الطلاب
+            $stUser = DB::table('students')->where('student_id', $leaveRequest->student_id)->value('user_id');
+            $studentUserId = $stUser ?? $leaveRequest->student_id;
+        }
 
-        // إرسال إشعار للطالب
-        if ($leaveRequest->student_id) {
-            $title   = $status === 'approved' ? 'قبول المبرر' : 'رفض المبرر';
+        // الخطوة الأهم: إرسال الإشعار النهائي للطالب فقط عند موافقة أو رفض شؤون الطلاب
+        if ($studentUserId) {
+            $title   = $status === 'approved' ? 'تمت الموافقة النهائية على طلب الإذن ✓' : 'تم رفض طلب الإذن';
             $message = $status === 'approved'
-                ? 'تم قبول المبرر الخاص بك (تاريخ ' . $leaveRequest->date . ') وتم تثبيته من قبل شؤون الطلاب.'
-                : 'نعتذر، تم رفض المبرر الخاص بك (تاريخ ' . $leaveRequest->date . ') من قبل شؤون الطلاب.';
+                ? 'تهانينا، تمت الموافقة على طلب إذنك بتاريخ ' . $leaveRequest->date . ' نهائياً من قِبل ولي الأمر ورئيس القسم وشؤون الطلاب!'
+                : 'نعتذر، تم رفض طلب إذنك بتاريخ ' . $leaveRequest->date . ' من قِبل إدارة شؤون الطلاب.';
 
             DB::table('notifications')->insert([
-                'user_id'    => $leaveRequest->student_id,
+                'user_id'    => $studentUserId,
                 'title'      => $title,
                 'message'    => $message,
                 'type'       => 'leave_request',
@@ -942,53 +985,14 @@ class AffairsWebController extends Controller
             ]);
 
             \App\Services\FcmService::sendToUser(
-                $leaveRequest->student_id,
+                $studentUserId,
                 $title,
                 $message,
                 ['type' => 'leave_request', 'related_id' => (string) $id]
             );
-
-            // إشعار لمربي الدورة (Advisor)
-            $studentInfo = DB::table('users')
-                ->join('students', 'users.user_id', '=', 'students.user_id')
-                ->where('users.user_id', $leaveRequest->student_id)
-                ->select('users.department', 'users.full_name', 'students.level')
-                ->first();
-            
-            if ($studentInfo) {
-                $advisor = DB::table('teachers')
-                    ->where('advisor_branch', $studentInfo->department)
-                    ->where('advisor_year', $studentInfo->level)
-                    ->first();
-                
-                if ($advisor) {
-                    $advisorTitle = 'تحديث حالة تبرير غياب';
-                    $advisorMessage = $status === 'approved'
-                        ? 'قامت شؤون الطلاب بقبول تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leaveRequest->date . ')'
-                        : 'قامت شؤون الطلاب برفض تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leaveRequest->date . ')';
-                    
-                    DB::table('notifications')->insert([
-                        'user_id'    => $advisor->user_id,
-                        'title'      => $advisorTitle,
-                        'message'    => $advisorMessage,
-                        'type'       => 'leave_request',
-                        'related_id' => $id,
-                        'is_read'    => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    \App\Services\FcmService::sendToUser(
-                        $advisor->user_id,
-                        $advisorTitle,
-                        $advisorMessage,
-                        ['type' => 'leave_request', 'related_id' => (string) $id]
-                    );
-                }
-            }
         }
 
-        return back()->with('success', 'تم تحديث حالة طلب الإجازة.');
+        return back()->with('success', 'تم تحديث حالة طلب الإجازة وإشعار الطالب بالنتيجة النهائية.');
     }
 
     // ─────────────────────────── Messages ───────────────────────────

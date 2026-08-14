@@ -55,13 +55,28 @@
                     <i class="fa-solid fa-house"></i>
                     الرئيسية
                 </a>
-                <a href="{{ url('/hod/leaves') }}" class="nav-item {{ Request::is('hod/leaves') ? 'active' : '' }}">
+                <a href="{{ url('/hod/leaves') }}" class="nav-item {{ Request::is('hod/leaves') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-calendar-check"></i>
                     طلبات الإجازة
+                    @php
+                        $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('absence_requests')->where('status', 'pending_hod')->count();
+                    @endphp
+                    @if($pendingLeavesCount > 0)
+                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $pendingLeavesCount }}</span>
+                    @endif
                 </a>
-                <a href="{{ url('/hod/notifications') }}" class="nav-item {{ Request::is('hod/notifications') ? 'active' : '' }}">
+                <a href="{{ url('/hod/notifications') }}" class="nav-item {{ Request::is('hod/notifications') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-bell"></i>
                     الإشعارات
+                    @php
+                        $unreadHodNotifsCount = \Illuminate\Support\Facades\DB::table('notifications')
+                            ->where('user_id', auth()->id())
+                            ->where('is_read', 0)
+                            ->count();
+                    @endphp
+                    @if($unreadHodNotifsCount > 0)
+                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadHodNotifsCount }}</span>
+                    @endif
                 </a>
                 <a href="{{ url('/hod/messages') }}" class="nav-item {{ Request::is('hod/messages') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-comments"></i>
@@ -154,12 +169,12 @@
             </header>
 
             @if (session('success'))
-                <div id="hod-success-alert" style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.5s;">
+                <div id="hod-success-alert" class="global-alert-box" style="background-color: hsl(120, 70%, 95%); color: hsl(120, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.5s ease;">
                     <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
                 </div>
             @endif
             @if (session('error'))
-                <div id="hod-error-alert" style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: opacity 0.5s;">
+                <div id="hod-error-alert" class="global-alert-box" style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; transition: all 0.5s ease;">
                     <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
                 </div>
             @endif
@@ -180,29 +195,23 @@
             overlay.classList.toggle('active');
         }
 
-        // Auto-hide alerts after 6 seconds
+        // Auto-hide alerts after 5 seconds
         document.addEventListener('DOMContentLoaded', function() {
-            const successAlert = document.getElementById('hod-success-alert');
-            const errorAlert = document.getElementById('hod-error-alert');
-            
-            if (successAlert) {
-                setTimeout(() => {
-                    successAlert.style.opacity = '0';
-                    setTimeout(() => successAlert.style.display = 'none', 500);
-                }, 6000);
-            }
-            if (errorAlert) {
-                setTimeout(() => {
-                    errorAlert.style.opacity = '0';
-                    setTimeout(() => errorAlert.style.display = 'none', 500);
-                }, 6000);
-            }
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.global-alert-box');
+                alerts.forEach(function(alert) {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateY(-10px)';
+                    setTimeout(function() { alert.remove(); }, 500);
+                });
+            }, 5000);
         });
     </script>
     @stack('scripts')
 
     @include('partials.logout_modal')
     @include('partials.inactivity_logout')
+    @include('partials.web_toast_notifications')
 </body>
 </html>
 
