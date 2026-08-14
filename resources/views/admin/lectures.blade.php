@@ -164,6 +164,9 @@
                                     $finalUrl = $rawUrl;
                                 } else {
                                     $path = ltrim($rawUrl, '/');
+                                    if (str_starts_with($path, 'public/')) {
+                                        $path = substr($path, 7);
+                                    }
                                     if (!str_starts_with($path, 'storage/')) {
                                         $path = 'storage/' . $path;
                                     }
@@ -176,14 +179,14 @@
                                 <a href="{{ $finalUrl }}" target="_blank"
                                    class="py-2.5 px-3 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-300 text-xs font-extrabold flex items-center justify-center gap-1.5 border border-blue-500/30 transition-all">
                                     <i class="fa-solid fa-eye text-xs"></i>
-                                    <span>معاينة</span>
+                                    <span>{{ $isExternal ? 'فتح الرابط' : 'معاينة' }}</span>
                                 </a>
 
-                                {{-- Download Button --}}
-                                <a href="{{ $finalUrl }}" download target="_blank"
+                                {{-- Download / Open External Button --}}
+                                <a href="{{ $finalUrl }}" {{ $isExternal ? 'target="_blank"' : 'download' }}
                                    class="py-2.5 px-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-extrabold flex items-center justify-center gap-1.5 border border-amber-500/40 transition-all">
-                                    <i class="fa-solid fa-download text-xs"></i>
-                                    <span>تنزيل</span>
+                                    <i class="fa-solid {{ $isExternal ? 'fa-arrow-up-right-from-square' : 'fa-download' }} text-xs"></i>
+                                    <span>{{ $isExternal ? 'انتقال' : 'تنزيل' }}</span>
                                 </a>
                             </div>
                         @else
