@@ -208,11 +208,10 @@
                     سجل النشاطات والأمان
                 </a>
 
-                <!-- Logout Button -->
                 <div class="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800">
                     <form id="admin-logout-form" action="{{ route('admin.logout') }}" method="POST">
                         @csrf
-                        <button type="submit"
+                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))"
                                 class="w-full flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all text-right">
                             <i class="fa-solid fa-arrow-right-from-bracket text-base"></i>
                             تسجيل الخروج
@@ -442,6 +441,7 @@
     document.getElementById('logoutModal').addEventListener('click', function(e) {
         if (e.target === this) closeLogoutModal();
     });
+    @include('partials.logout_modal')
     @include('partials.inactivity_logout')
 </body>
 </html>
