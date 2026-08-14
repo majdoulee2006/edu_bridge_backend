@@ -224,13 +224,13 @@
         {{-- ======= MAIN CONTENT AREA ======= --}}
         <div class="flex-1 mr-0 md:mr-72 flex flex-col min-h-screen transition-all duration-300">
             <!-- Top Bar Header -->
-            <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20 transition-colors">
+            <header class="bg-white dark:bg-[#121212] border-b border-slate-200 dark:border-slate-800/80 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20 transition-colors">
                 <div class="flex items-center gap-3">
-                    <button id="mobile-menu-btn" class="md:hidden flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all">
+                    <button id="mobile-menu-btn" class="md:hidden flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-[#1f1f1f] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all">
                         <i class="fa-solid fa-bars text-lg"></i>
                     </button>
                     <h1 class="text-base md:text-lg font-bold text-slate-800 dark:text-white truncate max-w-[200px] md:max-w-none">
-                        أهلاً، {{ Auth::user()->full_name ?? 'المدير العام' }} 👋
+                        أهلاً، {{ Auth::user()->full_name ?? 'إدارة المعهد التقني' }} 👋
                     </h1>
                 </div>
                 
@@ -242,21 +242,21 @@
                             ->count();
                     @endphp
                     <!-- Notifications Bell -->
-                    <a href="{{ route('admin.notifications') }}" class="relative w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all" title="الإشعارات">
+                    <a href="{{ route('admin.notifications') }}" class="relative w-10 h-10 rounded-full bg-slate-50 dark:bg-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all" title="الإشعارات">
                         <i class="fa-solid fa-bell text-base"></i>
                         @if($unreadAdminNotifs > 0)
-                            <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-800 animate-pulse"></span>
+                            <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-[#121212] animate-pulse"></span>
                         @endif
                     </a>
 
                     <!-- Theme Toggle Switch -->
-                    <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all">
+                    <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-50 dark:bg-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all">
                         <i class="fa-solid fa-moon text-base dark:hidden"></i>
                         <i class="fa-solid fa-sun text-base hidden dark:inline"></i>
                     </button>
 
                     <!-- Language Toggle -->
-                    <button onclick="toggleAdminLanguage()" class="h-10 px-3 rounded-full bg-slate-50 dark:bg-slate-700 flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all text-xs font-bold">
+                    <button onclick="toggleAdminLanguage()" class="h-10 px-3 rounded-full bg-slate-50 dark:bg-[#1f1f1f] flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all text-xs font-bold">
                         <i class="fa-solid fa-globe text-sm"></i>
                         <span id="admin-lang-btn-text">EN</span>
                     </button>
