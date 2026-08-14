@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduBridge - بوابة تسجيل الدخول الموحدة</title>
+    <title>{{ $role['title'] ?? 'EduBridge - تسجيل الدخول' }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
@@ -41,7 +41,7 @@
             border: 1px solid var(--border-dark);
             border-radius: 24px;
             width: 100%;
-            max-width: 480px;
+            max-width: 440px;
             padding: 2.5rem 2rem;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
             position: relative;
@@ -64,70 +64,51 @@
         }
 
         .logo-icon-wrapper {
-            width: 64px;
-            height: 64px;
+            width: 68px;
+            height: 68px;
             background: rgba(242, 242, 13, 0.1);
             border: 1px solid rgba(242, 242, 13, 0.3);
-            border-radius: 18px;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 1.2rem;
             color: var(--accent-yellow);
-            font-size: 1.8rem;
+            font-size: 1.9rem;
             box-shadow: 0 0 20px rgba(242, 242, 13, 0.15);
         }
 
         .brand-title {
-            font-size: 2rem;
+            font-size: 1.9rem;
             font-weight: 900;
             letter-spacing: -0.5px;
             color: #ffffff;
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.3rem;
         }
 
         .brand-title span {
             color: var(--accent-yellow);
         }
 
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(242, 242, 13, 0.08);
+            border: 1px solid rgba(242, 242, 13, 0.2);
+            color: var(--accent-yellow);
+            padding: 0.35rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-top: 0.4rem;
+        }
+
         .subtitle {
             color: var(--text-muted);
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             font-weight: 600;
-        }
-
-        /* Portal Tabs (Staff vs Students/Parents) */
-        .portal-tabs {
-            display: flex;
-            background: #18181b;
-            padding: 4px;
-            border-radius: 14px;
-            border: 1px solid var(--border-dark);
-            margin-bottom: 1.8rem;
-            gap: 4px;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 0.65rem 0.5rem;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 0.88rem;
-            font-weight: 700;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-        }
-
-        .tab-btn.active {
-            background: var(--accent-yellow);
-            color: #000000;
-            box-shadow: 0 4px 12px rgba(242, 242, 13, 0.2);
+            margin-top: 0.5rem;
         }
 
         /* Form Controls */
@@ -157,7 +138,7 @@
             pointer-events: none;
         }
 
-        .form-control, .form-select {
+        .form-control {
             width: 100%;
             background-color: var(--surface-input);
             border: 1px solid var(--border-dark);
@@ -167,19 +148,9 @@
             font-size: 0.95rem;
             outline: none;
             transition: all 0.2s;
-            appearance: none;
         }
 
-        .form-select {
-            padding-left: 2.5rem;
-            cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%27a1a1aa%27'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: left 1rem center;
-            background-size: 1.2rem;
-        }
-
-        .form-control:focus, .form-select:focus {
+        .form-control:focus {
             border-color: var(--accent-yellow);
             box-shadow: 0 0 0 3px rgba(242, 242, 13, 0.15);
         }
@@ -263,12 +234,6 @@
             color: #71717a;
             font-size: 0.82rem;
         }
-
-        option {
-            background-color: #18181b;
-            color: #ffffff;
-            padding: 0.5rem;
-        }
     </style>
 </head>
 <body>
@@ -276,10 +241,18 @@
     <div class="login-card">
         <div class="logo-header">
             <div class="logo-icon-wrapper">
-                <i class="fa-solid fa-graduation-cap"></i>
+                <i class="fa-solid {{ $role['icon'] ?? 'fa-graduation-cap' }}"></i>
             </div>
             <h1 class="brand-title">Edu<span>Bridge</span></h1>
-            <p class="subtitle">بوابة تسجيل الدخول الموحدة للأنظمة</p>
+            
+            @if(isset($role['badge']))
+                <div class="role-badge">
+                    <i class="fa-solid {{ $role['icon'] ?? 'fa-user' }}"></i>
+                    <span>{{ $role['badge'] }}</span>
+                </div>
+            @endif
+            
+            <p class="subtitle">{{ $role['title'] ?? 'بوابة تسجيل الدخول الموحدة' }}</p>
         </div>
 
         @if (session('success'))
@@ -296,51 +269,21 @@
             </div>
         @endif
 
-        <!-- Portal Tabs (Staff vs Students/Parents) -->
-        <div class="portal-tabs">
-            <button type="button" id="tab-staff" class="tab-btn active" onclick="switchPortal('staff')">
-                <i class="fa-solid fa-user-shield"></i>
-                <span>الكادر والإدارة</span>
-            </button>
-            <button type="button" id="tab-students" class="tab-btn" onclick="switchPortal('students')">
-                <i class="fa-solid fa-users"></i>
-                <span>الطلاب والأهل</span>
-            </button>
-        </div>
-
         <form action="{{ url('/login') }}" method="POST" id="loginForm">
             @csrf
 
-            <!-- Hidden input for tracking portal mode -->
-            <input type="hidden" name="portal_mode" id="portal_mode" value="staff">
-
-            <!-- Role Selector Dropdown -->
-            <div class="form-group">
-                <label class="form-label" id="role-label">الصفة الإدارية (Role)</label>
-                <div class="input-wrapper">
-                    <i class="fa-solid fa-user-tag input-icon"></i>
-                    <select name="role_type" id="role_type" class="form-select">
-                        <!-- Staff Options (Default) -->
-                        <optgroup label="الكادر الإداري والتعليمي" id="optgroup-staff">
-                            <option value="affairs" {{ old('role_type') == 'affairs' ? 'selected' : '' }}>📋 موظف شؤون الطلاب (Affairs)</option>
-                            <option value="hod" {{ old('role_type') == 'hod' ? 'selected' : '' }}>🎓 رئيس قسم أكاديمي (HOD)</option>
-                            <option value="teacher" {{ old('role_type') == 'teacher' ? 'selected' : '' }}>👨‍🏫 عضو كادر تدريسي (Teacher)</option>
-                            <option value="admin" {{ old('role_type') == 'admin' ? 'selected' : '' }}>👑 مدير النظام (Admin)</option>
-                        </optgroup>
-                    </select>
-                </div>
-            </div>
+            <!-- Hidden input for tracking role route -->
+            <input type="hidden" name="role_key" value="{{ $role['key'] ?? 'unified' }}">
 
             <!-- Login Input -->
             <div class="form-group">
-                <label class="form-label" id="input-label">بيانات الحساب</label>
+                <label class="form-label">بيانات الحساب</label>
                 <div class="input-wrapper">
-                    <i class="fa-solid fa-id-card input-icon" id="input-icon"></i>
+                    <i class="fa-solid fa-user input-icon"></i>
                     <input type="text" 
                            name="login" 
-                           id="login_input"
                            class="form-control" 
-                           placeholder="اسم المستخدم أو البريد الإلكتروني" 
+                           placeholder="{{ ($role['key'] ?? '') === 'student' ? 'أدخل الرقم الجامعي أو اسم المستخدم' : 'أدخل اسم المستخدم، البريد الإلكتروني، أو الهاتف' }}" 
                            value="{{ old('login') }}" 
                            required 
                            autofocus>
@@ -376,48 +319,6 @@
     </div>
 
     <script>
-        const staffOptions = `
-            <option value="affairs">📋 موظف شؤون الطلاب (Affairs)</option>
-            <option value="hod">🎓 رئيس قسم أكاديمي (HOD)</option>
-            <option value="teacher">👨‍🏫 عضو كادر تدريسي (Teacher)</option>
-            <option value="admin">👑 مدير النظام (Admin)</option>
-        `;
-
-        const studentOptions = `
-            <option value="student">🎓 طالب (Student)</option>
-            <option value="parent">👨‍👩‍👧 ولي أمر (Parent)</option>
-        `;
-
-        function switchPortal(mode) {
-            const tabStaff = document.getElementById('tab-staff');
-            const tabStudents = document.getElementById('tab-students');
-            const roleSelect = document.getElementById('role_type');
-            const roleLabel = document.getElementById('role-label');
-            const inputLabel = document.getElementById('input-label');
-            const loginInput = document.getElementById('login_input');
-            const portalMode = document.getElementById('portal_mode');
-
-            portalMode.value = mode;
-
-            if (mode === 'staff') {
-                tabStaff.classList.add('active');
-                tabStudents.classList.remove('active');
-
-                roleLabel.textContent = 'الصفة الإدارية (Role)';
-                roleSelect.innerHTML = staffOptions;
-                inputLabel.textContent = 'بيانات الحساب (اسم المستخدم / البريد / الهاتف)';
-                loginInput.placeholder = 'أدخل اسم المستخدم أو البريد الإلكتروني';
-            } else {
-                tabStudents.classList.add('active');
-                tabStaff.classList.remove('active');
-
-                roleLabel.textContent = 'صفة المستفيد (Role)';
-                roleSelect.innerHTML = studentOptions;
-                inputLabel.textContent = 'الرقم الجامعي / الهاتف / البريد الإلكتروني';
-                loginInput.placeholder = 'أدخل الرقم الجامعي أو الهاتف أو البريد الإلكتروني';
-            }
-        }
-
         function togglePasswordVisibility() {
             const passwordInput = document.getElementById('password_input');
             const eyeIcon = document.getElementById('eye-icon');
@@ -432,29 +333,6 @@
                 eyeIcon.classList.add('fa-eye');
             }
         }
-
-        // Restore active tab based on query param or old input if validation failed
-        document.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const portalParam = urlParams.get('portal') || urlParams.get('type') || urlParams.get('role');
-            const oldRole = "{{ old('role_type') }}";
-
-            if (portalParam === 'student' || portalParam === 'students' || portalParam === 'parent' || oldRole === 'student' || oldRole === 'parent') {
-                switchPortal('students');
-                if (portalParam === 'student' || portalParam === 'parent') {
-                    document.getElementById('role_type').value = portalParam;
-                } else if (oldRole) {
-                    document.getElementById('role_type').value = oldRole;
-                }
-            } else if (portalParam || oldRole) {
-                switchPortal('staff');
-                if (['affairs','hod','teacher','admin'].includes(portalParam)) {
-                    document.getElementById('role_type').value = portalParam;
-                } else if (oldRole) {
-                    document.getElementById('role_type').value = oldRole;
-                }
-            }
-        });
     </script>
 
 </body>

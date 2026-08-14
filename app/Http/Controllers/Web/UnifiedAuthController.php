@@ -14,32 +14,49 @@ use App\Models\UserActivity;
 class UnifiedAuthController extends Controller
 {
     /**
-     * Show the unified login form.
+     * Role configurations for dedicated login routes.
      */
-    public function showLoginForm()
+    protected $roleConfigs = [
+        'admin'   => ['title' => 'تسجيل دخول إدارة النظام', 'icon' => 'fa-user-shield', 'badge' => 'مدير النظام'],
+        'affairs' => ['title' => 'تسجيل دخول شؤون الطلاب', 'icon' => 'fa-clipboard-user', 'badge' => 'موظف الشؤون'],
+        'hod'     => ['title' => 'تسجيل دخول رئيس القسم', 'icon' => 'fa-user-tie', 'badge' => 'رئيس القسم'],
+        'teacher' => ['title' => 'تسجيل دخول الكادر التدريسي', 'icon' => 'fa-chalkboard-user', 'badge' => 'المعلم'],
+        'student' => ['title' => 'تسجيل دخول الطالب', 'icon' => 'fa-graduation-cap', 'badge' => 'الطالب'],
+        'parent'  => ['title' => 'تسجيل دخول ولي الأمر', 'icon' => 'fa-users', 'badge' => 'ولي الأمر'],
+        'unified' => ['title' => 'بوابة تسجيل الدخول الموحدة', 'icon' => 'fa-shield-halved', 'badge' => 'الدخول الموحد'],
+    ];
+
+    /**
+     * Show the login form for specific role or unified.
+     */
+    public function showLoginForm(Request $request, $roleKey = 'unified')
     {
         if (Auth::check()) {
             return $this->redirectUserByRole(Auth::user());
         }
-        return view('login');
+
+        $role = $this->roleConfigs[$roleKey] ?? $this->roleConfigs['unified'];
+        $role['key'] = $roleKey;
+
+        return view('login', compact('role'));
     }
 
     /**
-     * Handle the unified login request.
+     * Handle login request for any actor.
      */
     public function login(Request $request)
     {
         $request->validate([
-            'login'     => 'required|string',
-            'password'  => 'required|string',
-            'role_type' => 'nullable|string',
+            'login'    => 'required|string',
+            'password' => 'required|string',
+            'role_key' => 'nullable|string',
         ], [
-            'login.required'    => 'يرجى إدخال بيانات حسابك (اسم المستخدم، البريد، الرقم الجامعي أو الهاتف).',
+            'login.required'    => 'يرجى إدخال اسم المستخدم، البريد الإلكتروني، أو الرقم الجامعي.',
             'password.required' => 'كلمة المرور مطلوبة.',
         ]);
 
-        $input    = trim($request->login);
-        $roleType = $request->input('role_type'); // admin, hod, affairs, teacher, student, parent
+        $input   = trim($request->login);
+        $roleKey = $request->input('role_key', 'unified');
 
         // 1. Search in User table by email, phone, or username
         $user = User::where('email', $input)
@@ -57,61 +74,56 @@ class UnifiedAuthController extends Controller
             }
         }
 
-        // 3. Check credentials
+        // 3. Validate credentials
         if ($user && Hash::check($request->password, $user->password)) {
             if ($user->status !== 'active') {
                 UserActivity::log('محاولة دخول مرفوضة', 'الحساب موقوف مؤقتاً', $user);
-                return back()->withErrors(['login' => 'عذراً، هذا الحساب موقوف مؤقتاً.'])->withInput($request->only('login', 'role_type'));
+                return back()->withErrors(['login' => 'عذراً، هذا الحساب موقوف مؤقتاً.'])->withInput($request->only('login'));
             }
 
-            // 4. Validate selected role type if provided by user
-            if ($roleType) {
+            // 4. If logged in through a dedicated role route, ensure role matches
+            if ($roleKey !== 'unified') {
                 $userRoleId = (int) ($user->role_id ?? 0);
                 $userRole   = strtolower($user->role ?? '');
 
                 $isMatch = false;
-                switch ($roleType) {
+                switch ($roleKey) {
                     case 'admin':
                         $isMatch = ($userRoleId === 1 || $userRole === 'admin' || !empty($user->is_admin));
-                        $roleNameAr = 'مدير نظام (Admin)';
-                        break;
-                    case 'hod':
-                        $isMatch = ($userRoleId === 5 || $userRole === 'head' || $userRole === 'hod');
-                        $roleNameAr = 'رئيس قسم (HOD)';
                         break;
                     case 'affairs':
                         $isMatch = ($userRoleId === 6 || $userRole === 'affairs');
-                        $roleNameAr = 'موظف شؤون';
+                        break;
+                    case 'hod':
+                        $isMatch = ($userRoleId === 5 || $userRole === 'head' || $userRole === 'hod');
                         break;
                     case 'teacher':
                         $isMatch = ($userRoleId === 2 || $userRole === 'teacher' || $userRole === 'instructor');
-                        $roleNameAr = 'معلم / محاضر';
                         break;
                     case 'student':
                         $isMatch = ($userRoleId === 3 || $userRole === 'student' || Student::where('user_id', $user->user_id)->exists());
-                        $roleNameAr = 'طالب';
                         break;
                     case 'parent':
                         $isMatch = ($userRoleId === 4 || $userRole === 'parent' || Parents::where('user_id', $user->user_id)->exists());
-                        $roleNameAr = 'ولي أمر';
                         break;
                     default:
                         $isMatch = true;
                 }
 
                 if (!$isMatch) {
-                    return back()->withErrors(['login' => "هذا الحساب غير مسجل بصفة ($roleNameAr). يرجى اختيار الصفة الصحيحة من القائمة."])->withInput($request->only('login', 'role_type'));
+                    $expectedBadge = $this->roleConfigs[$roleKey]['badge'] ?? '';
+                    return back()->withErrors(['login' => "هذا الحساب غير مسجل بصفة ($expectedBadge). يرجى التأكد من رابط الدخول الصحيح."])->withInput($request->only('login'));
                 }
             }
 
             Auth::login($user);
             $request->session()->regenerate();
-            UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح عبر البوابة الموحدة', $user);
+            UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح', $user);
 
             return $this->redirectUserByRole($user);
         }
 
-        return back()->withErrors(['login' => 'بيانات الدخول غير صحيحة، يرجى التأكد من المحدّدات وكلمة المرور.'])->withInput($request->only('login', 'role_type'));
+        return back()->withErrors(['login' => 'بيانات الدخول غير صحيحة، يرجى التأكد من اسم المستخدم وكلمة المرور.'])->withInput($request->only('login'));
     }
 
     /**
