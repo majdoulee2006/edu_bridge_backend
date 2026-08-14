@@ -12,7 +12,7 @@
 
 @section('content')
 
-    <form action="{{ route('admin.courses.store') }}" method="POST" class="flex flex-col gap-5">
+    <form action="{{ route('admin.courses.store') }}" method="POST" class="flex flex-col gap-5" id="create-course-form" onsubmit="preventDoubleSubmit(this)">
         @csrf
 
         {{-- Course Name --}}
@@ -93,7 +93,7 @@
 
         {{-- Submit --}}
         <div class="pt-2 pb-8">
-            <button type="submit" class="group relative w-full overflow-hidden rounded-[1.5rem] bg-primary p-4 transition-all hover:bg-primary-dark active:scale-[0.98] shadow-glow">
+            <button type="submit" id="submit-btn" class="group relative w-full overflow-hidden rounded-[1.5rem] bg-primary p-4 transition-all hover:bg-primary-dark active:scale-[0.98] shadow-glow">
                 <div class="relative z-10 flex items-center justify-center gap-3">
                     <span class="material-symbols-outlined text-primary-content text-xl">add_circle</span>
                     <span class="font-bold text-primary-content text-lg">حفظ وإضافة الدورة</span>
@@ -102,4 +102,20 @@
         </div>
     </form>
 
+@push('scripts')
+<script>
+    function preventDoubleSubmit(form) {
+        const btn = document.getElementById('submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.7';
+            const textSpan = btn.querySelector('.font-bold');
+            if (textSpan) {
+                textSpan.textContent = 'جاري حفظ وإضافة الدورة...';
+            }
+        }
+    }
+</script>
+@endpush
 @endsection
