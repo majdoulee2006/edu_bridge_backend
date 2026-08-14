@@ -218,27 +218,6 @@
                         </button>
                     </form>
                 </div>
-
-                <!-- Logout Confirm Modal -->
-                <div id="logout-confirm-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 w-full max-w-sm text-center" dir="rtl">
-                        <div class="w-14 h-14 rounded-full bg-red-50 dark:bg-red-950/30 flex items-center justify-center mx-auto mb-4">
-                            <i class="fa-solid fa-arrow-right-from-bracket text-2xl text-red-500"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">تسجيل الخروج</h3>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">هل تريد تسجيل الخروج من لوحة التحكم؟</p>
-                        <div class="flex gap-3">
-                            <button onclick="document.getElementById('admin-logout-form').submit()"
-                                    class="flex-1 py-3 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm transition-all active:scale-95">
-                                نعم، خروج
-                            </button>
-                            <button onclick="document.getElementById('logout-confirm-modal').classList.add('hidden')"
-                                    class="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm transition-all active:scale-95">
-                                إلغاء
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </nav>
         </aside>
 
@@ -419,28 +398,6 @@
     </div>
 </div>
 
-<script>
-    var _logoutForm = null;
-
-    function showLogoutModal(form) {
-        _logoutForm = form;
-        var modal = document.getElementById('logoutModal');
-        modal.style.display = 'flex';
-    }
-
-    function closeLogoutModal() {
-        document.getElementById('logoutModal').style.display = 'none';
-        _logoutForm = null;
-    }
-
-    function confirmLogout() {
-        if (_logoutForm) _logoutForm.submit();
-    }
-
-    // Close on backdrop click
-    document.getElementById('logoutModal').addEventListener('click', function(e) {
-        if (e.target === this) closeLogoutModal();
-    });
     @include('partials.logout_modal')
     @include('partials.inactivity_logout')
 </body>
