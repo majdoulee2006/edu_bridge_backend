@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Theme
         document.documentElement.setAttribute('data-theme', settings.theme);
         
-        // Language
-        document.documentElement.setAttribute('dir', settings.lang === 'ar' ? 'rtl' : 'ltr');
+        // Language - Always maintain RTL direction to protect system layout structure
+        document.documentElement.setAttribute('dir', 'rtl');
         document.documentElement.setAttribute('lang', settings.lang);
         
         // Font Size

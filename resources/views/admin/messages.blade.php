@@ -4,10 +4,10 @@
 
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="flex gap-6 h-[calc(100vh-10rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-soft transition-colors" id="chat-app-container">
+<div class="flex gap-0 md:gap-6 h-[calc(100vh-10rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-soft transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS) ================= -->
-    <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-[#262626] h-full shrink-0" id="contacts-sidebar-pane">
+    <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-[#262626] h-full shrink-0 md:flex" id="contacts-sidebar-pane">
         <!-- Search and Filter -->
         <div class="p-4 border-b border-slate-200 dark:border-[#262626] space-y-3">
             <div class="flex items-center gap-2">
@@ -42,7 +42,7 @@
     </div>
 
     <!-- ================= CHAT ROOM WINDOW ================= -->
-    <div class="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-[#09090b] relative" id="chat-room-pane">
+    <div class="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-[#09090b] relative hidden md:flex" id="chat-room-pane">
         
         <!-- Chat Placeholder (Visible when no active chat) -->
         <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-[#121212] z-10 text-center transition-colors duration-300">
@@ -132,6 +132,8 @@
                     <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-500 p-0.5">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
+                </div>
+
                 <!-- Inline Attachment Preview Container -->
                 <div id="attachment-preview-container" class="hidden bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#262626] rounded-2xl p-2.5 shadow-sm flex items-center justify-between gap-3 w-full mb-1 transition-all">
                     <div class="flex items-center gap-2.5 min-w-0">
@@ -402,7 +404,7 @@
                 if (data.status === 'success' && data.data && data.data.length > 0) {
                     renderContactsList(data.data);
                     wrapperDiv.classList.remove('hidden');
-                    if (!activeContactId && data.data.length > 0) {
+                    if (!activeContactId && data.data.length > 0 && window.innerWidth >= 768) {
                         const first = data.data[0];
                         let roleAr = first.role;
                         if (first.role === 'admin') roleAr = 'الإدارة';
@@ -585,7 +587,16 @@
     }
 
     function showSidebarOnMobile() {
-        document.getElementById('contacts-sidebar-pane').classList.remove('hidden');
+        const sidebar = document.getElementById('contacts-sidebar-pane');
+        const chatRoom = document.getElementById('chat-room-pane');
+        if (sidebar) {
+            sidebar.classList.remove('hidden');
+            sidebar.classList.add('flex');
+        }
+        if (chatRoom) {
+            chatRoom.classList.add('hidden');
+            chatRoom.classList.remove('flex');
+        }
     }
 
     // Switch conversation details and fetch old chat history
@@ -594,7 +605,16 @@
 
         // Toggle Sidebar visibility on mobile
         if (window.innerWidth < 768) {
-            document.getElementById('contacts-sidebar-pane').classList.add('hidden');
+            const sidebar = document.getElementById('contacts-sidebar-pane');
+            const chatRoom = document.getElementById('chat-room-pane');
+            if (sidebar) {
+                sidebar.classList.add('hidden');
+                sidebar.classList.remove('flex');
+            }
+            if (chatRoom) {
+                chatRoom.classList.remove('hidden');
+                chatRoom.classList.add('flex');
+            }
         }
 
         document.getElementById('chat-placeholder').classList.add('hidden');
@@ -686,7 +706,7 @@
         const alignClass = isMe ? 'justify-end' : 'justify-start';
         const bgBubble = isMe 
             ? 'bg-[#FFCC00] text-black chat-bubble-sent shadow-soft' 
-            : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 chat-bubble-received border border-slate-200/50 dark:border-slate-800/80 shadow-soft';
+            : 'bg-white dark:bg-[#181818] text-slate-800 dark:text-slate-100 chat-bubble-received border border-slate-200/50 dark:border-[#262626] shadow-soft';
 
         const msgTime = new Date(msg.created_at).toLocaleTimeString('ar-EG', {
             hour: '2-digit',
@@ -859,6 +879,7 @@
                 </div>
                 ${!isMe ? optionsHtml : ''}
             </div>
+        `;
         feed.innerHTML += bubbleHtml;
     }
 
@@ -868,7 +889,16 @@
     }
 
     function showSidebarOnMobile() {
-        document.getElementById('contacts-sidebar-pane').classList.remove('hidden');
+        const sidebar = document.getElementById('contacts-sidebar-pane');
+        const chatRoom = document.getElementById('chat-room-pane');
+        if (sidebar) {
+            sidebar.classList.remove('hidden');
+            sidebar.classList.add('flex');
+        }
+        if (chatRoom) {
+            chatRoom.classList.add('hidden');
+            chatRoom.classList.remove('flex');
+        }
     }
 
     function handleFileSelection(event) {

@@ -126,6 +126,7 @@
                     @hasSection('subtitle')
                         <p class="page-subtitle" style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 0.25rem;">@yield('subtitle')</p>
                     @endif
+                    </div>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
                     @php
