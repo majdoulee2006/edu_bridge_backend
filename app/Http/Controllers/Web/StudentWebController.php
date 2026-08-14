@@ -844,71 +844,7 @@ class StudentWebController extends Controller
         return view('student.messages', compact('allUsers'));
     }
 
-    public function getContacts()
-    {
-        $currentUserId = Auth::id();
 
-        $conversations = \App\Models\Message::where('deleted_for_everyone', false)
-            ->where(function($q) use ($currentUserId) {
-                $q->where(function($sub) use ($currentUserId) {
-                    $sub->where('sender_id', $currentUserId)->where('deleted_for_sender', false);
-                })->orWhere(function($sub) use ($currentUserId) {
-                    $sub->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
-                });
-            })
-            ->latest()
-            ->get()
-            ->map(function ($msg) use ($currentUserId) {
-                return ($msg->sender_id == $currentUserId) ? $msg->receiver_id : $msg->sender_id;
-            })
-            ->unique()
-            ->values();
-
-        $contactsRaw = \App\Models\User::whereIn('user_id', $conversations)->get();
-
-        $contacts = [];
-        foreach ($contactsRaw as $c) {
-            $unread = \App\Models\Message::where('sender_id', $c->user_id)
-                ->where('receiver_id', $currentUserId)
-                ->where('is_read', false)
-                ->where('deleted_for_everyone', false)
-                ->where('deleted_for_receiver', false)
-                ->count();
-
-            $lastMsg = \App\Models\Message::where('deleted_for_everyone', false)
-                ->where(function ($q) use ($currentUserId, $c) {
-                    $q->where(function($sub) use ($currentUserId, $c) {
-                        $sub->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id)->where('deleted_for_sender', false);
-                    })->orWhere(function($sub) use ($currentUserId, $c) {
-                        $sub->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
-                    });
-                })
-                ->latest()
-                ->first();
-
-            if (!$lastMsg) continue;
-
-            $contacts[] = [
-                'id' => $c->user_id,
-                'name' => $c->full_name,
-                'role' => $c->role,
-                'image' => $c->profile_picture ? asset('storage/' . $c->profile_picture) : null,
-                'unread' => $unread,
-                'last_message' => $lastMsg ? $lastMsg->message : '',
-                'time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : '',
-                'updated_at' => $lastMsg ? $lastMsg->created_at : now()
-            ];
-        }
-
-        usort($contacts, function($a, $b) {
-            return $b['updated_at'] <=> $a['updated_at'];
-        });
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $contacts
-        ]);
-    }
 
     public function getConversation($userId)
     {

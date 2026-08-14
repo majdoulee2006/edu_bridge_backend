@@ -11,6 +11,112 @@ use App\Models\User;
 trait HandlesMessagesTrait
 {
     /**
+     * Get list of contacts for messaging (existing conversations + all active users).
+     */
+    public function getContacts()
+    {
+        $currentUserId = Auth::id();
+
+        // 1. Get existing conversations (users with whom messages exist)
+        $conversations = Message::where('deleted_for_everyone', false)
+            ->where(function ($q) use ($currentUserId) {
+                $q->where(function ($sub) use ($currentUserId) {
+                    $sub->where('sender_id', $currentUserId)->where('deleted_for_sender', false);
+                })->orWhere(function ($sub) use ($currentUserId) {
+                    $sub->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
+            })
+            ->latest()
+            ->get()
+            ->map(function ($msg) use ($currentUserId) {
+                return ($msg->sender_id == $currentUserId) ? $msg->receiver_id : $msg->sender_id;
+            })
+            ->unique()
+            ->values();
+
+        $existingUserIds = $conversations->toArray();
+        $contactsRaw = User::whereIn('user_id', $existingUserIds)->get();
+
+        $contacts = [];
+        foreach ($contactsRaw as $c) {
+            $unread = Message::where('sender_id', $c->user_id)
+                ->where('receiver_id', $currentUserId)
+                ->where('is_read', false)
+                ->where('deleted_for_everyone', false)
+                ->where('deleted_for_receiver', false)
+                ->count();
+
+            $lastMsg = Message::where('deleted_for_everyone', false)
+                ->where(function ($q) use ($currentUserId, $c) {
+                    $q->where(function ($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id)->where('deleted_for_sender', false);
+                    })->orWhere(function ($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                    });
+                })
+                ->latest()
+                ->first();
+
+            if (!$lastMsg) continue;
+
+            $imagePath = null;
+            if (!empty($c->avatar)) {
+                $imagePath = str_starts_with($c->avatar, 'http') ? $c->avatar : asset('storage/' . $c->avatar);
+            } elseif (!empty($c->profile_picture)) {
+                $imagePath = str_starts_with($c->profile_picture, 'http') ? $c->profile_picture : asset('storage/' . $c->profile_picture);
+            }
+
+            $contacts[] = [
+                'id'           => $c->user_id,
+                'name'         => $c->full_name,
+                'role'         => $c->role,
+                'image'        => $imagePath,
+                'unread'       => $unread,
+                'last_message' => $lastMsg ? $lastMsg->message : '',
+                'time'         => $lastMsg ? $lastMsg->created_at->diffForHumans() : '',
+                'updated_at'   => $lastMsg ? $lastMsg->created_at->timestamp : 0,
+            ];
+        }
+
+        // Sort existing conversations by latest message timestamp descending
+        usort($contacts, function ($a, $b) {
+            return $b['updated_at'] <=> $a['updated_at'];
+        });
+
+        // 2. Fetch all other active users without existing conversations
+        $otherUsers = User::where('user_id', '!=', $currentUserId)
+            ->whereNotIn('user_id', $existingUserIds)
+            ->where('status', 'active')
+            ->orderBy('full_name', 'asc')
+            ->get();
+
+        foreach ($otherUsers as $c) {
+            $imagePath = null;
+            if (!empty($c->avatar)) {
+                $imagePath = str_starts_with($c->avatar, 'http') ? $c->avatar : asset('storage/' . $c->avatar);
+            } elseif (!empty($c->profile_picture)) {
+                $imagePath = str_starts_with($c->profile_picture, 'http') ? $c->profile_picture : asset('storage/' . $c->profile_picture);
+            }
+
+            $contacts[] = [
+                'id'           => $c->user_id,
+                'name'         => $c->full_name,
+                'role'         => $c->role,
+                'image'        => $imagePath,
+                'unread'       => 0,
+                'last_message' => 'انقر لبدء المحادثة',
+                'time'         => '',
+                'updated_at'   => 0,
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $contacts,
+        ]);
+    }
+
+    /**
      * Get conversation with a user, excluding expired disappearing messages.
      */
     public function getConversation($userId)

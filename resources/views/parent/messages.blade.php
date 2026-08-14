@@ -1059,30 +1059,8 @@ window.tailwind = {
         selectContact(id, name, role, avatar);
     }
 
-    // Adapt layout themes (dark/light)
-    function syncDarkMode() {
-        const isDark = (document.documentElement && document.documentElement.classList.contains('dark')) || 
-                       (document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark') || 
-                       localStorage.getItem('theme') === 'dark' ||
-                       (document.body && document.body.classList.contains('dark'));
-        
-        const card = document.getElementById('chat-app-container');
-        if (card) {
-            if (isDark) {
-                card.classList.add('dark');
-            } else {
-                card.classList.remove('dark');
-            }
-        }
-    }
-
     loadContactsList();
-    syncDarkMode();
-    
-    const observer = new MutationObserver(() => syncDarkMode());
-    if (document.documentElement) {
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-    }
+</script>
 </script>
 @endpush
 @endsection
