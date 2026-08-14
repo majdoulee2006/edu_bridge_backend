@@ -308,7 +308,7 @@
             </button>
         </div>
 
-        <form action="{{ route('login.submit') }}" method="POST" id="loginForm">
+        <form action="{{ url('/login') }}" method="POST" id="loginForm">
             @csrf
 
             <!-- Hidden input for tracking portal mode -->

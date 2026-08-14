@@ -10,7 +10,7 @@ use App\Http\Controllers\Web\TeacherWebController;
 
 // ===== Unified Login Routes =====
 Route::get('/login', [UnifiedAuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.post');
+Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit')->name('login.post');
 Route::post('/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
 // Default Redirect
