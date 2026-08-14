@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Student;
-use App\Models\ParentModel;
+use App\Models\Parents;
 use App\Models\UserActivity;
 
 class UnifiedAuthController extends Controller
@@ -88,25 +88,26 @@ class UnifiedAuthController extends Controller
      */
     public function redirectUserByRole($user)
     {
-        $role = strtolower($user->role ?? '');
+        $roleId  = (int) ($user->role_id ?? 0);
+        $roleStr = strtolower($user->role ?? '');
 
-        if ($role === 'student' || Student::where('user_id', $user->user_id)->exists()) {
-            return redirect()->intended('/student/dashboard');
-        }
-        if ($role === 'affairs') {
+        if ($roleId === 6 || $roleStr === 'affairs') {
             return redirect()->intended('/affairs/dashboard');
         }
-        if ($role === 'hod') {
+        if ($roleId === 5 || $roleStr === 'head' || $roleStr === 'hod') {
             return redirect()->intended('/hod/dashboard');
         }
-        if ($role === 'teacher') {
+        if ($roleId === 1 || $roleStr === 'admin' || !empty($user->is_admin)) {
+            return redirect()->intended('/admin/dashboard');
+        }
+        if ($roleId === 2 || $roleStr === 'teacher' || $roleStr === 'instructor') {
             return redirect()->intended('/teacher/dashboard');
         }
-        if ($role === 'parent' || ParentModel::where('user_id', $user->user_id)->exists()) {
-            return redirect()->intended('/parent/dashboard');
+        if ($roleId === 3 || $roleStr === 'student' || Student::where('user_id', $user->user_id)->exists()) {
+            return redirect()->intended('/student/dashboard');
         }
-        if ($role === 'admin' || $user->is_admin) {
-            return redirect()->intended('/admin/dashboard');
+        if ($roleId === 4 || $roleStr === 'parent' || Parents::where('user_id', $user->user_id)->exists()) {
+            return redirect()->intended('/parent/dashboard');
         }
 
         return redirect('/login');
