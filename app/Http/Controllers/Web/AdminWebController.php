@@ -509,6 +509,7 @@ class AdminWebController extends Controller
         $search = trim($request->input('search', ''));
 
         $query = DB::table('users')
+            ->select(['user_id', 'role_id', 'full_name', 'username', 'email', 'phone', 'university_id', 'status', 'created_at'])
             ->where('role_id', '!=', 1); // Exclude admin self
 
         if ($roleFilter !== 'all') {
