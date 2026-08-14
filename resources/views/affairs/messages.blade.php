@@ -1504,50 +1504,7 @@
         }
     });
 
-    String.prototype.padLeft = function (length, character) {
-        return this.length >= length ? this : (new Array(length - this.length + 1).join(character) + this);
-    };
 
-    // Dark Mode Synchronization
-    function syncDarkMode() {
-        const isDark = (document.documentElement && document.documentElement.classList.contains('dark')) || 
-                       (document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark') || 
-                       localStorage.getItem('theme') === 'dark' ||
-                       (document.body && document.body.classList.contains('dark'));
-        
-        const body = document.body;
-        const mainContent = document.querySelector('.main-content');
-        const header = document.querySelector('.header');
-        const pageTitle = document.querySelector('.page-title');
-
-        if (isDark) {
-            if (body && !body.classList.contains('bg-slate-900')) body.classList.add('bg-slate-900', 'text-white');
-            if (mainContent && !mainContent.classList.contains('bg-slate-900')) mainContent.classList.add('bg-slate-900');
-            if (header && !header.classList.contains('bg-slate-900')) header.classList.add('bg-slate-900', 'border-slate-800');
-            if (pageTitle && !pageTitle.classList.contains('text-white')) pageTitle.classList.add('text-white');
-        } else {
-            if (body && body.classList.contains('bg-slate-900')) body.classList.remove('bg-slate-900', 'text-white');
-            if (mainContent && mainContent.classList.contains('bg-slate-900')) mainContent.classList.remove('bg-slate-900');
-            if (header && header.classList.contains('bg-slate-900')) header.classList.remove('bg-slate-900', 'border-slate-800');
-            if (pageTitle && pageTitle.classList.contains('text-white')) pageTitle.classList.remove('text-white');
-        }
-    }
-
-    // Run immediately on load
-    syncDarkMode();
-
-    // Observe changes to the html/body tags to react to the layout's theme toggle
-    const themeObserver = new MutationObserver((mutations) => {
-        themeObserver.disconnect();
-        syncDarkMode();
-        if (document.documentElement) {
-            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-        }
-    });
-    
-    if (document.documentElement) {
-        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-    }
 </script>
 @endpush
 @endsection

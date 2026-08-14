@@ -4,157 +4,172 @@
 
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="flex gap-0 md:gap-6 h-[calc(100vh-10rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-soft transition-colors" id="chat-app-container">
+<div class="flex h-[calc(100vh-8.5rem)] min-h-[550px] overflow-hidden rounded-3xl bg-[#141417] border border-[#27272a] shadow-2xl text-slate-100 transition-colors" id="chat-app-container">
     
-    <!-- ================= SIDEBAR (CONTACTS) ================= -->
-    <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-[#262626] h-full shrink-0 md:flex" id="contacts-sidebar-pane">
-        <!-- Search and Filter -->
-        <div class="p-4 border-b border-slate-200 dark:border-[#262626] space-y-3">
-            <div class="flex items-center gap-2">
-                <div class="relative flex-1">
-                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                        <span class="material-symbols-outlined text-xl">search</span>
-                    </span>
-                    <input id="contact-search" oninput="filterContactsList()" class="w-full bg-slate-50 dark:bg-[#1f1f1f] border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-[#f2f20d]/50 transition-all outline-none" placeholder="البحث في جهات الاتصال..." type="text"/>
-                </div>
-                <button type="button" onclick="openNewChatModal()" class="w-12 h-12 rounded-2xl bg-[#f2f20d] hover:bg-[#d9d90b] text-black flex items-center justify-center transition-all shrink-0 shadow-glow" title="محادثة جديدة">
-                    <span class="material-symbols-outlined font-bold">add_comment</span>
-                </button>
-            </div>
+    <!-- ================= SIDEBAR (CONTACTS PANEL) ================= -->
+    <div class="w-full md:w-80 flex flex-col border-l border-[#27272a] h-full shrink-0 md:flex p-4 bg-[#141417] overflow-hidden" id="contacts-sidebar-pane">
+        
+        <!-- Header & Search Title -->
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-base font-extrabold text-white tracking-wide">مكان للبحث عن</h2>
+            <button type="button" onclick="openNewChatModal()" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md" title="محادثة جديدة">
+                <span class="material-symbols-outlined text-lg">add_comment</span>
+            </button>
         </div>
 
+        <!-- Search Input -->
+        <div class="relative mb-4">
+            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                <span class="material-symbols-outlined text-lg">search</span>
+            </span>
+            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="ابحث عن زملائك..." type="text"/>
+        </div>
+
+        <!-- Section Title -->
+        <div class="text-[11px] font-bold text-slate-400 mb-2 px-1">أحدث المحادثات</div>
+
         <!-- Contacts Scrollable List -->
-        <div class="flex-1 overflow-y-auto hide-scrollbar divide-y divide-slate-100 dark:divide-[#262626]" id="contacts-list-container">
+        <div class="flex-1 overflow-y-auto hide-scrollbar space-y-1.5 pr-1" id="contacts-list-container">
             <!-- Loading Indicator -->
             <div id="contacts-loading" class="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
-                <div class="animate-spin rounded-full h-8 w-8 border-2 border-[#f2f20d] border-t-transparent"></div>
-                <span class="text-xs font-bold">جاري تحميل جهات الاتصال...</span>
+                <div class="animate-spin rounded-full h-7 w-7 border-2 border-[#f2f20d] border-t-transparent"></div>
+                <span class="text-xs font-semibold">جاري تحميل المحادثات...</span>
             </div>
             
-            <!-- Dynamic Contacts will be rendered here -->
-            <div id="contacts-wrapper" class="hidden"></div>
+            <!-- Dynamic Contacts List Wrapper -->
+            <div id="contacts-wrapper" class="hidden space-y-1.5"></div>
             
             <div id="contacts-empty" class="hidden flex flex-col items-center justify-center py-12 text-slate-400 text-center px-4">
-                <span class="material-symbols-outlined text-4xl mb-2 text-slate-500">contact_support</span>
-                <span class="text-xs font-bold">لا توجد جهات اتصال متاحة للمحادثة</span>
+                <span class="material-symbols-outlined text-4xl mb-2 text-slate-600">contact_support</span>
+                <span class="text-xs font-bold">لا توجد جهات اتصال متاحة</span>
             </div>
         </div>
     </div>
 
     <!-- ================= CHAT ROOM WINDOW ================= -->
-    <div class="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-[#09090b] relative hidden md:flex" id="chat-room-pane">
+    <div class="flex-1 flex flex-col h-full bg-[#101014] relative hidden md:flex overflow-hidden" id="chat-room-pane">
         
         <!-- Chat Placeholder (Visible when no active chat) -->
-        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-[#121212] z-10 text-center transition-colors duration-300">
-            <div class="w-24 h-24 rounded-full bg-[#f2f20d]/10 border border-[#f2f20d]/20 flex items-center justify-center text-[#f2f20d] mb-6 shadow-glow">
-                <span class="material-symbols-outlined text-5xl">forum</span>
+        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-[#141417] z-10 text-center">
+            <div class="w-20 h-20 rounded-full bg-[#f2f20d]/10 border border-[#f2f20d]/20 flex items-center justify-center text-[#f2f20d] mb-4 shadow-glow">
+                <span class="material-symbols-outlined text-4xl">forum</span>
             </div>
-            <h3 class="text-xl font-black text-slate-800 dark:text-white mb-2">مرحباً بك في نظام الدردشة الموحد</h3>
-            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">اختر أحد جهات الاتصال المتاحة في القائمة الجانبية لبدء المحادثة الفورية مع إمكانية إرفاق الملفات وتسجيل الملاحظات الصوتية.</p>
+            <h3 class="text-lg font-bold text-white mb-1">حدد محادثة للبدء</h3>
+            <p class="text-xs text-slate-400 max-w-xs leading-relaxed">اختر أحد زملائك من القائمة لبدء المحادثة، تبادل الرسائل، الصور، الملاحظات الصوتية والملفات.</p>
         </div>
 
         <!-- Active Chat Window Container -->
         <div id="active-chat-window" class="flex flex-col h-full hidden">
             
             <!-- Chat Header -->
-            <div class="px-6 py-4 bg-white dark:bg-[#121212] border-b border-slate-200 dark:border-[#262626] flex items-center justify-between transition-colors">
+            <div class="px-5 py-3.5 bg-[#18181c] border-b border-[#27272a] flex items-center justify-between transition-colors">
                 <div class="flex items-center gap-3">
                     <!-- Back button on Mobile -->
-                    <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-slate-600 dark:text-slate-300 hover:bg-slate-200">
-                        <span class="material-symbols-outlined text-xl">arrow_forward</span>
+                    <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-[#27272a] text-slate-300 hover:bg-[#3f3f46]">
+                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
                     </button>
                     <!-- Contact Avatar -->
                     <div class="relative">
-                        <div id="active-contact-avatar-placeholder" class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-yellow-500 dark:text-[#f2f20d] flex items-center justify-center font-bold text-sm select-none">
+                        <div id="active-contact-avatar-placeholder" class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] flex items-center justify-center font-extrabold text-sm select-none border border-[#f2f20d]/30">
                             A
                         </div>
-                        <img id="active-contact-avatar-img" class="w-10 h-10 rounded-full object-cover hidden" src="" alt="Avatar">
-                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#121212] rounded-full"></div>
+                        <img id="active-contact-avatar-img" class="w-10 h-10 rounded-full object-cover hidden border border-[#27272a]" src="" alt="Avatar">
+                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#18181c] rounded-full"></div>
                     </div>
                     <!-- Contact Name & Role Badge -->
                     <div class="flex flex-col">
-                        <span id="active-contact-name" class="text-sm font-bold text-slate-800 dark:text-white leading-tight">...</span>
-                        <span id="active-contact-role" class="text-[10px] text-slate-400 font-semibold mt-0.5">...</span>
+                        <span id="active-contact-name" class="text-sm font-bold text-white leading-tight">...</span>
+                        <span id="active-contact-role" class="text-[11px] text-slate-400 font-medium mt-0.5">...</span>
                     </div>
                 </div>
+
+                <!-- Top Header Actions -->
                 <div class="flex items-center gap-2">
                     <!-- Disappearing Messages Timer Dropdown Button -->
                     <div class="relative">
-                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-[#1a1a1a] hover:bg-amber-500/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 text-xs font-bold transition-all border border-slate-200 dark:border-[#262626]" title="الرسائل ذاتية الاختفاء">
-                            <span class="material-symbols-outlined text-base text-amber-500">timer</span>
+                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-slate-300 hover:text-amber-400 text-xs font-bold transition-all border border-[#3f3f46]/40" title="الرسائل ذاتية الاختفاء">
+                            <span class="material-symbols-outlined text-base text-amber-400">timer</span>
                             <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
                         </button>
                         
                         <!-- Timer Menu Dropdown -->
-                        <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-white dark:bg-[#181818] rounded-2xl shadow-2xl border border-slate-200 dark:border-[#262626] p-2 text-xs min-w-[200px] z-[99] space-y-1">
-                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-[#262626]">مؤقت اختفاء الرسائل الجديدة</div>
-                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                        <div id="disappearing-menu" class="hidden absolute left-0 top-11 bg-[#1c1c20] rounded-2xl shadow-2xl border border-[#27272a] p-2 text-xs min-w-[200px] z-[99] space-y-1">
+                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">مؤقت اختفاء الرسائل الجديدة</div>
+                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
                                 <span>🚫 إيقاف (رسائل دائمة)</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
                                 <span>⏱️ 5 دقائق</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
                                 <span>⏱️ ساعة واحدة</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
                                 <span>⏱️ 24 ساعة (يوم)</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
                                 <span>⏱️ 7 أيام (أسبوع)</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Search Bar -->
-                    <div class="hidden md:block relative">
-                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث..." class="bg-slate-100 dark:bg-[#1a1a1a] border-none rounded-full py-2 px-4 text-xs font-semibold focus:ring-2 focus:ring-[#f2f20d]/50 text-slate-800 dark:text-slate-200 outline-none w-36 transition-all">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <!-- Search Bar in Active Chat -->
+                    <div class="hidden sm:block relative">
+                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث بالرسائل..." class="bg-[#27272a]/60 border border-[#3f3f46]/40 rounded-xl py-1.5 px-3.5 text-xs font-medium focus:ring-1 focus:ring-[#f2f20d] text-slate-200 placeholder:text-slate-500 outline-none w-36 transition-all">
+                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
                             <span class="material-symbols-outlined text-sm">search</span>
                         </span>
                     </div>
+
+                    <!-- Extra action icons like screenshot -->
+                    <button type="button" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                        <span class="material-symbols-outlined text-lg">settings</span>
+                    </button>
+                    <button type="button" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                        <span class="material-symbols-outlined text-lg">more_vert</span>
+                    </button>
                 </div>
             </div>
 
-            <!-- Messages Feed -->
-            <div id="messages-feed" class="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col bg-slate-50/50 dark:bg-[#09090b]">
+            <!-- Messages Feed Area -->
+            <div id="messages-feed" class="flex-1 p-4 md:p-6 overflow-y-auto space-y-3.5 flex flex-col bg-[#0e0e11]">
                 <!-- Messages will load dynamically here -->
             </div>
 
             <!-- Chat Bottom Input Bar -->
-            <div class="p-4 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-[#262626] transition-colors flex flex-col gap-2 relative">
+            <div class="p-3.5 bg-[#18181c] border-t border-[#27272a] flex flex-col gap-2 relative">
                 <!-- Disappearing Messages Active Status Banner -->
-                <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-2xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-bold mb-1 transition-all">
+                <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-amber-400 font-bold mb-1 transition-all">
                     <div class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">timer</span>
                         <span>الرسائل الجديدة ستختفي تلقائياً بعد: <strong id="disappearing-banner-time">24 ساعة</strong></span>
                     </div>
-                    <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-500 p-0.5">
+                    <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-400 p-0.5">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
 
                 <!-- Inline Attachment Preview Container -->
-                <div id="attachment-preview-container" class="hidden bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#262626] rounded-2xl p-2.5 shadow-sm flex items-center justify-between gap-3 w-full mb-1 transition-all">
+                <div id="attachment-preview-container" class="hidden bg-[#27272a] border border-[#3f3f46]/50 rounded-xl p-2.5 shadow-sm flex items-center justify-between gap-3 w-full mb-1 transition-all">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="w-9 h-9 rounded-xl bg-[#f2f20d]/20 flex items-center justify-center text-yellow-500 dark:text-[#f2f20d] shrink-0" id="preview-icon">
+                        <div class="w-8 h-8 rounded-lg bg-[#f2f20d]/20 flex items-center justify-center text-[#f2f20d] shrink-0" id="preview-icon">
                             <span class="material-symbols-outlined text-lg">insert_drive_file</span>
                         </div>
                         <div class="flex flex-col min-w-0">
-                            <span id="preview-filename" class="text-xs font-bold text-slate-800 dark:text-white truncate max-w-[240px]">file.pdf</span>
+                            <span id="preview-filename" class="text-xs font-bold text-white truncate max-w-[240px]">file.pdf</span>
                             <span id="preview-filesize" class="text-[10px] font-semibold text-slate-400">0 KB</span>
                         </div>
                     </div>
-                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-slate-200/60 dark:bg-[#262626] flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors shrink-0" title="إلغاء الملف">
-                        <span class="material-symbols-outlined text-sm">close</span>
+                    <button type="button" onclick="clearSelectedAttachment()" class="w-6 h-6 rounded-full bg-[#3f3f46] flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors shrink-0" title="إلغاء الملف">
+                        <span class="material-symbols-outlined text-xs">close</span>
                     </button>
                 </div>
 
-                <form id="chat-send-form" onsubmit="event.preventDefault(); submitMessage();" class="flex items-center gap-3" enctype="multipart/form-data">
+                <form id="chat-send-form" onsubmit="event.preventDefault(); submitMessage();" class="flex items-center gap-2" enctype="multipart/form-data">
                     <input type="hidden" id="current-receiver-id" value="">
 
                     <!-- Voice Recording Overlay Interface -->
-                    <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-slate-100 dark:bg-[#1a1a1a] rounded-full px-4 py-2 text-slate-700 dark:text-slate-300">
+                    <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-[#27272a] rounded-2xl px-4 py-2 text-slate-200">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
                             <span class="text-xs font-black text-red-500">تسجيل...</span>
@@ -162,38 +177,41 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <!-- Cancel Recording -->
-                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-500 transition-colors" title="إلغاء">
+                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="إلغاء">
                                 <span class="material-symbols-outlined">delete</span>
                             </button>
                             <!-- Finish and Send -->
-                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors" title="إرسال الملاحظة الصوتية">
+                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white hover:bg-emerald-500 transition-colors" title="إرسال الملاحظة الصوتية">
                                 <span class="material-symbols-outlined text-lg">check</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Input Bar Elements (Visible when not recording) -->
-                    <div id="standard-input-elements" class="flex-1 flex items-center gap-3">
-                        <!-- Custom File Input with Paperclip Icon -->
-                        <label class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-[#1a1a1a] dark:hover:bg-[#262626] text-slate-500 dark:text-slate-400 cursor-pointer transition-colors shrink-0" title="إرفاق ملف">
-                            <span class="material-symbols-outlined text-xl">attach_file</span>
+                    <!-- Input Bar Container matching screenshot layout -->
+                    <div id="standard-input-elements" class="flex-1 flex items-center gap-2 bg-[#1c1c20] border border-[#2d2d35] rounded-2xl px-3 py-1.5">
+                        
+                        <!-- Attachment file icon -->
+                        <label class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-white cursor-pointer transition-colors shrink-0" title="إرفاق ملف">
+                            <span class="material-symbols-outlined text-lg">attach_file</span>
                             <input type="file" id="message-file" class="hidden" onchange="handleFileSelection(event)">
                         </label>
+                        
+                        <label class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-white cursor-pointer transition-colors shrink-0" title="مستند">
+                            <span class="material-symbols-outlined text-lg">description</span>
+                        </label>
 
-                        <!-- Oval Input -->
-                        <div class="flex-1 relative">
-                            <input id="message-text" class="w-full bg-slate-100 dark:bg-[#1a1a1a] border-none rounded-full py-3 px-6 text-sm font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-[#f2f20d]/50 transition-all outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
-                        </div>
+                        <!-- Input field -->
+                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="اكتب رسالتك هنا..." type="text" autocomplete="off"/>
 
                         <!-- Microphone Icon for Voice Notes -->
-                        <button type="button" onclick="startAudioRecording()" class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-[#1a1a1a] dark:hover:bg-[#262626] text-slate-500 dark:text-slate-400 transition-colors shrink-0" title="سجل ملاحظة صوتية">
-                            <span class="material-symbols-outlined text-xl">mic</span>
+                        <button type="button" onclick="startAudioRecording()" class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-white transition-colors shrink-0" title="سجل ملاحظة صوتية">
+                            <span class="material-symbols-outlined text-lg">mic</span>
                         </button>
                     </div>
 
-                    <!-- Send Button (Yellow Circular Send button with arrow icon) -->
-                    <button type="submit" id="send-btn" class="w-12 h-12 rounded-full bg-[#f2f20d] hover:bg-[#d9d90b] text-black flex items-center justify-center transition-all shadow-glow shrink-0 active:scale-95" title="إرسال">
-                        <span id="send-btn-icon" class="material-symbols-outlined rotate-180">send</span>
+                    <!-- Circular Send Button -->
+                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md shrink-0 active:scale-95 border border-[#3f3f46]/40" title="إرسال">
+                        <span id="send-btn-icon" class="material-symbols-outlined rotate-180 text-xl">send</span>
                     </button>
                 </form>
             </div>
@@ -452,25 +470,25 @@
 
         contacts.forEach(contact => {
             // Pick Role badge color classes
-            let badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+            let badgeClass = 'bg-[#27272a] text-slate-300';
             let roleAr = contact.role;
             if (contact.role === 'admin') {
-                badgeClass = 'bg-rose-500/10 text-rose-500';
+                badgeClass = 'bg-rose-500/20 text-rose-400';
                 roleAr = 'الإدارة';
             } else if (contact.role === 'teacher') {
-                badgeClass = 'bg-blue-500/10 text-blue-500';
+                badgeClass = 'bg-blue-500/20 text-blue-400';
                 roleAr = 'المدرب';
             } else if (contact.role === 'student') {
-                badgeClass = 'bg-emerald-500/10 text-emerald-500';
+                badgeClass = 'bg-emerald-500/20 text-emerald-400';
                 roleAr = 'الطالب';
             } else if (contact.role === 'parent') {
-                badgeClass = 'bg-purple-500/10 text-purple-500';
+                badgeClass = 'bg-purple-500/20 text-purple-400';
                 roleAr = 'الأهل';
             } else if (contact.role === 'head') {
-                badgeClass = 'bg-amber-500/10 text-amber-500';
+                badgeClass = 'bg-amber-500/20 text-amber-400';
                 roleAr = 'رئيس القسم';
             } else if (contact.role === 'affairs') {
-                badgeClass = 'bg-cyan-500/10 text-cyan-500';
+                badgeClass = 'bg-cyan-500/20 text-cyan-400';
                 roleAr = 'الشؤون';
             }
 
@@ -479,7 +497,7 @@
                 : '';
 
             const isActive = activeContactId && parseInt(contact.id) === parseInt(activeContactId) 
-                ? 'bg-slate-100 dark:bg-slate-800/80 border-r-4 border-[#FFCC00]' 
+                ? 'bg-[#1c1c22] border-r-4 border-[#f2f20d]' 
                 : '';
 
             const initials = contact.name.trim().charAt(0);
@@ -492,29 +510,33 @@
                 lastMsgText = '🎤 رسالة صوتية';
             }
 
+            const safeName = (contact.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeRole = (roleAr || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeImg = (contact.image || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
             const contactHtml = `
-                <div onclick="selectContact(${contact.id}, '${contact.name}', '${roleAr}', '${contact.image || ''}')" 
-                     class="contact-row flex items-center gap-3 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-all ${isActive}"
+                <div onclick="selectContact(${contact.id}, '${safeName}', '${safeRole}', '${safeImg}')" 
+                     class="contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-all ${isActive}"
                      data-name="${contact.name.toLowerCase()}">
                     
                     <!-- Initials / Avatar image -->
                     <div class="relative shrink-0 select-none">
                         ${contact.image 
-                            ? `<img class="w-11 h-11 rounded-full object-cover" src="${contact.image}" alt="Avatar">`
-                            : `<div class="w-11 h-11 rounded-full bg-primary/20 text-yellow-700 dark:text-yellow-400 flex items-center justify-center font-bold text-sm">${initials}</div>`
+                            ? `<img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="${contact.image}" alt="Avatar">`
+                            : `<div class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] flex items-center justify-center font-bold text-xs border border-[#f2f20d]/30">${initials}</div>`
                         }
-                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-slate-300 border-2 border-white dark:border-slate-900 rounded-full status-indicator"></div>
+                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
                     </div>
 
                     <!-- Details -->
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-slate-800 dark:text-white truncate">${contact.name}</span>
-                            <span class="text-[9px] text-slate-400">${contact.time || ''}</span>
+                            <span class="text-xs font-bold text-white truncate">${contact.name}</span>
+                            <span class="text-[9px] text-slate-500">${contact.time || ''}</span>
                         </div>
-                        <div class="flex items-center justify-between mt-1">
-                            <span class="text-[10px] font-semibold truncate text-slate-400 dark:text-slate-500 max-w-[130px]">${lastMsgText}</span>
-                            <span class="text-[8px] font-bold px-2 py-0.5 rounded-full ${badgeClass}">${roleAr}</span>
+                        <div class="flex items-center justify-between mt-0.5">
+                            <span class="text-[11px] font-medium truncate text-slate-400 max-w-[130px]">${lastMsgText}</span>
+                            <span class="text-[8px] font-bold px-2 py-0.5 rounded-md ${badgeClass}">${roleAr}</span>
                         </div>
                     </div>
                     
@@ -652,7 +674,7 @@
         const feed = document.getElementById('messages-feed');
         feed.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full gap-2 text-slate-400 py-12">
-                <div class="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+                <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#f2f20d] border-t-transparent"></div>
                 <span class="text-xs font-semibold">تحميل الرسائل...</span>
             </div>
         `;
@@ -675,7 +697,7 @@
                 } else {
                     feed.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-full text-slate-400 py-12 text-center">
-                            <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">forum</span>
+                            <span class="material-symbols-outlined text-4xl text-slate-600 mb-2">forum</span>
                             <span class="text-xs font-bold">لا توجد رسائل سابقة. ابدأ المحادثة الآن!</span>
                         </div>
                     `;
@@ -705,8 +727,8 @@
 
         const alignClass = isMe ? 'justify-end' : 'justify-start';
         const bgBubble = isMe 
-            ? 'bg-[#FFCC00] text-black chat-bubble-sent shadow-soft' 
-            : 'bg-white dark:bg-[#181818] text-slate-800 dark:text-slate-100 chat-bubble-received border border-slate-200/50 dark:border-[#262626] shadow-soft';
+            ? 'bg-[#2d3748] text-slate-100 chat-bubble-sent shadow-md border border-[#3f3f46]/30' 
+            : 'bg-[#27272a] text-slate-100 chat-bubble-received border border-[#3f3f46]/30 shadow-md';
 
         const msgTime = new Date(msg.created_at).toLocaleTimeString('ar-EG', {
             hour: '2-digit',
@@ -747,7 +769,7 @@
             pendingOverlay = `
                 <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-xl gap-2 p-3 z-20 select-none transition-all">
                     <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden max-w-[180px]">
-                        <div id="overlay-progress-bar-${msg.id}" class="bg-[#FFCC00] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+                        <div id="overlay-progress-bar-${msg.id}" class="bg-[#f2f20d] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
                     </div>
                     <span id="overlay-progress-text-${msg.id}" class="text-[10px] font-bold tracking-wide drop-shadow-sm">${pendingLabel} 0%</span>
                 </div>
@@ -755,8 +777,8 @@
 
             pendingProgressHtml = `
                 <div class="mt-2.5 w-full min-w-[180px] dir-rtl">
-                    <div class="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 overflow-hidden border border-black/5 dark:border-white/10">
-                        <div id="progress-bar-${msg.id}" class="bg-amber-500 dark:bg-amber-400 h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+                    <div class="w-full bg-black/20 rounded-full h-2 overflow-hidden border border-white/10">
+                        <div id="progress-bar-${msg.id}" class="bg-[#f2f20d] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
                     </div>
                     <div class="flex items-center justify-between mt-1 text-[10px] font-bold opacity-80">
                         <span id="progress-text-${msg.id}">${pendingLabel} 0%</span>
@@ -770,7 +792,7 @@
         if (url) {
             if (fileType.startsWith('image/')) {
                 mediaHtml = `
-                    <div class="relative mt-2 rounded-xl overflow-hidden border border-black/10 dark:border-white/10 max-w-[260px]">
+                    <div class="relative mt-2 rounded-xl overflow-hidden border border-white/10 max-w-[260px]">
                         ${pendingOverlay}
                         <img src="${url}" class="w-full object-cover cursor-pointer max-h-52 hover:opacity-95 transition-opacity" onclick="openImageLightbox('${url}')" alt="Attachment">
                     </div>
@@ -780,16 +802,16 @@
                 mediaHtml = `
                     <div class="relative mt-1 max-w-[270px]">
                         ${pendingOverlay}
-                        <div class="flex items-center gap-3 p-3 rounded-2xl ${isMe ? 'bg-black/10 text-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'} min-w-[230px] dir-ltr select-none border border-black/5 dark:border-white/10">
+                        <div class="flex items-center gap-3 p-3 rounded-2xl bg-[#1c1c22] text-slate-100 min-w-[230px] dir-ltr select-none border border-white/10">
                             <audio id="${voiceId}" src="${url}" preload="metadata" ontimeupdate="updateVoiceProgress('${voiceId}')" onended="resetVoicePlayer('${voiceId}')"></audio>
                             
-                            <button type="button" onclick="toggleVoicePlay('${voiceId}')" id="btn-${voiceId}" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isMe ? 'bg-black text-white hover:bg-slate-900' : 'bg-amber-500 text-white hover:bg-amber-600'} transition-all shadow-md active:scale-95">
-                                <span class="material-symbols-outlined text-xl" id="icon-${voiceId}">play_arrow</span>
+                            <button type="button" onclick="toggleVoicePlay('${voiceId}')" id="btn-${voiceId}" class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-[#f2f20d] text-black hover:bg-[#d9d90b] transition-all shadow-md active:scale-95">
+                                <span class="material-symbols-outlined text-lg" id="icon-${voiceId}">play_arrow</span>
                             </button>
 
                             <div class="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
-                                <div class="relative w-full h-2 bg-black/10 dark:bg-white/15 rounded-full overflow-hidden cursor-pointer" onclick="seekVoice('${voiceId}', event)">
-                                    <div id="progress-${voiceId}" class="h-full ${isMe ? 'bg-black' : 'bg-amber-500'} rounded-full transition-all duration-100" style="width: 0%;"></div>
+                                <div class="relative w-full h-2 bg-white/15 rounded-full overflow-hidden cursor-pointer" onclick="seekVoice('${voiceId}', event)">
+                                    <div id="progress-${voiceId}" class="h-full bg-[#f2f20d] rounded-full transition-all duration-100" style="width: 0%;"></div>
                                 </div>
                                 
                                 <div class="flex items-center justify-between text-[10px] font-bold opacity-75 dir-rtl">
@@ -813,10 +835,10 @@
                 mediaHtml = `
                     <div class="relative mt-2 max-w-[260px]">
                         ${pendingOverlay}
-                        <a href="${url}" download="${fileName}" target="_blank" class="flex items-center gap-2 p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 text-xs font-bold transition-all truncate group/doc">
-                            <span class="material-symbols-outlined text-amber-500 shrink-0">description</span>
-                            <span class="truncate">${displayName}</span>
-                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-amber-500 text-sm mr-auto shrink-0 transition-colors">download</span>
+                        <a href="${url}" download="${fileName}" target="_blank" class="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold transition-all truncate group/doc">
+                            <span class="material-symbols-outlined text-[#f2f20d] shrink-0">description</span>
+                            <span class="truncate text-slate-200">${displayName}</span>
+                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-[#f2f20d] text-sm mr-auto shrink-0 transition-colors">download</span>
                         </a>
                     </div>
                 `;
@@ -830,16 +852,16 @@
 
         const isRead = parseInt(msg.is_read) === 1;
         const checkmarkIcon = msg.isPending
-            ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+            ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
                 <span class="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
                 <span>جاري الإرسال...</span>
                </span>`
             : (isRead
-                ? '<span class="material-symbols-outlined text-[10px] text-blue-500">done_all</span>'
+                ? '<span class="material-symbols-outlined text-[10px] text-blue-400">done_all</span>'
                 : '<span class="material-symbols-outlined text-[10px] text-slate-400">done</span>');
 
         const timerIconHtml = (msg.disappears_after || msg.expires_at) 
-            ? `<span class="material-symbols-outlined text-[12px] text-amber-500 shrink-0" title="رسالة ذاتية الاختفاء">timer</span>` 
+            ? `<span class="material-symbols-outlined text-[12px] text-amber-400 shrink-0" title="رسالة ذاتية الاختفاء">timer</span>` 
             : '';
 
         const bubbleId = msg.id ? `id="msg-${msg.id}"` : '';
@@ -850,29 +872,33 @@
         let optionsHtml = '';
         if (!msg.isPending) {
             optionsHtml = `
-                <div class="relative group/options flex flex-col justify-center px-2">
-                    <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" onclick="toggleMsgOptions('${msg.id}')">
+                <div class="relative group/options flex flex-col justify-center px-1">
+                    <button type="button" class="text-slate-500 hover:text-slate-300 p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" onclick="toggleMsgOptions('${msg.id}')">
                         <span class="material-symbols-outlined text-sm">more_vert</span>
                     </button>
-                    <div id="msg-options-${msg.id}" class="hidden absolute ${isMe ? 'left-0' : 'right-0'} bottom-8 mb-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-xs min-w-[110px] z-[99] flex flex-col">
-                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 w-full">تعديل</button>` : ''}
-                        <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 w-full">حذف</button>
+                    <div id="msg-options-${msg.id}" class="hidden absolute ${isMe ? 'left-0' : 'right-0'} bottom-8 mb-1 bg-[#1c1c20] rounded-xl shadow-xl border border-[#27272a] py-1 text-xs min-w-[110px] z-[99] flex flex-col">
+                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-[#27272a] text-slate-200 w-full">تعديل</button>` : ''}
+                        <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-red-500/20 text-red-400 w-full">حذف</button>
                     </div>
                 </div>
             `;
         }
 
+        const activeContactName = document.getElementById('active-contact-name')?.innerText || '';
+        const senderLabel = isMe ? '' : (activeContactName ? activeContactName.split(' ')[0] : '');
+
         const bubbleHtml = `
-            <div ${bubbleId} class="group flex ${alignClass} w-full mb-3.5 ${pendingClass}">
+            <div ${bubbleId} class="group flex ${alignClass} w-full mb-3 ${pendingClass}">
                 ${isMe ? optionsHtml : ''}
                 <div class="flex flex-col max-w-[75%]">
-                    <div class="px-4 py-3 text-sm leading-relaxed ${bgBubble}">
-                        ${textToShow ? `<p class="whitespace-pre-line font-medium">${textToShow}</p>` : ''}
+                    <div class="px-4 py-3 text-xs md:text-sm leading-relaxed ${bgBubble}">
+                        ${textToShow ? `<p class="whitespace-pre-line font-medium text-slate-100">${textToShow}</p>` : ''}
                         ${mediaHtml}
                         ${msg.isPending && (!url || (!fileType.startsWith('image/') && !fileType.startsWith('video/') && !fileType.startsWith('audio/') && msg.message !== '[Voice Note]')) ? pendingProgressHtml : ''}
                     </div>
-                    <span class="text-[9px] text-slate-400 mt-1 px-1 font-semibold flex items-center gap-1.5 ${isMe ? 'self-end' : 'self-start'}">
-                        ${msgTime}
+                    <span class="text-[9.5px] text-slate-400 mt-1 px-1 font-semibold flex items-center gap-1.5 ${isMe ? 'self-end' : 'self-start'}">
+                        ${senderLabel ? `<span class="text-slate-400 opacity-90">${senderLabel}</span>` : ''}
+                        <span>${msgTime}</span>
                         ${timerIconHtml}
                         ${isMe ? checkmarkIcon : ''}
                     </span>
@@ -886,19 +912,6 @@
     function scrollMessagesToBottom() {
         const feed = document.getElementById('messages-feed');
         feed.scrollTop = feed.scrollHeight;
-    }
-
-    function showSidebarOnMobile() {
-        const sidebar = document.getElementById('contacts-sidebar-pane');
-        const chatRoom = document.getElementById('chat-room-pane');
-        if (sidebar) {
-            sidebar.classList.remove('hidden');
-            sidebar.classList.add('flex');
-        }
-        if (chatRoom) {
-            chatRoom.classList.add('hidden');
-            chatRoom.classList.remove('flex');
-        }
     }
 
     function handleFileSelection(event) {
@@ -1084,8 +1097,8 @@
             
             recordTimerInterval = setInterval(() => {
                 recordDurationSecs++;
-                const mins = Math.floor(recordDurationSecs / 60).toString().padLeft(2, '0');
-                const secs = (recordDurationSecs % 60).toString().padLeft(2, '0');
+                const mins = Math.floor(recordDurationSecs / 60).toString().padStart(2, '0');
+                const secs = (recordDurationSecs % 60).toString().padStart(2, '0');
                 document.getElementById('recording-timer').innerText = `${mins}:${secs}`;
             }, 1000);
 
@@ -1513,50 +1526,6 @@
         }
     });
 
-    String.prototype.padLeft = function (length, character) {
-        return this.length >= length ? this : (new Array(length - this.length + 1).join(character) + this);
-    };
-
-    // Dark Mode Synchronization
-    function syncDarkMode() {
-        const isDark = (document.documentElement && document.documentElement.classList.contains('dark')) || 
-                       (document.documentElement && document.documentElement.getAttribute('data-theme') === 'dark') || 
-                       localStorage.getItem('theme') === 'dark' ||
-                       (document.body && document.body.classList.contains('dark'));
-        
-        const body = document.body;
-        const mainContent = document.querySelector('.main-content');
-        const header = document.querySelector('.header');
-        const pageTitle = document.querySelector('.page-title');
-
-        if (isDark) {
-            if (body && !body.classList.contains('bg-slate-900')) body.classList.add('bg-slate-900', 'text-white');
-            if (mainContent && !mainContent.classList.contains('bg-slate-900')) mainContent.classList.add('bg-slate-900');
-            if (header && !header.classList.contains('bg-slate-900')) header.classList.add('bg-slate-900', 'border-slate-800');
-            if (pageTitle && !pageTitle.classList.contains('text-white')) pageTitle.classList.add('text-white');
-        } else {
-            if (body && body.classList.contains('bg-slate-900')) body.classList.remove('bg-slate-900', 'text-white');
-            if (mainContent && mainContent.classList.contains('bg-slate-900')) mainContent.classList.remove('bg-slate-900');
-            if (header && header.classList.contains('bg-slate-900')) header.classList.remove('bg-slate-900', 'border-slate-800');
-            if (pageTitle && pageTitle.classList.contains('text-white')) pageTitle.classList.remove('text-white');
-        }
-    }
-
-    // Run immediately on load
-    syncDarkMode();
-
-    // Observe changes to the html/body tags to react to the layout's theme toggle
-    const themeObserver = new MutationObserver((mutations) => {
-        themeObserver.disconnect();
-        syncDarkMode();
-        if (document.documentElement) {
-            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-        }
-    });
-    
-    if (document.documentElement) {
-        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-    }
 </script>
 @endpush
 @endsection
