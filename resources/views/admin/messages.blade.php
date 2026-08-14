@@ -1,12 +1,10 @@
 @extends('layouts.admin')
 
 @section('title', 'الرسائل')
-@section('header-title', 'الرسائل')
-@section('header-subtitle', 'تواصل فوري مع الكادر الإداري والتعليمي')
 
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="flex gap-6 h-[calc(100vh-14rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-soft transition-colors" id="chat-app-container">
+<div class="flex gap-6 h-[calc(100vh-10rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-soft transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS) ================= -->
     <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-[#262626] h-full shrink-0" id="contacts-sidebar-pane">
@@ -134,23 +132,24 @@
                     <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-500 p-0.5">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
+                <!-- Inline Attachment Preview Container -->
+                <div id="attachment-preview-container" class="hidden bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#262626] rounded-2xl p-2.5 shadow-sm flex items-center justify-between gap-3 w-full mb-1 transition-all">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-[#f2f20d]/20 flex items-center justify-center text-yellow-500 dark:text-[#f2f20d] shrink-0" id="preview-icon">
+                            <span class="material-symbols-outlined text-lg">insert_drive_file</span>
+                        </div>
+                        <div class="flex flex-col min-w-0">
+                            <span id="preview-filename" class="text-xs font-bold text-slate-800 dark:text-white truncate max-w-[240px]">file.pdf</span>
+                            <span id="preview-filesize" class="text-[10px] font-semibold text-slate-400">0 KB</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-slate-200/60 dark:bg-[#262626] flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors shrink-0" title="إلغاء الملف">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
                 </div>
+
                 <form id="chat-send-form" onsubmit="event.preventDefault(); submitMessage();" class="flex items-center gap-3" enctype="multipart/form-data">
                     <input type="hidden" id="current-receiver-id" value="">
-                    
-                    <!-- Attachment Preview Floating Container -->
-                    <div id="attachment-preview-container" class="hidden absolute bottom-24 right-4 bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#262626] rounded-2xl p-3 shadow-lg flex items-center gap-3 max-w-sm z-20">
-                        <div class="w-10 h-10 rounded-lg bg-[#f2f20d]/10 flex items-center justify-center text-[#f2f20d]" id="preview-icon">
-                            <span class="material-symbols-outlined">insert_drive_file</span>
-                        </div>
-                        <div class="flex flex-col max-w-[200px]">
-                            <span id="preview-filename" class="text-xs font-bold text-slate-800 dark:text-white truncate">file.pdf</span>
-                            <span id="preview-filesize" class="text-[10px] text-slate-400">0 KB</span>
-                        </div>
-                        <button type="button" onclick="clearSelectedAttachment()" class="text-slate-400 hover:text-red-500 transition-colors">
-                            <span class="material-symbols-outlined text-lg">close</span>
-                        </button>
-                    </div>
 
                     <!-- Voice Recording Overlay Interface -->
                     <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-slate-100 dark:bg-[#1a1a1a] rounded-full px-4 py-2 text-slate-700 dark:text-slate-300">
@@ -403,6 +402,17 @@
                 if (data.status === 'success' && data.data && data.data.length > 0) {
                     renderContactsList(data.data);
                     wrapperDiv.classList.remove('hidden');
+                    if (!activeContactId && data.data.length > 0) {
+                        const first = data.data[0];
+                        let roleAr = first.role;
+                        if (first.role === 'admin') roleAr = 'الإدارة';
+                        else if (first.role === 'teacher') roleAr = 'المدرب';
+                        else if (first.role === 'student') roleAr = 'الطالب';
+                        else if (first.role === 'parent') roleAr = 'الأهل';
+                        else if (first.role === 'head') roleAr = 'رئيس القسم';
+                        else if (first.role === 'affairs') roleAr = 'الشؤون';
+                        selectContact(first.id, first.name, roleAr, first.image || '');
+                    }
                 } else {
                     emptyDiv.classList.remove('hidden');
                 }
