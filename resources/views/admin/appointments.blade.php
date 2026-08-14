@@ -11,21 +11,18 @@
         </div>
         <p class="text-[10px] font-extrabold text-yellow-900/60 mb-0.5 uppercase tracking-widest">المواعيد والاتصال</p>
         <h2 class="text-xl font-extrabold text-slate-900 leading-tight">إدارة المواعيد واستدعاءات أولياء الأمور</h2>
-        <p class="text-xs text-slate-800/70 mt-1">تتيح لك هذه اللوحة إدارة طلبات اللقاءات الواردة من الأهالي واستدعائهم عند الضرورة.</p>
+        <p class="text-xs text-slate-800/70 mt-1">تتيح لك هذه اللوحة متابعة والرد على طلبات اللقاءات الواردة من الأهالي، والاستطلاع على سجل الاستدعاءات.</p>
     </div>
 
-    {{-- تقسيم الصفحة --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {{-- قسم الجداول الرئيسية --}}
+    <div class="space-y-6">
         
-        {{-- الجدول الرئيسي لطلبات الأهالي --}}
-        <div class="lg:col-span-2 space-y-6">
-            
-            {{-- طلبات الأهالي --}}
-            <div class="rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 p-6">
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="w-1 h-5 bg-primary rounded-full"></span>
-                    <h3 class="text-sm font-bold text-slate-800 dark:text-white">طلبات المواعيد الواردة من الأهالي</h3>
-                </div>
+        {{-- طلبات الأهالي --}}
+        <div class="rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="w-1 h-5 bg-primary rounded-full"></span>
+                <h3 class="text-sm font-bold text-slate-800 dark:text-white">طلبات المواعيد الواردة من الأهالي</h3>
+            </div>
                 
                 @if($meetings->isEmpty())
                     <div class="text-center py-10 text-slate-400 dark:text-slate-500 text-xs">
@@ -150,55 +147,6 @@
                     </div>
                 @endif
             </div>
-
-        </div>
-
-        {{-- قسم إرسال استدعاء جديد --}}
-        <div class="space-y-6">
-            <div class="rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 p-6 sticky top-6">
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="w-1 h-5 bg-rose-500 rounded-full"></span>
-                    <h3 class="text-sm font-bold text-slate-800 dark:text-white">إرسال استدعاء لولي أمر طالب</h3>
-                </div>
-
-                <form action="{{ route('admin.summons.store') }}" method="POST" class="space-y-4 text-xs">
-                    @csrf
-                    <div>
-                        <label class="block text-slate-400 font-bold mb-1.5">اختر الطالب المعني:</label>
-                        <select name="student_id" required class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white">
-                            <option value="" disabled selected class="dark:bg-slate-900">-- اختر الطالب --</option>
-                            @foreach($students as $st)
-                                <option value="{{ $st->student_id }}" class="dark:bg-slate-900">
-                                    {{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->level }}]
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-slate-400 font-bold mb-1.5">سبب الاستدعاء باختصار:</label>
-                        <input type="text" name="reason_title" required placeholder="مثال: الغياب المتكرر / مناقشة سلوك الطالب" 
-                               class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white" />
-                    </div>
-
-                    <div>
-                        <label class="block text-slate-400 font-bold mb-1.5">تفاصيل الاستدعاء وملاحظات الإدارة:</label>
-                        <textarea name="details" required rows="4" placeholder="اكتب هنا التفاصيل التي ستظهر لولي الأمر في التطبيق مع نصائح الحضور..."
-                                  class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-slate-400 font-bold mb-1.5">تاريخ الحضور المطلوب:</label>
-                        <input type="date" name="summon_date" 
-                               class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white" />
-                    </div>
-
-                    <button type="submit" class="w-full py-2.5 rounded-xl font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md active:scale-95 transition-all">
-                        إرسال الاستدعاء الآن
-                    </button>
-                </form>
-            </div>
-        </div>
 
     </div>
 </div>
