@@ -1,4 +1,4 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'الرئيسية')
 
@@ -28,24 +28,24 @@
     $totalCourses = \App\Models\Course::count();
 @endphp
 <div class="grid grid-cols-2 gap-4">
-    <div class="flex items-center gap-4 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 hover:border-primary/30 transition-colors">
-        <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+    <a href="{{ route('admin.accounts') }}" class="flex items-center gap-4 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 hover:border-primary/50 hover:scale-[1.02] active:scale-98 transition-all cursor-pointer group">
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
             <span class="material-symbols-outlined text-blue-500 text-[24px]">group</span>
         </div>
         <div>
-            <span class="text-2xl font-black text-slate-900 dark:text-white block">{{ $totalUsers }}</span>
+            <span class="text-2xl font-black text-slate-900 dark:text-white block group-hover:text-primary transition-colors">{{ $totalUsers }}</span>
             <span class="text-xs font-semibold text-slate-400">إجمالي الحسابات</span>
         </div>
-    </div>
-    <div class="flex items-center gap-4 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 hover:border-primary/30 transition-colors">
-        <div class="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0">
+    </a>
+    <a href="{{ route('admin.courses') }}" class="flex items-center gap-4 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 hover:border-primary/50 hover:scale-[1.02] active:scale-98 transition-all cursor-pointer group">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
             <span class="material-symbols-outlined text-emerald-500 text-[24px]">school</span>
         </div>
         <div>
-            <span class="text-2xl font-black text-slate-900 dark:text-white block">{{ $totalCourses }}</span>
+            <span class="text-2xl font-black text-slate-900 dark:text-white block group-hover:text-primary transition-colors">{{ $totalCourses }}</span>
             <span class="text-xs font-semibold text-slate-400">الدورات الدراسية</span>
         </div>
-    </div>
+    </a>
 </div>
 
 {{-- ===== Announcements Header ===== --}}
