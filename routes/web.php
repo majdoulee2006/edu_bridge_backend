@@ -5,18 +5,24 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\HODWebController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Web\UnifiedAuthController;
+use App\Http\Controllers\Web\TeacherWebController;
+
+// ===== Unified Login Routes =====
+Route::get('/login', [UnifiedAuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.post');
+Route::post('/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
 // Default Redirect
 Route::get('/', function () {
-    return redirect('/hod/login');
+    return redirect('/login');
 });
 
 // ===== مسارات المعلم (Teacher) =====
-use App\Http\Controllers\Web\TeacherWebController;
 
 // تسجيل الدخول والخروج
-Route::get('/teacher/login', [TeacherWebController::class, 'showLoginForm'])->name('teacher.login');
-Route::post('/teacher/login', [TeacherWebController::class, 'login'])->name('teacher.login.post');
+Route::get('/teacher/login', fn() => redirect('/login'))->name('teacher.login');
+Route::post('/teacher/login', [UnifiedAuthController::class, 'login'])->name('teacher.login.post');
 Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('teacher.logout');
 
 // الصفحات المحمية بـ Middleware
@@ -115,8 +121,8 @@ Route::get('/create-student', function () {
 
 
 // مسارات تسجيل الدخول لرئيس القسم
-Route::get('/hod/login', [HODWebController::class, 'showLoginForm'])->name('hod.login');
-Route::post('/hod/login', [HODWebController::class, 'login'])->name('hod.login.submit');
+Route::get('/hod/login', fn() => redirect('/login'))->name('hod.login');
+Route::post('/hod/login', [UnifiedAuthController::class, 'login'])->name('hod.login.submit');
 Route::post('/hod/logout', [HODWebController::class, 'logout'])->name('hod.logout');
 
 // مسارات واجهات رئيس القسم (Frontend Only) محمية
@@ -186,8 +192,8 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
 // ===== مسارات الشؤون (Affairs) =====
 use App\Http\Controllers\Web\AffairsWebController;
 
-Route::get('/affairs/login', [AffairsWebController::class, 'showLoginForm'])->name('affairs.login');
-Route::post('/affairs/login', [AffairsWebController::class, 'login'])->name('affairs.login.submit');
+Route::get('/affairs/login', fn() => redirect('/login'))->name('affairs.login');
+Route::post('/affairs/login', [UnifiedAuthController::class, 'login'])->name('affairs.login.submit');
 Route::post('/affairs/logout', [AffairsWebController::class, 'logout'])->name('affairs.logout');
 
 Route::prefix('affairs')->middleware(['affairs'])->group(function () {
@@ -286,8 +292,8 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
 // ===== مسارات الإدارة (Admin) =====
 use App\Http\Controllers\Web\AdminWebController;
 
-Route::get('/admin/login', [AdminWebController::class, 'showLoginForm'])->name('admin.login');
-Route::post('/admin/login', [AdminWebController::class, 'login'])->name('admin.login.submit');
+Route::get('/admin/login', fn() => redirect('/login'))->name('admin.login');
+Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
 Route::post('/admin/logout', [AdminWebController::class, 'logout'])->name('admin.logout');
 
 Route::prefix('admin')->middleware(['admin'])->group(function () {
@@ -391,8 +397,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
 // ===== مسارات الطالب (Student) =====
 use App\Http\Controllers\Web\StudentWebController;
 
-Route::get('/student/login', [StudentWebController::class, 'showLoginForm'])->name('student.login');
-Route::post('/student/login', [StudentWebController::class, 'login'])->name('student.login.post');
+Route::get('/student/login', fn() => redirect('/login'))->name('student.login');
+Route::post('/student/login', [UnifiedAuthController::class, 'login'])->name('student.login.post');
 Route::post('/student/logout', [StudentWebController::class, 'logout'])->name('student.logout');
 
 Route::prefix('student')->middleware(['student'])->group(function () {
@@ -452,8 +458,8 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 use App\Http\Controllers\Web\ParentWebController;
 
 // تسجيل الدخول
-Route::get('/parent/login', [ParentWebController::class, 'showLoginForm'])->name('parent.login');
-Route::post('/parent/login', [ParentWebController::class, 'login'])->name('parent.login.post');
+Route::get('/parent/login', fn() => redirect('/login'))->name('parent.login');
+Route::post('/parent/login', [UnifiedAuthController::class, 'login'])->name('parent.login.post');
 Route::post('/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
 
 // العمليات المحمية
