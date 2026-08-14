@@ -13,14 +13,6 @@
 @section('content')
 <div class="font-Cairo max-w-6xl mx-auto flex flex-col gap-8 pb-12">
 
-    {{-- Success Message Alert --}}
-    @if(session('success'))
-        <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 p-5 rounded-3xl flex items-center gap-3 text-sm font-black shadow-sm">
-            <span class="material-symbols-outlined text-xl">check_circle</span>
-            <span>{{ session('success') }}</span>
-        </div>
-    @endif
-
     {{-- Validation Errors Alert --}}
     @if($errors->any())
         <div class="bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 p-5 rounded-3xl flex flex-col gap-1.5 text-xs font-bold shadow-sm">

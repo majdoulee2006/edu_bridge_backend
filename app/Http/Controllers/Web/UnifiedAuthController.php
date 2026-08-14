@@ -58,16 +58,16 @@ class UnifiedAuthController extends Controller
         $input   = trim($request->login);
         $roleKey = $request->input('role_key', 'unified');
 
-        // 1. Search in User table by email, phone, or username
+        // 1. Search in User table by email, phone, username, or university_id
         $user = User::where('email', $input)
             ->orWhere('phone', $input)
             ->orWhere('username', $input)
+            ->orWhere('university_id', $input)
             ->first();
 
-        // 2. If not found, search in Student table by student_code or university_id
+        // 2. If not found, search in Student table by student_code
         if (!$user) {
             $student = Student::where('student_code', $input)
-                ->orWhere('university_id', $input)
                 ->first();
             if ($student && $student->user) {
                 $user = $student->user;

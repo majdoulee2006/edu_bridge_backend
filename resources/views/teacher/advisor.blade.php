@@ -63,13 +63,6 @@
 
 @section('content')
 
-    @if(session('success'))
-        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div style="background:#fef2f2;color:#dc2626;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('error') }}</div>
-    @endif
-
     @if($advisorCourses->isEmpty())
         <div class="empty-state">
             <div><i class="fa-solid fa-user-tie"></i></div>

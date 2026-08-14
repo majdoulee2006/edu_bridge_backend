@@ -140,17 +140,6 @@
 @section('content')
     <p class="page-subtitle">متابعة تقارير أداء الطلاب</p>
 
-    @if(session('success'))
-        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;display:flex;align-items:center;gap:0.5rem;">
-            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-        </div>
-    @endif
-    @if($errors->any())
-        <div style="background:#fef2f2;color:#dc2626;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">
-            {{ $errors->first() }}
-        </div>
-    @endif
-
     {{-- Header + زر + --}}
     <div class="section-header">
         <h4 class="section-title">

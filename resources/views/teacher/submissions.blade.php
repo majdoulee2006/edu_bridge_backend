@@ -5,7 +5,7 @@
 @push('styles')
 <style>
     .submission-card { background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.25rem 1.5rem; box-shadow: var(--shadow); margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; cursor: pointer; border-right: 4px solid transparent; transition: all 0.2s; }
-    .submission-card:hover { border-right-color: var(--accent-color); }
+    .submission-card:hover { border-right-color: var(--accent-color); transform: translateY(-1px); }
     .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-color); color: #1a1a1a; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .grade-badge { padding: 0.3rem 0.8rem; border-radius: 2rem; font-weight: 800; font-size: 0.88rem; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
@@ -38,7 +38,6 @@
 
     <!-- Submissions List -->
     @forelse($submissions as $s)
-    @forelse($submissions as $s)
         @php
             $fileUrl = $s->file_path ? '/storage/' . $s->file_path : '';
             $ext = $s->file_path ? pathinfo($s->file_path, PATHINFO_EXTENSION) : '';
@@ -46,16 +45,22 @@
             $cleanStudent = str_replace(' ', '_', trim($s->student_name));
             $cleanTitle = str_replace(' ', '_', trim($assignment->title ?? 'واجب'));
             $fileName = $s->file_path ? ("حل_واجب_" . $cleanStudent . "_" . $cleanTitle . $extStr) : '';
+
+            $solText = $s->solution_text ?? '';
+            $notesText = $s->student_notes ?? '';
         @endphp
-        <div class="submission-card" onclick="openGradeModal({{ $s->submission_id }}, '{{ addslashes($s->student_name) }}', {{ $s->grade ?? 'null' }}, '{{ addslashes($s->feedback ?? '') }}', '{{ addslashes($s->content ?? '') }}', '{{ $fileUrl }}', '{{ addslashes($fileName) }}')">
+        <div class="submission-card" onclick="openGradeModal({{ $s->submission_id }}, '{{ addslashes($s->student_name) }}', {{ $s->grade ?? 'null' }}, '{{ addslashes($s->feedback ?? '') }}', '{{ addslashes($solText) }}', '{{ addslashes($notesText) }}', '{{ $fileUrl }}', '{{ addslashes($fileName) }}')">
             <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
                 <div class="avatar">{{ mb_substr($s->student_name, 0, 1) }}</div>
                 <div>
                     <div style="font-weight: 700;">{{ $s->student_name }}</div>
-                    <div style="color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.2rem; display: flex; gap: 0.75rem; align-items: center;">
+                    <div style="color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.2rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
                         <span><i class="fa-solid fa-clock"></i> {{ $s->submitted_at ? \Carbon\Carbon::parse($s->submitted_at)->format('Y-m-d h:i A') : 'غير محدد' }}</span>
+                        @if($solText)
+                            <span style="color: #3b82f6; font-weight: 700;"><i class="fa-solid fa-pen-to-square"></i> نص الحل</span>
+                        @endif
                         @if($s->file_path)
-                            <span style="color: var(--accent-color); font-weight: 700;"><i class="fa-solid fa-paperclip"></i> ملف مرفق</span>
+                            <span style="color: #eab308; font-weight: 700;"><i class="fa-solid fa-paperclip"></i> ملف مرفق</span>
                         @endif
                     </div>
                 </div>
@@ -95,18 +100,32 @@
                 </button>
             </div>
 
-            <!-- Student Answer & Attachment -->
+            <!-- Student Answer & Attachment & Notes -->
             <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1.25rem; margin-bottom: 1.25rem;">
-                <p style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;"><i class="fa-solid fa-quote-right" style="color: var(--accent-color);"></i> حل وتسليم الطالب</p>
+                <p style="font-size: 0.85rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                    <i class="fa-solid fa-quote-right" style="color: var(--accent-color);"></i> حل وتسليم الطالب:
+                </p>
                 
-                <p id="modal-content" style="font-size: 0.92rem; line-height: 1.6; color: var(--text-primary); margin-bottom: 0.5rem;"></p>
-                
+                <div id="modal-solution-container" style="margin-bottom: 0.75rem; background: var(--bg-secondary); padding: 0.75rem 1rem; border-radius: 0.75rem;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--accent-color); margin-bottom: 0.3rem;">نص الحل:</div>
+                    <div id="modal-content" style="font-size: 0.92rem; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap;"></div>
+                </div>
+
+                <div id="modal-notes-container" style="margin-bottom: 0.75rem; background: var(--bg-secondary); padding: 0.75rem 1rem; border-radius: 0.75rem;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.3rem;">ملاحظات الطالب:</div>
+                    <div id="modal-notes" style="font-size: 0.88rem; line-height: 1.5; color: var(--text-primary);"></div>
+                </div>
+
                 <div id="modal-file-container" style="display: none; margin-top: 0.5rem;">
                     <a id="modal-file-link" href="#" target="_blank" download
-                       style="display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 700; text-decoration: none;">
+                       style="display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent-color); color: #1a1a1a; padding: 0.65rem 1.25rem; border-radius: 0.75rem; font-size: 0.88rem; font-weight: 800; text-decoration: none;">
                         <i class="fa-solid fa-file-arrow-down"></i>
                         <span id="modal-file-name">تحميل ملف الحل المرفوع</span>
                     </a>
+                </div>
+
+                <div id="modal-empty-msg" style="display: none; font-size: 0.88rem; color: var(--text-secondary); text-align: center; padding: 0.5rem;">
+                    لا يوجد نص حل أو ملف مرفق من الطالب.
                 </div>
             </div>
 
@@ -135,17 +154,27 @@
 
 @push('scripts')
 <script>
-function openGradeModal(submissionId, studentName, grade, feedback, content, fileUrl, fileName) {
-    document.getElementById('modal-student-name').textContent = studentName;
+function openGradeModal(submissionId, studentName, grade, feedback, solutionText, studentNotes, fileUrl, fileName) {
+    document.getElementById('modal-student-name').textContent = 'تصحيح واجب: ' + studentName;
     document.getElementById('modal-grade').value = grade ?? '';
     document.getElementById('modal-feedback').value = feedback ?? '';
     
-    const contentElem = document.getElementById('modal-content');
-    if (content && content.trim() !== '') {
-        contentElem.textContent = content;
-        contentElem.style.display = 'block';
+    const solContainer = document.getElementById('modal-solution-container');
+    const solContent = document.getElementById('modal-content');
+    if (solutionText && solutionText.trim() !== '') {
+        solContent.textContent = solutionText;
+        solContainer.style.display = 'block';
     } else {
-        contentElem.style.display = 'none';
+        solContainer.style.display = 'none';
+    }
+
+    const notesContainer = document.getElementById('modal-notes-container');
+    const notesContent = document.getElementById('modal-notes');
+    if (studentNotes && studentNotes.trim() !== '') {
+        notesContent.textContent = studentNotes;
+        notesContainer.style.display = 'block';
+    } else {
+        notesContainer.style.display = 'none';
     }
 
     const fileContainer = document.getElementById('modal-file-container');
@@ -159,9 +188,11 @@ function openGradeModal(submissionId, studentName, grade, feedback, content, fil
         fileContainer.style.display = 'none';
     }
 
-    if ((!content || content.trim() === '') && (!fileUrl || fileUrl.trim() === '')) {
-        contentElem.textContent = 'لا يوجد نص أو ملف مرفق من الطالب.';
-        contentElem.style.display = 'block';
+    const emptyMsg = document.getElementById('modal-empty-msg');
+    if ((!solutionText || solutionText.trim() === '') && (!fileUrl || fileUrl.trim() === '') && (!studentNotes || studentNotes.trim() === '')) {
+        emptyMsg.style.display = 'block';
+    } else {
+        emptyMsg.style.display = 'none';
     }
 
     document.getElementById('grade-form').action = '/teacher/assignments/submissions/' + submissionId + '/grade';

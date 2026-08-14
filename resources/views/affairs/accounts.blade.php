@@ -228,22 +228,6 @@
 @section('content')
 <div class="accounts-container">
 
-    {{-- رسائل النجاح والخطأ --}}
-    @if(session('success'))
-        <div id="flash-success" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;
-             border-radius:0.75rem;padding:1rem 1.25rem;margin-bottom:1.5rem;font-weight:600;
-             display:flex;align-items:center;gap:0.5rem;">
-            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div id="flash-error" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;
-             border-radius:0.75rem;padding:1rem 1.25rem;margin-bottom:1.5rem;font-weight:600;
-             display:flex;align-items:center;gap:0.5rem;">
-            <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
-        </div>
-    @endif
-
     <!-- Header -->
     <div class="page-header">
         <h2>إدارة الحسابات (المستخدمين)</h2>
@@ -349,24 +333,6 @@
         @endforelse
     </div>
 </div>
-
-{{-- Flash Message --}}
-@if(session('success'))
-<div id="flash-msg" style="position:fixed; top:1.5rem; left:50%; transform:translateX(-50%); z-index:9999;
-    background:#10b981; color:white; padding:0.9rem 2rem; border-radius:1rem;
-    font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.15);
-    display:flex; align-items:center; gap:0.75rem;">
-    <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-</div>
-@endif
-@if(session('error') || $errors->any())
-<div id="flash-err" style="position:fixed; top:1.5rem; left:50%; transform:translateX(-50%); z-index:9999;
-    background:#ef4444; color:white; padding:0.9rem 2rem; border-radius:1rem;
-    font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.15);
-    display:flex; align-items:center; gap:0.75rem;">
-    <i class="fa-solid fa-circle-xmark"></i> {{ session('error') ?? $errors->first() }}
-</div>
-@endif
 
 <!-- Modal for Create Account -->
 <div class="modal-overlay" id="accountModal">

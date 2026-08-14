@@ -64,11 +64,6 @@
 @endpush
 
 @section('content')
-    @if(session('success'))
-        <div style="background: rgba(16,185,129,0.1); border: 1px solid #10b981; border-radius: 0.75rem; padding: 0.8rem 1.2rem; margin-bottom: 1.25rem; color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-        </div>
-    @endif
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>

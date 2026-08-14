@@ -51,14 +51,6 @@
         }
     </style>
 
-    {{-- ===== SUCCESS FLASH MESSAGE ALERT ===== --}}
-    @if(session('success'))
-        <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 p-4 rounded-2xl flex items-center gap-3 text-xs font-black shadow-sm mb-4 no-print">
-            <span class="material-symbols-outlined text-xl">check_circle</span>
-            <span>{{ session('success') }}</span>
-        </div>
-    @endif
-
     {{-- ===== TOP ACTION BAR: NEW REPORT BUTTON ON THE RIGHT ABOVE THE DARK CONTAINER ===== --}}
     <div class="flex items-center justify-start mb-4 no-print">
         <button onclick="openReportModal()" class="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-content font-black shadow-glow hover:bg-primary-dark transition-all active:scale-95 cursor-pointer">

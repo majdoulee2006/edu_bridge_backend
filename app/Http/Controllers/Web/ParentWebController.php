@@ -446,15 +446,84 @@ class ParentWebController extends Controller
             return back()->with('error', 'الطلب غير موجود.');
         }
 
-        DB::table('absence_requests')
-            ->where('request_id', $id)
-            ->update([
-                'status'     => $request->status,
-                'updated_at' => now(),
-            ]);
+        if ($request->status === 'rejected') {
+            // إذا رفض ولي الأمر: إيقاف المسار وإشعار للطالب فقط
+            DB::table('absence_requests')
+                ->where('request_id', $id)
+                ->update([
+                    'status'     => 'rejected',
+                    'updated_at' => now(),
+                ]);
 
-        $msg = $request->status === 'approved' ? 'تمت الموافقة على طلب الإذن بنجاح.' : 'تم رفض طلب الإذن.';
-        return back()->with('success', $msg);
+            if ($absenceRequest->student_id) {
+                $studentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
+                if ($studentUserId) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $studentUserId,
+                        'title'      => 'تم رفض طلب الإذن',
+                        'message'    => 'تم رفض طلب إذنك بتاريخ ' . $absenceRequest->date . ' من قِبل ولي الأمر.',
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            return back()->with('success', 'تم رفض طلب الإذن وإيقاف المسار.');
+        } else {
+            // إذا وافق ولي الأمر: تحويل الطلب لرئيس القسم (pending_hod)
+            DB::table('absence_requests')
+                ->where('request_id', $id)
+                ->update([
+                    'status'     => 'pending_hod',
+                    'updated_at' => now(),
+                ]);
+
+            $studentName = 'الطالب';
+            if ($absenceRequest->student_id) {
+                $studentUser = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->where('students.student_id', $absenceRequest->student_id)
+                    ->select('users.user_id', 'users.full_name')
+                    ->first();
+
+                if ($studentUser) {
+                    $studentName = $studentUser->full_name;
+                }
+            }
+
+            // إرسال الإشعار لرؤساء الأقسام (HOD) - الخطوة 2 في المسار
+            $hodUserIds = DB::table('users')->where('role_id', 5)
+                ->pluck('user_id')
+                ->merge(DB::table('heads')->pluck('user_id'))
+                ->unique();
+
+            foreach ($hodUserIds as $hId) {
+                if ($hId) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $hId,
+                        'title'      => 'طلب إذن بانتظار موافقتك',
+                        'message'    => 'وافق ولي الأمر على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $absenceRequest->date . '، يرجى مراجعته والموافقة عليه.',
+                        'type'       => 'leave_request',
+                        'category'   => 'administrative',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    \App\Services\FcmService::sendToUser(
+                        $hId,
+                        'طلب إذن بانتظار موافقتك',
+                        'وافق ولي الأمر على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $absenceRequest->date . '، يرجى مراجعته والموافقة عليه.',
+                        ['type' => 'leave_request', 'related_id' => (string)$id]
+                    );
+                }
+            }
+
+            return back()->with('success', 'تمت موافقة ولي الأمر بنجاح وتحويل الطلب لرئيس القسم.');
+        }
     }
 
     public function submitLeaveRequest(Request $request)

@@ -205,33 +205,6 @@
 @endpush
 
 @section('content')
-
-{{-- Flash Messages --}}
-@if(session('success'))
-<div id="flashMsg" style="position:fixed; top:1.5rem; left:50%; transform:translateX(-50%); z-index:9999;
-    background:#10b981; color:white; padding:0.9rem 2rem; border-radius:1rem;
-    font-weight:700; font-size:0.95rem; box-shadow:0 8px 24px rgba(0,0,0,0.15);
-    display:flex; align-items:center; gap:0.75rem; animation: slideDown 0.4s ease;">
-    <i class="fa-solid fa-circle-check"></i>
-    {{ session('success') }}
-</div>
-<style>
-    @keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
-</style>
-<script>setTimeout(() => { const m = document.getElementById('flashMsg'); if(m) m.style.display='none'; }, 3000);</script>
-@endif
-
-@if(session('error') || $errors->any())
-<div id="flashErr" style="position:fixed; top:1.5rem; left:50%; transform:translateX(-50%); z-index:9999;
-    background:#ef4444; color:white; padding:0.9rem 2rem; border-radius:1rem;
-    font-weight:700; font-size:0.95rem; box-shadow:0 8px 24px rgba(0,0,0,0.15);
-    display:flex; align-items:center; gap:0.75rem;">
-    <i class="fa-solid fa-circle-xmark"></i>
-    {{ session('error') ?? $errors->first() }}
-</div>
-<script>setTimeout(() => { const m = document.getElementById('flashErr'); if(m) m.style.display='none'; }, 4000);</script>
-@endif
-
 <div class="calendar-container">
     <div class="calendar-header">
         <h2 id="current-month-year"></h2>

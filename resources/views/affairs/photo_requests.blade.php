@@ -217,18 +217,6 @@
         </h2>
     </div>
 
-    @if(session('success'))
-    <div style="background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; padding:1rem 1.5rem; border-radius:1rem; margin-bottom:1.5rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
-        <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-    </div>
-    @endif
-
-    @if(session('error'))
-    <div style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; padding:1rem 1.5rem; border-radius:1rem; margin-bottom:1.5rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
-        <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
-    </div>
-    @endif
-
     @if($requests->isEmpty())
         <div class="empty-state">
             <i class="fa-solid fa-camera-retro"></i>

@@ -52,20 +52,6 @@
 
 @section('content')
 
-@if(session('success'))
-    <div style="background: hsl(120,70%,90%); color: hsl(120,50%,30%); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1.5rem; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i class="fa-solid fa-circle-check" style="font-size: 1.1rem;"></i>
-        <span>{{ session('success') }}</span>
-    </div>
-@endif
-
-@if($errors->any())
-    <div style="background: hsl(0,70%,90%); color: hsl(0,50%,30%); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1.5rem; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i class="fa-solid fa-circle-exclamation" style="font-size: 1.1rem;"></i>
-        <span>{{ $errors->first() }}</span>
-    </div>
-@endif
-
 {{-- New Request Form --}}
 <div class="form-card">
     <p style="font-size: 1.05rem; font-weight: 800; margin-bottom: 1.25rem;">
@@ -132,16 +118,26 @@
         </div>
         <div style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; margin-top: 0.25rem;">{{ $r->reason }}</div>
         
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; flex-wrap: wrap; gap: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 0.75rem;">
             <div style="color: var(--text-secondary); font-size: 0.78rem;">
                 <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($r->created_at)->diffForHumans() }}
             </div>
-            @if($r->document)
-                <a href="/storage/{{ $r->document }}" target="_blank" download
-                   style="color: var(--accent-color); font-weight: 700; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
-                    <i class="fa-solid fa-paperclip"></i> تحميل المستند المرفق
-                </a>
-            @endif
+            
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                @if($r->document)
+                    <a href="/storage/{{ $r->document }}" target="_blank" download
+                       style="color: var(--text-secondary); font-weight: 700; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
+                        <i class="fa-solid fa-paperclip"></i> المستند المرفق
+                    </a>
+                @endif
+                
+                {{-- زر عرض بطاقة الخروج الرسمية للحراس --}}
+                <button type="button" 
+                        onclick="openExitPassModal('{{ $r->request_id ?? $r->id }}', '{{ addslashes(auth()->user()->full_name ?? 'الطالب') }}', '{{ addslashes($student->student_code ?? 'غير محدد') }}', '{{ addslashes(auth()->user()->department ?? 'قسم العام') }}', '{{ \Carbon\Carbon::parse($r->date)->format('Y-m-d') }}', '{{ addslashes($r->reason ?? '') }}', '{{ $r->status }}', '{{ $r->created_at }}')"
+                        style="background: {{ $r->status === 'approved' ? '#10b981' : ($r->status === 'rejected' ? '#ef4444' : 'var(--accent-color)') }}; color: {{ $r->status === 'approved' || $r->status === 'rejected' ? '#ffffff' : '#1a1a1a' }}; border: none; padding: 0.45rem 0.95rem; border-radius: 0.6rem; font-size: 0.83rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; font-family: inherit;">
+                    <i class="fa-solid fa-id-card"></i> {{ $r->status === 'approved' ? 'عرض تصريح الخروج (للحراس)' : 'عرض تفاصيل الطلب' }}
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -151,6 +147,101 @@
     لا توجد طلبات سابقة
 </div>
 @endforelse
+
+{{-- 🌟 نافذة تصريح الخروج الرسمي للحراس (Official Exit Pass Modal - Edu-Bridge System) 🌟 --}}
+<div id="exitPassModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(5px); z-index: 99999; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: var(--bg-secondary); border-radius: 1.25rem; width: 100%; max-width: 460px; box-shadow: var(--shadow); border: 1px solid var(--border-color); border-top: 4px solid var(--accent-color); overflow: hidden; position: relative; animation: modalPop 0.25s ease-out;">
+        
+        {{-- Modal Header --}}
+        <div style="background: var(--bg-primary); padding: 1.25rem; text-align: center; position: relative; border-bottom: 1px solid var(--border-color);">
+            <button onclick="closeExitPassModal()" style="position: absolute; left: 1rem; top: 1rem; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">&times;</button>
+            
+            <div style="display: inline-flex; align-items: center; justify-content: center; width: 50px; height: 50px; border-radius: 50%; background: var(--bg-secondary); border: 2px solid var(--accent-color); margin-bottom: 0.5rem;">
+                <i class="fa-solid fa-graduation-cap" style="font-size: 1.5rem; color: var(--accent-color);"></i>
+            </div>
+            <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: var(--text-primary);">Edu-Bridge | بطاقة خروج رسمية</h3>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem; font-weight: 600;">نظام التراخيص والتصاريح الأكاديمية</p>
+        </div>
+
+        {{-- Modal Content Body --}}
+        <div style="padding: 1.25rem;" dir="rtl">
+            
+            {{-- Pass Status Banner --}}
+            <div id="passStatusBanner" style="text-align: center; padding: 0.75rem 1rem; border-radius: 0.75rem; font-weight: 800; font-size: 0.9rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.55rem; transition: all 0.3s;">
+                <i id="passStatusIcon" class="fa-solid fa-circle-check" style="font-size: 1.1rem;"></i>
+                <span id="passStatusText">موافق عليه رسمياً - يُسمح بالمغادرة</span>
+            </div>
+
+            {{-- Student Information Card --}}
+            <div style="background: var(--bg-primary); border-radius: 0.85rem; padding: 0.9rem; margin-bottom: 0.9rem; border: 1px solid var(--border-color); border-right: 4px solid var(--accent-color); display: flex; align-items: center; gap: 0.85rem;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--accent-color); color: #1a1a1a; font-size: 1.35rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {{ mb_substr(auth()->user()->full_name ?? 'ط', 0, 1) }}
+                </div>
+                <div>
+                    <h4 id="passStudentName" style="font-size: 1rem; font-weight: 800; color: var(--text-primary); margin: 0;">{{ auth()->user()->full_name }}</h4>
+                    <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.15rem;">
+                        الرقم الجامعي: <strong id="passStudentCode" style="color: var(--text-primary); font-weight: 700;">{{ $student->student_code ?? 'غير محدد' }}</strong>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                        القسم الأكاديمي: <span id="passDepartment" style="color: var(--text-primary); font-weight: 600;">{{ auth()->user()->department ?? 'عام' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Details List --}}
+            <div style="background: var(--bg-primary); border-radius: 0.85rem; padding: 0.85rem; margin-bottom: 0.9rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.4rem;">
+                    <span style="color: var(--text-secondary);"><i class="fa-regular fa-calendar-check" style="color: var(--accent-color);"></i> تاريخ الإذن:</span>
+                    <strong id="passDate" style="color: var(--text-primary); font-weight: 700;"></strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.4rem;">
+                    <span style="color: var(--text-secondary);"><i class="fa-solid fa-comment-dots" style="color: var(--accent-color);"></i> سبب الخروج:</span>
+                    <strong id="passReason" style="color: var(--text-primary); max-width: 220px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600;"></strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);"><i class="fa-solid fa-barcode" style="color: var(--accent-color);"></i> رقم التصريح:</span>
+                    <strong id="passSerial" style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem; font-weight: 700;"></strong>
+                </div>
+            </div>
+
+            {{-- Sequential Approvals Verification Chain --}}
+            <div style="background: var(--bg-primary); padding: 0.85rem; border-radius: 0.85rem; font-size: 0.8rem; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+                <div style="font-weight: 800; color: var(--text-primary); margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-shield-cat" style="color: var(--accent-color); font-size: 0.95rem;"></i> تسلسل الاعتمادات الرسمية:
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.35rem;" id="passApprovalsChain">
+                    {{-- Rendered dynamically via JS --}}
+                </div>
+            </div>
+
+            {{-- QR Code / Security Stamp Mockup --}}
+            <div style="text-align: center; border-top: 1px dashed var(--border-color); padding-top: 0.75rem;">
+                <div style="display: inline-block; background: #ffffff; padding: 0.45rem 0.65rem; border-radius: 0.5rem; border: 1px solid var(--border-color); margin-bottom: 0.3rem;">
+                    <i class="fa-solid fa-qrcode" style="font-size: 3rem; color: #1a1a1a;"></i>
+                </div>
+                <div style="font-size: 0.74rem; color: var(--text-secondary); font-weight: 600;">رمز التحقق الأمني المعتمد لحراس البوابة الإلكترونية</div>
+            </div>
+
+            {{-- Action Buttons --}}
+            <div style="display: flex; gap: 0.65rem; margin-top: 1rem;">
+                <button onclick="window.print()" style="flex: 1; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.7rem; border-radius: 0.75rem; font-size: 0.88rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s;">
+                    <i class="fa-solid fa-print"></i> طباعة البطاقة
+                </button>
+                <button onclick="closeExitPassModal()" style="flex: 1; background: var(--accent-color); color: #1a1a1a; border: none; padding: 0.7rem; border-radius: 0.75rem; font-size: 0.88rem; font-weight: 800; cursor: pointer; font-family: inherit; transition: all 0.2s;">
+                    إغلاق
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes modalPop {
+    from { transform: scale(0.93); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+</style>
 
 @endsection
 
@@ -165,5 +256,77 @@ function toggleHourlyFields(typeVal) {
         fields.style.display = 'none';
     }
 }
+
+function openExitPassModal(reqId, studentName, studentCode, department, date, reason, status, createdAt) {
+    const modal = document.getElementById('exitPassModal');
+    if (!modal) return;
+
+    document.getElementById('passStudentName').innerText = studentName;
+    document.getElementById('passStudentCode').innerText = studentCode;
+    document.getElementById('passDepartment').innerText = department;
+    document.getElementById('passDate').innerText = date;
+    document.getElementById('passReason').innerText = reason;
+    document.getElementById('passSerial').innerText = '#EX-' + String(reqId).padStart(5, '0');
+
+    const banner = document.getElementById('passStatusBanner');
+    const icon = document.getElementById('passStatusIcon');
+    const text = document.getElementById('passStatusText');
+    const chain = document.getElementById('passApprovalsChain');
+
+    if (status === 'approved') {
+        banner.style.background = 'var(--accent-color)';
+        banner.style.color = '#1a1a1a';
+        banner.style.border = '1px solid var(--accent-color)';
+        icon.className = 'fa-solid fa-circle-check';
+        text.innerText = 'تصريح خروج معتمد نهائياً - يُسمح بالمغادرة ✓';
+
+        chain.innerHTML = `
+            <div style="color: #10b981; font-weight: 700;"><i class="fa-solid fa-check"></i> موافقة ولي الأمر: تمت بنجاح ✓</div>
+            <div style="color: #10b981; font-weight: 700;"><i class="fa-solid fa-check"></i> موافقة رئيس القسم: تمت بنجاح ✓</div>
+            <div style="color: #10b981; font-weight: 800;"><i class="fa-solid fa-circle-check"></i> اعتماد شؤون الطلاب: تمت الموافقة وتثبيت الخروج ✓</div>
+        `;
+    } else if (status === 'rejected') {
+        banner.style.background = 'hsl(0,70%,90%)';
+        banner.style.color = 'hsl(0,50%,30%)';
+        banner.style.border = '1px solid hsl(0,50%,80%)';
+        icon.className = 'fa-solid fa-circle-xmark';
+        text.innerText = 'طلب مرفوض - لا يُسمح بالمغادرة من البوابة';
+
+        chain.innerHTML = `
+            <div style="color: hsl(0,50%,30%); font-weight: 700;"><i class="fa-solid fa-xmark"></i> القرار النهائي: تم رفض طلب الخروج</div>
+        `;
+    } else {
+        banner.style.background = 'hsl(30,70%,90%)';
+        banner.style.color = 'hsl(30,50%,30%)';
+        banner.style.border = '1px solid hsl(30,50%,80%)';
+        icon.className = 'fa-solid fa-clock';
+        text.innerText = 'الطلب قيد المراجعة - في انتظار الاعتماد النهائي';
+
+        let stageText = 'بانتظار موافقة ولي الأمر';
+        if (status === 'pending_hod') stageText = 'بانتظار موافقة رئيس القسم';
+        if (status === 'pending_affairs') stageText = 'بانتظار اعتماد شؤون الطلاب';
+
+        chain.innerHTML = `
+            <div style="color: hsl(30,50%,30%); font-weight: 700;"><i class="fa-solid fa-spinner fa-spin"></i> المرحلة الحالية: ${stageText}</div>
+        `;
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeExitPassModal() {
+    const modal = document.getElementById('exitPassModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Auto open pass if request_id parameter is present in URL
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reqId = urlParams.get('request_id') || urlParams.get('open_pass');
+    if (reqId) {
+        const btn = document.querySelector(`button[onclick*="'${reqId}'"]`);
+        if (btn) btn.click();
+    }
+});
 </script>
 @endpush

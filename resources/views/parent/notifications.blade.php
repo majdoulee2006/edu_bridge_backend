@@ -64,11 +64,6 @@
 @endpush
 
 @section('content')
-    @if(session('success'))
-        <div style="background: rgba(16,185,129,0.1); border: 1px solid #10b981; border-radius: 0.75rem; padding: 0.8rem 1.2rem; margin-bottom: 1.25rem; color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-        </div>
-    @endif
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
@@ -98,17 +93,21 @@
             $isRead = $n->is_read ?? false;
             $type   = $n->type ?? 'general';
             $iconMap = [
-                'summon'         => ['icon' => 'fa-triangle-exclamation', 'color' => '#ef4444', 'bg' => '#fef2f2'],
-                'meeting_response'=>['icon' => 'fa-calendar-check',       'color' => '#10b981', 'bg' => '#ecfdf5'],
-                'message'        => ['icon' => 'fa-envelope',             'color' => '#3b82f6', 'bg' => '#eff6ff'],
-                'admin'          => ['icon' => 'fa-bullhorn',             'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
-                'general'        => ['icon' => 'fa-bell',                 'color' => '#f59e0b', 'bg' => '#fffbeb'],
+                'summon'           => ['icon' => 'fa-triangle-exclamation', 'color' => '#ef4444', 'bg' => '#fef2f2'],
+                'meeting_response' => ['icon' => 'fa-calendar-check',       'color' => '#10b981', 'bg' => '#ecfdf5'],
+                'leave_request'    => ['icon' => 'fa-calendar-days',        'color' => '#3b82f6', 'bg' => '#eff6ff'],
+                'leave'            => ['icon' => 'fa-calendar-days',        'color' => '#3b82f6', 'bg' => '#eff6ff'],
+                'message'          => ['icon' => 'fa-envelope',             'color' => '#3b82f6', 'bg' => '#eff6ff'],
+                'admin'            => ['icon' => 'fa-bullhorn',             'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
+                'general'          => ['icon' => 'fa-bell',                 'color' => '#f59e0b', 'bg' => '#fffbeb'],
             ];
             $style = $iconMap[$type] ?? $iconMap['general'];
 
             $linkMap = [
                 'summon'           => '/parent/appointments',
                 'meeting_response' => '/parent/appointments',
+                'leave_request'    => '/parent/permissions',
+                'leave'            => '/parent/permissions',
                 'message'          => '/parent/messages',
                 'admin'            => '/parent/dashboard',
                 'general'          => '/parent/notifications',

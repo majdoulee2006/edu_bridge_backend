@@ -46,22 +46,6 @@ tr:last-child td { border-bottom:none; }
         </button>
     </div>
 
-    @if(session('success'))
-    <div style="background:#d1fae5; color:#065f46; padding:1rem 1.5rem; border-radius:1rem; margin-bottom:1.5rem; font-weight:700;">
-        <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-    </div>
-    @endif
-    @if(session('error'))
-    <div style="background:#fee2e2; color:#991b1b; padding:1rem 1.5rem; border-radius:1rem; margin-bottom:1.5rem; font-weight:700;">
-        <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
-    </div>
-    @endif
-    @if($errors->any())
-    <div style="background:#fee2e2; color:#991b1b; padding:1rem 1.5rem; border-radius:1rem; margin-bottom:1.5rem; font-weight:700;">
-        <i class="fa-solid fa-circle-xmark"></i> {{ $errors->first() }}
-    </div>
-    @endif
-
     <table>
         <thead>
             <tr>

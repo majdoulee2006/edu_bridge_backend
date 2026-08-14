@@ -6,18 +6,6 @@
 
 @section('content')
 
-@if(session('success'))
-<div class="alert-toast mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-between shadow-soft">
-    <div class="flex items-center gap-3">
-        <span class="material-symbols-outlined text-2xl">check_circle</span>
-        <span class="text-xs md:text-sm font-bold">{{ session('success') }}</span>
-    </div>
-    <button onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">
-        <span class="material-symbols-outlined text-lg">close</span>
-    </button>
-</div>
-@endif
-
 @if(session('new_department_id'))
 <div id="web-dept-wizard-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300">
     <div class="bg-white dark:bg-surface-dark w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 scale-100 transition-all duration-300 flex flex-col p-6 text-right">

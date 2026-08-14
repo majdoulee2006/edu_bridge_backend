@@ -430,6 +430,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 
     // طلبات الإذن
     Route::get('/leave-requests', [StudentWebController::class, 'leaveRequests'])->name('student.leave_requests');
+    Route::get('/leave_requests', fn() => redirect()->route('student.leave_requests'));
     Route::post('/leave-requests', [StudentWebController::class, 'storeLeaveRequest'])->name('student.leave_requests.store');
 
 
@@ -489,6 +490,7 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     
     // الأذونات والطلبات
     Route::get('/permissions', [ParentWebController::class, 'permissions'])->name('parent.permissions');
+    Route::get('/leaves', fn() => redirect()->route('parent.permissions'));
     Route::post('/permissions/{id}/respond', [ParentWebController::class, 'respondPermission'])->name('parent.permissions.respond');
     Route::post('/permissions/submit', [ParentWebController::class, 'submitLeaveRequest'])->name('parent.permissions.submit');
     
@@ -523,3 +525,28 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::get('/messages/{id}/download', [ParentWebController::class, 'downloadAttachment'])->name('parent.messages.download');
     Route::post('/messages/forward', [ParentWebController::class, 'forwardMessage'])->name('parent.messages.forward');
 });
+
+// ===== Live Web Notifications Polling Route =====
+Route::middleware(['web'])->get('/web-notifications/latest', function () {
+    $userId = Auth::id();
+    if (!$userId) {
+        return response()->json(['unread_count' => 0, 'latest' => []]);
+    }
+
+    $unreadCount = \Illuminate\Support\Facades\DB::table('notifications')
+        ->where('user_id', $userId)
+        ->where('is_read', 0)
+        ->count();
+
+    $latest = \Illuminate\Support\Facades\DB::table('notifications')
+        ->where('user_id', $userId)
+        ->where('is_read', 0)
+        ->orderByDesc('created_at')
+        ->limit(3)
+        ->get();
+
+    return response()->json([
+        'unread_count' => $unreadCount,
+        'latest'       => $latest,
+    ]);
+})->name('web.notifications.latest');

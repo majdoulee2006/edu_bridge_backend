@@ -23,12 +23,6 @@
 
 @section('content')
 
-@if(session('success'))
-    <div style="background: hsl(120,70%,90%); color: hsl(120,40%,30%); border-radius: 0.75rem; padding: 0.9rem 1.25rem; margin-bottom: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-        <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-    </div>
-@endif
-
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
     <div style="font-size: 1rem; color: var(--text-secondary);">{{ $quizzes->count() }} اختبار</div>
     <button onclick="document.getElementById('create-modal').classList.add('active')"

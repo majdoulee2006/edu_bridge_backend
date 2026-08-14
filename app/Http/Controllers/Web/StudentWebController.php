@@ -302,18 +302,38 @@ class StudentWebController extends Controller
             ->where('student_id', $student->student_id)
             ->pluck('course_id');
 
+        $courses = DB::table('courses')
+            ->whereIn('course_id', $enrolledCourseIds)
+            ->get();
+
+        foreach ($courses as $c) {
+            $teacherName = DB::table('course_teachers')
+                ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+                ->join('users', 'teachers.user_id', '=', 'users.user_id')
+                ->where('course_teachers.course_id', $c->course_id)
+                ->value('users.full_name');
+
+            $c->teacher_name = $teacherName ?? 'مدرس المادة';
+        }
+
         $assignments = DB::table('assignments')
             ->join('courses', 'assignments.course_id', '=', 'courses.course_id')
             ->leftJoin('assignment_submissions', function($join) use ($student) {
                 $join->on('assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
                      ->where('assignment_submissions.student_id', '=', $student->student_id);
             })
+            ->leftJoin('course_teachers', 'courses.course_id', '=', 'course_teachers.course_id')
+            ->leftJoin('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as teacher_users', 'teachers.user_id', '=', 'teacher_users.user_id')
             ->whereIn('assignments.course_id', $enrolledCourseIds)
             ->select(
                 'assignments.*',
                 'courses.title as course_title',
+                'teacher_users.full_name as teacher_name',
                 'assignment_submissions.submission_id',
                 'assignment_submissions.file_path as submission_file',
+                'assignment_submissions.solution_text',
+                'assignment_submissions.student_notes',
                 'assignment_submissions.grade',
                 'assignment_submissions.feedback',
                 'assignment_submissions.submitted_at'
@@ -321,19 +341,27 @@ class StudentWebController extends Controller
             ->orderBy('assignments.due_date')
             ->get();
 
-        return view('student.assignments', compact('assignments'));
+        return view('student.assignments', compact('assignments', 'courses'));
     }
 
     public function submitAssignment(Request $request, $assignmentId)
     {
         $request->validate([
-            'file' => 'required|file|max:51200|mimes:jpg,jpeg,png,gif,pdf,doc,docx,ppt,pptx,xls,xlsx,txt,zip',
+            'file'          => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,pdf,doc,docx,ppt,pptx,xls,xlsx,txt,zip',
+            'solution_text' => 'nullable|string|max:4000',
+            'student_notes' => 'nullable|string|max:1000',
         ], [
-            'file.required' => 'يرجى اختيار ملف للتسليم.',
-            'file.max'      => 'حجم الملف يجب ألا يتجاوز 50 ميجابايت.',
+            'file.max' => 'حجم الملف يجب ألا يتجاوز 50 ميجابايت.',
         ]);
 
         $student = $this->getStudent();
+
+        $solText   = trim($request->input('solution_text', ''));
+        $notesText = trim($request->input('student_notes', ''));
+
+        if (!$request->hasFile('file') && empty($solText)) {
+            return back()->withErrors(['file' => 'يرجى كتابة نص الحل أو إرفاق ملف على الأقل لتسليم الواجب.']);
+        }
 
         // التحقق من عدم التسليم المسبق
         $existing = DB::table('assignment_submissions')
@@ -348,13 +376,18 @@ class StudentWebController extends Controller
         $assignment = DB::table('assignments')->where('assignment_id', $assignmentId)->first();
         if (!$assignment) abort(404);
 
-        $file     = $request->file('file');
-        $filePath = $file->store('submissions', 'public');
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $file     = $request->file('file');
+            $filePath = $file->store('submissions', 'public');
+        }
 
         DB::table('assignment_submissions')->insert([
             'assignment_id' => $assignmentId,
             'student_id'    => $student->student_id,
             'file_path'     => $filePath,
+            'solution_text' => $solText !== '' ? $solText : null,
+            'student_notes' => $notesText !== '' ? $notesText : null,
             'submitted_at'  => now(),
             'created_at'    => now(),
             'updated_at'    => now(),
@@ -541,7 +574,7 @@ class StudentWebController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('student.leave_requests', compact('requests'));
+        return view('student.leave_requests', compact('requests', 'student'));
     }
 
     public function storeLeaveRequest(Request $request)
@@ -574,17 +607,51 @@ class StudentWebController extends Controller
             $reasonText = "[إذن يومي] - " . $request->reason;
         }
 
-        DB::table('absence_requests')->insert([
+        $requestId = DB::table('absence_requests')->insertGetId([
             'student_id' => $student->student_id,
             'reason'     => $reasonText,
             'date'       => $request->date,
             'document'   => $filePath,
-            'status'     => 'pending',
+            'status'     => 'pending_parent',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'تم تقديم طلب الإذن بنجاح، في انتظار الموافقة.');
+        $authUser    = auth()->user();
+        $studentName = $authUser->full_name ?? 'الطالب';
+        $notifTitle  = 'طلب إذن جديد من الابن';
+        $notifMsg    = 'قام ابنكم ' . $studentName . ' بتقديم طلب إذن غياب بتاريخ ' . $request->date . '، يرجى مراجعته والموافقة عليه.';
+
+        // الخطوة 1 في المسار المتسلسل: إرسال الإشعار لولي الأمر أولاً
+        $parentUserIds = DB::table('parent_students')
+            ->where('student_id', $student->student_id)
+            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+            ->pluck('parents.user_id');
+
+        foreach ($parentUserIds as $pId) {
+            if ($pId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $pId,
+                    'sender_id'  => $authUser?->user_id,
+                    'title'      => $notifTitle,
+                    'message'    => $notifMsg,
+                    'type'       => 'leave_request',
+                    'category'   => 'administrative',
+                    'related_id' => $requestId,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                \App\Services\FcmService::sendToUser(
+                    $pId,
+                    $notifTitle,
+                    $notifMsg,
+                    ['type' => 'leave_request', 'related_id' => (string)$requestId]
+                );
+            }
+        }
+
+        return back()->with('success', 'تم تقديم طلب الإذن بنجاح، وهو بانتظار موافقة ولي الأمر أولاً.');
     }
 
     // ────────────────────────────────────────────────────────────

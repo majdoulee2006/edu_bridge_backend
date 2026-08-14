@@ -80,12 +80,6 @@
 @section('content')
 <div class="settings-page">
 
-    @if(session('success'))
-        <div style="background:rgba(34,197,94,0.1);border:1px solid #22c55e;color:#16a34a;border-radius:0.75rem;padding:0.75rem 1rem;margin-bottom:1rem;font-weight:600;">
-            <i class="fas fa-check-circle me-2"></i> {{ session('success') }}
-        </div>
-    @endif
-
     {{-- معلومات الحساب --}}
     <div class="settings-card">
         <h3><i class="fas fa-user-circle"></i> معلومات الحساب</h3>

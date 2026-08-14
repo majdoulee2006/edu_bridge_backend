@@ -330,6 +330,7 @@ class HODWebController extends Controller
                 'students.level',
                 'students.student_code'
             )
+            ->where('absence_requests.status', '!=', 'pending_parent')
             ->orderBy('absence_requests.created_at', 'desc')
             ->get();
 
@@ -344,35 +345,73 @@ class HODWebController extends Controller
         $status = $request->input('status'); // 'approved' or 'rejected'
 
         $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
-
-        DB::table('absence_requests')
-            ->where('request_id', $id)
-            ->update(['status' => $status, 'updated_at' => now()]);
-
-        // إشعار الطالب بالنتيجة
-        if ($absenceRequest && $absenceRequest->student_id) {
-            $studentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
-
-            $title   = $status === 'approved' ? 'تمت الموافقة على طلب الإذن' : 'تم رفض طلب الإذن';
-            $message = $status === 'approved'
-                ? 'وافق رئيس القسم على طلب إذنك بتاريخ ' . $absenceRequest->date
-                : 'تم رفض طلب إذنك بتاريخ ' . $absenceRequest->date . ' من قِبل رئيس القسم';
-
-            if ($studentUserId) {
-                DB::table('notifications')->insert([
-                    'user_id'    => $studentUserId,
-                    'title'      => $title,
-                    'message'    => $message,
-                    'type'       => 'leave_request',
-                    'related_id' => $id,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+        if (!$absenceRequest) {
+            return back()->with('error', 'الطلب غير موجود.');
         }
 
-        return back()->with('success', 'تم تحديث حالة طلب الإذن بنجاح.');
+        if ($status === 'rejected') {
+            // إذا رفض رئيس القسم: تتوقف السلسلة فوراً وتصل الإشعارات للطالب فقط
+            DB::table('absence_requests')
+                ->where('request_id', $id)
+                ->update(['status' => 'rejected', 'updated_at' => now()]);
+
+            if ($absenceRequest->student_id) {
+                $studentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
+                if ($studentUserId) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $studentUserId,
+                        'title'      => 'تم رفض طلب الإذن',
+                        'message'    => 'تم رفض طلب إذنك بتاريخ ' . $absenceRequest->date . ' من قِبل رئيس القسم.',
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            return back()->with('success', 'تم رفض طلب الإذن وإيقاف مساره بنجاح.');
+        } else {
+            // إذا وافق رئيس القسم: ينتقل الطلب لمرحلة موافقة واعتماد شؤون الطلاب (pending_affairs)
+            DB::table('absence_requests')
+                ->where('request_id', $id)
+                ->update(['status' => 'pending_affairs', 'updated_at' => now()]);
+
+            $studentName = 'الطالب';
+            if ($absenceRequest->student_id) {
+                $studentName = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->where('students.student_id', $absenceRequest->student_id)
+                    ->value('users.full_name') ?? 'الطالب';
+            }
+
+            // إرسال الإشعار لموظفي شؤون الطلاب (Affairs) - الخطوة 3 في المسار
+            $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
+            foreach ($affairsUserIds as $aId) {
+                if ($aId) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $aId,
+                        'title'      => 'طلب إذن جديد بانتظار الاعتماد النهائي',
+                        'message'    => 'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $absenceRequest->date . '، يرجى مراجعته والتثبيت النهائي.',
+                        'type'       => 'leave_request',
+                        'category'   => 'administrative',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    \App\Services\FcmService::sendToUser(
+                        $aId,
+                        'طلب إذن بانتظار الاعتماد',
+                        'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $absenceRequest->date . '، يرجى التثبيت.',
+                        ['type' => 'leave_request', 'related_id' => (string)$id]
+                    );
+                }
+            }
+
+            return back()->with('success', 'تمت موافقة رئيس القسم بنجاح وتحويل الطلب لشؤون الطلاب للاعتماد النهائي.');
+        }
     }
 
     /**

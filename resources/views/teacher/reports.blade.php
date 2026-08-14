@@ -74,10 +74,6 @@
 @section('content')
     <p class="page-subtitle">طلبات التقارير الواردة (من الإدارة أو أولياء الأمور)</p>
 
-    @if(session('success'))
-        <div style="background:#f0fdf4;color:#16a34a;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">{{ session('success') }}</div>
-    @endif
-
     @php
         $pending   = $requests->where('status', 'pending');
         $completed = $requests->where('status', 'completed');

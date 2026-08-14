@@ -8,18 +8,6 @@
 @section('content')
 <div class="flex flex-col gap-6">
 
-    @if(session('success'))
-        <div class="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 p-4 rounded-2xl text-sm font-bold flex items-center justify-between shadow-soft">
-            <div class="flex items-center gap-3">
-                <i class="fa-solid fa-circle-check text-lg"></i>
-                <span>{{ session('success') }}</span>
-            </div>
-            <button onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-    @endif
-
     <!-- Filter & Search Bar -->
     <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-soft border border-slate-100 dark:border-slate-700/50">
         <form id="filterForm" action="{{ route('admin.activity_logs') }}" method="GET" class="flex flex-col md:flex-row items-center gap-4">
