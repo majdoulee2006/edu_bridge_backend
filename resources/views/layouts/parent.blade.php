@@ -76,7 +76,7 @@
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form action="{{ route('parent.logout') }}" method="POST">
                         @csrf
-                        <button type="submit" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
+                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
                             <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
                         </button>
                     </form>
@@ -215,6 +215,7 @@
     document.getElementById('logoutModal').addEventListener('click', function(e) {
         if (e.target === this) closeLogoutModal();
     });
+    @include('partials.logout_modal')
     @include('partials.inactivity_logout')
 </body>
 </html>
