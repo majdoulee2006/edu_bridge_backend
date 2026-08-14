@@ -1301,9 +1301,22 @@ class AdminWebController extends Controller
             'name.required' => 'اسم الدورة مطلوب.',
         ]);
 
+        $deptId = $request->filled('department_id') ? $request->department_id : null;
+
+        // Prevent duplicate insertions caused by rapid multiple clicks or network lag (15-second window)
+        $existingRecent = DB::table('programs')
+            ->where('name', $request->name)
+            ->where('department_id', $deptId)
+            ->where('created_at', '>=', now()->subSeconds(15))
+            ->first();
+
+        if ($existingRecent) {
+            return redirect()->route('admin.courses')->with('success', 'تم إضافة الدورة الجديدة بنجاح!');
+        }
+
         DB::table('programs')->insert([
             'name'          => $request->name,
-            'department_id' => $request->filled('department_id') ? $request->department_id : null,
+            'department_id' => $deptId,
             'description'   => $request->description,
             'year'          => $request->year,
             'semester'      => $request->semester,
