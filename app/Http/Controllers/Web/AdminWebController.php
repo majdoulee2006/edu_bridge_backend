@@ -1712,8 +1712,8 @@ class AdminWebController extends Controller
 
         $query = DB::table('lessons')
             ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
-            ->leftJoin('teachers', 'lessons.teacher_id', '=', 'teachers.teacher_id')
-            ->leftJoin('users', 'teachers.user_id', '=', 'users.user_id')
+            ->join('teachers', 'lessons.teacher_id', '=', 'teachers.teacher_id')
+            ->join('users', 'teachers.user_id', '=', 'users.user_id')
             ->where(function($q) {
                 $q->whereNull('lessons.type')
                   ->orWhere('lessons.type', '!=', 'session');
@@ -1721,9 +1721,20 @@ class AdminWebController extends Controller
             ->where('lessons.title', 'not like', '%حضور%')
             ->where('lessons.title', 'not like', '%غياب%')
             ->where('lessons.title', 'not like', '%تفقد%')
+            ->where('lessons.title', 'not like', '%حصة%')
+            ->where('lessons.title', 'not like', '%جلسة%')
             ->where(function($q) {
                 $q->whereNull('lessons.content_url')
                   ->orWhere('lessons.content_url', 'not like', '%attendance%');
+            })
+            ->where(function($q) {
+                $q->where(function($q2) {
+                    $q2->whereNotNull('lessons.file_path')
+                       ->where('lessons.file_path', '!=', '');
+                })->orWhere(function($q2) {
+                    $q2->whereNotNull('lessons.content_url')
+                       ->where('lessons.content_url', '!=', '');
+                });
             });
 
         if ($selectedCourse) {
