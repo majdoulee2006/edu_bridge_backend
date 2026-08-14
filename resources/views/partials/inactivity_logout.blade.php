@@ -13,10 +13,11 @@
     }
 
     function onUserIdle() {
+        if (isLoggedOut) return;
         isLoggedOut = true;
         
         // البحث عن نموذج تسجيل الخروج التابع للمستخدم
-        const logoutForm = document.querySelector('form[action*="logout"]');
+        let logoutForm = document.querySelector('form[action*="logout"]');
         
         alert('🔒 تم تسجيل الخروج تلقائياً لحماية حسابك بسبب عدم وجود أي نشاط لمدة 20 دقيقة.');
 
@@ -27,10 +28,30 @@
             input.name = 'is_inactivity_logout';
             input.value = '1';
             logoutForm.appendChild(input);
-
             logoutForm.submit();
         } else {
-            window.location.href = '/';
+            // إنشاء نموذج POST بشكل ديناميكي مع CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            const dynamicForm = document.createElement('form');
+            dynamicForm.method = 'POST';
+            dynamicForm.action = '/logout';
+            
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                dynamicForm.appendChild(csrfInput);
+            }
+            
+            const flagInput = document.createElement('input');
+            flagInput.type = 'hidden';
+            flagInput.name = 'is_inactivity_logout';
+            flagInput.value = '1';
+            dynamicForm.appendChild(flagInput);
+            
+            document.body.appendChild(dynamicForm);
+            dynamicForm.submit();
         }
     }
 

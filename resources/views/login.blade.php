@@ -262,6 +262,13 @@
             </div>
         @endif
 
+        @if (session('warning'))
+            <div class="alert-danger" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: #fcd34d;">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>{{ session('warning') }}</span>
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="alert-danger">
                 <i class="fa-solid fa-triangle-exclamation"></i>

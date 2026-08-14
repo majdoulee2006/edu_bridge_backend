@@ -131,9 +131,22 @@ class UnifiedAuthController extends Controller
      */
     public function logout(Request $request)
     {
+        $isInactivity = $request->has('is_inactivity_logout');
+        if (Auth::check()) {
+            if ($isInactivity) {
+                UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
+            } else {
+                UserActivity::log('تسجيل خروج', 'قام المستخدم بتسجيل الخروج يدوياً');
+            }
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($isInactivity) {
+            return redirect('/login')->with('warning', '🔒 تم تسجيل الخروج تلقائياً لحماية حسابك بسبب عدم وجود أي نشاط لمدة 20 دقيقة.');
+        }
+
         return redirect('/login')->with('success', 'تم تسجيل الخروج بنجاح.');
     }
 
