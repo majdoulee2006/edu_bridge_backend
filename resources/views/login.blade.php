@@ -433,15 +433,26 @@
             }
         }
 
-        // Restore active tab based on old input if validation failed
+        // Restore active tab based on query param or old input if validation failed
         document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const portalParam = urlParams.get('portal') || urlParams.get('type') || urlParams.get('role');
             const oldRole = "{{ old('role_type') }}";
-            if (oldRole === 'student' || oldRole === 'parent') {
+
+            if (portalParam === 'student' || portalParam === 'students' || portalParam === 'parent' || oldRole === 'student' || oldRole === 'parent') {
                 switchPortal('students');
-                document.getElementById('role_type').value = oldRole;
-            } else if (oldRole) {
+                if (portalParam === 'student' || portalParam === 'parent') {
+                    document.getElementById('role_type').value = portalParam;
+                } else if (oldRole) {
+                    document.getElementById('role_type').value = oldRole;
+                }
+            } else if (portalParam || oldRole) {
                 switchPortal('staff');
-                document.getElementById('role_type').value = oldRole;
+                if (['affairs','hod','teacher','admin'].includes(portalParam)) {
+                    document.getElementById('role_type').value = portalParam;
+                } else if (oldRole) {
+                    document.getElementById('role_type').value = oldRole;
+                }
             }
         });
     </script>
