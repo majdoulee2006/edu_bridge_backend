@@ -4,6 +4,7 @@
 @section('subtitle', 'تواصل فوري مع الكادر الإداري والتعليمي')
 
 @section('content')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <div class="flex gap-6 h-[calc(100vh-12rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS) ================= -->
@@ -77,13 +78,43 @@
                         <span id="active-contact-role" class="text-[10px] text-slate-400 font-semibold mt-0.5">...</span>
                     </div>
                 </div>
-                <!-- Search Bar -->
-                <div class="hidden md:block relative">
-                    <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث في المحادثة..." class="bg-slate-100 dark:bg-slate-800 border-none rounded-full py-2 px-4 text-xs font-semibold focus:ring-2 focus:ring-primary/50 text-slate-800 dark:text-slate-200 outline-none w-48 transition-all">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                        <span class="material-symbols-outlined text-sm">search</span>
-                    </span>
-                </div>
+                    <div class="flex items-center gap-2">
+                        <!-- Disappearing Messages Timer Dropdown Button -->
+                        <div class="relative">
+                            <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-amber-500/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700" title="الرسائل ذاتية الاختفاء">
+                                <span class="material-symbols-outlined text-base text-amber-500">timer</span>
+                                <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
+                            </button>
+                            
+                            <!-- Timer Menu Dropdown -->
+                            <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-2 text-xs min-w-[200px] z-[99] space-y-1">
+                                <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-slate-700">مؤقت اختفاء الرسائل الجديدة</div>
+                                <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
+                                    <span>🚫 إيقاف (رسائل دائمة)</span>
+                                </button>
+                                <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
+                                    <span>⏱️ 5 دقائق</span>
+                                </button>
+                                <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
+                                    <span>⏱️ ساعة واحدة</span>
+                                </button>
+                                <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
+                                    <span>⏱️ 24 ساعة (يوم)</span>
+                                </button>
+                                <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
+                                    <span>⏱️ 7 أيام (أسبوع)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="hidden md:block relative">
+                            <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث..." class="bg-slate-100 dark:bg-slate-800 border-none rounded-full py-2 px-4 text-xs font-semibold focus:ring-2 focus:ring-primary/50 text-slate-800 dark:text-slate-200 outline-none w-36 transition-all">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                <span class="material-symbols-outlined text-sm">search</span>
+                            </span>
+                        </div>
+                    </div>
             </div>
 
             <!-- Messages Feed -->
@@ -92,7 +123,17 @@
             </div>
 
             <!-- Chat Bottom Input Bar -->
-            <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 transition-colors">
+            <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 transition-colors flex flex-col gap-2 relative">
+                <!-- Disappearing Messages Active Status Banner -->
+                <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-2xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-bold mb-1 transition-all">
+                    <div class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">timer</span>
+                        <span>الرسائل الجديدة ستختفي تلقائياً بعد: <strong id="disappearing-banner-time">24 ساعة</strong></span>
+                    </div>
+                    <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-500 p-0.5">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
                 <form id="chat-send-form" onsubmit="event.preventDefault(); submitMessage();" class="flex items-center gap-3" enctype="multipart/form-data">
                     <input type="hidden" id="current-receiver-id" value="">
                     
@@ -221,29 +262,34 @@
 <!-- ================= CSS EXTRA POLISHING ================= -->
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script>
-tailwind.config = {
-    darkMode: ['class', '[data-theme="dark"]'],
-    theme: {
-        extend: {
-            colors: {
-                "primary": "#f2f20d",
-                "primary-dark": "#d9d905",
-                "primary-content": "#1a1a00",
-            },
-            fontFamily: {
-                "display": ["Cairo", "Lexend", "sans-serif"],
-                "body": ["Cairo", "Lexend", "sans-serif"],
-            },
-            boxShadow: {
-                "soft": "0 4px 20px -2px rgba(0,0,0,0.06)",
-                "glow": "0 0 25px rgba(242,242,13,0.4)",
+window.tailwind = {
+    config: {
+        corePlugins: {
+            preflight: false,
+        },
+        darkMode: ['class', '[data-theme="dark"]'],
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#f2f20d",
+                    "primary-dark": "#d9d905",
+                    "primary-content": "#1a1a00",
+                },
+                fontFamily: {
+                    "display": ["Cairo", "Lexend", "sans-serif"],
+                    "body": ["Cairo", "Lexend", "sans-serif"],
+                },
+                boxShadow: {
+                    "soft": "0 4px 20px -2px rgba(0,0,0,0.06)",
+                    "glow": "0 0 25px rgba(242,242,13,0.4)",
+                }
             }
         }
     }
 }
 </script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -683,25 +729,74 @@ tailwind.config = {
             }
         }
 
+        let pendingOverlay = '';
+        let pendingProgressHtml = '';
+        if (msg.isPending) {
+            let pendingLabel = 'جاري رفع الملف...';
+            if (fileType.startsWith('image/')) pendingLabel = 'جاري رفع الصورة...';
+            else if (fileType.startsWith('video/')) pendingLabel = 'جاري رفع الفيديو...';
+            else if (fileType.startsWith('audio/') || msg.message === '[Voice Note]') pendingLabel = 'جاري رفع الصوت...';
+
+            pendingOverlay = `
+                <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-xl gap-2 p-3 z-20 select-none transition-all">
+                    <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden max-w-[180px]">
+                        <div id="overlay-progress-bar-${msg.id}" class="bg-[#FFCC00] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+                    </div>
+                    <span id="overlay-progress-text-${msg.id}" class="text-[10px] font-bold tracking-wide drop-shadow-sm">${pendingLabel} 0%</span>
+                </div>
+            `;
+
+            pendingProgressHtml = `
+                <div class="mt-2.5 w-full min-w-[180px] dir-rtl">
+                    <div class="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 overflow-hidden border border-black/5 dark:border-white/10">
+                        <div id="progress-bar-${msg.id}" class="bg-amber-500 dark:bg-amber-400 h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+                    </div>
+                    <div class="flex items-center justify-between mt-1 text-[10px] font-bold opacity-80">
+                        <span id="progress-text-${msg.id}">${pendingLabel} 0%</span>
+                        <span class="material-symbols-outlined text-[13px] animate-spin">progress_activity</span>
+                    </div>
+                </div>
+            `;
+        }
+
         let mediaHtml = '';
         if (url) {
             if (fileType.startsWith('image/')) {
                 mediaHtml = `
-                    <div class="mt-2 rounded-xl overflow-hidden border border-black/10 dark:border-white/10 max-w-[260px]">
-                        <img src="${url}" class="w-full object-cover cursor-pointer max-h-52" onclick="window.open('${url}', '_blank')" alt="Attachment">
+                    <div class="relative mt-2 rounded-xl overflow-hidden border border-black/10 dark:border-white/10 max-w-[260px]">
+                        ${pendingOverlay}
+                        <img src="${url}" class="w-full object-cover cursor-pointer max-h-52 hover:opacity-95 transition-opacity" onclick="openImageLightbox('${url}')" alt="Attachment">
                     </div>
                 `;
             } else if (fileType.startsWith('audio/') || msg.message === '[Voice Note]') {
+                const voiceId = 'voice-' + (msg.id || Math.random().toString(36).substring(2, 9));
                 mediaHtml = `
-                    <div class="mt-2 max-w-[260px]">
-                        <audio src="${url}" controls class="w-full max-h-12">
-                            متصفحك لا يدعم مشغل الصوت.
-                        </audio>
+                    <div class="relative mt-1 max-w-[270px]">
+                        ${pendingOverlay}
+                        <div class="flex items-center gap-3 p-3 rounded-2xl ${isMe ? 'bg-black/10 text-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'} min-w-[230px] dir-ltr select-none border border-black/5 dark:border-white/10">
+                            <audio id="${voiceId}" src="${url}" preload="metadata" ontimeupdate="updateVoiceProgress('${voiceId}')" onended="resetVoicePlayer('${voiceId}')"></audio>
+                            
+                            <button type="button" onclick="toggleVoicePlay('${voiceId}')" id="btn-${voiceId}" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isMe ? 'bg-black text-white hover:bg-slate-900' : 'bg-amber-500 text-white hover:bg-amber-600'} transition-all shadow-md active:scale-95">
+                                <span class="material-symbols-outlined text-xl" id="icon-${voiceId}">play_arrow</span>
+                            </button>
+
+                            <div class="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
+                                <div class="relative w-full h-2 bg-black/10 dark:bg-white/15 rounded-full overflow-hidden cursor-pointer" onclick="seekVoice('${voiceId}', event)">
+                                    <div id="progress-${voiceId}" class="h-full ${isMe ? 'bg-black' : 'bg-amber-500'} rounded-full transition-all duration-100" style="width: 0%;"></div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between text-[10px] font-bold opacity-75 dir-rtl">
+                                    <span id="time-${voiceId}">00:00</span>
+                                    <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">graphic_eq</span> صوتية</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
             } else if (fileType.startsWith('video/')) {
                 mediaHtml = `
-                    <div class="mt-2 rounded-xl overflow-hidden max-w-[260px]">
+                    <div class="relative mt-2 rounded-xl overflow-hidden max-w-[260px]">
+                        ${pendingOverlay}
                         <video src="${url}" controls class="w-full max-h-52">
                         </video>
                     </div>
@@ -709,10 +804,14 @@ tailwind.config = {
             } else {
                 const displayName = fileName.substring(0, 20);
                 mediaHtml = `
-                    <a href="${url}" target="_blank" class="mt-2 flex items-center gap-2 p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 text-xs font-bold transition-all truncate max-w-[260px]">
-                        <span class="material-symbols-outlined">description</span>
-                        <span class="truncate">${displayName}</span>
-                    </a>
+                    <div class="relative mt-2 max-w-[260px]">
+                        ${pendingOverlay}
+                        <a href="${url}" download="${fileName}" target="_blank" class="flex items-center gap-2 p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 text-xs font-bold transition-all truncate group/doc">
+                            <span class="material-symbols-outlined text-amber-500 shrink-0">description</span>
+                            <span class="truncate">${displayName}</span>
+                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-amber-500 text-sm mr-auto shrink-0 transition-colors">download</span>
+                        </a>
+                    </div>
                 `;
             }
         }
@@ -723,24 +822,33 @@ tailwind.config = {
         }
 
         const isRead = parseInt(msg.is_read) === 1;
-        const checkmarkIcon = isRead
-            ? '<span class="material-symbols-outlined text-[10px] text-blue-500">done_all</span>'
-            : '<span class="material-symbols-outlined text-[10px] text-slate-400">done</span>';
+        const checkmarkIcon = msg.isPending
+            ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                <span class="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
+                <span>جاري الإرسال...</span>
+               </span>`
+            : (isRead
+                ? '<span class="material-symbols-outlined text-[10px] text-blue-500">done_all</span>'
+                : '<span class="material-symbols-outlined text-[10px] text-slate-400">done</span>');
+
+        const timerIconHtml = (msg.disappears_after || msg.expires_at) 
+            ? `<span class="material-symbols-outlined text-[12px] text-amber-500 shrink-0" title="رسالة ذاتية الاختفاء">timer</span>` 
+            : '';
 
         const bubbleId = msg.id ? `id="msg-${msg.id}"` : '';
-        const pendingClass = msg.isPending ? 'opacity-60 message-pending' : '';
+        const pendingClass = msg.isPending ? 'opacity-70 message-pending' : '';
 
         window.activeMessagesData[msg.id] = msg;
 
         let optionsHtml = '';
-        if (isMe && !msg.isPending) {
+        if (!msg.isPending) {
             optionsHtml = `
                 <div class="relative group/options flex flex-col justify-center px-2">
                     <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" onclick="toggleMsgOptions('${msg.id}')">
                         <span class="material-symbols-outlined text-sm">more_vert</span>
                     </button>
-                    <div id="msg-options-${msg.id}" class="hidden absolute left-0 bottom-8 mb-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-xs min-w-[80px] z-[99] flex flex-col">
-                        <button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 w-full">تعديل</button>
+                    <div id="msg-options-${msg.id}" class="hidden absolute ${isMe ? 'left-0' : 'right-0'} bottom-8 mb-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-xs min-w-[110px] z-[99] flex flex-col">
+                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 w-full">تعديل</button>` : ''}
                         <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 w-full">حذف</button>
                     </div>
                 </div>
@@ -748,15 +856,17 @@ tailwind.config = {
         }
 
         const bubbleHtml = `
-            <div ${bubbleId} class="group flex ${alignClass} w-full ${pendingClass}">
+            <div ${bubbleId} class="group flex ${alignClass} w-full mb-3.5 ${pendingClass}">
                 ${isMe ? optionsHtml : ''}
                 <div class="flex flex-col max-w-[75%]">
                     <div class="px-4 py-3 text-sm leading-relaxed ${bgBubble}">
                         ${textToShow ? `<p class="whitespace-pre-line font-medium">${textToShow}</p>` : ''}
                         ${mediaHtml}
+                        ${msg.isPending && (!url || (!fileType.startsWith('image/') && !fileType.startsWith('video/') && !fileType.startsWith('audio/') && msg.message !== '[Voice Note]')) ? pendingProgressHtml : ''}
                     </div>
-                    <span class="text-[9px] text-slate-400 mt-1 px-1 font-semibold flex items-center gap-1 ${isMe ? 'self-end' : 'self-start'}">
+                    <span class="text-[9px] text-slate-400 mt-1 px-1 font-semibold flex items-center gap-1.5 ${isMe ? 'self-end' : 'self-start'}">
                         ${msgTime}
+                        ${timerIconHtml}
                         ${isMe ? checkmarkIcon : ''}
                     </span>
                 </div>
@@ -839,6 +949,10 @@ tailwind.config = {
         fd.append('receiver_id', activeContactId);
         fd.append('message', selectedAttachmentFile && text === '' ? '[Attachment]' : text);
 
+        if (currentDisappearsAfter > 0) {
+            fd.append('disappears_after', currentDisappearsAfter);
+        }
+
         if (selectedAttachmentFile) {
             fd.append('attachment', selectedAttachmentFile);
         }
@@ -849,7 +963,7 @@ tailwind.config = {
             id: tempId,
             sender_id: currentUserId,
             receiver_id: activeContactId,
-            message: selectedAttachmentFile && text === '' ? 'جاري رفع الملف...' : text,
+            message: selectedAttachmentFile && text === '' ? '' : text,
             attachment: selectedAttachmentFile ? URL.createObjectURL(selectedAttachmentFile) : null,
             fileObject: selectedAttachmentFile,
             created_at: tempTime,
@@ -860,43 +974,60 @@ tailwind.config = {
         input.value = '';
         clearSelectedAttachment();
 
-        fetch("{{ route('teacher.messages.send') }}", {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json'
-            },
-            body: fd
-        })
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Server error: ' + res.statusText);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', "{{ route('teacher.messages.send') }}", true);
+        xhr.setRequestHeader('X-CSRF-TOKEN', '{{ csrf_token() }}');
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                const pBar = document.getElementById(`progress-bar-${tempId}`);
+                const pText = document.getElementById(`progress-text-${tempId}`);
+                const oBar = document.getElementById(`overlay-progress-bar-${tempId}`);
+                const oText = document.getElementById(`overlay-progress-text-${tempId}`);
+
+                if (pBar) pBar.style.width = percent + '%';
+                if (pText) pText.innerText = `جاري الرفع... ${percent}%`;
+                if (oBar) oBar.style.width = percent + '%';
+                if (oText) oText.innerText = `جاري الرفع... ${percent}%`;
             }
-            return res.json();
-        })
-        .then(data => {
+        };
+
+        xhr.onload = function() {
             const pendingBubble = document.getElementById(`msg-${tempId}`);
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            if (data.success) {
-                if (!document.getElementById('msg-' + data.message.id)) {
-                    appendMessageBubble(data.message);
-                    scrollMessagesToBottom();
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        if (!document.getElementById('msg-' + data.message.id)) {
+                            appendMessageBubble(data.message);
+                            scrollMessagesToBottom();
+                        }
+                        loadContactsSilently();
+                    } else {
+                        alert('فشل في إرسال الرسالة: ' + (data.error || 'خطأ غير معروف'));
+                    }
+                } catch (e) {
+                    alert('حدث خطأ أثناء معالجة استجابة الخادم.');
                 }
-                loadContactsSilently();
             } else {
-                alert('فشل في إرسال الرسالة: ' + (data.error || 'خطأ غير معروف'));
+                alert('فشل إرسال الرسالة. خطأ من الخادم: ' + xhr.status);
             }
-        })
-        .catch(err => {
-            console.error('Send error: ', err);
+        };
+
+        xhr.onerror = function() {
             const pendingBubble = document.getElementById(`msg-${tempId}`);
             if (pendingBubble) {
                 pendingBubble.remove();
             }
             alert('فشل إرسال الرسالة. يرجى التحقق من اتصالك بالشبكة.');
-        });
+        };
+
+        xhr.send(fd);
     }
 
     async function startAudioRecording() {
@@ -974,6 +1105,71 @@ tailwind.config = {
         }
     }
 
+    // --- Voice Note Custom Player Logic ---
+    function toggleVoicePlay(id) {
+        const audio = document.getElementById(id);
+        const icon = document.getElementById('icon-' + id);
+        if (!audio || !icon) return;
+
+        document.querySelectorAll('audio[id^="voice-"]').forEach(a => {
+            if (a.id !== id && !a.paused) {
+                a.pause();
+                const otherIcon = document.getElementById('icon-' + a.id);
+                if (otherIcon) otherIcon.innerText = 'play_arrow';
+            }
+        });
+
+        if (audio.paused) {
+            audio.play().then(() => {
+                icon.innerText = 'pause';
+            }).catch(err => console.error("Audio play failed: ", err));
+        } else {
+            audio.pause();
+            icon.innerText = 'play_arrow';
+        }
+    }
+
+    function updateVoiceProgress(id) {
+        const audio = document.getElementById(id);
+        const progress = document.getElementById('progress-' + id);
+        const timeEl = document.getElementById('time-' + id);
+        if (!audio || !progress) return;
+
+        const currentTime = audio.currentTime || 0;
+        const duration = audio.duration || 0;
+        
+        if (duration > 0) {
+            const percent = (currentTime / duration) * 100;
+            progress.style.width = percent + '%';
+        }
+
+        if (timeEl) {
+            const mins = Math.floor(currentTime / 60).toString().padStart(2, '0');
+            const secs = Math.floor(currentTime % 60).toString().padStart(2, '0');
+            timeEl.innerText = `${mins}:${secs}`;
+        }
+    }
+
+    function resetVoicePlayer(id) {
+        const icon = document.getElementById('icon-' + id);
+        const progress = document.getElementById('progress-' + id);
+        const timeEl = document.getElementById('time-' + id);
+        if (icon) icon.innerText = 'play_arrow';
+        if (progress) progress.style.width = '0%';
+        if (timeEl) timeEl.innerText = '00:00';
+    }
+
+    function seekVoice(id, event) {
+        const audio = document.getElementById(id);
+        if (!audio || !audio.duration) return;
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const width = rect.width;
+        const seekTime = (clickX / width) * audio.duration;
+        audio.currentTime = seekTime;
+    }
+
     // --- New Advanced Chat Features ---
     function toggleMsgOptions(id) {
         const el = document.getElementById('msg-options-' + id);
@@ -1016,23 +1212,87 @@ tailwind.config = {
     }
 
     function deleteMessage(id) {
-        document.getElementById('msg-options-' + id).classList.add('hidden');
-        if(!confirm('هل أنت متأكد من حذف هذه الرسالة؟')) return;
-        
+        document.getElementById('msg-options-' + id)?.classList.add('hidden');
+        const msg = window.activeMessagesData[id];
+        const isMe = msg && parseInt(msg.sender_id) === parseInt(currentUserId);
+
+        if (typeof Swal !== 'undefined') {
+            if (isMe) {
+                Swal.fire({
+                    title: 'حذف الرسالة',
+                    text: 'اختر نوع الحذف المطلوب:',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonColor: '#ef4444',
+                    denyButtonColor: '#3b82f6',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'حذف لدى الجميع',
+                    denyButtonText: 'حذف لدي فقط',
+                    cancelButtonText: 'إلغاء'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performDeleteMessage(id, 'everyone');
+                    } else if (result.isDenied) {
+                        performDeleteMessage(id, 'me');
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'حذف الرسالة',
+                    text: 'هل أنت متأكد من حذف هذه الرسالة لديك؟',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'حذف لدي',
+                    cancelButtonText: 'إلغاء'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performDeleteMessage(id, 'me');
+                    }
+                });
+            }
+        } else {
+            let type = 'me';
+            if (isMe) {
+                if (confirm('هل تريد حذف الرسالة لدى الجميع؟ (اضغط إلغاء للحذف لديك فقط)')) {
+                    type = 'everyone';
+                } else if (!confirm('هل تريد حذف الرسالة لديك فقط؟')) {
+                    return;
+                }
+            } else {
+                if (!confirm('هل أنت متأكد من حذف هذه الرسالة لديك؟')) return;
+            }
+            performDeleteMessage(id, type);
+        }
+    }
+
+    function performDeleteMessage(id, type) {
         fetch('/teacher/messages/' + id, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            }
+            },
+            body: JSON.stringify({ type: type })
         }).then(res => res.json()).then(data => {
             if (data.status === 'success') {
                 const bubble = document.getElementById('msg-' + id);
                 if (bubble) bubble.remove();
                 delete window.activeMessagesData[id];
+                loadContactsSilently();
             } else {
-                alert('فشل الحذف: ' + data.message);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('خطأ', data.message || 'فشل الحذف', 'error');
+                } else {
+                    alert('فشل الحذف: ' + (data.message || 'خطأ غير معروف'));
+                }
             }
+        }).catch(err => {
+            console.error("Delete error:", err);
+            alert('خطأ في الاتصال أثناء تنفيذ عملية الحذف.');
         });
     }
 
@@ -1072,13 +1332,17 @@ tailwind.config = {
         fd.append('message', '[Voice Note]');
         fd.append('attachment', audioBlob, `voice_note_${Date.now()}.webm`);
 
+        if (currentDisappearsAfter > 0) {
+            fd.append('disappears_after', currentDisappearsAfter);
+        }
+
         const tempTime = new Date().toISOString();
         const tempId = 'temp_' + Date.now();
         appendMessageBubble({
             id: tempId,
             sender_id: currentUserId,
             receiver_id: activeContactId,
-            message: 'جاري رفع الملاحظة الصوتية...',
+            message: '[Voice Note]',
             attachment: URL.createObjectURL(audioBlob),
             fileObject: audioBlob,
             created_at: tempTime,
@@ -1086,44 +1350,153 @@ tailwind.config = {
         });
         scrollMessagesToBottom();
 
-        fetch("{{ route('teacher.messages.send') }}", {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json'
-            },
-            body: fd
-        })
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Server error: ' + res.statusText);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', "{{ route('teacher.messages.send') }}", true);
+        xhr.setRequestHeader('X-CSRF-TOKEN', '{{ csrf_token() }}');
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                const pBar = document.getElementById(`progress-bar-${tempId}`);
+                const pText = document.getElementById(`progress-text-${tempId}`);
+                const oBar = document.getElementById(`overlay-progress-bar-${tempId}`);
+                const oText = document.getElementById(`overlay-progress-text-${tempId}`);
+
+                if (pBar) pBar.style.width = percent + '%';
+                if (pText) pText.innerText = `جاري رفع الصوت... ${percent}%`;
+                if (oBar) oBar.style.width = percent + '%';
+                if (oText) oText.innerText = `جاري رفع الصوت... ${percent}%`;
             }
-            return res.json();
-        })
-        .then(data => {
+        };
+
+        xhr.onload = function() {
             const pendingBubble = document.getElementById(`msg-${tempId}`);
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            if (data.success) {
-                if (!document.getElementById('msg-' + data.message.id)) {
-                    appendMessageBubble(data.message);
-                    scrollMessagesToBottom();
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        if (!document.getElementById('msg-' + data.message.id)) {
+                            appendMessageBubble(data.message);
+                            scrollMessagesToBottom();
+                        }
+                        loadContactsSilently();
+                    } else {
+                        alert('فشل إرسال الملاحظة الصوتية: ' + (data.error || 'خطأ غير معروف'));
+                    }
+                } catch (e) {
+                    alert('حدث خطأ أثناء معالجة استجابة الخادم.');
                 }
-                loadContactsSilently();
             } else {
-                alert('فشل إرسال الملاحظة الصوتية: ' + (data.error || 'خطأ غير معروف'));
+                alert('فشل إرسال الصوت. خطأ الخادم: ' + xhr.status);
             }
-        })
-        .catch(err => {
-            console.error('Audio upload error: ', err);
+        };
+
+        xhr.onerror = function() {
             const pendingBubble = document.getElementById(`msg-${tempId}`);
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            alert('فشل في رفع الملاحظة الصوتية.');
-        });
+            alert('فشل إرسال الملاحظة الصوتية. يرجى التحقق من اتصالك بالشبكة.');
+        };
+
+        xhr.send(fd);
     }
+
+<!-- ================= IMAGE LIGHTBOX MODAL ================= -->
+<div id="image-lightbox-modal" class="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md hidden flex flex-col items-center justify-between p-4 md:p-6 transition-all duration-300 opacity-0 select-none">
+    <!-- Top Action Bar -->
+    <div class="w-full flex items-center justify-between text-white max-w-5xl z-10">
+        <button type="button" onclick="closeImageLightbox()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold transition-all text-slate-200 hover:text-white backdrop-blur-sm">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            <span>رجوع للمحادثة</span>
+        </button>
+        <div class="flex items-center gap-3">
+            <a id="lightbox-download-btn" href="#" download target="_blank" class="flex items-center gap-2 px-5 py-2 rounded-full bg-[#FFCC00] text-black font-bold text-xs hover:bg-amber-400 transition-all shadow-lg active:scale-95">
+                <span class="material-symbols-outlined text-base">download</span>
+                <span>تنزيل الصورة</span>
+            </a>
+            <button type="button" onclick="closeImageLightbox()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all backdrop-blur-sm">
+                <span class="material-symbols-outlined text-xl">close</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Image Display Container -->
+    <div class="flex-1 flex items-center justify-center w-full max-w-5xl my-4 overflow-hidden" onclick="closeImageLightbox()">
+        <img id="lightbox-image" src="" alt="صورة المعاينة" class="max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    let currentDisappearsAfter = 0;
+
+    // Disappearing Messages Helper Functions
+    function toggleDisappearingMenu() {
+        const menu = document.getElementById('disappearing-menu');
+        if (menu) menu.classList.toggle('hidden');
+    }
+
+    function setDisappearingTimer(seconds, label) {
+        currentDisappearsAfter = seconds;
+        const menu = document.getElementById('disappearing-menu');
+        if (menu) menu.classList.add('hidden');
+
+        const banner = document.getElementById('disappearing-active-banner');
+        const bannerTime = document.getElementById('disappearing-banner-time');
+        const btnLabel = document.getElementById('disappearing-btn-label');
+
+        if (seconds > 0) {
+            if (banner) banner.classList.remove('hidden');
+            if (bannerTime) bannerTime.innerText = label;
+            if (btnLabel) btnLabel.innerText = label;
+        } else {
+            if (banner) banner.classList.add('hidden');
+            if (btnLabel) btnLabel.innerText = 'ذاتية الاختفاء';
+        }
+    }
+
+    // Image Lightbox Viewer Helper Functions
+    function openImageLightbox(url) {
+        const modal = document.getElementById('image-lightbox-modal');
+        const img = document.getElementById('lightbox-image');
+        const dlBtn = document.getElementById('lightbox-download-btn');
+        if (!modal || !img) return;
+
+        img.src = url;
+        dlBtn.href = url;
+        const fileName = (url.split('/').pop() || 'image.jpg').split('?')[0];
+        dlBtn.setAttribute('download', fileName);
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            img.classList.remove('scale-95');
+        }, 10);
+    }
+
+    function closeImageLightbox() {
+        const modal = document.getElementById('image-lightbox-modal');
+        const img = document.getElementById('lightbox-image');
+        if (!modal) return;
+
+        modal.classList.add('opacity-0');
+        if (img) img.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            if (img) img.src = '';
+        }, 250);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeImageLightbox();
+        }
+    });
 
     String.prototype.padLeft = function (length, character) {
         return this.length >= length ? this : (new Array(length - this.length + 1).join(character) + this);
@@ -1159,10 +1532,8 @@ tailwind.config = {
 
     // Observe changes to the html/body tags to react to the layout's theme toggle
     const themeObserver = new MutationObserver((mutations) => {
-        // Disconnect to prevent infinite loops when we modify classes ourselves
         themeObserver.disconnect();
         syncDarkMode();
-        // Re-observe after changes
         if (document.documentElement) {
             themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
         }

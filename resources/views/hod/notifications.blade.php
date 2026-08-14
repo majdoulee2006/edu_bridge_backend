@@ -167,7 +167,7 @@
             $link = $linkMap[$type] ?? '/hod/notifications';
         @endphp
 
-        <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="window.location.href='{{ $link }}'">
+        <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="handleNotifClick(event, '{{ $link }}', {{ $n->id }}, {{ !$isRead ? 'true' : 'false' }})">
             <div class="notif-icon" style="background: {{ $style['bg'] }}; color: {{ $style['color'] }};">
                 <i class="fa-solid {{ $style['icon'] }}"></i>
             </div>
@@ -264,6 +264,34 @@
     function selectTarget(el) {
         document.querySelectorAll('.target-opt').forEach(o => o.classList.remove('selected'));
         el.classList.add('selected');
+    }
+
+    function handleNotifClick(event, link, notifId, isUnread) {
+        const card = event.currentTarget;
+        if (isUnread) {
+            card.classList.remove('unread');
+            const singleBtn = card.querySelector('.single-read-btn');
+            if (singleBtn) singleBtn.style.display = 'none';
+            const dot = card.querySelector('div[style*="border-radius: 50%"]');
+            if (dot) dot.remove();
+
+            fetch(`/hod/notifications/${notifId}/read`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            }).finally(() => {
+                if (link && link !== '/hod/notifications' && link !== '#') {
+                    window.location.href = link;
+                }
+            });
+        } else {
+            if (link && link !== '/hod/notifications' && link !== '#') {
+                window.location.href = link;
+            }
+        }
     }
 </script>
 @endpush

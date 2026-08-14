@@ -262,7 +262,7 @@
             @endphp
             <div class="notif-card {{ !$notif->is_read ? 'unread' : '' }}" 
                  data-status="{{ !$notif->is_read ? 'unread' : 'read' }}"
-                 style="{{ $targetUrl ? 'cursor:pointer;' : '' }}"
+                 style="cursor:pointer;"
                  onclick="handleNotifClick(event, '{{ $targetUrl }}', {{ $notif->id }}, {{ !$notif->is_read ? 'true' : 'false' }})">
                 <div class="unread-dot"></div>
                 @php
@@ -370,21 +370,34 @@
 
     // Handle click on notification card
     function handleNotifClick(event, targetUrl, notifId, isUnread) {
-        if (!targetUrl || targetUrl === '#' || targetUrl === 'null') return;
+        const card = event.currentTarget;
 
         if (isUnread) {
-            // Send async POST request to mark read before redirecting
+            // Optimistically update UI
+            card.classList.remove('unread');
+            card.setAttribute('data-status', 'read');
+            const markBtn = card.querySelector('form button.action-secondary');
+            if (markBtn) markBtn.style.display = 'none';
+
+            updateUnreadCount();
+
+            // Send async POST request to mark read
             fetch(`/affairs/notifications/${notifId}/read`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 }
             }).finally(() => {
-                window.location.href = targetUrl;
+                if (targetUrl && targetUrl !== '#' && targetUrl !== 'null' && targetUrl !== window.location.href) {
+                    window.location.href = targetUrl;
+                }
             });
         } else {
-            window.location.href = targetUrl;
+            if (targetUrl && targetUrl !== '#' && targetUrl !== 'null' && targetUrl !== window.location.href) {
+                window.location.href = targetUrl;
+            }
         }
     }
 

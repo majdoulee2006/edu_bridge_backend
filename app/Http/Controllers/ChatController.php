@@ -133,10 +133,15 @@ class ChatController extends Controller
         if (!empty($contactIds)) {
             $latestMessageIds = \DB::table('messages')
                 ->select(\DB::raw('MAX(id) as max_id'))
+                ->where('deleted_for_everyone', 0)
                 ->where(function ($q) use ($user, $contactIds) {
-                    $q->where('sender_id', $user->user_id)->whereIn('receiver_id', $contactIds);
+                    $q->where('sender_id', $user->user_id)
+                      ->whereIn('receiver_id', $contactIds)
+                      ->where('deleted_for_sender', 0);
                 })->orWhere(function ($q) use ($user, $contactIds) {
-                    $q->whereIn('sender_id', $contactIds)->where('receiver_id', $user->user_id);
+                    $q->whereIn('sender_id', $contactIds)
+                      ->where('receiver_id', $user->user_id)
+                      ->where('deleted_for_receiver', 0);
                 })
                 ->groupBy(\DB::raw('LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id)'))
                 ->pluck('max_id');
@@ -150,6 +155,8 @@ class ChatController extends Controller
             $unreadCounts = \App\Models\Message::whereIn('sender_id', $contactIds)
                 ->where('receiver_id', $user->user_id)
                 ->where('is_read', 0)
+                ->where('deleted_for_everyone', 0)
+                ->where('deleted_for_receiver', 0)
                 ->select('sender_id', \DB::raw('COUNT(*) as unread_count'))
                 ->groupBy('sender_id')
                 ->get()
@@ -206,78 +213,177 @@ class ChatController extends Controller
         return response()->json(['status' => 'success', 'data' => $contacts]);
     }
 
- public function sendMessage(Request $request)
-{
-    $request->validate([
-        'receiver_id' => 'required',
-        'message'     => 'nullable|string',
-        'attachment'  => 'nullable|file|max:51200',
-        'reply_to_message_id' => 'nullable|exists:messages,id',
-    ]);
+    public function sendMessage(Request $request)
+    {
+        $request->validate([
+            'receiver_id'         => 'required',
+            'message'             => 'nullable|string',
+            'attachment'          => 'nullable|file|max:51200',
+            'disappears_after'    => 'nullable|string',
+            'reply_to_message_id' => 'nullable|exists:messages,id',
+        ]);
 
-    // sender is always the authenticated user — never trust the client's sender_id
-    $sender     = $request->user();
-    $senderId   = $sender->user_id;
-    $receiverId = (int) $request->input('receiver_id');
+        // sender is always the authenticated user — never trust the client's sender_id
+        $sender     = $request->user();
+        $senderId   = $sender->user_id;
+        $receiverId = (int) $request->input('receiver_id');
 
-    $receiver = User::find($receiverId);
+        $receiver = User::find($receiverId);
 
-    if (!$receiver) {
-        return response()->json(['error' => 'المستخدم غير موجود'], 404);
+        if (!$receiver) {
+            return response()->json(['error' => 'المستخدم غير موجود'], 404);
+        }
+
+        // 3. التحقق من الصلاحيات (نفس المنطق)
+        if (!$this->canChat($sender->role_id, $receiver->role_id)) {
+            return response()->json(['error' => 'عذراً، غير مسموح لك بالتواصل مع هذا المستخدم.'], 403);
+        }
+
+        // 4. رفع الملف (إذا وجد)
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $path = $request->file('attachment')->store('chat_attachments', 'public');
+            $attachmentPath = asset('storage/' . $path);
+        }
+
+        $expiresAt = null;
+        $disappearsAfter = $request->input('disappears_after');
+
+        if ($disappearsAfter) {
+            $minutesMap = [
+                '5m'  => 5,
+                '1h'  => 60,
+                '24h' => 1440,
+                '7d'  => 10080,
+            ];
+            $minutes = $minutesMap[$disappearsAfter] ?? (is_numeric($disappearsAfter) ? (int)$disappearsAfter : null);
+
+            if ($minutes) {
+                $expiresAt = now()->addMinutes($minutes);
+            }
+        }
+
+        // 5. حفظ الرسالة
+        $message = Message::create([
+            'sender_id'           => $senderId,
+            'receiver_id'         => $receiverId,
+            'message'             => $request->message,
+            'attachment'          => $attachmentPath,
+            'disappears_after'    => $disappearsAfter,
+            'expires_at'          => $expiresAt,
+            'is_read'             => 0,
+            'reply_to_message_id' => $request->input('reply_to_message_id'),
+        ]);
+
+        broadcast(new MessageSent($message))->toOthers();
+
+        // إرسال إشعار FCM للمستلم
+        $msgBody = $message->message ?: 'أرسل لك ملفاً مرفقاً';
+        \App\Services\FcmService::sendToUser($receiverId, $sender->full_name ?? 'رسالة جديدة', $msgBody, [
+            'type' => 'message',
+            'sender_id' => (string) $senderId,
+        ]);
+
+        return response()->json(['status' => 'success', 'data' => $message], 201);
     }
-
-    // 3. التحقق من الصلاحيات (نفس المنطق)
-    if (!$this->canChat($sender->role_id, $receiver->role_id)) {
-        return response()->json(['error' => 'عذراً، غير مسموح لك بالتواصل مع هذا المستخدم.'], 403);
-    }
-
-    // 4. رفع الملف (إذا وجد)
-    $attachmentPath = null;
-    if ($request->hasFile('attachment')) {
-        $path = $request->file('attachment')->store('chat_attachments', 'public');
-        $attachmentPath = asset('storage/' . $path);
-    }
-
-    // 5. حفظ الرسالة
-    $message = Message::create([
-        'sender_id'   => $senderId,
-        'receiver_id' => $receiverId,
-        'message'     => $request->message,
-        'attachment'  => $attachmentPath,
-        'is_read'     => 0,
-        'reply_to_message_id' => $request->input('reply_to_message_id'),
-    ]);
-
-    broadcast(new MessageSent($message))->toOthers();
-
-    // إرسال إشعار FCM للمستلم
-    $msgBody = $message->message ?: 'أرسل لك ملفاً مرفقاً';
-    \App\Services\FcmService::sendToUser($receiverId, $sender->full_name ?? 'رسالة جديدة', $msgBody, [
-        'type' => 'message',
-        'sender_id' => (string) $senderId,
-    ]);
-
-    return response()->json(['status' => 'success', 'data' => $message], 201);
-}
     // 📩 دالة جلب المحادثة السابقة بين شخصين
     public function getMessages(Request $request, $otherUserId)
     {
-        // 1. نجلب ID الشخص اللي مسجل دخول هلق من التوكن
         $myId = $request->user()->user_id;
 
-        // 2. نجلب كل الرسائل اللي بيني وبين الشخص التاني (سواء أنا المرسل أو هو)
-        // استدعاء المودل Message بشكل مباشر
-        $messages = \App\Models\Message::where(function ($q) use ($myId, $otherUserId) {
-            $q->where('sender_id', $myId)->where('receiver_id', $otherUserId);
-        })->orWhere(function ($q) use ($myId, $otherUserId) {
-            $q->where('sender_id', $otherUserId)->where('receiver_id', $myId);
-        })->orderBy('created_at', 'desc')->get(); // ترتيب من الأحدث للأقدم
+        // تنظيف الرسائل منتهية الصلاحية
+        $expiredMessages = Message::whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->get();
 
-        // 3. نرجع الداتا للموبايل
+        foreach ($expiredMessages as $msg) {
+            if ($msg->attachment) {
+                $path = str_replace(asset('storage/'), '', $msg->attachment);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            }
+            $msg->delete();
+        }
+
+        $messages = \App\Models\Message::where('deleted_for_everyone', 0)
+            ->where(function ($q) use ($myId, $otherUserId) {
+                $q->where(function ($sub) use ($myId, $otherUserId) {
+                    $sub->where('sender_id', $myId)
+                        ->where('receiver_id', $otherUserId)
+                        ->where('deleted_for_sender', 0);
+                })->orWhere(function ($sub) use ($myId, $otherUserId) {
+                    $sub->where('sender_id', $otherUserId)
+                        ->where('receiver_id', $myId)
+                        ->where('deleted_for_receiver', 0);
+                });
+            })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            })
+            ->orderBy('created_at', 'desc')->get();
+
         return response()->json([
             'status' => 'success',
             'data' => $messages
         ]);
+    }
+
+    // ↗️ دالة إعادة توجيه الرسالة
+    public function forwardMessage(Request $request)
+    {
+        $request->validate([
+            'message_id'       => 'required|exists:messages,id',
+            'receiver_id'      => 'required|exists:users,user_id',
+            'disappears_after' => 'nullable|string',
+        ]);
+
+        $sender     = $request->user();
+        $senderId   = $sender->user_id;
+        $receiverId = (int) $request->input('receiver_id');
+
+        $originalMessage = Message::findOrFail($request->message_id);
+
+        if ((int)$originalMessage->sender_id !== (int)$senderId && (int)$originalMessage->receiver_id !== (int)$senderId) {
+            return response()->json(['error' => 'غير مصرح بإعادة توجيه هذه الرسالة'], 403);
+        }
+
+        $expiresAt = null;
+        $disappearsAfter = $request->input('disappears_after');
+
+        if ($disappearsAfter) {
+            $minutesMap = [
+                '5m'  => 5,
+                '1h'  => 60,
+                '24h' => 1440,
+                '7d'  => 10080,
+            ];
+            $minutes = $minutesMap[$disappearsAfter] ?? (is_numeric($disappearsAfter) ? (int)$disappearsAfter : null);
+
+            if ($minutes) {
+                $expiresAt = now()->addMinutes($minutes);
+            }
+        }
+
+        $forwardedMessage = Message::create([
+            'sender_id'        => $senderId,
+            'receiver_id'      => $receiverId,
+            'message'          => $originalMessage->message,
+            'attachment'       => $originalMessage->attachment,
+            'is_forwarded'     => true,
+            'disappears_after' => $disappearsAfter,
+            'expires_at'       => $expiresAt,
+            'is_read'          => 0,
+        ]);
+
+        broadcast(new MessageSent($forwardedMessage))->toOthers();
+
+        $msgBody = $forwardedMessage->message ?: 'رسالة معاد توجيهها';
+        \App\Services\FcmService::sendToUser($receiverId, 'رسالة معاد توجيهها من ' . ($sender->full_name ?? 'مستخدم'), $msgBody, [
+            'type' => 'message',
+            'sender_id' => (string) $senderId,
+        ]);
+
+        return response()->json(['status' => 'success', 'data' => $forwardedMessage], 201);
     }
 
     // 🛡️ دالة التحقق من الصلاحيات
@@ -292,27 +398,21 @@ class ChatController extends Controller
 
         switch ($senderRoleId) {
             case $roleTeacher:
-                // المدرب يحكي مع: مدربين، طلاب، رئيس قسم
                 return in_array($receiverRoleId, [$roleTeacher, $roleStudent, $roleHead]);
 
             case $roleStudent:
-                // الطالب يحكي مع: رئيس قسم، مدرب
                 return in_array($receiverRoleId, [$roleHead, $roleTeacher]);
 
             case $roleParent:
-                // الأهل يحكوا مع: إدارة، رئيس قسم
                 return in_array($receiverRoleId, [$roleAdmin, $roleHead]);
 
             case $roleHead:
-                // رئيس القسم يحكي مع: أهل، مدربين، طلاب، إدارة
                 return in_array($receiverRoleId, [$roleParent, $roleTeacher, $roleStudent, $roleAdmin]);
 
             case $roleAdmin:
-                // الإدارة تحكي مع: رئيس قسم، شؤون، مدربين
                 return in_array($receiverRoleId, [$roleHead, $roleAffairs, $roleTeacher]);
 
             case $roleAffairs:
-                // الشؤون ترد على: الإدارة فقط
                 return in_array($receiverRoleId, [$roleAdmin]);
 
             default:
@@ -324,7 +424,6 @@ class ChatController extends Controller
     {
         $myId = $request->user()->user_id;
 
-        // تحديث كل الرسائل اللي بعتها الشخص التاني إلي، وكانت غير مقروءة (0) لتصير مقروءة (1)
         $updatedCount = \App\Models\Message::where('sender_id', $otherUserId)
             ->where('receiver_id', $myId)
             ->where('is_read', 0)
@@ -339,17 +438,18 @@ class ChatController extends Controller
     }
 public function getUnreadCount(Request $request)
 {
-    $myId = $request->user()->user_id; // أو id حسب ما هو عندك بقاعدة البيانات
+    $myId = $request->user()->user_id;
 
-    // بنعد الرسائل باستخدام count() وليس get()
     $count = \App\Models\Message::where('receiver_id', $myId)
         ->where('is_read', 0)
+        ->where('deleted_for_everyone', 0)
+        ->where('deleted_for_receiver', 0)
         ->count();
 
     return response()->json([
         'status' => 'success',
         'data' => [
-            'unread_count' => $count // عشان يرجع شكلها كـ JSON object
+            'unread_count' => $count
         ]
     ]);
 }
@@ -358,44 +458,62 @@ public function searchMessages(Request $request, $otherUserId)
     $myId = $request->user()->user_id;
     $keyword = $request->query('q');
 
-    $messages = \App\Models\Message::where(function ($query) use ($myId, $otherUserId) {
-        // حطينا شروط المرسل والمستقبل جوا "مجموعة" لحالهم
-        $query->where(function ($q) use ($myId, $otherUserId) {
-            $q->where('sender_id', $myId)->where('receiver_id', $otherUserId);
-        })->orWhere(function ($q) use ($myId, $otherUserId) {
-            $q->where('sender_id', $otherUserId)->where('receiver_id', $myId);
-        });
-    })
-    ->where('message', 'like', '%' . $keyword . '%') // وبعدين طبقنا البحث عليهم كلهم
-    ->orderBy('created_at', 'desc')
-    ->get();
+    $messages = \App\Models\Message::where('deleted_for_everyone', 0)
+        ->where(function ($query) use ($myId, $otherUserId) {
+            $query->where(function ($q) use ($myId, $otherUserId) {
+                $q->where('sender_id', $myId)->where('receiver_id', $otherUserId)->where('deleted_for_sender', 0);
+            })->orWhere(function ($q) use ($myId, $otherUserId) {
+                $q->where('sender_id', $otherUserId)->where('receiver_id', $myId)->where('deleted_for_receiver', 0);
+            });
+        })
+        ->where('message', 'like', '%' . $keyword . '%')
+        ->orderBy('created_at', 'desc')
+        ->get();
 
     return response()->json(['status' => 'success', 'data' => $messages]);
 }
 public function deleteMessage(Request $request, $messageId)
 {
-    $myId = $request->user()->user_id; // أو id حسب الداتا بيز عندك
+    $myId = (int) $request->user()->user_id;
+    $type = $request->input('type', 'me'); // 'everyone' or 'me'
 
     $message = \App\Models\Message::find($messageId);
 
-    // 1. هل الرسالة موجودة؟
     if (!$message) {
         return response()->json(['error' => 'الرسالة غير موجودة'], 404);
     }
 
-    // 2. هل المستخدم هو مرسل الرسالة؟ (صلاحية الحذف)
-    if ($message->sender_id !== $myId) {
+    if ((int)$message->sender_id !== $myId && (int)$message->receiver_id !== $myId) {
         return response()->json(['error' => 'غير مصرح لك بحذف هذه الرسالة'], 403);
     }
 
-    // 3. حذف الرسالة (وإذا فيها صورة، يفضل نحذفها من السيرفر كمان)
-    if ($message->attachment) {
-        // تنظيف مسار الصورة لحذفها من الـ Storage
-        $imagePath = str_replace(asset('storage/'), '', $message->attachment);
-        \Illuminate\Support\Facades\Storage::disk('public')->delete($imagePath);
-    }
+    if ($type === 'everyone') {
+        if ((int)$message->sender_id !== $myId) {
+            return response()->json(['error' => 'يمكن لمراسل الرسالة فقط حذفها لدى الجميع'], 403);
+        }
+        $message->deleted_for_everyone = 1;
+        $message->save();
 
-    $message->delete();
+        if ($message->attachment) {
+            $imagePath = str_replace(asset('storage/'), '', $message->attachment);
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($imagePath);
+        }
+    } else {
+        if ((int)$message->sender_id === $myId) {
+            $message->deleted_for_sender = 1;
+        }
+        if ((int)$message->receiver_id === $myId) {
+            $message->deleted_for_receiver = 1;
+        }
+        $message->save();
+
+        if (($message->deleted_for_sender && $message->deleted_for_receiver) || $message->deleted_for_everyone) {
+            if ($message->attachment) {
+                $imagePath = str_replace(asset('storage/'), '', $message->attachment);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($imagePath);
+            }
+        }
+    }
 
     return response()->json(['status' => 'success', 'message' => 'تم حذف الرسالة بنجاح']);
 }

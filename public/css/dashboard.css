@@ -5,21 +5,21 @@
     --primary-dark: #FFB000;
     --light-yellow: #FFF9E6;
     --white: #ffffff;
-    --bg-gray: #F4F7F6;
-    --text-dark: #2D3436;
-    --text-muted: #636E72;
+    --bg-gray: #eef0f4;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
     --sidebar-width: 280px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
-.dark-mode {
-    --bg-gray: #121212;
-    --white: #1E1E1E;
-    --text-dark: #F5F6FA;
-    --text-muted: #B2BEC3;
+.dark-mode, [data-theme="dark"] {
+    --bg-gray: #000000;
+    --white: #121212;
+    --text-dark: #ffffff;
+    --text-muted: #a0a0a0;
     --light-yellow: #2D2600;
-    --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
 }
 
 * {

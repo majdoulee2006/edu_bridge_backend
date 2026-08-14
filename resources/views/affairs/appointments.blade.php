@@ -16,7 +16,7 @@
     }
     
     [data-theme="dark"] .card-panel {
-        background-color: #131d27;
+        background-color: #121212;
     }
 
     /* Tabs Navigation */
@@ -103,7 +103,7 @@
         color: #0f172a !important;
     }
     [data-theme="dark"] select option {
-        background-color: #1a2633 !important;
+        background-color: #121212 !important;
         color: #f8fafc !important;
     }
 
@@ -115,9 +115,9 @@
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
     }
     [data-theme="dark"] .modal-card {
-        background-color: #0f172a !important;
+        background-color: #121212 !important;
         color: #f8fafc !important;
-        border: 1px solid #334155 !important;
+        border: 1px solid #242424 !important;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9) !important;
     }
     .modal-card input,
@@ -130,9 +130,9 @@
     [data-theme="dark"] .modal-card input,
     [data-theme="dark"] .modal-card select,
     [data-theme="dark"] .modal-card textarea {
-        background-color: #1e293b !important;
+        background-color: #181818 !important;
         color: #f8fafc !important;
-        border: 1px solid #334155 !important;
+        border: 1px solid #242424 !important;
     }
 </style>
 @endpush

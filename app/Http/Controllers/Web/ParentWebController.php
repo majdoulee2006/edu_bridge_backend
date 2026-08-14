@@ -14,6 +14,7 @@ use Carbon\Carbon;
 
 class ParentWebController extends Controller
 {
+    use \App\Traits\HandlesMessagesTrait;
     private function getParentRecord()
     {
         return DB::table('parents')->where('user_id', auth()->user()->user_id)->first();
@@ -860,8 +861,14 @@ class ParentWebController extends Controller
     {
         $currentUserId = Auth::id();
 
-        $conversations = \App\Models\Message::where('sender_id', $currentUserId)
-            ->orWhere('receiver_id', $currentUserId)
+        $conversations = \App\Models\Message::where('deleted_for_everyone', false)
+            ->where(function($q) use ($currentUserId) {
+                $q->where(function($sub) use ($currentUserId) {
+                    $sub->where('sender_id', $currentUserId)->where('deleted_for_sender', false);
+                })->orWhere(function($sub) use ($currentUserId) {
+                    $sub->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
+            })
             ->latest()
             ->get()
             ->map(function ($msg) use ($currentUserId) {
@@ -877,16 +884,22 @@ class ParentWebController extends Controller
             $unread = \App\Models\Message::where('sender_id', $c->user_id)
                 ->where('receiver_id', $currentUserId)
                 ->where('is_read', false)
+                ->where('deleted_for_everyone', false)
+                ->where('deleted_for_receiver', false)
                 ->count();
 
-            $lastMsg = \App\Models\Message::where(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
-                })
-                ->orWhere(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+            $lastMsg = \App\Models\Message::where('deleted_for_everyone', false)
+                ->where(function ($q) use ($currentUserId, $c) {
+                    $q->where(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id)->where('deleted_for_sender', false);
+                    })->orWhere(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                    });
                 })
                 ->latest()
                 ->first();
+
+            if (!$lastMsg) continue;
 
             $contacts[] = [
                 'id' => $c->user_id,
@@ -914,11 +927,13 @@ class ParentWebController extends Controller
     {
         $currentUserId = Auth::id();
         $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where('deleted_for_everyone', false)
             ->where(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $currentUserId)->where('receiver_id', $userId);
-            })
-            ->orWhere(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                $q->where(function ($sub) use ($currentUserId, $userId) {
+                    $sub->where('sender_id', $currentUserId)->where('receiver_id', $userId)->where('deleted_for_sender', false);
+                })->orWhere(function ($sub) use ($currentUserId, $userId) {
+                    $sub->where('sender_id', $userId)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
             })
             ->orderBy('created_at', 'asc')
             ->get();
@@ -937,12 +952,13 @@ class ParentWebController extends Controller
         $query = $request->query('q');
 
         $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where('deleted_for_everyone', false)
             ->where(function ($q) use ($currentUserId, $userId) {
                 $q->where(function($q2) use ($currentUserId, $userId) {
-                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId)->where('deleted_for_sender', false);
                 })
                 ->orWhere(function($q2) use ($currentUserId, $userId) {
-                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
                 });
             })
             ->where('message', 'LIKE', '%' . $query . '%')
@@ -1024,15 +1040,44 @@ class ParentWebController extends Controller
         return response()->json(['status' => 'success', 'data' => $message]);
     }
 
-    public function deleteMessage($id)
+    public function deleteMessage(Request $request, $id)
     {
+        $currentUserId = Auth::id();
+        $type = $request->input('type', 'me');
+
         $message = \App\Models\Message::findOrFail($id);
-        
-        if ($message->sender_id !== Auth::id()) {
+
+        if ((int)$message->sender_id !== (int)$currentUserId && (int)$message->receiver_id !== (int)$currentUserId) {
             return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
         }
 
-        $message->delete();
+        if ($type === 'everyone') {
+            if ((int)$message->sender_id !== (int)$currentUserId) {
+                return response()->json(['status' => 'error', 'message' => 'يمكن لمراسل الرسالة فقط حذفها لدى الجميع'], 403);
+            }
+            $message->deleted_for_everyone = true;
+            $message->save();
+
+            if ($message->attachment) {
+                $path = str_replace(asset('storage/'), '', $message->attachment);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            }
+        } else {
+            if ((int)$message->sender_id === (int)$currentUserId) {
+                $message->deleted_for_sender = true;
+            }
+            if ((int)$message->receiver_id === (int)$currentUserId) {
+                $message->deleted_for_receiver = true;
+            }
+            $message->save();
+
+            if (($message->deleted_for_sender && $message->deleted_for_receiver) || $message->deleted_for_everyone) {
+                if ($message->attachment) {
+                    $path = str_replace(asset('storage/'), '', $message->attachment);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+                }
+            }
+        }
 
         return response()->json(['status' => 'success', 'message' => 'تم حذف الرسالة بنجاح']);
     }
@@ -1174,12 +1219,16 @@ class ParentWebController extends Controller
         return $this->parentView('parent.notifications', compact('notifications'));
     }
 
-    public function markNotificationRead($id)
+    public function markNotificationRead(Request $request, $id)
     {
         DB::table('notifications')
             ->where('id', $id)
             ->where('user_id', auth()->id())
             ->update(['is_read' => 1, 'updated_at' => now()]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
 
         return back()->with('success', 'تم تمييز الإشعار كمقروء.');
     }

@@ -14,7 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
 
 <div id="cropModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:99999; align-items:center; justify-content:center; padding:1rem; font-family:'Cairo',sans-serif;" dir="rtl">
-    <div style="background:#1e293b; border-radius:1.5rem; padding:1.5rem; max-width:680px; width:100%; max-height:95vh; display:flex; flex-direction:column; gap:1rem; box-shadow:0 30px 80px rgba(0,0,0,0.5); overflow-y:auto;">
+    <div style="background:#121212; border-radius:1.5rem; padding:1.5rem; max-width:680px; width:100%; max-height:95vh; display:flex; flex-direction:column; gap:1rem; box-shadow:0 30px 80px rgba(0,0,0,0.5); overflow-y:auto; border: 1px solid #242424;">
 
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div>

@@ -1,12 +1,12 @@
 :root {
-    /* Light Theme Variables */
-    --bg-primary: #f6f7f8;
+    /* Light Theme Variables - Soft comfortable light grey (not blinding pure white) */
+    --bg-primary: #eef0f4;
     --bg-secondary: #ffffff;
     --text-primary: #1e293b;
     --text-secondary: #64748b;
     --accent-color: #f2f20d;
     --accent-hover: #d9d905;
-    --border-color: #e2e8f0;
+    --border-color: #dbe0e6;
     --shadow: 0 4px 20px -2px rgba(0,0,0,0.06);
     --glow-shadow: 0 0 25px rgba(242,242,13,0.4);
     
@@ -16,15 +16,15 @@
 }
 
 [data-theme="dark"] {
-    /* Dark Theme Variables */
-    --bg-primary: #101922;
-    --bg-secondary: #1a2633;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
+    /* Dark Theme Variables - True Pitch Black (000000) like mobile app */
+    --bg-primary: #000000;
+    --bg-secondary: #121212;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
     --accent-color: #f2f20d;
     --accent-hover: #d9d905;
-    --border-color: #1e2d3d;
-    --shadow: 0 4px 20px rgba(0,0,0,0.4);
+    --border-color: #242424;
+    --shadow: 0 4px 20px rgba(0,0,0,0.8);
     --glow-shadow: 0 0 25px rgba(242,242,13,0.4);
 }
 
@@ -266,7 +266,7 @@ input:checked + .slider:before {
 }
 .announce-large-header {
     height: 11rem;
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    background: linear-gradient(135deg, #1f1f1f 0%, #0d0d0d 100%);
     position: relative;
     overflow: hidden;
 }
