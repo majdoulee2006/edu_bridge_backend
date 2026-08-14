@@ -4,6 +4,7 @@
 @section('subtitle', 'التواصل المباشر مع إدارة الكلية ورؤساء الأقسام والمشرفين')
 
 @section('content')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <div class="flex gap-6 h-[calc(100vh-12rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS) ================= -->
@@ -218,29 +219,34 @@
 <!-- ================= CSS EXTRA POLISHING ================= -->
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script>
-tailwind.config = {
-    darkMode: ['class', '[data-theme="dark"]'],
-    theme: {
-        extend: {
-            colors: {
-                "primary": "#f2f20d",
-                "primary-dark": "#d9d905",
-                "primary-content": "#1a1a00",
-            },
-            fontFamily: {
-                "display": ["Cairo", "Lexend", "sans-serif"],
-                "body": ["Cairo", "Lexend", "sans-serif"],
-            },
-            boxShadow: {
-                "soft": "0 4px 20px -2px rgba(0,0,0,0.06)",
-                "glow": "0 0 25px rgba(242,242,13,0.4)",
+window.tailwind = {
+    config: {
+        corePlugins: {
+            preflight: false,
+        },
+        darkMode: ['class', '[data-theme="dark"]'],
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#f2f20d",
+                    "primary-dark": "#d9d905",
+                    "primary-content": "#1a1a00",
+                },
+                fontFamily: {
+                    "display": ["Cairo", "Lexend", "sans-serif"],
+                    "body": ["Cairo", "Lexend", "sans-serif"],
+                },
+                boxShadow: {
+                    "soft": "0 4px 20px -2px rgba(0,0,0,0.06)",
+                    "glow": "0 0 25px rgba(242,242,13,0.4)",
+                }
             }
         }
     }
 }
 </script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -425,26 +431,91 @@ tailwind.config = {
         const isMe = parseInt(msg.sender_id) === currentUserId;
         
         const empty = feed.querySelector('.text-center');
-        if (empty) empty.remove();
+        if (empty && empty.innerText.includes('لا توجد رسائل')) empty.remove();
 
         const timeStr = msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-        const isVoice = msg.attachment && (msg.attachment.endsWith('.webm') || msg.attachment.endsWith('.wav') || msg.attachment.endsWith('.mp3') || msg.attachment.endsWith('.ogg') || msg.message === '[Voice Note]');
+        const isVoice = (msg.attachment && (msg.attachment.endsWith('.webm') || msg.attachment.endsWith('.wav') || msg.attachment.endsWith('.mp3') || msg.attachment.endsWith('.ogg'))) || msg.message === '[Voice Note]';
+
+        let fileType = '';
+        if (msg.fileObject) {
+            fileType = msg.fileObject.type;
+        } else if (msg.attachment) {
+            const ext = msg.attachment.split('.').pop().toLowerCase().split('?')[0];
+            if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
+                fileType = 'image/';
+            } else if (['mp3', 'wav', 'm4a', 'ogg', 'aac'].includes(ext) || isVoice) {
+                fileType = 'audio/';
+            } else if (['mp4', 'mov', 'webm', 'avi'].includes(ext)) {
+                if (ext === 'webm' && (msg.message === '[Voice Note]' || isVoice)) {
+                    fileType = 'audio/';
+                } else {
+                    fileType = 'video/';
+                }
+            }
+        }
+
+        let pendingOverlay = '';
+        let pendingProgressHtml = '';
+        if (msg.isPending) {
+            let pendingLabel = 'جاري رفع الملف...';
+            if (fileType.startsWith('image/')) pendingLabel = 'جاري رفع الصورة...';
+            else if (fileType.startsWith('video/')) pendingLabel = 'جاري رفع الفيديو...';
+            else if (fileType.startsWith('audio/') || isVoice) pendingLabel = 'جاري رفع الصوت...';
+
+            pendingOverlay = `
+                <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-xl gap-2 p-3 z-20 select-none transition-all">
+                    <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden max-w-[180px]">
+                        <div id="overlay-progress-bar-${msg.id}" class="bg-[#FFCC00] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+                    </div>
+                    <span id="overlay-progress-text-${msg.id}" class="text-[10px] font-bold tracking-wide drop-shadow-sm">${pendingLabel} 0%</span>
+                </div>
+            `;
+
+            pendingProgressHtml = `
+                <div class="mt-2.5 w-full min-w-[180px] dir-rtl">
+                    <div class="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 overflow-hidden border border-black/5 dark:border-white/10">
+                        <div id="progress-bar-${msg.id}" class="bg-amber-500 dark:bg-amber-400 h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+                    </div>
+                    <div class="flex items-center justify-between mt-1 text-[10px] font-bold opacity-80">
+                        <span id="progress-text-${msg.id}">${pendingLabel} 0%</span>
+                        <span class="material-symbols-outlined text-[13px] animate-spin">progress_activity</span>
+                    </div>
+                </div>
+            `;
+        }
 
         let attachmentHtml = '';
         if (msg.attachment) {
             if (isVoice) {
+                const voiceId = 'voice-' + (msg.id || msg.message_id || Math.random().toString(36).substring(2, 9));
                 attachmentHtml = `
-                    <div class="mt-2">
-                        <audio controls class="w-full h-8 max-w-[220px] rounded-lg">
-                            <source src="${msg.attachment}" type="audio/webm">
-                            متصفحك لا يدعم مشغل الصوت.
-                        </audio>
+                    <div class="relative mt-1 max-w-[270px]">
+                        ${pendingOverlay}
+                        <div class="flex items-center gap-3 p-3 rounded-2xl ${isMe ? 'bg-black/10 text-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'} min-w-[230px] dir-ltr select-none border border-black/5 dark:border-white/10">
+                            <audio id="${voiceId}" src="${msg.attachment}" preload="metadata" ontimeupdate="updateVoiceProgress('${voiceId}')" onended="resetVoicePlayer('${voiceId}')"></audio>
+                            
+                            <button type="button" onclick="toggleVoicePlay('${voiceId}')" id="btn-${voiceId}" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isMe ? 'bg-black text-white hover:bg-slate-900' : 'bg-amber-500 text-white hover:bg-amber-600'} transition-all shadow-md active:scale-95">
+                                <span class="material-symbols-outlined text-xl" id="icon-${voiceId}">play_arrow</span>
+                            </button>
+
+                            <div class="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
+                                <div class="relative w-full h-2 bg-black/10 dark:bg-white/15 rounded-full overflow-hidden cursor-pointer" onclick="seekVoice('${voiceId}', event)">
+                                    <div id="progress-${voiceId}" class="h-full ${isMe ? 'bg-black' : 'bg-amber-500'} rounded-full transition-all duration-100" style="width: 0%;"></div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between text-[10px] font-bold opacity-75 dir-rtl">
+                                    <span id="time-${voiceId}">00:00</span>
+                                    <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">graphic_eq</span> صوتية</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
             } else {
                 const fileName = msg.attachment.split('/').pop();
                 attachmentHtml = `
-                    <div class="mt-2 pt-2 border-t ${isMe ? 'border-black/10' : 'border-slate-200 dark:border-slate-700'}">
+                    <div class="relative mt-2 pt-2 border-t ${isMe ? 'border-black/10' : 'border-slate-200 dark:border-slate-700'}">
+                        ${pendingOverlay}
                         <a href="${msg.attachment}" target="_blank" download class="flex items-center gap-2 text-xs font-bold underline ${isMe ? 'text-slate-900' : 'text-primary-dark dark:text-primary'}">
                             <span class="material-symbols-outlined text-sm">download</span>
                             <span class="truncate max-w-[150px]">${fileName}</span>
@@ -457,23 +528,29 @@ tailwind.config = {
         const msgId = msg.id || msg.message_id;
         const msgTextEscaped = (msg.message || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
-        const actionButtons = isMe ? `
-            <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0 ${isMe ? 'mr-2' : 'ml-2'}">
-                <button onclick="editMessagePrompt(${msgId}, '${msgTextEscaped}')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" title="تعديل">
-                    <span class="material-symbols-outlined text-sm">edit</span>
-                </button>
-                <button onclick="deleteMessageConfirm(${msgId})" class="text-slate-400 hover:text-red-500" title="حذف">
-                    <span class="material-symbols-outlined text-sm">delete</span>
-                </button>
-            </div>
-        ` : '';
+        let actionButtons = '';
+        if (!msg.isPending) {
+            actionButtons = `
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0 ${isMe ? 'mr-2' : 'ml-2'}">
+                    ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `
+                    <button onclick="editMessagePrompt(${msgId}, '${msgTextEscaped}')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" title="تعديل">
+                        <span class="material-symbols-outlined text-sm">edit</span>
+                    </button>` : ''}
+                    <button onclick="deleteMessageConfirm(${msgId}, ${isMe})" class="text-slate-400 hover:text-red-500" title="حذف">
+                        <span class="material-symbols-outlined text-sm">delete</span>
+                    </button>
+                </div>
+            `;
+        }
 
+        const pendingClass = msg.isPending ? 'opacity-70 message-pending' : '';
         const msgHtml = `
-            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} group message-bubble-item" data-message-text="${(msg.message || '').toLowerCase()}" id="msg-bubble-${msgId}">
+            <div class="flex ${isMe ? 'justify-end' : 'justify-start'} group message-bubble-item mb-3.5 ${pendingClass}" data-message-text="${(msg.message || '').toLowerCase()}" id="${msg.isPending ? 'msg-' + msg.id : 'msg-bubble-' + msgId}">
                 ${isMe ? actionButtons : ''}
                 <div class="max-w-[70%] p-3.5 ${isMe ? 'bg-[#FFCC00] text-black chat-bubble-sent' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 chat-bubble-received border border-slate-200/60 dark:border-slate-700/60'} shadow-sm">
                     <p class="text-xs font-semibold leading-relaxed break-words" id="msg-text-content-${msgId}">${msg.message && msg.message !== '[Voice Note]' ? msg.message : ''}</p>
                     ${attachmentHtml}
+                    ${msg.isPending && (!msg.attachment || (!fileType.startsWith('image/') && !fileType.startsWith('video/') && !fileType.startsWith('audio/') && !isVoice)) ? pendingProgressHtml : ''}
                     <div class="text-[9px] ${isMe ? 'text-black/60' : 'text-slate-400'} mt-1 text-left font-mono">${timeStr}</div>
                 </div>
                 ${!isMe ? actionButtons : ''}
@@ -560,59 +637,237 @@ tailwind.config = {
         stopAudioRecording(true);
     }
 
+    // --- Voice Note Custom Player Logic ---
+    function toggleVoicePlay(id) {
+        const audio = document.getElementById(id);
+        const icon = document.getElementById('icon-' + id);
+        if (!audio || !icon) return;
+
+        document.querySelectorAll('audio[id^="voice-"]').forEach(a => {
+            if (a.id !== id && !a.paused) {
+                a.pause();
+                const otherIcon = document.getElementById('icon-' + a.id);
+                if (otherIcon) otherIcon.innerText = 'play_arrow';
+            }
+        });
+
+        if (audio.paused) {
+            audio.play().then(() => {
+                icon.innerText = 'pause';
+            }).catch(err => console.error("Audio play failed: ", err));
+        } else {
+            audio.pause();
+            icon.innerText = 'play_arrow';
+        }
+    }
+
+    function updateVoiceProgress(id) {
+        const audio = document.getElementById(id);
+        const progress = document.getElementById('progress-' + id);
+        const timeEl = document.getElementById('time-' + id);
+        if (!audio || !progress) return;
+
+        const currentTime = audio.currentTime || 0;
+        const duration = audio.duration || 0;
+        
+        if (duration > 0) {
+            const percent = (currentTime / duration) * 100;
+            progress.style.width = percent + '%';
+        }
+
+        if (timeEl) {
+            const mins = Math.floor(currentTime / 60).toString().padStart(2, '0');
+            const secs = Math.floor(currentTime % 60).toString().padStart(2, '0');
+            timeEl.innerText = `${mins}:${secs}`;
+        }
+    }
+
+    function resetVoicePlayer(id) {
+        const icon = document.getElementById('icon-' + id);
+        const progress = document.getElementById('progress-' + id);
+        const timeEl = document.getElementById('time-' + id);
+        if (icon) icon.innerText = 'play_arrow';
+        if (progress) progress.style.width = '0%';
+        if (timeEl) timeEl.innerText = '00:00';
+    }
+
+    function seekVoice(id, event) {
+        const audio = document.getElementById(id);
+        if (!audio || !audio.duration) return;
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const width = rect.width;
+        const seekTime = (clickX / width) * audio.duration;
+        audio.currentTime = seekTime;
+    }
+
     function sendVoiceNoteMessage() {
         if (!recordedAudioBlob || !activeContactId) return;
 
         const fd = new FormData();
         fd.append('receiver_id', activeContactId);
         fd.append('message', '[Voice Note]');
-        fd.append('attachment', recordedAudioBlob, 'voice_note.webm');
+        fd.append('attachment', recordedAudioBlob, `voice_note_${Date.now()}.webm`);
 
-        fetch('{{ route("parent.messages.send") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: fd
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success' || data.data) {
-                appendMessageBubble(data.data);
-                loadContactsList();
+        const tempTime = new Date().toISOString();
+        const tempId = 'temp_' + Date.now();
+        appendMessageBubble({
+            id: tempId,
+            sender_id: currentUserId,
+            receiver_id: activeContactId,
+            message: '[Voice Note]',
+            attachment: URL.createObjectURL(recordedAudioBlob),
+            fileObject: recordedAudioBlob,
+            created_at: tempTime,
+            isPending: true
+        });
+        scrollMessagesToBottom();
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '{{ route("parent.messages.send") }}', true);
+        xhr.setRequestHeader('X-CSRF-TOKEN', '{{ csrf_token() }}');
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                const pBar = document.getElementById(`progress-bar-${tempId}`);
+                const pText = document.getElementById(`progress-text-${tempId}`);
+                const oBar = document.getElementById(`overlay-progress-bar-${tempId}`);
+                const oText = document.getElementById(`overlay-progress-text-${tempId}`);
+
+                if (pBar) pBar.style.width = percent + '%';
+                if (pText) pText.innerText = `جاري رفع الصوت... ${percent}%`;
+                if (oBar) oBar.style.width = percent + '%';
+                if (oText) oText.innerText = `جاري رفع الصوت... ${percent}%`;
+            }
+        };
+
+        xhr.onload = function() {
+            const pendingBubble = document.getElementById(`msg-${tempId}`);
+            if (pendingBubble) {
+                pendingBubble.remove();
+            }
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.status === 'success' || data.data) {
+                        const newMsg = data.data || data.message;
+                        if (newMsg && !document.getElementById('msg-bubble-' + (newMsg.id || newMsg.message_id))) {
+                            appendMessageBubble(newMsg);
+                        }
+                        loadContactsList();
+                    } else {
+                        alert('فشل إرسال الملاحظة الصوتية: ' + (data.message || data.error || 'خطأ غير معروف'));
+                    }
+                } catch (e) {
+                    alert('حدث خطأ أثناء معالجة استجابة الخادم.');
+                }
+            } else {
+                alert('فشل إرسال الصوت. خطأ الخادم: ' + xhr.status);
             }
             recordedAudioBlob = null;
-        });
+        };
+
+        xhr.onerror = function() {
+            const pendingBubble = document.getElementById(`msg-${tempId}`);
+            if (pendingBubble) {
+                pendingBubble.remove();
+            }
+            alert('فشل إرسال الملاحظة الصوتية. يرجى التحقق من اتصالك بالشبكة.');
+            recordedAudioBlob = null;
+        };
+
+        xhr.send(fd);
     }
 
     function submitMessage() {
-        const text = document.getElementById('message-text').value.trim();
+        const textInput = document.getElementById('message-text');
+        const text = textInput.value.trim();
         if (!text && !selectedFile) return;
         if (!activeContactId) return;
 
         const fd = new FormData();
         fd.append('receiver_id', activeContactId);
-        fd.append('message', text || '[مرفق]');
+        fd.append('message', selectedFile && text === '' ? '[Attachment]' : text);
         if (selectedFile) {
             fd.append('attachment', selectedFile);
         }
 
-        fetch('{{ route("parent.messages.send") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: fd
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success' || data.data) {
-                appendMessageBubble(data.data);
-                document.getElementById('message-text').value = '';
-                clearSelectedAttachment();
-                loadContactsList();
-            }
+        const tempTime = new Date().toISOString();
+        const tempId = 'temp_' + Date.now();
+        const fileToUpload = selectedFile;
+
+        appendMessageBubble({
+            id: tempId,
+            sender_id: currentUserId,
+            receiver_id: activeContactId,
+            message: fileToUpload && text === '' ? '' : text,
+            attachment: fileToUpload ? URL.createObjectURL(fileToUpload) : null,
+            fileObject: fileToUpload,
+            created_at: tempTime,
+            isPending: true
         });
+        scrollMessagesToBottom();
+
+        textInput.value = '';
+        clearSelectedAttachment();
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '{{ route("parent.messages.send") }}', true);
+        xhr.setRequestHeader('X-CSRF-TOKEN', '{{ csrf_token() }}');
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                const pBar = document.getElementById(`progress-bar-${tempId}`);
+                const pText = document.getElementById(`progress-text-${tempId}`);
+                const oBar = document.getElementById(`overlay-progress-bar-${tempId}`);
+                const oText = document.getElementById(`overlay-progress-text-${tempId}`);
+
+                if (pBar) pBar.style.width = percent + '%';
+                if (pText) pText.innerText = `جاري الرفع... ${percent}%`;
+                if (oBar) oBar.style.width = percent + '%';
+                if (oText) oText.innerText = `جاري الرفع... ${percent}%`;
+            }
+        };
+
+        xhr.onload = function() {
+            const pendingBubble = document.getElementById(`msg-${tempId}`);
+            if (pendingBubble) {
+                pendingBubble.remove();
+            }
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.status === 'success' || data.data) {
+                        const newMsg = data.data || data.message;
+                        if (newMsg && !document.getElementById('msg-bubble-' + (newMsg.id || newMsg.message_id))) {
+                            appendMessageBubble(newMsg);
+                        }
+                        loadContactsList();
+                    } else {
+                        alert('فشل في إرسال الرسالة: ' + (data.message || data.error || 'خطأ غير معروف'));
+                    }
+                } catch (e) {
+                    alert('حدث خطأ أثناء معالجة استجابة الخادم.');
+                }
+            } else {
+                alert('فشل إرسال الرسالة. خطأ من الخادم: ' + xhr.status);
+            }
+        };
+
+        xhr.onerror = function() {
+            const pendingBubble = document.getElementById(`msg-${tempId}`);
+            if (pendingBubble) {
+                pendingBubble.remove();
+            }
+            alert('فشل إرسال الرسالة. يرجى التحقق من اتصالك بالشبكة.');
+        };
+
+        xhr.send(fd);
     }
 
     function markActiveChatAsRead() {
@@ -642,22 +897,86 @@ tailwind.config = {
         }
     }
 
-    function deleteMessageConfirm(id) {
-        if (confirm('هل أنت تأكد من رغبتك في حذف هذه الرسالة؟')) {
-            fetch(`/parent/messages/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    function deleteMessageConfirm(id, isMe) {
+        if (typeof Swal !== 'undefined') {
+            if (isMe) {
+                Swal.fire({
+                    title: 'حذف الرسالة',
+                    text: 'اختر نوع الحذف المطلوب:',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonColor: '#ef4444',
+                    denyButtonColor: '#3b82f6',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'حذف لدى الجميع',
+                    denyButtonText: 'حذف لدي فقط',
+                    cancelButtonText: 'إلغاء'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performDeleteMessage(id, 'everyone');
+                    } else if (result.isDenied) {
+                        performDeleteMessage(id, 'me');
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'حذف الرسالة',
+                    text: 'هل أنت متأكد من حذف هذه الرسالة لديك؟',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'حذف لدي',
+                    cancelButtonText: 'إلغاء'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        performDeleteMessage(id, 'me');
+                    }
+                });
+            }
+        } else {
+            let type = 'me';
+            if (isMe) {
+                if (confirm('هل تريد حذف الرسالة لدى الجميع؟ (اضغط إلغاء للحذف لديك فقط)')) {
+                    type = 'everyone';
+                } else if (!confirm('هل تريد حذف الرسالة لديك فقط؟')) {
+                    return;
                 }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    const elem = document.getElementById(`msg-bubble-${id}`);
-                    if (elem) elem.remove();
-                }
-            });
+            } else {
+                if (!confirm('هل أنت متأكد من حذف هذه الرسالة لديك؟')) return;
+            }
+            performDeleteMessage(id, type);
         }
+    }
+
+    function performDeleteMessage(id, type) {
+        fetch(`/parent/messages/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ type: type })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const elem = document.getElementById(`msg-bubble-${id}`);
+                if (elem) elem.remove();
+                loadContactsList();
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('خطأ', data.message || 'فشل الحذف', 'error');
+                } else {
+                    alert('فشل الحذف: ' + (data.message || 'خطأ غير معروف'));
+                }
+            }
+        }).catch(err => {
+            console.error("Delete error:", err);
+            alert('خطأ في الاتصال أثناء تنفيذ عملية الحذف.');
+        });
     }
 
     function searchActiveChatMessages() {

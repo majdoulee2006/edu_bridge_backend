@@ -588,9 +588,8 @@
             </div>
         </div>
 
-        <!-- Container for Academic Card Result -->
         <div id="academic-card-display" style="display: none;">
-            <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 1.25rem; padding: 1.5rem 2rem; color: white; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); flex-wrap: wrap; gap: 1rem;">
+            <div style="background: linear-gradient(135deg, #181818, #0a0a0a); border-radius: 1.25rem; padding: 1.5rem 2rem; color: white; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <h3 id="card-student-name" style="font-size: 1.4rem; font-weight: 800; color: #facc15; margin: 0 0 0.5rem 0;">--</h3>
                     <p style="margin: 0; font-size: 0.95rem; opacity: 0.85;">

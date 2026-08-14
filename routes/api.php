@@ -117,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/messages/{otherUserId}/search', [ChatController::class, 'searchMessages']);
     Route::delete('/messages/{messageId}', [ChatController::class, 'deleteMessage']);
     Route::put('/messages/{messageId}/edit', [ChatController::class, 'editMessage']);
+    Route::post('/messages/forward', [ChatController::class, 'forwardMessage']);
     Route::post('/groups/{groupId}/messages', [ChatController::class, 'sendGroupMessage']);
     Route::post('/groups', [ChatController::class, 'createGroup']);
     Route::get('/groups/{groupId}/messages', [ChatController::class, 'getGroupMessages']);

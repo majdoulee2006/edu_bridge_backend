@@ -21,6 +21,7 @@ use App\Services\TelegramService;
 
 class AffairsWebController extends Controller
 {
+    use \App\Traits\HandlesMessagesTrait;
     // ─────────────────────────── Auth ───────────────────────────
     public function showLoginForm()
     {
@@ -1004,8 +1005,14 @@ class AffairsWebController extends Controller
     {
         $currentUserId = Auth::id();
 
-        $conversations = Message::where('sender_id', $currentUserId)
-            ->orWhere('receiver_id', $currentUserId)
+        $conversations = Message::where('deleted_for_everyone', false)
+            ->where(function($q) use ($currentUserId) {
+                $q->where(function($sub) use ($currentUserId) {
+                    $sub->where('sender_id', $currentUserId)->where('deleted_for_sender', false);
+                })->orWhere(function($sub) use ($currentUserId) {
+                    $sub->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
+            })
             ->latest()
             ->get()
             ->map(function ($msg) use ($currentUserId) {
@@ -1021,22 +1028,28 @@ class AffairsWebController extends Controller
             $unread = Message::where('sender_id', $c->user_id)
                 ->where('receiver_id', $currentUserId)
                 ->where('is_read', false)
+                ->where('deleted_for_everyone', false)
+                ->where('deleted_for_receiver', false)
                 ->count();
 
-            $lastMsg = Message::where(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
-                })
-                ->orWhere(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+            $lastMsg = Message::where('deleted_for_everyone', false)
+                ->where(function ($q) use ($currentUserId, $c) {
+                    $q->where(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id)->where('deleted_for_sender', false);
+                    })->orWhere(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                    });
                 })
                 ->latest()
                 ->first();
+
+            if (!$lastMsg) continue;
 
             $contacts[] = [
                 'id' => $c->user_id,
                 'name' => $c->full_name,
                 'role' => $c->role,
-                'image' => $c->profile_picture ? asset('storage/' . $c->profile_picture) : null,
+                'image' => $c->avatar ? (str_starts_with($c->avatar, 'http') ? $c->avatar : asset('storage/' . $c->avatar)) : null,
                 'unread' => $unread,
                 'last_message' => $lastMsg ? $lastMsg->message : '',
                 'time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : '',
@@ -1058,11 +1071,13 @@ class AffairsWebController extends Controller
     {
         $currentUserId = Auth::id();
         $messages = Message::with(['sender', 'receiver'])
+            ->where('deleted_for_everyone', false)
             ->where(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $currentUserId)->where('receiver_id', $userId);
-            })
-            ->orWhere(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                $q->where(function ($sub) use ($currentUserId, $userId) {
+                    $sub->where('sender_id', $currentUserId)->where('receiver_id', $userId)->where('deleted_for_sender', false);
+                })->orWhere(function ($sub) use ($currentUserId, $userId) {
+                    $sub->where('sender_id', $userId)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
             })
             ->orderBy('created_at', 'asc')
             ->get();
@@ -1081,12 +1096,13 @@ class AffairsWebController extends Controller
         $query = $request->query('q');
 
         $messages = Message::with(['sender', 'receiver'])
+            ->where('deleted_for_everyone', false)
             ->where(function ($q) use ($currentUserId, $userId) {
                 $q->where(function($q2) use ($currentUserId, $userId) {
-                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId)->where('deleted_for_sender', false);
                 })
                 ->orWhere(function($q2) use ($currentUserId, $userId) {
-                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
                 });
             })
             ->where('message', 'LIKE', '%' . $query . '%')
@@ -1125,6 +1141,12 @@ class AffairsWebController extends Controller
             'is_read'     => false,
         ]);
 
+        try {
+            broadcast(new \App\Events\MessageSent($message))->toOthers();
+        } catch (\Exception $e) {
+            Log::error('MessageSent Broadcast Error: ' . $e->getMessage());
+        }
+
         DB::table('notifications')->insert([
             'user_id' => $request->receiver_id,
             'title'   => 'رسالة جديدة',
@@ -1142,7 +1164,7 @@ class AffairsWebController extends Controller
         );
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => $message]);
+            return response()->json(['status' => 'success', 'success' => true, 'data' => $message, 'message' => $message]);
         }
 
         return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
@@ -1166,21 +1188,46 @@ class AffairsWebController extends Controller
         return response()->json(['status' => 'success', 'message' => $message]);
     }
 
-    public function deleteMessage($id)
+    public function deleteMessage(Request $request, $id)
     {
+        $currentUserId = Auth::id();
+        $type = $request->input('type', 'me');
+
         $message = Message::findOrFail($id);
 
-        if ($message->sender_id !== Auth::id()) {
+        if ((int)$message->sender_id !== (int)$currentUserId && (int)$message->receiver_id !== (int)$currentUserId) {
             return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
         }
 
-        if ($message->attachment) {
-            $path = str_replace(asset('storage/'), '', $message->attachment);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+        if ($type === 'everyone') {
+            if ((int)$message->sender_id !== (int)$currentUserId) {
+                return response()->json(['status' => 'error', 'message' => 'يمكن لمراسل الرسالة فقط حذفها لدى الجميع'], 403);
+            }
+            $message->deleted_for_everyone = true;
+            $message->save();
+
+            if ($message->attachment) {
+                $path = str_replace(asset('storage/'), '', $message->attachment);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            }
+        } else {
+            if ((int)$message->sender_id === (int)$currentUserId) {
+                $message->deleted_for_sender = true;
+            }
+            if ((int)$message->receiver_id === (int)$currentUserId) {
+                $message->deleted_for_receiver = true;
+            }
+            $message->save();
+
+            if (($message->deleted_for_sender && $message->deleted_for_receiver) || $message->deleted_for_everyone) {
+                if ($message->attachment) {
+                    $path = str_replace(asset('storage/'), '', $message->attachment);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+                }
+            }
         }
 
-        $message->delete();
-        return response()->json(['status' => 'success']);
+        return response()->json(['status' => 'success', 'message' => 'تم حذف الرسالة بنجاح']);
     }
 
     // ─────────────────────────── Notifications ───────────────────────────
@@ -1196,11 +1243,15 @@ class AffairsWebController extends Controller
         return view('affairs.notifications', compact('notifications', 'unreadCount'));
     }
 
-    public function markNotificationRead($id)
+    public function markNotificationRead(Request $request, $id)
     {
         Notification::where('id', $id)
             ->where('user_id', Auth::id())
             ->update(['is_read' => true]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
 
         return back()->with('success', 'تم تحديد الإشعار كمقروء.');
     }

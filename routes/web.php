@@ -64,6 +64,8 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::get('/messages/conversation/{userId}/search', [TeacherWebController::class, 'searchMessages'])->name('teacher.messages.search');
     Route::put('/messages/{id}/edit', [TeacherWebController::class, 'updateMessage'])->name('teacher.messages.update');
     Route::delete('/messages/{id}', [TeacherWebController::class, 'deleteMessage'])->name('teacher.messages.delete');
+    Route::get('/messages/{id}/download', [TeacherWebController::class, 'downloadAttachment'])->name('teacher.messages.download');
+    Route::post('/messages/forward', [TeacherWebController::class, 'forwardMessage'])->name('teacher.messages.forward');
 
     // الإعلانات
     Route::get('/announcements/create', [TeacherWebController::class, 'createAnnouncement'])->name('teacher.announcements.create');
@@ -146,6 +148,8 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::post('/messages', [HODWebController::class, 'sendMessage'])->name('hod.messages.send');
     Route::put('/messages/{id}/edit', [HODWebController::class, 'updateMessage'])->name('hod.messages.update');
     Route::delete('/messages/{id}', [HODWebController::class, 'deleteMessage'])->name('hod.messages.delete');
+    Route::get('/messages/{id}/download', [HODWebController::class, 'downloadAttachment'])->name('hod.messages.download');
+    Route::post('/messages/forward', [HODWebController::class, 'forwardMessage'])->name('hod.messages.forward');
     Route::get('/reports', [HODWebController::class, 'reports'])->name('hod.reports');
     Route::get('/reports/create', [HODWebController::class, 'createReport'])->name('hod.reports.create');
     Route::post('/reports', [HODWebController::class, 'storeReport'])->name('hod.reports.store');
@@ -224,6 +228,8 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/messages', [AffairsWebController::class, 'sendMessage'])->name('affairs.messages.send');
     Route::put('/messages/{id}/edit', [AffairsWebController::class, 'updateMessage'])->name('affairs.messages.update');
     Route::delete('/messages/{id}', [AffairsWebController::class, 'deleteMessage'])->name('affairs.messages.delete');
+    Route::get('/messages/{id}/download', [AffairsWebController::class, 'downloadAttachment'])->name('affairs.messages.download');
+    Route::post('/messages/forward', [AffairsWebController::class, 'forwardMessage'])->name('affairs.messages.forward');
 
     // الإشعارات
     Route::get('/notifications', [AffairsWebController::class, 'notifications'])->name('affairs.notifications');
@@ -302,6 +308,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
     Route::put('/messages/{id}/edit', [AdminWebController::class, 'updateMessage'])->name('admin.messages.update');
     Route::delete('/messages/{id}', [AdminWebController::class, 'deleteMessage'])->name('admin.messages.delete');
+    Route::get('/messages/{id}/download', [AdminWebController::class, 'downloadAttachment'])->name('admin.messages.download');
+    Route::post('/messages/forward', [AdminWebController::class, 'forwardMessage'])->name('admin.messages.forward');
     
     // الخدمات الطلابية للإدارة
     Route::get('/student-services', [AdminWebController::class, 'studentServices'])->name('admin.student_services');
@@ -434,6 +442,8 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::post('/messages', [StudentWebController::class, 'sendMessage'])->name('student.messages.send');
     Route::put('/messages/{id}/edit', [StudentWebController::class, 'updateMessage'])->name('student.messages.update');
     Route::delete('/messages/{id}', [StudentWebController::class, 'deleteMessage'])->name('student.messages.delete');
+    Route::get('/messages/{id}/download', [StudentWebController::class, 'downloadAttachment'])->name('student.messages.download');
+    Route::post('/messages/forward', [StudentWebController::class, 'forwardMessage'])->name('student.messages.forward');
 });
 
 // ==========================================
@@ -500,4 +510,6 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::post('/messages', [ParentWebController::class, 'sendMessage'])->name('parent.messages.send');
     Route::put('/messages/{id}/edit', [ParentWebController::class, 'updateMessage'])->name('parent.messages.update');
     Route::delete('/messages/{id}', [ParentWebController::class, 'deleteMessage'])->name('parent.messages.delete');
+    Route::get('/messages/{id}/download', [ParentWebController::class, 'downloadAttachment'])->name('parent.messages.download');
+    Route::post('/messages/forward', [ParentWebController::class, 'forwardMessage'])->name('parent.messages.forward');
 });

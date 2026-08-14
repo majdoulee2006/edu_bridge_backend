@@ -26,11 +26,11 @@
                     "primary": "#f2f20d",
                     "primary-dark": "#d9d905",
                     "primary-content": "#1a1a00",
-                    "background-light": "#f6f7f8",
-                    "background-dark": "#101922",
+                    "background-light": "#eef0f4",
+                    "background-dark": "#000000",
                     "surface-light": "#ffffff",
-                    "surface-dark": "#1a2633",
-                    "card-dark": "#1e2d3d"
+                    "surface-dark": "#121212",
+                    "card-dark": "#181818"
                 },
                 fontFamily: {
                     "display": ["Cairo", "Lexend", "sans-serif"],
@@ -103,7 +103,7 @@
         <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
 
         {{-- ======= SIDEBAR ======= --}}
-        <aside id="sidebar" class="w-72 bg-white dark:bg-[#101924] text-slate-800 dark:text-white flex flex-col fixed top-0 bottom-0 right-0 z-50 transition-transform duration-300 border-l border-slate-200 dark:border-slate-800 translate-x-full md:translate-x-0">
+        <aside id="sidebar" class="w-72 bg-white dark:bg-[#121212] text-slate-800 dark:text-white flex flex-col fixed top-0 bottom-0 right-0 z-50 transition-transform duration-300 border-l border-slate-200 dark:border-slate-800 translate-x-full md:translate-x-0">
             <!-- Brand Logo -->
             <div class="pt-8 pb-4 px-6 flex items-center justify-center gap-2">
                 <span class="text-2xl font-black text-slate-800 dark:text-white tracking-wide">Edu-Bridge</span>

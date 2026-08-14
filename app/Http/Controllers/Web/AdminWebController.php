@@ -12,6 +12,7 @@ use App\Models\Admin;
 
 class AdminWebController extends Controller
 {
+    use \App\Traits\HandlesMessagesTrait;
     // ────────────────────────────────────────────────────────────
     //  AUTHENTICATION
     // ────────────────────────────────────────────────────────────
@@ -468,8 +469,14 @@ class AdminWebController extends Controller
     {
         $currentUserId = Auth::id();
 
-        $conversations = \App\Models\Message::where('sender_id', $currentUserId)
-            ->orWhere('receiver_id', $currentUserId)
+        $conversations = \App\Models\Message::where('deleted_for_everyone', false)
+            ->where(function($q) use ($currentUserId) {
+                $q->where(function($sub) use ($currentUserId) {
+                    $sub->where('sender_id', $currentUserId)->where('deleted_for_sender', false);
+                })->orWhere(function($sub) use ($currentUserId) {
+                    $sub->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
+            })
             ->latest()
             ->get()
             ->map(function ($msg) use ($currentUserId) {
@@ -485,16 +492,22 @@ class AdminWebController extends Controller
             $unread = \App\Models\Message::where('sender_id', $c->user_id)
                 ->where('receiver_id', $currentUserId)
                 ->where('is_read', false)
+                ->where('deleted_for_everyone', false)
+                ->where('deleted_for_receiver', false)
                 ->count();
 
-            $lastMsg = \App\Models\Message::where(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
-                })
-                ->orWhere(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+            $lastMsg = \App\Models\Message::where('deleted_for_everyone', false)
+                ->where(function ($q) use ($currentUserId, $c) {
+                    $q->where(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id)->where('deleted_for_sender', false);
+                    })->orWhere(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                    });
                 })
                 ->latest()
                 ->first();
+
+            if (!$lastMsg) continue;
 
             $contacts[] = [
                 'id' => $c->user_id,
@@ -518,134 +531,7 @@ class AdminWebController extends Controller
         ]);
     }
 
-    public function getConversation($userId)
-    {
-        $currentUserId = Auth::id();
-        $messages = \App\Models\Message::with(['sender', 'receiver'])
-            ->where(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $currentUserId)->where('receiver_id', $userId);
-            })
-            ->orWhere(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $userId)->where('receiver_id', $currentUserId);
-            })
-            ->orderBy('created_at', 'asc')
-            ->get();
 
-        \App\Models\Message::where('sender_id', $userId)
-            ->where('receiver_id', $currentUserId)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
-
-        return response()->json($messages);
-    }
-
-    public function searchMessages(Request $request, $userId)
-    {
-        $currentUserId = Auth::id();
-        $query = $request->query('q');
-
-        $messages = \App\Models\Message::with(['sender', 'receiver'])
-            ->where(function ($q) use ($currentUserId, $userId) {
-                $q->where(function($q2) use ($currentUserId, $userId) {
-                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
-                })
-                ->orWhere(function($q2) use ($currentUserId, $userId) {
-                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
-                });
-            })
-            ->where('message', 'LIKE', '%' . $query . '%')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return response()->json(['status' => 'success', 'data' => $messages]);
-    }
-
-    public function sendMessage(Request $request)
-    {
-        $request->validate([
-            'receiver_id' => 'required|exists:users,user_id',
-            'message'     => 'required|string|max:2000',
-            'attachment'  => 'nullable|file|max:51200',
-        ]);
-
-        $attachmentPath = null;
-        if ($request->hasFile('attachment')) {
-            $file = $request->file('attachment');
-            $folder = 'chat_attachments';
-            
-            if ($request->message === '[Voice Note]' || strpos($file->getMimeType(), 'audio') !== false) {
-                $folder = 'chat_voice_notes';
-            }
-            
-            $attachmentPath = $file->store($folder, 'public');
-            $attachmentPath = asset('storage/' . $attachmentPath);
-        }
-
-        $message = \App\Models\Message::create([
-            'sender_id'   => Auth::user()->user_id,
-            'receiver_id' => $request->receiver_id,
-            'message'     => $request->message,
-            'attachment'  => $attachmentPath,
-            'is_read'     => false,
-        ]);
-
-        DB::table('notifications')->insert([
-            'user_id' => $request->receiver_id,
-            'title'   => 'رسالة جديدة',
-            'message' => 'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
-            'type'    => 'message',
-            'is_read' => false,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        \App\Services\FcmService::sendToUser(
-            $request->receiver_id,
-            'رسالة جديدة',
-            'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
-            ['type' => 'message']
-        );
-
-        if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => $message]);
-        }
-
-        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
-    }
-
-    public function updateMessage(Request $request, $id)
-    {
-        $message = \App\Models\Message::findOrFail($id);
-        
-        if ($message->sender_id !== Auth::id()) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
-        }
-
-        if ($message->attachment || $message->message === '[Voice Note]') {
-            return response()->json(['status' => 'error', 'message' => 'لا يمكن تعديل المرفقات'], 400);
-        }
-
-        $request->validate(['message' => 'required|string|max:2000']);
-        $message->update(['message' => $request->message]);
-
-        return response()->json(['status' => 'success', 'message' => $message]);
-    }
-
-    public function deleteMessage($id)
-    {
-        $message = \App\Models\Message::findOrFail($id);
-
-        if ($message->sender_id !== Auth::id()) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
-        }
-
-        if ($message->attachment) {
-            $path = str_replace(asset('storage/'), '', $message->attachment);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
-        }
-
-        $message->delete();
-        return response()->json(['status' => 'success']);
-    }
 
     public function notifications()
     {

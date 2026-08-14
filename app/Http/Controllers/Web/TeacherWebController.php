@@ -12,6 +12,7 @@ use App\Models\User;
 
 class TeacherWebController extends Controller
 {
+    use \App\Traits\HandlesMessagesTrait;
     // ────────────────────────────────────────────────────────────
     //  AUTH
     // ────────────────────────────────────────────────────────────
@@ -1471,9 +1472,15 @@ class TeacherWebController extends Controller
     {
         $currentUserId = Auth::id();
 
-        // Get users we have conversations with
-        $conversations = \App\Models\Message::where('sender_id', $currentUserId)
-            ->orWhere('receiver_id', $currentUserId)
+        // Get users we have non-deleted conversations with
+        $conversations = \App\Models\Message::where('deleted_for_everyone', false)
+            ->where(function($q) use ($currentUserId) {
+                $q->where(function($sub) use ($currentUserId) {
+                    $sub->where('sender_id', $currentUserId)->where('deleted_for_sender', false);
+                })->orWhere(function($sub) use ($currentUserId) {
+                    $sub->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
+            })
             ->latest()
             ->get()
             ->map(function ($msg) use ($currentUserId) {
@@ -1490,17 +1497,23 @@ class TeacherWebController extends Controller
             $unread = \App\Models\Message::where('sender_id', $c->user_id)
                 ->where('receiver_id', $currentUserId)
                 ->where('is_read', false)
+                ->where('deleted_for_everyone', false)
+                ->where('deleted_for_receiver', false)
                 ->count();
 
             // Get last message
-            $lastMsg = \App\Models\Message::where(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
-                })
-                ->orWhere(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+            $lastMsg = \App\Models\Message::where('deleted_for_everyone', false)
+                ->where(function ($q) use ($currentUserId, $c) {
+                    $q->where(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id)->where('deleted_for_sender', false);
+                    })->orWhere(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                    });
                 })
                 ->latest()
                 ->first();
+
+            if (!$lastMsg) continue;
 
             $contacts[] = [
                 'id' => $c->user_id,
@@ -1529,11 +1542,13 @@ class TeacherWebController extends Controller
     {
         $currentUserId = Auth::id();
         $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where('deleted_for_everyone', false)
             ->where(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $currentUserId)->where('receiver_id', $userId);
-            })
-            ->orWhere(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                $q->where(function ($sub) use ($currentUserId, $userId) {
+                    $sub->where('sender_id', $currentUserId)->where('receiver_id', $userId)->where('deleted_for_sender', false);
+                })->orWhere(function ($sub) use ($currentUserId, $userId) {
+                    $sub->where('sender_id', $userId)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
             })
             ->orderBy('created_at', 'asc')
             ->get();
@@ -1599,6 +1614,12 @@ class TeacherWebController extends Controller
             'is_read'     => false,
         ]);
 
+        try {
+            broadcast(new \App\Events\MessageSent($message))->toOthers();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('MessageSent Broadcast Error: ' . $e->getMessage());
+        }
+
         // إضافة إشعار للمستلم
         DB::table('notifications')->insert([
             'user_id' => $request->receiver_id,
@@ -1617,7 +1638,7 @@ class TeacherWebController extends Controller
         );
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => $message]);
+            return response()->json(['status' => 'success', 'success' => true, 'data' => $message, 'message' => $message]);
         }
 
         return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
@@ -1675,12 +1696,16 @@ class TeacherWebController extends Controller
         return view('teacher.notifications', compact('notifications', 'unreadCount'));
     }
 
-    public function markNotificationRead($id)
+    public function markNotificationRead(Request $request, $id)
     {
         DB::table('notifications')
             ->where('id', $id)
             ->where('user_id', Auth::id())
             ->update(['is_read' => true]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
 
         return back()->with('success', 'تم تحديد الإشعار كمقروء.');
     }

@@ -17,7 +17,13 @@ class Message extends Model
         'attachment',
         'is_read', 'is_delivered',
         'reply_to_message_id', 
-        'group_id'
+        'group_id',
+        'deleted_for_sender',
+        'deleted_for_receiver',
+        'deleted_for_everyone',
+        'expires_at',
+        'disappears_after',
+        'is_forwarded'
     ];
 
     // 🌟 جلب بيانات المرسل من جدول الـ Users

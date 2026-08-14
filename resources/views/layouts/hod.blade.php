@@ -19,9 +19,15 @@
     
     @stack('styles')
     <script>
-        const savedSettings = JSON.parse(localStorage.getItem('hodSettings'));
-        if (savedSettings && savedSettings.theme === 'dark') {
+        const colorTheme = localStorage.getItem('color-theme');
+        const hodSettings = JSON.parse(localStorage.getItem('hodSettings') || '{}');
+        const theme = colorTheme || hodSettings.theme;
+        if (theme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.classList.add('dark');
+        } else if (theme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.classList.remove('dark');
         }
     </script>
 </head>

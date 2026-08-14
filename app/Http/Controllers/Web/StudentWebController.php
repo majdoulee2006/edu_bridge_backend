@@ -11,6 +11,7 @@ use App\Models\Student;
 
 class StudentWebController extends Controller
 {
+    use \App\Traits\HandlesMessagesTrait;
     // ────────────────────────────────────────────────────────────
     //  AUTH
     // ────────────────────────────────────────────────────────────
@@ -807,11 +808,15 @@ class StudentWebController extends Controller
         return view('student.notifications', compact('notifications', 'unreadCount'));
     }
 
-    public function markNotificationRead($id)
+    public function markNotificationRead(Request $request, $id)
     {
         \App\Models\Notification::where('id', $id)
             ->where('user_id', Auth::id())
             ->update(['is_read' => true]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
 
         return back()->with('success', 'تم تحديد الإشعار كمقروء.');
     }
@@ -843,8 +848,14 @@ class StudentWebController extends Controller
     {
         $currentUserId = Auth::id();
 
-        $conversations = \App\Models\Message::where('sender_id', $currentUserId)
-            ->orWhere('receiver_id', $currentUserId)
+        $conversations = \App\Models\Message::where('deleted_for_everyone', false)
+            ->where(function($q) use ($currentUserId) {
+                $q->where(function($sub) use ($currentUserId) {
+                    $sub->where('sender_id', $currentUserId)->where('deleted_for_sender', false);
+                })->orWhere(function($sub) use ($currentUserId) {
+                    $sub->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
+            })
             ->latest()
             ->get()
             ->map(function ($msg) use ($currentUserId) {
@@ -860,16 +871,22 @@ class StudentWebController extends Controller
             $unread = \App\Models\Message::where('sender_id', $c->user_id)
                 ->where('receiver_id', $currentUserId)
                 ->where('is_read', false)
+                ->where('deleted_for_everyone', false)
+                ->where('deleted_for_receiver', false)
                 ->count();
 
-            $lastMsg = \App\Models\Message::where(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id);
-                })
-                ->orWhere(function ($q) use ($currentUserId, $c) {
-                    $q->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId);
+            $lastMsg = \App\Models\Message::where('deleted_for_everyone', false)
+                ->where(function ($q) use ($currentUserId, $c) {
+                    $q->where(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $currentUserId)->where('receiver_id', $c->user_id)->where('deleted_for_sender', false);
+                    })->orWhere(function($sub) use ($currentUserId, $c) {
+                        $sub->where('sender_id', $c->user_id)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                    });
                 })
                 ->latest()
                 ->first();
+
+            if (!$lastMsg) continue;
 
             $contacts[] = [
                 'id' => $c->user_id,
@@ -897,11 +914,13 @@ class StudentWebController extends Controller
     {
         $currentUserId = Auth::id();
         $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where('deleted_for_everyone', false)
             ->where(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $currentUserId)->where('receiver_id', $userId);
-            })
-            ->orWhere(function ($q) use ($currentUserId, $userId) {
-                $q->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                $q->where(function ($sub) use ($currentUserId, $userId) {
+                    $sub->where('sender_id', $currentUserId)->where('receiver_id', $userId)->where('deleted_for_sender', false);
+                })->orWhere(function ($sub) use ($currentUserId, $userId) {
+                    $sub->where('sender_id', $userId)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
+                });
             })
             ->orderBy('created_at', 'asc')
             ->get();
@@ -920,12 +939,13 @@ class StudentWebController extends Controller
         $query = $request->query('q');
 
         $messages = \App\Models\Message::with(['sender', 'receiver'])
+            ->where('deleted_for_everyone', false)
             ->where(function ($q) use ($currentUserId, $userId) {
                 $q->where(function($q2) use ($currentUserId, $userId) {
-                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId);
+                    $q2->where('sender_id', $currentUserId)->where('receiver_id', $userId)->where('deleted_for_sender', false);
                 })
                 ->orWhere(function($q2) use ($currentUserId, $userId) {
-                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId);
+                    $q2->where('sender_id', $userId)->where('receiver_id', $currentUserId)->where('deleted_for_receiver', false);
                 });
             })
             ->where('message', 'LIKE', '%' . $query . '%')
@@ -1005,20 +1025,45 @@ class StudentWebController extends Controller
         return response()->json(['status' => 'success', 'message' => $message]);
     }
 
-    public function deleteMessage($id)
+    public function deleteMessage(Request $request, $id)
     {
+        $currentUserId = Auth::id();
+        $type = $request->input('type', 'me');
+
         $message = \App\Models\Message::findOrFail($id);
 
-        if ($message->sender_id !== Auth::id()) {
+        if ((int)$message->sender_id !== (int)$currentUserId && (int)$message->receiver_id !== (int)$currentUserId) {
             return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
         }
 
-        if ($message->attachment) {
-            $path = str_replace(asset('storage/'), '', $message->attachment);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+        if ($type === 'everyone') {
+            if ((int)$message->sender_id !== (int)$currentUserId) {
+                return response()->json(['status' => 'error', 'message' => 'يمكن لمراسل الرسالة فقط حذفها لدى الجميع'], 403);
+            }
+            $message->deleted_for_everyone = true;
+            $message->save();
+
+            if ($message->attachment) {
+                $path = str_replace(asset('storage/'), '', $message->attachment);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+            }
+        } else {
+            if ((int)$message->sender_id === (int)$currentUserId) {
+                $message->deleted_for_sender = true;
+            }
+            if ((int)$message->receiver_id === (int)$currentUserId) {
+                $message->deleted_for_receiver = true;
+            }
+            $message->save();
+
+            if (($message->deleted_for_sender && $message->deleted_for_receiver) || $message->deleted_for_everyone) {
+                if ($message->attachment) {
+                    $path = str_replace(asset('storage/'), '', $message->attachment);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+                }
+            }
         }
 
-        $message->delete();
         return response()->json(['status' => 'success']);
     }
 
