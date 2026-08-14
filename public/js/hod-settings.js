@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Default Settings
     const defaultSettings = {
-        theme: 'light',
+        theme: 'dark',
         lang: 'ar',
         fontSize: '16'
     };

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="dark" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Shared HOD Style -->
-    <link rel="stylesheet" href="{{ asset('css/hod-style.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/hod-style.css') }}?v={{ filemtime(public_path('css/hod-style.css')) }}">
 
     <style>
         /* Mobile specific bottom navigation */
@@ -104,13 +104,13 @@
     <script>
         const colorTheme = localStorage.getItem('color-theme');
         const hodSettings = JSON.parse(localStorage.getItem('hodSettings') || '{}');
-        const theme = colorTheme || hodSettings.theme;
-        if (theme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            document.documentElement.classList.add('dark');
-        } else if (theme === 'light') {
+        const theme = colorTheme || hodSettings.theme || 'dark';
+        if (theme === 'light') {
             document.documentElement.setAttribute('data-theme', 'light');
             document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.classList.add('dark');
         }
     </script>
 </head>

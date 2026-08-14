@@ -342,7 +342,7 @@
         {{-- كارت كبير --}}
         <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 1.25rem; min-height: 200px;">
             {{-- صورة يسار --}}
-            <div style="width: 38%; flex-shrink: 0; background: #1e293b; position: relative; overflow: hidden;">
+            <div style="width: 38%; flex-shrink: 0; background: var(--bg-primary); position: relative; overflow: hidden;">
                 @if($imgUrl)
                     <a href="{{ $imgUrl }}" target="_blank" download style="display: block; position: absolute; inset: 0;">
                         <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: fill;">
@@ -387,7 +387,7 @@
         @else
         {{-- كروت أخرى --}}
         <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 0.75rem; min-height: 110px;">
-            <div style="width: 150px; flex-shrink: 0; background: #1e293b; position: relative; overflow: hidden;">
+            <div style="width: 150px; flex-shrink: 0; background: var(--bg-primary); position: relative; overflow: hidden;">
                 @if($imgUrl)
                     <a href="{{ $imgUrl }}" target="_blank" download style="display: block; position: absolute; inset: 0;">
                         <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: fill;">

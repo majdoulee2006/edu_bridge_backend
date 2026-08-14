@@ -1,11 +1,12 @@
 @extends('layouts.admin')
 
 @section('title', 'الرسائل')
-@section('subtitle', 'تواصل فوري مع الكادر الإداري والتعليمي')
+@section('header-title', 'الرسائل')
+@section('header-subtitle', 'تواصل فوري مع الكادر الإداري والتعليمي')
 
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="flex gap-4 h-[calc(100vh-140px)] min-h-[550px] overflow-hidden rounded-3xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-2xl transition-colors" id="chat-app-container">
+<div class="flex gap-6 h-[calc(100vh-14rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-soft transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS) ================= -->
     <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-[#262626] h-full shrink-0" id="contacts-sidebar-pane">
@@ -16,7 +17,7 @@
                     <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                         <span class="material-symbols-outlined text-xl">search</span>
                     </span>
-                    <input id="contact-search" oninput="filterContactsList()" class="w-full bg-slate-50 dark:bg-[#1a1a1a] border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-[#f2f20d]/50 transition-all outline-none" placeholder="البحث في جهات الاتصال..." type="text"/>
+                    <input id="contact-search" oninput="filterContactsList()" class="w-full bg-slate-50 dark:bg-[#1f1f1f] border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-[#f2f20d]/50 transition-all outline-none" placeholder="البحث في جهات الاتصال..." type="text"/>
                 </div>
                 <button type="button" onclick="openNewChatModal()" class="w-12 h-12 rounded-2xl bg-[#f2f20d] hover:bg-[#d9d90b] text-black flex items-center justify-center transition-all shrink-0 shadow-glow" title="محادثة جديدة">
                     <span class="material-symbols-outlined font-bold">add_comment</span>
@@ -571,6 +572,10 @@
     function startNewChat(userId, name, roleLabel, avatarUrl) {
         closeNewChatModal();
         selectContact(userId, name, roleLabel, avatarUrl);
+    }
+
+    function showSidebarOnMobile() {
+        document.getElementById('contacts-sidebar-pane').classList.remove('hidden');
     }
 
     // Switch conversation details and fetch old chat history

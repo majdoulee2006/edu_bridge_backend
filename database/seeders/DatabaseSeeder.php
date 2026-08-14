@@ -158,6 +158,28 @@ class DatabaseSeeder extends Seeder
            ]);
        }
 
+       // 6. حساب موظف الشؤون
+       $affairsUser = User::where('email', 'affairs@edu-bridge.com')
+           ->orWhere('username', 'affairs_user')
+           ->first();
+       if (!$affairsUser) {
+           User::create([
+               'full_name' => 'محمد المحمد',
+               'username' => 'affairs_user',
+               'email' => 'affairs@edu-bridge.com',
+               'password' => Hash::make('password123'),
+               'role_id' => 6,
+               'status' => 'active',
+           ]);
+       } else {
+           $affairsUser->update([
+               'username' => 'affairs_user',
+               'password' => Hash::make('password123'),
+               'role_id' => 6,
+               'status' => 'active',
+           ]);
+       }
+
         // استدعاء السيدرز الأخرى التي تعتمد على وجود المستخدمين
         $this->call([
             ParentSeeder::class,
