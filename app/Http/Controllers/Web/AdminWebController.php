@@ -2199,6 +2199,18 @@ class AdminWebController extends Controller
             'hours'       => 'required|integer|min:1',
         ]);
 
+        // Prevent duplicate insertions caused by rapid multiple clicks or network lag (15-second window)
+        $existingRecent = DB::table('courses')
+            ->where('title', $request->title)
+            ->where('semester_id', $request->semester_id)
+            ->where('year', $request->year)
+            ->where('created_at', '>=', now()->subSeconds(15))
+            ->first();
+
+        if ($existingRecent) {
+            return back()->with('success', 'تم إضافة المادة بنجاح!');
+        }
+
         // حفظ المادة مع السنة
         $courseId = DB::table('courses')->insertGetId([
             'title'       => $request->title,
