@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="light" dir="rtl" lang="ar">
+<html class="dark" data-theme="dark" dir="rtl" lang="ar">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -58,9 +58,8 @@
             var colorTheme  = localStorage.getItem('color-theme');
             var hodRaw      = localStorage.getItem('hodSettings');
             var hodTheme    = hodRaw ? (JSON.parse(hodRaw).theme || null) : null;
-            // hodSettings wins if color-theme is absent
             var resolved    = colorTheme || hodTheme;
-            var isDark      = resolved === 'dark' || (!resolved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            var isDark      = resolved ? (resolved === 'dark') : true;
             var theme       = isDark ? 'dark' : 'light';
             // Ensure both keys agree
             localStorage.setItem('color-theme', theme);
