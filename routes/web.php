@@ -8,8 +8,15 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Web\UnifiedAuthController;
 use App\Http\Controllers\Web\TeacherWebController;
 
-// ===== Unified Login Routes =====
+// ===== Dedicated & Unified Login Routes =====
 Route::get('/login', [UnifiedAuthController::class, 'showLoginForm'])->name('login');
+Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
+Route::get('/affairs/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'affairs'))->name('affairs.login');
+Route::get('/hod/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'hod'))->name('hod.login');
+Route::get('/teacher/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'teacher'))->name('teacher.login');
+Route::get('/student/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'student'))->name('student.login');
+Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
+
 Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit')->name('login.post');
 Route::post('/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
@@ -19,9 +26,6 @@ Route::get('/', function () {
 });
 
 // ===== مسارات المعلم (Teacher) =====
-
-// تسجيل الدخول والخروج
-Route::get('/teacher/login', fn() => redirect('/login'))->name('teacher.login');
 Route::post('/teacher/login', [UnifiedAuthController::class, 'login'])->name('teacher.login.post');
 Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('teacher.logout');
 
@@ -121,7 +125,6 @@ Route::get('/create-student', function () {
 
 
 // مسارات تسجيل الدخول لرئيس القسم
-Route::get('/hod/login', fn() => redirect('/login'))->name('hod.login');
 Route::post('/hod/login', [UnifiedAuthController::class, 'login'])->name('hod.login.submit');
 Route::post('/hod/logout', [HODWebController::class, 'logout'])->name('hod.logout');
 
