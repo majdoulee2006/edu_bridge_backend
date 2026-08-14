@@ -5,10 +5,10 @@
 
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="flex gap-6 h-[calc(100vh-12rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft transition-colors" id="chat-app-container">
+<div class="flex gap-0 md:gap-6 h-[calc(100vh-10rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS) ================= -->
-    <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-slate-800 h-full shrink-0" id="contacts-sidebar-pane">
+    <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-slate-800 h-full shrink-0 md:flex" id="contacts-sidebar-pane">
         <!-- Search and Filter -->
         <div class="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
             <div class="flex items-center gap-2">
@@ -43,7 +43,7 @@
     </div>
 
     <!-- ================= CHAT ROOM WINDOW ================= -->
-    <div class="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-slate-950/20 relative" id="chat-room-pane">
+    <div class="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-slate-950/20 relative hidden md:flex" id="chat-room-pane">
         
         <!-- Chat Placeholder (Visible when no active chat) -->
         <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-900 z-10 text-center transition-colors duration-300">
@@ -390,6 +390,17 @@ window.tailwind = {
                 if (data.status === 'success' && data.data && data.data.length > 0) {
                     renderContactsList(data.data);
                     wrapperDiv.classList.remove('hidden');
+                    if (!activeContactId && data.data.length > 0 && window.innerWidth >= 768) {
+                        const first = data.data[0];
+                        let roleAr = first.role;
+                        if (first.role === 'admin') roleAr = 'الإدارة';
+                        else if (first.role === 'teacher') roleAr = 'المدرب';
+                        else if (first.role === 'student') roleAr = 'الطالب';
+                        else if (first.role === 'parent') roleAr = 'الأهل';
+                        else if (first.role === 'head') roleAr = 'رئيس القسم';
+                        else if (first.role === 'affairs') roleAr = 'الشؤون';
+                        selectContact(first.id, first.name, roleAr, first.image || '');
+                    }
                 } else {
                     emptyDiv.classList.remove('hidden');
                 }
@@ -561,13 +572,35 @@ window.tailwind = {
         selectContact(userId, name, roleLabel, avatarUrl);
     }
 
+    function showSidebarOnMobile() {
+        const sidebar = document.getElementById('contacts-sidebar-pane');
+        const chatRoom = document.getElementById('chat-room-pane');
+        if (sidebar) {
+            sidebar.classList.remove('hidden');
+            sidebar.classList.add('flex');
+        }
+        if (chatRoom) {
+            chatRoom.classList.add('hidden');
+            chatRoom.classList.remove('flex');
+        }
+    }
+
     // Switch conversation details and fetch old chat history
     function selectContact(contactId, name, roleLabel, avatarUrl) {
         activeContactId = contactId;
 
         // Toggle Sidebar visibility on mobile
         if (window.innerWidth < 768) {
-            document.getElementById('contacts-sidebar-pane').classList.add('hidden');
+            const sidebar = document.getElementById('contacts-sidebar-pane');
+            const chatRoom = document.getElementById('chat-room-pane');
+            if (sidebar) {
+                sidebar.classList.add('hidden');
+                sidebar.classList.remove('flex');
+            }
+            if (chatRoom) {
+                chatRoom.classList.remove('hidden');
+                chatRoom.classList.add('flex');
+            }
         }
 
         document.getElementById('chat-placeholder').classList.add('hidden');
