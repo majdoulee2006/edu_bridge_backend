@@ -304,7 +304,7 @@
             </div>
 
             <!-- Form -->
-            <form action="{{ route('admin.semesters-subjects.store') }}" method="POST" class="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh] hide-scrollbar font-Cairo">
+            <form action="{{ route('admin.semesters-subjects.store') }}" method="POST" onsubmit="preventSubjectDoubleSubmit(this)" class="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh] hide-scrollbar font-Cairo">
                 @csrf
                 
                 {{-- Subject Name --}}
@@ -379,7 +379,7 @@
                 </div>
 
                 {{-- Action Button --}}
-                <button type="submit" class="w-full py-4 mt-2 bg-[#f2f20d] text-slate-900 text-sm font-bold rounded-2xl shadow-glow hover:scale-[1.02] active:scale-95 transition-all">
+                <button type="submit" id="add-subject-submit-btn" class="w-full py-4 mt-2 bg-[#f2f20d] text-slate-900 text-sm font-bold rounded-2xl shadow-glow hover:scale-[1.02] active:scale-95 transition-all">
                     تأكيد وإضافة المادة الدراسية
                 </button>
             </form>
@@ -468,6 +468,16 @@
 
 @push('scripts')
 <script>
+    function preventSubjectDoubleSubmit(form) {
+        const btn = document.getElementById('add-subject-submit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.7';
+            btn.textContent = 'جاري إضافة المادة الدراسية...';
+        }
+    }
+
     function showSubjectDetails(course, colorClass, iconName) {
         const modal = document.getElementById('subject-modal');
         const modalCard = document.getElementById('modal-card');
