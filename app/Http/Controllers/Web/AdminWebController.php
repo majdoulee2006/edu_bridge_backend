@@ -503,14 +503,93 @@ class AdminWebController extends Controller
     //  ACCOUNTS MANAGEMENT
     // ────────────────────────────────────────────────────────────
 
-    public function accounts()
+    public function accounts(Request $request)
     {
+        $roleFilter = $request->input('role', 'all');
+        $search = trim($request->input('search', ''));
+
+        $query = DB::table('users')
+            ->where('role_id', '!=', 1); // Exclude admin self
+
+        if ($roleFilter !== 'all') {
+            $roleMap = [
+                'student' => 3,
+                'teacher' => 2,
+                'hod'     => 5,
+                'parent'  => 4,
+                'affairs' => 6,
+            ];
+            if (isset($roleMap[$roleFilter])) {
+                $query->where('role_id', $roleMap[$roleFilter]);
+            }
+        }
+
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('full_name', 'LIKE', "%{$search}%")
+                  ->orWhere('username', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhere('phone', 'LIKE', "%{$search}%")
+                  ->orWhere('university_id', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderByDesc('created_at')->paginate(24)->withQueryString();
+
+        $counts = [
+            'all'     => DB::table('users')->where('role_id', '!=', 1)->count(),
+            'student' => DB::table('users')->where('role_id', 3)->count(),
+            'teacher' => DB::table('users')->where('role_id', 2)->count(),
+            'hod'     => DB::table('users')->where('role_id', 5)->count(),
+            'parent'  => DB::table('users')->where('role_id', 4)->count(),
+            'affairs' => DB::table('users')->where('role_id', 6)->count(),
+        ];
+
         $pendingUsers = DB::table('users')
             ->where('status', 'inactive')
             ->orderByDesc('created_at')
             ->get();
 
-        return view('admin.accounts', compact('pendingUsers'));
+        return view('admin.accounts', compact('users', 'roleFilter', 'search', 'counts', 'pendingUsers'));
+    }
+
+    public function deleteSingleAccount($id)
+    {
+        $usr = DB::table('users')->where('user_id', $id)->first();
+        if (!$usr) {
+            return back()->with('error', 'الحساب غير موجود.');
+        }
+
+        $roleId = intval($usr->role_id);
+
+        if ($roleId == 3) {
+            $student = DB::table('students')->where('user_id', $id)->first();
+            if ($student) {
+                DB::table('parent_students')->where('student_id', $student->student_id)->delete();
+                DB::table('enrollments')->where('student_id', $student->student_id)->delete();
+                DB::table('students')->where('student_id', $student->student_id)->delete();
+            }
+        } elseif ($roleId == 2) {
+            $teacher = DB::table('teachers')->where('user_id', $id)->first();
+            if ($teacher) {
+                DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->delete();
+                DB::table('teachers')->where('teacher_id', $teacher->teacher_id)->delete();
+            }
+        } elseif ($roleId == 5) {
+            DB::table('heads')->where('user_id', $id)->delete();
+        } elseif ($roleId == 4) {
+            $parent = DB::table('parents')->where('user_id', $id)->first();
+            if ($parent) {
+                DB::table('parent_students')->where('parent_id', $parent->parent_id)->delete();
+                DB::table('parents')->where('parent_id', $parent->parent_id)->delete();
+            }
+        }
+
+        DB::table('users')->where('user_id', $id)->delete();
+
+        \App\Models\UserActivity::log('حذف حساب', "قامت الإدارة بحذف حساب: {$usr->full_name} ({$usr->username})");
+
+        return back()->with('success', "تم حذف حساب ({$usr->full_name}) بنجاح!");
     }
 
     public function approveAccount($id)
