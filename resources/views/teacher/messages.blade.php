@@ -262,34 +262,6 @@
 <!-- ================= CSS EXTRA POLISHING ================= -->
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script>
-window.tailwind = {
-    config: {
-        corePlugins: {
-            preflight: false,
-        },
-        darkMode: ['class', '[data-theme="dark"]'],
-        theme: {
-            extend: {
-                colors: {
-                    "primary": "#f2f20d",
-                    "primary-dark": "#d9d905",
-                    "primary-content": "#1a1a00",
-                },
-                fontFamily: {
-                    "display": ["Cairo", "Lexend", "sans-serif"],
-                    "body": ["Cairo", "Lexend", "sans-serif"],
-                },
-                boxShadow: {
-                    "soft": "0 4px 20px -2px rgba(0,0,0,0.06)",
-                    "glow": "0 0 25px rgba(242,242,13,0.4)",
-                }
-            }
-        }
-    }
-}
-</script>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

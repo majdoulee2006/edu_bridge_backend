@@ -5,30 +5,30 @@
 
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="flex gap-6 h-[calc(100vh-12rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft transition-colors" id="chat-app-container">
+<div class="flex gap-4 h-[calc(100vh-140px)] min-h-[550px] overflow-hidden rounded-3xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-2xl transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS) ================= -->
-    <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-slate-800 h-full shrink-0" id="contacts-sidebar-pane">
+    <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-[#262626] h-full shrink-0" id="contacts-sidebar-pane">
         <!-- Search and Filter -->
-        <div class="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
+        <div class="p-4 border-b border-slate-200 dark:border-[#262626] space-y-3">
             <div class="flex items-center gap-2">
                 <div class="relative flex-1">
                     <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                         <span class="material-symbols-outlined text-xl">search</span>
                     </span>
-                    <input id="contact-search" oninput="filterContactsList()" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="البحث في جهات الاتصال..." type="text"/>
+                    <input id="contact-search" oninput="filterContactsList()" class="w-full bg-slate-50 dark:bg-[#1a1a1a] border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-[#f2f20d]/50 transition-all outline-none" placeholder="البحث في جهات الاتصال..." type="text"/>
                 </div>
-                <button type="button" onclick="openNewChatModal()" class="w-12 h-12 rounded-2xl bg-[#FFCC00] hover:bg-[#E6B800] text-black flex items-center justify-center transition-all shrink-0" title="محادثة جديدة">
+                <button type="button" onclick="openNewChatModal()" class="w-12 h-12 rounded-2xl bg-[#f2f20d] hover:bg-[#d9d90b] text-black flex items-center justify-center transition-all shrink-0 shadow-glow" title="محادثة جديدة">
                     <span class="material-symbols-outlined font-bold">add_comment</span>
                 </button>
             </div>
         </div>
 
         <!-- Contacts Scrollable List -->
-        <div class="flex-1 overflow-y-auto hide-scrollbar divide-y divide-slate-100 dark:divide-slate-800/50" id="contacts-list-container">
+        <div class="flex-1 overflow-y-auto hide-scrollbar divide-y divide-slate-100 dark:divide-[#262626]" id="contacts-list-container">
             <!-- Loading Indicator -->
             <div id="contacts-loading" class="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
-                <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+                <div class="animate-spin rounded-full h-8 w-8 border-2 border-[#f2f20d] border-t-transparent"></div>
                 <span class="text-xs font-bold">جاري تحميل جهات الاتصال...</span>
             </div>
             
@@ -36,21 +36,21 @@
             <div id="contacts-wrapper" class="hidden"></div>
             
             <div id="contacts-empty" class="hidden flex flex-col items-center justify-center py-12 text-slate-400 text-center px-4">
-                <span class="material-symbols-outlined text-4xl mb-2 text-slate-300">contact_support</span>
+                <span class="material-symbols-outlined text-4xl mb-2 text-slate-500">contact_support</span>
                 <span class="text-xs font-bold">لا توجد جهات اتصال متاحة للمحادثة</span>
             </div>
         </div>
     </div>
 
     <!-- ================= CHAT ROOM WINDOW ================= -->
-    <div class="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-slate-950/20 relative" id="chat-room-pane">
+    <div class="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-[#09090b] relative" id="chat-room-pane">
         
         <!-- Chat Placeholder (Visible when no active chat) -->
-        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-900 z-10 text-center transition-colors duration-300">
-            <div class="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-6 shadow-soft">
+        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-[#121212] z-10 text-center transition-colors duration-300">
+            <div class="w-24 h-24 rounded-full bg-[#f2f20d]/10 border border-[#f2f20d]/20 flex items-center justify-center text-[#f2f20d] mb-6 shadow-glow">
                 <span class="material-symbols-outlined text-5xl">forum</span>
             </div>
-            <h3 class="text-lg font-black text-slate-800 dark:text-white mb-2">مرحباً بك في نظام الدردشة الموحد</h3>
+            <h3 class="text-xl font-black text-slate-800 dark:text-white mb-2">مرحباً بك في نظام الدردشة الموحد</h3>
             <p class="text-xs text-slate-400 max-w-sm leading-relaxed">اختر أحد جهات الاتصال المتاحة في القائمة الجانبية لبدء المحادثة الفورية مع إمكانية إرفاق الملفات وتسجيل الملاحظات الصوتية.</p>
         </div>
 
@@ -58,19 +58,19 @@
         <div id="active-chat-window" class="flex flex-col h-full hidden">
             
             <!-- Chat Header -->
-            <div class="px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors">
+            <div class="px-6 py-4 bg-white dark:bg-[#121212] border-b border-slate-200 dark:border-[#262626] flex items-center justify-between transition-colors">
                 <div class="flex items-center gap-3">
                     <!-- Back button on Mobile -->
-                    <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200">
+                    <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-[#1a1a1a] text-slate-600 dark:text-slate-300 hover:bg-slate-200">
                         <span class="material-symbols-outlined text-xl">arrow_forward</span>
                     </button>
                     <!-- Contact Avatar -->
                     <div class="relative">
-                        <div id="active-contact-avatar-placeholder" class="w-10 h-10 rounded-full bg-primary/20 text-yellow-700 dark:text-yellow-400 flex items-center justify-center font-bold text-sm select-none">
+                        <div id="active-contact-avatar-placeholder" class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-yellow-500 dark:text-[#f2f20d] flex items-center justify-center font-bold text-sm select-none">
                             A
                         </div>
                         <img id="active-contact-avatar-img" class="w-10 h-10 rounded-full object-cover hidden" src="" alt="Avatar">
-                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
+                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#121212] rounded-full"></div>
                     </div>
                     <!-- Contact Name & Role Badge -->
                     <div class="flex flex-col">
@@ -78,52 +78,52 @@
                         <span id="active-contact-role" class="text-[10px] text-slate-400 font-semibold mt-0.5">...</span>
                     </div>
                 </div>
-                    <div class="flex items-center gap-2">
-                        <!-- Disappearing Messages Timer Dropdown Button -->
-                        <div class="relative">
-                            <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-amber-500/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700" title="الرسائل ذاتية الاختفاء">
-                                <span class="material-symbols-outlined text-base text-amber-500">timer</span>
-                                <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
+                <div class="flex items-center gap-2">
+                    <!-- Disappearing Messages Timer Dropdown Button -->
+                    <div class="relative">
+                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-[#1a1a1a] hover:bg-amber-500/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 text-xs font-bold transition-all border border-slate-200 dark:border-[#262626]" title="الرسائل ذاتية الاختفاء">
+                            <span class="material-symbols-outlined text-base text-amber-500">timer</span>
+                            <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
+                        </button>
+                        
+                        <!-- Timer Menu Dropdown -->
+                        <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-white dark:bg-[#181818] rounded-2xl shadow-2xl border border-slate-200 dark:border-[#262626] p-2 text-xs min-w-[200px] z-[99] space-y-1">
+                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-[#262626]">مؤقت اختفاء الرسائل الجديدة</div>
+                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                                <span>🚫 إيقاف (رسائل دائمة)</span>
                             </button>
-                            
-                            <!-- Timer Menu Dropdown -->
-                            <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-2 text-xs min-w-[200px] z-[99] space-y-1">
-                                <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-slate-700">مؤقت اختفاء الرسائل الجديدة</div>
-                                <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>🚫 إيقاف (رسائل دائمة)</span>
-                                </button>
-                                <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>⏱️ 5 دقائق</span>
-                                </button>
-                                <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>⏱️ ساعة واحدة</span>
-                                </button>
-                                <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>⏱️ 24 ساعة (يوم)</span>
-                                </button>
-                                <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>⏱️ 7 أيام (أسبوع)</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Search Bar -->
-                        <div class="hidden md:block relative">
-                            <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث..." class="bg-slate-100 dark:bg-slate-800 border-none rounded-full py-2 px-4 text-xs font-semibold focus:ring-2 focus:ring-primary/50 text-slate-800 dark:text-slate-200 outline-none w-36 transition-all">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                                <span class="material-symbols-outlined text-sm">search</span>
-                            </span>
+                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                                <span>⏱️ 5 دقائق</span>
+                            </button>
+                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                                <span>⏱️ ساعة واحدة</span>
+                            </button>
+                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                                <span>⏱️ 24 ساعة (يوم)</span>
+                            </button>
+                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-[#262626] flex items-center justify-between font-semibold text-white">
+                                <span>⏱️ 7 أيام (أسبوع)</span>
+                            </button>
                         </div>
                     </div>
+
+                    <!-- Search Bar -->
+                    <div class="hidden md:block relative">
+                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث..." class="bg-slate-100 dark:bg-[#1a1a1a] border-none rounded-full py-2 px-4 text-xs font-semibold focus:ring-2 focus:ring-[#f2f20d]/50 text-slate-800 dark:text-slate-200 outline-none w-36 transition-all">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <span class="material-symbols-outlined text-sm">search</span>
+                        </span>
+                    </div>
+                </div>
             </div>
 
             <!-- Messages Feed -->
-            <div id="messages-feed" class="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col bg-slate-50/50 dark:bg-slate-950/20">
+            <div id="messages-feed" class="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col bg-slate-50/50 dark:bg-[#09090b]">
                 <!-- Messages will load dynamically here -->
             </div>
 
             <!-- Chat Bottom Input Bar -->
-            <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 transition-colors flex flex-col gap-2 relative">
+            <div class="p-4 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-[#262626] transition-colors flex flex-col gap-2 relative">
                 <!-- Disappearing Messages Active Status Banner -->
                 <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-2xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-bold mb-1 transition-all">
                     <div class="flex items-center gap-1.5">
@@ -138,8 +138,8 @@
                     <input type="hidden" id="current-receiver-id" value="">
                     
                     <!-- Attachment Preview Floating Container -->
-                    <div id="attachment-preview-container" class="hidden absolute bottom-24 right-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 shadow-lg flex items-center gap-3 max-w-sm z-20">
-                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary" id="preview-icon">
+                    <div id="attachment-preview-container" class="hidden absolute bottom-24 right-4 bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#262626] rounded-2xl p-3 shadow-lg flex items-center gap-3 max-w-sm z-20">
+                        <div class="w-10 h-10 rounded-lg bg-[#f2f20d]/10 flex items-center justify-center text-[#f2f20d]" id="preview-icon">
                             <span class="material-symbols-outlined">insert_drive_file</span>
                         </div>
                         <div class="flex flex-col max-w-[200px]">
@@ -152,7 +152,7 @@
                     </div>
 
                     <!-- Voice Recording Overlay Interface -->
-                    <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2 text-slate-700 dark:text-slate-300">
+                    <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-slate-100 dark:bg-[#1a1a1a] rounded-full px-4 py-2 text-slate-700 dark:text-slate-300">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
                             <span class="text-xs font-black text-red-500">تسجيل...</span>
@@ -173,24 +173,24 @@
                     <!-- Input Bar Elements (Visible when not recording) -->
                     <div id="standard-input-elements" class="flex-1 flex items-center gap-3">
                         <!-- Custom File Input with Paperclip Icon -->
-                        <label class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-pointer transition-colors shrink-0" title="إرفاق ملف">
+                        <label class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-[#1a1a1a] dark:hover:bg-[#262626] text-slate-500 dark:text-slate-400 cursor-pointer transition-colors shrink-0" title="إرفاق ملف">
                             <span class="material-symbols-outlined text-xl">attach_file</span>
                             <input type="file" id="message-file" class="hidden" onchange="handleFileSelection(event)">
                         </label>
 
                         <!-- Oval Input -->
                         <div class="flex-1 relative">
-                            <input id="message-text" class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-full py-3 px-6 text-sm font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
+                            <input id="message-text" class="w-full bg-slate-100 dark:bg-[#1a1a1a] border-none rounded-full py-3 px-6 text-sm font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-[#f2f20d]/50 transition-all outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
                         </div>
 
                         <!-- Microphone Icon for Voice Notes -->
-                        <button type="button" onclick="startAudioRecording()" class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors shrink-0" title="سجل ملاحظة صوتية">
+                        <button type="button" onclick="startAudioRecording()" class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-[#1a1a1a] dark:hover:bg-[#262626] text-slate-500 dark:text-slate-400 transition-colors shrink-0" title="سجل ملاحظة صوتية">
                             <span class="material-symbols-outlined text-xl">mic</span>
                         </button>
                     </div>
 
                     <!-- Send Button (Yellow Circular Send button with arrow icon) -->
-                    <button type="submit" id="send-btn" class="w-12 h-12 rounded-full bg-[#FFCC00] hover:bg-[#E6B800] text-black flex items-center justify-center transition-all shadow-md shrink-0 active:scale-95" title="إرسال">
+                    <button type="submit" id="send-btn" class="w-12 h-12 rounded-full bg-[#f2f20d] hover:bg-[#d9d90b] text-black flex items-center justify-center transition-all shadow-glow shrink-0 active:scale-95" title="إرسال">
                         <span id="send-btn-icon" class="material-symbols-outlined rotate-180">send</span>
                     </button>
                 </form>
@@ -200,11 +200,11 @@
 </div>
 
 <!-- ================= NEW CHAT MODAL ================= -->
-<div id="new-chat-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
-    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
-        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<div id="new-chat-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
+    <div class="bg-white dark:bg-[#121212] w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 dark:border-[#262626] overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
+        <div class="p-6 border-b border-slate-200 dark:border-[#262626] flex items-center justify-between">
             <h3 class="text-lg font-black text-slate-800 dark:text-white">محادثة جديدة</h3>
-            <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 transition-colors">
+            <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-[#1a1a1a] dark:hover:bg-[#262626] flex items-center justify-center text-slate-500 transition-colors">
                 <span class="material-symbols-outlined text-sm">close</span>
             </button>
         </div>
@@ -213,7 +213,7 @@
                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined text-xl">search</span>
                 </span>
-                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="البحث عن مستخدم..." type="text"/>
+                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-slate-50 dark:bg-[#1a1a1a] border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-[#f2f20d]/50 transition-all outline-none" placeholder="البحث عن مستخدم..." type="text"/>
             </div>
             
             <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-2" id="modal-contacts-list">
@@ -221,7 +221,7 @@
                     @foreach($allUsers as $user)
                         @php
                             $roleAr = $user->role;
-                            $badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+                            $badgeClass = 'bg-slate-100 text-slate-600 dark:bg-[#1a1a1a] dark:text-slate-300';
                             if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/10 text-rose-500'; $roleAr = 'الإدارة'; }
                             else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/10 text-blue-500'; $roleAr = 'المدرب'; }
                             else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/10 text-emerald-500'; $roleAr = 'الطالب'; }
@@ -232,13 +232,13 @@
                             $avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : '';
                             $initials = mb_substr(trim($user->full_name), 0, 1);
                         @endphp
-                        <div onclick="startNewChat({{ $user->user_id }}, '{{ $user->full_name }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700" data-name="{{ strtolower($user->full_name) }}">
+                        <div onclick="startNewChat({{ $user->user_id }}, '{{ $user->full_name }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-[#1a1a1a] cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-[#262626]" data-name="{{ strtolower($user->full_name) }}">
                             <!-- Avatar -->
                             <div class="relative shrink-0 select-none">
                                 @if($user->avatar)
                                     <img class="w-10 h-10 rounded-full object-cover" src="{{ $avatarUrl }}" alt="Avatar">
                                 @else
-                                    <div class="w-10 h-10 rounded-full bg-primary/20 text-yellow-700 dark:text-yellow-400 flex items-center justify-center font-bold text-sm">{{ $initials }}</div>
+                                    <div class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-yellow-500 dark:text-[#f2f20d] flex items-center justify-center font-bold text-sm">{{ $initials }}</div>
                                 @endif
                             </div>
                             <!-- Details -->
@@ -262,34 +262,6 @@
 <!-- ================= CSS EXTRA POLISHING ================= -->
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script>
-window.tailwind = {
-    config: {
-        corePlugins: {
-            preflight: false,
-        },
-        darkMode: ['class', '[data-theme="dark"]'],
-        theme: {
-            extend: {
-                colors: {
-                    "primary": "#f2f20d",
-                    "primary-dark": "#d9d905",
-                    "primary-content": "#1a1a00",
-                },
-                fontFamily: {
-                    "display": ["Cairo", "Lexend", "sans-serif"],
-                    "body": ["Cairo", "Lexend", "sans-serif"],
-                },
-                boxShadow: {
-                    "soft": "0 4px 20px -2px rgba(0,0,0,0.06)",
-                    "glow": "0 0 25px rgba(242,242,13,0.4)",
-                }
-            }
-        }
-    }
-}
-</script>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
