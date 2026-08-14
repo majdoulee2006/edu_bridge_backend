@@ -30,14 +30,16 @@ class UnifiedAuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'login'    => 'required|string',
-            'password' => 'required|string',
+            'login'     => 'required|string',
+            'password'  => 'required|string',
+            'role_type' => 'nullable|string',
         ], [
-            'login.required'    => 'يرجى إدخال البريد الإلكتروني، اسم المستخدم، رقم الهاتف، أو الرقم الجامعي.',
+            'login.required'    => 'يرجى إدخال بيانات حسابك (اسم المستخدم، البريد، الرقم الجامعي أو الهاتف).',
             'password.required' => 'كلمة المرور مطلوبة.',
         ]);
 
-        $input = trim($request->login);
+        $input    = trim($request->login);
+        $roleType = $request->input('role_type'); // admin, hod, affairs, teacher, student, parent
 
         // 1. Search in User table by email, phone, or username
         $user = User::where('email', $input)
@@ -55,11 +57,51 @@ class UnifiedAuthController extends Controller
             }
         }
 
-        // 3. Validate credentials
+        // 3. Check credentials
         if ($user && Hash::check($request->password, $user->password)) {
             if ($user->status !== 'active') {
                 UserActivity::log('محاولة دخول مرفوضة', 'الحساب موقوف مؤقتاً', $user);
-                return back()->withErrors(['login' => 'عذراً، هذا الحساب موقوف مؤقتاً.'])->withInput($request->only('login'));
+                return back()->withErrors(['login' => 'عذراً، هذا الحساب موقوف مؤقتاً.'])->withInput($request->only('login', 'role_type'));
+            }
+
+            // 4. Validate selected role type if provided by user
+            if ($roleType) {
+                $userRoleId = (int) ($user->role_id ?? 0);
+                $userRole   = strtolower($user->role ?? '');
+
+                $isMatch = false;
+                switch ($roleType) {
+                    case 'admin':
+                        $isMatch = ($userRoleId === 1 || $userRole === 'admin' || !empty($user->is_admin));
+                        $roleNameAr = 'مدير نظام (Admin)';
+                        break;
+                    case 'hod':
+                        $isMatch = ($userRoleId === 5 || $userRole === 'head' || $userRole === 'hod');
+                        $roleNameAr = 'رئيس قسم (HOD)';
+                        break;
+                    case 'affairs':
+                        $isMatch = ($userRoleId === 6 || $userRole === 'affairs');
+                        $roleNameAr = 'موظف شؤون';
+                        break;
+                    case 'teacher':
+                        $isMatch = ($userRoleId === 2 || $userRole === 'teacher' || $userRole === 'instructor');
+                        $roleNameAr = 'معلم / محاضر';
+                        break;
+                    case 'student':
+                        $isMatch = ($userRoleId === 3 || $userRole === 'student' || Student::where('user_id', $user->user_id)->exists());
+                        $roleNameAr = 'طالب';
+                        break;
+                    case 'parent':
+                        $isMatch = ($userRoleId === 4 || $userRole === 'parent' || Parents::where('user_id', $user->user_id)->exists());
+                        $roleNameAr = 'ولي أمر';
+                        break;
+                    default:
+                        $isMatch = true;
+                }
+
+                if (!$isMatch) {
+                    return back()->withErrors(['login' => "هذا الحساب غير مسجل بصفة ($roleNameAr). يرجى اختيار الصفة الصحيحة من القائمة."])->withInput($request->only('login', 'role_type'));
+                }
             }
 
             Auth::login($user);
@@ -69,7 +111,7 @@ class UnifiedAuthController extends Controller
             return $this->redirectUserByRole($user);
         }
 
-        return back()->withErrors(['login' => 'بيانات الدخول غير صحيحة، يرجى التأكد من اسم المستخدم/الرقم الجامعي وكلمة المرور.'])->withInput($request->only('login'));
+        return back()->withErrors(['login' => 'بيانات الدخول غير صحيحة، يرجى التأكد من المحدّدات وكلمة المرور.'])->withInput($request->only('login', 'role_type'));
     }
 
     /**
