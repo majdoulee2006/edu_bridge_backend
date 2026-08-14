@@ -83,7 +83,7 @@
             </p>
         </div>
         
-        @if($notifications->where('is_read', false)->count() > 0)
+        @if($notifications->filter(fn($n) => !$n->is_read)->count() > 0)
             <form method="POST" action="{{ route('teacher.notifications.read_all') }}">
                 @csrf
                 <button type="submit" class="mark-read-btn">

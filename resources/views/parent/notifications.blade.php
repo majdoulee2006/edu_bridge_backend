@@ -83,7 +83,7 @@
             </p>
         </div>
         
-        @if($notifications->where('is_read', 0)->count() > 0)
+        @if($notifications->filter(fn($n) => !$n->is_read)->count() > 0)
             <form method="POST" action="{{ route('parent.notifications.read_all') }}">
                 @csrf
                 <button type="submit" class="mark-read-btn">

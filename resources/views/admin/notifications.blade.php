@@ -72,7 +72,7 @@
             </button>
 
             {{-- زر تحديد الكل كمقروء --}}
-            @if($notifications->where('is_read', false)->count() > 0)
+            @if($notifications->filter(fn($n) => !$n->is_read)->count() > 0)
                 <form action="{{ route('admin.notifications.read_all') }}" method="POST">
                     @csrf
                     <button type="submit" 
@@ -94,7 +94,7 @@
 
     {{-- ===== Filters Bar ===== --}}
     @php
-        $unreadCount = $notifications->where('is_read', false)->count();
+        $unreadCount = $notifications->filter(fn($n) => !$n->is_read)->count();
     @endphp
     <div class="flex items-center gap-4 mb-6 border-b border-zinc-800 pb-3">
         <button class="notif-filter-btn active" data-filter="all" onclick="filterNotifs('all', this)">
