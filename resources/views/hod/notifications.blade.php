@@ -124,7 +124,7 @@
             </p>
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-            @if(isset($notifications) && $notifications->where('is_read', false)->count() > 0)
+            @if(isset($notifications) && $notifications->filter(fn($n) => !$n->is_read)->count() > 0)
                 <form method="POST" action="{{ route('hod.notifications.read_all') }}">
                     @csrf
                     <button type="submit" class="mark-read-btn">
