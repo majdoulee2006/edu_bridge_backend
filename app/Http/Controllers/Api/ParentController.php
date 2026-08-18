@@ -715,7 +715,6 @@ class ParentController extends Controller
         // 🔔 إرسال إشعار فوري لموظفي الشؤون والإدارة لمراجعة الطلب واتخاذ القرار
         $affairsUsers = \DB::table('users')
             ->whereIn('role_id', [1, 6])
-            ->orWhere('role', 'affairs')
             ->select('user_id')
             ->distinct()
             ->get();

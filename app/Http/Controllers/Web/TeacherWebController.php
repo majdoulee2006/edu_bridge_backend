@@ -248,7 +248,7 @@ class TeacherWebController extends Controller
             'updated_at'  => now(),
         ]);
 
-        DB::table('attendance_sessions')->insert([
+        $sessionId = DB::table('attendance_sessions')->insertGetId([
             'lesson_id'          => $lessonId,
             'qr_token'           => \Illuminate\Support\Str::random(32),
             'expires_at'         => now()->addSeconds(30),
@@ -258,7 +258,10 @@ class TeacherWebController extends Controller
             'updated_at'         => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تم بدء جلسة الحضور بنجاح لمدة 10 دقائق!');
+        return redirect()->back()->with([
+            'success' => 'تم بدء جلسة الحضور بنجاح لمدة 10 دقائق!',
+            'new_session_id' => $sessionId
+        ]);
     }
 
     public function refreshSessionQr($id)

@@ -5,19 +5,22 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Web\UnifiedAuthController;
 
 class CheckHodRole
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!\Illuminate\Support\Facades\Auth::check() || \Illuminate\Support\Facades\Auth::user()->role_id != 5) {
-            return redirect('/hod/login')->withErrors(['login' => 'يرجى تسجيل الدخول كرئيس قسم أولاً.']);
+        if (!Auth::check()) {
+            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول كرئيس قسم أولاً.']);
         }
+
+        $user = Auth::user();
+        if ($user->role_id != 5 && strtolower($user->role ?? '') !== 'head' && strtolower($user->role ?? '') !== 'hod') {
+            return (new UnifiedAuthController)->redirectUserByRole($user);
+        }
+
         return $next($request);
     }
 }

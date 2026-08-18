@@ -6,25 +6,26 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
+use App\Http\Controllers\Web\UnifiedAuthController;
 
 class CheckTeacherRole
 {
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
-            return redirect('/teacher/login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
+            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
         }
 
-        // role_id = 3 للمعلم (تحقق من الداتا بيز وعدّل إذا لزم)
         $user = Auth::user();
-        $teacher = \App\Models\Teacher::where('user_id', $user->user_id)->first();
-
-        if (!$teacher) {
-            Auth::logout();
-            return redirect('/teacher/login')->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
+        if ($user->role_id != 2 && strtolower($user->role ?? '') !== 'teacher') {
+            return (new UnifiedAuthController)->redirectUserByRole($user);
         }
 
-        // نضع بيانات المعلم في الـ request لاستخدامها لاحقاً
+        $teacher = \App\Models\Teacher::where('user_id', $user->user_id)->first();
+        if (!$teacher) {
+            return (new UnifiedAuthController)->redirectUserByRole($user);
+        }
+
         $request->merge(['teacher_record' => $teacher]);
 
         return $next($request);

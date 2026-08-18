@@ -214,6 +214,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/grades/program-students',    [TeacherController::class, 'getProgramStudents']);
         Route::get('/grade-report-requests/pending',        [TeacherController::class, 'getPendingGradeReportRequests']);
         Route::post('/grade-report-requests/{id}/complete', [TeacherController::class, 'completeGradeReport']);
+        
+        // التقارير السلوكية المطلوبة من المعلم
+        Route::get('/report-requests', [TeacherController::class, 'getReportRequests']);
+        Route::post('/report-requests/{id}/submit', [TeacherController::class, 'submitEvaluation']);
 
         // الحضور والغياب
         Route::get('/attendance/{courseId}', [TeacherController::class, 'getAttendance']);
