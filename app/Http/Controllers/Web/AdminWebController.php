@@ -103,15 +103,49 @@ class AdminWebController extends Controller
     public function profile()
     {
         $user = Auth::user();
-        $totalUsers = DB::table('users')->count();
-        $totalCourses = DB::table('courses')->count();
+        $stats = Cache::remember('admin_profile_stats', 60, function () {
+            return DB::table('admin_profile_stats_view')->first();
+        });
+        $totalUsers = $stats->total_users ?? 0;
+        $totalCourses = $stats->total_courses ?? 0;
+
         return view('admin.profile', compact('user', 'totalUsers', 'totalCourses'));
     }
 
     public function settings()
     {
         $user = Auth::user();
-        return view('admin.settings', compact('user'));
+        $themeSettings = \App\Models\SystemSetting::getThemeSettings();
+        return view('admin.settings', compact('user', 'themeSettings'));
+    }
+
+    public function updateThemeSettings(Request $request)
+    {
+        $request->validate([
+            'primary_color' => 'required|string|max:10',
+            'accent_name'   => 'nullable|string|max:50',
+            'theme_mode'    => 'nullable|string|in:dark,light',
+        ]);
+
+        if ($request->filled('primary_color')) {
+            \App\Models\SystemSetting::setSetting('primary_color', $request->primary_color);
+        }
+        if ($request->filled('accent_name')) {
+            \App\Models\SystemSetting::setSetting('accent_name', $request->accent_name);
+        }
+        if ($request->filled('theme_mode')) {
+            \App\Models\SystemSetting::setSetting('theme_mode', $request->theme_mode);
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حفظ ثيمة الألوان وإعدادات النظام بنجاح',
+                'data'    => \App\Models\SystemSetting::getThemeSettings()
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'تم حفظ ثيمة الألوان وإعدادات النظام بنجاح');
     }
 
     public function activityLogs(Request $request)
@@ -289,7 +323,7 @@ class AdminWebController extends Controller
 
         session([
             'admin_profile_otp'          => $otp,
-            'admin_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+            'admin_pending_profile_data' => $request->only(['full_name', 'phone', 'new_password'])
         ]);
 
         return response()->json([
@@ -312,9 +346,6 @@ class AdminWebController extends Controller
 
             if (!empty($data['full_name'])) {
                 $updates['full_name'] = $data['full_name'];
-            }
-            if (!empty($data['email'])) {
-                $updates['email'] = $data['email'];
             }
             if (!empty($data['phone'])) {
                 $updates['phone'] = $data['phone'];
@@ -512,6 +543,13 @@ class AdminWebController extends Controller
         $message = $request->message;
         $type = $request->recipient_type;
         $senderId = Auth::id();
+
+        // Prevent duplicate notification sending within 5 seconds (Server-side Anti-Spam protection)
+        $cacheKey = 'admin_notif_sent_' . $senderId . '_' . md5($title . '_' . $message . '_' . $type);
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return redirect()->back()->with('success', 'تم إرسال الإشعار بنجاح!');
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 5);
 
         $query = DB::table('users')->where('status', 'active');
 

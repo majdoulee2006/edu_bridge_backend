@@ -308,6 +308,7 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/profile/send-otp', [AdminWebController::class, 'sendOTP'])->name('admin.profile.send_otp');
     Route::post('/profile/verify-otp', [AdminWebController::class, 'verifyOTP'])->name('admin.profile.verify_otp');
     Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
+    Route::post('/settings/theme', [AdminWebController::class, 'updateThemeSettings'])->name('admin.settings.theme');
     Route::get('/activity-logs', [AdminWebController::class, 'activityLogs'])->name('admin.activity_logs');
     Route::post('/activity-logs/clean', [AdminWebController::class, 'cleanActivityLogs'])->name('admin.activity_logs.clean');
     Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');

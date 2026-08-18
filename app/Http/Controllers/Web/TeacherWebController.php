@@ -1831,7 +1831,7 @@ class TeacherWebController extends Controller
 
         session([
             'teacher_profile_otp' => $otp,
-            'teacher_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+            'teacher_pending_profile_data' => $request->only(['full_name', 'phone', 'new_password'])
         ]);
 
         return response()->json([
@@ -1858,10 +1858,6 @@ class TeacherWebController extends Controller
 
             if (isset($data['phone'])) {
                 $updates['phone'] = $data['phone'];
-            }
-
-            if (isset($data['email']) && $data['email']) {
-                $updates['email'] = $data['email'];
             }
 
             if (isset($data['new_password']) && $data['new_password']) {

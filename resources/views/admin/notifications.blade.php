@@ -195,7 +195,7 @@
                 </button>
             </div>
 
-            <form action="{{ route('admin.notifications.send') }}" method="POST" class="flex flex-col gap-4">
+            <form id="sendAdminNotifForm" action="{{ route('admin.notifications.send') }}" method="POST" class="flex flex-col gap-4">
                 @csrf
 
                 {{-- الجمهور / الفئة --}}
@@ -259,10 +259,10 @@
                               class="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 px-4 text-xs text-white focus:border-[#f2f20d] outline-none resize-none"></textarea>
                 </div>
 
-                <button type="submit"
-                        class="w-full py-3 rounded-xl bg-[#f2f20d] text-black font-extrabold text-xs hover:bg-[#d9d90b] transition-all active:scale-[0.98] shadow-glow">
+                <button type="submit" id="sendAdminNotifBtn"
+                        class="w-full py-3 rounded-xl bg-[#f2f20d] text-black font-extrabold text-xs hover:bg-[#d9d90b] transition-all active:scale-[0.98] shadow-glow flex items-center justify-center gap-2">
                     <i class="fa-solid fa-paper-plane ml-1"></i>
-                    تأكيد وإرسال الإشعار
+                    <span>تأكيد وإرسال الإشعار</span>
                 </button>
             </form>
         </div>
@@ -324,5 +324,34 @@
     document.getElementById('sendNotifModal')?.addEventListener('click', function(e) {
         if (e.target === this) this.classList.add('hidden');
     });
+
+    // Anti-double click protection for send notification form
+    (function() {
+        const form = document.getElementById('sendAdminNotifForm');
+        const btn = document.getElementById('sendAdminNotifBtn');
+        let isSubmitted = false;
+
+        if (form && btn) {
+            form.addEventListener('submit', function(e) {
+                if (isSubmitted) {
+                    e.preventDefault();
+                    return false;
+                }
+                isSubmitted = true;
+                btn.disabled = true;
+                btn.classList.add('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-sm"></i> <span>جاري الإرسال...</span>';
+            });
+        }
+
+        window.addEventListener('pageshow', function() {
+            isSubmitted = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane ml-1"></i> <span>تأكيد وإرسال الإشعار</span>';
+            }
+        });
+    })();
 </script>
 @endpush

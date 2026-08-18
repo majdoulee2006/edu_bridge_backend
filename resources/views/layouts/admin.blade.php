@@ -17,14 +17,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+@php
+    $sysPrimary = \App\Models\SystemSetting::getSetting('primary_color', '#f2f20d');
+@endphp
     <script id="tailwind-config">
     tailwind.config = {
         darkMode: "class",
         theme: {
             extend: {
                 colors: {
-                    "primary": "#f2f20d",
-                    "primary-dark": "#d9d905",
+                    "primary": "{{ $sysPrimary }}",
+                    "primary-dark": "{{ $sysPrimary }}",
                     "primary-content": "#1a1a00",
                     "background-light": "#eef0f4",
                     "background-dark": "#000000",
@@ -50,6 +53,48 @@
         }
     }
     </script>
+
+    <style id="system-theme-style">
+        :root {
+            --primary-color: {{ $sysPrimary }};
+            --color-primary: {{ $sysPrimary }};
+            --primary-yellow: {{ $sysPrimary }};
+        }
+        .bg-primary { background-color: {{ $sysPrimary }} !important; }
+        .border-primary { border-color: {{ $sysPrimary }} !important; }
+        .accent-primary { accent-color: {{ $sysPrimary }} !important; }
+        .text-primary { color: {{ $sysPrimary }} !important; }
+        .shadow-glow { box-shadow: 0 0 25px {{ $sysPrimary }}66 !important; }
+        
+        /* Overrides for hardcoded #f2f20d and #F2F20D classes */
+        [class*="bg-[#f2f20d]"], [class*="bg-[#F2F20D]"] { background-color: {{ $sysPrimary }} !important; }
+        [class*="border-[#f2f20d]"], [class*="border-[#F2F20D]"] { border-color: {{ $sysPrimary }} !important; }
+        [class*="accent-[#f2f20d]"], [class*="accent-[#F2F20D]"] { accent-color: {{ $sysPrimary }} !important; }
+        [class*="focus:ring-[#f2f20d]"]:focus { --tw-ring-color: {{ $sysPrimary }} !important; }
+        [class*="focus:border-[#f2f20d]"]:focus { border-color: {{ $sysPrimary }} !important; }
+        [class*="hover:text-[#f2f20d]"]:hover, [class*="hover:text-[#F2F20D]"]:hover { color: {{ $sysPrimary }} !important; }
+        
+        [class*="bg-[#f2f20d]/"], [class*="bg-[#F2F20D]/"] { background-color: {{ $sysPrimary }}33 !important; }
+        [class*="border-[#f2f20d]/"], [class*="border-[#F2F20D]/"] { border-color: {{ $sysPrimary }}4D !important; }
+
+        /* Force True Pitch-Black Theme in Dark Mode (eliminates navy/slate blue hues) */
+        html.dark body { background-color: #000000 !important; }
+        html.dark .bg-slate-950 { background-color: #000000 !important; }
+        html.dark .bg-slate-900 { background-color: #0a0a0a !important; }
+        html.dark .bg-slate-800 { background-color: #121212 !important; }
+        html.dark .bg-slate-700 { background-color: #1c1c1e !important; }
+        
+        /* Transparent opacity variants of slate in dark mode */
+        html.dark [class*="bg-slate-900/"] { background-color: rgba(10, 10, 10, 0.7) !important; }
+        html.dark [class*="bg-slate-800/"] { background-color: rgba(18, 18, 18, 0.6) !important; }
+        html.dark [class*="bg-slate-700/"] { background-color: rgba(28, 28, 30, 0.5) !important; }
+
+        /* Dark borders override to neutral dark grey instead of slate blue-grey */
+        html.dark .border-slate-800 { border-color: #242424 !important; }
+        html.dark .border-slate-700 { border-color: #2a2a2a !important; }
+        html.dark [class*="border-slate-700/"] { border-color: rgba(42, 42, 42, 0.5) !important; }
+        html.dark [class*="border-slate-800/"] { border-color: rgba(36, 36, 36, 0.5) !important; }
+    </style>
 
     <script>
         // Immediately set the theme to avoid flicker
@@ -106,13 +151,13 @@
             <!-- Brand Logo -->
             <div class="pt-8 pb-4 px-6 flex items-center justify-center gap-2">
                 <span class="text-2xl font-black text-slate-800 dark:text-white tracking-wide">Edu-Bridge</span>
-                <i class="fa-solid fa-graduation-cap text-[#f2f20d] text-2xl"></i>
+                <i class="fa-solid fa-graduation-cap text-primary text-2xl"></i>
             </div>
 
             <!-- Profile Info Header (Screenshot style) -->
             <div class="flex flex-col items-center my-4 px-4 text-center">
                 <!-- Yellow circle avatar -->
-                <div class="w-20 h-20 rounded-full bg-[#f2f20d] flex items-center justify-center text-[#101924] font-black text-3xl mb-3 shadow-glow select-none">
+                <div class="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-primary-content font-black text-3xl mb-3 shadow-glow select-none">
                     إ
                 </div>
                 <h3 class="text-base font-extrabold text-slate-800 dark:text-white leading-tight">إدارة المعهد التقني</h3>
@@ -122,55 +167,55 @@
             <!-- Navigation Links -->
             <nav class="flex-1 min-h-0 px-4 py-3 flex flex-col gap-1 overflow-y-auto hide-scrollbar">
                 {{-- Dashboard --}}
-                <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/dashboard') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/dashboard') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-house text-base"></i>
                     الرئيسية
                 </a>
 
                 {{-- Accounts --}}
-                <a href="{{ route('admin.accounts') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/accounts*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.accounts') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/accounts*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-address-card text-base"></i>
                     الحسابات
                 </a>
 
                 {{-- Courses --}}
-                <a href="{{ route('admin.courses') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/courses*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.courses') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/courses*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-graduation-cap text-base"></i>
                     الدورات
                 </a>
 
                 {{-- Semesters --}}
-                <a href="{{ route('admin.semesters-subjects') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/semesters-subjects*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.semesters-subjects') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/semesters-subjects*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-book-bookmark text-base"></i>
                     الفصول والمواد
                 </a>
 
                 {{-- Lectures --}}
-                <a href="{{ route('admin.lectures') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/lectures*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.lectures') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/lectures*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-chalkboard-user text-base"></i>
                     المحاضرات
                 </a>
 
                 {{-- Reports --}}
-                <a href="{{ route('admin.reports') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/reports*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.reports') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/reports*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-chart-simple text-base"></i>
                     التقارير
                 </a>
 
                 {{-- Student Services --}}
-                <a href="{{ route('admin.student_services') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/student-services*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.student_services') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/student-services*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-boxes-stacked text-base"></i>
                     الخدمات الطلابية
                 </a>
 
                 {{-- Appointments --}}
-                <a href="{{ route('admin.appointments') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/appointments*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.appointments') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/appointments*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-calendar-check text-base"></i>
                     المواعيد واللقاءات
                 </a>
 
                 {{-- Notifications --}}
-                <a href="{{ route('admin.notifications') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/notifications*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.notifications') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/notifications*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-bell text-base"></i>
                     الإشعارات
                     @php $unread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
@@ -180,7 +225,7 @@
                 </a>
 
                 {{-- Messages --}}
-                <a href="{{ route('admin.messages') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/messages*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.messages') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/messages*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-comments text-base"></i>
                     الرسائل
                     @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
@@ -190,19 +235,19 @@
                 </a>
 
                 {{-- Profile --}}
-                <a href="{{ route('admin.profile') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/profile*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.profile') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/profile*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-user text-base"></i>
                     الملف الشخصي
                 </a>
 
                 {{-- Settings --}}
-                <a href="{{ route('admin.settings') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/settings*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.settings') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/settings*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-gear text-base"></i>
                     الاعدادات
                 </a>
 
                 {{-- Activity Logs --}}
-                <a href="{{ route('admin.activity_logs') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/activity-logs*') ? 'bg-[#f2f20d] text-[#101924] shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-[#f2f20d]' }}">
+                <a href="{{ route('admin.activity_logs') }}" class="flex items-center gap-3 px-4 py-3 rounded-full font-bold text-sm transition-all {{ Request::is('admin/activity-logs*') ? 'bg-primary text-primary-content shadow-glow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-primary' }}">
                     <i class="fa-solid fa-shield-halved text-base"></i>
                     سجل النشاطات والأمان
                 </a>
@@ -378,6 +423,23 @@
                     setTimeout(function() { alert.remove(); }, 500);
                 });
             }, 5000);
+        });
+
+        // Global Anti-Double-Click Form Protection for Admin Portal
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            if (!form || form.dataset.submitting === 'true') {
+                e.preventDefault();
+                return false;
+            }
+            form.dataset.submitting = 'true';
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                setTimeout(function() {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+                }, 20);
+            }
         });
     </script>
 

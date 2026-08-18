@@ -273,14 +273,8 @@
                         <p>البريد الإلكتروني</p>
                         <div id="email-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <h5>{{ $user->email ?? 'email@example.com' }}</h5>
-                            <i class="fa-solid fa-pen edit-icon" onclick="toggleEdit('email')"></i>
+                            <i class="fa-solid fa-lock edit-icon" style="opacity: 0.4;"></i>
                         </div>
-                        <form id="email-form" action="{{ route('hod.profile.update') }}" method="POST" style="display: none; align-items: center; gap: 1rem; width: 100%; margin-top: 0.5rem;">
-                            @csrf
-                            <input type="email" name="email" value="{{ $user->email }}" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);" required>
-                            <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">حفظ</button>
-                            <button type="button" class="btn" onclick="toggleEdit('email')" style="background-color: var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
-                        </form>
                     </div>
                 </div>
             </div>

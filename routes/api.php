@@ -41,6 +41,13 @@ Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
 Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
 Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset']);
 
+Route::get('/system/settings', function () {
+    return response()->json([
+        'success' => true,
+        'data'    => \App\Models\SystemSetting::getThemeSettings()
+    ]);
+});
+
 // -----------------------------------------------------------
 // روابط ولي الأمر العامة (بدون توكن)
 // -----------------------------------------------------------

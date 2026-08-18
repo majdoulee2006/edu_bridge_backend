@@ -296,7 +296,7 @@
                     <div class="info-value">{{ $user->email }}</div>
                 </div>
             </div>
-            <button class="edit-btn" onclick="openEditModal('email')"><i class="fa-solid fa-pen"></i></button>
+            <i class="fa-solid fa-lock" style="opacity: 0.4; font-size: 1rem; color: var(--text-secondary); margin-left: 0.5rem;"></i>
         </div>
 
         @if($courses->count())
@@ -353,10 +353,6 @@
             <div id="phoneInputGroup" style="display: none; margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700;">رقم الهاتف</label>
                 <input type="text" id="edit_phone" class="form-input" value="{{ $user->phone ?? '' }}">
-            </div>
-            <div id="emailInputGroup" style="display: none; margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">البريد الإلكتروني</label>
-                <input type="email" id="edit_email" class="form-input" value="{{ $user->email ?? '' }}">
             </div>
             
             <div id="telegramInputGroup" style="margin-bottom: 1.5rem;">
@@ -444,7 +440,6 @@ function openEditModal(field) {
     currentEditField = field;
     document.getElementById('nameInputGroup').style.display = 'none';
     document.getElementById('phoneInputGroup').style.display = 'none';
-    document.getElementById('emailInputGroup').style.display = 'none';
     document.getElementById('profile-error').style.display = 'none';
     document.getElementById('edit_telegram').value = '';
 
@@ -454,9 +449,6 @@ function openEditModal(field) {
     } else if (field === 'phone') {
         document.getElementById('editModalTitle').innerText = 'تعديل رقم الهاتف';
         document.getElementById('phoneInputGroup').style.display = 'block';
-    } else if (field === 'email') {
-        document.getElementById('editModalTitle').innerText = 'تعديل البريد الإلكتروني';
-        document.getElementById('emailInputGroup').style.display = 'block';
     }
     document.getElementById('editInfoModal').classList.add('active');
 }
@@ -492,7 +484,6 @@ function handleProfileSubmit(e) {
     const payload = {};
     if (currentEditField === 'name')  payload.full_name = document.getElementById('edit_full_name').value;
     if (currentEditField === 'phone') payload.phone = document.getElementById('edit_phone').value;
-    if (currentEditField === 'email') payload.email = document.getElementById('edit_email').value;
     
     payload.telegram_chat_id = document.getElementById('edit_telegram').value;
 

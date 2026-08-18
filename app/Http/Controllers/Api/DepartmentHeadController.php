@@ -877,6 +877,15 @@ class DepartmentHeadController extends Controller
             'content' => 'required|string',
         ]);
 
+        $senderId = $request->user()->user_id;
+
+        // Prevent duplicate announcement creation within 5 seconds (Server-side Anti-Spam protection)
+        $cacheKey = 'ann_created_' . $senderId . '_' . md5($request->title . '_' . $request->content);
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return response()->json(['success' => true, 'message' => 'تم نشر الإعلان بنجاح']);
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 5);
+
         // mapping: 'teachers'→'teacher', 'students'→'student', 'all'→null
         $audienceInput = $request->target_audience ?? 'all';
         $targetRole = match($audienceInput) {
@@ -1016,6 +1025,19 @@ class DepartmentHeadController extends Controller
             'message' => 'required|string',
             'target'  => 'required|in:students,students_teachers,all',
         ]);
+
+        $senderId = $request->user()->user_id;
+
+        // Prevent duplicate notification sending within 5 seconds (Server-side Anti-Spam protection)
+        $cacheKey = 'notif_sent_' . $senderId . '_' . md5($request->title . '_' . $request->message . '_' . $request->target);
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال الإشعار بنجاح',
+                'count'   => 0,
+            ]);
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 5);
 
         $userIds = collect();
 

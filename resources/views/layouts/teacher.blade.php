@@ -18,6 +18,9 @@
     <!-- Shared HOD Style -->
     <link rel="stylesheet" href="{{ asset('css/hod-style.css') }}?v={{ filemtime(public_path('css/hod-style.css')) }}">
 
+@php
+    $sysPrimary = \App\Models\SystemSetting::getSetting('primary_color', '#f2f20d');
+@endphp
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script id="tailwind-config">
@@ -26,8 +29,8 @@
         theme: {
             extend: {
                 colors: {
-                    "primary": "#f2f20d",
-                    "primary-dark": "#d9d905",
+                    "primary": "{{ $sysPrimary }}",
+                    "primary-dark": "{{ $sysPrimary }}",
                     "primary-content": "#1a1a00",
                     "background-light": "#eef0f4",
                     "background-dark": "#000000",
@@ -44,6 +47,49 @@
         }
     }
     </script>
+
+    <style id="system-theme-style">
+        :root {
+            --primary-color: {{ $sysPrimary }};
+            --color-primary: {{ $sysPrimary }};
+            --primary-yellow: {{ $sysPrimary }};
+            --accent-color: {{ $sysPrimary }};
+        }
+        .bg-primary { background-color: {{ $sysPrimary }} !important; }
+        .border-primary { border-color: {{ $sysPrimary }} !important; }
+        .accent-primary { accent-color: {{ $sysPrimary }} !important; }
+        .text-primary { color: {{ $sysPrimary }} !important; }
+        .shadow-glow { box-shadow: 0 0 25px {{ $sysPrimary }}66 !important; }
+        
+        /* Overrides for hardcoded #f2f20d and #F2F20D classes */
+        [class*="bg-[#f2f20d]"], [class*="bg-[#F2F20D]"] { background-color: {{ $sysPrimary }} !important; }
+        [class*="border-[#f2f20d]"], [class*="border-[#F2F20D]"] { border-color: {{ $sysPrimary }} !important; }
+        [class*="accent-[#f2f20d]"], [class*="accent-[#F2F20D]"] { accent-color: {{ $sysPrimary }} !important; }
+        [class*="focus:ring-[#f2f20d]"]:focus { --tw-ring-color: {{ $sysPrimary }} !important; }
+        [class*="focus:border-[#f2f20d]"]:focus { border-color: {{ $sysPrimary }} !important; }
+        [class*="hover:text-[#f2f20d]"]:hover, [class*="hover:text-[#F2F20D]"]:hover { color: {{ $sysPrimary }} !important; }
+        
+        [class*="bg-[#f2f20d]/"], [class*="bg-[#F2F20D]/"] { background-color: {{ $sysPrimary }}33 !important; }
+        [class*="border-[#f2f20d]/"], [class*="border-[#F2F20D]/"] { border-color: {{ $sysPrimary }}4D !important; }
+
+        /* Force True Pitch-Black Theme in Dark Mode (eliminates navy/slate blue hues) */
+        html.dark body { background-color: #000000 !important; }
+        html.dark .bg-slate-950 { background-color: #000000 !important; }
+        html.dark .bg-slate-900 { background-color: #0a0a0a !important; }
+        html.dark .bg-slate-800 { background-color: #121212 !important; }
+        html.dark .bg-slate-700 { background-color: #1c1c1e !important; }
+        
+        /* Transparent opacity variants of slate in dark mode */
+        html.dark [class*="bg-slate-900/"] { background-color: rgba(10, 10, 10, 0.7) !important; }
+        html.dark [class*="bg-slate-800/"] { background-color: rgba(18, 18, 18, 0.6) !important; }
+        html.dark [class*="bg-slate-700/"] { background-color: rgba(28, 28, 30, 0.5) !important; }
+
+        /* Dark borders override to neutral dark grey instead of slate blue-grey */
+        html.dark .border-slate-800 { border-color: #242424 !important; }
+        html.dark .border-slate-700 { border-color: #2a2a2a !important; }
+        html.dark [class*="border-slate-700/"] { border-color: rgba(42, 42, 42, 0.5) !important; }
+        html.dark [class*="border-slate-800/"] { border-color: rgba(36, 36, 36, 0.5) !important; }
+    </style>
 
     @stack('styles')
     <script>

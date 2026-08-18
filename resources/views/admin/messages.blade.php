@@ -22,7 +22,7 @@
             <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                 <span class="material-symbols-outlined text-lg">search</span>
             </span>
-            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="ابحث عن زملائك..." type="text"/>
+            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="ابحث عن الطلاب والموظفين..." type="text"/>
         </div>
 
         <!-- Section Title -->
@@ -50,96 +50,96 @@
     <div class="flex-1 flex flex-col h-full bg-[#101014] relative hidden md:flex overflow-hidden" id="chat-room-pane">
         
         <!-- Chat Placeholder (Visible when no active chat) -->
-        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-[#141417] z-10 text-center">
-            <div class="w-20 h-20 rounded-full bg-[#f2f20d]/10 border border-[#f2f20d]/20 flex items-center justify-center text-[#f2f20d] mb-4 shadow-glow">
+        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-[#101014] z-10 text-center transition-colors duration-300">
+            <div class="w-20 h-20 rounded-full bg-[#1c1c20] border border-[#27272a] flex items-center justify-center text-[#f2f20d] mb-5 shadow-lg">
                 <span class="material-symbols-outlined text-4xl">forum</span>
             </div>
-            <h3 class="text-lg font-bold text-white mb-1">حدد محادثة للبدء</h3>
-            <p class="text-xs text-slate-400 max-w-xs leading-relaxed">اختر أحد زملائك من القائمة لبدء المحادثة، تبادل الرسائل، الصور، الملاحظات الصوتية والملفات.</p>
+            <h3 class="text-base font-black text-white mb-2">مرحباً بك في نظام المحادثات الفورية</h3>
+            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">اختر إحدى المحادثات المتاحة في القائمة للبدء أو انقر على زر إضافة محادثة لبدء تواصل جديد.</p>
         </div>
 
         <!-- Active Chat Window Container -->
         <div id="active-chat-window" class="flex flex-col h-full hidden">
             
-            <!-- Chat Header -->
-            <div class="px-5 py-3.5 bg-[#18181c] border-b border-[#27272a] flex items-center justify-between transition-colors">
+            <!-- Chat Room Header -->
+            <div class="px-5 py-3.5 bg-[#141417] border-b border-[#27272a] flex items-center justify-between transition-colors shrink-0">
                 <div class="flex items-center gap-3">
-                    <!-- Back button on Mobile -->
-                    <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-[#27272a] text-slate-300 hover:bg-[#3f3f46]">
+                    <!-- Mobile Back Arrow -->
+                    <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-[#27272a] text-slate-300 hover:bg-[#3f3f46]">
                         <span class="material-symbols-outlined text-lg">arrow_forward</span>
                     </button>
-                    <!-- Contact Avatar -->
-                    <div class="relative">
-                        <div id="active-contact-avatar-placeholder" class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] flex items-center justify-center font-extrabold text-sm select-none border border-[#f2f20d]/30">
-                            A
+
+                    <!-- Contact Avatar & Status -->
+                    <div class="relative shrink-0 select-none">
+                        <div id="active-contact-avatar-placeholder" class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] border border-[#f2f20d]/30 flex items-center justify-center font-bold text-sm">
+                            ?
                         </div>
-                        <img id="active-contact-avatar-img" class="w-10 h-10 rounded-full object-cover hidden border border-[#27272a]" src="" alt="Avatar">
-                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#18181c] rounded-full"></div>
+                        <img id="active-contact-avatar-img" class="w-10 h-10 rounded-full object-cover border border-[#27272a] hidden" src="" alt="Avatar">
+                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
                     </div>
-                    <!-- Contact Name & Role Badge -->
+
+                    <!-- Contact Info -->
                     <div class="flex flex-col">
-                        <span id="active-contact-name" class="text-sm font-bold text-white leading-tight">...</span>
-                        <span id="active-contact-role" class="text-[11px] text-slate-400 font-medium mt-0.5">...</span>
+                        <div class="flex items-center gap-2">
+                            <span id="active-contact-name" class="text-sm font-bold text-white leading-tight">...</span>
+                            <span id="active-contact-role" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#27272a] text-slate-300">...</span>
+                        </div>
+                        <span class="text-[10px] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متصل الآن
+                        </span>
                     </div>
                 </div>
 
                 <!-- Top Header Actions -->
                 <div class="flex items-center gap-2">
-                    <!-- Disappearing Messages Timer Dropdown Button -->
+                    <!-- Disappearing Timer Menu Dropdown -->
                     <div class="relative">
-                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-slate-300 hover:text-amber-400 text-xs font-bold transition-all border border-[#3f3f46]/40" title="الرسائل ذاتية الاختفاء">
+                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] text-slate-300 hover:text-[#f2f20d] text-xs font-semibold transition-all border border-[#27272a]" title="الرسائل ذاتية الاختفاء">
                             <span class="material-symbols-outlined text-base text-amber-400">timer</span>
                             <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
                         </button>
                         
-                        <!-- Timer Menu Dropdown -->
-                        <div id="disappearing-menu" class="hidden absolute left-0 top-11 bg-[#1c1c20] rounded-2xl shadow-2xl border border-[#27272a] p-2 text-xs min-w-[200px] z-[99] space-y-1">
+                        <!-- Dropdown Options -->
+                        <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-[#1c1c20] rounded-xl shadow-2xl border border-[#27272a] p-2 text-xs min-w-[200px] z-[99] space-y-1">
                             <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">مؤقت اختفاء الرسائل الجديدة</div>
-                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
+                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
                                 <span>🚫 إيقاف (رسائل دائمة)</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
+                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
                                 <span>⏱️ 5 دقائق</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
+                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
                                 <span>⏱️ ساعة واحدة</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
+                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
                                 <span>⏱️ 24 ساعة (يوم)</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-[#27272a] flex items-center justify-between font-semibold text-slate-200">
+                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
                                 <span>⏱️ 7 أيام (أسبوع)</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Search Bar in Active Chat -->
+                    <!-- In-Chat Search Bar -->
                     <div class="hidden sm:block relative">
-                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث بالرسائل..." class="bg-[#27272a]/60 border border-[#3f3f46]/40 rounded-xl py-1.5 px-3.5 text-xs font-medium focus:ring-1 focus:ring-[#f2f20d] text-slate-200 placeholder:text-slate-500 outline-none w-36 transition-all">
-                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث في المحادثة..." class="bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-1.5 pr-8 pl-3 text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none w-36 sm:w-44 transition-all">
+                        <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
                             <span class="material-symbols-outlined text-sm">search</span>
                         </span>
                     </div>
-
-                    <!-- Extra action icons like screenshot -->
-                    <button type="button" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-slate-400 hover:text-white flex items-center justify-center transition-colors">
-                        <span class="material-symbols-outlined text-lg">settings</span>
-                    </button>
-                    <button type="button" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-slate-400 hover:text-white flex items-center justify-center transition-colors">
-                        <span class="material-symbols-outlined text-lg">more_vert</span>
-                    </button>
                 </div>
             </div>
 
-            <!-- Messages Feed Area -->
-            <div id="messages-feed" class="flex-1 p-4 md:p-6 overflow-y-auto space-y-3.5 flex flex-col bg-[#0e0e11]">
-                <!-- Messages will load dynamically here -->
+            <!-- Messages Feed Container -->
+            <div id="messages-feed" class="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 flex flex-col bg-[#101014]">
+                <!-- Messages render here -->
             </div>
 
-            <!-- Chat Bottom Input Bar -->
-            <div class="p-3.5 bg-[#18181c] border-t border-[#27272a] flex flex-col gap-2 relative">
-                <!-- Disappearing Messages Active Status Banner -->
-                <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-amber-400 font-bold mb-1 transition-all">
+            <!-- Chat Bottom Bar Input Area -->
+            <div class="p-3 md:p-4 bg-[#141417] border-t border-[#27272a] shrink-0 relative">
+                
+                <!-- Disappearing Messages Active Banner -->
+                <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-400 font-bold mb-2 transition-all">
                     <div class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">timer</span>
                         <span>الرسائل الجديدة ستختفي تلقائياً بعد: <strong id="disappearing-banner-time">24 ساعة</strong></span>
@@ -149,69 +149,64 @@
                     </button>
                 </div>
 
-                <!-- Inline Attachment Preview Container -->
-                <div id="attachment-preview-container" class="hidden bg-[#27272a] border border-[#3f3f46]/50 rounded-xl p-2.5 shadow-sm flex items-center justify-between gap-3 w-full mb-1 transition-all">
+                <!-- Attachment Preview Banner -->
+                <div id="attachment-preview-container" class="hidden bg-[#1c1c20] border border-[#27272a] rounded-xl p-2.5 shadow-lg flex items-center justify-between gap-3 w-full mb-2 transition-all">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="w-8 h-8 rounded-lg bg-[#f2f20d]/20 flex items-center justify-center text-[#f2f20d] shrink-0" id="preview-icon">
+                        <div class="w-9 h-9 rounded-lg bg-[#f2f20d]/20 flex items-center justify-center text-[#f2f20d] shrink-0" id="preview-icon">
                             <span class="material-symbols-outlined text-lg">insert_drive_file</span>
                         </div>
                         <div class="flex flex-col min-w-0">
-                            <span id="preview-filename" class="text-xs font-bold text-white truncate max-w-[240px]">file.pdf</span>
+                            <span id="preview-filename" class="text-xs font-bold text-slate-100 truncate max-w-[240px]">file.pdf</span>
                             <span id="preview-filesize" class="text-[10px] font-semibold text-slate-400">0 KB</span>
                         </div>
                     </div>
-                    <button type="button" onclick="clearSelectedAttachment()" class="w-6 h-6 rounded-full bg-[#3f3f46] flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors shrink-0" title="إلغاء الملف">
-                        <span class="material-symbols-outlined text-xs">close</span>
+                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0" title="إلغاء الملف">
+                        <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
 
+                <!-- Form Bar -->
                 <form id="chat-send-form" onsubmit="event.preventDefault(); submitMessage();" class="flex items-center gap-2" enctype="multipart/form-data">
                     <input type="hidden" id="current-receiver-id" value="">
 
-                    <!-- Voice Recording Overlay Interface -->
-                    <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-[#27272a] rounded-2xl px-4 py-2 text-slate-200">
+                    <!-- Voice Recording Overlay -->
+                    <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-[#1c1c20] border border-[#27272a] rounded-2xl px-4 py-2.5 text-slate-200">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-                            <span class="text-xs font-black text-red-500">تسجيل...</span>
-                            <span id="recording-timer" class="text-xs font-bold font-mono">00:00</span>
+                            <span class="text-xs font-black text-red-500">جاري تسجيل الصوت...</span>
+                            <span id="recording-timer" class="text-xs font-bold font-mono text-slate-300">00:00</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <!-- Cancel Recording -->
                             <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="إلغاء">
                                 <span class="material-symbols-outlined">delete</span>
                             </button>
-                            <!-- Finish and Send -->
-                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white hover:bg-emerald-500 transition-colors" title="إرسال الملاحظة الصوتية">
+                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md" title="إرسال الصوت">
                                 <span class="material-symbols-outlined text-lg">check</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Input Bar Container matching screenshot layout -->
-                    <div id="standard-input-elements" class="flex-1 flex items-center gap-2 bg-[#1c1c20] border border-[#2d2d35] rounded-2xl px-3 py-1.5">
+                    <!-- Input Elements (Visible when not recording) -->
+                    <div id="standard-input-elements" class="flex-1 flex items-center gap-2 bg-[#1c1c20] border border-[#2d2d35] rounded-2xl px-3 py-1.5 focus-within:border-[#f2f20d] transition-all">
                         
-                        <!-- Attachment file icon -->
-                        <label class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-white cursor-pointer transition-colors shrink-0" title="إرفاق ملف">
-                            <span class="material-symbols-outlined text-lg">attach_file</span>
+                        <!-- File Input -->
+                        <label class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] cursor-pointer transition-colors shrink-0" title="إرفاق ملف أو صورة">
+                            <span class="material-symbols-outlined text-xl">attach_file</span>
                             <input type="file" id="message-file" class="hidden" onchange="handleFileSelection(event)">
                         </label>
-                        
-                        <label class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-white cursor-pointer transition-colors shrink-0" title="مستند">
-                            <span class="material-symbols-outlined text-lg">description</span>
-                        </label>
 
-                        <!-- Input field -->
-                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="اكتب رسالتك هنا..." type="text" autocomplete="off"/>
+                        <!-- Input Field -->
+                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs md:text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
 
-                        <!-- Microphone Icon for Voice Notes -->
-                        <button type="button" onclick="startAudioRecording()" class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-white transition-colors shrink-0" title="سجل ملاحظة صوتية">
-                            <span class="material-symbols-outlined text-lg">mic</span>
+                        <!-- Microphone Button -->
+                        <button type="button" onclick="startAudioRecording()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] transition-colors shrink-0" title="تسجيل ملاحظة صوتية">
+                            <span class="material-symbols-outlined text-xl">mic</span>
                         </button>
                     </div>
 
-                    <!-- Circular Send Button -->
-                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md shrink-0 active:scale-95 border border-[#3f3f46]/40" title="إرسال">
-                        <span id="send-btn-icon" class="material-symbols-outlined rotate-180 text-xl">send</span>
+                    <!-- Send Button -->
+                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-lg shrink-0 active:scale-95 border border-[#3f3f46]" title="إرسال">
+                        <span id="send-btn-icon" class="material-symbols-outlined text-xl rotate-180">send</span>
                     </button>
                 </form>
             </div>
@@ -220,66 +215,64 @@
 </div>
 
 <!-- ================= NEW CHAT MODAL ================= -->
-<div id="new-chat-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
-    <div class="bg-white dark:bg-[#121212] w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 dark:border-[#262626] overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
-        <div class="p-6 border-b border-slate-200 dark:border-[#262626] flex items-center justify-between">
-            <h3 class="text-lg font-black text-slate-800 dark:text-white">محادثة جديدة</h3>
-            <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-[#1a1a1a] dark:hover:bg-[#262626] flex items-center justify-center text-slate-500 transition-colors">
+<div id="new-chat-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
+    <div class="bg-[#141417] border border-[#27272a] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
+        <div class="p-5 border-b border-[#27272a] flex items-center justify-between">
+            <h3 class="text-base font-extrabold text-white">بدء محادثة جديدة</h3>
+            <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-white transition-colors">
                 <span class="material-symbols-outlined text-sm">close</span>
             </button>
         </div>
         <div class="p-4">
             <div class="relative mb-4">
-                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span class="material-symbols-outlined text-xl">search</span>
+                <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined text-lg">search</span>
                 </span>
-                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-slate-50 dark:bg-[#1a1a1a] border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-[#f2f20d]/50 transition-all outline-none" placeholder="البحث عن مستخدم..." type="text"/>
+                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all" placeholder="البحث باسم المستخدم..." type="text"/>
             </div>
             
-            <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-2" id="modal-contacts-list">
+            <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-1.5" id="modal-contacts-list">
                 @if(isset($allUsers) && count($allUsers) > 0)
                     @foreach($allUsers as $user)
                         @php
                             $roleAr = $user->role;
-                            $badgeClass = 'bg-slate-100 text-slate-600 dark:bg-[#1a1a1a] dark:text-slate-300';
-                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/10 text-rose-500'; $roleAr = 'الإدارة'; }
-                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/10 text-blue-500'; $roleAr = 'المدرب'; }
-                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/10 text-emerald-500'; $roleAr = 'الطالب'; }
-                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/10 text-purple-500'; $roleAr = 'الأهل'; }
-                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/10 text-amber-500'; $roleAr = 'رئيس القسم'; }
-                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/10 text-cyan-500'; $roleAr = 'الشؤون'; }
+                            $badgeClass = 'bg-[#27272a] text-slate-300';
+                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/20 text-rose-400'; $roleAr = 'الإدارة'; }
+                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/20 text-blue-400'; $roleAr = 'المدرب'; }
+                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/20 text-emerald-400'; $roleAr = 'الطالب'; }
+                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/20 text-purple-400'; $roleAr = 'الأهل'; }
+                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/20 text-amber-400'; $roleAr = 'رئيس القسم'; }
+                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/20 text-cyan-400'; $roleAr = 'الشؤون'; }
                             
                             $avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : '';
                             $initials = mb_substr(trim($user->full_name), 0, 1);
                         @endphp
-                        <div onclick="startNewChat({{ $user->user_id }}, '{{ $user->full_name }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-[#1a1a1a] cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-[#262626]" data-name="{{ strtolower($user->full_name) }}">
-                            <!-- Avatar -->
+                        <div onclick="startNewChat({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-colors border border-transparent hover:border-[#27272a]" data-name="{{ strtolower($user->full_name) }}">
                             <div class="relative shrink-0 select-none">
                                 @if($user->avatar)
-                                    <img class="w-10 h-10 rounded-full object-cover" src="{{ $avatarUrl }}" alt="Avatar">
+                                    <img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="{{ $avatarUrl }}" alt="Avatar">
                                 @else
-                                    <div class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-yellow-500 dark:text-[#f2f20d] flex items-center justify-center font-bold text-sm">{{ $initials }}</div>
+                                    <div class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] flex items-center justify-center font-bold text-xs border border-[#f2f20d]/30">{{ $initials }}</div>
                                 @endif
                             </div>
-                            <!-- Details -->
                             <div class="flex-1 min-w-0">
-                                <div class="text-xs font-bold text-slate-800 dark:text-white truncate">{{ $user->full_name }}</div>
-                                <div class="text-[10px] font-semibold text-slate-400 truncate">{{ $user->email }}</div>
+                                <div class="text-xs font-bold text-white truncate">{{ $user->full_name }}</div>
+                                <div class="text-[10px] font-medium text-slate-400 truncate">{{ $user->email }}</div>
                             </div>
                             <div class="shrink-0">
-                                <span class="text-[9px] font-bold px-2 py-1 rounded-full {{ $badgeClass }}">{{ $roleAr }}</span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md {{ $badgeClass }}">{{ $roleAr }}</span>
                             </div>
                         </div>
                     @endforeach
                 @else
-                    <div class="text-center py-8 text-slate-400 text-xs font-semibold">لا يوجد مستخدمين آخرين في النظام</div>
+                    <div class="text-center py-8 text-slate-500 text-xs font-semibold">لا يوجد مستخدمين آخرين في النظام</div>
                 @endif
             </div>
         </div>
     </div>
 </div>
 
-<!-- ================= CSS EXTRA POLISHING ================= -->
+<!-- ================= CSS POLISHING ================= -->
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <style>
@@ -287,16 +280,16 @@
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
     .chat-bubble-received {
-        border-top-left-radius: 1.25rem;
-        border-top-right-radius: 1.25rem;
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 1.25rem;
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+        border-bottom-left-radius: 0.25rem;
+        border-bottom-right-radius: 1rem;
     }
     .chat-bubble-sent {
-        border-top-left-radius: 1.25rem;
-        border-top-right-radius: 1.25rem;
-        border-bottom-left-radius: 1.25rem;
-        border-bottom-right-radius: 0;
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+        border-bottom-left-radius: 1rem;
+        border-bottom-right-radius: 0.25rem;
     }
     
     @keyframes flash {
@@ -321,23 +314,19 @@
     window.activeMessagesData = {};
     let editingMessageId = null;
     
-    // Echo Connection Instance
     let echoInstance = null;
 
-    // Media Recording variables
     let mediaRecorder = null;
     let audioChunks = [];
     let recordTimerInterval = null;
     let recordDurationSecs = 0;
     let isRecordingCancelled = false;
 
-    // Run on window load
     document.addEventListener("DOMContentLoaded", function () {
         loadContacts();
         initializeEcho();
     });
 
-    // Initialize Laravel Echo
     function initializeEcho() {
         if (typeof window.Echo === 'undefined') {
             console.error('Laravel Echo CDN failed to load properly.');
@@ -358,11 +347,8 @@
             }
         });
 
-        // Listen for new messages on our private channel
         echoInstance.private('chat.' + currentUserId)
             .listen('MessageSent', (e) => {
-                console.log('Echo real-time event:', e);
-                // Check if the incoming message is from the active contact
                 if (activeContactId && parseInt(e.sender_id) === parseInt(activeContactId)) {
                     if (!document.getElementById('msg-' + e.id)) {
                         appendMessageBubble({
@@ -377,14 +363,11 @@
                         markActiveChatAsRead();
                     }
                 } else {
-                    // Trigger dynamic contacts list update to increment unread counter and update last message
                     loadContactsSilently();
                 }
             })
             .listen('MessagesMarkedAsRead', (e) => {
-                console.log('Read receipt event:', e);
                 if (activeContactId && parseInt(e.reader_id) === parseInt(activeContactId)) {
-                    // Update all single ticks (done) to double blue ticks (done_all) for our sent messages
                     document.querySelectorAll('#messages-feed .chat-bubble-sent').forEach(bubble => {
                         const tickSpan = bubble.parentElement.querySelector('.material-symbols-outlined');
                         if (tickSpan && tickSpan.innerText === 'done') {
@@ -397,7 +380,6 @@
             });
     }
 
-    // Dynamic Contacts List Loader
     function loadContacts() {
         const loadingDiv = document.getElementById('contacts-loading');
         const emptyDiv = document.getElementById('contacts-empty');
@@ -444,7 +426,6 @@
             });
     }
 
-    // Refresh contact list quietly to keep unread badges and messages synced
     function loadContactsSilently() {
         fetch("{{ route('admin.messages.contacts') }}", {
             headers: {
@@ -463,13 +444,11 @@
             .catch(err => console.error("Silent contacts update failed: ", err));
     }
 
-    // Render Contact Item Rows with Role Badges and excerpt
     function renderContactsList(contacts) {
         const wrapper = document.getElementById('contacts-wrapper');
         wrapper.innerHTML = '';
 
         contacts.forEach(contact => {
-            // Pick Role badge color classes
             let badgeClass = 'bg-[#27272a] text-slate-300';
             let roleAr = contact.role;
             if (contact.role === 'admin') {
@@ -502,7 +481,6 @@
 
             const initials = contact.name.trim().charAt(0);
             
-            // Format Last Message preview label
             let lastMsgText = contact.last_message || 'ابدأ محادثة جديدة';
             if (contact.last_message === '[Attachment]') {
                 lastMsgText = '📁 ملف مرفق';
@@ -519,7 +497,6 @@
                      class="contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-all ${isActive}"
                      data-name="${contact.name.toLowerCase()}">
                     
-                    <!-- Initials / Avatar image -->
                     <div class="relative shrink-0 select-none">
                         ${contact.image 
                             ? `<img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="${contact.image}" alt="Avatar">`
@@ -528,7 +505,6 @@
                         <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
                     </div>
 
-                    <!-- Details -->
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-bold text-white truncate">${contact.name}</span>
@@ -540,7 +516,6 @@
                         </div>
                     </div>
                     
-                    <!-- Unread counter -->
                     <div class="shrink-0">
                         ${unreadBadge}
                     </div>
@@ -550,7 +525,6 @@
         });
     }
 
-    // Filter Contacts by Search Box input
     function filterContactsList() {
         const query = document.getElementById('contact-search').value.toLowerCase().trim();
         const rows = document.querySelectorAll('.contact-row');
@@ -567,11 +541,9 @@
         });
     }
 
-    // Modal Functions
     function openNewChatModal() {
         const modal = document.getElementById('new-chat-modal');
         modal.classList.remove('hidden');
-        // Small delay to allow transition
         setTimeout(() => {
             modal.classList.remove('opacity-0');
             document.getElementById('new-chat-modal-content').classList.remove('scale-95');
@@ -621,11 +593,9 @@
         }
     }
 
-    // Switch conversation details and fetch old chat history
     function selectContact(contactId, name, roleLabel, avatarUrl) {
         activeContactId = contactId;
 
-        // Toggle Sidebar visibility on mobile
         if (window.innerWidth < 768) {
             const sidebar = document.getElementById('contacts-sidebar-pane');
             const chatRoom = document.getElementById('chat-room-pane');
@@ -643,11 +613,9 @@
         document.getElementById('active-chat-window').classList.remove('hidden');
         document.getElementById('current-receiver-id').value = contactId;
 
-        // Update header contact name
         document.getElementById('active-contact-name').innerText = name;
         document.getElementById('active-contact-role').innerText = roleLabel;
 
-        // Update Header Avatar image
         const avatarPlaceholder = document.getElementById('active-contact-avatar-placeholder');
         const avatarImg = document.getElementById('active-contact-avatar-img');
 
@@ -662,14 +630,10 @@
             avatarPlaceholder.classList.remove('hidden');
         }
 
-        // Highlight selected row in sidebar
         loadContactsSilently();
-
-        // Fetch Messages from Server
         fetchMessagesFeed(contactId);
     }
 
-    // Fetch conversation logs from server
     function fetchMessagesFeed(contactId) {
         const feed = document.getElementById('messages-feed');
         feed.innerHTML = `
@@ -688,7 +652,6 @@
             .then(res => res.json())
             .then(data => {
                 feed.innerHTML = '';
-                // data from getConversation is just an array of messages
                 if (data.length > 0) {
                     data.forEach(msg => {
                         appendMessageBubble(msg);
@@ -709,13 +672,10 @@
             });
     }
 
-    // Mark current active messages as read
     function markActiveChatAsRead() {
         if (!activeContactId) return;
-        // The getConversation route already handles marking as read, but for realtime we can just call it or ignore
     }
 
-    // Append Message Bubble into Feed container
     function appendMessageBubble(msg) {
         const feed = document.getElementById('messages-feed');
         const isMe = parseInt(msg.sender_id) === parseInt(currentUserId);
@@ -1133,7 +1093,6 @@
         }
     }
 
-    // --- Voice Note Custom Player Logic ---
     function toggleVoicePlay(id) {
         const audio = document.getElementById(id);
         const icon = document.getElementById('icon-' + id);
@@ -1198,7 +1157,6 @@
         audio.currentTime = seekTime;
     }
 
-    // --- New Advanced Chat Features ---
     function toggleMsgOptions(id) {
         const el = document.getElementById('msg-options-' + id);
         if (el) {
@@ -1227,16 +1185,16 @@
         document.getElementById('message-text').focus();
         
         document.getElementById('send-btn-icon').innerText = 'update';
-        document.getElementById('send-btn').classList.replace('bg-[#FFCC00]', 'bg-blue-500');
-        document.getElementById('send-btn').classList.replace('text-black', 'text-white');
+        document.getElementById('send-btn').classList.replace('bg-[#27272a]', 'bg-blue-600');
+        document.getElementById('send-btn').classList.replace('text-[#f2f20d]', 'text-white');
     }
 
     function cancelEditMode() {
         editingMessageId = null;
         document.getElementById('message-text').value = '';
         document.getElementById('send-btn-icon').innerText = 'send';
-        document.getElementById('send-btn').classList.replace('bg-blue-500', 'bg-[#FFCC00]');
-        document.getElementById('send-btn').classList.replace('text-white', 'text-black');
+        document.getElementById('send-btn').classList.replace('bg-blue-600', 'bg-[#27272a]');
+        document.getElementById('send-btn').classList.replace('text-white', 'text-[#f2f20d]');
     }
 
     function deleteMessage(id) {
@@ -1434,16 +1392,18 @@
         xhr.send(fd);
     }
 
+</script>
+@endpush
+
 <!-- ================= IMAGE LIGHTBOX MODAL ================= -->
 <div id="image-lightbox-modal" class="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md hidden flex flex-col items-center justify-between p-4 md:p-6 transition-all duration-300 opacity-0 select-none">
-    <!-- Top Action Bar -->
     <div class="w-full flex items-center justify-between text-white max-w-5xl z-10">
         <button type="button" onclick="closeImageLightbox()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold transition-all text-slate-200 hover:text-white backdrop-blur-sm">
             <span class="material-symbols-outlined text-lg">arrow_back</span>
             <span>رجوع للمحادثة</span>
         </button>
         <div class="flex items-center gap-3">
-            <a id="lightbox-download-btn" href="#" download target="_blank" class="flex items-center gap-2 px-5 py-2 rounded-full bg-[#FFCC00] text-black font-bold text-xs hover:bg-amber-400 transition-all shadow-lg active:scale-95">
+            <a id="lightbox-download-btn" href="#" download target="_blank" class="flex items-center gap-2 px-5 py-2 rounded-full bg-[#f2f20d] text-black font-bold text-xs hover:bg-[#d9d90b] transition-all shadow-lg active:scale-95">
                 <span class="material-symbols-outlined text-base">download</span>
                 <span>تنزيل الصورة</span>
             </a>
@@ -1453,7 +1413,6 @@
         </div>
     </div>
     
-    <!-- Image Display Container -->
     <div class="flex-1 flex items-center justify-center w-full max-w-5xl my-4 overflow-hidden" onclick="closeImageLightbox()">
         <img id="lightbox-image" src="" alt="صورة المعاينة" class="max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
     </div>
@@ -1463,7 +1422,6 @@
 <script>
     let currentDisappearsAfter = 0;
 
-    // Disappearing Messages Helper Functions
     function toggleDisappearingMenu() {
         const menu = document.getElementById('disappearing-menu');
         if (menu) menu.classList.toggle('hidden');
@@ -1488,7 +1446,6 @@
         }
     }
 
-    // Image Lightbox Viewer Helper Functions
     function openImageLightbox(url) {
         const modal = document.getElementById('image-lightbox-modal');
         const img = document.getElementById('lightbox-image');
@@ -1529,4 +1486,3 @@
 </script>
 @endpush
 @endsection
-
