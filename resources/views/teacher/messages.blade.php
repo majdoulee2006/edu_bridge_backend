@@ -1,197 +1,212 @@
 @extends('layouts.teacher')
 
 @section('title', 'الرسائل')
-@section('subtitle', 'تواصل فوري مع الكادر الإداري والتعليمي')
 
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<div class="flex gap-0 md:gap-6 h-[calc(100vh-10rem)] min-h-[500px] overflow-hidden rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-soft transition-colors" id="chat-app-container">
+<div class="flex h-[calc(100vh-8.5rem)] min-h-[550px] overflow-hidden rounded-3xl bg-[#141417] border border-[#27272a] shadow-2xl text-slate-100 transition-colors" id="chat-app-container">
     
-    <!-- ================= SIDEBAR (CONTACTS) ================= -->
-    <div class="w-full md:w-80 flex flex-col border-l border-slate-200 dark:border-slate-800 h-full shrink-0 md:flex" id="contacts-sidebar-pane">
-        <!-- Search and Filter -->
-        <div class="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
-            <div class="flex items-center gap-2">
-                <div class="relative flex-1">
-                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                        <span class="material-symbols-outlined text-xl">search</span>
-                    </span>
-                    <input id="contact-search" oninput="filterContactsList()" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="البحث في جهات الاتصال..." type="text"/>
-                </div>
-                <button type="button" onclick="openNewChatModal()" class="w-12 h-12 rounded-2xl bg-[#FFCC00] hover:bg-[#E6B800] text-black flex items-center justify-center transition-all shrink-0" title="محادثة جديدة">
-                    <span class="material-symbols-outlined font-bold">add_comment</span>
-                </button>
-            </div>
+    <!-- ================= SIDEBAR (CONTACTS PANEL) ================= -->
+    <div class="w-full md:w-80 flex flex-col border-l border-[#27272a] h-full shrink-0 md:flex p-4 bg-[#141417] overflow-hidden" id="contacts-sidebar-pane">
+        
+        <!-- Header & Search Title -->
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-base font-extrabold text-white tracking-wide">مكان للبحث عن</h2>
+            <button type="button" onclick="openNewChatModal()" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md" title="محادثة جديدة">
+                <span class="material-symbols-outlined text-lg">add_comment</span>
+            </button>
         </div>
 
+        <!-- Search Input -->
+        <div class="relative mb-4">
+            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                <span class="material-symbols-outlined text-lg">search</span>
+            </span>
+            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="ابحث عن زملائك..." type="text"/>
+        </div>
+
+        <!-- Section Title -->
+        <div class="text-[11px] font-bold text-slate-400 mb-2 px-1">أحدث المحادثات</div>
+
         <!-- Contacts Scrollable List -->
-        <div class="flex-1 overflow-y-auto hide-scrollbar divide-y divide-slate-100 dark:divide-slate-800/50" id="contacts-list-container">
+        <div class="flex-1 overflow-y-auto hide-scrollbar space-y-1.5 pr-1" id="contacts-list-container">
             <!-- Loading Indicator -->
             <div id="contacts-loading" class="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
-                <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
-                <span class="text-xs font-bold">جاري تحميل جهات الاتصال...</span>
+                <div class="animate-spin rounded-full h-7 w-7 border-2 border-[#f2f20d] border-t-transparent"></div>
+                <span class="text-xs font-semibold">جاري تحميل المحادثات...</span>
             </div>
             
-            <!-- Dynamic Contacts will be rendered here -->
-            <div id="contacts-wrapper" class="hidden"></div>
+            <!-- Dynamic Contacts List Wrapper -->
+            <div id="contacts-wrapper" class="hidden space-y-1.5"></div>
             
             <div id="contacts-empty" class="hidden flex flex-col items-center justify-center py-12 text-slate-400 text-center px-4">
-                <span class="material-symbols-outlined text-4xl mb-2 text-slate-300">contact_support</span>
-                <span class="text-xs font-bold">لا توجد جهات اتصال متاحة للمحادثة</span>
+                <span class="material-symbols-outlined text-4xl mb-2 text-slate-600">contact_support</span>
+                <span class="text-xs font-bold">لا توجد جهات اتصال متاحة</span>
             </div>
         </div>
     </div>
 
     <!-- ================= CHAT ROOM WINDOW ================= -->
-    <div class="flex-1 flex flex-col h-full bg-slate-50/50 dark:bg-slate-950/20 relative hidden md:flex" id="chat-room-pane">
+    <div class="flex-1 flex flex-col h-full bg-[#101014] relative hidden md:flex overflow-hidden" id="chat-room-pane">
         
         <!-- Chat Placeholder (Visible when no active chat) -->
-        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-900 z-10 text-center transition-colors duration-300">
-            <div class="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-6 shadow-soft">
-                <span class="material-symbols-outlined text-5xl">forum</span>
+        <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-8 bg-[#101014] z-10 text-center transition-colors duration-300">
+            <div class="w-20 h-20 rounded-full bg-[#1c1c20] border border-[#27272a] flex items-center justify-center text-[#f2f20d] mb-5 shadow-lg">
+                <span class="material-symbols-outlined text-4xl">forum</span>
             </div>
-            <h3 class="text-lg font-black text-slate-800 dark:text-white mb-2">مرحباً بك في نظام الدردشة الموحد</h3>
-            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">اختر أحد جهات الاتصال المتاحة في القائمة الجانبية لبدء المحادثة الفورية مع إمكانية إرفاق الملفات وتسجيل الملاحظات الصوتية.</p>
+            <h3 class="text-base font-black text-white mb-2">مرحباً بك في نظام المحادثات الفورية</h3>
+            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">اختر إحدى المحادثات المتاحة في القائمة للبدء أو انقر على زر إضافة محادثة لبدء تواصل جديد.</p>
         </div>
 
         <!-- Active Chat Window Container -->
         <div id="active-chat-window" class="flex flex-col h-full hidden">
             
-            <!-- Chat Header -->
-            <div class="px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors">
+            <!-- Chat Room Header -->
+            <div class="px-5 py-3.5 bg-[#141417] border-b border-[#27272a] flex items-center justify-between transition-colors shrink-0">
                 <div class="flex items-center gap-3">
-                    <!-- Back button on Mobile -->
-                    <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200">
-                        <span class="material-symbols-outlined text-xl">arrow_forward</span>
+                    <!-- Mobile Back Arrow -->
+                    <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-[#27272a] text-slate-300 hover:bg-[#3f3f46]">
+                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
                     </button>
-                    <!-- Contact Avatar -->
-                    <div class="relative">
-                        <div id="active-contact-avatar-placeholder" class="w-10 h-10 rounded-full bg-primary/20 text-yellow-700 dark:text-yellow-400 flex items-center justify-center font-bold text-sm select-none">
-                            A
+
+                    <!-- Contact Avatar & Status -->
+                    <div class="relative shrink-0 select-none">
+                        <div id="active-contact-avatar-placeholder" class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] border border-[#f2f20d]/30 flex items-center justify-center font-bold text-sm">
+                            ?
                         </div>
-                        <img id="active-contact-avatar-img" class="w-10 h-10 rounded-full object-cover hidden" src="" alt="Avatar">
-                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
+                        <img id="active-contact-avatar-img" class="w-10 h-10 rounded-full object-cover border border-[#27272a] hidden" src="" alt="Avatar">
+                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
                     </div>
-                    <!-- Contact Name & Role Badge -->
+
+                    <!-- Contact Info -->
                     <div class="flex flex-col">
-                        <span id="active-contact-name" class="text-sm font-bold text-slate-800 dark:text-white leading-tight">...</span>
-                        <span id="active-contact-role" class="text-[10px] text-slate-400 font-semibold mt-0.5">...</span>
+                        <div class="flex items-center gap-2">
+                            <span id="active-contact-name" class="text-sm font-bold text-white leading-tight">...</span>
+                            <span id="active-contact-role" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#27272a] text-slate-300">...</span>
+                        </div>
+                        <span class="text-[10px] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متصل الآن
+                        </span>
                     </div>
                 </div>
-                    <div class="flex items-center gap-2">
-                        <!-- Disappearing Messages Timer Dropdown Button -->
-                        <div class="relative">
-                            <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-amber-500/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700" title="الرسائل ذاتية الاختفاء">
-                                <span class="material-symbols-outlined text-base text-amber-500">timer</span>
-                                <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
-                            </button>
-                            
-                            <!-- Timer Menu Dropdown -->
-                            <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-2 text-xs min-w-[200px] z-[99] space-y-1">
-                                <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-slate-100 dark:border-slate-700">مؤقت اختفاء الرسائل الجديدة</div>
-                                <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>🚫 إيقاف (رسائل دائمة)</span>
-                                </button>
-                                <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>⏱️ 5 دقائق</span>
-                                </button>
-                                <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>⏱️ ساعة واحدة</span>
-                                </button>
-                                <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>⏱️ 24 ساعة (يوم)</span>
-                                </button>
-                                <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-between font-semibold">
-                                    <span>⏱️ 7 أيام (أسبوع)</span>
-                                </button>
-                            </div>
-                        </div>
 
-                        <!-- Search Bar -->
-                        <div class="hidden md:block relative">
-                            <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث..." class="bg-slate-100 dark:bg-slate-800 border-none rounded-full py-2 px-4 text-xs font-semibold focus:ring-2 focus:ring-primary/50 text-slate-800 dark:text-slate-200 outline-none w-36 transition-all">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                                <span class="material-symbols-outlined text-sm">search</span>
-                            </span>
+                <!-- Top Header Actions -->
+                <div class="flex items-center gap-2">
+                    <!-- Disappearing Timer Menu Dropdown -->
+                    <div class="relative">
+                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] text-slate-300 hover:text-[#f2f20d] text-xs font-semibold transition-all border border-[#27272a]" title="الرسائل ذاتية الاختفاء">
+                            <span class="material-symbols-outlined text-base text-amber-400">timer</span>
+                            <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
+                        </button>
+                        
+                        <!-- Dropdown Options -->
+                        <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-[#1c1c20] rounded-xl shadow-2xl border border-[#27272a] p-2 text-xs min-w-[200px] z-[99] space-y-1">
+                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">مؤقت اختفاء الرسائل الجديدة</div>
+                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>🚫 إيقاف (رسائل دائمة)</span>
+                            </button>
+                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ 5 دقائق</span>
+                            </button>
+                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ ساعة واحدة</span>
+                            </button>
+                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ 24 ساعة (يوم)</span>
+                            </button>
+                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ 7 أيام (أسبوع)</span>
+                            </button>
                         </div>
                     </div>
+
+                    <!-- In-Chat Search Bar -->
+                    <div class="hidden sm:block relative">
+                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث في المحادثة..." class="bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-1.5 pr-8 pl-3 text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none w-36 sm:w-44 transition-all">
+                        <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                            <span class="material-symbols-outlined text-sm">search</span>
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <!-- Messages Feed -->
-            <div id="messages-feed" class="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col bg-slate-50/50 dark:bg-slate-950/20">
-                <!-- Messages will load dynamically here -->
+            <!-- Messages Feed Container -->
+            <div id="messages-feed" class="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 flex flex-col bg-[#101014]">
+                <!-- Messages render here -->
             </div>
 
-            <!-- Chat Bottom Input Bar -->
-            <div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 transition-colors flex flex-col gap-2 relative">
-                <!-- Disappearing Messages Active Status Banner -->
-                <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-2xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-bold mb-1 transition-all">
+            <!-- Chat Bottom Bar Input Area -->
+            <div class="p-3 md:p-4 bg-[#141417] border-t border-[#27272a] shrink-0 relative">
+                
+                <!-- Disappearing Messages Active Banner -->
+                <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-400 font-bold mb-2 transition-all">
                     <div class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">timer</span>
                         <span>الرسائل الجديدة ستختفي تلقائياً بعد: <strong id="disappearing-banner-time">24 ساعة</strong></span>
                     </div>
-                    <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-500 p-0.5">
+                    <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-400 p-0.5">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
-                <form id="chat-send-form" onsubmit="event.preventDefault(); submitMessage();" class="flex items-center gap-3" enctype="multipart/form-data">
-                    <input type="hidden" id="current-receiver-id" value="">
-                    
-                    <!-- Attachment Preview Floating Container -->
-                    <div id="attachment-preview-container" class="hidden absolute bottom-24 right-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 shadow-lg flex items-center gap-3 max-w-sm z-20">
-                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary" id="preview-icon">
-                            <span class="material-symbols-outlined">insert_drive_file</span>
-                        </div>
-                        <div class="flex flex-col max-w-[200px]">
-                            <span id="preview-filename" class="text-xs font-bold text-slate-800 dark:text-white truncate">file.pdf</span>
-                            <span id="preview-filesize" class="text-[10px] text-slate-400">0 KB</span>
-                        </div>
-                        <button type="button" onclick="clearSelectedAttachment()" class="text-slate-400 hover:text-red-500 transition-colors">
-                            <span class="material-symbols-outlined text-lg">close</span>
-                        </button>
-                    </div>
 
-                    <!-- Voice Recording Overlay Interface -->
-                    <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2 text-slate-700 dark:text-slate-300">
+                <!-- Attachment Preview Banner -->
+                <div id="attachment-preview-container" class="hidden bg-[#1c1c20] border border-[#27272a] rounded-xl p-2.5 shadow-lg flex items-center justify-between gap-3 w-full mb-2 transition-all">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-9 h-9 rounded-lg bg-[#f2f20d]/20 flex items-center justify-center text-[#f2f20d] shrink-0" id="preview-icon">
+                            <span class="material-symbols-outlined text-lg">insert_drive_file</span>
+                        </div>
+                        <div class="flex flex-col min-w-0">
+                            <span id="preview-filename" class="text-xs font-bold text-slate-100 truncate max-w-[240px]">file.pdf</span>
+                            <span id="preview-filesize" class="text-[10px] font-semibold text-slate-400">0 KB</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0" title="إلغاء الملف">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+
+                <!-- Form Bar -->
+                <form id="chat-send-form" onsubmit="event.preventDefault(); submitMessage();" class="flex items-center gap-2" enctype="multipart/form-data">
+                    <input type="hidden" id="current-receiver-id" value="">
+
+                    <!-- Voice Recording Overlay -->
+                    <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-[#1c1c20] border border-[#27272a] rounded-2xl px-4 py-2.5 text-slate-200">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-                            <span class="text-xs font-black text-red-500">تسجيل...</span>
-                            <span id="recording-timer" class="text-xs font-bold font-mono">00:00</span>
+                            <span class="text-xs font-black text-red-500">جاري تسجيل الصوت...</span>
+                            <span id="recording-timer" class="text-xs font-bold font-mono text-slate-300">00:00</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <!-- Cancel Recording -->
-                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-500 transition-colors" title="إلغاء">
+                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="إلغاء">
                                 <span class="material-symbols-outlined">delete</span>
                             </button>
-                            <!-- Finish and Send -->
-                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors" title="إرسال الملاحظة الصوتية">
+                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md" title="إرسال الصوت">
                                 <span class="material-symbols-outlined text-lg">check</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Input Bar Elements (Visible when not recording) -->
-                    <div id="standard-input-elements" class="flex-1 flex items-center gap-3">
-                        <!-- Custom File Input with Paperclip Icon -->
-                        <label class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-pointer transition-colors shrink-0" title="إرفاق ملف">
+                    <!-- Input Elements (Visible when not recording) -->
+                    <div id="standard-input-elements" class="flex-1 flex items-center gap-2 bg-[#1c1c20] border border-[#2d2d35] rounded-2xl px-3 py-1.5 focus-within:border-[#f2f20d] transition-all">
+                        
+                        <!-- File Input -->
+                        <label class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] cursor-pointer transition-colors shrink-0" title="إرفاق ملف أو صورة">
                             <span class="material-symbols-outlined text-xl">attach_file</span>
                             <input type="file" id="message-file" class="hidden" onchange="handleFileSelection(event)">
                         </label>
 
-                        <!-- Oval Input -->
-                        <div class="flex-1 relative">
-                            <input id="message-text" class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-full py-3 px-6 text-sm font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
-                        </div>
+                        <!-- Input Field -->
+                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs md:text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
 
-                        <!-- Microphone Icon for Voice Notes -->
-                        <button type="button" onclick="startAudioRecording()" class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors shrink-0" title="سجل ملاحظة صوتية">
+                        <!-- Microphone Button -->
+                        <button type="button" onclick="startAudioRecording()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] transition-colors shrink-0" title="تسجيل ملاحظة صوتية">
                             <span class="material-symbols-outlined text-xl">mic</span>
                         </button>
                     </div>
 
-                    <!-- Send Button (Yellow Circular Send button with arrow icon) -->
-                    <button type="submit" id="send-btn" class="w-12 h-12 rounded-full bg-[#FFCC00] hover:bg-[#E6B800] text-black flex items-center justify-center transition-all shadow-md shrink-0 active:scale-95" title="إرسال">
-                        <span id="send-btn-icon" class="material-symbols-outlined rotate-180">send</span>
+                    <!-- Send Button -->
+                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-lg shrink-0 active:scale-95 border border-[#3f3f46]" title="إرسال">
+                        <span id="send-btn-icon" class="material-symbols-outlined text-xl rotate-180">send</span>
                     </button>
                 </form>
             </div>
@@ -200,66 +215,64 @@
 </div>
 
 <!-- ================= NEW CHAT MODAL ================= -->
-<div id="new-chat-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
-    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
-        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <h3 class="text-lg font-black text-slate-800 dark:text-white">محادثة جديدة</h3>
-            <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 transition-colors">
+<div id="new-chat-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
+    <div class="bg-[#141417] border border-[#27272a] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
+        <div class="p-5 border-b border-[#27272a] flex items-center justify-between">
+            <h3 class="text-base font-extrabold text-white">بدء محادثة جديدة</h3>
+            <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-white transition-colors">
                 <span class="material-symbols-outlined text-sm">close</span>
             </button>
         </div>
         <div class="p-4">
             <div class="relative mb-4">
-                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <span class="material-symbols-outlined text-xl">search</span>
+                <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span class="material-symbols-outlined text-lg">search</span>
                 </span>
-                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl py-3 pr-12 pl-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/50 transition-all outline-none" placeholder="البحث عن مستخدم..." type="text"/>
+                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all" placeholder="البحث باسم المستخدم..." type="text"/>
             </div>
             
-            <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-2" id="modal-contacts-list">
+            <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-1.5" id="modal-contacts-list">
                 @if(isset($allUsers) && count($allUsers) > 0)
                     @foreach($allUsers as $user)
                         @php
                             $roleAr = $user->role;
-                            $badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
-                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/10 text-rose-500'; $roleAr = 'الإدارة'; }
-                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/10 text-blue-500'; $roleAr = 'المدرب'; }
-                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/10 text-emerald-500'; $roleAr = 'الطالب'; }
-                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/10 text-purple-500'; $roleAr = 'الأهل'; }
-                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/10 text-amber-500'; $roleAr = 'رئيس القسم'; }
-                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/10 text-cyan-500'; $roleAr = 'الشؤون'; }
+                            $badgeClass = 'bg-[#27272a] text-slate-300';
+                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/20 text-rose-400'; $roleAr = 'الإدارة'; }
+                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/20 text-blue-400'; $roleAr = 'المدرب'; }
+                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/20 text-emerald-400'; $roleAr = 'الطالب'; }
+                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/20 text-purple-400'; $roleAr = 'الأهل'; }
+                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/20 text-amber-400'; $roleAr = 'رئيس القسم'; }
+                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/20 text-cyan-400'; $roleAr = 'الشؤون'; }
                             
                             $avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : '';
                             $initials = mb_substr(trim($user->full_name), 0, 1);
                         @endphp
-                        <div onclick="startNewChat({{ $user->user_id }}, '{{ $user->full_name }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700" data-name="{{ strtolower($user->full_name) }}">
-                            <!-- Avatar -->
+                        <div onclick="startNewChat({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-colors border border-transparent hover:border-[#27272a]" data-name="{{ strtolower($user->full_name) }}">
                             <div class="relative shrink-0 select-none">
                                 @if($user->avatar)
-                                    <img class="w-10 h-10 rounded-full object-cover" src="{{ $avatarUrl }}" alt="Avatar">
+                                    <img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="{{ $avatarUrl }}" alt="Avatar">
                                 @else
-                                    <div class="w-10 h-10 rounded-full bg-primary/20 text-yellow-700 dark:text-yellow-400 flex items-center justify-center font-bold text-sm">{{ $initials }}</div>
+                                    <div class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] flex items-center justify-center font-bold text-xs border border-[#f2f20d]/30">{{ $initials }}</div>
                                 @endif
                             </div>
-                            <!-- Details -->
                             <div class="flex-1 min-w-0">
-                                <div class="text-xs font-bold text-slate-800 dark:text-white truncate">{{ $user->full_name }}</div>
-                                <div class="text-[10px] font-semibold text-slate-400 truncate">{{ $user->email }}</div>
+                                <div class="text-xs font-bold text-white truncate">{{ $user->full_name }}</div>
+                                <div class="text-[10px] font-medium text-slate-400 truncate">{{ $user->email }}</div>
                             </div>
                             <div class="shrink-0">
-                                <span class="text-[9px] font-bold px-2 py-1 rounded-full {{ $badgeClass }}">{{ $roleAr }}</span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md {{ $badgeClass }}">{{ $roleAr }}</span>
                             </div>
                         </div>
                     @endforeach
                 @else
-                    <div class="text-center py-8 text-slate-400 text-xs font-semibold">لا يوجد مستخدمين آخرين في النظام</div>
+                    <div class="text-center py-8 text-slate-500 text-xs font-semibold">لا يوجد مستخدمين آخرين في النظام</div>
                 @endif
             </div>
         </div>
     </div>
 </div>
 
-<!-- ================= CSS EXTRA POLISHING ================= -->
+<!-- ================= CSS POLISHING ================= -->
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <style>
@@ -267,16 +280,16 @@
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
     .chat-bubble-received {
-        border-top-left-radius: 1.25rem;
-        border-top-right-radius: 1.25rem;
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 1.25rem;
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+        border-bottom-left-radius: 0.25rem;
+        border-bottom-right-radius: 1rem;
     }
     .chat-bubble-sent {
-        border-top-left-radius: 1.25rem;
-        border-top-right-radius: 1.25rem;
-        border-bottom-left-radius: 1.25rem;
-        border-bottom-right-radius: 0;
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+        border-bottom-left-radius: 1rem;
+        border-bottom-right-radius: 0.25rem;
     }
     
     @keyframes flash {
@@ -301,23 +314,19 @@
     window.activeMessagesData = {};
     let editingMessageId = null;
     
-    // Echo Connection Instance
     let echoInstance = null;
 
-    // Media Recording variables
     let mediaRecorder = null;
     let audioChunks = [];
     let recordTimerInterval = null;
     let recordDurationSecs = 0;
     let isRecordingCancelled = false;
 
-    // Run on window load
     document.addEventListener("DOMContentLoaded", function () {
         loadContacts();
         initializeEcho();
     });
 
-    // Initialize Laravel Echo
     function initializeEcho() {
         if (typeof window.Echo === 'undefined') {
             console.error('Laravel Echo CDN failed to load properly.');
@@ -338,11 +347,8 @@
             }
         });
 
-        // Listen for new messages on our private channel
         echoInstance.private('chat.' + currentUserId)
             .listen('MessageSent', (e) => {
-                console.log('Echo real-time event:', e);
-                // Check if the incoming message is from the active contact
                 if (activeContactId && parseInt(e.sender_id) === parseInt(activeContactId)) {
                     if (!document.getElementById('msg-' + e.id)) {
                         appendMessageBubble({
@@ -357,14 +363,11 @@
                         markActiveChatAsRead();
                     }
                 } else {
-                    // Trigger dynamic contacts list update to increment unread counter and update last message
                     loadContactsSilently();
                 }
             })
             .listen('MessagesMarkedAsRead', (e) => {
-                console.log('Read receipt event:', e);
                 if (activeContactId && parseInt(e.reader_id) === parseInt(activeContactId)) {
-                    // Update all single ticks (done) to double blue ticks (done_all) for our sent messages
                     document.querySelectorAll('#messages-feed .chat-bubble-sent').forEach(bubble => {
                         const tickSpan = bubble.parentElement.querySelector('.material-symbols-outlined');
                         if (tickSpan && tickSpan.innerText === 'done') {
@@ -377,7 +380,6 @@
             });
     }
 
-    // Dynamic Contacts List Loader
     function loadContacts() {
         const loadingDiv = document.getElementById('contacts-loading');
         const emptyDiv = document.getElementById('contacts-empty');
@@ -424,7 +426,6 @@
             });
     }
 
-    // Refresh contact list quietly to keep unread badges and messages synced
     function loadContactsSilently() {
         fetch("{{ route('teacher.messages.contacts') }}", {
             headers: {
@@ -443,32 +444,30 @@
             .catch(err => console.error("Silent contacts update failed: ", err));
     }
 
-    // Render Contact Item Rows with Role Badges and excerpt
     function renderContactsList(contacts) {
         const wrapper = document.getElementById('contacts-wrapper');
         wrapper.innerHTML = '';
 
         contacts.forEach(contact => {
-            // Pick Role badge color classes
-            let badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+            let badgeClass = 'bg-[#27272a] text-slate-300';
             let roleAr = contact.role;
             if (contact.role === 'admin') {
-                badgeClass = 'bg-rose-500/10 text-rose-500';
+                badgeClass = 'bg-rose-500/20 text-rose-400';
                 roleAr = 'الإدارة';
             } else if (contact.role === 'teacher') {
-                badgeClass = 'bg-blue-500/10 text-blue-500';
+                badgeClass = 'bg-blue-500/20 text-blue-400';
                 roleAr = 'المدرب';
             } else if (contact.role === 'student') {
-                badgeClass = 'bg-emerald-500/10 text-emerald-500';
+                badgeClass = 'bg-emerald-500/20 text-emerald-400';
                 roleAr = 'الطالب';
             } else if (contact.role === 'parent') {
-                badgeClass = 'bg-purple-500/10 text-purple-500';
+                badgeClass = 'bg-purple-500/20 text-purple-400';
                 roleAr = 'الأهل';
             } else if (contact.role === 'head') {
-                badgeClass = 'bg-amber-500/10 text-amber-500';
+                badgeClass = 'bg-amber-500/20 text-amber-400';
                 roleAr = 'رئيس القسم';
             } else if (contact.role === 'affairs') {
-                badgeClass = 'bg-cyan-500/10 text-cyan-500';
+                badgeClass = 'bg-cyan-500/20 text-cyan-400';
                 roleAr = 'الشؤون';
             }
 
@@ -477,12 +476,11 @@
                 : '';
 
             const isActive = activeContactId && parseInt(contact.id) === parseInt(activeContactId) 
-                ? 'bg-slate-100 dark:bg-slate-800/80 border-r-4 border-[#FFCC00]' 
+                ? 'bg-[#1c1c22] border-r-4 border-[#f2f20d]' 
                 : '';
 
             const initials = contact.name.trim().charAt(0);
             
-            // Format Last Message preview label
             let lastMsgText = contact.last_message || 'ابدأ محادثة جديدة';
             if (contact.last_message === '[Attachment]') {
                 lastMsgText = '📁 ملف مرفق';
@@ -490,33 +488,34 @@
                 lastMsgText = '🎤 رسالة صوتية';
             }
 
+            const safeName = (contact.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeRole = (roleAr || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeImg = (contact.image || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
             const contactHtml = `
-                <div onclick="selectContact(${contact.id}, '${contact.name}', '${roleAr}', '${contact.image || ''}')" 
-                     class="contact-row flex items-center gap-3 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-all ${isActive}"
+                <div onclick="selectContact(${contact.id}, '${safeName}', '${safeRole}', '${safeImg}')" 
+                     class="contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-all ${isActive}"
                      data-name="${contact.name.toLowerCase()}">
                     
-                    <!-- Initials / Avatar image -->
                     <div class="relative shrink-0 select-none">
                         ${contact.image 
-                            ? `<img class="w-11 h-11 rounded-full object-cover" src="${contact.image}" alt="Avatar">`
-                            : `<div class="w-11 h-11 rounded-full bg-primary/20 text-yellow-700 dark:text-yellow-400 flex items-center justify-center font-bold text-sm">${initials}</div>`
+                            ? `<img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="${contact.image}" alt="Avatar">`
+                            : `<div class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] flex items-center justify-center font-bold text-xs border border-[#f2f20d]/30">${initials}</div>`
                         }
-                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-slate-300 border-2 border-white dark:border-slate-900 rounded-full status-indicator"></div>
+                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
                     </div>
 
-                    <!-- Details -->
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-slate-800 dark:text-white truncate">${contact.name}</span>
-                            <span class="text-[9px] text-slate-400">${contact.time || ''}</span>
+                            <span class="text-xs font-bold text-white truncate">${contact.name}</span>
+                            <span class="text-[9px] text-slate-500">${contact.time || ''}</span>
                         </div>
-                        <div class="flex items-center justify-between mt-1">
-                            <span class="text-[10px] font-semibold truncate text-slate-400 dark:text-slate-500 max-w-[130px]">${lastMsgText}</span>
-                            <span class="text-[8px] font-bold px-2 py-0.5 rounded-full ${badgeClass}">${roleAr}</span>
+                        <div class="flex items-center justify-between mt-0.5">
+                            <span class="text-[11px] font-medium truncate text-slate-400 max-w-[130px]">${lastMsgText}</span>
+                            <span class="text-[8px] font-bold px-2 py-0.5 rounded-md ${badgeClass}">${roleAr}</span>
                         </div>
                     </div>
                     
-                    <!-- Unread counter -->
                     <div class="shrink-0">
                         ${unreadBadge}
                     </div>
@@ -526,7 +525,6 @@
         });
     }
 
-    // Filter Contacts by Search Box input
     function filterContactsList() {
         const query = document.getElementById('contact-search').value.toLowerCase().trim();
         const rows = document.querySelectorAll('.contact-row');
@@ -543,11 +541,9 @@
         });
     }
 
-    // Modal Functions
     function openNewChatModal() {
         const modal = document.getElementById('new-chat-modal');
         modal.classList.remove('hidden');
-        // Small delay to allow transition
         setTimeout(() => {
             modal.classList.remove('opacity-0');
             document.getElementById('new-chat-modal-content').classList.remove('scale-95');
@@ -597,11 +593,9 @@
         }
     }
 
-    // Switch conversation details and fetch old chat history
     function selectContact(contactId, name, roleLabel, avatarUrl) {
         activeContactId = contactId;
 
-        // Toggle Sidebar visibility on mobile
         if (window.innerWidth < 768) {
             const sidebar = document.getElementById('contacts-sidebar-pane');
             const chatRoom = document.getElementById('chat-room-pane');
@@ -619,11 +613,9 @@
         document.getElementById('active-chat-window').classList.remove('hidden');
         document.getElementById('current-receiver-id').value = contactId;
 
-        // Update header contact name
         document.getElementById('active-contact-name').innerText = name;
         document.getElementById('active-contact-role').innerText = roleLabel;
 
-        // Update Header Avatar image
         const avatarPlaceholder = document.getElementById('active-contact-avatar-placeholder');
         const avatarImg = document.getElementById('active-contact-avatar-img');
 
@@ -638,19 +630,15 @@
             avatarPlaceholder.classList.remove('hidden');
         }
 
-        // Highlight selected row in sidebar
         loadContactsSilently();
-
-        // Fetch Messages from Server
         fetchMessagesFeed(contactId);
     }
 
-    // Fetch conversation logs from server
     function fetchMessagesFeed(contactId) {
         const feed = document.getElementById('messages-feed');
         feed.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full gap-2 text-slate-400 py-12">
-                <div class="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+                <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#f2f20d] border-t-transparent"></div>
                 <span class="text-xs font-semibold">تحميل الرسائل...</span>
             </div>
         `;
@@ -664,7 +652,6 @@
             .then(res => res.json())
             .then(data => {
                 feed.innerHTML = '';
-                // data from getConversation is just an array of messages
                 if (data.length > 0) {
                     data.forEach(msg => {
                         appendMessageBubble(msg);
@@ -673,7 +660,7 @@
                 } else {
                     feed.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-full text-slate-400 py-12 text-center">
-                            <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">forum</span>
+                            <span class="material-symbols-outlined text-4xl text-slate-600 mb-2">forum</span>
                             <span class="text-xs font-bold">لا توجد رسائل سابقة. ابدأ المحادثة الآن!</span>
                         </div>
                     `;
@@ -685,13 +672,10 @@
             });
     }
 
-    // Mark current active messages as read
     function markActiveChatAsRead() {
         if (!activeContactId) return;
-        // The getConversation route already handles marking as read, but for realtime we can just call it or ignore
     }
 
-    // Append Message Bubble into Feed container
     function appendMessageBubble(msg) {
         const feed = document.getElementById('messages-feed');
         const isMe = parseInt(msg.sender_id) === parseInt(currentUserId);
@@ -703,8 +687,8 @@
 
         const alignClass = isMe ? 'justify-end' : 'justify-start';
         const bgBubble = isMe 
-            ? 'bg-[#FFCC00] text-black chat-bubble-sent shadow-soft' 
-            : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 chat-bubble-received border border-slate-200/50 dark:border-slate-800/80 shadow-soft';
+            ? 'bg-[#2d3748] text-slate-100 chat-bubble-sent shadow-md border border-[#3f3f46]/30' 
+            : 'bg-[#27272a] text-slate-100 chat-bubble-received border border-[#3f3f46]/30 shadow-md';
 
         const msgTime = new Date(msg.created_at).toLocaleTimeString('ar-EG', {
             hour: '2-digit',
@@ -745,7 +729,7 @@
             pendingOverlay = `
                 <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-xl gap-2 p-3 z-20 select-none transition-all">
                     <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden max-w-[180px]">
-                        <div id="overlay-progress-bar-${msg.id}" class="bg-[#FFCC00] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+                        <div id="overlay-progress-bar-${msg.id}" class="bg-[#f2f20d] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
                     </div>
                     <span id="overlay-progress-text-${msg.id}" class="text-[10px] font-bold tracking-wide drop-shadow-sm">${pendingLabel} 0%</span>
                 </div>
@@ -753,8 +737,8 @@
 
             pendingProgressHtml = `
                 <div class="mt-2.5 w-full min-w-[180px] dir-rtl">
-                    <div class="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 overflow-hidden border border-black/5 dark:border-white/10">
-                        <div id="progress-bar-${msg.id}" class="bg-amber-500 dark:bg-amber-400 h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+                    <div class="w-full bg-black/20 rounded-full h-2 overflow-hidden border border-white/10">
+                        <div id="progress-bar-${msg.id}" class="bg-[#f2f20d] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
                     </div>
                     <div class="flex items-center justify-between mt-1 text-[10px] font-bold opacity-80">
                         <span id="progress-text-${msg.id}">${pendingLabel} 0%</span>
@@ -768,7 +752,7 @@
         if (url) {
             if (fileType.startsWith('image/')) {
                 mediaHtml = `
-                    <div class="relative mt-2 rounded-xl overflow-hidden border border-black/10 dark:border-white/10 max-w-[260px]">
+                    <div class="relative mt-2 rounded-xl overflow-hidden border border-white/10 max-w-[260px]">
                         ${pendingOverlay}
                         <img src="${url}" class="w-full object-cover cursor-pointer max-h-52 hover:opacity-95 transition-opacity" onclick="openImageLightbox('${url}')" alt="Attachment">
                     </div>
@@ -778,16 +762,16 @@
                 mediaHtml = `
                     <div class="relative mt-1 max-w-[270px]">
                         ${pendingOverlay}
-                        <div class="flex items-center gap-3 p-3 rounded-2xl ${isMe ? 'bg-black/10 text-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'} min-w-[230px] dir-ltr select-none border border-black/5 dark:border-white/10">
+                        <div class="flex items-center gap-3 p-3 rounded-2xl bg-[#1c1c22] text-slate-100 min-w-[230px] dir-ltr select-none border border-white/10">
                             <audio id="${voiceId}" src="${url}" preload="metadata" ontimeupdate="updateVoiceProgress('${voiceId}')" onended="resetVoicePlayer('${voiceId}')"></audio>
                             
-                            <button type="button" onclick="toggleVoicePlay('${voiceId}')" id="btn-${voiceId}" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isMe ? 'bg-black text-white hover:bg-slate-900' : 'bg-amber-500 text-white hover:bg-amber-600'} transition-all shadow-md active:scale-95">
-                                <span class="material-symbols-outlined text-xl" id="icon-${voiceId}">play_arrow</span>
+                            <button type="button" onclick="toggleVoicePlay('${voiceId}')" id="btn-${voiceId}" class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-[#f2f20d] text-black hover:bg-[#d9d90b] transition-all shadow-md active:scale-95">
+                                <span class="material-symbols-outlined text-lg" id="icon-${voiceId}">play_arrow</span>
                             </button>
 
                             <div class="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
-                                <div class="relative w-full h-2 bg-black/10 dark:bg-white/15 rounded-full overflow-hidden cursor-pointer" onclick="seekVoice('${voiceId}', event)">
-                                    <div id="progress-${voiceId}" class="h-full ${isMe ? 'bg-black' : 'bg-amber-500'} rounded-full transition-all duration-100" style="width: 0%;"></div>
+                                <div class="relative w-full h-2 bg-white/15 rounded-full overflow-hidden cursor-pointer" onclick="seekVoice('${voiceId}', event)">
+                                    <div id="progress-${voiceId}" class="h-full bg-[#f2f20d] rounded-full transition-all duration-100" style="width: 0%;"></div>
                                 </div>
                                 
                                 <div class="flex items-center justify-between text-[10px] font-bold opacity-75 dir-rtl">
@@ -811,10 +795,10 @@
                 mediaHtml = `
                     <div class="relative mt-2 max-w-[260px]">
                         ${pendingOverlay}
-                        <a href="${url}" download="${fileName}" target="_blank" class="flex items-center gap-2 p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 text-xs font-bold transition-all truncate group/doc">
-                            <span class="material-symbols-outlined text-amber-500 shrink-0">description</span>
-                            <span class="truncate">${displayName}</span>
-                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-amber-500 text-sm mr-auto shrink-0 transition-colors">download</span>
+                        <a href="${url}" download="${fileName}" target="_blank" class="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold transition-all truncate group/doc">
+                            <span class="material-symbols-outlined text-[#f2f20d] shrink-0">description</span>
+                            <span class="truncate text-slate-200">${displayName}</span>
+                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-[#f2f20d] text-sm mr-auto shrink-0 transition-colors">download</span>
                         </a>
                     </div>
                 `;
@@ -828,16 +812,16 @@
 
         const isRead = parseInt(msg.is_read) === 1;
         const checkmarkIcon = msg.isPending
-            ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+            ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
                 <span class="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
                 <span>جاري الإرسال...</span>
                </span>`
             : (isRead
-                ? '<span class="material-symbols-outlined text-[10px] text-blue-500">done_all</span>'
+                ? '<span class="material-symbols-outlined text-[10px] text-blue-400">done_all</span>'
                 : '<span class="material-symbols-outlined text-[10px] text-slate-400">done</span>');
 
         const timerIconHtml = (msg.disappears_after || msg.expires_at) 
-            ? `<span class="material-symbols-outlined text-[12px] text-amber-500 shrink-0" title="رسالة ذاتية الاختفاء">timer</span>` 
+            ? `<span class="material-symbols-outlined text-[12px] text-amber-400 shrink-0" title="رسالة ذاتية الاختفاء">timer</span>` 
             : '';
 
         const bubbleId = msg.id ? `id="msg-${msg.id}"` : '';
@@ -848,29 +832,33 @@
         let optionsHtml = '';
         if (!msg.isPending) {
             optionsHtml = `
-                <div class="relative group/options flex flex-col justify-center px-2">
-                    <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" onclick="toggleMsgOptions('${msg.id}')">
+                <div class="relative group/options flex flex-col justify-center px-1">
+                    <button type="button" class="text-slate-500 hover:text-slate-300 p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" onclick="toggleMsgOptions('${msg.id}')">
                         <span class="material-symbols-outlined text-sm">more_vert</span>
                     </button>
-                    <div id="msg-options-${msg.id}" class="hidden absolute ${isMe ? 'left-0' : 'right-0'} bottom-8 mb-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 text-xs min-w-[110px] z-[99] flex flex-col">
-                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 w-full">تعديل</button>` : ''}
-                        <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 w-full">حذف</button>
+                    <div id="msg-options-${msg.id}" class="hidden absolute ${isMe ? 'left-0' : 'right-0'} bottom-8 mb-1 bg-[#1c1c20] rounded-xl shadow-xl border border-[#27272a] py-1 text-xs min-w-[110px] z-[99] flex flex-col">
+                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-[#27272a] text-slate-200 w-full">تعديل</button>` : ''}
+                        <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-red-500/20 text-red-400 w-full">حذف</button>
                     </div>
                 </div>
             `;
         }
 
+        const activeContactName = document.getElementById('active-contact-name')?.innerText || '';
+        const senderLabel = isMe ? '' : (activeContactName ? activeContactName.split(' ')[0] : '');
+
         const bubbleHtml = `
-            <div ${bubbleId} class="group flex ${alignClass} w-full mb-3.5 ${pendingClass}">
+            <div ${bubbleId} class="group flex ${alignClass} w-full mb-3 ${pendingClass}">
                 ${isMe ? optionsHtml : ''}
                 <div class="flex flex-col max-w-[75%]">
-                    <div class="px-4 py-3 text-sm leading-relaxed ${bgBubble}">
-                        ${textToShow ? `<p class="whitespace-pre-line font-medium">${textToShow}</p>` : ''}
+                    <div class="px-4 py-3 text-xs md:text-sm leading-relaxed ${bgBubble}">
+                        ${textToShow ? `<p class="whitespace-pre-line font-medium text-slate-100">${textToShow}</p>` : ''}
                         ${mediaHtml}
                         ${msg.isPending && (!url || (!fileType.startsWith('image/') && !fileType.startsWith('video/') && !fileType.startsWith('audio/') && msg.message !== '[Voice Note]')) ? pendingProgressHtml : ''}
                     </div>
-                    <span class="text-[9px] text-slate-400 mt-1 px-1 font-semibold flex items-center gap-1.5 ${isMe ? 'self-end' : 'self-start'}">
-                        ${msgTime}
+                    <span class="text-[9.5px] text-slate-400 mt-1 px-1 font-semibold flex items-center gap-1.5 ${isMe ? 'self-end' : 'self-start'}">
+                        ${senderLabel ? `<span class="text-slate-400 opacity-90">${senderLabel}</span>` : ''}
+                        <span>${msgTime}</span>
                         ${timerIconHtml}
                         ${isMe ? checkmarkIcon : ''}
                     </span>
@@ -878,17 +866,12 @@
                 ${!isMe ? optionsHtml : ''}
             </div>
         `;
-
         feed.innerHTML += bubbleHtml;
     }
 
     function scrollMessagesToBottom() {
         const feed = document.getElementById('messages-feed');
         feed.scrollTop = feed.scrollHeight;
-    }
-
-    function showSidebarOnMobile() {
-        document.getElementById('contacts-sidebar-pane').classList.remove('hidden');
     }
 
     function handleFileSelection(event) {
@@ -1110,7 +1093,6 @@
         }
     }
 
-    // --- Voice Note Custom Player Logic ---
     function toggleVoicePlay(id) {
         const audio = document.getElementById(id);
         const icon = document.getElementById('icon-' + id);
@@ -1175,7 +1157,6 @@
         audio.currentTime = seekTime;
     }
 
-    // --- New Advanced Chat Features ---
     function toggleMsgOptions(id) {
         const el = document.getElementById('msg-options-' + id);
         if (el) {
@@ -1204,16 +1185,16 @@
         document.getElementById('message-text').focus();
         
         document.getElementById('send-btn-icon').innerText = 'update';
-        document.getElementById('send-btn').classList.replace('bg-[#FFCC00]', 'bg-blue-500');
-        document.getElementById('send-btn').classList.replace('text-black', 'text-white');
+        document.getElementById('send-btn').classList.replace('bg-[#27272a]', 'bg-blue-600');
+        document.getElementById('send-btn').classList.replace('text-[#f2f20d]', 'text-white');
     }
 
     function cancelEditMode() {
         editingMessageId = null;
         document.getElementById('message-text').value = '';
         document.getElementById('send-btn-icon').innerText = 'send';
-        document.getElementById('send-btn').classList.replace('bg-blue-500', 'bg-[#FFCC00]');
-        document.getElementById('send-btn').classList.replace('text-white', 'text-black');
+        document.getElementById('send-btn').classList.replace('bg-blue-600', 'bg-[#27272a]');
+        document.getElementById('send-btn').classList.replace('text-white', 'text-[#f2f20d]');
     }
 
     function deleteMessage(id) {
@@ -1411,16 +1392,18 @@
         xhr.send(fd);
     }
 
+</script>
+@endpush
+
 <!-- ================= IMAGE LIGHTBOX MODAL ================= -->
 <div id="image-lightbox-modal" class="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md hidden flex flex-col items-center justify-between p-4 md:p-6 transition-all duration-300 opacity-0 select-none">
-    <!-- Top Action Bar -->
     <div class="w-full flex items-center justify-between text-white max-w-5xl z-10">
         <button type="button" onclick="closeImageLightbox()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold transition-all text-slate-200 hover:text-white backdrop-blur-sm">
             <span class="material-symbols-outlined text-lg">arrow_back</span>
             <span>رجوع للمحادثة</span>
         </button>
         <div class="flex items-center gap-3">
-            <a id="lightbox-download-btn" href="#" download target="_blank" class="flex items-center gap-2 px-5 py-2 rounded-full bg-[#FFCC00] text-black font-bold text-xs hover:bg-amber-400 transition-all shadow-lg active:scale-95">
+            <a id="lightbox-download-btn" href="#" download target="_blank" class="flex items-center gap-2 px-5 py-2 rounded-full bg-[#f2f20d] text-black font-bold text-xs hover:bg-[#d9d90b] transition-all shadow-lg active:scale-95">
                 <span class="material-symbols-outlined text-base">download</span>
                 <span>تنزيل الصورة</span>
             </a>
@@ -1430,7 +1413,6 @@
         </div>
     </div>
     
-    <!-- Image Display Container -->
     <div class="flex-1 flex items-center justify-center w-full max-w-5xl my-4 overflow-hidden" onclick="closeImageLightbox()">
         <img id="lightbox-image" src="" alt="صورة المعاينة" class="max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
     </div>
@@ -1440,7 +1422,6 @@
 <script>
     let currentDisappearsAfter = 0;
 
-    // Disappearing Messages Helper Functions
     function toggleDisappearingMenu() {
         const menu = document.getElementById('disappearing-menu');
         if (menu) menu.classList.toggle('hidden');
@@ -1465,7 +1446,6 @@
         }
     }
 
-    // Image Lightbox Viewer Helper Functions
     function openImageLightbox(url) {
         const modal = document.getElementById('image-lightbox-modal');
         const img = document.getElementById('lightbox-image');
@@ -1502,7 +1482,6 @@
             closeImageLightbox();
         }
     });
-
 
 </script>
 @endpush
