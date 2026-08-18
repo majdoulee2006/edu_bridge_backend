@@ -167,14 +167,14 @@ class DatabaseSeeder extends Seeder
                'full_name' => 'محمد المحمد',
                'username' => 'affairs_user',
                'email' => 'affairs@edu-bridge.com',
-               'password' => Hash::make('password123'),
+               'password' => Hash::make('12345678'),
                'role_id' => 6,
                'status' => 'active',
            ]);
        } else {
            $affairsUser->update([
                'username' => 'affairs_user',
-               'password' => Hash::make('password123'),
+               'password' => Hash::make('12345678'),
                'role_id' => 6,
                'status' => 'active',
            ]);
