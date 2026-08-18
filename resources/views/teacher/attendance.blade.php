@@ -92,7 +92,7 @@
                     
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         @if($session->is_active)
-                            <button class="action-btn btn-qr" onclick="showQRModal('{{ $session->id }}', '{{ $session->qr_token }}', '{{ $session->session_expires_at ?? $session->expires_at }}')">
+                            <button class="action-btn btn-qr" onclick="showQRModal('{{ $session->id }}', '{{ $session->qr_token }}', '{{ \Carbon\Carbon::parse($session->session_expires_at ?? $session->expires_at)->toIso8601String() }}')">
                                 <i class="fa-solid fa-qrcode"></i> عرض QR
                             </button>
                             
@@ -322,7 +322,20 @@
     function showQRModal(sessionId, token, sessionExpiresAt) {
         currentSessionId = sessionId;
         currentToken = token;
-        sessionEndTime = new Date(sessionExpiresAt);
+        
+        if (sessionExpiresAt) {
+            let isoString = String(sessionExpiresAt).trim();
+            if (isoString.indexOf('T') === -1 && isoString.indexOf(' ') !== -1) {
+                isoString = isoString.replace(' ', 'T') + 'Z';
+            }
+            sessionEndTime = new Date(isoString);
+        } else {
+            sessionEndTime = new Date(Date.now() + 10 * 60 * 1000);
+        }
+
+        if (isNaN(sessionEndTime.getTime())) {
+            sessionEndTime = new Date(Date.now() + 10 * 60 * 1000);
+        }
 
         // Render QR
         renderQR(token);
@@ -530,5 +543,16 @@
         });
         list.innerHTML = html;
     }
+
+    @if(session('new_session_id'))
+        @php
+            $newSess = $recentSessions->firstWhere('id', session('new_session_id'));
+        @endphp
+        @if($newSess)
+            document.addEventListener('DOMContentLoaded', function() {
+                showQRModal('{{ $newSess->id }}', '{{ $newSess->qr_token }}', '{{ \Carbon\Carbon::parse($newSess->session_expires_at ?? $newSess->expires_at)->toIso8601String() }}');
+            });
+        @endif
+    @endif
 </script>
 @endpush

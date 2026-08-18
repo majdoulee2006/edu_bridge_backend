@@ -810,6 +810,7 @@ class StudentController extends Controller
                     'room'       => 'القاعة الدراسية',
                     'max_score'  => $e->max_score,
                     'score'      => $e->score,
+                    'date'       => $date->toDateString(), // added for sorting
                 ];
             });
 
