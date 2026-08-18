@@ -145,6 +145,15 @@ class HODWebController extends Controller
             'target'  => 'required|in:students,students_teachers,all',
         ]);
 
+        $senderId = auth()->id();
+
+        // Prevent duplicate notification sending within 5 seconds (Server-side Anti-Spam protection)
+        $cacheKey = 'hod_web_notif_sent_' . $senderId . '_' . md5($request->title . '_' . $request->message . '_' . $request->target);
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return redirect()->back()->with('success', 'تم إرسال الإشعار بنجاح!');
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 5);
+
         $category = 'administrative';
 
         // تحديد المستخدمين المستهدفين
@@ -241,7 +250,6 @@ class HODWebController extends Controller
         $request->validate([
             'phone'            => 'nullable|string|max:20',
             'birth_date'       => 'nullable|date',
-            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'password'         => 'nullable|string|min:6',
             'telegram_chat_id' => 'nullable|string',
         ]);
@@ -261,7 +269,7 @@ class HODWebController extends Controller
 
         session([
             'profile_otp'          => $otp,
-            'pending_profile_data' => $request->only(['phone', 'birth_date', 'email', 'password'])
+            'pending_profile_data' => $request->only(['phone', 'birth_date', 'password'])
         ]);
 
         return response()->json([
@@ -289,10 +297,6 @@ class HODWebController extends Controller
 
             if (isset($data['birth_date'])) {
                 $user->birth_date = $data['birth_date'];
-            }
-
-            if (isset($data['email'])) {
-                $user->email = $data['email'];
             }
 
             if (isset($data['password'])) {

@@ -33,7 +33,7 @@
         </div>
 
         <div style="display:flex; gap:0.75rem;">
-            <button id="cropConfirm" style="flex:1; padding:0.9rem; background:#f2f20d; color:#1a1a1a; border:none; border-radius:0.75rem; font-weight:800; cursor:pointer; font-size:0.95rem; font-family:inherit;">
+            <button id="cropConfirm" class="bg-primary text-primary-content" style="flex:1; padding:0.9rem; border:none; border-radius:0.75rem; font-weight:800; cursor:pointer; font-size:0.95rem; font-family:inherit;">
                 ✓ قص وتأكيد
             </button>
             <button id="cropCancelBtn" style="padding:0.9rem 1.5rem; background:transparent; border:2px solid #475569; color:white; border-radius:0.75rem; font-weight:700; cursor:pointer; font-size:0.95rem; font-family:inherit;">

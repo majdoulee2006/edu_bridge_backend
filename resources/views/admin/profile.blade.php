@@ -10,12 +10,12 @@
     <div class="w-full h-48 rounded-3xl shadow-glow"
          style="background: linear-gradient(135deg, #080808 0%, #111827 50%, #1f2937 100%); border: 1px solid rgba(242,242,13,0.2); overflow:hidden; position:relative;">
         <div style="position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(242,242,13,0.05) 0,rgba(242,242,13,0.05) 1px,transparent 1px,transparent 18px);"></div>
-        <div style="position:absolute;bottom:0;right:3rem;width:180px;height:180px;border-radius:50%;background:#f2f20d;opacity:0.1;filter:blur(50px);"></div>
-        <div style="position:absolute;top:0;left:2rem;width:120px;height:120px;border-radius:50%;background:#f2f20d;opacity:0.06;filter:blur(40px);"></div>
+        <div style="position:absolute;bottom:0;right:3rem;width:180px;height:180px;border-radius:50%;opacity:0.1;filter:blur(50px);" class="bg-primary"></div>
+        <div style="position:absolute;top:0;left:2rem;width:120px;height:120px;border-radius:50%;opacity:0.06;filter:blur(40px);" class="bg-primary"></div>
     </div>
     {{-- Avatar تظهر خارج الـ cover --}}
-    <div class="absolute flex items-center justify-center text-4xl font-black"
-         style="width:100px;height:100px;border-radius:50%;bottom:-50px;right:2.5rem;background:linear-gradient(135deg,#f2f20d,#d9d905);color:#101924;border:5px solid #111827;box-shadow:0 4px 20px rgba(242,242,13,0.35);">
+    <div class="absolute flex items-center justify-center text-4xl font-black bg-primary text-primary-content"
+         style="width:100px;height:100px;border-radius:50%;bottom:-50px;right:2.5rem;border:5px solid #111827;box-shadow:0 4px 20px rgba(0,0,0,0.35);">
         {{ mb_substr($user->full_name ?? 'م', 0, 1) }}
     </div>
 </div>
@@ -24,15 +24,15 @@
 <div class="flex items-start justify-between gap-4 mb-8 px-1">
     <div style="margin-right: 130px;">
         <h2 class="text-2xl font-black text-slate-900 dark:text-white">{{ $user->full_name }}</h2>
-        <span class="inline-block mt-1 px-4 py-1 rounded-full text-sm font-bold" style="background:#f2f20d;color:#101924;">مدير النظام التعليمي</span>
+        <span class="inline-block mt-1 px-4 py-1 rounded-full text-sm font-bold bg-primary text-primary-content">مدير النظام التعليمي</span>
     </div>
     <div class="flex gap-3 flex-shrink-0">
         <div class="text-center px-5 py-3 rounded-2xl bg-white dark:bg-slate-800 shadow-soft border border-slate-100 dark:border-slate-700">
-            <span class="block text-2xl font-black" style="color:#f2f20d;">{{ $totalUsers }}</span>
+            <span class="block text-2xl font-black text-primary">{{ $totalUsers }}</span>
             <span class="text-xs text-slate-500 dark:text-slate-400 font-semibold">الحسابات</span>
         </div>
         <div class="text-center px-5 py-3 rounded-2xl bg-white dark:bg-slate-800 shadow-soft border border-slate-100 dark:border-slate-700">
-            <span class="block text-2xl font-black" style="color:#f2f20d;">{{ $totalCourses }}</span>
+            <span class="block text-2xl font-black text-primary">{{ $totalCourses }}</span>
             <span class="text-xs text-slate-500 dark:text-slate-400 font-semibold">الدورات</span>
         </div>
     </div>
@@ -44,14 +44,14 @@
     {{-- ── يمين: المعلومات الشخصية ──────────────────── --}}
     <div class="flex flex-col gap-4">
         <h3 class="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1 flex items-center gap-2">
-            <span class="w-1 h-4 rounded-full inline-block" style="background:#f2f20d;"></span>
+            <span class="w-1 h-4 rounded-full inline-block bg-primary"></span>
             المعلومات الشخصية
         </h3>
 
         {{-- الهاتف --}}
         <div class="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-800 shadow-soft border border-slate-100 dark:border-slate-700 hover:-translate-x-1 transition-transform">
             <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-full flex items-center justify-center" style="background: rgba(242,242,13,0.12); color: #f2f20d;">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center bg-primary/10 text-primary">
                     <i class="fa-solid fa-phone"></i>
                 </div>
                 <div>
@@ -59,7 +59,7 @@
                     <p class="font-bold text-slate-900 dark:text-white" dir="ltr" style="text-align:right">{{ $user->phone ?? 'غير محدد' }}</p>
                 </div>
             </div>
-            <button onclick="openEditModal('phone')" class="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors hover:opacity-70" style="color:#f2f20d; background:none; border:none; cursor:pointer;">
+            <button onclick="openEditModal('phone')" class="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors text-primary hover:opacity-70" style="background:none; border:none; cursor:pointer;">
                 <i class="fa-solid fa-pen"></i>
             </button>
         </div>
@@ -67,7 +67,7 @@
         {{-- البريد --}}
         <div class="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-800 shadow-soft border border-slate-100 dark:border-slate-700 hover:-translate-x-1 transition-transform">
             <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-full flex items-center justify-center" style="background: rgba(242,242,13,0.12); color: #f2f20d;">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center bg-primary/10 text-primary">
                     <i class="fa-solid fa-envelope"></i>
                 </div>
                 <div>
@@ -75,16 +75,14 @@
                     <p class="font-bold text-slate-900 dark:text-white">{{ $user->email }}</p>
                 </div>
             </div>
-            <button onclick="openEditModal('email')" class="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors hover:opacity-70" style="color:#f2f20d; background:none; border:none; cursor:pointer;">
-                <i class="fa-solid fa-pen"></i>
-            </button>
+            <i class="fa-solid fa-lock text-slate-400 opacity-60"></i>
         </div>
     </div>
 
     {{-- ── يسار: إعدادات الحساب ──────────────────── --}}
     <div class="flex flex-col gap-4">
         <h3 class="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1 flex items-center gap-2">
-            <span class="w-1 h-4 rounded-full inline-block" style="background:#f2f20d;"></span>
+            <span class="w-1 h-4 rounded-full inline-block bg-primary"></span>
             إعدادات الحساب
         </h3>
 
@@ -92,7 +90,7 @@
         <button onclick="openPasswordModal()"
                 class="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-800 shadow-soft border border-slate-100 dark:border-slate-700 hover:-translate-x-1 transition-transform w-full text-right">
             <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-full flex items-center justify-center" style="background: rgba(242,242,13,0.12); color: #f2f20d;">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center bg-primary/10 text-primary">
                     <i class="fa-solid fa-key"></i>
                 </div>
                 <div>
@@ -107,7 +105,7 @@
         <button onclick="window.location.href='/admin/settings'"
                 class="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-800 shadow-soft border border-slate-100 dark:border-slate-700 hover:-translate-x-1 transition-transform w-full text-right">
             <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-full flex items-center justify-center" style="background: rgba(242,242,13,0.12); color: #f2f20d;">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center bg-primary/10 text-primary">
                     <i class="fa-solid fa-gear"></i>
                 </div>
                 <div>
@@ -132,11 +130,7 @@
             <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:#9ca3af;font-size:0.85rem;">رقم الهاتف</label>
             <input type="text" name="phone" value="{{ $user->phone }}" style="width:100%;padding:0.8rem 1rem;border:1px solid #374151;border-radius:0.75rem;background:#1a2633;color:#f9fafb;outline:none;font-size:0.95rem;box-sizing:border-box;">
         </div>
-        <div id="emailInputGroup" style="display:none;margin-bottom:1rem;">
-            <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:#9ca3af;font-size:0.85rem;">البريد الإلكتروني</label>
-            <input type="email" name="email" value="{{ $user->email }}" style="width:100%;padding:0.8rem 1rem;border:1px solid #374151;border-radius:0.75rem;background:#1a2633;color:#f9fafb;outline:none;font-size:0.95rem;box-sizing:border-box;">
-        </div>
-        <button type="submit" style="width:100%;padding:0.9rem;border-radius:0.75rem;border:none;background:#f2f20d;color:#101924;font-weight:800;font-size:1rem;cursor:pointer;margin-bottom:0.5rem;">حفظ التغييرات</button>
+        <button type="submit" class="w-full py-3 rounded-xl font-bold bg-primary text-primary-content shadow-glow mb-2">حفظ التغييرات</button>
         <button type="button" onclick="closeModals()" style="width:100%;padding:0.8rem;border-radius:0.75rem;border:none;background:transparent;color:#9ca3af;font-weight:700;cursor:pointer;">إلغاء</button>
     </form>
 </div>
@@ -159,7 +153,7 @@
             <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:#9ca3af;font-size:0.85rem;">تأكيد كلمة المرور</label>
             <input type="password" name="new_password_confirmation" required style="width:100%;padding:0.8rem 1rem;border:1px solid #374151;border-radius:0.75rem;background:#1a2633;color:#f9fafb;outline:none;box-sizing:border-box;">
         </div>
-        <button type="submit" style="width:100%;padding:0.9rem;border-radius:0.75rem;border:none;background:#f2f20d;color:#101924;font-weight:800;font-size:1rem;cursor:pointer;margin-bottom:0.5rem;">تغيير كلمة المرور</button>
+        <button type="submit" class="w-full py-3 rounded-xl font-bold bg-primary text-primary-content shadow-glow mb-2">تغيير كلمة المرور</button>
         <button type="button" onclick="closeModals()" style="width:100%;padding:0.8rem;border-radius:0.75rem;border:none;background:transparent;color:#9ca3af;font-weight:700;cursor:pointer;">إلغاء</button>
     </form>
 </div>
@@ -170,15 +164,8 @@
 @push('scripts')
 <script>
     function openEditModal(field) {
-        document.getElementById('phoneInputGroup').style.display = 'none';
-        document.getElementById('emailInputGroup').style.display = 'none';
-        if (field === 'phone') {
-            document.getElementById('modalTitle').innerText = 'تعديل رقم الهاتف';
-            document.getElementById('phoneInputGroup').style.display = 'block';
-        } else {
-            document.getElementById('modalTitle').innerText = 'تعديل البريد الإلكتروني';
-            document.getElementById('emailInputGroup').style.display = 'block';
-        }
+        document.getElementById('phoneInputGroup').style.display = 'block';
+        document.getElementById('modalTitle').innerText = 'تعديل رقم الهاتف';
         const m = document.getElementById('editInfoModal');
         m.style.display = 'flex';
     }

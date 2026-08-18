@@ -361,7 +361,7 @@
                     <div class="info-value">{{ $user->email }}</div>
                 </div>
             </div>
-            <button class="edit-btn" onclick="openEditModal('email')"><i class="fa-solid fa-pen"></i></button>
+            <i class="fa-solid fa-lock" style="opacity: 0.4; font-size: 1rem; color: var(--text-secondary); margin-left: 0.5rem;"></i>
         </div>
 
         <!-- Birthdate -->
@@ -444,11 +444,6 @@
                 <input type="text" name="phone" class="form-control" value="{{ $user->phone }}" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
             </div>
 
-            <div id="emailInputGroup" style="display: none; text-align: right; margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">البريد الإلكتروني</label>
-                <input type="email" name="email" class="form-control" value="{{ $user->email }}" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
-            </div>
-
             <button type="submit" class="modal-confirm-btn">حفظ التغييرات</button>
             <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
         </form>
@@ -505,18 +500,8 @@
 
     function openEditModal(field) {
         document.getElementById('editInfoModal').classList.add('active');
-        document.getElementById('phoneInputGroup').style.display = 'none';
-        document.getElementById('emailInputGroup').style.display = 'none';
-
-        if (field === 'phone') {
-            document.getElementById('modalTitle').innerText = 'تعديل رقم الهاتف';
-            document.getElementById('phoneInputGroup').style.display = 'block';
-            document.getElementById('emailInputGroup').style.display = 'block'; 
-            document.getElementById('emailInputGroup').style.display = 'none';
-        } else if (field === 'email') {
-            document.getElementById('modalTitle').innerText = 'تعديل البريد الإلكتروني';
-            document.getElementById('emailInputGroup').style.display = 'block';
-        }
+        document.getElementById('phoneInputGroup').style.display = 'block';
+        document.getElementById('modalTitle').innerText = 'تعديل رقم الهاتف';
     }
 
     function openPasswordModal() {

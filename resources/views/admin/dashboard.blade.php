@@ -6,13 +6,13 @@
 @section('content')
 
 {{-- ===== Welcome Banner ===== --}}
-<div class="relative rounded-2xl overflow-hidden bg-gradient-to-l from-yellow-400 to-yellow-300 dark:from-yellow-500 dark:to-yellow-400 p-5 shadow-glow">
+<div class="relative rounded-2xl overflow-hidden bg-primary text-primary-content p-5 shadow-glow">
     <div class="absolute left-0 top-0 bottom-0 w-28 opacity-10 pointer-events-none overflow-hidden">
         <span class="material-symbols-outlined text-[110px] text-black absolute -left-3 -top-3">admin_panel_settings</span>
     </div>
-    <p class="text-[10px] font-extrabold text-yellow-900/60 mb-0.5 uppercase tracking-widest">لوحة التحكم</p>
-    <h2 class="text-xl font-extrabold text-slate-900 leading-tight">مرحباً، {{ Auth::user()->full_name ?? 'المدير العام' }}</h2>
-    <p class="text-xs text-slate-800/70 mt-1">
+    <p class="text-[10px] font-extrabold opacity-75 mb-0.5 uppercase tracking-widest">لوحة التحكم</p>
+    <h2 class="text-xl font-extrabold leading-tight">مرحباً، {{ Auth::user()->full_name ?? 'المدير العام' }}</h2>
+    <p class="text-xs opacity-90 mt-1">
         @php $pending = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
         @if($pending > 0)
             لديك <strong>{{ $pending }}</strong> {{ $pending == 1 ? 'إشعار' : 'إشعارات' }} تنتظر المراجعة
@@ -55,8 +55,7 @@
         <h3 class="text-sm font-bold text-slate-800 dark:text-white">آخر الأخبار والإعلانات</h3>
     </div>
     <a href="{{ route('admin.announcements.create') }}"
-       class="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold shadow-glow hover:scale-105 active:scale-95 transition-all"
-       style="background:#f2f20d;color:#101924;">
+       class="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-primary text-primary-content shadow-glow hover:scale-105 active:scale-95 transition-all">
         <span class="material-symbols-outlined text-[16px]">add</span>
         إضافة إعلان
     </a>

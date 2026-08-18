@@ -210,7 +210,7 @@
                 <i class="fa-solid fa-bell" style="color:var(--accent-color);margin-left:0.4rem;"></i>
                 إرسال إشعار جديد
             </h4>
-            <form action="{{ route('hod.notifications.send') }}" method="POST">
+            <form id="sendHodNotifForm" action="{{ route('hod.notifications.send') }}" method="POST">
                 @csrf
 
                 <div class="form-group">
@@ -241,8 +241,8 @@
                 </div>
 
                 <div style="display:flex;gap:0.75rem;margin-top:1rem;">
-                    <button type="submit" class="btn-send">
-                        <i class="fa-solid fa-paper-plane"></i> إرسال الإشعار
+                    <button type="submit" id="sendHodNotifBtn" class="btn-send" style="display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+                        <i class="fa-solid fa-paper-plane"></i> <span>إرسال الإشعار</span>
                     </button>
                     <button type="button" onclick="closeModal('send-notif-modal')" class="btn-cancel">إلغاء</button>
                 </div>
@@ -261,6 +261,37 @@
         document.querySelectorAll('.target-opt').forEach(o => o.classList.remove('selected'));
         el.classList.add('selected');
     }
+
+    // Anti-double click protection for send notification form
+    (function() {
+        const form = document.getElementById('sendHodNotifForm');
+        const btn = document.getElementById('sendHodNotifBtn');
+        let isSubmitted = false;
+
+        if (form && btn) {
+            form.addEventListener('submit', function(e) {
+                if (isSubmitted) {
+                    e.preventDefault();
+                    return false;
+                }
+                isSubmitted = true;
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.style.pointerEvents = 'none';
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>جاري الإرسال...</span>';
+            });
+        }
+
+        window.addEventListener('pageshow', function() {
+            isSubmitted = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الإشعار</span>';
+            }
+        });
+    })();
 
     function handleNotifClick(event, link, notifId, isUnread) {
         const card = event.currentTarget;

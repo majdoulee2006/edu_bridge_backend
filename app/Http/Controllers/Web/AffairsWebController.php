@@ -1225,13 +1225,11 @@ class AffairsWebController extends Controller
         $request->validate([
             'full_name' => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
-            'email'     => 'required|email|unique:users,email,' . $user->user_id . ',user_id',
         ]);
 
         $user->update([
             'full_name' => $request->full_name,
             'phone'     => $request->phone,
-            'email'     => $request->email,
         ]);
 
         return back()->with('success', 'تم تحديث الملف الشخصي بنجاح.');
@@ -1258,7 +1256,6 @@ class AffairsWebController extends Controller
         $request->validate([
             'full_name'        => 'nullable|string|max:255',
             'phone'            => 'nullable|string|max:20',
-            'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'current_password' => 'nullable|string',
             'new_password'     => 'nullable|string|min:6',
             'telegram_chat_id' => 'nullable|string',
@@ -1289,7 +1286,7 @@ class AffairsWebController extends Controller
 
         session([
             'affairs_profile_otp'          => $otp,
-            'affairs_pending_profile_data' => $request->only(['full_name', 'phone', 'email', 'new_password'])
+            'affairs_pending_profile_data' => $request->only(['full_name', 'phone', 'new_password'])
         ]);
 
         return response()->json([
@@ -1312,9 +1309,6 @@ class AffairsWebController extends Controller
 
             if (!empty($data['full_name'])) {
                 $updates['full_name'] = $data['full_name'];
-            }
-            if (!empty($data['email'])) {
-                $updates['email'] = $data['email'];
             }
             if (!empty($data['phone'])) {
                 $updates['phone'] = $data['phone'];

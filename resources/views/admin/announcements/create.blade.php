@@ -105,8 +105,7 @@
             {{-- أزرار --}}
             <div class="flex items-center gap-3 pt-2">
                 <button type="submit"
-                        class="flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm shadow-glow hover:scale-105 active:scale-95 transition-all"
-                        style="background:#f2f20d;color:#101924;">
+                        class="flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm bg-primary text-primary-content shadow-glow hover:scale-105 active:scale-95 transition-all">
                     <span class="material-symbols-outlined text-[18px]">send</span>
                     نشر الإعلان
                 </button>

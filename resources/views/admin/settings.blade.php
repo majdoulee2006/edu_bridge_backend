@@ -53,6 +53,43 @@
                 <label for="dark-mode-toggle-checkbox" class="block overflow-hidden h-6 rounded-full bg-slate-200 dark:bg-primary cursor-pointer transition-colors duration-300"></label>
             </div>
         </div>
+
+        <!-- System Primary Accent Color Picker -->
+        <div class="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-slate-400 text-[20px]">palette</span>
+                    <div>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">اللون الأساسي للنظام والتطبيق</span>
+                        <p class="text-[11px] text-slate-400">يتم تطبيق هذا اللون رسمياً على المظهر العام للويب والتطبيق</p>
+                    </div>
+                </div>
+                <span id="active-color-name" class="text-xs font-bold px-3 py-1 rounded-full text-slate-900 shadow-sm" style="background-color: {{ $themeSettings['primary_color'] ?? '#f2f20d' }};">
+                    {{ $themeSettings['accent_name'] ?? 'الأصفر المعهد' }}
+                </span>
+            </div>
+
+            <div class="grid grid-cols-6 gap-3 pt-2">
+                <button type="button" onclick="selectSystemColor('#f2f20d', 'الأصفر المعهد')" title="الأصفر المعهد" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #f2f20d; border-color: {{ ($themeSettings['primary_color'] ?? '#f2f20d') == '#f2f20d' ? '#ffffff' : 'transparent' }};">
+                    <i class="fa-solid fa-check text-slate-900 text-xs {{ ($themeSettings['primary_color'] ?? '#f2f20d') == '#f2f20d' ? '' : 'hidden' }}"></i>
+                </button>
+                <button type="button" onclick="selectSystemColor('#3b82f6', 'الأزرق الملكي')" title="الأزرق الملكي" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #3b82f6; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#3b82f6' ? '#ffffff' : 'transparent' }};">
+                    <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#3b82f6' ? '' : 'hidden' }}"></i>
+                </button>
+                <button type="button" onclick="selectSystemColor('#10b981', 'الأخضر الزمردي')" title="الأخضر الزمردي" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #10b981; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#10b981' ? '#ffffff' : 'transparent' }};">
+                    <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#10b981' ? '' : 'hidden' }}"></i>
+                </button>
+                <button type="button" onclick="selectSystemColor('#8b5cf6', 'الأرجواني الفاخر')" title="الأرجواني الفاخر" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #8b5cf6; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#8b5cf6' ? '#ffffff' : 'transparent' }};">
+                    <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#8b5cf6' ? '' : 'hidden' }}"></i>
+                </button>
+                <button type="button" onclick="selectSystemColor('#f97316', 'البرتقالي الدافئ')" title="البرتقالي الدافئ" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #f97316; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#f97316' ? '#ffffff' : 'transparent' }};">
+                    <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#f97316' ? '' : 'hidden' }}"></i>
+                </button>
+                <button type="button" onclick="selectSystemColor('#ef4444', 'الأحمر القرمزي')" title="الأحمر القرمزي" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #ef4444; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#ef4444' ? '#ffffff' : 'transparent' }};">
+                    <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#ef4444' ? '' : 'hidden' }}"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Language Settings -->
@@ -244,6 +281,29 @@
             btnEn.className = "px-3 py-1 text-xs font-bold rounded-full transition-all bg-white dark:bg-card-dark shadow-sm text-slate-900 dark:text-white";
             btnAr.className = "px-3 py-1 text-xs font-medium rounded-full transition-all text-slate-500 hover:text-slate-900 dark:hover:text-white";
         }
+    }
+
+    function selectSystemColor(hex, name) {
+        fetch('{{ route("admin.settings.theme") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                primary_color: hex,
+                accent_name: name
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('تم تطبيق وتغيير لون النظام والتطبيق بنجاح إلى: ' + name);
+                window.location.reload();
+            }
+        })
+        .catch(err => console.error(err));
     }
 </script>
 @endpush
