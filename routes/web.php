@@ -195,7 +195,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
 // ===== مسارات الشؤون (Affairs) =====
 use App\Http\Controllers\Web\AffairsWebController;
 
-Route::get('/affairs/login', fn() => redirect('/login'))->name('affairs.login');
+Route::get('/affairs/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'affairs'))->name('affairs.login');
 Route::post('/affairs/login', [UnifiedAuthController::class, 'login'])->name('affairs.login.submit');
 Route::post('/affairs/logout', [AffairsWebController::class, 'logout'])->name('affairs.logout');
 
@@ -295,7 +295,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
 // ===== مسارات الإدارة (Admin) =====
 use App\Http\Controllers\Web\AdminWebController;
 
-Route::get('/admin/login', fn() => redirect('/login'))->name('admin.login');
+Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
 Route::post('/admin/logout', [AdminWebController::class, 'logout'])->name('admin.logout');
 
@@ -403,7 +403,7 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
 // ===== مسارات الطالب (Student) =====
 use App\Http\Controllers\Web\StudentWebController;
 
-Route::get('/student/login', fn() => redirect('/login'))->name('student.login');
+Route::get('/student/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'student'))->name('student.login');
 Route::post('/student/login', [UnifiedAuthController::class, 'login'])->name('student.login.post');
 Route::post('/student/logout', [StudentWebController::class, 'logout'])->name('student.logout');
 
@@ -472,7 +472,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 use App\Http\Controllers\Web\ParentWebController;
 
 // تسجيل الدخول
-Route::get('/parent/login', fn() => redirect('/login'))->name('parent.login');
+Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
 Route::post('/parent/login', [UnifiedAuthController::class, 'login'])->name('parent.login.post');
 Route::post('/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
 
