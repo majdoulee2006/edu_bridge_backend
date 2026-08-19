@@ -258,6 +258,17 @@
                 <input type="text" name="title" id="event-title" placeholder="أدخل عنوان الحدث" required>
             </div>
 
+            {{-- القسم الموجه له الحدث --}}
+            <div class="form-group">
+                <label><i class="fa-solid fa-building-user" style="color:var(--accent-color);margin-left:0.4rem;"></i>القسم الموجه له الحدث</label>
+                <select name="department_id" id="event-department-id" style="width:100%; padding:0.8rem 1rem; border-radius:0.8rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); font-family:inherit; font-size:0.95rem; font-weight:700;">
+                    <option value="">-- عام (جميع الأقسام) --</option>
+                    @foreach($departments as $dept)
+                        <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- الوقت — picker مخصص --}}
             <div class="form-group">
                 <label><i class="fa-solid fa-clock" style="color:var(--accent-color);margin-left:0.4rem;"></i>وقت الحدث</label>
@@ -376,7 +387,9 @@
             date: '{{ $ev->event_date }}', 
             title: @json($ev->title), 
             time: '{{ substr($ev->event_time, 0, 5) }}', 
-            location: @json($ev->location) 
+            location: @json($ev->location),
+            department_id: @json($ev->department_id),
+            department_name: @json($ev->department ? $ev->department->name : null)
         },
         @endforeach
     ];
@@ -455,6 +468,8 @@
 
         currentMonthEvents.forEach(e => {
             const eDate = new Date(e.date + 'T00:00:00');
+            const deptText = e.department_name ? `<span style="background:rgba(59, 130, 246, 0.15); color:#2563eb; padding:0.15rem 0.55rem; border-radius:1rem; font-size:0.75rem; font-weight:700; margin-right:0.4rem;"><i class="fa-solid fa-building-user"></i> ${e.department_name}</span>` : `<span style="background:rgba(107, 114, 128, 0.15); color:var(--text-secondary); padding:0.15rem 0.55rem; border-radius:1rem; font-size:0.75rem; font-weight:700; margin-right:0.4rem;"><i class="fa-solid fa-earth-americas"></i> عام</span>`;
+
             eventsList.innerHTML += `
                 <div class="event-card">
                     <div class="event-date-box">
@@ -462,7 +477,10 @@
                         <div class="month-name">${monthNames[eDate.getMonth()]}</div>
                     </div>
                     <div class="event-details">
-                        <h4>${e.title}</h4>
+                        <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.3rem;">
+                            <h4 style="margin:0;">${e.title}</h4>
+                            ${deptText}
+                        </div>
                         <p>
                             <i class="fa-regular fa-clock"></i> ${formatTime(e.time)} 
                             &nbsp;&nbsp;&bull;&nbsp;&nbsp;
@@ -511,6 +529,7 @@
         const dateInput = document.getElementById('event-date');
         
         document.getElementById('addEventForm').reset();
+        document.getElementById('event-department-id').value = '';
         document.getElementById('addEventForm').action = "{{ route('affairs.calendar.store') }}";
         document.getElementById('modal-title').innerText = "إضافة حدث جديد";
 
@@ -534,6 +553,7 @@
         document.getElementById('event-date').value = event.date;
         document.getElementById('event-date').readOnly = false;
         document.getElementById('event-title').value = event.title;
+        document.getElementById('event-department-id').value = event.department_id || '';
         document.getElementById('event-location').value = event.location || '';
 
         // تعيين الوقت في الـ picker

@@ -222,6 +222,78 @@
         <h2>مراجعة طلبات الإجازة</h2>
     </div>
 
+    <!-- Advanced Filter Bar -->
+    <div style="background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.5rem; border: 1px solid var(--border-color); margin-bottom: 1.5rem; box-shadow: var(--shadow);">
+        <form method="GET" action="{{ route('affairs.leaves') }}" id="filterForm" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; align-items: end;">
+                
+                {{-- اختيار القسم --}}
+                <div>
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">
+                        <i class="fa-solid fa-building-user" style="color: var(--accent-color);"></i> تصفية حسب القسم:
+                    </label>
+                    <select name="department_id" style="width: 100%; padding: 0.65rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
+                        <option value="">-- جميع الأقسام --</option>
+                        @foreach($departments as $dept)
+                            <option value="{{ $dept->department_id }}" {{ $deptId == $dept->department_id ? 'selected' : '' }}>
+                                {{ $dept->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- نوع التصفية حسب التاريخ --}}
+                <div>
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">
+                        <i class="fa-solid fa-calendar-days" style="color: var(--accent-color);"></i> نوع التصفية الزمنية:
+                    </label>
+                    <select name="date_mode" id="date_mode_select" onchange="toggleDateInputs(this.value)" style="width: 100%; padding: 0.65rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
+                        <option value="all" {{ $dateMode === 'all' ? 'selected' : '' }}>الكل</option>
+                        <option value="single_date" {{ $dateMode === 'single_date' ? 'selected' : '' }}>يوم محدد</option>
+                        <option value="date_range" {{ $dateMode === 'date_range' ? 'selected' : '' }}>بين تاريخين</option>
+                        <option value="week" {{ $dateMode === 'week' ? 'selected' : '' }}>أسبوع معين</option>
+                    </select>
+                </div>
+
+                {{-- مدخل يوم معين --}}
+                <div id="single_date_container" style="display: {{ $dateMode === 'single_date' ? 'block' : 'none' }};">
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">التاريخ المحدد:</label>
+                    <input type="date" name="single_date" value="{{ $singleDate }}" style="width: 100%; padding: 0.65rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;" />
+                </div>
+
+                {{-- مدخل بين تاريخين --}}
+                <div id="date_range_start_container" style="display: {{ $dateMode === 'date_range' ? 'block' : 'none' }};">
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">من تاريخ:</label>
+                    <input type="date" name="start_date" value="{{ $startDate }}" style="width: 100%; padding: 0.65rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;" />
+                </div>
+                <div id="date_range_end_container" style="display: {{ $dateMode === 'date_range' ? 'block' : 'none' }};">
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">إلى تاريخ:</label>
+                    <input type="date" name="end_date" value="{{ $endDate }}" style="width: 100%; padding: 0.65rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;" />
+                </div>
+
+                {{-- مدخل أسبوع معين --}}
+                <div id="week_container" style="display: {{ $dateMode === 'week' ? 'block' : 'none' }};">
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">اختر أي يوم ضمن الأسبوع:</label>
+                    <input type="date" name="week_date" value="{{ $weekDate }}" style="width: 100%; padding: 0.65rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;" />
+                </div>
+
+                {{-- أزرار التحكم --}}
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" style="flex: 1; padding: 0.65rem 1.25rem; border: none; border-radius: 0.75rem; background: var(--accent-color); color: #101924; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-filter"></i> تطبيق الفلترة
+                    </button>
+                    @if($deptId || $dateMode !== 'all')
+                        <a href="{{ route('affairs.leaves') }}" style="padding: 0.65rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-secondary); font-weight: 700; text-decoration: none; display: flex; align-items: center; justify-content: center;" title="إعادة ضبط">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </a>
+                    @endif
+                </div>
+        </form>
+    </div>
+
+    <!-- Thin Divider Line -->
+    <div style="height: 1px; background: var(--border-color); opacity: 0.6; margin: 2rem 0 2.25rem 0;"></div>
+
     <!-- Filters -->
     <div class="filters">
         <button class="filter-chip active" data-status="all">الكل</button>
@@ -355,6 +427,13 @@
 
 @push('scripts')
 <script>
+    function toggleDateInputs(mode) {
+        document.getElementById('single_date_container').style.display = (mode === 'single_date') ? 'block' : 'none';
+        document.getElementById('date_range_start_container').style.display = (mode === 'date_range') ? 'block' : 'none';
+        document.getElementById('date_range_end_container').style.display = (mode === 'date_range') ? 'block' : 'none';
+        document.getElementById('week_container').style.display = (mode === 'week') ? 'block' : 'none';
+    }
+
     // Filtering Logic
     const filterChips = document.querySelectorAll('.filter-chip');
     const cards = document.querySelectorAll('.leave-card');

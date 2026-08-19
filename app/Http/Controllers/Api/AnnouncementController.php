@@ -8,15 +8,20 @@ use Illuminate\Http\Request;
 
 class AnnouncementController extends Controller
 {
-    public function getHomeAnnouncements()
+    public function getHomeAnnouncements(Request $request)
     {
+        $userId = auth('sanctum')->id();
+
         $announcements = \DB::table('announcements')
             ->join('users', 'announcements.user_id', '=', 'users.user_id')
             ->leftJoin('departments', 'announcements.department_id', '=', 'departments.department_id')
             ->leftJoin('courses', 'announcements.course_id', '=', 'courses.course_id')
-            ->where(function($q) {
-                $q->whereNull('announcements.target_audience')
-                  ->orWhereIn('announcements.target_audience', ['all', 'students']);
+            ->where(function($q) use ($userId) {
+                if ($userId) {
+                    $q->where('announcements.user_id', $userId);
+                }
+                $q->orWhereNull('announcements.target_audience')
+                  ->orWhere('announcements.target_audience', 'all');
             })
             ->where(function($q) {
                 $q->whereNull('announcements.target_role')
