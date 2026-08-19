@@ -429,10 +429,25 @@ class ParentWebController extends Controller
             return $this->parentView('parent.permissions', ['requests' => collect()]);
         }
 
-        $requests = DB::table('absence_requests')
+        $absenceRequests = DB::table('absence_requests')
             ->where('student_id', $studentId)
             ->orderBy('created_at', 'desc')
             ->get();
+
+        $studentUser = DB::table('students')->where('student_id', $studentId)->first();
+        $leaveRequests = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('leave_requests')) {
+            $query = DB::table('leave_requests')->where('student_id', $studentId);
+            if ($studentUser && $studentUser->user_id) {
+                $query->orWhere('student_id', $studentUser->user_id);
+            }
+            $leaveRequests = $query->orderBy('created_at', 'desc')->get();
+        }
+
+        $requests = $absenceRequests->concat($leaveRequests)->unique(function ($item) {
+            $id = $item->request_id ?? $item->id ?? 0;
+            return ($item->date ?? '') . '_' . ($item->reason ?? '') . '_' . $id;
+        })->sortByDesc('created_at')->values();
 
         return $this->parentView('parent.permissions', compact('requests', 'student'));
     }
@@ -564,15 +579,37 @@ class ParentWebController extends Controller
             ->select('users.user_id', 'users.full_name')
             ->first();
 
-        $leaveId = DB::table('leave_requests')->insertGetId([
-            'student_id' => $studentUser->user_id,
-            'type'       => $request->type,
+        $reasonText = $request->reason;
+        if ($request->type === 'hourly' && !str_contains($reasonText, 'إذن ساعي')) {
+            $reasonText = '[إذن ساعي] ' . $reasonText;
+        }
+
+        // 1. الإدراج الرئيسي في جدول absence_requests الرئيسي بالتطبيق
+        $absenceId = DB::table('absence_requests')->insertGetId([
+            'student_id' => $request->student_id,
             'date'       => $request->date,
-            'reason'     => $request->reason,
+            'reason'     => $reasonText,
             'status'     => 'pending_hod',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // 2. إدراج احتياطي في جدول leave_requests إن وجد للتوافق
+        if (\Illuminate\Support\Facades\Schema::hasTable('leave_requests')) {
+            try {
+                DB::table('leave_requests')->insert([
+                    'student_id' => $studentUser ? $studentUser->user_id : $request->student_id,
+                    'type'       => $request->type,
+                    'date'       => $request->date,
+                    'reason'     => $reasonText,
+                    'status'     => 'pending_hod',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } catch (\Exception $e) {
+                // تجاهل أي خطأ فني بالجدول الثانوي
+            }
+        }
 
         // Notify all HOD users
         $headUserIds = DB::table('users')->where('role_id', 5)
@@ -581,22 +618,24 @@ class ParentWebController extends Controller
             ->unique();
 
         foreach ($headUserIds as $headUserId) {
-            DB::table('notifications')->insert([
-                'user_id'    => $headUserId,
-                'title'      => 'طلب إجازة من ولي الأمر',
-                'message'    => 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
-                'type'       => 'leave_request',
-                'related_id' => $leaveId,
-                'is_read'    => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            \App\Services\FcmService::sendToUser(
-                $headUserId,
-                'طلب إجازة من ولي الأمر',
-                'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
-                ['type' => 'leave_request', 'related_id' => (string)$leaveId]
-            );
+            if ($headUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $headUserId,
+                    'title'      => 'طلب إجازة من ولي الأمر',
+                    'message'    => 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
+                    'type'       => 'leave_request',
+                    'related_id' => $absenceId,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                \App\Services\FcmService::sendToUser(
+                    $headUserId,
+                    'طلب إجازة من ولي الأمر',
+                    'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
+                    ['type' => 'leave_request', 'related_id' => (string)$absenceId]
+                );
+            }
         }
 
         return back()->with('success', 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.');
