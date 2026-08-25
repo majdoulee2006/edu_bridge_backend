@@ -50,6 +50,13 @@ class FcmService
 
     public static function sendToUser(int $userId, string $title, string $body, array $data = []): bool
     {
+        // إرسال المهمة للخلفية (Queue) لتجنب تأخير الواجهة
+        \App\Jobs\SendFcmNotificationJob::dispatch($userId, $title, $body, $data);
+        return true;
+    }
+
+    public static function sendToUserSync(int $userId, string $title, string $body, array $data = []): bool
+    {
         $user = User::find($userId);
         if (!$user || empty($user->device_token) || $user->notifications_muted) return false;
         return self::send($user->device_token, $title, $body, $data);

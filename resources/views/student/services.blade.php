@@ -460,13 +460,31 @@
                 <!-- Dropdown Select Menu (Hidden when opened from a specific card, shown if user changes or opens from general button) -->
                 <div id="serviceTypeSelectGroup" class="form-group">
                     <label class="form-label">نوع الخدمة المطلوب:</label>
-                    <select name="type" id="modalServiceTypeSelect" class="form-control" required>
+                    <select name="type" id="modalServiceTypeSelect" class="form-control" onchange="checkFailedSubjectVisibility(this.value)" required>
                         <option value="mercy">⚖️ تقديم طلب استرحام (عذر طبي / إعادة اختبار / مراجعة)</option>
                         <option value="document">📄 استخراج الوثائق الطلابية (شهادة قيد / كشف علامات)</option>
-                        <option value="makeup">📝 تقديم طلب امتحان إكمال (للمواد المتبقية)</option>
+                        <option value="makeup">📝 تقديم طلب امتحان إكمال (للمواد المتبقية / الراسب بها)</option>
                         <option value="device_reset">📱 تقديم طلب فك قفل الجهاز القديم</option>
                         <option value="face_photo">👤 طلب تحديث صورة بصمة الوجه للتحقق</option>
                         <option value="general">💬 طلب عام / استفسار موجّه للإدارة</option>
+                    </select>
+                </div>
+
+                <!-- Failed Subject Selection (Shown specifically for Makeup Exam requests) -->
+                <div id="failedSubjectSelectGroup" class="form-group" style="display: none; background: rgba(239, 68, 68, 0.05); padding: 1rem; border-radius: 0.85rem; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <label class="form-label" style="color: #ef4444; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> اختر المادة الراسب بها لتقديم طلب الإكمال:
+                    </label>
+                    <select name="subject_name" id="failedSubjectSelect" class="form-control" style="border-color: #fca5a5;">
+                        @if(count($failedCourses) > 0)
+                            @foreach($failedCourses as $fc)
+                                <option value="{{ $fc['title'] }}">{{ $fc['title'] }} (النتيجة الحالية: {{ $fc['status'] }} - {{ $fc['total_score'] ?? 'بدون علامة' }} درجة)</option>
+                            @endforeach
+                        @else
+                            @foreach($enrolledCourses as $ec)
+                                <option value="{{ $ec->title }}">{{ $ec->title }} (السنة {{ $ec->year }})</option>
+                            @endforeach
+                        @endif
                     </select>
                 </div>
 
@@ -490,11 +508,22 @@
     const serviceMap = {
         'mercy': '⚖️ تقديم طلب استرحام (عذر طبي / إعادة اختبار / مراجعة)',
         'document': '📄 استخراج الوثائق الطلابية (شهادة قيد / كشف علامات)',
-        'makeup': '📝 تقديم طلب امتحان إكمال (للمواد المتبقية)',
+        'makeup': '📝 تقديم طلب امتحان إكمال (للمواد المتبقية / الراسب بها)',
         'device_reset': '📱 تقديم طلب فك قفل الجهاز القديم',
         'face_photo': '👤 طلب تحديث صورة بصمة الوجه للتحقق',
         'general': '💬 طلب عام / استفسار موجّه للإدارة'
     };
+
+    function checkFailedSubjectVisibility(selectedType) {
+        const failedGroup = document.getElementById('failedSubjectSelectGroup');
+        if (failedGroup) {
+            if (selectedType === 'makeup') {
+                failedGroup.style.display = 'block';
+            } else {
+                failedGroup.style.display = 'none';
+            }
+        }
+    }
 
     function openNewRequestModal(defaultType) {
         const select = document.getElementById('modalServiceTypeSelect');
@@ -516,6 +545,7 @@
             selectedBox.style.display = 'none';
             selectGroup.style.display = 'block';
         }
+        checkFailedSubjectVisibility(defaultType || (select ? select.value : ''));
         document.getElementById('newRequestModal').classList.add('active');
     }
 
