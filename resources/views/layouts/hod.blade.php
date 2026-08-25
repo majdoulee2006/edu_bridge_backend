@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edu-Bridge | رئيس القسم</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     
     <!-- Google Fonts: Cairo & Material Symbols -->

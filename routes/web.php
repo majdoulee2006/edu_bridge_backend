@@ -427,8 +427,15 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::get('/academic-card/export-pdf', [StudentWebController::class, 'exportAcademicCardPdf'])->name('student.academic_card.pdf');
     Route::get('/academic-card/export-excel', [StudentWebController::class, 'exportAcademicCardExcel'])->name('student.academic_card.excel');
 
+    // الحضور والغياب
+    Route::get('/attendance', [StudentWebController::class, 'attendance'])->name('student.attendance');
 
 
+
+
+    // الخدمات والطلبات الطلابية
+    Route::get('/student-services', [StudentWebController::class, 'studentServices'])->name('student.services');
+    Route::post('/student-services', [StudentWebController::class, 'storeStudentService'])->name('student.services.store');
 
     // طلبات الإذن
     Route::get('/leave-requests', [StudentWebController::class, 'leaveRequests'])->name('student.leave_requests');

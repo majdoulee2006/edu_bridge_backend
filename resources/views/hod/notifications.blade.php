@@ -149,7 +149,26 @@
             ];
             $style = $iconMap[$type] ?? $iconMap['general'];
 
+            $titleText = mb_strtolower(($n->title ?? '') . ' ' . ($n->message ?? ''));
+            $isService = str_contains($titleText, 'خدمة') || str_contains($titleText, 'استرحام') || str_contains($titleText, 'وثيقة') || str_contains($titleText, 'كشف') || str_contains($titleText, 'إكمال') || $type === 'student_service';
+
+            $serviceTab = 'all';
+            if (str_contains($titleText, 'وثيقة') || str_contains($titleText, 'كشف') || str_contains($titleText, 'علامات')) {
+                $serviceTab = 'documents';
+            } elseif (str_contains($titleText, 'إكمال') || str_contains($titleText, 'امتحان')) {
+                $serviceTab = 'makeup';
+            } elseif (str_contains($titleText, 'استرحام')) {
+                $serviceTab = 'mercy';
+            } elseif (str_contains($titleText, 'قفل') || str_contains($titleText, 'جهاز')) {
+                $serviceTab = 'device-reset';
+            } elseif (str_contains($titleText, 'بصمة') || str_contains($titleText, 'وجه')) {
+                $serviceTab = 'face-photo';
+            }
+
+            $serviceLink = '/hod/student-services?tab=' . $serviceTab;
+
             $linkMap = [
+                'student_service'=> $serviceLink,
                 'assignment'     => '/hod/dashboard',
                 'announcement'   => '/hod/dashboard',
                 'leave'          => '/hod/leaves',
@@ -157,10 +176,10 @@
                 'attendance'     => '/hod/dashboard',
                 'grade'          => '/hod/dashboard',
                 'message'        => '/hod/messages',
-                'administrative' => '/hod/dashboard',
-                'general'        => '/hod/notifications',
+                'administrative' => $isService ? $serviceLink : '/hod/dashboard',
+                'general'        => $isService ? $serviceLink : '/hod/notifications',
             ];
-            $link = $linkMap[$type] ?? '/hod/notifications';
+            $link = $linkMap[$type] ?? ($isService ? $serviceLink : '/hod/notifications');
         @endphp
 
         <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="handleNotifClick(event, '{{ $link }}', {{ $n->id }}, {{ !$isRead ? 'true' : 'false' }})">

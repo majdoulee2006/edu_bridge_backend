@@ -226,7 +226,22 @@
                 $type = $notif->type ?? '';
 
                 $targetUrl = null;
-                if (in_array($type, ['photo_request', 'photo_change_request']) || str_contains($titleLower, 'صورة') || str_contains($titleLower, 'وجه')) {
+                $serviceTab = 'all';
+                if (str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'علامات')) {
+                    $serviceTab = 'documents';
+                } elseif (str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'امتحان')) {
+                    $serviceTab = 'makeup';
+                } elseif (str_contains($titleLower, 'استرحام')) {
+                    $serviceTab = 'mercy';
+                } elseif (str_contains($titleLower, 'قفل') || str_contains($titleLower, 'جهاز')) {
+                    $serviceTab = 'device-reset';
+                } elseif (str_contains($titleLower, 'بصمة') || str_contains($titleLower, 'وجه')) {
+                    $serviceTab = 'face-photo';
+                }
+
+                if (in_array($type, ['student_service', 'service', 'service_request']) || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'خدمات') || str_contains($titleLower, 'استرحام') || str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'قفل')) {
+                    $targetUrl = route('affairs.student_services') . '?tab=' . $serviceTab;
+                } elseif (in_array($type, ['photo_request', 'photo_change_request']) || str_contains($titleLower, 'صورة') || str_contains($titleLower, 'وجه')) {
                     $targetUrl = route('affairs.photo_requests');
                 } elseif (in_array($type, ['leave', 'leave_request']) || str_contains($titleLower, 'إجازة') || str_contains($titleLower, 'مبرر') || str_contains($titleLower, 'غياب')) {
                     $targetUrl = route('affairs.leaves');
@@ -234,8 +249,6 @@
                     $targetUrl = route('affairs.pending_accounts');
                 } elseif (in_array($type, ['message', 'chat']) || str_contains($titleLower, 'رسالة')) {
                     $targetUrl = route('affairs.messages');
-                } elseif (in_array($type, ['student_service', 'service']) || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'خدمات')) {
-                    $targetUrl = route('affairs.student_services');
                 }
 
                 $iconClass = match($type) {

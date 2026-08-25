@@ -36,10 +36,10 @@ class StudentWebController extends Controller
         ]);
 
         $input = $request->login;
-        // 🔍 البحث عن المستخدم بواسطة البريد، اسم المستخدم، أو الهاتف لتجنب تصنيف الأرقام كأرقام هواتف بالخطأ
         $user = \App\Models\User::where('email', $input)
             ->orWhere('username', $input)
             ->orWhere('phone', $input)
+            ->orWhere('university_id', $input)
             ->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
@@ -1087,5 +1087,76 @@ class StudentWebController extends Controller
         $request->merge(['student_id' => $student->student_id]);
         $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
         return $apiController->exportStudentAcademicCardExcel($request);
+    }
+
+    // ─────────────────────────── STUDENT SERVICES ───────────────────────────
+    public function studentServices()
+    {
+        $student = $this->getStudent();
+
+        $requests = \App\Models\StudentRequest::where('student_id', $student->student_id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        $stats = [
+            'total'     => $requests->count(),
+            'pending'   => $requests->filter(fn($r) => str_starts_with($r->status, 'pending'))->count(),
+            'approved'  => $requests->filter(fn($r) => $r->status === 'completed' && ($r->admin_decision === 'approved' || $r->affairs_decision === 'approved' || $r->hod_decision === 'approved'))->count(),
+            'rejected'  => $requests->filter(fn($r) => $r->status === 'completed' && ($r->admin_decision === 'rejected' || $r->affairs_decision === 'rejected' || $r->hod_decision === 'rejected'))->count(),
+        ];
+
+        return view('student.services', compact('requests', 'stats'));
+    }
+
+    public function storeStudentService(Request $request)
+    {
+        $request->validate([
+            'type'    => 'required|in:document,mercy,makeup,device_reset,face_photo,general',
+            'details' => 'required|string|max:1500',
+        ], [
+            'type.required'    => 'يرجى اختيار نوع الخدمة الطلابية.',
+            'details.required' => 'يرجى التعبير عن تفاصيل الطلب بشكل كافٍ.',
+            'details.max'      => 'التفاصيل يجب ألا تتجاوز 1500 حرف.',
+        ]);
+
+        $student = $this->getStudent();
+
+        $studentReq = \App\Models\StudentRequest::create([
+            'student_id' => $student->student_id,
+            'type'       => $request->type,
+            'details'    => trim($request->details),
+            'status'     => 'pending_affairs',
+        ]);
+
+        // إرسال إشعار لموظفي الشؤون الطلابية بوجود طلب جديد
+        $studentUser = DB::table('users')->where('user_id', $student->user_id)->first();
+        $studentName = $studentUser?->full_name ?? 'الطالب';
+
+        $typeNames = [
+            'mercy'        => 'طلب استرحام',
+            'document'     => 'طلب وثيقة طلابية',
+            'makeup'       => 'طلب امتحان إكمال',
+            'device_reset' => 'طلب فك قفل الجهاز',
+            'face_photo'   => 'طلب بصمة الوجه',
+            'general'      => 'طلب خدمة عامة',
+        ];
+        $typeName = $typeNames[$request->type] ?? 'طلب خدمة طلابية';
+
+        $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
+        foreach ($affairsUserIds as $affairsUserId) {
+            DB::table('notifications')->insert([
+                'user_id'    => $affairsUserId,
+                'title'      => "طلب خدمة جديد ($typeName)",
+                'message'    => "قام الطالب $studentName بتقديم $typeName جديد وهو بحاجة لمراجعتك.",
+                'type'       => 'student_service',
+                'category'   => 'administrative',
+                'related_id' => $studentReq->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return back()->with('success', 'تم إرسال طلب الخدمة الطلابية بنجاح، وستتم مراجعته من قبل شؤون الطلاب والإدارة قريباً.');
     }
 }

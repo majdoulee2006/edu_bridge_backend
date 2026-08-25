@@ -111,7 +111,22 @@
 
                 // Smart navigation links
                 $targetUrl = null;
-                if (str_contains($titleLower, 'موعد') || str_contains($titleLower, 'مقابلة') || str_contains($titleLower, 'لقاء')) {
+                $serviceTab = 'all';
+                if (str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'علامات')) {
+                    $serviceTab = 'documents';
+                } elseif (str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'امتحان')) {
+                    $serviceTab = 'makeup';
+                } elseif (str_contains($titleLower, 'استرحام')) {
+                    $serviceTab = 'mercy';
+                } elseif (str_contains($titleLower, 'قفل') || str_contains($titleLower, 'جهاز')) {
+                    $serviceTab = 'device-reset';
+                } elseif (str_contains($titleLower, 'بصمة') || str_contains($titleLower, 'وجه')) {
+                    $serviceTab = 'face-photo';
+                }
+
+                if ($type === 'student_service' || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'استرحام') || str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'إكمال')) {
+                    $targetUrl = route('admin.student_services') . '?tab=' . $serviceTab;
+                } elseif (str_contains($titleLower, 'موعد') || str_contains($titleLower, 'مقابلة') || str_contains($titleLower, 'لقاء')) {
                     $targetUrl = route('admin.appointments');
                 } elseif (str_contains($titleLower, 'رسالة') || $type === 'message' || $type === 'chat') {
                     $targetUrl = route('admin.messages');
