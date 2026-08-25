@@ -965,7 +965,7 @@ class HODWebController extends Controller
     {
         $request->validate([
             'title'            => 'required|string|max:255',
-            'content'          => 'required|string',
+            'content'          => 'required|string|max:5000',
             'type'             => 'required|in:general,course_specific',
             'course_id'        => 'nullable|exists:courses,course_id',
             'image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
@@ -1038,7 +1038,7 @@ class HODWebController extends Controller
     {
         $announcement = \App\Models\Announcement::where('announcement_id', $id)
             ->where('user_id', auth()->id())->firstOrFail();
-        $request->validate(['title' => 'required|string|max:255', 'content' => 'required|string']);
+        $request->validate(['title' => 'required|string|max:255', 'content' => 'required|string|max:5000']);
         $updates = ['title' => $request->title, 'content' => $request->content, 'updated_at' => now()];
         if ($request->hasFile('image')) {
             if ($announcement->image) \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
@@ -1697,7 +1697,7 @@ tr:nth-child(even) td{background:#f8fafc}
 
         $request->validate([
             'decision' => 'required|in:approved,rejected',
-            'notes' => 'required|string'
+            'notes' => 'required|string|max:1000'
         ]);
         
         $studentReq->hod_decision = $request->decision;

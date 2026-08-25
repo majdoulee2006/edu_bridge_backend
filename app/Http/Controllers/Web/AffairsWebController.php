@@ -413,7 +413,7 @@ class AffairsWebController extends Controller
 
         $request->validate([
             'decision' => 'required|in:approved,rejected',
-            'notes' => 'required|string'
+            'notes' => 'required|string|max:1000'
         ]);
         
         // تحديث قرار الشؤون

@@ -446,6 +446,16 @@ class ParentWebController extends Controller
             return back()->with('error', 'الطلب غير موجود.');
         }
 
+        $parent = $this->getParentRecord();
+        $linked = DB::table('parent_students')
+            ->where('parent_id', $parent->parent_id)
+            ->where('student_id', $absenceRequest->student_id)
+            ->exists();
+
+        if (!$linked) {
+            return back()->with('error', 'غير مصرح لك بالرد على هذا الطلب.');
+        }
+
         if ($request->status === 'rejected') {
             // إذا رفض ولي الأمر: إيقاف المسار وإشعار للطالب فقط
             DB::table('absence_requests')

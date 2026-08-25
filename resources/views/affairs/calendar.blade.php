@@ -374,9 +374,9 @@
         { 
             id: {{ $ev->id }}, 
             date: '{{ $ev->event_date }}', 
-            title: '{!! addslashes($ev->title) !!}', 
+            title: @json($ev->title), 
             time: '{{ substr($ev->event_time, 0, 5) }}', 
-            location: '{!! addslashes($ev->location) !!}' 
+            location: @json($ev->location) 
         },
         @endforeach
     ];
