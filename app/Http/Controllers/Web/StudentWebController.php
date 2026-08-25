@@ -376,6 +376,16 @@ class StudentWebController extends Controller
         $assignment = DB::table('assignments')->where('assignment_id', $assignmentId)->first();
         if (!$assignment) abort(404);
 
+        // التحقق من أن الطالب مسجل فعلاً في هذه المادة
+        $enrolled = DB::table('enrollments')
+            ->where('student_id', $student->student_id)
+            ->where('course_id', $assignment->course_id)
+            ->exists();
+            
+        if (!$enrolled) {
+            abort(403, 'غير مصرح لك بتسليم واجب لمادة غير مسجل بها.');
+        }
+
         $filePath = null;
         if ($request->hasFile('file')) {
             $file     = $request->file('file');
@@ -1105,7 +1115,28 @@ class StudentWebController extends Controller
             'rejected'  => $requests->filter(fn($r) => $r->status === 'completed' && ($r->admin_decision === 'rejected' || $r->affairs_decision === 'rejected' || $r->hod_decision === 'rejected'))->count(),
         ];
 
-        return view('student.services', compact('requests', 'stats'));
+        // جلب كشف علامات الطالب لاستخراج المواد الراسب فيها فقط لامتحان الإكمال
+        $cardReq = new Request(['student_id' => $student->student_id]);
+        $academicCardResponse = app(\App\Http\Controllers\Api\AffairsController::class)->getStudentAcademicCardForAffairs($cardReq);
+        $cardData = json_decode($academicCardResponse->getContent(), true);
+
+        $academicCard = $cardData['data']['academic_card'] ?? [];
+
+        // تصفية المواد الراسب فيها فقط (status === 'راسب' أو المجموع أقل من 50)
+        $failedCourses = array_values(array_filter($academicCard, function($item) {
+            $status = $item['status'] ?? '';
+            $score = $item['total_score'] ?? null;
+            return $status === 'راسب' || ($score !== null && $score < 50);
+        }));
+
+        // جميع المواد المسجلة كـ Fallback في حال عدم تسجيل علامات سابقة
+        $enrolledCourses = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->where('enrollments.student_id', $student->student_id)
+            ->select('courses.course_id', 'courses.title', 'courses.year')
+            ->get();
+
+        return view('student.services', compact('requests', 'stats', 'failedCourses', 'enrolledCourses'));
     }
 
     public function storeStudentService(Request $request)
@@ -1121,10 +1152,15 @@ class StudentWebController extends Controller
 
         $student = $this->getStudent();
 
+        $detailsText = trim($request->details);
+        if ($request->type === 'makeup' && $request->filled('subject_name')) {
+            $detailsText = "المادة المطلوبة للإكمال: " . $request->subject_name . "\nالسبب والتفاصيل: " . $detailsText;
+        }
+
         $studentReq = \App\Models\StudentRequest::create([
             'student_id' => $student->student_id,
             'type'       => $request->type,
-            'details'    => trim($request->details),
+            'details'    => $detailsText,
             'status'     => 'pending_affairs',
         ]);
 

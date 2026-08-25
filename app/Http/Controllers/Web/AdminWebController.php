@@ -385,7 +385,7 @@ class AdminWebController extends Controller
     {
         $request->validate([
             'title'           => 'required|string|max:255',
-            'content'         => 'required|string',
+            'content'         => 'required|string|max:5000',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'link_url'        => 'nullable|url|max:500',
             'target_audience' => 'nullable|in:all,students,teachers,department',
@@ -451,7 +451,7 @@ class AdminWebController extends Controller
 
         $request->validate([
             'title'   => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'required|string|max:5000',
             'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
@@ -1300,16 +1300,27 @@ class AdminWebController extends Controller
     public function courses()
     {
         $departments = DB::table('departments')->orderBy('name')->get();
-        foreach ($departments as $dept) {
-            $head = DB::table('heads')
-                ->join('users', 'heads.user_id', '=', 'users.user_id')
-                ->where('heads.department_id', $dept->department_id)
-                ->select('users.user_id', 'users.full_name')
-                ->first();
+        $departmentIds = $departments->pluck('department_id')->toArray();
+        
+        $heads = DB::table('heads')
+            ->join('users', 'heads.user_id', '=', 'users.user_id')
+            ->whereIn('heads.department_id', $departmentIds)
+            ->select('heads.department_id', 'users.user_id', 'users.full_name')
+            ->get()
+            ->keyBy('department_id');
 
+        $programCounts = DB::table('programs')
+            ->whereIn('department_id', $departmentIds)
+            ->select('department_id', DB::raw('count(*) as count'))
+            ->groupBy('department_id')
+            ->get()
+            ->keyBy('department_id');
+
+        foreach ($departments as $dept) {
+            $head = $heads->get($dept->department_id);
             $dept->current_hod_name = $head ? $head->full_name : 'غير مخصص حالياً';
             $dept->current_hod_user_id = $head ? $head->user_id : null;
-            $dept->courses_count = DB::table('programs')->where('department_id', $dept->department_id)->count();
+            $dept->courses_count = isset($programCounts[$dept->department_id]) ? $programCounts[$dept->department_id]->count : 0;
         }
 
         $programs = DB::table('programs')
@@ -1319,14 +1330,22 @@ class AdminWebController extends Controller
             ->orderByDesc('programs.created_at')
             ->get();
 
-        // Enrich with course count, total hours, and subjects list
+        $programIds = $programs->pluck('id')->toArray();
+        
+        $allCoursesInPrograms = DB::table('course_program')
+            ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
+            ->whereIn('course_program.program_id', $programIds)
+            ->select('course_program.program_id', 'courses.title as course_name')
+            ->get();
+
+        $coursesByProgram = [];
+        foreach ($allCoursesInPrograms as $cip) {
+            $coursesByProgram[$cip->program_id][] = $cip;
+        }
+
         foreach ($programs as $program) {
             $program->department_name = $program->department_name ?? 'غير مخصصة (دورة مستقلة)';
-            $coursesInProgram = DB::table('course_program')
-                ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
-                ->where('course_program.program_id', $program->id)
-                ->select('courses.title as course_name')
-                ->get();
+            $coursesInProgram = $coursesByProgram[$program->id] ?? [];
 
             $program->course_count = count($coursesInProgram);
             $program->total_hours = $program->course_count * 4; // estimate 4h per course
@@ -2438,7 +2457,7 @@ class AdminWebController extends Controller
     {
         $request->validate([
             'decision' => 'required|in:approved,rejected',
-            'notes' => 'required|string' // قرار الإدارة يجب أن يحوي ملاحظات
+            'notes' => 'required|string|max:1000' // قرار الإدارة يجب أن يحوي ملاحظات
         ]);
 
         $studentReq = \App\Models\StudentRequest::findOrFail($id);

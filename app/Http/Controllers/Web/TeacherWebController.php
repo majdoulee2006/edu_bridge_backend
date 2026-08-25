@@ -1132,7 +1132,7 @@ class TeacherWebController extends Controller
         $request->validate([
             'course_id'   => 'required|exists:courses,course_id',
             'title'       => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'required|string|max:2000',
             'due_date'    => 'required|date|after_or_equal:today',
             'max_points'  => 'required|integer|min:1',
             'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,mkv,webm,pdf,doc,docx,ppt,pptx,xls,xlsx,txt,zip',
@@ -1305,6 +1305,26 @@ class TeacherWebController extends Controller
             'feedback' => 'nullable|string',
         ]);
 
+        $teacher = $this->getTeacher();
+        $submissionData = DB::table('assignment_submissions')
+            ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+            ->where('assignment_submissions.submission_id', $submissionId)
+            ->select('assignments.course_id')
+            ->first();
+
+        if (!$submissionData) {
+            return redirect()->back()->with('error', 'التسليم غير موجود.');
+        }
+
+        $assigned = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->where('course_id', $submissionData->course_id)
+            ->exists();
+
+        if (!$assigned) {
+            return redirect()->back()->with('error', 'غير مصرح لك بتقييم هذا الواجب.');
+        }
+
         DB::table('assignment_submissions')
             ->where('submission_id', $submissionId)
             ->update([
@@ -1465,6 +1485,21 @@ class TeacherWebController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        $teacher = $this->getTeacher();
+        $lesson = DB::table('lessons')->where('lesson_id', $id)->first();
+        if (!$lesson) {
+            return redirect()->back()->with('error', 'المحاضرة غير موجودة.');
+        }
+
+        $assigned = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->where('course_id', $lesson->course_id)
+            ->exists();
+
+        if (!$assigned) {
+            return redirect()->back()->with('error', 'غير مصرح لك بتعديل هذه المحاضرة.');
+        }
+
         DB::table('lessons')->where('lesson_id', $id)->update([
             'course_id'   => $request->course_id,
             'title'       => $request->title,
@@ -1477,9 +1512,23 @@ class TeacherWebController extends Controller
 
     public function deleteLecture($id)
     {
-        // حذف الملف المرفق إن وُجد
+        $teacher = $this->getTeacher();
         $lesson = DB::table('lessons')->where('lesson_id', $id)->first();
-        if ($lesson && $lesson->file_path) {
+        
+        if (!$lesson) {
+            return redirect()->back()->with('error', 'المحاضرة غير موجودة.');
+        }
+
+        $assigned = DB::table('course_teachers')
+            ->where('teacher_id', $teacher->teacher_id)
+            ->where('course_id', $lesson->course_id)
+            ->exists();
+
+        if (!$assigned) {
+            return redirect()->back()->with('error', 'غير مصرح لك بحذف هذه المحاضرة.');
+        }
+
+        if ($lesson->file_path) {
             \Illuminate\Support\Facades\Storage::disk('public')->delete($lesson->file_path);
         }
         DB::table('lessons')->where('lesson_id', $id)->delete();
@@ -1503,9 +1552,10 @@ class TeacherWebController extends Controller
     public function storeAnnouncement(Request $request)
     {
         $request->validate([
-            'title'   => 'required|string|max:255',
-            'content' => 'required|string',
-            'image'   => 'nullable|image|max:5120',
+            'course_id' => 'nullable|exists:courses,course_id',
+            'title' => 'required|string|max:255',
+            'content' => 'required|string|max:5000',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $imagePath = null;
@@ -1536,7 +1586,7 @@ class TeacherWebController extends Controller
         $announcement = \App\Models\Announcement::where('announcement_id', $id)
             ->where('user_id', Auth::id())->firstOrFail();
 
-        $request->validate(['title' => 'required|string|max:255', 'content' => 'required|string']);
+        $request->validate(['title' => 'required|string|max:255', 'content' => 'required|string|max:5000']);
 
         $updates = ['title' => $request->title, 'content' => $request->content, 'updated_at' => now()];
 
@@ -2032,6 +2082,7 @@ class TeacherWebController extends Controller
         
         $request->validate([
             'course_id' => 'required|exists:courses,course_id',
+            'question_text' => 'required|string|max:2000',
             'attendance' => 'required|array',
             'date' => 'required|date'
         ]);
