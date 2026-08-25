@@ -65,8 +65,12 @@
         </div>
     </div>
     <div style="display: flex; gap: 0.5rem; align-items: center;">
+        @php
+            $isFullyGraded = ($event->enrolled_count > 0 && $event->enrolled_count == $event->graded_count);
+        @endphp
         <a href="{{ route('teacher.grade_events.students', $event->id) }}" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; width: auto; background: var(--accent-color); color: #1a1a1a; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
-            <i class="fa-solid fa-list-check"></i> إدخال العلامات
+            <i class="fa-solid {{ $isFullyGraded ? 'fa-pen-to-square' : 'fa-list-check' }}"></i> 
+            {{ $isFullyGraded ? 'تعديل العلامات' : 'إدخال العلامات' }}
         </a>
         <form action="{{ route('teacher.grade_events.delete', $event->id) }}" method="POST"
               onsubmit="return confirm('حذف هذا التقييم؟')">

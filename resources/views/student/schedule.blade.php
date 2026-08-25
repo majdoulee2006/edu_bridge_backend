@@ -219,7 +219,7 @@
 @endif
 
 {{-- ===== Exams Grid & Download Actions ===== --}}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+<div id="exams-section" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; scroll-margin-top: 2rem;">
     <div>
         <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: var(--text-primary);">
             <i class="fa-solid fa-pencil" style="color: #ef4444;"></i> مواعيد الامتحانات
@@ -381,5 +381,26 @@ function downloadExamsAsPDF() {
 
     html2pdf().set(opt).from(target).save();
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.hash === '#exams-section' || window.location.search.includes('tab=exams')) {
+        const target = document.getElementById('exams-section');
+        if (target) {
+            setTimeout(() => {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                const exportArea = document.getElementById('exams-export-area');
+                if (exportArea) {
+                    exportArea.style.transition = 'box-shadow 0.4s ease, border 0.4s ease';
+                    exportArea.style.boxShadow = '0 0 25px rgba(239, 68, 68, 0.4)';
+                    exportArea.style.border = '2px solid #ef4444';
+                    setTimeout(() => {
+                        exportArea.style.boxShadow = 'none';
+                        exportArea.style.border = 'none';
+                    }, 2500);
+                }
+            }, 300);
+        }
+    }
+});
 </script>
 @endpush
