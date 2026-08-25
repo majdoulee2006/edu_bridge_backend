@@ -2319,6 +2319,15 @@ class TeacherWebController extends Controller
             ->leftJoin('courses', 'grade_events.course_id', '=', 'courses.course_id')
             ->where('grade_events.teacher_id', $teacher->teacher_id)
             ->select('grade_events.*', 'courses.title as course_title')
+            ->addSelect([
+                'enrolled_count' => DB::table('enrollments')
+                    ->whereColumn('course_id', 'grade_events.course_id')
+                    ->where('status', 'active')
+                    ->selectRaw('count(*)'),
+                'graded_count' => DB::table('grade_entries')
+                    ->whereColumn('grade_event_id', 'grade_events.id')
+                    ->selectRaw('count(*)')
+            ])
             ->orderByDesc('grade_events.date')
             ->get();
 
