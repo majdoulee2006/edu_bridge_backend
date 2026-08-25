@@ -92,29 +92,53 @@
         @php
             $isRead = $n->is_read ?? false;
             $type   = $n->type ?? 'general';
+
+            $titleText = mb_strtolower(($n->title ?? '') . ' ' . ($n->body ?? '') . ' ' . ($n->message ?? ''));
+            $isExamRelated = str_contains($titleText, 'فحص') || str_contains($titleText, 'امتحان') || str_contains($titleText, 'اختبار') || $type === 'exam';
+            $isServiceRelated = str_contains($titleText, 'خدمة') || str_contains($titleText, 'استرحام') || str_contains($titleText, 'وثيقة') || str_contains($titleText, 'إكمال') || str_contains($titleText, 'قفل') || $type === 'student_service';
+
             $iconMap = [
-                'assignment'    => ['icon' => 'fa-book-open',      'color' => '#ffe600', 'bg' => '#fffbe6'],
-                'message'       => ['icon' => 'fa-envelope',       'color' => '#3b82f6', 'bg' => '#eff6ff'],
-                'admin'         => ['icon' => 'fa-calendar',       'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
-                'grade'         => ['icon' => 'fa-check',          'color' => '#10b981', 'bg' => '#ecfdf5'],
-                'attendance'    => ['icon' => 'fa-clipboard-user', 'color' => '#f59e0b', 'bg' => '#fffbeb'],
-                'leave_request' => ['icon' => 'fa-calendar-xmark', 'color' => '#ef4444', 'bg' => '#fef2f2'],
-                'leave'         => ['icon' => 'fa-calendar-xmark', 'color' => '#ef4444', 'bg' => '#fef2f2'],
-                'general'       => ['icon' => 'fa-bell',           'color' => '#f59e0b', 'bg' => '#fffbeb'],
+                'student_service'=> ['icon' => 'fa-hand-holding-hand', 'color' => '#ca8a04', 'bg' => '#fef9c3'],
+                'assignment'    => ['icon' => 'fa-book-open',          'color' => '#ffe600', 'bg' => '#fffbe6'],
+                'message'       => ['icon' => 'fa-envelope',           'color' => '#3b82f6', 'bg' => '#eff6ff'],
+                'admin'         => ['icon' => 'fa-calendar',           'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
+                'grade'         => $isExamRelated ? ['icon' => 'fa-pencil', 'color' => '#ef4444', 'bg' => '#fee2e2'] : ['icon' => 'fa-check', 'color' => '#10b981', 'bg' => '#ecfdf5'],
+                'exam'          => ['icon' => 'fa-pencil',             'color' => '#ef4444', 'bg' => '#fee2e2'],
+                'attendance'    => ['icon' => 'fa-clipboard-user',     'color' => '#f59e0b', 'bg' => '#fffbeb'],
+                'leave_request' => ['icon' => 'fa-calendar-xmark',     'color' => '#ef4444', 'bg' => '#fef2f2'],
+                'leave'         => ['icon' => 'fa-calendar-xmark',     'color' => '#ef4444', 'bg' => '#fef2f2'],
+                'general'       => ['icon' => 'fa-bell',               'color' => '#f59e0b', 'bg' => '#fffbeb'],
             ];
-            $style = $iconMap[$type] ?? $iconMap['general'];
+            $style = $iconMap[$type] ?? ($isExamRelated ? ['icon' => 'fa-pencil', 'color' => '#ef4444', 'bg' => '#fee2e2'] : $iconMap['general']);
+
+            $serviceTab = 'all';
+            if (str_contains($titleText, 'وثيقة') || str_contains($titleText, 'كشف') || str_contains($titleText, 'علامات')) {
+                $serviceTab = 'document';
+            } elseif (str_contains($titleText, 'إكمال') || str_contains($titleText, 'امتحان')) {
+                $serviceTab = 'makeup';
+            } elseif (str_contains($titleText, 'استرحام')) {
+                $serviceTab = 'mercy';
+            } elseif (str_contains($titleText, 'قفل') || str_contains($titleText, 'جهاز')) {
+                $serviceTab = 'device_reset';
+            } elseif (str_contains($titleText, 'بصمة') || str_contains($titleText, 'وجه')) {
+                $serviceTab = 'face_photo';
+            }
+
+            $studentServiceLink = '/student/student-services?tab=' . $serviceTab;
 
             $linkMap = [
+                'student_service'=> $studentServiceLink,
                 'assignment'    => '/student/assignments',
-                'grade'         => '/student/grades',
+                'grade'         => $isExamRelated ? '/student/schedule#exams-section' : '/student/grades',
+                'exam'          => '/student/schedule#exams-section',
                 'attendance'    => '/student/attendance',
-                'leave_request' => '/student/leave-requests',
-                'leave'         => '/student/leave-requests',
+                'leave_request' => $isServiceRelated ? $studentServiceLink : '/student/leave-requests',
+                'leave'         => $isServiceRelated ? $studentServiceLink : '/student/leave-requests',
                 'message'       => '/student/messages',
-                'admin'         => '/student/dashboard',
-                'general'       => '/student/notifications',
+                'admin'         => $isServiceRelated ? $studentServiceLink : '/student/dashboard',
+                'general'       => $isServiceRelated ? $studentServiceLink : ($isExamRelated ? '/student/schedule#exams-section' : '/student/notifications'),
             ];
-            $link = $linkMap[$type] ?? '/student/notifications';
+            $link = $linkMap[$type] ?? ($isServiceRelated ? $studentServiceLink : ($isExamRelated ? '/student/schedule#exams-section' : '/student/notifications'));
         @endphp
         <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="handleNotifClick(event, '{{ $link }}', {{ $n->id }}, {{ !$isRead ? 'true' : 'false' }})">
             <div class="notif-icon" style="background: {{ $style['bg'] }}; color: {{ $style['color'] }};">

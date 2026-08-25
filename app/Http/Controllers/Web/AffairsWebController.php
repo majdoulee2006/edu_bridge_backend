@@ -456,6 +456,44 @@ class AffairsWebController extends Controller
         $studentReq->status = 'pending_hod';
         $studentReq->save();
 
+        $studentObj = $studentReq->student;
+        if ($studentObj) {
+            $studentUser = DB::table('users')->where('user_id', $studentObj->user_id)->first();
+            $studentName = $studentUser?->full_name ?? 'الطالب';
+
+            $decisionText = $request->decision === 'approved' ? 'الموافقة المبدئية' : 'إبداء الرأي والتحفظات';
+            $affairsMsg = "قامت الشؤون الطلابية بإبداء ($decisionText) وملاحظاتها على طلبك (#{$studentReq->id})، وتم تحويل الطلب إلى رئيس القسم للمتابعة.";
+
+            // إشعار للطالب بمراجعة الشؤون
+            DB::table('notifications')->insert([
+                'user_id'    => $studentObj->user_id,
+                'title'      => 'تحديث من الشؤون الطلابية على طلبك',
+                'message'    => $affairsMsg,
+                'type'       => 'student_service',
+                'category'   => 'administrative',
+                'related_id' => $studentReq->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // إشعار لرؤساء الأقسام
+            $hodUserIds = DB::table('users')->where('role_id', 5)->pluck('user_id');
+            foreach ($hodUserIds as $hodUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $hodUserId,
+                    'title'      => 'طلب خدمة محول من الشؤون',
+                    'message'    => "تمت مراجعة طلب الطالب $studentName من قبل الشؤون وهو بانتظار موافقتك وملاحظاتك كرئيس قسم.",
+                    'type'       => 'student_service',
+                    'category'   => 'administrative',
+                    'related_id' => $studentReq->id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
         return back()->with('success', 'تم حفظ رأي الشؤون بنجاح وتحويل الطلب إلى رئيس القسم.');
     }
 

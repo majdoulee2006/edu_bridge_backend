@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edu-Bridge | الطالب</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 
     <!-- Google Fonts: Cairo & Material Symbols -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -140,10 +143,14 @@
                     واجباتي
                 </a>
                 <a href="{{ url('/student/grades') }}" class="nav-item {{ Request::is('student/grades') ? 'active' : '' }}">
-                    <i class="fa-solid fa-chart-bar"></i>
-                    درجاتي
+                    <i class="fa-solid fa-id-card"></i>
+                    بطاقة الطالب (كشف العلامات)
                 </a>
 
+                <a href="{{ url('/student/student-services') }}" class="nav-item {{ Request::is('student/student-services*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-hand-holding-hand"></i>
+                    الخدمات الطلابية
+                </a>
                 <a href="{{ url('/student/leave-requests') }}" class="nav-item {{ Request::is('student/leave-requests') ? 'active' : '' }}">
                     <i class="fa-solid fa-envelope-open-text"></i>
                     طلبات الإذن
