@@ -57,6 +57,7 @@ class StudentController extends Controller
                   ->orWhere('target_role', 'student');
             })
             ->latest()
+            ->take(10)
             ->get()
             ->map(function ($item) {
                 $categoryText = 'عام';
@@ -346,15 +347,23 @@ class StudentController extends Controller
         $user = $request->user();
 
         // 🌟 إضافة (with('sender')) لجلب بيانات من أرسل الإشعار
-        $notifications = Notification::with('sender')
+        $rawNotifications = Notification::with('sender')
             ->where('user_id', $user->user_id)
             ->latest()
-            ->get()
-            ->map(function ($notify) {
+            ->take(50)
+            ->get();
+
+        $announcementIds = $rawNotifications->where('type', 'announcement')->pluck('related_id')->filter()->unique();
+        $announcementsData = \DB::table('announcements')
+            ->whereIn('announcement_id', $announcementIds)
+            ->get(['announcement_id', 'image', 'link_url'])
+            ->keyBy('announcement_id');
+
+        $notifications = $rawNotifications->map(function ($notify) use ($announcementsData) {
                 $imageUrl = null;
                 $linkUrl = null;
                 if ($notify->type === 'announcement' && $notify->related_id) {
-                    $ann = \DB::table('announcements')->where('announcement_id', $notify->related_id)->first(['image', 'link_url']);
+                    $ann = $announcementsData->get($notify->related_id);
                     $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
                     $linkUrl  = $ann->link_url ?? null;
                 }
