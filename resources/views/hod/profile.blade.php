@@ -424,6 +424,11 @@
     });
 
     function sendOTPRequest(data) {
+        if (!navigator.onLine) {
+            alert('لا يوجد اتصال بالإنترنت.');
+            return;
+        }
+
         fetch('{{ route("hod.profile.send_otp") }}', {
             method: 'POST',
             headers: {

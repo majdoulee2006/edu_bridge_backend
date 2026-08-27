@@ -1544,39 +1544,54 @@ class TeacherController extends Controller
 
     public function getNotifications(Request $request)
     {
-        $notifications = Notification::where('user_id', $request->user()->user_id)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function($n) {
-                $imageUrl = null;
-                $data = [];
-                if ($n->type === 'announcement' && $n->related_id) {
-                    $ann = \DB::table('announcements')
-                        ->leftJoin('users', 'announcements.user_id', '=', 'users.user_id')
-                        ->where('announcements.announcement_id', $n->related_id)
-                        ->first(['announcements.image', 'announcements.content', 'announcements.link_url', 'users.full_name as author_name']);
-                    $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
-                    $data = [
-                        'image_url'   => $imageUrl,
-                        'content'     => $ann->content ?? '',
-                        'author_name' => $ann->author_name ?? 'الإدارة',
-                        'link_url'    => $ann->link_url ?? null,
-                    ];
-                }
-                return [
-                    'id'         => $n->id,
-                    'title'      => $n->title,
-                    'message'    => $n->message,
-                    'type'       => $n->type,
-                    'is_read'    => $n->is_read,
-                    'related_id' => $n->related_id,
-                    'image_url'  => $imageUrl,
-                    'data'       => $data,
-                    'created_at' => $n->created_at->diffForHumans(),
-                ];
-            });
+        $query = Notification::where('user_id', $request->user()->user_id)
+            ->orderBy('created_at', 'desc');
 
-        return response()->json(['success' => true, 'data' => $notifications], 200);
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') $query->where('is_read', false);
+            elseif ($request->filter == 'read') $query->where('is_read', true);
+        }
+
+        $paginator = $query->paginate(15);
+
+        $mappedItems = collect($paginator->items())->map(function($n) {
+            $imageUrl = null;
+            $data = [];
+            if ($n->type === 'announcement' && $n->related_id) {
+                $ann = \DB::table('announcements')
+                    ->leftJoin('users', 'announcements.user_id', '=', 'users.user_id')
+                    ->where('announcements.announcement_id', $n->related_id)
+                    ->first(['announcements.image', 'announcements.content', 'announcements.link_url', 'users.full_name as author_name']);
+                $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
+                $data = [
+                    'image_url'   => $imageUrl,
+                    'content'     => $ann->content ?? '',
+                    'author_name' => $ann->author_name ?? 'الإدارة',
+                    'link_url'    => $ann->link_url ?? null,
+                ];
+            }
+            return [
+                'id'         => $n->id,
+                'title'      => $n->title,
+                'message'    => $n->message,
+                'type'       => $n->type,
+                'is_read'    => (bool)$n->is_read,
+                'related_id' => $n->related_id,
+                'image_url'  => $imageUrl,
+                'data'       => $data,
+                'formatted_date' => $n->created_at ? $n->created_at->translatedFormat('d F Y - h:i A') : null,
+                'time_ago'   => $n->created_at ? $n->created_at->diffForHumans() : 'منذ قليل',
+            ];
+        });
+
+        return response()->json([
+            'success' => true, 
+            'data' => $mappedItems,
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'has_more' => $paginator->hasMorePages(),
+            'total' => $paginator->total()
+        ], 200);
     }
 
     public function markNotificationRead(Request $request, $notificationId)

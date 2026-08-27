@@ -1262,15 +1262,26 @@ class ParentWebController extends Controller
     // ────────────────────────────────────────────────────────────
     //  NOTIFICATIONS
     // ────────────────────────────────────────────────────────────
-    public function notifications()
+    public function notifications(Request $request)
     {
         $user = auth()->user();
-        $notifications = DB::table('notifications')
+        
+        $query = DB::table('notifications')
             ->where('user_id', $user->user_id)
-            ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('created_at');
 
-        return $this->parentView('parent.notifications', compact('notifications'));
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+        $unreadCount = DB::table('notifications')->where('user_id', $user->user_id)->where('is_read', false)->count();
+
+        return $this->parentView('parent.notifications', compact('notifications', 'unreadCount'));
     }
 
     public function markNotificationRead(Request $request, $id)

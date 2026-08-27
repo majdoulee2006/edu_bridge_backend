@@ -1327,14 +1327,22 @@ class AffairsWebController extends Controller
     }
 
     // ─────────────────────────── Notifications ───────────────────────────
-    public function notifications()
+    public function notifications(Request $request)
     {
-        $notifications = Notification::with('sender')
+        $query = Notification::with('sender')
             ->where('user_id', Auth::id())
-            ->latest()
-            ->get();
+            ->latest();
 
-        $unreadCount = $notifications->where('is_read', false)->count();
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+        $unreadCount = Notification::where('user_id', Auth::id())->where('is_read', false)->count();
 
         return view('affairs.notifications', compact('notifications', 'unreadCount'));
     }
