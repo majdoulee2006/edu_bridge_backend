@@ -501,17 +501,27 @@ class AdminWebController extends Controller
 
 
 
-    public function notifications()
+    public function notifications(Request $request)
     {
         $adminUserIds = DB::table('users')->whereIn('role_id', [1, 4])->pluck('user_id')->toArray();
         $allAdminIds = array_unique(array_merge([Auth::id()], $adminUserIds));
 
-        $notifications = DB::table('notifications')
+        $query = DB::table('notifications')
             ->whereIn('user_id', $allAdminIds)
-            ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('created_at');
 
-        return view('admin.notifications', compact('notifications'));
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+        $unreadCount = DB::table('notifications')->whereIn('user_id', $allAdminIds)->where('is_read', false)->count();
+
+        return view('admin.notifications', compact('notifications', 'unreadCount'));
     }
 
     public function markNotificationRead($id)

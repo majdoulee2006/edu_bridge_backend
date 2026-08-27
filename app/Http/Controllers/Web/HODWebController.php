@@ -99,14 +99,22 @@ class HODWebController extends Controller
         return view('hod.dashboard', compact('announcements', 'teachersCount', 'studentsCount', 'coursesCount'));
     }
 
-    public function notifications()
+    public function notifications(Request $request)
     {
-        $notifications = DB::table('notifications')
+        $query = DB::table('notifications')
             ->where('user_id', auth()->id())
-            ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('created_at');
 
-        $unreadCount = $notifications->where('is_read', false)->count();
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+        $unreadCount = DB::table('notifications')->where('user_id', auth()->id())->where('is_read', false)->count();
 
         return view('hod.notifications', compact('notifications', 'unreadCount'));
     }

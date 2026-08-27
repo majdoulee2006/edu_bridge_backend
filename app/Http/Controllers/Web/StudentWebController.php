@@ -871,14 +871,24 @@ class StudentWebController extends Controller
     // ────────────────────────────────────────────────────────────
     //  NOTIFICATIONS
     // ────────────────────────────────────────────────────────────
-    public function notifications()
+    public function notifications(Request $request)
     {
         $student = $this->getStudent();
-        $notifications = \App\Models\Notification::where('user_id', Auth::id())
-            ->orderByDesc('created_at')
-            ->get();
+        
+        $query = \App\Models\Notification::where('user_id', Auth::id())
+            ->orderByDesc('created_at');
 
-        $unreadCount = $notifications->where('is_read', false)->count();
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+
+        $unreadCount = \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count();
 
         return view('student.notifications', compact('notifications', 'unreadCount'));
     }

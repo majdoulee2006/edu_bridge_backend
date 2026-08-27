@@ -371,6 +371,10 @@
             document.getElementById('saveBtn').style.display = isEdit ? 'none' : 'block';
         }
         function startOtpProcess() {
+            if (!navigator.onLine) {
+                alert("لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى.");
+                return;
+            }
             openModal('otpModal');
             document.querySelectorAll('.otp-input').forEach(i => i.value = '');
             document.querySelectorAll('.otp-input')[0].focus();

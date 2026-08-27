@@ -82,25 +82,33 @@ class DepartmentHeadController extends Controller
     // ─── Notifications ────────────────────────────────────────────
     public function getNotifications(Request $request)
     {
-        $notifications = DB::table('notifications')
+        $query = DB::table('notifications')
             ->where('notifications.user_id', $request->user()->user_id)
             ->leftJoin('leave_requests', function ($join) {
                 $join->on('leave_requests.id', '=', 'notifications.related_id')
                      ->where('notifications.type', '=', 'leave_request');
             })
-            ->orderBy('notifications.created_at', 'desc')
-            ->limit(30)
-            ->get([
-                'notifications.id',
-                'notifications.title',
-                'notifications.message',
-                'notifications.type',
-                'notifications.related_id',
-                'notifications.is_read',
-                'notifications.created_at',
-                'leave_requests.status as leave_status',
-            ])
-            ->map(fn($n) => [
+            ->orderBy('notifications.created_at', 'desc');
+
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') $query->where('notifications.is_read', false);
+            elseif ($request->filter == 'read') $query->where('notifications.is_read', true);
+        }
+
+        $paginator = $query->paginate(15, [
+            'notifications.id',
+            'notifications.title',
+            'notifications.message',
+            'notifications.type',
+            'notifications.related_id',
+            'notifications.is_read',
+            'notifications.created_at',
+            'leave_requests.status as leave_status',
+        ]);
+
+        $mappedItems = collect($paginator->items())->map(function($n) {
+            $createdAt = $n->created_at ? \Carbon\Carbon::parse($n->created_at) : null;
+            return [
                 'id'           => $n->id,
                 'title'        => $n->title,
                 'message'      => $n->message,
@@ -108,10 +116,20 @@ class DepartmentHeadController extends Controller
                 'related_id'   => $n->related_id,
                 'is_read'      => (bool) $n->is_read,
                 'created_at'   => $n->created_at,
+                'formatted_date' => $createdAt ? $createdAt->translatedFormat('d F Y - h:i A') : null,
+                'time_ago'     => $createdAt ? $createdAt->diffForHumans() : 'منذ قليل',
                 'leave_status' => $n->leave_status ?? null,
-            ]);
+            ];
+        });
 
-        return response()->json(['success' => true, 'data' => $notifications]);
+        return response()->json([
+            'success' => true, 
+            'data' => $mappedItems,
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'has_more' => $paginator->hasMorePages(),
+            'total' => $paginator->total()
+        ]);
     }
 
     public function markNotificationRead(Request $request, $id)
