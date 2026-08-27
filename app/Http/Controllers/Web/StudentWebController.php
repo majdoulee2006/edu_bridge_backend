@@ -741,13 +741,11 @@ class StudentWebController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'full_name' => 'required|string|max:255',
             'email'     => 'required|email|unique:users,email,' . $user->user_id . ',user_id',
             'phone'     => 'nullable|string|max:20',
         ]);
 
         DB::table('users')->where('user_id', $user->user_id)->update([
-            'full_name'  => $request->full_name,
             'email'      => $request->email,
             'phone'      => $request->phone,
             'updated_at' => now(),

@@ -291,6 +291,11 @@
                     </div>
                 </div>
 
+                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+                    <input type="checkbox" name="remember" id="remember" style="accent-color: var(--accent-yellow); width: 16px; height: 16px; cursor: pointer;">
+                    <label for="remember" style="color: #e4e4e7; font-size: 0.9rem; cursor: pointer; user-select: none;">تذكرني (Remember Me)</label>
+                </div>
+
                 <button type="submit" class="btn-submit">
                     تسجيل الدخول
                     <i class="fa-solid fa-arrow-left"></i>
