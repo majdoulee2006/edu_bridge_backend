@@ -147,17 +147,17 @@
     .form-control {
         width: 100%;
         padding: 0.875rem 3rem 0.875rem 1rem;
-        border: 2px solid var(--bg-primary);
+        border: 2px solid var(--bg-primary, #333);
         border-radius: 0.85rem;
-        background: var(--bg-primary);
-        color: var(--text-primary);
+        background: var(--bg-primary, #1e1e1e) !important;
+        color: var(--text-primary, #fff) !important;
         font-family: inherit;
         font-size: 0.95rem;
         outline: none;
         transition: all 0.25s ease;
     }
     .form-control:focus {
-        border-color: var(--accent-color);
+        border-color: var(--accent-color, #ffd700) !important;
         box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.1);
     }
     .btn-submit {
@@ -209,7 +209,7 @@
                 <div class="stat-label">السنة الدراسية</div>
             </div>
             <div class="stat-box">
-                <div class="stat-value" style="color: var(--accent-color); font-size: 0.95rem;">{{ ($activeSemester ?? null) ? $activeSemester->name : 'لا يوجد فصل' }}</div>
+                <div class="stat-value" style="font-size: 0.95rem;">{{ ($activeSemester ?? null) ? $activeSemester->name : 'لا يوجد فصل' }}</div>
                 <div class="stat-label">الفصل الدراسي النشط</div>
             </div>
             <div class="stat-box">
@@ -234,7 +234,6 @@
                         <div class="info-value">{{ $user->full_name }}</div>
                     </div>
                 </div>
-                <button class="edit-btn" onclick="openEditModal('name')"><i class="fa-solid fa-pen"></i></button>
             </div>
 
             <div class="info-card">
@@ -327,31 +326,23 @@
 <div class="modal-overlay" id="editPasswordModal">
     <div class="modal-card">
         <h3 style="margin-bottom: 1.5rem; font-weight: 800; color: var(--text-primary);">تغيير كلمة المرور</h3>
-        <form id="password-form" onsubmit="handlePasswordSubmit(event)" style="text-align: right;">
+        <form action="{{ route('student.profile.password') }}" method="POST" style="text-align: right;">
+            @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color: var(--text-primary);">كلمة المرور الحالية</label>
-                <input type="password" id="current_password" class="form-control" placeholder="••••••••" required>
+                <input type="password" name="current_password" id="current_password" class="form-control" placeholder="••••••••" required>
             </div>
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color: var(--text-primary);">كلمة المرور الجديدة</label>
-                <input type="password" id="new_password" class="form-control" placeholder="••••••••" required minlength="6">
+                <input type="password" name="new_password" id="new_password" class="form-control" placeholder="••••••••" required minlength="6">
             </div>
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color: var(--text-primary);">تأكيد كلمة المرور</label>
-                <input type="password" id="new_password_confirmation" class="form-control" placeholder="••••••••" required minlength="6">
+                <input type="password" name="new_password_confirmation" id="new_password_confirmation" class="form-control" placeholder="••••••••" required minlength="6">
             </div>
 
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--accent-color);">
-                    <i class="fa-brands fa-telegram"></i> معرف حساب تيليغرام (لإرسال OTP)
-                </label>
-                <input type="text" id="password_telegram" class="form-control" placeholder="مثال: @username أو معرف الحساب">
-                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">اختياري إذا كان مسجلاً مسبقاً</small>
-            </div>
-
-            <div id="password-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
-            <button type="submit" id="password-btn" class="btn-submit" style="margin-top:0;">
-                <i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق
+            <button type="submit" class="btn-submit" style="margin-top:1.5rem;">
+                <i class="fa-solid fa-check"></i> حفظ التغييرات
             </button>
             <button type="button" class="btn-submit" style="background: transparent; color: var(--text-secondary); margin-top:0.5rem;" onclick="closeModals()">إلغاء</button>
         </form>
@@ -452,11 +443,9 @@ function openEditModal(field) {
 
 function openPasswordModal() {
     document.getElementById('editPasswordModal').classList.add('active');
-    document.getElementById('password-error').style.display = 'none';
     document.getElementById('current_password').value = '';
     document.getElementById('new_password').value = '';
     document.getElementById('new_password_confirmation').value = '';
-    document.getElementById('password_telegram').value = '';
 }
 
 function closeModals() {
@@ -524,53 +513,7 @@ function handleProfileSubmit(e) {
     });
 }
 
-function handlePasswordSubmit(e) {
-    e.preventDefault();
-    const current = document.getElementById('current_password').value;
-    const newPw   = document.getElementById('new_password').value;
-    const confirm = document.getElementById('new_password_confirmation').value;
-    const telegramId = document.getElementById('password_telegram').value;
-    const btn     = document.getElementById('password-btn');
-    const errorDiv= document.getElementById('password-error');
-
-    if (newPw !== confirm) {
-        errorDiv.innerText = 'كلمة المرور الجديدة غير متطابقة';
-        errorDiv.style.display = 'block';
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إرسال OTP...';
-    errorDiv.style.display = 'none';
-
-    fetch('{{ route("student.profile.send_otp") }}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ 
-            current_password: current, 
-            new_password: newPw,
-            telegram_chat_id: telegramId
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
-        if (data.success) {
-            closeModals();
-            showOTPModal();
-        } else {
-            errorDiv.innerText = data.message || 'حدث خطأ';
-            errorDiv.style.display = 'block';
-        }
-    })
-    .catch(() => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق';
-        errorDiv.innerText = 'فشل الاتصال بالخادم';
-        errorDiv.style.display = 'block';
-    });
-}
+// (Removed handlePasswordSubmit because password changes are now submitted normally without OTP)
 
 function verifyOTP() {
     const otp = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
