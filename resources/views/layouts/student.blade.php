@@ -144,6 +144,11 @@
                     درجاتي
                 </a>
 
+                <a href="{{ url('/student/attendance') }}" class="nav-item {{ Request::is('student/attendance*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-qrcode" style="color: var(--accent-color);"></i>
+                    تسجيل الحضور (QR والوجه)
+                </a>
+
                 <a href="{{ url('/student/leave-requests') }}" class="nav-item {{ Request::is('student/leave-requests') ? 'active' : '' }}">
                     <i class="fa-solid fa-envelope-open-text"></i>
                     طلبات الإذن
@@ -203,6 +208,10 @@
                             ->where('is_read', 0)
                             ->count();
                     @endphp
+                    <!-- Quick Flutter Camera Button -->
+                    <a href="{{ url('/student/attendance') }}" style="background: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; text-decoration: none; box-shadow: 0 0 15px rgba(242,242,13,0.3);" title="كاميرا الحضور">
+                        <i class="fa-solid fa-camera"></i> الحضور
+                    </a>
                     <a href="{{ url('/student/notifications') }}" style="position: relative; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; text-decoration: none;" title="الإشعارات">
                         <i class="fa-solid fa-bell"></i>
                         @if($unreadStudentNotifs > 0)

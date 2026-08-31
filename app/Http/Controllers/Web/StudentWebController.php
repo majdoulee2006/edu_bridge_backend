@@ -532,7 +532,25 @@ class StudentWebController extends Controller
             }
         }
 
-        return view('student.attendance', compact('attendanceRecords', 'courseStats'));
+        // الجلسات المتاحة حالياً
+        $activeSessions = DB::table('attendance_sessions')
+            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
+            ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
+            ->whereIn('courses.course_id', $enrolledCourseIds)
+            ->where('attendance_sessions.expires_at', '>', now())
+            ->select('attendance_sessions.*', 'courses.title as course_title', 'lessons.title as lesson_title')
+            ->get();
+
+        return view('student.attendance', compact('attendanceRecords', 'courseStats', 'activeSessions'));
+    }
+
+    public function scanAttendanceWeb(Request $request)
+    {
+        $apiReq = new Request($request->all());
+        $apiReq->setUserResolver(fn() => Auth::user());
+
+        $apiController = app(\App\Http\Controllers\Api\StudentController::class);
+        return $apiController->scanAttendanceQr($apiReq);
     }
 
     public function submitExcuse(Request $request, $attendanceId)
