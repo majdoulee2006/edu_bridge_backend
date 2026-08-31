@@ -103,6 +103,17 @@
         color: #1a1a1a;
         border-color: transparent;
     }
+    .active-filter {
+        background: var(--accent-color) !important;
+        color: #1a1a1a !important;
+        border-color: transparent !important;
+    }
+    /* Pagination Styles Fix for Dark Mode */
+    .pagination-wrapper nav { width: 100%; }
+    .pagination-wrapper .pagination { justify-content: center; margin-bottom: 0; }
+    .pagination-wrapper .page-item .page-link { background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary); }
+    .pagination-wrapper .page-item.active .page-link { background: var(--accent-color); color: #000; border-color: var(--accent-color); }
+    .pagination-wrapper .page-item.disabled .page-link { color: var(--text-secondary); background: var(--bg-primary); }
 </style>
 @endpush
 
@@ -110,15 +121,20 @@
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <p style="color:var(--text-secondary); margin: 0;">
-                لديك <span style="font-weight: 800; color: var(--text-primary);">{{ isset($notifications) ? $notifications->count() : 0 }}</span> إشعار
+            <p style="color: var(--text-secondary); margin-top: 0.25rem; font-size: 0.9rem;">
+                لديك <span style="font-weight: 800; color: var(--text-primary);">{{ $notifications->total() }}</span> إشعار 
                 @if(isset($unreadCount) && $unreadCount > 0)
                     (<span style="color: var(--accent-color); font-weight: 800;">{{ $unreadCount }} غير مقروء</span>)
                 @endif
             </p>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <a href="{{ route('hod.notifications') }}" class="single-read-btn {{ !request('filter') ? 'active-filter' : '' }}" style="text-decoration: none;">الكل</a>
+                <a href="{{ route('hod.notifications', ['filter' => 'unread']) }}" class="single-read-btn {{ request('filter') == 'unread' ? 'active-filter' : '' }}" style="text-decoration: none;">غير المقروءة</a>
+                <a href="{{ route('hod.notifications', ['filter' => 'read']) }}" class="single-read-btn {{ request('filter') == 'read' ? 'active-filter' : '' }}" style="text-decoration: none;">المقروءة</a>
+            </div>
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-            @if(isset($notifications) && $notifications->filter(fn($n) => !$n->is_read)->count() > 0)
+            @if(isset($unreadCount) && $unreadCount > 0)
                 <form method="POST" action="{{ route('hod.notifications.read_all') }}">
                     @csrf
                     <button type="submit" class="mark-read-btn">
@@ -149,7 +165,26 @@
             ];
             $style = $iconMap[$type] ?? $iconMap['general'];
 
+            $titleText = mb_strtolower(($n->title ?? '') . ' ' . ($n->message ?? ''));
+            $isService = str_contains($titleText, 'خدمة') || str_contains($titleText, 'استرحام') || str_contains($titleText, 'وثيقة') || str_contains($titleText, 'كشف') || str_contains($titleText, 'إكمال') || $type === 'student_service';
+
+            $serviceTab = 'all';
+            if (str_contains($titleText, 'وثيقة') || str_contains($titleText, 'كشف') || str_contains($titleText, 'علامات')) {
+                $serviceTab = 'documents';
+            } elseif (str_contains($titleText, 'إكمال') || str_contains($titleText, 'امتحان')) {
+                $serviceTab = 'makeup';
+            } elseif (str_contains($titleText, 'استرحام')) {
+                $serviceTab = 'mercy';
+            } elseif (str_contains($titleText, 'قفل') || str_contains($titleText, 'جهاز')) {
+                $serviceTab = 'device-reset';
+            } elseif (str_contains($titleText, 'بصمة') || str_contains($titleText, 'وجه')) {
+                $serviceTab = 'face-photo';
+            }
+
+            $serviceLink = '/hod/student-services?tab=' . $serviceTab;
+
             $linkMap = [
+                'student_service'=> $serviceLink,
                 'assignment'     => '/hod/dashboard',
                 'announcement'   => '/hod/dashboard',
                 'leave'          => '/hod/leaves',
@@ -157,10 +192,10 @@
                 'attendance'     => '/hod/dashboard',
                 'grade'          => '/hod/dashboard',
                 'message'        => '/hod/messages',
-                'administrative' => '/hod/dashboard',
-                'general'        => '/hod/notifications',
+                'administrative' => $isService ? $serviceLink : '/hod/dashboard',
+                'general'        => $isService ? $serviceLink : '/hod/notifications',
             ];
-            $link = $linkMap[$type] ?? '/hod/notifications';
+            $link = $linkMap[$type] ?? ($isService ? $serviceLink : '/hod/notifications');
         @endphp
 
         <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="handleNotifClick(event, '{{ $link }}', {{ $n->id }}, {{ !$isRead ? 'true' : 'false' }})">
@@ -173,8 +208,8 @@
                         {{ $n->title }}
                     </span>
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap;">
-                            {{ \Carbon\Carbon::parse($n->created_at)->diffForHumans() }}
+                        <span style="font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap;" dir="ltr">
+                            {{ $n->created_at->format('Y-m-d | h:i A') }}
                         </span>
                         @if(!$isRead)
                             <form method="POST" action="{{ route('hod.notifications.read', $n->id) }}" style="display: inline;" onclick="event.stopPropagation();">
@@ -197,10 +232,16 @@
 
     @empty
         <div style="text-align: center; padding: 4rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary);">
-            <i class="fa-regular fa-bell-slash" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>
-            <p style="font-size: 1.1rem; font-weight: 600;">لا توجد إشعارات حتى الآن</p>
+            <i class="fa-regular fa-bell-slash" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
+            <p style="font-size: 1.1rem; font-weight: 600;">لا توجد إشعارات لعرضها</p>
         </div>
     @endforelse
+
+    @if($notifications->hasPages())
+        <div class="pagination-wrapper" style="margin-top: 2rem; display: flex; justify-content: center;" dir="ltr">
+            {{ $notifications->appends(request()->query())->links('pagination::bootstrap-4') }}
+        </div>
+    @endif
 
 
     {{-- Modal: إرسال إشعار جديد --}}

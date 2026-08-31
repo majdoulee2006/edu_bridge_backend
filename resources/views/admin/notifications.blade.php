@@ -90,16 +90,19 @@
         $unreadCount = $notifications->filter(fn($n) => !$n->is_read)->count();
     @endphp
     <div class="flex items-center gap-4 mb-6 border-b border-zinc-800 pb-3">
-        <button class="notif-filter-btn active" data-filter="all" onclick="filterNotifs('all', this)">
+        <a href="{{ route('admin.notifications') }}" class="notif-filter-btn {{ !request('filter') ? 'active' : '' }}">
             كل الإشعارات
-            <span class="mr-1.5 px-2 py-0.5 rounded-full text-xs bg-zinc-800 text-zinc-300 font-bold">{{ $notifications->count() }}</span>
-        </button>
-        <button class="notif-filter-btn" data-filter="unread" onclick="filterNotifs('unread', this)">
+            <span class="mr-1.5 px-2 py-0.5 rounded-full text-xs bg-zinc-800 text-zinc-300 font-bold">{{ $notifications->total() }}</span>
+        </a>
+        <a href="{{ route('admin.notifications', ['filter' => 'unread']) }}" class="notif-filter-btn {{ request('filter') == 'unread' ? 'active' : '' }}">
             غير مقروءة
             @if($unreadCount > 0)
                 <span class="mr-1.5 px-2 py-0.5 rounded-full text-xs bg-[#f2f20d] text-black font-black" id="unreadBadge">{{ $unreadCount }}</span>
             @endif
-        </button>
+        </a>
+        <a href="{{ route('admin.notifications', ['filter' => 'read']) }}" class="notif-filter-btn {{ request('filter') == 'read' ? 'active' : '' }}">
+            مقروءة
+        </a>
     </div>
 
     {{-- ===== Notifications List ===== --}}
@@ -111,7 +114,22 @@
 
                 // Smart navigation links
                 $targetUrl = null;
-                if (str_contains($titleLower, 'موعد') || str_contains($titleLower, 'مقابلة') || str_contains($titleLower, 'لقاء')) {
+                $serviceTab = 'all';
+                if (str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'علامات')) {
+                    $serviceTab = 'documents';
+                } elseif (str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'امتحان')) {
+                    $serviceTab = 'makeup';
+                } elseif (str_contains($titleLower, 'استرحام')) {
+                    $serviceTab = 'mercy';
+                } elseif (str_contains($titleLower, 'قفل') || str_contains($titleLower, 'جهاز')) {
+                    $serviceTab = 'device-reset';
+                } elseif (str_contains($titleLower, 'بصمة') || str_contains($titleLower, 'وجه')) {
+                    $serviceTab = 'face-photo';
+                }
+
+                if ($type === 'student_service' || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'استرحام') || str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'إكمال')) {
+                    $targetUrl = route('admin.student_services') . '?tab=' . $serviceTab;
+                } elseif (str_contains($titleLower, 'موعد') || str_contains($titleLower, 'مقابلة') || str_contains($titleLower, 'لقاء')) {
                     $targetUrl = route('admin.appointments');
                 } elseif (str_contains($titleLower, 'رسالة') || $type === 'message' || $type === 'chat') {
                     $targetUrl = route('admin.messages');
@@ -146,8 +164,8 @@
                         <h3 class="text-base font-bold text-white leading-snug truncate">
                             {{ $notif->title }}
                         </h3>
-                        <span class="text-xs font-semibold text-zinc-500 shrink-0">
-                            {{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}
+                        <span class="text-xs font-semibold text-zinc-500 shrink-0" dir="rtl">
+                            {{ \Carbon\Carbon::parse($notif->created_at)->translatedFormat('d F Y - h:i A') }}
                         </span>
                     </div>
 
@@ -180,6 +198,12 @@
             </div>
         @endforelse
     </div>
+
+    @if($notifications->hasPages())
+        <div class="mt-8 flex justify-center w-full" dir="ltr">
+            {{ $notifications->appends(request()->query())->links('pagination::tailwind') }}
+        </div>
+    @endif
 
     {{-- Modal إرسال إشعار جديد --}}
     <div id="sendNotifModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

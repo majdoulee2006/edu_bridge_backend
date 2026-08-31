@@ -9,46 +9,45 @@
     /* Tabs Styling */
     .custom-tabs {
         display: flex;
-        gap: 1rem;
+        gap: 0.75rem;
         margin-bottom: 2rem;
         border-bottom: 2px solid var(--border-color, #e2e8f0);
-        padding-bottom: 0.5rem;
+        padding-bottom: 0.75rem;
         overflow-x: auto;
     }
     .tab-btn {
-        background: transparent;
-        border: none;
+        background: var(--surface-light, #ffffff);
+        border: 1px solid var(--border-color, #cbd5e1);
         color: var(--text-secondary, #64748b);
-        font-size: 1.05rem;
+        font-size: 0.95rem;
         font-weight: 700;
-        padding: 0.8rem 1.5rem;
+        padding: 0.65rem 1.25rem;
         cursor: pointer;
-        position: relative;
-        transition: color 0.3s;
+        transition: all 0.25s ease;
         white-space: nowrap;
-        border-radius: 8px 8px 0 0;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
-    [data-theme="dark"] .tab-btn { color: #94a3b8; }
+    [data-theme="dark"] .tab-btn { 
+        background: #1e293b;
+        border-color: #334155;
+        color: #94a3b8; 
+    }
     .tab-btn:hover {
         color: var(--text-primary, #0f172a);
-        background: var(--bg-secondary, #f8fafc);
+        background: rgba(0, 0, 0, 0.04);
     }
     [data-theme="dark"] .tab-btn:hover {
         color: #f8fafc;
-        background: #1e293b;
+        background: rgba(255, 255, 255, 0.06);
     }
+    /* Active Tab - Uses exact system yellow var(--accent-color) with dark text */
     .tab-btn.active {
-        color: #f2f20d;
-    }
-    .tab-btn.active::after {
-        content: '';
-        position: absolute;
-        bottom: -0.65rem;
-        left: 0;
-        width: 100%;
-        height: 3px;
-        background: #f2f20d;
-        border-radius: 3px;
+        color: #101924 !important;
+        background-color: var(--accent-color, #f2f20d) !important;
+        border-color: var(--accent-color, #f2f20d) !important;
+        box-shadow: var(--glow-shadow, 0 4px 15px rgba(242, 242, 13, 0.4)) !important;
+        font-weight: 800 !important;
     }
 
     /* Tab Content Area */

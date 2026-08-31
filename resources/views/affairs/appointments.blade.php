@@ -22,29 +22,84 @@
     /* Tabs Navigation */
     .tabs-nav {
         display: flex;
-        gap: 1rem;
+        gap: 0.75rem;
         border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.75rem;
         margin-bottom: 1.5rem;
+        flex-wrap: wrap;
     }
     
     .tab-btn {
-        padding: 0.75rem 1.5rem;
+        padding: 0.65rem 1.25rem;
         font-weight: 700;
         font-size: 0.95rem;
         color: var(--text-secondary);
-        border: none;
-        background: transparent;
+        border: 1px solid var(--border-color);
+        background: var(--surface-light);
         cursor: pointer;
-        border-bottom: 3px solid transparent;
-        transition: all 0.2s ease;
+        border-radius: 0.75rem;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.6rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
     }
-    
+
+    .tab-btn:hover {
+        color: var(--text-primary);
+        background-color: rgba(0, 0, 0, 0.04);
+        transform: translateY(-1px);
+    }
+
+    [data-theme="dark"] .tab-btn {
+        background: #181818;
+    }
+
+    [data-theme="dark"] .tab-btn:hover {
+        background-color: rgba(255, 255, 255, 0.06);
+    }
+
+    /* Active Tab - Uses exact system yellow var(--accent-color) with dark high-contrast text */
     .tab-btn.active {
-        color: var(--accent-color);
-        border-bottom-color: var(--accent-color);
+        color: #101924 !important;
+        background-color: var(--accent-color, #f2f20d) !important;
+        border-color: var(--accent-color, #f2f20d) !important;
+        box-shadow: var(--glow-shadow, 0 4px 15px rgba(242, 242, 13, 0.4)) !important;
+        font-weight: 800 !important;
+    }
+
+    .tab-btn.active i {
+        color: #101924 !important;
+    }
+
+    .tab-badge {
+        background: rgba(15, 23, 42, 0.08);
+        color: #0f172a;
+        border-radius: 1rem;
+        padding: 0.15rem 0.6rem;
+        font-size: 0.75rem;
+        font-weight: 800;
+        margin-right: 0.25rem;
+    }
+
+    .tab-btn.active .tab-badge {
+        background: #101924 !important;
+        color: var(--accent-color, #f2f20d) !important;
+    }
+
+    [data-theme="dark"] .tab-badge {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+    }
+
+    [data-theme="dark"] .tab-btn.active .tab-badge {
+        background: #101924 !important;
+        color: var(--accent-color, #f2f20d) !important;
+    }
+
+    .tab-badge.summon-badge {
+        background: rgba(239,68,68,0.15);
+        color: #ef4444;
     }
     
     .tab-content {
@@ -161,14 +216,14 @@
             <button class="tab-btn active" onclick="switchTab(event, 'meetings-tab')">
                 <i class="fa-solid fa-comments"></i>
                 طلبات اللقاء من أولياء الأمور
-                <span style="background: var(--accent-color); color: #1a1a1a; border-radius: 1rem; padding: 0.1rem 0.6rem; font-size: 0.75rem; margin-right: 0.25rem;">
+                <span class="tab-badge">
                     {{ $meetings->count() }}
                 </span>
             </button>
             <button class="tab-btn" onclick="switchTab(event, 'summons-tab')">
                 <i class="fa-solid fa-user-gear"></i>
                 استدعاءات أولياء الأمور
-                <span style="background: rgba(239,68,68,0.15); color: #ef4444; border-radius: 1rem; padding: 0.1rem 0.6rem; font-size: 0.75rem; margin-right: 0.25rem;">
+                <span class="tab-badge summon-badge">
                     {{ $summons->count() }}
                 </span>
             </button>
@@ -332,8 +387,8 @@
         <form action="{{ route('affairs.summons.store') }}" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
             @csrf
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">تصفية حسب الدورة / الاختصاص أولاً (اختياري):</label>
-                <select id="program_filter_select" onchange="filterStudentsByProgram(this.value)" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">تصفية حسب الدورة / الاختصاص (اختياري):</label>
+                <select id="program_filter_select" onchange="filterStudentsByNameAndProgram()" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;">
                     <option value="all" selected>-- جميع الاختصاصات والبرامج --</option>
                     @foreach($programs as $prog)
                         <option value="{{ $prog->id }}">{{ $prog->name }}</option>
@@ -342,15 +397,20 @@
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">اختر الطالب المستهدف:</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">بحث باسم الطالب (أدخل الاسم كاملاً أو جزءاً منه):</label>
+                <div style="position: relative; margin-bottom: 0.5rem;">
+                    <input type="text" id="student_search_input" oninput="filterStudentsByNameAndProgram()" placeholder="🔍 ابحث عن اسم الطالب هنا..." 
+                           style="width: 100%; padding: 0.75rem 2.5rem 0.75rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; background: var(--bg-primary); color: var(--text-primary);" />
+                </div>
                 <select name="student_id" id="student_select" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;">
-                    <option value="" disabled selected>-- اختر الطالب لإرسال استدعاء لوليه --</option>
+                    <option value="" disabled selected>-- اختر الطالب من النتيجة --</option>
                     @foreach($students as $st)
-                        <option value="{{ $st->student_id }}" data-program-id="{{ $st->program_id }}">
+                        <option value="{{ $st->student_id }}" data-program-id="{{ $st->program_id }}" data-name="{{ mb_strtolower($st->user->full_name ?? '') }}">
                             {{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->program->name ?? $st->level }} - {{ $st->user->department ?? '' }}]
                         </option>
                     @endforeach
                 </select>
+                <div id="search_results_count" style="font-size: 0.8rem; color: var(--accent-color); font-weight: 700; margin-top: 0.35rem;"></div>
             </div>
 
             <div>
@@ -507,6 +567,62 @@
         }
     });
 
+    function normalizeArabic(str) {
+        if (!str) return '';
+        return str
+            .toLowerCase()
+            .replace(/[أإآ]/g, 'ا')
+            .replace(/ة/g, 'ه')
+            .replace(/ى/g, 'ي')
+            .trim();
+    }
+
+    function filterStudentsByNameAndProgram() {
+        const programSelect = document.getElementById('program_filter_select');
+        const programId = programSelect ? programSelect.value : 'all';
+        const searchInput = document.getElementById('student_search_input');
+        const query = normalizeArabic(searchInput ? searchInput.value : '');
+        const studentSelect = document.getElementById('student_select');
+        const options = studentSelect.querySelectorAll('option');
+        let visibleCount = 0;
+        let firstMatch = null;
+
+        options.forEach(opt => {
+            if (!opt.value) return;
+
+            const optProgId = opt.getAttribute('data-program-id');
+            const optName = normalizeArabic(opt.getAttribute('data-name') || opt.textContent);
+
+            const matchesProg = (programId === 'all' || optProgId == programId);
+            const matchesName = !query || optName.includes(query);
+
+            if (matchesProg && matchesName) {
+                opt.style.display = '';
+                opt.disabled = false;
+                visibleCount++;
+                if (!firstMatch) firstMatch = opt;
+            } else {
+                opt.style.display = 'none';
+                opt.disabled = true;
+            }
+        });
+
+        if (query && visibleCount === 1 && firstMatch) {
+            studentSelect.value = firstMatch.value;
+        } else if (!studentSelect.value || (studentSelect.selectedOptions[0] && studentSelect.selectedOptions[0].disabled)) {
+            studentSelect.value = '';
+        }
+
+        const countDiv = document.getElementById('search_results_count');
+        if (countDiv) {
+            if (query || programId !== 'all') {
+                countDiv.textContent = `نتائج المطابقة: تم العثور على (${visibleCount}) طالب`;
+            } else {
+                countDiv.textContent = '';
+            }
+        }
+    }
+
     function openCreateSummonModal() {
         const summonDateInput = document.querySelector('input[name="summon_date"]');
         if (summonDateInput) {
@@ -516,36 +632,17 @@
                 summonDateInput.value = todayStr;
             }
         }
+        const searchInput = document.getElementById('student_search_input');
+        if (searchInput) searchInput.value = '';
+        const programSelect = document.getElementById('program_filter_select');
+        if (programSelect) programSelect.value = 'all';
+        filterStudentsByNameAndProgram();
+
         document.getElementById('createSummonModal').style.display = 'flex';
     }
 
     function closeCreateSummonModal() {
         document.getElementById('createSummonModal').style.display = 'none';
-    }
-
-    function filterStudentsByProgram(selectedProgramId) {
-        const studentSelect = document.getElementById('student_select');
-        const options = studentSelect.querySelectorAll('option');
-
-        options.forEach(opt => {
-            if (!opt.value) return;
-
-            if (selectedProgramId === 'all') {
-                opt.style.display = '';
-                opt.disabled = false;
-            } else {
-                const progId = opt.getAttribute('data-program-id');
-                if (progId == selectedProgramId) {
-                    opt.style.display = '';
-                    opt.disabled = false;
-                } else {
-                    opt.style.display = 'none';
-                    opt.disabled = true;
-                }
-            }
-        });
-
-        studentSelect.value = '';
     }
 </script>
 @endpush

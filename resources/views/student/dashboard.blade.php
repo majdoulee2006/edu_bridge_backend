@@ -127,7 +127,7 @@
 </a>
 
 {{-- Stats --}}
-<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-bottom: 2rem;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
 
     <a href="{{ route('student.courses') }}" class="stat-card">
         <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
@@ -147,15 +147,25 @@
         </div>
     </a>
 
-    <div class="stat-card stat-card-plain">
+    <a href="{{ route('student.grades') }}" class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-id-card"></i></div>
+        <div>
+            <div class="stat-value" style="font-size: 1.4rem;">كشف العلامات</div>
+            <div class="stat-label">بطاقة الطالب الأكاديمية</div>
+            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+        </div>
+    </a>
+
+    <a href="{{ route('student.grades') }}" class="stat-card">
         <div class="stat-icon"><i class="fa-solid fa-chart-bar"></i></div>
         <div style="flex: 1;">
             <div class="stat-value">{{ $avgGrade !== null ? $avgGrade . '%' : 'غير متاح' }}</div>
             <div class="stat-label">متوسط الدرجات</div>
+            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
         </div>
-    </div>
+    </a>
 
-    <div class="stat-card stat-card-plain">
+    <a href="{{ route('student.attendance') }}" class="stat-card">
         <div class="stat-icon"><i class="fa-solid fa-clipboard-user"></i></div>
         <div style="flex: 1;">
             <div class="stat-value">{{ $attendanceRate !== null ? $attendanceRate . '%' : 'غير متاح' }}</div>
@@ -165,8 +175,9 @@
                 <div class="att-bar" style="width: {{ $attendanceRate }}%;"></div>
             </div>
             @endif
+            <div class="stat-hint" style="margin-top: 0.4rem;"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
         </div>
-    </div>
+    </a>
 
 </div>
 

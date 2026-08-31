@@ -90,7 +90,7 @@
 (function() {
     const seenNotifIds = new Set(JSON.parse(sessionStorage.getItem('seen_web_notif_ids') || '[]'));
 
-    function getLinkForType(type) {
+    function getLinkForType(notif) {
         const path = window.location.pathname;
         let prefix = '/student';
         if (path.startsWith('/hod')) prefix = '/hod';
@@ -99,6 +99,24 @@
         else if (path.startsWith('/teacher')) prefix = '/teacher';
         else if (path.startsWith('/admin')) prefix = '/admin';
 
+        const type = notif.type || '';
+        const titleText = ((notif.title || '') + ' ' + (notif.message || notif.body || '')).toLowerCase();
+        const isExam = titleText.includes('فحص') || titleText.includes('امتحان') || titleText.includes('اختبار') || type === 'exam';
+        const isService = titleText.includes('خدمة') || titleText.includes('استرحام') || titleText.includes('وثيقة') || titleText.includes('إكمال') || type === 'student_service';
+
+        if (isService) {
+            if (prefix === '/student') return '/student/student-services';
+            if (prefix === '/affairs') return '/affairs/student-services';
+            if (prefix === '/hod') return '/hod/student-services';
+            if (prefix === '/admin') return '/admin/student-services';
+        }
+
+        if (isExam) {
+            if (prefix === '/student') return '/student/schedule#exams-section';
+            if (prefix === '/parent') return '/parent/schedule#exams-section';
+        }
+
+        if (type === 'grade') return prefix === '/student' ? '/student/grades' : prefix + '/grades';
         if (type === 'leave_request' || type === 'leave') {
             if (prefix === '/student') return '/student/leave-requests';
             if (prefix === '/parent') return '/parent/permissions';
@@ -116,9 +134,11 @@
         const toast = document.createElement('div');
         toast.className = 'web-toast-item';
 
+        const titleText = ((notif.title || '') + ' ' + (notif.message || notif.body || '')).toLowerCase();
+        const isExam = titleText.includes('فحص') || titleText.includes('امتحان') || titleText.includes('اختبار') || notif.type === 'exam';
         const isLeave = (notif.type === 'leave_request' || notif.type === 'leave');
-        const iconClass = isLeave ? 'fa-calendar-check' : 'fa-bell';
-        const targetUrl = getLinkForType(notif.type);
+        const iconClass = isExam ? 'fa-pencil' : (isLeave ? 'fa-calendar-check' : 'fa-bell');
+        const targetUrl = getLinkForType(notif);
 
         toast.innerHTML = `
             <div class="web-toast-icon">

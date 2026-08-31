@@ -36,10 +36,10 @@ class StudentWebController extends Controller
         ]);
 
         $input = $request->login;
-        // 🔍 البحث عن المستخدم بواسطة البريد، اسم المستخدم، أو الهاتف لتجنب تصنيف الأرقام كأرقام هواتف بالخطأ
         $user = \App\Models\User::where('email', $input)
             ->orWhere('username', $input)
             ->orWhere('phone', $input)
+            ->orWhere('university_id', $input)
             ->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
@@ -375,6 +375,16 @@ class StudentWebController extends Controller
 
         $assignment = DB::table('assignments')->where('assignment_id', $assignmentId)->first();
         if (!$assignment) abort(404);
+
+        // التحقق من أن الطالب مسجل فعلاً في هذه المادة
+        $enrolled = DB::table('enrollments')
+            ->where('student_id', $student->student_id)
+            ->where('course_id', $assignment->course_id)
+            ->exists();
+            
+        if (!$enrolled) {
+            abort(403, 'غير مصرح لك بتسليم واجب لمادة غير مسجل بها.');
+        }
 
         $filePath = null;
         if ($request->hasFile('file')) {
@@ -749,13 +759,11 @@ class StudentWebController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'full_name' => 'required|string|max:255',
             'email'     => 'required|email|unique:users,email,' . $user->user_id . ',user_id',
             'phone'     => 'nullable|string|max:20',
         ]);
 
         DB::table('users')->where('user_id', $user->user_id)->update([
-            'full_name'  => $request->full_name,
             'email'      => $request->email,
             'phone'      => $request->phone,
             'updated_at' => now(),
@@ -881,14 +889,24 @@ class StudentWebController extends Controller
     // ────────────────────────────────────────────────────────────
     //  NOTIFICATIONS
     // ────────────────────────────────────────────────────────────
-    public function notifications()
+    public function notifications(Request $request)
     {
         $student = $this->getStudent();
-        $notifications = \App\Models\Notification::where('user_id', Auth::id())
-            ->orderByDesc('created_at')
-            ->get();
+        
+        $query = \App\Models\Notification::where('user_id', Auth::id())
+            ->orderByDesc('created_at');
 
-        $unreadCount = $notifications->where('is_read', false)->count();
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+
+        $unreadCount = \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count();
 
         return view('student.notifications', compact('notifications', 'unreadCount'));
     }
@@ -1105,5 +1123,102 @@ class StudentWebController extends Controller
         $request->merge(['student_id' => $student->student_id]);
         $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
         return $apiController->exportStudentAcademicCardExcel($request);
+    }
+
+    // ─────────────────────────── STUDENT SERVICES ───────────────────────────
+    public function studentServices()
+    {
+        $student = $this->getStudent();
+
+        $requests = \App\Models\StudentRequest::where('student_id', $student->student_id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        $stats = [
+            'total'     => $requests->count(),
+            'pending'   => $requests->filter(fn($r) => str_starts_with($r->status, 'pending'))->count(),
+            'approved'  => $requests->filter(fn($r) => $r->status === 'completed' && ($r->admin_decision === 'approved' || $r->affairs_decision === 'approved' || $r->hod_decision === 'approved'))->count(),
+            'rejected'  => $requests->filter(fn($r) => $r->status === 'completed' && ($r->admin_decision === 'rejected' || $r->affairs_decision === 'rejected' || $r->hod_decision === 'rejected'))->count(),
+        ];
+
+        // جلب كشف علامات الطالب لاستخراج المواد الراسب فيها فقط لامتحان الإكمال
+        $cardReq = new Request(['student_id' => $student->student_id]);
+        $academicCardResponse = app(\App\Http\Controllers\Api\AffairsController::class)->getStudentAcademicCardForAffairs($cardReq);
+        $cardData = json_decode($academicCardResponse->getContent(), true);
+
+        $academicCard = $cardData['data']['academic_card'] ?? [];
+
+        // تصفية المواد الراسب فيها فقط (status === 'راسب' أو المجموع أقل من 50)
+        $failedCourses = array_values(array_filter($academicCard, function($item) {
+            $status = $item['status'] ?? '';
+            $score = $item['total_score'] ?? null;
+            return $status === 'راسب' || ($score !== null && $score < 50);
+        }));
+
+        // جميع المواد المسجلة كـ Fallback في حال عدم تسجيل علامات سابقة
+        $enrolledCourses = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->where('enrollments.student_id', $student->student_id)
+            ->select('courses.course_id', 'courses.title', 'courses.year')
+            ->get();
+
+        return view('student.services', compact('requests', 'stats', 'failedCourses', 'enrolledCourses'));
+    }
+
+    public function storeStudentService(Request $request)
+    {
+        $request->validate([
+            'type'    => 'required|in:document,mercy,makeup,device_reset,face_photo,general',
+            'details' => 'required|string|max:1500',
+        ], [
+            'type.required'    => 'يرجى اختيار نوع الخدمة الطلابية.',
+            'details.required' => 'يرجى التعبير عن تفاصيل الطلب بشكل كافٍ.',
+            'details.max'      => 'التفاصيل يجب ألا تتجاوز 1500 حرف.',
+        ]);
+
+        $student = $this->getStudent();
+
+        $detailsText = trim($request->details);
+        if ($request->type === 'makeup' && $request->filled('subject_name')) {
+            $detailsText = "المادة المطلوبة للإكمال: " . $request->subject_name . "\nالسبب والتفاصيل: " . $detailsText;
+        }
+
+        $studentReq = \App\Models\StudentRequest::create([
+            'student_id' => $student->student_id,
+            'type'       => $request->type,
+            'details'    => $detailsText,
+            'status'     => 'pending_affairs',
+        ]);
+
+        // إرسال إشعار لموظفي الشؤون الطلابية بوجود طلب جديد
+        $studentUser = DB::table('users')->where('user_id', $student->user_id)->first();
+        $studentName = $studentUser?->full_name ?? 'الطالب';
+
+        $typeNames = [
+            'mercy'        => 'طلب استرحام',
+            'document'     => 'طلب وثيقة طلابية',
+            'makeup'       => 'طلب امتحان إكمال',
+            'device_reset' => 'طلب فك قفل الجهاز',
+            'face_photo'   => 'طلب بصمة الوجه',
+            'general'      => 'طلب خدمة عامة',
+        ];
+        $typeName = $typeNames[$request->type] ?? 'طلب خدمة طلابية';
+
+        $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
+        foreach ($affairsUserIds as $affairsUserId) {
+            DB::table('notifications')->insert([
+                'user_id'    => $affairsUserId,
+                'title'      => "طلب خدمة جديد ($typeName)",
+                'message'    => "قام الطالب $studentName بتقديم $typeName جديد وهو بحاجة لمراجعتك.",
+                'type'       => 'student_service',
+                'category'   => 'administrative',
+                'related_id' => $studentReq->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return back()->with('success', 'تم إرسال طلب الخدمة الطلابية بنجاح، وستتم مراجعته من قبل شؤون الطلاب والإدارة قريباً.');
     }
 }

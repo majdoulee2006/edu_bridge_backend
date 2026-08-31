@@ -88,6 +88,13 @@
         font-size: 0.8rem;
         margin-right: 0.5rem;
     }
+    
+    /* Pagination Styles Fix */
+    .pagination-wrapper nav { width: 100%; }
+    .pagination-wrapper .pagination { justify-content: center; margin-bottom: 0; }
+    .pagination-wrapper .page-item .page-link { background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary); }
+    .pagination-wrapper .page-item.active .page-link { background: var(--accent-color); color: #000; border-color: var(--accent-color); }
+    .pagination-wrapper .page-item.disabled .page-link { color: var(--text-secondary); background: var(--bg-primary); }
 
     /* Notification List */
     .notifications-list {
@@ -210,11 +217,19 @@
 
     <!-- Filters -->
     <div class="filters">
-        <button class="filter-btn active" data-filter="all">كل الإشعارات</button>
-        <button class="filter-btn" data-filter="unread">غير مقروءة
+        <a href="{{ route('affairs.notifications') }}" class="filter-btn {{ !request('filter') ? 'active' : '' }}" style="text-decoration: none;">
+            الكل
+            <span class="badge-count">{{ $notifications->total() }}</span>
+        </a>
+        <a href="{{ route('affairs.notifications', ['filter' => 'unread']) }}" class="filter-btn {{ request('filter') == 'unread' ? 'active' : '' }}" style="text-decoration: none;">
+            غير المقروءة
             @if($unreadCount > 0)
-                <span class="badge-count" id="unreadCount">{{ $unreadCount }}</span>
+                <span class="badge-count">{{ $unreadCount }}</span>
             @endif
+        </a>
+        <a href="{{ route('affairs.notifications', ['filter' => 'read']) }}" class="filter-btn {{ request('filter') == 'read' ? 'active' : '' }}" style="text-decoration: none;">
+            المقروءة
+        </a>
     </div>
 
     <!-- Notifications List -->
@@ -226,7 +241,22 @@
                 $type = $notif->type ?? '';
 
                 $targetUrl = null;
-                if (in_array($type, ['photo_request', 'photo_change_request']) || str_contains($titleLower, 'صورة') || str_contains($titleLower, 'وجه')) {
+                $serviceTab = 'all';
+                if (str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'علامات')) {
+                    $serviceTab = 'documents';
+                } elseif (str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'امتحان')) {
+                    $serviceTab = 'makeup';
+                } elseif (str_contains($titleLower, 'استرحام')) {
+                    $serviceTab = 'mercy';
+                } elseif (str_contains($titleLower, 'قفل') || str_contains($titleLower, 'جهاز')) {
+                    $serviceTab = 'device-reset';
+                } elseif (str_contains($titleLower, 'بصمة') || str_contains($titleLower, 'وجه')) {
+                    $serviceTab = 'face-photo';
+                }
+
+                if (in_array($type, ['student_service', 'service', 'service_request']) || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'خدمات') || str_contains($titleLower, 'استرحام') || str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'قفل')) {
+                    $targetUrl = route('affairs.student_services') . '?tab=' . $serviceTab;
+                } elseif (in_array($type, ['photo_request', 'photo_change_request']) || str_contains($titleLower, 'صورة') || str_contains($titleLower, 'وجه')) {
                     $targetUrl = route('affairs.photo_requests');
                 } elseif (in_array($type, ['leave', 'leave_request']) || str_contains($titleLower, 'إجازة') || str_contains($titleLower, 'مبرر') || str_contains($titleLower, 'غياب')) {
                     $targetUrl = route('affairs.leaves');
@@ -234,8 +264,6 @@
                     $targetUrl = route('affairs.pending_accounts');
                 } elseif (in_array($type, ['message', 'chat']) || str_contains($titleLower, 'رسالة')) {
                     $targetUrl = route('affairs.messages');
-                } elseif (in_array($type, ['student_service', 'service']) || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'خدمات')) {
-                    $targetUrl = route('affairs.student_services');
                 }
 
                 $iconClass = match($type) {
@@ -269,7 +297,7 @@
                 <div class="notif-content">
                     <div class="notif-header">
                         <h3 class="notif-title">{{ $notif->title }}</h3>
-                        <span class="notif-time">{{ $notif->created_at->diffForHumans() }}</span>
+                        <span class="notif-time" dir="rtl">{{ \Carbon\Carbon::parse($notif->created_at)->translatedFormat('d F Y - h:i A') }}</span>
                     </div>
                     <p class="notif-body">{{ $notif->message }}</p>
                     <div class="notif-actions" onclick="event.stopPropagation()">
@@ -288,13 +316,19 @@
                 </div>
             </div>
         @empty
-            <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                <i class="fa-regular fa-bell-slash" style="font-size: 3rem; opacity: 0.4; margin-bottom: 1rem;"></i>
-                <p style="font-size: 1.1rem;">لا توجد إشعارات حتى الآن.</p>
+            <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
+                <i class="fa-regular fa-bell-slash" style="font-size: 3rem; margin-bottom: 1rem; color: var(--accent-color);"></i>
+                <p style="font-size: 1.1rem; font-weight: 600;">لا توجد إشعارات لعرضها</p>
             </div>
         @endforelse
 
     </div>
+
+    @if($notifications->hasPages())
+        <div class="pagination-wrapper" style="margin-top: 2rem; display: flex; justify-content: center;" dir="ltr">
+            {{ $notifications->appends(request()->query())->links('pagination::bootstrap-4') }}
+        </div>
+    @endif
 
 </div>
 @endsection

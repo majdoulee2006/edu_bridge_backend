@@ -104,15 +104,24 @@ class AffairsWebController extends Controller
             ->take(5)
             ->get();
 
-        // إعلانات الكاروسيل — آخر 5 إعلانات عامة
+        // إعلانات الكاروسيل — آخر 5 إعلانات عامة أو أنشأها موظف الشؤون الحالي
         $carouselAnnouncements = Announcement::with('user')
-            ->where('type', 'general')
+            ->where(function($q) {
+                $q->where('user_id', Auth::id())
+                  ->orWhere('target_audience', 'all')
+                  ->orWhereNull('target_audience');
+            })
             ->latest()
             ->take(5)
             ->get();
 
-        // منشورات الإدارة — آخر 6 إعلانات
+        // منشورات الإدارة — آخر 6 إعلانات عامة أو أنشأها موظف الشؤون الحالي
         $posts = Announcement::with('user')
+            ->where(function($q) {
+                $q->where('user_id', Auth::id())
+                  ->orWhere('target_audience', 'all')
+                  ->orWhereNull('target_audience');
+            })
             ->latest()
             ->take(6)
             ->get();
@@ -317,19 +326,22 @@ class AffairsWebController extends Controller
     // ─────────────────────────── Calendar ───────────────────────────
     public function calendar()
     {
-        $events = CalendarEvent::where('user_id', Auth::id())
+        $departments = DB::table('departments')->orderBy('name')->get();
+        $events = CalendarEvent::with('department')
             ->orderBy('event_date', 'asc')
             ->get();
-        return view('affairs.calendar', compact('events'));
+
+        return view('affairs.calendar', compact('events', 'departments'));
     }
 
     public function storeCalendarEvent(Request $request)
     {
         $request->validate([
-            'event_date' => 'required|date',
-            'title'      => 'required|string|max:255',
-            'event_time' => 'nullable',
-            'location'   => 'nullable|string|max:255',
+            'event_date'    => 'required|date',
+            'title'         => 'required|string|max:255',
+            'event_time'    => 'nullable',
+            'location'      => 'nullable|string|max:255',
+            'department_id' => 'nullable|exists:departments,department_id',
         ]);
 
         // حماية من التكرار عند النقر المتعدد أو البطء في الاتصال
@@ -344,11 +356,12 @@ class AffairsWebController extends Controller
         }
 
         CalendarEvent::create([
-            'user_id'    => Auth::id(),
-            'event_date' => $request->event_date,
-            'title'      => $request->title,
-            'event_time' => $request->filled('event_time') ? $request->event_time : null,
-            'location'   => $request->location,
+            'user_id'       => Auth::id(),
+            'department_id' => $request->filled('department_id') ? $request->department_id : null,
+            'event_date'    => $request->event_date,
+            'title'         => $request->title,
+            'event_time'    => $request->filled('event_time') ? $request->event_time : null,
+            'location'      => $request->location,
         ]);
 
         return back()->with('success', 'تم إضافة الحدث بنجاح إلى قاعدة البيانات.');
@@ -357,18 +370,20 @@ class AffairsWebController extends Controller
     public function updateCalendarEvent(Request $request, $id)
     {
         $request->validate([
-            'event_date' => 'required|date',
-            'title'      => 'required|string|max:255',
-            'event_time' => 'nullable',
-            'location'   => 'nullable|string|max:255',
+            'event_date'    => 'required|date',
+            'title'         => 'required|string|max:255',
+            'event_time'    => 'nullable',
+            'location'      => 'nullable|string|max:255',
+            'department_id' => 'nullable|exists:departments,department_id',
         ]);
 
         $event = CalendarEvent::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
         $event->update([
-            'event_date' => $request->event_date,
-            'title'      => $request->title,
-            'event_time' => $request->filled('event_time') ? $request->event_time : null,
-            'location'   => $request->location,
+            'department_id' => $request->filled('department_id') ? $request->department_id : null,
+            'event_date'    => $request->event_date,
+            'title'         => $request->title,
+            'event_time'    => $request->filled('event_time') ? $request->event_time : null,
+            'location'      => $request->location,
         ]);
 
         return back()->with('success', 'تم تحديث الحدث بنجاح.');
@@ -383,13 +398,57 @@ class AffairsWebController extends Controller
     }
 
     // ─────────────────────────── Activities ───────────────────────────
-    public function activities()
+    public function activities(Request $request)
     {
-        $events = CalendarEvent::where('user_id', Auth::id())
-            ->orderBy('event_date', 'asc')
-            ->get();
+        $departments = DB::table('departments')->orderBy('name')->get();
 
-        return view('affairs.activities', compact('events'));
+        $deptId     = $request->input('department_id');
+        $dateMode   = $request->input('date_mode', 'all');
+        $singleDate = $request->input('single_date');
+        $startDate  = $request->input('start_date');
+        $endDate    = $request->input('end_date');
+        $weekDate   = $request->input('week_date');
+
+        $query = CalendarEvent::with('department');
+
+        // Department Filter
+        if (!empty($deptId)) {
+            $dept = DB::table('departments')->where('department_id', $deptId)->first();
+            $query->where(function($q) use ($deptId, $dept) {
+                $q->where('department_id', $deptId);
+                if ($dept) {
+                    $q->orWhere('location', 'like', "%{$dept->name}%")
+                      ->orWhere('title', 'like', "%{$dept->name}%");
+                }
+            });
+        }
+
+        // Date Filters
+        if ($dateMode === 'single_date' && !empty($singleDate)) {
+            $query->whereDate('event_date', $singleDate);
+        } elseif ($dateMode === 'date_range' && !empty($startDate) && !empty($endDate)) {
+            $query->whereBetween('event_date', [$startDate, $endDate]);
+        } elseif ($dateMode === 'week' && !empty($weekDate)) {
+            try {
+                $carbonDate = \Carbon\Carbon::parse($weekDate);
+                $startOfWeek = $carbonDate->copy()->startOfWeek(\Carbon\Carbon::SUNDAY)->format('Y-m-d');
+                $endOfWeek   = $carbonDate->copy()->endOfWeek(\Carbon\Carbon::SATURDAY)->format('Y-m-d');
+                $query->whereBetween('event_date', [$startOfWeek, $endOfWeek]);
+            } catch (\Exception $e) {}
+        }
+
+        $events = $query->orderBy('event_date', 'asc')->get();
+
+        return view('affairs.activities', compact(
+            'events',
+            'departments',
+            'deptId',
+            'dateMode',
+            'singleDate',
+            'startDate',
+            'endDate',
+            'weekDate'
+        ));
     }
 
     // ─────────────────────────── Student Services ───────────────────────────
@@ -413,7 +472,7 @@ class AffairsWebController extends Controller
 
         $request->validate([
             'decision' => 'required|in:approved,rejected',
-            'notes' => 'required|string'
+            'notes' => 'required|string|max:1000'
         ]);
         
         // تحديث قرار الشؤون
@@ -455,6 +514,44 @@ class AffairsWebController extends Controller
         // الطلبات الأخرى تنتقل لرئيس القسم
         $studentReq->status = 'pending_hod';
         $studentReq->save();
+
+        $studentObj = $studentReq->student;
+        if ($studentObj) {
+            $studentUser = DB::table('users')->where('user_id', $studentObj->user_id)->first();
+            $studentName = $studentUser?->full_name ?? 'الطالب';
+
+            $decisionText = $request->decision === 'approved' ? 'الموافقة المبدئية' : 'إبداء الرأي والتحفظات';
+            $affairsMsg = "قامت الشؤون الطلابية بإبداء ($decisionText) وملاحظاتها على طلبك (#{$studentReq->id})، وتم تحويل الطلب إلى رئيس القسم للمتابعة.";
+
+            // إشعار للطالب بمراجعة الشؤون
+            DB::table('notifications')->insert([
+                'user_id'    => $studentObj->user_id,
+                'title'      => 'تحديث من الشؤون الطلابية على طلبك',
+                'message'    => $affairsMsg,
+                'type'       => 'student_service',
+                'category'   => 'administrative',
+                'related_id' => $studentReq->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // إشعار لرؤساء الأقسام
+            $hodUserIds = DB::table('users')->where('role_id', 5)->pluck('user_id');
+            foreach ($hodUserIds as $hodUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $hodUserId,
+                    'title'      => 'طلب خدمة محول من الشؤون',
+                    'message'    => "تمت مراجعة طلب الطالب $studentName من قبل الشؤون وهو بانتظار موافقتك وملاحظاتك كرئيس قسم.",
+                    'type'       => 'student_service',
+                    'category'   => 'administrative',
+                    'related_id' => $studentReq->id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
 
         return back()->with('success', 'تم حفظ رأي الشؤون بنجاح وتحويل الطلب إلى رئيس القسم.');
     }
@@ -885,11 +982,23 @@ class AffairsWebController extends Controller
 
     // ─────────────────────────── Leaves ───────────────────────────
     // ─────────────────────────── Leaves ───────────────────────────
-    public function leaves()
+    // ─────────────────────────── Leaves ───────────────────────────
+    public function leaves(Request $request)
     {
-        $leavesFromLeaveTable = DB::table('leave_requests')
+        $departments = DB::table('departments')->orderBy('name')->get();
+
+        $deptId     = $request->input('department_id');
+        $dateMode   = $request->input('date_mode', 'all');
+        $singleDate = $request->input('single_date');
+        $startDate  = $request->input('start_date');
+        $endDate    = $request->input('end_date');
+        $weekDate   = $request->input('week_date');
+
+        // Query 1: leave_requests
+        $q1 = DB::table('leave_requests')
             ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
             ->leftJoin('students', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
             ->select(
                 'leave_requests.id',
                 'leave_requests.student_id',
@@ -902,14 +1011,16 @@ class AffairsWebController extends Controller
                 'users.full_name as student_name',
                 'students.level',
                 'students.student_code',
+                'programs.name as program_name',
                 DB::raw("'leave_requests' as source_table")
             )
-            ->whereIn('leave_requests.status', ['pending_affairs', 'approved', 'rejected'])
-            ->get();
+            ->whereIn('leave_requests.status', ['pending_affairs', 'approved', 'rejected']);
 
-        $leavesFromAbsenceTable = DB::table('absence_requests')
+        // Query 2: absence_requests
+        $q2 = DB::table('absence_requests')
             ->join('students', 'absence_requests.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
             ->select(
                 'absence_requests.request_id as id',
                 'students.user_id as student_id',
@@ -922,18 +1033,62 @@ class AffairsWebController extends Controller
                 'users.full_name as student_name',
                 'students.level',
                 'students.student_code',
+                'programs.name as program_name',
                 DB::raw("'absence_requests' as source_table")
             )
-            ->whereIn('absence_requests.status', ['pending_affairs', 'approved', 'rejected'])
-            ->get();
+            ->whereIn('absence_requests.status', ['pending_affairs', 'approved', 'rejected']);
 
-        $leaves = $leavesFromLeaveTable->concat($leavesFromAbsenceTable)->sortByDesc('created_at');
+        // Department Filter
+        if (!empty($deptId)) {
+            $q1->where('programs.department_id', $deptId);
+            $q2->where('programs.department_id', $deptId);
+        }
 
-        $pendingCount  = $leaves->where('status', 'pending_affairs')->count();
+        // Date Filters
+        if ($dateMode === 'single_date' && !empty($singleDate)) {
+            $q1->whereDate('leave_requests.date', $singleDate);
+            $q2->whereDate('absence_requests.date', $singleDate);
+        } elseif ($dateMode === 'date_range' && !empty($startDate) && !empty($endDate)) {
+            $q1->whereBetween('leave_requests.date', [$startDate, $endDate]);
+            $q2->whereBetween('absence_requests.date', [$startDate, $endDate]);
+        } elseif ($dateMode === 'week' && !empty($weekDate)) {
+            try {
+                $carbonDate = \Carbon\Carbon::parse($weekDate);
+                $startOfWeek = $carbonDate->copy()->startOfWeek(\Carbon\Carbon::SUNDAY)->format('Y-m-d');
+                $endOfWeek   = $carbonDate->copy()->endOfWeek(\Carbon\Carbon::SATURDAY)->format('Y-m-d');
+
+                $q1->whereBetween('leave_requests.date', [$startOfWeek, $endOfWeek]);
+                $q2->whereBetween('absence_requests.date', [$startOfWeek, $endOfWeek]);
+            } catch (\Exception $e) {
+                // In case of invalid date input
+            }
+        }
+
+        $res1 = $q1->orderBy('leave_requests.created_at', 'desc')->take(10)->get();
+        $res2 = $q2->orderBy('absence_requests.created_at', 'desc')->take(10)->get();
+
+        $allMerged = $res1->concat($res2)->sortByDesc('created_at');
+
+        // Limit strictly to 10 latest records for server efficiency
+        $leaves = $allMerged->take(10);
+
+        $pendingCount  = $leaves->whereIn('status', ['pending', 'pending_affairs'])->count();
         $approvedCount = $leaves->where('status', 'approved')->count();
         $rejectedCount = $leaves->where('status', 'rejected')->count();
 
-        return view('affairs.leaves', compact('leaves', 'pendingCount', 'approvedCount', 'rejectedCount'));
+        return view('affairs.leaves', compact(
+            'leaves',
+            'pendingCount',
+            'approvedCount',
+            'rejectedCount',
+            'departments',
+            'deptId',
+            'dateMode',
+            'singleDate',
+            'startDate',
+            'endDate',
+            'weekDate'
+        ));
     }
 
     public function updateLeaveStatus(Request $request, $id)
@@ -1172,14 +1327,22 @@ class AffairsWebController extends Controller
     }
 
     // ─────────────────────────── Notifications ───────────────────────────
-    public function notifications()
+    public function notifications(Request $request)
     {
-        $notifications = Notification::with('sender')
+        $query = Notification::with('sender')
             ->where('user_id', Auth::id())
-            ->latest()
-            ->get();
+            ->latest();
 
-        $unreadCount = $notifications->where('is_read', false)->count();
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+        $unreadCount = Notification::where('user_id', Auth::id())->where('is_read', false)->count();
 
         return view('affairs.notifications', compact('notifications', 'unreadCount'));
     }

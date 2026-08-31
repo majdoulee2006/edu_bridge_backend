@@ -34,6 +34,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'affairs/accounts/*',
         ]);
 
+        $middleware->api(prepend: [
+            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+        ]);
+
         // منع التحويل لـ api/login عند استخدام auth middleware
         $middleware->redirectGuestsTo('/affairs/login');
     })

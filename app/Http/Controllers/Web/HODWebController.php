@@ -99,14 +99,22 @@ class HODWebController extends Controller
         return view('hod.dashboard', compact('announcements', 'teachersCount', 'studentsCount', 'coursesCount'));
     }
 
-    public function notifications()
+    public function notifications(Request $request)
     {
-        $notifications = DB::table('notifications')
+        $query = DB::table('notifications')
             ->where('user_id', auth()->id())
-            ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('created_at');
 
-        $unreadCount = $notifications->where('is_read', false)->count();
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+        $unreadCount = DB::table('notifications')->where('user_id', auth()->id())->where('is_read', false)->count();
 
         return view('hod.notifications', compact('notifications', 'unreadCount'));
     }
@@ -965,7 +973,7 @@ class HODWebController extends Controller
     {
         $request->validate([
             'title'            => 'required|string|max:255',
-            'content'          => 'required|string',
+            'content'          => 'required|string|max:5000',
             'type'             => 'required|in:general,course_specific',
             'course_id'        => 'nullable|exists:courses,course_id',
             'image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
@@ -1038,7 +1046,7 @@ class HODWebController extends Controller
     {
         $announcement = \App\Models\Announcement::where('announcement_id', $id)
             ->where('user_id', auth()->id())->firstOrFail();
-        $request->validate(['title' => 'required|string|max:255', 'content' => 'required|string']);
+        $request->validate(['title' => 'required|string|max:255', 'content' => 'required|string|max:5000']);
         $updates = ['title' => $request->title, 'content' => $request->content, 'updated_at' => now()];
         if ($request->hasFile('image')) {
             if ($announcement->image) \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
@@ -1697,7 +1705,7 @@ tr:nth-child(even) td{background:#f8fafc}
 
         $request->validate([
             'decision' => 'required|in:approved,rejected',
-            'notes' => 'required|string'
+            'notes' => 'required|string|max:1000'
         ]);
         
         $studentReq->hod_decision = $request->decision;
@@ -1705,8 +1713,45 @@ tr:nth-child(even) td{background:#f8fafc}
         
         // ينتقل الطلب آلياً للإدارة بعد رد رئيس القسم
         $studentReq->status = 'pending_admin';
-        
         $studentReq->save();
+
+        $studentObj = $studentReq->student;
+        if ($studentObj) {
+            $studentUser = DB::table('users')->where('user_id', $studentObj->user_id)->first();
+            $studentName = $studentUser?->full_name ?? 'الطالب';
+
+            $hodDecisionText = $request->decision === 'approved' ? 'الموافقة والتوصية الإيجابية' : 'التوصية بعدم القبول والملاحظات';
+            $hodMsg = "قام رئيس القسم بإبداء ($hodDecisionText) على طلبك (#{$studentReq->id})، وتم تحويل الطلب إلى إدارة المعهد لاتخاذ القرار النهائي.";
+
+            // إشعار للطالب
+            DB::table('notifications')->insert([
+                'user_id'    => $studentObj->user_id,
+                'title'      => 'تحديث من رئيس القسم على طلبك',
+                'message'    => $hodMsg,
+                'type'       => 'student_service',
+                'category'   => 'administrative',
+                'related_id' => $studentReq->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // إشعار للإدارة
+            $adminUserIds = DB::table('users')->whereIn('role_id', [1, 4])->pluck('user_id');
+            foreach ($adminUserIds as $adminUserId) {
+                DB::table('notifications')->insert([
+                    'user_id'    => $adminUserId,
+                    'title'      => 'طلب خدمة محول للإدارة',
+                    'message'    => "تمت مراجعة طلب الطالب $studentName من قبل رئيس القسم وهو بانتظار قرار الإدارة النهائي.",
+                    'type'       => 'student_service',
+                    'category'   => 'administrative',
+                    'related_id' => $studentReq->id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
 
         return back()->with('success', 'تم حفظ رأي رئيس القسم بنجاح وتحويل الطلب إلى الإدارة.');
     }

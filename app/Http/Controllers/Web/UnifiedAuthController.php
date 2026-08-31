@@ -116,7 +116,8 @@ class UnifiedAuthController extends Controller
                 }
             }
 
-            Auth::login($user);
+            $remember = $request->has('remember');
+            Auth::login($user, $remember);
             $request->session()->regenerate();
             UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح', $user);
 
