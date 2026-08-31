@@ -385,7 +385,7 @@ class AdminWebController extends Controller
     {
         $request->validate([
             'title'           => 'required|string|max:255',
-            'content'         => 'required|string',
+            'content'         => 'required|string|max:5000',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'link_url'        => 'nullable|url|max:500',
             'target_audience' => 'nullable|in:all,students,teachers,department',
@@ -451,7 +451,7 @@ class AdminWebController extends Controller
 
         $request->validate([
             'title'   => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'required|string|max:5000',
             'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
@@ -501,14 +501,27 @@ class AdminWebController extends Controller
 
 
 
-    public function notifications()
+    public function notifications(Request $request)
     {
-        $notifications = DB::table('notifications')
-            ->where('user_id', Auth::id())
-            ->orderByDesc('created_at')
-            ->get();
+        $adminUserIds = DB::table('users')->whereIn('role_id', [1, 4])->pluck('user_id')->toArray();
+        $allAdminIds = array_unique(array_merge([Auth::id()], $adminUserIds));
 
-        return view('admin.notifications', compact('notifications'));
+        $query = DB::table('notifications')
+            ->whereIn('user_id', $allAdminIds)
+            ->orderByDesc('created_at');
+
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($request->filter == 'read') {
+                $query->where('is_read', true);
+            }
+        }
+
+        $notifications = $query->paginate(15);
+        $unreadCount = DB::table('notifications')->whereIn('user_id', $allAdminIds)->where('is_read', false)->count();
+
+        return view('admin.notifications', compact('notifications', 'unreadCount'));
     }
 
     public function markNotificationRead($id)
@@ -1297,16 +1310,27 @@ class AdminWebController extends Controller
     public function courses()
     {
         $departments = DB::table('departments')->orderBy('name')->get();
-        foreach ($departments as $dept) {
-            $head = DB::table('heads')
-                ->join('users', 'heads.user_id', '=', 'users.user_id')
-                ->where('heads.department_id', $dept->department_id)
-                ->select('users.user_id', 'users.full_name')
-                ->first();
+        $departmentIds = $departments->pluck('department_id')->toArray();
+        
+        $heads = DB::table('heads')
+            ->join('users', 'heads.user_id', '=', 'users.user_id')
+            ->whereIn('heads.department_id', $departmentIds)
+            ->select('heads.department_id', 'users.user_id', 'users.full_name')
+            ->get()
+            ->keyBy('department_id');
 
+        $programCounts = DB::table('programs')
+            ->whereIn('department_id', $departmentIds)
+            ->select('department_id', DB::raw('count(*) as count'))
+            ->groupBy('department_id')
+            ->get()
+            ->keyBy('department_id');
+
+        foreach ($departments as $dept) {
+            $head = $heads->get($dept->department_id);
             $dept->current_hod_name = $head ? $head->full_name : 'غير مخصص حالياً';
             $dept->current_hod_user_id = $head ? $head->user_id : null;
-            $dept->courses_count = DB::table('programs')->where('department_id', $dept->department_id)->count();
+            $dept->courses_count = isset($programCounts[$dept->department_id]) ? $programCounts[$dept->department_id]->count : 0;
         }
 
         $programs = DB::table('programs')
@@ -1316,14 +1340,22 @@ class AdminWebController extends Controller
             ->orderByDesc('programs.created_at')
             ->get();
 
-        // Enrich with course count, total hours, and subjects list
+        $programIds = $programs->pluck('id')->toArray();
+        
+        $allCoursesInPrograms = DB::table('course_program')
+            ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
+            ->whereIn('course_program.program_id', $programIds)
+            ->select('course_program.program_id', 'courses.title as course_name')
+            ->get();
+
+        $coursesByProgram = [];
+        foreach ($allCoursesInPrograms as $cip) {
+            $coursesByProgram[$cip->program_id][] = $cip;
+        }
+
         foreach ($programs as $program) {
             $program->department_name = $program->department_name ?? 'غير مخصصة (دورة مستقلة)';
-            $coursesInProgram = DB::table('course_program')
-                ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
-                ->where('course_program.program_id', $program->id)
-                ->select('courses.title as course_name')
-                ->get();
+            $coursesInProgram = $coursesByProgram[$program->id] ?? [];
 
             $program->course_count = count($coursesInProgram);
             $program->total_hours = $program->course_count * 4; // estimate 4h per course
@@ -2435,7 +2467,7 @@ class AdminWebController extends Controller
     {
         $request->validate([
             'decision' => 'required|in:approved,rejected',
-            'notes' => 'required|string' // قرار الإدارة يجب أن يحوي ملاحظات
+            'notes' => 'required|string|max:1000' // قرار الإدارة يجب أن يحوي ملاحظات
         ]);
 
         $studentReq = \App\Models\StudentRequest::findOrFail($id);
@@ -2448,13 +2480,17 @@ class AdminWebController extends Controller
         
         $studentReq->save();
 
-        // إرسال إشعار فوري للطالب بالقرار
+        $finalStatusText = $request->decision === 'approved' ? 'مقبول بنجاح ✅' : 'مرفوض ❌';
+        $adminMsg = "صدر القرار النهائي بشأن طلبك (#{$studentReq->id}) من قبل إدارة المعهد: ($finalStatusText). يمكنك مراجعة تفاصيل وملاحظات القرار من صفحة الخدمات الطلابية.";
+
+        // إرسال إشعار فوري للطالب بالقرار النهائي
         \App\Models\Notification::create([
-            'user_id' => $studentReq->student->user_id,
-            'title'   => 'تحديث حالة طلبك',
-            'message' => 'تم الرد على طلبك من قبل الإدارة بالقرار: ' . ($request->decision === 'approved' ? 'مقبول' : 'مرفوض') . '، يرجى مراجعة تفاصيل الطلب لمعرفة السبب.',
-            'type'    => 'system',
-            'is_read' => false,
+            'user_id'  => $studentReq->student->user_id,
+            'title'    => 'القرار النهائي بشأن طلبك',
+            'message'  => $adminMsg,
+            'type'     => 'student_service',
+            'category' => 'administrative',
+            'is_read'  => false,
         ]);
 
         return back()->with('success', 'تم اتخاذ القرار النهائي بنجاح وتم إغلاق الطلب وإرسال إشعار للطالب.');

@@ -600,6 +600,12 @@
         const btn      = document.getElementById('profile-btn');
         const errorDiv = document.getElementById('profile-error');
 
+        if (!navigator.onLine) {
+            errorDiv.innerText = 'لا يوجد اتصال بالإنترنت.';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إرسال OTP...';
         errorDiv.style.display = 'none';
@@ -637,6 +643,12 @@
         const telegramId = document.getElementById('password_telegram').value;
         const btn     = document.getElementById('password-btn');
         const errorDiv= document.getElementById('password-error');
+
+        if (!navigator.onLine) {
+            errorDiv.innerText = 'لا يوجد اتصال بالإنترنت.';
+            errorDiv.style.display = 'block';
+            return;
+        }
 
         if (newPw !== confirm) {
             errorDiv.innerText = 'كلمة المرور الجديدة غير متطابقة';

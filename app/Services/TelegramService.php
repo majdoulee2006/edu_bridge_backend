@@ -57,6 +57,12 @@ class TelegramService
 
     public function sendOtp(int $chatId, string $otp, string $name = ''): bool
     {
+        \App\Jobs\SendTelegramMessageJob::dispatch($chatId, $otp, 'otp', ['name' => $name]);
+        return true;
+    }
+
+    public function sendOtpSync(int $chatId, string $otp, string $name = ''): bool
+    {
         $nameText = $name ? "مرحباً <b>{$name}</b>،\n\n" : '';
 
         $text = "🎓 <b>Edu Bridge</b>\n\n"
@@ -83,6 +89,18 @@ class TelegramService
     }
 
     public function sendCredentials(int $chatId, string $universityId, string $defaultPassword, string $name = '', string $nationalId = '', string $birthDate = ''): bool
+    {
+        \App\Jobs\SendTelegramMessageJob::dispatch($chatId, '', 'credentials', [
+            'universityId' => $universityId,
+            'defaultPassword' => $defaultPassword,
+            'name' => $name,
+            'nationalId' => $nationalId,
+            'birthDate' => $birthDate
+        ]);
+        return true;
+    }
+
+    public function sendCredentialsSync(int $chatId, string $universityId, string $defaultPassword, string $name = '', string $nationalId = '', string $birthDate = ''): bool
     {
         $nameText = $name ? "👤 <b>الاسم الكامل:</b> {$name}\n" : '';
         $nationalText = $nationalId ? "🪪 <b>الرقم الشخصي (الوطني):</b> <code>{$nationalId}</code>\n" : '';
@@ -112,6 +130,12 @@ class TelegramService
     }
 
     public function sendMessage(int $chatId, string $text): bool
+    {
+        \App\Jobs\SendTelegramMessageJob::dispatch($chatId, $text, 'message', []);
+        return true;
+    }
+
+    public function sendMessageSync(int $chatId, string $text): bool
     {
         try {
             $response = Http::timeout(10)->post("{$this->apiUrl}/sendMessage", [

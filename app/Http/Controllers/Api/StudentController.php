@@ -57,6 +57,7 @@ class StudentController extends Controller
                   ->orWhere('target_role', 'student');
             })
             ->latest()
+            ->take(10)
             ->get()
             ->map(function ($item) {
                 $categoryText = 'عام';
@@ -345,46 +346,59 @@ class StudentController extends Controller
     {
         $user = $request->user();
 
-        // 🌟 إضافة (with('sender')) لجلب بيانات من أرسل الإشعار
-        $notifications = Notification::with('sender')
+        $query = Notification::with('sender')
             ->where('user_id', $user->user_id)
-            ->latest()
-            ->get()
-            ->map(function ($notify) {
-                $imageUrl = null;
-                $linkUrl = null;
-                if ($notify->type === 'announcement' && $notify->related_id) {
-                    $ann = \DB::table('announcements')->where('announcement_id', $notify->related_id)->first(['image', 'link_url']);
-                    $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
-                    $linkUrl  = $ann->link_url ?? null;
-                }
-                $isAcademic = $notify->category === 'academic' || in_array($notify->type, ['grade', 'marks', 'assignment', 'lecture']);
-                $cat = $notify->category ?? ($isAcademic ? 'academic' : 'administrative');
+            ->latest();
 
-                return [
-                    'id' => $notify->id,
-                    'title' => $notify->title,
-                    'message' => $notify->message,
-                    'type' => $notify->type,
-                    'category' => $cat,
-                    'sender_name' => $notify->sender->full_name ?? 'الإدارة',
-                    'is_read' => (bool)$notify->is_read,
-                    'related_id' => $notify->related_id,
-                    'image_url'  => $imageUrl,
-                    'link_url'   => $linkUrl,
-                    'created_at' => $notify->created_at ? $notify->created_at->format('Y-m-d H:i:s') : null,
-                    'time_ago' => $notify->created_at ? $notify->created_at->diffForHumans() : 'منذ قليل',
-                ];
-            });
+        if ($request->has('filter')) {
+            if ($request->filter == 'unread') $query->where('is_read', false);
+            elseif ($request->filter == 'read') $query->where('is_read', true);
+        }
+
+        $paginator = $query->paginate(15);
+
+        $announcementIds = collect($paginator->items())->where('type', 'announcement')->pluck('related_id')->filter()->unique();
+        $announcementsData = \DB::table('announcements')
+            ->whereIn('announcement_id', $announcementIds)
+            ->get(['announcement_id', 'image', 'link_url'])
+            ->keyBy('announcement_id');
+
+        $mappedItems = collect($paginator->items())->map(function ($notify) use ($announcementsData) {
+            $imageUrl = null;
+            $linkUrl = null;
+            if ($notify->type === 'announcement' && $notify->related_id) {
+                $ann = $announcementsData->get($notify->related_id);
+                $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
+                $linkUrl  = $ann->link_url ?? null;
+            }
+            $isAcademic = $notify->category === 'academic' || in_array($notify->type, ['grade', 'marks', 'assignment', 'lecture']);
+            $cat = $notify->category ?? ($isAcademic ? 'academic' : 'administrative');
+
+            return [
+                'id' => $notify->id,
+                'title' => $notify->title,
+                'message' => $notify->message,
+                'type' => $notify->type,
+                'category' => $cat,
+                'sender_name' => $notify->sender->full_name ?? 'الإدارة',
+                'is_read' => (bool)$notify->is_read,
+                'related_id' => $notify->related_id,
+                'image_url'  => $imageUrl,
+                'link_url'   => $linkUrl,
+                'created_at' => $notify->created_at ? $notify->created_at->format('Y-m-d H:i:s') : null,
+                'formatted_date' => $notify->created_at ? $notify->created_at->translatedFormat('d F Y - h:i A') : null,
+                'time_ago' => $notify->created_at ? $notify->created_at->diffForHumans() : 'منذ قليل',
+            ];
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'تم جلب الإشعارات بنجاح',
-            'data' => [
-                'academic' => $notifications->where('category', 'academic')->values(),
-                'administrative' => $notifications->where('category', 'administrative')->values(),
-                'all' => $notifications->values(),
-            ]
+            'data' => $mappedItems,
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'has_more' => $paginator->hasMorePages(),
+            'total' => $paginator->total()
         ], 200);
     }
 

@@ -2023,21 +2023,63 @@ class AffairsController extends Controller
         $summary = $content['summary'];
         $academicCard = $content['academic_card'];
 
+        // إذا كان الطلب قادم من واجهات الويب: ارجاع الواجهة الرسمية المخصصة للطباعة والتصدير بجودة عالية
+        if (!$request->expectsJson() && !$request->is('api/*')) {
+            return view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard'));
+        }
+
         $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard'))->render();
 
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'orientation' => 'P',
-            'autoScriptToLang' => true,
-            'autoLangToFont' => true,
-            'useSubsets' => false,
-        ]);
-        $mpdf->SetDirectionality('rtl');
-        $mpdf->WriteHTML($html);
-
         $fileName = 'academic_card_' . ($student['university_id'] ?? $student['student_id']) . '.pdf';
-        $pdfContent = $mpdf->Output('', 'S');
+        $pdfContent = null;
+
+        // 1. Try mPDF engine
+        if (class_exists('\Mpdf\Mpdf')) {
+            try {
+                $mpdf = new \Mpdf\Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4',
+                    'orientation' => 'P',
+                    'autoScriptToLang' => true,
+                    'autoLangToFont' => true,
+                    'useSubsets' => false,
+                ]);
+                $mpdf->SetDirectionality('rtl');
+                $mpdf->WriteHTML($html);
+                $pdfContent = $mpdf->Output('', 'S');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('mPDF error: ' . $e->getMessage());
+            }
+        }
+
+        // 2. Try Barryvdh DomPDF Facade engine
+        if (!$pdfContent && class_exists('\Barryvdh\DomPDF\Facade\Pdf')) {
+            try {
+                $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('DomPDF Facade error: ' . $e->getMessage());
+            }
+        }
+
+        // 3. Try direct Dompdf engine
+        if (!$pdfContent && class_exists('\Dompdf\Dompdf')) {
+            try {
+                $dompdf = new \Dompdf\Dompdf();
+                $dompdf->loadHtml($html);
+                $dompdf->setPaper('A4', 'portrait');
+                $dompdf->render();
+                $pdfContent = $dompdf->output();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Dompdf direct error: ' . $e->getMessage());
+            }
+        }
+
+        // 4. Fallback: Return printable HTML if no PDF binary driver is initialized
+        if (!$pdfContent) {
+            return response($html, 200, [
+                'Content-Type' => 'text/html; charset=utf-8',
+            ]);
+        }
 
         if (ob_get_length()) {
             ob_end_clean();
@@ -2058,7 +2100,6 @@ class AffairsController extends Controller
             ]);
         }
 
-        // Stream PDF directly to browser downloads without creating files on server disk
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
@@ -2109,52 +2150,62 @@ class AffairsController extends Controller
     <![endif]-->
     <style>
         body { font-family: Segoe UI, Tahoma, Arial, sans-serif; direction: rtl; text-align: right; }
-        table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-        th { background-color: #1e293b; color: #ffffff; font-weight: bold; border: 1px solid #000000; padding: 10px; text-align: center; font-size: 11pt; }
-        td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: middle; font-size: 10pt; }
-        .header-title { font-size: 16pt; font-weight: bold; color: #0f172a; text-align: center; padding: 10px; }
-        .info-label { font-weight: bold; background-color: #f1f5f9; text-align: right; width: 18%; }
-        .info-val { text-align: right; width: 32%; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #94a3b8; padding: 10px; text-align: center; vertical-align: middle; font-size: 10pt; }
+        th { background-color: #0f172a; color: #ffffff; font-weight: bold; font-size: 11pt; }
+        .header-title { font-size: 16pt; font-weight: bold; color: #ffffff; background-color: #0f172a; text-align: center; padding: 14px; border: 1px solid #0f172a; }
+        .info-label { font-weight: bold; background-color: #f1f5f9; text-align: right; color: #334155; }
+        .info-val { text-align: right; background-color: #ffffff; color: #0f172a; }
         .pass { color: #15803d; font-weight: bold; background-color: #dcfce7; }
         .fail { color: #b91c1c; font-weight: bold; background-color: #fee2e2; }
         .pending { color: #854d0e; background-color: #fef9c3; }
+        .spacer-row td { border: none; background-color: #ffffff; height: 12px; }
     </style>
 </head>
 <body>
-    <div class="header-title">معهد الجسر التعليمي (Edu Bridge) - كشف العلامات الأكاديمي</div>
-    <br>
-    <table style="width: 100%;">
-        <tr>
-            <td class="info-label">اسم الطالب:</td>
-            <td class="info-val"><b>' . htmlspecialchars($student['full_name'] ?? '') . '</b></td>
-            <td class="info-label">الرقم الجامعي:</td>
-            <td class="info-val"><b>' . htmlspecialchars($student['university_id'] ?? '') . '</b></td>
-        </tr>
-        <tr>
-            <td class="info-label">التخصص / القسم:</td>
-            <td class="info-val">' . htmlspecialchars($student['department'] ?? '') . '</td>
-            <td class="info-label">السنة الدراسية:</td>
-            <td class="info-val">' . htmlspecialchars($student['level'] ?? '') . '</td>
-        </tr>
-        <tr>
-            <td class="info-label">المعدل التراكمي:</td>
-            <td class="info-val"><b>' . htmlspecialchars($summary['average'] ?? '0') . '%</b></td>
-            <td class="info-label">المواد المجتازة:</td>
-            <td class="info-val"><b>' . htmlspecialchars($summary['passed_courses'] ?? '0') . ' من ' . htmlspecialchars($summary['total_courses'] ?? '0') . '</b></td>
-        </tr>
-    </table>
-    <br>
     <table>
+        <!-- Header Title Row -->
+        <tr>
+            <td colspan="8" class="header-title">معهد الجسر التعليمي (Edu Bridge) - كشف العلامات الأكاديمي</td>
+        </tr>
+        
+        <!-- Spacer -->
+        <tr class="spacer-row"><td colspan="8"></td></tr>
+
+        <!-- Student Info Rows (Unified 8-Column Grid: 1 + 3 + 1 + 3) -->
+        <tr>
+            <td class="info-label" colspan="1">اسم الطالب:</td>
+            <td class="info-val" colspan="3"><b>' . htmlspecialchars($student['full_name'] ?? '') . '</b></td>
+            <td class="info-label" colspan="1">الرقم الجامعي:</td>
+            <td class="info-val" colspan="3"><b>' . htmlspecialchars($student['university_id'] ?? '') . '</b></td>
+        </tr>
+        <tr>
+            <td class="info-label" colspan="1">التخصص / القسم:</td>
+            <td class="info-val" colspan="3">' . htmlspecialchars($student['department'] ?? '') . '</td>
+            <td class="info-label" colspan="1">السنة الدراسية:</td>
+            <td class="info-val" colspan="3">' . htmlspecialchars($student['level'] ?? '') . '</td>
+        </tr>
+        <tr>
+            <td class="info-label" colspan="1">المعدل التراكمي:</td>
+            <td class="info-val" colspan="3"><b>' . htmlspecialchars($summary['average'] ?? '0') . '%</b></td>
+            <td class="info-label" colspan="1">المواد المجتازة:</td>
+            <td class="info-val" colspan="3"><b>' . htmlspecialchars($summary['passed_courses'] ?? '0') . ' من ' . htmlspecialchars($summary['total_courses'] ?? '0') . '</b></td>
+        </tr>
+
+        <!-- Spacer -->
+        <tr class="spacer-row"><td colspan="8"></td></tr>
+
+        <!-- Table Column Headers -->
         <thead>
             <tr>
                 <th style="width: 5%;">#</th>
-                <th style="width: 30%;">اسم المادة الدراسية</th>
+                <th style="width: 25%;">اسم المادة الدراسية</th>
                 <th style="width: 15%;">السنة / الفصل</th>
-                <th style="width: 10%;">المذاكرة (25)</th>
-                <th style="width: 10%;">الشفهي/العملي (25)</th>
-                <th style="width: 10%;">الامتحان النهائي (50)</th>
-                <th style="width: 10%;">المجموع الكلي (100)</th>
-                <th style="width: 10%;">الحالة</th>
+                <th style="width: 11%;">المذاكرة (25)</th>
+                <th style="width: 11%;">الشفهي/العملي (25)</th>
+                <th style="width: 11%;">الامتحان النهائي (50)</th>
+                <th style="width: 11%;">المجموع الكلي (100)</th>
+                <th style="width: 11%;">الحالة</th>
             </tr>
         </thead>
         <tbody>';

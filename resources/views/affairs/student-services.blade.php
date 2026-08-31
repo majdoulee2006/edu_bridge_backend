@@ -726,6 +726,24 @@
         }
     }
 
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tabParam = urlParams.get('tab') || urlParams.get('type');
+        if (tabParam) {
+            tabParam = tabParam.replace('_', '-');
+            if (tabParam === 'document') tabParam = 'documents';
+            
+            const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => {
+                const onClickAttr = btn.getAttribute('onclick') || '';
+                return onClickAttr.includes(tabParam);
+            });
+
+            if (targetBtn) {
+                targetBtn.click();
+            }
+        }
+    });
+
     function openRequestModalFromBtn(btn) {
         const type = btn.getAttribute('data-type') || '';
         const name = btn.getAttribute('data-name') || '';
