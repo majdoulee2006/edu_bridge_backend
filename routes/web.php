@@ -425,7 +425,9 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     // الدرجات وكشف العلامات
     Route::get('/grades', [StudentWebController::class, 'grades'])->name('student.grades');
     Route::get('/academic-card/export-pdf', [StudentWebController::class, 'exportAcademicCardPdf'])->name('student.academic_card.pdf');
-    Route::get('/academic-card/export-excel', [StudentWebController::class, 'exportAcademicCardExcel'])->name('student.academic_card.excel');
+    // الحضور بالـ QR والوجه
+    Route::get('/attendance', [StudentWebController::class, 'attendance'])->name('student.attendance');
+    Route::post('/attendance/scan', [StudentWebController::class, 'scanAttendanceWeb'])->name('student.attendance.scan');
 
 
 

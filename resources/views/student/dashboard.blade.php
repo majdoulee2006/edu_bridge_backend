@@ -114,14 +114,17 @@
 
 @section('content')
 
-{{-- Mobile-only notice --}}
-<div class="mobile-notice">
-    <i class="fa-solid fa-mobile-screen-button"></i>
-    <div class="mobile-notice-text">
-        <div class="mobile-notice-title">تسجيل الحضور عبر التطبيق فقط</div>
-        تسجيل الحضور يتم عن طريق مسح رمز QR أو التعرف على الوجه في تطبيق الجوال.
+{{-- Web Attendance Quick Banner --}}
+<a href="{{ route('student.attendance') }}" class="mobile-notice hover:scale-[1.01] transition-transform cursor-pointer">
+    <i class="fa-solid fa-qrcode text-yellow-400 text-2xl"></i>
+    <div class="mobile-notice-text flex-1">
+        <div class="mobile-notice-title flex items-center justify-between">
+            <span>تسجيل الحضور الفوري (QR والوجه)</span>
+            <span class="bg-yellow-400 text-black text-xs font-extrabold px-3 py-1 rounded-full">متاح الآن بالويب</span>
+        </div>
+        افتح كاميرا الجوال أو اللابتوب مباشرة وقم بمسح رمز QR والتحقق من وجهك دون الحاجة لانتظار بناء APK.
     </div>
-</div>
+</a>
 
 {{-- Stats --}}
 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-bottom: 2rem;">
