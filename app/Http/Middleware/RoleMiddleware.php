@@ -16,10 +16,10 @@ class RoleMiddleware
             return response()->json(['success' => false, 'message' => 'يجب تسجيل الدخول أولاً'], 401);
         }
 
-        // If multiple roles are passed like role:student,parent, they will come as array elements in $roles
-        $userRole = $user->role;
+        $userRole = strtolower(trim($user->role ?? 'student'));
+        $allowedRoles = array_map(fn($r) => strtolower(trim($r)), $roles);
 
-        if (!$userRole || !in_array($userRole, $roles)) {
+        if (!in_array($userRole, $allowedRoles)) {
             return response()->json([
                 'success' => false,
                 'message' => 'غير مصرح لك بالوصول لهذه الخدمة'
