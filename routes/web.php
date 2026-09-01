@@ -20,6 +20,11 @@ Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthCo
 Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit')->name('login.post');
 Route::post('/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
+// ===== مسارات إعادة تعيين كلمة السر عبر تلغرام OTP =====
+Route::post('/password/forgot/send-otp', [UnifiedAuthController::class, 'sendResetOtp'])->name('password.forgot.send_otp');
+Route::post('/password/forgot/verify-otp', [UnifiedAuthController::class, 'verifyResetOtp'])->name('password.forgot.verify_otp');
+Route::post('/password/forgot/reset', [UnifiedAuthController::class, 'resetPassword'])->name('password.forgot.reset');
+
 // Default Redirect
 Route::get('/', function () {
     return redirect('/login');

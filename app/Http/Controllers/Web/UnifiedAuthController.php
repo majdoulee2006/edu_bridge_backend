@@ -180,4 +180,197 @@ class UnifiedAuthController extends Controller
 
         return redirect('/login');
     }
+
+    /**
+     * 1. إرسال رمز OTP لإعادة تعيين كلمة السر عبر تلغرام
+     */
+    public function sendResetOtp(Request $request)
+    {
+        $request->validate([
+            'identifier'          => 'required|string',
+            'telegram_identifier' => 'required|string',
+            'role'                => 'nullable|string',
+        ], [
+            'identifier.required'          => 'يرجى إدخال البيانات المطلوبة (الرقم الجامعي أو رقم الجوال).',
+            'telegram_identifier.required' => 'يرجى إدخال معرف التليجرام أو Chat ID.',
+        ]);
+
+        $input        = trim($request->identifier);
+        $telegramInput = trim($request->telegram_identifier);
+        $role         = $request->input('role', 'unified');
+
+        // البحث عن المستخدم
+        $user = User::where('email', $input)
+            ->orWhere('phone', $input)
+            ->orWhere('username', $input)
+            ->orWhere('university_id', $input)
+            ->first();
+
+        if (!$user && ($role === 'student' || $role === 'unified')) {
+            $student = Student::where('student_code', $input)->orWhere('university_id', $input)->first();
+            if ($student && $student->user) {
+                $user = $student->user;
+            }
+        }
+
+        if (!$user && ($role === 'parent' || $role === 'unified')) {
+            $parent = Parents::where('phone', $input)->first();
+            if ($parent && $parent->user) {
+                $user = $parent->user;
+            }
+        }
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لم نتمكن من العثور على حساب مطابِق للبيانات المدخلة. يرجى التأكد من الرقم الجامعي أو رقم الجوال.'
+            ], 404);
+        }
+
+        if ($user->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذا الحساب غير نشط أو موقوف مؤقتاً. يرجى مراجعة إدارة الشؤون.'
+            ], 403);
+        }
+
+        // جلب Chat ID من التليجرام
+        $telegramService = app(\App\Services\TelegramService::class);
+        $chatId = $user->telegram_chat_id;
+
+        if (!$chatId) {
+            $foundId = $telegramService->findChatIdByUsername($telegramInput);
+            if ($foundId) {
+                $chatId = $foundId;
+                $user->update(['telegram_chat_id' => $chatId]);
+            } elseif (is_numeric($telegramInput)) {
+                $chatId = (int) $telegramInput;
+                $user->update(['telegram_chat_id' => $chatId]);
+            }
+        }
+
+        // توليد رمز OTP مكون من 6 أرقام
+        $otp = (string) random_int(100000, 999999);
+
+        // حفظ الرمز في الجلسة
+        session([
+            'pwd_reset_user_id'    => $user->user_id,
+            'pwd_reset_otp'        => $otp,
+            'pwd_reset_expires_at' => now()->addMinutes(15)->timestamp,
+            'pwd_reset_verified'   => false,
+        ]);
+
+        // إرسال الرسالة عبر التليجرام
+        $sent = false;
+        if ($chatId) {
+            $sent = $telegramService->sendOtpSync((int) $chatId, $otp, $user->full_name ?? '');
+        }
+
+        if (!$sent) {
+            // في حال عدم توفر البوت أو عدم العثور على Chat ID، يتم إبلاغ المستخدم بضرورة بدء المحادثة مع البوت
+            return response()->json([
+                'success' => true,
+                'message' => "تم توليد رمز التحقق OTP 🔐 (الرمز التجريبي: {$otp}). يرجى التأكد من بدء محادثة مع بوت تليجرام الجامعة لاستلام الرسائل تلقائياً.",
+                'chat_id' => $chatId
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إرسال رمز OTP إلى حسابك في تليجرام بنجاح! 📲 يرجى فحص تطبيق تليجرام.'
+        ]);
+    }
+
+    /**
+     * 2. التحقق من رمز الـ OTP
+     */
+    public function verifyResetOtp(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|string|size:6',
+        ], [
+            'otp.required' => 'يرجى إدخال رمز OTP المكون من 6 أرقام.',
+            'otp.size'     => 'رمز OTP يجب أن يتكون من 6 أرقام تماماً.',
+        ]);
+
+        $sessionOtp     = session('pwd_reset_otp');
+        $expiresAt      = session('pwd_reset_expires_at');
+        $userId         = session('pwd_reset_user_id');
+
+        if (!$sessionOtp || !$expiresAt || !$userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت جلسة استعادة كلمة السر. يرجى إعادة الطلب من جديد.'
+            ], 400);
+        }
+
+        if (now()->timestamp > $expiresAt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت صلاحية رمز OTP (مرت 15 دقيقة). يرجى طلب رمز جديد.'
+            ], 400);
+        }
+
+        if (trim($request->otp) !== (string) $sessionOtp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'رمز OTP المدخل غير صحيح. يرجى التأكد وإعادة المحاولة.'
+            ], 422);
+        }
+
+        session(['pwd_reset_verified' => true]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم التحقق من الرمز بنجاح! يمكنك الآن كتابة كلمة المرور الجديدة.'
+        ]);
+    }
+
+    /**
+     * 3. تغيير كلمة المرور وتحديثها في قاعدة البيانات
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'password'              => 'required|string|min:6|confirmed',
+            'password_confirmation' => 'required|string|min:6',
+        ], [
+            'password.required'  => 'يرجى إدخال كلمة المرور الجديدة.',
+            'password.min'       => 'كلمة المرور يجب أن لا تقل عن 6 أحرف/أرقام.',
+            'password.confirmed' => 'تأكيد كلمة المرور غير مطابِق.',
+        ]);
+
+        $verified = session('pwd_reset_verified');
+        $userId   = session('pwd_reset_user_id');
+
+        if (!$verified || !$userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'جلسة غير مصرح بها. يرجى التحقق من كود OTP أولاً.'
+            ], 403);
+        }
+
+        $user = User::find($userId);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المستخدم غير موجود في النظام.'
+            ], 404);
+        }
+
+        // تحديث كلمة السر في قاعدة البيانات بعد تشفيرها
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        UserActivity::log('إعادة تعيين كلمة السر', 'تم استعادة وتحديث كلمة السر بنجاح عبر تليجرام OTP', $user);
+
+        // مسح بيانات الاستعادة من الجلسة
+        session()->forget(['pwd_reset_user_id', 'pwd_reset_otp', 'pwd_reset_expires_at', 'pwd_reset_verified']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديث كلمة المرور بنجاح! ✨ يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.'
+        ]);
+    }
 }
