@@ -337,7 +337,10 @@
                 </div>
                 <div class="leave-details">
                     <div class="detail-row"><i class="fa-solid fa-notes-medical"></i> <span>طلب غياب</span></div>
-                    <div class="detail-row"><i class="fa-solid fa-calendar-days"></i> <span>{{ $leave->date ? \Carbon\Carbon::parse($leave->date)->format('d M Y') : 'غير محدد' }}</span></div>
+                    <div class="detail-row"><i class="fa-solid fa-calendar-days"></i> <span>تاريخ الإجازة: {{ $leave->date ? \Carbon\Carbon::parse($leave->date)->format('Y-m-d') : 'غير محدد' }}</span></div>
+                    @if(!empty($leave->created_at))
+                    <div class="detail-row" style="font-weight: 700; color: var(--text-primary);"><i class="fa-regular fa-clock"></i> <span>تقديم الطلب: {{ \Carbon\Carbon::parse($leave->created_at)->format('Y-m-d - h:i A') }}</span></div>
+                    @endif
                     <div class="leave-reason">
                         <strong>السبب:</strong> {{ $leave->reason ?? 'لم يذكر سبب.' }}
                     </div>

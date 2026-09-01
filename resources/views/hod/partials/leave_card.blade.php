@@ -32,9 +32,9 @@
                     @if(!empty($leave->student_code)) | {{ $leave->student_code }} @endif
                 </p>
                 @if(!empty($leave->created_at))
-                <p style="font-size:0.8rem;">
-                    <i class="fa-regular fa-calendar"></i>
-                    {{ \Carbon\Carbon::parse($leave->created_at)->format('d/m/Y') }}
+                <p style="font-size:0.82rem; font-weight:700; color:var(--text-primary);">
+                    <i class="fa-regular fa-clock" style="color:var(--accent-color);"></i>
+                    تاريخ ووقت التقديم: {{ \Carbon\Carbon::parse($leave->created_at)->format('Y-m-d - h:i A') }}
                 </p>
                 @endif
             </div>

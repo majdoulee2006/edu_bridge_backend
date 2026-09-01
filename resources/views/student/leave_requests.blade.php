@@ -67,23 +67,29 @@
                 <option value="hourly">إذن ساعي (ساعات محددة)</option>
             </select>
         </div>
-        <div class="form-group">
-            <label class="form-label">تاريخ الغياب</label>
-            <input type="date" name="date" class="form-control" required min="{{ date('Y-m-d') }}">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+                <label class="form-label">تاريخ الغياب والإذن</label>
+                <input type="date" name="date" class="form-control" required min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}">
+            </div>
+            <div id="fullDayTimeField">
+                <label class="form-label">وقت/ساعة الإذن المطلوب</label>
+                <input type="time" name="leave_time" class="form-control" required value="{{ date('H:i') }}">
+            </div>
         </div>
         <div id="hourlyTimeFields" style="display: none; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
             <div>
                 <label class="form-label">من الساعة</label>
-                <input type="time" name="from_time" class="form-control">
+                <input type="time" name="from_time" class="form-control" value="{{ date('H:i') }}">
             </div>
             <div>
                 <label class="form-label">إلى الساعة</label>
-                <input type="time" name="to_time" class="form-control">
+                <input type="time" name="to_time" class="form-control" value="{{ date('H:i', strtotime('+2 hours')) }}">
             </div>
         </div>
         <div class="form-group">
-            <label class="form-label">سبب الغياب</label>
-            <textarea name="reason" class="form-control" rows="3" placeholder="اكتب سبب الغياب بالتفصيل..." required></textarea>
+            <label class="form-label">سبب الغياب بالتفصيل</label>
+            <textarea name="reason" class="form-control" rows="3" placeholder="اكتب سبب طلب الإذن..." required></textarea>
         </div>
         <div class="form-group">
             <label class="form-label">مستند مرفق (تقرير طبي أو عذر رسمي - اختياري)</label>
@@ -113,14 +119,14 @@
                 <span class="badge badge-pending">قيد المراجعة</span>
             @endif
             <span style="font-weight: 700; font-size: 0.9rem;">
-                تاريخ الغياب: {{ \Carbon\Carbon::parse($r->date)->format('Y-m-d') }}
+                تاريخ الإذن: {{ \Carbon\Carbon::parse($r->date)->format('Y-m-d') }}
             </span>
         </div>
         <div style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; margin-top: 0.25rem;">{{ $r->reason }}</div>
         
         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.75rem; flex-wrap: wrap; gap: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 0.75rem;">
-            <div style="color: var(--text-secondary); font-size: 0.78rem;">
-                <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($r->created_at)->diffForHumans() }}
+            <div style="color: var(--text-primary); font-weight: 700; font-size: 0.82rem;">
+                <i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> تاريخ ووقت التقديم: {{ \Carbon\Carbon::parse($r->created_at)->format('Y-m-d - h:i A') }}
             </div>
             
             <div style="display: flex; align-items: center; gap: 0.75rem;">
