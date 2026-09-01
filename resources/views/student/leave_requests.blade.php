@@ -12,45 +12,65 @@
         margin-bottom: 2rem;
     }
     .form-group { margin-bottom: 1.25rem; }
-    .form-label { display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem; }
-    .form-control {
+    .form-label { display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-primary); }
+    
+    /* 🌟 دعم ممتاز وتلقائي للوضعين الفاتح والداكن (Light & Dark Theme) */
+    .form-control, input[type="date"], input[type="time"], select.form-control, textarea.form-control {
         width: 100%;
-        padding: 0.875rem 1rem;
+        padding: 0.85rem 1rem;
         border: 2px solid var(--border-color);
         border-radius: 0.75rem;
-        background: var(--bg-primary);
-        color: var(--text-primary);
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
         font-family: inherit;
-        font-size: 0.95rem;
-        transition: border-color 0.2s;
+        font-size: 1rem;
+        font-weight: 700;
+        transition: all 0.2s ease;
         outline: none;
     }
-    .form-control:focus { border-color: var(--accent-color); }
 
-    /* 🌟 إصلاح ووضوح حقول الوقت والتاريخ ومنع البياض غير المرغوب */
-    input[type="date"], input[type="time"] {
-        color-scheme: dark;
-        background-color: var(--bg-primary, #18181b) !important;
+    /* 🌙 الوضع الداكن */
+    [data-theme="dark"] input[type="date"],
+    [data-theme="dark"] input[type="time"],
+    html.dark input[type="date"],
+    html.dark input[type="time"] {
+        color-scheme: dark !important;
         color: #ffffff !important;
-        font-weight: 800 !important;
-        font-size: 1.05rem !important;
-        letter-spacing: 1px;
-        border: 2px solid var(--border-color) !important;
-        border-radius: 0.75rem !important;
-        padding: 0.75rem 1rem !important;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        background-color: var(--bg-primary, #000000) !important;
+        border-color: var(--border-color, #242424) !important;
     }
-    input[type="date"]::-webkit-calendar-picker-indicator,
-    input[type="time"]::-webkit-calendar-picker-indicator {
+    [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+    [data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator,
+    html.dark input[type="date"]::-webkit-calendar-picker-indicator,
+    html.dark input[type="time"]::-webkit-calendar-picker-indicator {
         filter: invert(0.9) sepia(1) saturate(5) hue-rotate(15deg);
         cursor: pointer;
-        font-size: 1.2rem;
-        padding: 4px;
-        border-radius: 4px;
     }
-    input[type="date"]:focus, input[type="time"]:focus {
-        border-color: var(--accent-color) !important;
-        box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.2) !important;
+
+    /* ☀️ الوضع الفاتح (علاج مشكلة الخط الأبيض والضبابية) */
+    [data-theme="light"] input[type="date"],
+    [data-theme="light"] input[type="time"],
+    [data-theme="light"] .form-control,
+    html:not(.dark):not([data-theme="dark"]) input[type="date"],
+    html:not(.dark):not([data-theme="dark"]) input[type="time"],
+    html:not(.dark):not([data-theme="dark"]) .form-control {
+        color-scheme: light !important;
+        color: #0f172a !important; /* لون كحلي/أسود غامق واضح جداً */
+        background-color: #f1f5f9 !important; /* خلفية رمادية فاتحة ناعمة بدلاً من البياض المفقود */
+        border-color: #cbd5e1 !important;
+    }
+    [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+    [data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator,
+    html:not(.dark):not([data-theme="dark"]) input[type="date"]::-webkit-calendar-picker-indicator,
+    html:not(.dark):not([data-theme="dark"]) input[type="time"]::-webkit-calendar-picker-indicator {
+        filter: none !important;
+        opacity: 0.85;
+        cursor: pointer;
+    }
+
+    .form-control:focus, input[type="date"]:focus, input[type="time"]:focus {
+        border-color: var(--accent-color, #f2f20d) !important;
+        box-shadow: 0 0 0 3px rgba(242, 242, 13, 0.25) !important;
     }
 
     .btn-submit {
@@ -96,14 +116,14 @@
             <div>
                 <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
                     <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> تاريخ الغياب والإذن</span>
-                    <span style="font-size: 0.75rem; opacity: 0.7; font-weight: 400;">السنة-الشهر-اليوم</span>
+                    <span style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 700;">(السنة - الشهر - اليوم)</span>
                 </label>
                 <input type="date" name="date" id="leaveDateInput" class="form-control" required min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" onchange="updateTimeLimits()">
             </div>
             <div id="fullDayTimeField">
                 <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
                     <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت/ساعة الإذن</span>
-                    <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">الساعة : الدقيقة</span>
+                    <span style="font-size: 0.78rem; background: var(--accent-color); color: #1a1a1a; padding: 0.15rem 0.5rem; border-radius: 0.4rem; font-weight: 800;">الساعة : الدقيقة</span>
                 </label>
                 <input type="time" name="leave_time" id="leaveTimeInput" class="form-control" required value="{{ date('H:i') }}">
             </div>
@@ -112,14 +132,14 @@
             <div>
                 <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
                     <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> من الساعة</span>
-                    <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">الساعة : الدقيقة</span>
+                    <span style="font-size: 0.78rem; background: var(--accent-color); color: #1a1a1a; padding: 0.15rem 0.5rem; border-radius: 0.4rem; font-weight: 800;">الساعة : الدقيقة</span>
                 </label>
                 <input type="time" name="from_time" id="fromTimeInput" class="form-control" value="{{ date('H:i') }}">
             </div>
             <div>
                 <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
                     <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> إلى الساعة</span>
-                    <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">الساعة : الدقيقة</span>
+                    <span style="font-size: 0.78rem; background: var(--accent-color); color: #1a1a1a; padding: 0.15rem 0.5rem; border-radius: 0.4rem; font-weight: 800;">الساعة : الدقيقة</span>
                 </label>
                 <input type="time" name="to_time" id="toTimeInput" class="form-control" value="{{ date('H:i', strtotime('+2 hours')) }}">
             </div>
