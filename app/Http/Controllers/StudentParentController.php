@@ -561,6 +561,13 @@ class StudentParentController extends Controller
 
         if (!$studentUser) return response()->json(['message' => 'الطالب غير موجود'], 404);
 
+        if ($request->date === date('Y-m-d')) {
+            $selectedTime = $request->type === 'hourly' ? ($request->from_time ?? date('H:i')) : ($request->time ?? $request->leave_time ?? date('H:i'));
+            if ($selectedTime < date('H:i')) {
+                return response()->json(['message' => 'عذراً، لا يمكن اختيار وقت سابق لوقتنا الحالي لليوم!'], 422);
+            }
+        }
+
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
             $attachmentPath = $request->file('attachment')->store('leave_attachments', 'public');

@@ -624,6 +624,16 @@ class StudentWebController extends Controller
             $filePath = $request->file('document')->store('leave_requests', 'public');
         }
 
+        // التحقق من الوقت: عدم السماح باختيار وقت سابق لوقتنا الحالي إذا كان التاريخ هو اليوم
+        $todayStr = date('Y-m-d');
+        $currentTime = date('H:i');
+        if ($request->date === $todayStr) {
+            $selectedTime = $request->type === 'hourly' ? ($request->from_time ?? $currentTime) : ($request->leave_time ?? $request->time ?? $currentTime);
+            if ($selectedTime < $currentTime) {
+                return back()->withErrors(['time' => 'عذراً، لا يمكن اختيار وقت سابق لوقتنا الحالي لليوم!'])->withInput();
+            }
+        }
+
         $reasonText = $request->reason;
         if ($request->type === 'hourly') {
             $fromTime = $request->from_time ?? date('H:i');

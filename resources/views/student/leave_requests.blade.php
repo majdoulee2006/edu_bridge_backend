@@ -52,13 +52,25 @@
 
 @section('content')
 
+@if(session('success'))
+    <div style="background: #dcfce7; color: #15803d; padding: 0.85rem 1.25rem; border-radius: 0.75rem; font-weight: 700; margin-bottom: 1.25rem; border: 1px solid #86efac; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
+    </div>
+@endif
+
+@if($errors->any())
+    <div style="background: #fee2e2; color: #b91c1c; padding: 0.85rem 1.25rem; border-radius: 0.75rem; font-weight: 700; margin-bottom: 1.25rem; border: 1px solid #fca5a5; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-circle-exclamation"></i> {{ $errors->first() }}
+    </div>
+@endif
+
 {{-- New Request Form --}}
 <div class="form-card">
     <p style="font-size: 1.05rem; font-weight: 800; margin-bottom: 1.25rem;">
         <i class="fa-solid fa-envelope-open-text" style="color: var(--accent-color);"></i>
         تقديم طلب إذن جديد
     </p>
-    <form action="{{ route('student.leave_requests.store') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route('student.leave_requests.store') }}" method="POST" enctype="multipart/form-data" id="leaveRequestForm" onsubmit="return validateLeaveTimeForm(event)">
         @csrf
         <div class="form-group">
             <label class="form-label">نوع الإذن</label>
@@ -70,21 +82,21 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
             <div>
                 <label class="form-label">تاريخ الغياب والإذن</label>
-                <input type="date" name="date" class="form-control" required min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}">
+                <input type="date" name="date" id="leaveDateInput" class="form-control" required min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" onchange="updateTimeLimits()">
             </div>
             <div id="fullDayTimeField">
                 <label class="form-label">وقت/ساعة الإذن المطلوب</label>
-                <input type="time" name="leave_time" class="form-control" required value="{{ date('H:i') }}">
+                <input type="time" name="leave_time" id="leaveTimeInput" class="form-control" required value="{{ date('H:i') }}">
             </div>
         </div>
         <div id="hourlyTimeFields" style="display: none; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
             <div>
                 <label class="form-label">من الساعة</label>
-                <input type="time" name="from_time" class="form-control" value="{{ date('H:i') }}">
+                <input type="time" name="from_time" id="fromTimeInput" class="form-control" value="{{ date('H:i') }}">
             </div>
             <div>
                 <label class="form-label">إلى الساعة</label>
-                <input type="time" name="to_time" class="form-control" value="{{ date('H:i', strtotime('+2 hours')) }}">
+                <input type="time" name="to_time" id="toTimeInput" class="form-control" value="{{ date('H:i', strtotime('+2 hours')) }}">
             </div>
         </div>
         <div class="form-group">
@@ -253,6 +265,62 @@
 
 @push('scripts')
 <script>
+function updateTimeLimits() {
+    const dateInput = document.getElementById('leaveDateInput');
+    const leaveTimeInput = document.getElementById('leaveTimeInput');
+    const fromTimeInput = document.getElementById('fromTimeInput');
+    if (!dateInput) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const currentHours = String(now.getHours()).padStart(2, '0');
+    const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+    if (dateInput.value === todayStr) {
+        if (leaveTimeInput) leaveTimeInput.setAttribute('min', currentTimeStr);
+        if (fromTimeInput) fromTimeInput.setAttribute('min', currentTimeStr);
+    } else {
+        if (leaveTimeInput) leaveTimeInput.removeAttribute('min');
+        if (fromTimeInput) fromTimeInput.removeAttribute('min');
+    }
+}
+
+function validateLeaveTimeForm(event) {
+    const dateInput = document.getElementById('leaveDateInput');
+    const typeSelect = document.getElementById('leaveTypeSelect');
+    const leaveTimeInput = document.getElementById('leaveTimeInput');
+    const fromTimeInput = document.getElementById('fromTimeInput');
+
+    if (!dateInput) return true;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateInput.value === todayStr) {
+        const now = new Date();
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+        let selectedTime = '';
+        if (typeSelect.value === 'hourly') {
+            selectedTime = fromTimeInput ? fromTimeInput.value : '';
+        } else {
+            selectedTime = leaveTimeInput ? leaveTimeInput.value : '';
+        }
+
+        if (selectedTime && selectedTime < currentTimeStr) {
+            alert('⚠️ تنبيه: لا يمكن اختيار وقت سابق لوقتنا الحالي لليوم! يرجى اختيار الوقت الحالي أو وقت قادم.');
+            event.preventDefault();
+            return false;
+        }
+    }
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateTimeLimits();
+});
+
 function toggleHourlyFields(typeVal) {
     const fields = document.getElementById('hourlyTimeFields');
     if (!fields) return;
