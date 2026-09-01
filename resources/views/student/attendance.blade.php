@@ -52,6 +52,22 @@
         box-shadow: 0 0 15px #f2f20d;
         animation: laserLine 2s infinite ease-in-out;
     }
+
+    @media (max-width: 380px) {
+        .embedded-cam-box {
+            max-width: 100% !important;
+            border-radius: 1.25rem !important;
+        }
+        .cutout-qr {
+            width: 190px !important;
+            height: 190px !important;
+        }
+        .cutout-face {
+            width: 170px !important;
+            height: 230px !important;
+        }
+    }
+
 </style>
 @endpush
 
