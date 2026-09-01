@@ -26,6 +26,33 @@
         outline: none;
     }
     .form-control:focus { border-color: var(--accent-color); }
+
+    /* 🌟 إصلاح ووضوح حقول الوقت والتاريخ ومنع البياض غير المرغوب */
+    input[type="date"], input[type="time"] {
+        color-scheme: dark;
+        background-color: var(--bg-primary, #18181b) !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        font-size: 1.05rem !important;
+        letter-spacing: 1px;
+        border: 2px solid var(--border-color) !important;
+        border-radius: 0.75rem !important;
+        padding: 0.75rem 1rem !important;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.9) sepia(1) saturate(5) hue-rotate(15deg);
+        cursor: pointer;
+        font-size: 1.2rem;
+        padding: 4px;
+        border-radius: 4px;
+    }
+    input[type="date"]:focus, input[type="time"]:focus {
+        border-color: var(--accent-color) !important;
+        box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.2) !important;
+    }
+
     .btn-submit {
         background: var(--accent-color); color: #1a1a1a;
         border: none; padding: 0.875rem 2rem;
@@ -33,20 +60,6 @@
         cursor: pointer; font-family: inherit; transition: transform 0.2s;
     }
     .btn-submit:hover { transform: translateY(-2px); }
-
-    .request-card {
-        background: var(--bg-secondary);
-        border-radius: 1rem;
-        padding: 1.25rem;
-        margin-bottom: 0.75rem;
-        display: flex; align-items: center; gap: 1rem;
-        box-shadow: var(--shadow);
-        border-right: 4px solid var(--accent-color);
-    }
-    .badge { padding: 0.2rem 0.65rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; }
-    .badge-pending  { background: hsl(30,70%,90%);  color: hsl(30,50%,30%);  }
-    .badge-approved { background: hsl(120,70%,90%); color: hsl(120,50%,30%); }
-    .badge-rejected { background: hsl(0,70%,90%);   color: hsl(0,50%,30%);   }
 </style>
 @endpush
 
@@ -79,23 +92,35 @@
                 <option value="hourly">إذن ساعي (ساعات محددة)</option>
             </select>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
             <div>
-                <label class="form-label">تاريخ الغياب والإذن</label>
+                <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> تاريخ الغياب والإذن</span>
+                    <span style="font-size: 0.75rem; opacity: 0.7; font-weight: 400;">السنة-الشهر-اليوم</span>
+                </label>
                 <input type="date" name="date" id="leaveDateInput" class="form-control" required min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" onchange="updateTimeLimits()">
             </div>
             <div id="fullDayTimeField">
-                <label class="form-label">وقت/ساعة الإذن المطلوب</label>
+                <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت/ساعة الإذن</span>
+                    <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">الساعة : الدقيقة</span>
+                </label>
                 <input type="time" name="leave_time" id="leaveTimeInput" class="form-control" required value="{{ date('H:i') }}">
             </div>
         </div>
-        <div id="hourlyTimeFields" style="display: none; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+        <div id="hourlyTimeFields" style="display: none; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
             <div>
-                <label class="form-label">من الساعة</label>
+                <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> من الساعة</span>
+                    <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">الساعة : الدقيقة</span>
+                </label>
                 <input type="time" name="from_time" id="fromTimeInput" class="form-control" value="{{ date('H:i') }}">
             </div>
             <div>
-                <label class="form-label">إلى الساعة</label>
+                <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> إلى الساعة</span>
+                    <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">الساعة : الدقيقة</span>
+                </label>
                 <input type="time" name="to_time" id="toTimeInput" class="form-control" value="{{ date('H:i', strtotime('+2 hours')) }}">
             </div>
         </div>

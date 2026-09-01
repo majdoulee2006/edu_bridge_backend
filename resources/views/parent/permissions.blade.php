@@ -329,13 +329,19 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="leave-date">تاريخ الإجازة</label>
-                        <input type="date" name="date" id="leave-date" class="form-control" min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" required>
+                        <label for="leave-date" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> تاريخ الإجازة</span>
+                            <span style="font-size: 0.75rem; opacity: 0.7; font-weight: 400;">السنة-الشهر-اليوم</span>
+                        </label>
+                        <input type="date" name="date" id="leave-date" class="form-control" min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" required style="color-scheme: dark; background: var(--bg-primary, #18181b) !important; color: #fff !important; font-weight: 800 !important;">
                     </div>
 
                     <div class="form-group" id="parent-time-group">
-                        <label for="leave-time">وقت/ساعة الإذن المطلوبة</label>
-                        <input type="time" name="time" id="leave-time" class="form-control" value="{{ date('H:i') }}" required>
+                        <label for="leave-time" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت/ساعة الإذن المطلوبة</span>
+                            <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">الساعة : الدقيقة</span>
+                        </label>
+                        <input type="time" name="time" id="leave-time" class="form-control" value="{{ date('H:i') }}" required style="color-scheme: dark; background: var(--bg-primary, #18181b) !important; color: #fff !important; font-weight: 800 !important;">
                     </div>
                     
                     <div class="form-group">
