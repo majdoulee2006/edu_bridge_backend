@@ -626,13 +626,12 @@ class StudentWebController extends Controller
 
         $reasonText = $request->reason;
         if ($request->type === 'hourly') {
-            if ($request->from_time && $request->to_time) {
-                $reasonText = "[إذن ساعي: من " . $request->from_time . " إلى " . $request->to_time . "] - " . $request->reason;
-            } else {
-                $reasonText = "[إذن ساعي] - " . $request->reason;
-            }
+            $fromTime = $request->from_time ?? date('H:i');
+            $toTime = $request->to_time ?? date('H:i', strtotime('+2 hours'));
+            $reasonText = "[إذن ساعي - من الساعة: " . $fromTime . " إلى: " . $toTime . "] - " . $request->reason;
         } else {
-            $reasonText = "[إذن يومي] - " . $request->reason;
+            $leaveTime = $request->leave_time ?? $request->time ?? date('H:i');
+            $reasonText = "[إذن يومي - وقت الإذن: " . $leaveTime . "] - " . $request->reason;
         }
 
         $requestId = DB::table('absence_requests')->insertGetId([

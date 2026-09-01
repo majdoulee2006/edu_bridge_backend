@@ -277,8 +277,8 @@
                             </div>
                             
                             <div class="request-meta">
-                                <span>تاريخ الإجازة: {{ \Carbon\Carbon::parse($req->date)->format('Y-m-d') }}</span>
-                                <span>تاريخ الطلب: {{ \Carbon\Carbon::parse($req->created_at)->format('Y-m-d H:i') }}</span>
+                                <span><i class="fa-regular fa-calendar" style="color: var(--accent-color);"></i> تاريخ الإجازة: {{ \Carbon\Carbon::parse($req->date)->format('Y-m-d') }}</span>
+                                <span style="font-weight: 700; color: var(--text-primary);"><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> تاريخ ووقت التقديم: {{ \Carbon\Carbon::parse($req->created_at)->format('Y-m-d - h:i A') }}</span>
                             </div>
                             
                             @if(in_array($req->status, ['pending', 'pending_parent']))
@@ -330,7 +330,12 @@
                     
                     <div class="form-group">
                         <label for="leave-date">تاريخ الإجازة</label>
-                        <input type="date" name="date" id="leave-date" class="form-control" min="{{ date('Y-m-d') }}" required>
+                        <input type="date" name="date" id="leave-date" class="form-control" min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}" required>
+                    </div>
+
+                    <div class="form-group" id="parent-time-group">
+                        <label for="leave-time">وقت/ساعة الإذن المطلوبة</label>
+                        <input type="time" name="time" id="leave-time" class="form-control" value="{{ date('H:i') }}" required>
                     </div>
                     
                     <div class="form-group">

@@ -569,6 +569,13 @@ class StudentParentController extends Controller
         $finalReason = $request->reason;
         if ($request->type === 'justification' && $request->has('subject_name')) {
             $finalReason = "لمادة (" . $request->subject_name . "): " . $finalReason;
+        } elseif ($request->type === 'hourly') {
+            $fromTime = $request->from_time ?? date('H:i');
+            $toTime = $request->to_time ?? date('H:i', strtotime('+2 hours'));
+            $finalReason = "[إذن ساعي - من الساعة: " . $fromTime . " إلى: " . $toTime . "] - " . $finalReason;
+        } else {
+            $leaveTime = $request->time ?? $request->leave_time ?? date('H:i');
+            $finalReason = "[إذن يومي - وقت الإذن: " . $leaveTime . "] - " . $finalReason;
         }
 
         $leaveId = DB::table('leave_requests')->insertGetId([
