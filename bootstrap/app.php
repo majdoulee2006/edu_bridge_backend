@@ -42,5 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/affairs/login');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->renderable(function (\Illuminate\Session\TokenMismatchException $e, $request) {
+            return redirect()->route('login')->with('error', 'انتهت مدة الجلسة السابقة. تم تحديث الشفرة تلقائياً، يرجى إعادة محاولة تسجيل الدخول.');
+        });
     })->create();
