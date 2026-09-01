@@ -436,7 +436,28 @@ input:checked + .slider:before {
 .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem; }
 .stat-hint  { font-size: 0.75rem; color: var(--accent-color); margin-top: 0.3rem; font-weight: 600; }
 
-/* Mobile Responsiveness */
+/* Mobile Responsiveness & Utility Classes */
+.responsive-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.5rem;
+}
+.responsive-grid-equal {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1rem;
+}
+.table-responsive table {
+    width: 100%;
+    min-width: 600px;
+}
+
 .mobile-menu-btn {
     display: none;
     background: transparent;
@@ -456,6 +477,7 @@ input:checked + .slider:before {
 .mobile-overlay.active {
     display: block;
 }
+
 @media (max-width: 768px) {
     .sidebar {
         transform: translateX(100%);
@@ -465,20 +487,64 @@ input:checked + .slider:before {
     }
     .sidebar.active {
         transform: translateX(0);
-        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        box-shadow: 0 0 20px rgba(0,0,0,0.4);
     }
     .main-content {
         margin-right: 0 !important;
         margin-left: 0 !important;
-        padding: 1rem;
+        padding: 0.85rem !important;
     }
     .mobile-menu-btn {
         display: block;
     }
     .header {
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+        gap: 0.75rem;
     }
     .page-title {
         font-size: 1.25rem;
     }
+    .responsive-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+    .card {
+        padding: 1rem !important;
+        border-radius: 0.85rem !important;
+    }
+    .modal-card {
+        padding: 1.25rem !important;
+        max-width: 95vw !important;
+        width: 95vw !important;
+        border-radius: 1rem !important;
+        margin: 0.5rem !important;
+    }
+    .session-card {
+        flex-direction: column !alignment;
+        align-items: flex-start !important;
+        padding: 1rem !important;
+    }
+    .session-card > div {
+        width: 100%;
+    }
+    .action-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 0.6rem 0.8rem !important;
+    }
 }
+
+@media (max-width: 480px) {
+    html {
+        font-size: 14px;
+    }
+    .header-actions {
+        gap: 0.5rem !important;
+    }
+    .header-actions button, .header-actions a {
+        height: 36px !important;
+        padding: 0 0.75rem !important;
+    }
+}
+

@@ -24,7 +24,7 @@
 @endpush
 
 @section('content')
-    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem;">
+    <div class="responsive-grid">
 
         <!-- Start Session Panel -->
         <div>

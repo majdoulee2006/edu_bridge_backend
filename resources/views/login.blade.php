@@ -57,6 +57,38 @@
             position: relative;
         }
 
+        @media (max-width: 480px) {
+            body {
+                padding: 0.5rem;
+            }
+            .login-wrapper {
+                padding: 0.25rem;
+            }
+            .login-card {
+                padding: 1.5rem 1rem !important;
+                border-radius: 14px !important;
+            }
+            .brand-name {
+                font-size: 1.5rem !important;
+            }
+            .remember-row {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 0.75rem !important;
+            }
+            .reset-modal-card {
+                padding: 1.25rem 1rem !important;
+                border-radius: 16px !important;
+                max-width: 95vw !important;
+            }
+            .otp-digit-input {
+                width: 36px !important;
+                height: 44px !important;
+                font-size: 1.2rem !important;
+            }
+        }
+
+
         /* Top yellow accent line */
         .login-card::before {
             content: '';
@@ -298,7 +330,7 @@
                     </div>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; margin-bottom: 0.5rem;">
+                <div class="remember-row" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; margin-bottom: 0.5rem; gap: 0.5rem; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <input type="checkbox" name="remember" id="remember" style="accent-color: var(--accent-yellow); width: 16px; height: 16px; cursor: pointer;">
                         <label for="remember" style="color: #e4e4e7; font-size: 0.85rem; cursor: pointer; user-select: none;">تذكرني (Remember Me)</label>
