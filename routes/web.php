@@ -30,6 +30,10 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
+// ===== مسارات ماسح تيليغرام الذكي (Telegram Web App Scanner) =====
+Route::get('/telegram/scanner', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'showScanner'])->name('telegram.scanner');
+Route::post('/telegram/record-attendance', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'recordAttendanceFromScanner'])->name('telegram.record_attendance');
+
 // ===== مسارات المعلم (Teacher) =====
 Route::post('/teacher/login', [UnifiedAuthController::class, 'login'])->name('teacher.login.post');
 Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('teacher.logout');
@@ -436,6 +440,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 
     // الحضور والغياب
     Route::get('/attendance', [StudentWebController::class, 'attendance'])->name('student.attendance');
+    Route::get('/warnings', [StudentWebController::class, 'warnings'])->name('student.warnings');
 
 
 

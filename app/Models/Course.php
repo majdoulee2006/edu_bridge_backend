@@ -40,11 +40,17 @@ class Course extends Model
         return $this->belongsToMany(Student::class, 'enrollments', 'course_id', 'student_id');
     }
     
-    // علاقة المادة بالمحاضرات (الدروس) - شغلك 
     public function lessons()
     {
         return $this->hasMany(Lesson::class, 'course_id', 'course_id')
                     ->orderBy('created_at', 'desc'); // عشان تترتب من الأحدث للأقدم
+    }
+
+    // علاقة المادة بالملفات (Resources)
+    public function resources()
+    {
+        return $this->hasMany(Resource::class, 'course_id', 'course_id')
+                    ->orderBy('created_at', 'desc');
     }
 
     // 👇 الإضافات الجديدة المطلوبة من زميلك 👇

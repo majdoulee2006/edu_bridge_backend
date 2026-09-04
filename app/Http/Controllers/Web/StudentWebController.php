@@ -563,6 +563,16 @@ class StudentWebController extends Controller
         return $apiController->scanAttendanceQr($apiReq);
     }
 
+    public function warnings()
+    {
+        $student = $this->getStudent();
+        $warnings = \App\Models\StudentWarning::where('student_id', $student->student_id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('student.warnings', compact('warnings', 'student'));
+    }
+
     public function submitExcuse(Request $request, $attendanceId)
     {
         $request->validate([
