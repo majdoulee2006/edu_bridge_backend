@@ -2517,6 +2517,37 @@ class StudentController extends Controller
             'data' => $requests
         ]);
     }
+
+    /**
+     * جلب الإنذارات الأكاديمية الخاصة بالطالب
+     */
+    public function getMyWarnings(Request $request)
+    {
+        $student = $request->user()->student;
+        if (!$student) {
+            return response()->json(['success' => false, 'message' => 'بيانات الطالب غير موجودة'], 404);
+        }
+
+        $warnings = \App\Models\StudentWarning::where('student_id', $student->student_id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($w) {
+                return [
+                    'warning_id'    => $w->warning_id,
+                    'warning_level' => $w->warning_level,
+                    'absence_days'  => $w->absence_days,
+                    'message'       => $w->message,
+                    'is_read'       => $w->is_read,
+                    'action_data'   => $w->action_data,
+                    'created_at'    => $w->created_at ? $w->created_at->format('Y-m-d H:i') : null,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $warnings,
+        ]);
+    }
 }
 
 

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\TeacherController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\HODController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\ExamScheduleController;
@@ -40,6 +41,9 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
 Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
 Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset']);
+
+// Telegram Webhook
+Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
 
 Route::get('/system/settings', function () {
     return response()->json([
@@ -166,6 +170,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/attendance', [StudentController::class, 'getMyAttendance']);
         Route::post('/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
         Route::post('/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
+        Route::get('/warnings', [StudentController::class, 'getMyWarnings']);
         Route::get('/leave-requests', [StudentController::class, 'getMyAbsenceRequests']);
         Route::get('/leave-requests/{id}', [StudentController::class, 'getLeaveDetails']);
         Route::post('/leave-requests', [StudentController::class, 'requestAbsence']);

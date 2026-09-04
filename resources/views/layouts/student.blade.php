@@ -146,6 +146,14 @@
                     <i class="fa-solid fa-id-card"></i>
                     بطاقة الطالب (كشف العلامات)
                 </a>
+                <a href="{{ url('/student/attendance') }}" class="nav-item {{ Request::is('student/attendance') ? 'active' : '' }}">
+                    <i class="fa-solid fa-clipboard-user"></i>
+                    الحضور والغياب
+                </a>
+                <a href="{{ url('/student/warnings') }}" class="nav-item {{ Request::is('student/warnings') ? 'active' : '' }}">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    الإنذارات الأكاديمية
+                </a>
 
                 <a href="{{ url('/student/attendance') }}" class="nav-item {{ Request::is('student/attendance*') ? 'active' : '' }}">
                     <i class="fa-solid fa-qrcode" style="color: var(--accent-color);"></i>
