@@ -231,7 +231,17 @@
 
     @forelse($announcements as $ann)
         @php
-            $imgUrl = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
+            $firstImg = $ann->image ?? null;
+            if (!$firstImg && !empty($ann->images)) {
+                $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
+                if (is_array($imgsArr) && !empty($imgsArr)) {
+                    $firstImg = $imgsArr[0];
+                }
+            }
+            $imgUrl = null;
+            if ($firstImg) {
+                $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
+            }
             $gradients = [
                 'linear-gradient(135deg,#1a2633,#f2f20d33)',
                 'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',

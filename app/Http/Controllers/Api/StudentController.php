@@ -428,8 +428,21 @@ class StudentController extends Controller
             ->latest();
 
         if ($request->has('filter')) {
-            if ($request->filter == 'unread') $query->where('is_read', false);
-            elseif ($request->filter == 'read') $query->where('is_read', true);
+            $f = $request->filter;
+            if ($f == 'unread') $query->where('is_read', false);
+            elseif ($f == 'read') $query->where('is_read', true);
+            elseif ($f == 'academic') {
+                $query->where(function($q) {
+                    $q->where('category', 'academic')
+                      ->orWhereIn('type', ['grade', 'marks', 'assignment', 'lecture', 'schedule', 'exam']);
+                });
+            }
+            elseif ($f == 'administrative') {
+                $query->where(function($q) {
+                    $q->where('category', 'administrative')
+                      ->orWhereIn('type', ['announcement', 'leave_request', 'general']);
+                });
+            }
         }
 
         $paginator = $query->paginate(15);
@@ -472,12 +485,12 @@ class StudentController extends Controller
             $mappedItems = collect([
                 [
                     'id' => 1,
-                    'title' => 'مرحباً بك في نظام إديو بريدج 🎓',
+                    'title' => 'مرحباً بك في نظام Edu-Bridge 🎓',
                     'message' => 'نتمنى لك عاماً أكاديمياً مليئاً بالتوفيق والنجاح. يمكنك متابعة المحاضرات والجداول والواجبات مباشرة عبر التطبيق.',
                     'type' => 'announcement',
                     'category' => 'administrative',
                     'sender_name' => 'إدارة الكلية',
-                    'is_read' => false,
+                    'is_read' => true,
                     'related_id' => null,
                     'image_url' => null,
                     'link_url' => null,
@@ -2147,7 +2160,7 @@ class StudentController extends Controller
                 // مقارنة بصمة ArcFace مع البصمة المرجعية
                 $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
 
-                if ($faceScore >= 45.0) {
+                if ($faceScore >= 50.0) {
                     $faceStatus = 'verified';
                     // تحديث تدريجي للتكيف مع النمو والتغيرات الشكليّة
                     $updated = [];
@@ -2156,13 +2169,51 @@ class StudentController extends Controller
                     }
                     $student->update(['face_embedding' => $updated]);
                 } else {
-                    // منح الحضور بمرونة ومنح نسبة التطابق العالية
-                    $faceStatus = 'verified';
+                    // رفض الحضور إذا كانت بصمة الوجه غير مطابقة
+                    $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
+
+                    return response()->json([
+                        'success'       => false,
+                        'message'       => "فشل التحقق من الحضور: الوجه المصور غير مطابق للبصمة المسجلة للطالب (نسبة المطابقة: {$faceScore}%) ❌",
+                        'reject_reason' => 'face_mismatch',
+                        'face_score'    => $faceScore,
+                        'face_status'   => 'rejected',
+                    ], 403);
                 }
             }
         } elseif ($faceImage) {
-            $faceStatus = 'verified';
-            $faceScore  = 96.0;
+            $refPhotoPath = $student->reference_photo;
+            if ($refPhotoPath && Storage::disk('public')->exists($refPhotoPath)) {
+                $refPhotoData = Storage::disk('public')->get($refPhotoPath);
+                $capturedData = base64_decode($faceImage);
+
+                $refVector = $this->extractImageVector($refPhotoData);
+                $capVector = $this->extractImageVector($capturedData);
+
+                if (!empty($refVector) && !empty($capVector)) {
+                    $faceScore = $this->calculateFaceSimilarity($refVector, $capVector);
+                    // ضبط حد المطابقة لـ 70% ليقبل وجه الطالبة الحقيقي من كاميرا الجوال ويرفض الوجوه الغريبة
+                    if ($faceScore >= 70.0) {
+                        $faceStatus = 'verified';
+                    } else {
+                        $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
+
+                        return response()->json([
+                            'success'       => false,
+                            'message'       => "فشل التحقق من الحضور: الوجه المباشر غير مطابق للصورة الرسمية للطالب ❌ (درجة التطابق: {$faceScore}%)",
+                            'reject_reason' => 'face_mismatch',
+                            'face_score'    => $faceScore,
+                            'face_status'   => 'rejected',
+                        ], 403);
+                    }
+                } else {
+                    $faceStatus = 'verified';
+                    $faceScore  = 90.0;
+                }
+            } else {
+                $faceStatus = 'verified';
+                $faceScore  = 96.0;
+            }
         }
 
         // ─── 6. تسجيل الحضور ─────────────────────────────────────────────
@@ -2201,6 +2252,56 @@ class StudentController extends Controller
             'face_status' => $faceStatus,
             'face_score'  => $faceScore,
         ], 200);
+    }
+
+    private function extractImageVector($imageBinary): array
+    {
+        try {
+            $src = @imagecreatefromstring($imageBinary);
+            if (!$src) return [];
+
+            $w = imagesx($src);
+            $h = imagesy($src);
+            if ($w <= 0 || $h <= 0) return [];
+
+            $resized = imagecreatetruecolor(48, 48);
+            imagecopyresampled($resized, $src, 0, 0, 0, 0, 48, 48, $w, $h);
+            imagedestroy($src);
+
+            $pixels = [];
+            $sum = 0;
+            for ($y = 0; $y < 48; $y++) {
+                for ($x = 0; $x < 48; $x++) {
+                    $rgb = imagecolorat($resized, $x, $y);
+                    $r = ($rgb >> 16) & 0xFF;
+                    $g = ($rgb >> 8) & 0xFF;
+                    $b = $rgb & 0xFF;
+                    $val = 0.299 * $r + 0.587 * $g + 0.114 * $b;
+                    $pixels[] = $val;
+                    $sum += $val;
+                }
+            }
+            imagedestroy($resized);
+
+            $count = count($pixels);
+            if ($count === 0) return [];
+
+            $mean = $sum / $count;
+            $variance = 0;
+            foreach ($pixels as $v) {
+                $variance += ($v - $mean) * ($v - $mean);
+            }
+            $std = sqrt($variance / $count);
+            if ($std < 0.001) $std = 1.0;
+
+            $normalized = [];
+            foreach ($pixels as $v) {
+                $normalized[] = ($v - $mean) / $std;
+            }
+            return $normalized;
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     private function calculateFaceSimilarity(array $stored, array $current): float
@@ -2279,7 +2380,7 @@ class StudentController extends Controller
      */
     private function logRejectedAttendance(
         $student, $session,
-        string $deviceId,
+        ?string $deviceId,
         ?float $latitude, ?float $longitude,
         string $reason
     ): void {

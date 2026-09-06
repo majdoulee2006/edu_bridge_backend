@@ -282,14 +282,23 @@ class ParentController extends Controller
 
     public function getAnnouncements(Request $request)
     {
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+        $childrenDeptIds = [];
+        if ($parent) {
+            $children = $parent->students()->with('user')->get();
+            foreach ($children as $child) {
+                $deptId = \DB::table('departments')->where('name', 'LIKE', '%' . ($child->user->department ?? '') . '%')->value('department_id');
+                if ($deptId) $childrenDeptIds[] = $deptId;
+            }
+        }
+
         $announcements = Announcement::with(['user', 'department', 'course'])
-            ->where(function($q) {
-                $q->whereNull('target_audience')
-                  ->orWhereIn('target_audience', ['all', 'parents', 'students']);
-            })
-            ->where(function($q) {
-                $q->whereNull('target_role')
-                  ->orWhereIn('target_role', ['parent', 'student']);
+            ->where(function($q) use ($childrenDeptIds) {
+                $q->whereNull('department_id')
+                  ->orWhere('target_audience', 'all');
+                if (!empty($childrenDeptIds)) {
+                    $q->orWhereIn('department_id', array_unique($childrenDeptIds));
+                }
             })
             ->latest()->limit(20)->get()->map(function($announcement) {
             return [
@@ -417,13 +426,18 @@ class ParentController extends Controller
             $averageGrades[] = $child->grades->avg('score') ?? 0;
         }
 
-        $recentAnnouncements = Announcement::where(function($q) {
-                $q->whereNull('target_audience')
-                  ->orWhereIn('target_audience', ['all', 'parents']);
-            })
-            ->where(function($q) {
-                $q->whereNull('target_role')
-                  ->orWhere('target_role', 'parent');
+        $childrenDeptIds = [];
+        foreach ($children as $child) {
+            $deptId = \DB::table('departments')->where('name', 'LIKE', '%' . ($child->user->department ?? '') . '%')->value('department_id');
+            if ($deptId) $childrenDeptIds[] = $deptId;
+        }
+
+        $recentAnnouncements = Announcement::where(function($q) use ($childrenDeptIds) {
+                $q->whereNull('department_id')
+                  ->orWhere('target_audience', 'all');
+                if (!empty($childrenDeptIds)) {
+                    $q->orWhereIn('department_id', array_unique($childrenDeptIds));
+                }
             })
             ->latest()->limit(5)->get()->map(function($ann) {
             return [

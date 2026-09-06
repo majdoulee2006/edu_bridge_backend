@@ -277,8 +277,21 @@ class ChatController extends Controller
 
         broadcast(new MessageSent($message))->toOthers();
 
-        // إرسال إشعار FCM للمستلم
+        // إرسال إشعار FCM للمستلم وحفظه في قواعد البيانات
         $msgBody = $message->message ?: 'أرسل لك ملفاً مرفقاً';
+        
+        \DB::table('notifications')->insert([
+            'user_id'    => $receiverId,
+            'sender_id'  => $senderId,
+            'title'      => $sender->full_name ?? 'رسالة جديدة',
+            'message'    => $msgBody,
+            'type'       => 'message',
+            'category'   => 'chat',
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         \App\Services\FcmService::sendToUser($receiverId, $sender->full_name ?? 'رسالة جديدة', $msgBody, [
             'type' => 'message',
             'sender_id' => (string) $senderId,
@@ -618,4 +631,26 @@ public function getGroupMessages(Request $request, $groupId)
         'data' => $messages
     ]);
 }
+
+    /**
+     * تنزيل المرفق مباشرة للرسالة
+     */
+    public function downloadAttachment(Request $request, $id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+
+        if (!$message->attachment) {
+            return response()->json(['error' => 'لا يوجد مرفق لهذه الرسالة'], 404);
+        }
+
+        $cleanPath = str_replace(asset('storage/'), '', $message->attachment);
+        $cleanPath = ltrim(str_replace('/storage/', '', $cleanPath), '/');
+
+        $path = storage_path('app/public/' . $cleanPath);
+        if (!file_exists($path)) {
+            return response()->json(['error' => 'الملف غير موجود على السيرفر'], 404);
+        }
+
+        return response()->download($path);
+    }
 }

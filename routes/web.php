@@ -8,6 +8,61 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Web\UnifiedAuthController;
 use App\Http\Controllers\Web\TeacherWebController;
 
+// Public Storage & Attachment Download Routes for Mobile App
+Route::get('/public-download/message/{id}', function ($id) {
+    $message = \App\Models\Message::find($id);
+    if (!$message || !$message->attachment) {
+        return response('الملف المرفق غير موجود في هذه الرسالة', 404);
+    }
+    $rawAttachment = $message->attachment;
+    $cleanPath = ltrim(str_replace('/storage/', '', str_replace(asset('storage/'), '', $rawAttachment)), '/');
+    $filePath = storage_path('app/public/' . $cleanPath);
+
+    if (file_exists($filePath)) {
+        return response()->download($filePath);
+    }
+
+    foreach (['.m4a', '.mp3', '.wav', '.pdf', '.png', '.jpg', '.jpeg', '.docx', '.xlsx'] as $ext) {
+        if (file_exists($filePath . $ext)) {
+            return response()->download($filePath . $ext);
+        }
+    }
+
+    $fileName = basename($cleanPath);
+    $allFiles = \Illuminate\Support\Facades\Storage::disk('public')->allFiles();
+    foreach ($allFiles as $f) {
+        if (basename($f) === $fileName || pathinfo($f, PATHINFO_FILENAME) === $fileName) {
+            return response()->download(storage_path('app/public/' . $f));
+        }
+    }
+    return response('الملف غير موجود على السيرفر', 404);
+});
+
+Route::get('/storage/{path}', function ($path) {
+    $cleanPath = ltrim(str_replace('/storage/', '', $path), '/');
+    $filePath = storage_path('app/public/' . $cleanPath);
+    
+    if (file_exists($filePath)) {
+        return response()->file($filePath, ['Content-Type' => mime_content_type($filePath) ?: 'application/octet-stream']);
+    }
+    
+    foreach (['.m4a', '.mp3', '.pdf', '.png', '.jpg', '.jpeg', '.docx', '.xlsx'] as $ext) {
+        if (file_exists($filePath . $ext)) {
+            return response()->file($filePath . $ext);
+        }
+    }
+
+    $fileName = basename($cleanPath);
+    $allFiles = \Illuminate\Support\Facades\Storage::disk('public')->allFiles();
+    foreach ($allFiles as $f) {
+        if (basename($f) === $fileName || pathinfo($f, PATHINFO_FILENAME) === $fileName) {
+            return response()->file(storage_path('app/public/' . $f));
+        }
+    }
+
+    return response('الملف غير موجود على السيرفر', 404);
+})->where('path', '.*');
+
 // ===== Dedicated & Unified Login Routes =====
 Route::get('/login', [UnifiedAuthController::class, 'showLoginForm'])->name('login');
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');

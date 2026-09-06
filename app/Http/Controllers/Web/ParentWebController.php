@@ -190,7 +190,22 @@ class ParentWebController extends Controller
 
         $overallAverage = count($averageGrades) > 0 ? round(array_sum($averageGrades) / count($averageGrades), 1) : 0;
 
+        $childrenDeptIds = [];
+        foreach ($children as $child) {
+            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . ($child->department ?? '') . '%')->value('department_id');
+            if ($deptId) {
+                $childrenDeptIds[] = $deptId;
+            }
+        }
+
         $announcements = DB::table('announcements')
+            ->where(function($q) use ($childrenDeptIds) {
+                $q->whereNull('department_id')
+                  ->orWhere('target_audience', 'all');
+                if (!empty($childrenDeptIds)) {
+                    $q->orWhereIn('department_id', array_unique($childrenDeptIds));
+                }
+            })
             ->orderByDesc('created_at')
             ->limit(5)
             ->get();

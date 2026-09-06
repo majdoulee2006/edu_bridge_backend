@@ -23,12 +23,35 @@ class Announcement extends Model
         'academic_year',
         'category', // 👈 جديد من طلبات زميلك
         'image',    // 👈 جديد من طلبات زميلك
+        'images',   // 👈 صور متعددة
         'link_url',
         'target_audience',
         'event_date',
         'event_time',
         'location',
     ];
+
+    protected $casts = [
+        'images' => 'array',
+    ];
+
+    /**
+     * Get array of full image URLs
+     */
+    public function getImageUrlsAttribute()
+    {
+        $list = [];
+        if (!empty($this->images) && is_array($this->images)) {
+            foreach ($this->images as $img) {
+                if ($img) {
+                    $list[] = str_starts_with($img, 'http') ? $img : asset('storage/' . $img);
+                }
+            }
+        } elseif (!empty($this->image)) {
+            $list[] = str_starts_with($this->image, 'http') ? $this->image : asset('storage/' . $this->image);
+        }
+        return $list;
+    }
 
     // هاي الدالة هي اللي بتجيب بيانات صاحب الإعلان (شغلك القديم الممتاز)
     public function user()

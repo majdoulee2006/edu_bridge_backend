@@ -18,22 +18,26 @@
 
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div>
-                <div style="font-weight:800; color:white; font-size:1.1rem;">قص الصورة</div>
+                <div style="font-weight:800; color:white; font-size:1.1rem;">قص وتعديل الصورة</div>
                 <div style="font-size:0.78rem; color:#94a3b8; margin-top:0.25rem;">اسحب لتحريك المنطقة &bull; الزوايا للتكبير والتصغير</div>
             </div>
             <button id="cropCancel" style="background:#334155; border:none; border-radius:0.75rem; min-width:36px; height:36px; color:white; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
         </div>
 
-        <div style="border-radius:1rem; overflow:hidden; background:#0f172a; max-height:52vh; display:flex; align-items:center; justify-content:center;">
+        <div style="border-radius:1rem; overflow:hidden; background:#0f172a; max-height:50vh; display:flex; align-items:center; justify-content:center; padding: 0.5rem;">
             <img id="cropperImg" src="" style="max-width:100%; display:block;">
         </div>
 
-        <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; display:none;">
-            <button class="crop-ratio-btn" data-ratio="1.7777777777777777" style="padding:0.3rem 0.9rem; border-radius:2rem; border:1px solid #f2f20d; background:#f2f20d; color:#1a1a1a; cursor:pointer; font-size:0.8rem; font-family:inherit; font-weight:700;">أفقي 16:9</button>
+        {{-- أزرار الأبعاد --}}
+        <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; margin-top: 0.25rem;">
+            <button class="crop-ratio-btn active" data-ratio="1.7777777777777777" style="padding:0.35rem 0.9rem; border-radius:2rem; border:1px solid #f2f20d; background:#f2f20d; color:#1a1a1a; cursor:pointer; font-size:0.8rem; font-family:inherit; font-weight:700;">أفقي 16:9</button>
+            <button class="crop-ratio-btn" data-ratio="1.3333333333333333" style="padding:0.35rem 0.9rem; border-radius:2rem; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem; font-family:inherit;">شاشة 4:3</button>
+            <button class="crop-ratio-btn" data-ratio="1" style="padding:0.35rem 0.9rem; border-radius:2rem; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem; font-family:inherit;">مربع 1:1</button>
+            <button class="crop-ratio-btn" data-ratio="free" style="padding:0.35rem 0.9rem; border-radius:2rem; border:1px solid #475569; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.8rem; font-family:inherit;">حر (بدون تقييد)</button>
         </div>
 
-        <div style="display:flex; gap:0.75rem;">
-            <button id="cropConfirm" class="bg-primary text-primary-content" style="flex:1; padding:0.9rem; border:none; border-radius:0.75rem; font-weight:800; cursor:pointer; font-size:0.95rem; font-family:inherit;">
+        <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
+            <button id="cropConfirm" class="bg-primary text-primary-content" style="flex:1; padding:0.9rem; border:none; border-radius:0.75rem; font-weight:800; cursor:pointer; font-size:0.95rem; font-family:inherit; background:#f2f20d; color:#000;">
                 ✓ قص وتأكيد
             </button>
             <button id="cropCancelBtn" style="padding:0.9rem 1.5rem; background:transparent; border:2px solid #475569; color:white; border-radius:0.75rem; font-weight:700; cursor:pointer; font-size:0.95rem; font-family:inherit;">
@@ -51,17 +55,16 @@
     var activeInput = null;
     var activeMeta  = {};
 
-    function openCropper(input, meta) {
+    window._currentCropCallback = null;
+
+    window.triggerCropper = function(file, callback) {
+        if (!file || !file.type.startsWith('image/')) return;
         if (typeof Cropper === 'undefined') {
-            alert('خطأ: لم يتم تحميل أداة قص الصور (CropperJS). يرجى التأكد من الاتصال بالإنترنت وإعادة المحاولة.');
-            input.value = '';
+            alert('أداة قص الصور غير محملة، يرجى إعادة المحاولة.');
             return;
         }
-        var file = input._pendingFile;
-        if (!file) return;
-        activeInput = input;
-        activeMeta  = meta || {};
-        var reader  = new FileReader();
+        window._currentCropCallback = callback;
+        var reader = new FileReader();
         reader.onload = function (e) {
             cropperImg.src = e.target.result;
             modal.style.display = 'flex';
@@ -76,6 +79,37 @@
             });
         };
         reader.readAsDataURL(file);
+    };
+
+    function openCropper(input, meta) {
+        var file = input._pendingFile;
+        if (!file) return;
+        activeInput = input;
+        activeMeta  = meta || {};
+
+        window.triggerCropper(file, function(croppedFile) {
+            var dt = new DataTransfer();
+            dt.items.add(croppedFile);
+            input.files = dt.files;
+
+            var url = URL.createObjectURL(croppedFile);
+            var get = function (id) { return id ? document.getElementById(id) : null; };
+
+            var previewImg  = get(meta.previewImg);
+            var previewWrap = get(meta.previewWrap);
+            var placeholder = get(meta.placeholder);
+            var previewName = get(meta.previewName);
+            if (previewImg)  { previewImg.src = url; }
+            if (previewWrap) { previewWrap.classList.remove('hidden'); previewWrap.style.display = ''; }
+            if (placeholder) { placeholder.classList.add('hidden'); placeholder.style.display = 'none'; }
+            if (previewName) { previewName.textContent = croppedFile.name; }
+
+            var simple = get(meta.simplePreview);
+            if (simple) {
+                simple.src = url;
+                simple.style.cssText = 'display:block; max-height:120px; border-radius:0.5rem; margin-top:0.5rem; object-fit:cover;';
+            }
+        });
     }
 
     function closeCropper() {
@@ -83,6 +117,7 @@
         if (cropper) { cropper.destroy(); cropper = null; }
         if (activeInput) { activeInput.value = ''; activeInput._pendingFile = null; }
         activeInput = null; activeMeta = {};
+        window._currentCropCallback = null;
     }
 
     document.getElementById('cropCancel').addEventListener('click', closeCropper);
@@ -96,46 +131,29 @@
                 b.style.background = 'transparent'; b.style.color = '#94a3b8'; b.style.borderColor = '#475569'; b.style.fontWeight = '';
             });
             btn.style.background = '#f2f20d'; btn.style.color = '#1a1a1a'; btn.style.borderColor = '#f2f20d'; btn.style.fontWeight = '700';
-            var r = parseFloat(btn.dataset.ratio);
+            
+            var rVal = btn.dataset.ratio;
+            var r = (rVal === 'free') ? NaN : parseFloat(rVal);
             if (cropper) cropper.setAspectRatio(isNaN(r) ? NaN : r);
         });
     });
 
     // Confirm
     document.getElementById('cropConfirm').addEventListener('click', function () {
-        if (!cropper || !activeInput) return;
-        var canvas   = cropper.getCroppedCanvas({ maxWidth: 2000, maxHeight: 2000 });
-        var inputRef = activeInput;
-        var meta     = activeMeta;
+        if (!cropper) return;
+        var canvas = cropper.getCroppedCanvas({ maxWidth: 2000, maxHeight: 2000 });
+        var cb     = window._currentCropCallback;
+
         canvas.toBlob(function (blob) {
-            var file = new File([blob], 'cropped_image.jpg', { type: 'image/jpeg' });
-            var dt   = new DataTransfer();
-            dt.items.add(file);
-            inputRef.files = dt.files;
-
-            var url = URL.createObjectURL(blob);
-            var get = function (id) { return id ? document.getElementById(id) : null; };
-
-            // Admin-style upload zone
-            var previewImg  = get(meta.previewImg);
-            var previewWrap = get(meta.previewWrap);
-            var placeholder = get(meta.placeholder);
-            var previewName = get(meta.previewName);
-            if (previewImg)  { previewImg.src = url; }
-            if (previewWrap) { previewWrap.classList.remove('hidden'); previewWrap.style.display = ''; }
-            if (placeholder) { placeholder.classList.add('hidden'); placeholder.style.display = 'none'; }
-            if (previewName) { previewName.textContent = 'cropped_image.jpg'; }
-
-            // Simple preview (HOD style)
-            var simple = get(meta.simplePreview);
-            if (simple) {
-                simple.src = url;
-                simple.style.cssText = 'display:block; max-height:120px; border-radius:0.5rem; margin-top:0.5rem; object-fit:cover;';
-            }
-
+            var file = new File([blob], 'cropped_' + Date.now() + '.jpg', { type: 'image/jpeg' });
             modal.style.display = 'none';
             if (cropper) { cropper.destroy(); cropper = null; }
+
+            if (typeof cb === 'function') {
+                cb(file);
+            }
             activeInput = null; activeMeta = {};
+            window._currentCropCallback = null;
         }, 'image/jpeg', 0.92);
     });
 

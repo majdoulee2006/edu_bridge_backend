@@ -124,11 +124,25 @@ class StudentWebController extends Controller
             ->count();
         $attendanceRate = $totalAttendance > 0 ? round(($presentCount / $totalAttendance) * 100) : null;
 
+        // قسم الطالب
+        $studentDeptId = DB::table('departments')->where('name', 'LIKE', '%' . ($user->department ?? '') . '%')->value('department_id');
+        if (!$studentDeptId && $student && $student->program_id) {
+            $studentDeptId = DB::table('programs')->where('id', $student->program_id)->value('department_id');
+        }
+
         // الإعلانات الأخيرة
         $announcements = DB::table('announcements')
-            ->where(function($q) use ($courseIds) {
-                $q->where('type', 'general')
-                  ->orWhereIn('course_id', $courseIds);
+            ->where(function($q) use ($courseIds, $studentDeptId) {
+                $q->where(function($sub) {
+                    $sub->whereNull('department_id')
+                        ->orWhere('target_audience', 'all');
+                });
+                if ($studentDeptId) {
+                    $q->orWhere('department_id', $studentDeptId);
+                }
+                if (!empty($courseIds) && count($courseIds) > 0) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->orderByDesc('created_at')
             ->limit(5)
@@ -713,10 +727,23 @@ class StudentWebController extends Controller
             ->where('student_id', $student->student_id)
             ->pluck('course_id');
 
+        $studentDeptId = DB::table('departments')->where('name', 'LIKE', '%' . ($user->department ?? '') . '%')->value('department_id');
+        if (!$studentDeptId && $student && $student->program_id) {
+            $studentDeptId = DB::table('programs')->where('id', $student->program_id)->value('department_id');
+        }
+
         $announcements = DB::table('announcements')
-            ->where(function($q) use ($courseIds) {
-                $q->where('type', 'general')
-                  ->orWhereIn('course_id', $courseIds);
+            ->where(function($q) use ($courseIds, $studentDeptId) {
+                $q->where(function($sub) {
+                    $sub->whereNull('department_id')
+                        ->orWhere('target_audience', 'all');
+                });
+                if ($studentDeptId) {
+                    $q->orWhere('department_id', $studentDeptId);
+                }
+                if (!empty($courseIds) && count($courseIds) > 0) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->orderByDesc('created_at')
             ->get();
