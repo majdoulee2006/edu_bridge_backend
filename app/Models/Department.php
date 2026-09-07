@@ -11,6 +11,7 @@ class Department extends Model
 
     // 2. الحقول المسموح بتعبئتها
     protected $fillable = [
+        'name',
         'department_name',
         'description',
     ];
