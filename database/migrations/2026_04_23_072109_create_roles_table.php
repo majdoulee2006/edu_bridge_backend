@@ -23,6 +23,7 @@ return new class extends Migration
             ['name' => 'student', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'parent', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'head', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'affairs', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 
