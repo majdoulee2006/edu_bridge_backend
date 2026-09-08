@@ -242,7 +242,10 @@ class ChatController extends Controller
         // 4. رفع الملف (إذا وجد)
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('chat_attachments', 'public');
+            $file = $request->file('attachment');
+            $ext = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin');
+            $fileName = uniqid('chat_', true) . '.' . $ext;
+            $path = $file->storeAs('chat_attachments', $fileName, 'public');
             $attachmentPath = asset('storage/' . $path);
         }
 
