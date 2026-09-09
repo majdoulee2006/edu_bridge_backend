@@ -238,19 +238,28 @@ class AuthController extends Controller
             }
 
             foreach ($idsToCheck as $childId) {
-                // ابحث عن الطالب بالرقم الجامعي
-                $childUser = User::where('university_id', $childId)->first();
+                // ابحث عن الطالب بالرقم الجامعي أو الكود الجامعي
+                $childUser = User::where('university_id', $childId)
+                    ->orWhereHas('student', function ($sq) use ($childId) {
+                        $sq->where('student_code', $childId);
+                    })
+                    ->first();
 
                 if (!$childUser) {
-                    // جرب جدول university_ids
-                    $uid = \DB::table('university_ids')->where('university_id', $childId)->first();
-                    if (!$uid) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "الرقم الجامعي ({$childId}) غير موجود.",
-                        ], 422);
+                    // جرب جدول university_ids أو جدول students
+                    $childStudent = Student::where('student_code', $childId)->first();
+                    if ($childStudent) {
+                        $childUser = User::find($childStudent->user_id);
+                    } else {
+                        $uid = \DB::table('university_ids')->where('university_id', $childId)->first();
+                        if (!$uid) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "الرقم الجامعي ({$childId}) غير موجود.",
+                            ], 422);
+                        }
+                        $childUser = User::find($uid->user_id);
                     }
-                    $childUser = User::find($uid->user_id);
                 }
 
                 if (!$childUser) {
@@ -325,7 +334,7 @@ class AuthController extends Controller
             'university_id'    => $request->university_id,
             'gender'           => $request->gender,
             'birth_date'       => $request->birth_date,
-            'academic_year'    => $request->academic_year,
+            'academic_year'    => $request->role === 'student' ? 'السنة الأولى' : ($request->academic_year ?? 'السنة الأولى'),
             'department'       => $request->department,
             'branch'           => $request->branch,
             'children_ids'     => $childrenIds,
@@ -336,54 +345,72 @@ class AuthController extends Controller
         if ($request->role === 'student') {
             // نقل صورة الطالب المرجعية من جدول university_ids (اللي رفعها موظف الشؤون)
             $referencePhoto = isset($uid) && !empty($uid->photo) ? $uid->photo : null;
-            $studentCode    = !empty($request->university_id) ? $request->university_id : ('PENDING_' . $user->user_id);
+            $studentCode    = !empty($request->university_id) ? $request->university_id : ('2026' . str_pad($user->user_id, 4, '0', STR_PAD_LEFT));
 
             $student = Student::create([
                 'user_id'         => $user->user_id,
                 'student_code'    => $studentCode,
-                'level'           => $request->academic_year ?? 'السنة الأولى',
+                'level'           => 'السنة الأولى',
                 'birth_date'      => $request->birth_date,
                 'reference_photo' => $referencePhoto,
             ]);
 
-            // Auto-enroll: سجّل الطالب بكل مواد برنامجه بناءً على الفرع/التخصص
+            // Auto-enroll: تجهيز الطالب بكل مواد برنامجه بناءً على الفرع/التخصص
             $branch = $request->branch ?? $request->department;
+            $program = null;
             if ($branch) {
                 $program = \DB::table('programs')
                     ->where('name', 'LIKE', '%' . $branch . '%')
                     ->first();
-                if ($program) {
-                    $student->update(['program_id' => $program->id]);
-                    
-                    $courseIds = \DB::table('course_program')
-                        ->where('program_id', $program->id)
-                        ->pluck('course_id');
-                    foreach ($courseIds as $courseId) {
-                        \DB::table('enrollments')->insertOrIgnore([
-                            'student_id'      => $student->student_id,
-                            'course_id'       => $courseId,
-                            'status'          => 'active',
-                            'enrollment_date' => now(),
-                            'created_at'      => now(),
-                            'updated_at'      => now(),
-                        ]);
-                    }
-                }
             }
+            if (!$program && $request->department) {
+                $program = \DB::table('programs')
+                    ->where('name', 'LIKE', '%' . $request->department . '%')
+                    ->first();
+            }
+
+            $courseIds = collect();
+            if ($program) {
+                $student->update(['program_id' => $program->id]);
+                $courseIds = \DB::table('course_program')
+                    ->where('program_id', $program->id)
+                    ->pluck('course_id');
+            }
+
+            if ($courseIds->isEmpty()) {
+                $courseIds = \DB::table('courses')->pluck('course_id');
+            }
+
+            foreach ($courseIds as $courseId) {
+                \DB::table('enrollments')->insertOrIgnore([
+                    'student_id'      => $student->student_id,
+                    'course_id'       => $courseId,
+                    'status'          => 'active',
+                    'enrollment_date' => now(),
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+            }
+
             // Auto assign advisor
             Student::autoAssignAdvisor($student->student_id);
         } elseif ($request->role === 'parent') {
             $parent = Parents::create(['user_id' => $user->user_id]);
 
-            // ── ربط الابن تلقائياً إذا أُدخل رقمه الجامعي عند التسجيل ──
-            if ($request->filled('child_university_id')) {
-                $childUniversityId = $request->child_university_id;
+            // ── ربط الأبناء تلقائياً ──
+            $childUniversityIds = [];
+            if ($request->filled('children_ids') && is_array($request->children_ids)) {
+                $childUniversityIds = array_filter($request->children_ids);
+            } elseif (!empty($childrenIds) && is_array($childrenIds)) {
+                $childUniversityIds = $childrenIds;
+            } elseif ($request->filled('child_university_id')) {
+                $childUniversityIds[] = $request->child_university_id;
+            }
 
-                // البحث عن الطالب بالرقم الجامعي (student_code أو university_id في users)
+            foreach ($childUniversityIds as $childUniversityId) {
                 $childStudent = \App\Models\Student::where('student_code', $childUniversityId)->first();
 
                 if (!$childStudent) {
-                    // بحث بديل عبر جدول users
                     $childUser = User::where('university_id', $childUniversityId)->where('role_id', 3)->first();
                     if ($childUser) {
                         $childStudent = \App\Models\Student::where('user_id', $childUser->user_id)->first();
@@ -391,11 +418,12 @@ class AuthController extends Controller
                 }
 
                 if ($childStudent) {
+                    $childUser = User::where('user_id', $childStudent->user_id)->first();
                     StudentParent::firstOrCreate([
-                        'parent_id'  => $parent->parent_id,
-                        'student_id' => $childStudent->student_id,
+                        'parent_id'  => $user->user_id,
+                        'student_id' => $childUser ? $childUser->user_id : $childStudent->user_id,
                     ], [
-                        'relationship' => 'father', // يجب أن يكون father, mother, guardian حسب الـ ENUM في الداتا بيز
+                        'relationship' => 'father',
                     ]);
                 }
             }
@@ -408,14 +436,13 @@ class AuthController extends Controller
                 ->update(['is_used' => true]);
         }
 
-        // ── إشعار FCM لجميع موظفي الشؤون ────────────────────────────
+        // ── إشعار FCM لجميع موظفي الشؤون والإدارة ────────────────────────────
         $roleLabel = $request->role === 'student' ? 'طالب' : 'ولي أمر';
-        $fcmTitle  = 'طلب تسجيل جديد';
-        $fcmBody   = 'قدّم ' . $request->full_name . ' طلب انضمام كـ' . $roleLabel . '. يرجى مراجعة الطلب والموافقة أو الرفض.';
+        $fcmTitle  = 'طلب تسجيل جديد (قيد الموافقة)';
+        $fcmBody   = 'قدّم ' . $request->full_name . ' طلب انضمام كـ' . $roleLabel . '. يرجى مراجعة الطلب والموافقة والتفعيل.';
 
-        $affairsUsers = User::where('role_id', 6)->get();
+        $affairsUsers = User::whereIn('role_id', [1, 6])->get();
         foreach ($affairsUsers as $affairsUser) {
-            // إشعار داخل DB
             DB::table('notifications')->insert([
                 'user_id'    => $affairsUser->user_id,
                 'sender_id'  => $user->user_id,
@@ -427,7 +454,6 @@ class AuthController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            // FCM push
             \App\Services\FcmService::sendToUser($affairsUser->user_id, $fcmTitle, $fcmBody, [
                 'type'   => 'pending_account',
                 'screen' => 'pending_accounts',
@@ -438,7 +464,7 @@ class AuthController extends Controller
         return response()->json([
             'success'         => true,
             'pending_approval'=> true,
-            'message'         => 'تم إرسال طلبك بنجاح. سيتم مراجعته من قِبل موظف الشؤون وسيُفعَّل حسابك قريباً.',
+            'message'         => 'تم إرسال طلب إنشاء الحساب بنجاح! سيتم مراجعته وتفعيله من قِبل موظف الشؤون، وسيصلك إشعار عبر التليغرام فور التفعيل.',
             'email'           => $request->email,
         ], 201);
     }

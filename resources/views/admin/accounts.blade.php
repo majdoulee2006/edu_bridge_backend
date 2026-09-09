@@ -31,6 +31,58 @@
         </button>
     </div>
 
+    @if(isset($pendingUsers) && count($pendingUsers) > 0)
+        <!-- قسم الطلبات المعلقة بانتظار الاعتماد -->
+        <div class="bg-amber-500/10 border border-amber-500/30 p-5 rounded-2xl shadow-soft space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-amber-500 text-2xl animate-pulse">pending_actions</span>
+                    <div>
+                        <h3 class="text-sm font-bold text-amber-900 dark:text-amber-300 flex items-center gap-2">
+                            طلبات إنشاء الحسابات بانتظار الاعتماد
+                            <span class="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950">
+                                {{ count($pendingUsers) }}
+                            </span>
+                        </h3>
+                        <p class="text-xs text-amber-700/80 dark:text-amber-400/80">طلبات جديدة تم تقديمها من الويب/التطبيق وبانتظار موافقة الإدارة</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                @foreach($pendingUsers as $pUser)
+                    <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-amber-200 dark:border-amber-900/40 flex flex-col justify-between gap-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm">
+                                    {{ mb_substr($pUser->full_name, 0, 1) }}
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 dark:text-white">{{ $pUser->full_name }}</h4>
+                                    <p class="text-[11px] text-slate-400">{{ $pUser->email ?? $pUser->phone }}</p>
+                                    <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                        {{ $pUser->role_id == 3 ? 'طالب' : ($pUser->role_id == 4 ? 'ولي أمر' : 'مستخدم') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-3">
+                            <span class="text-[10px] text-slate-400">{{ \Carbon\Carbon::parse($pUser->created_at)->diffForHumans() }}</span>
+                            <form action="{{ route('admin.accounts.approve', $pUser->user_id) }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-sm">check_circle</span>
+                                    <span>اعتماد الحساب</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <!-- Filter Pills & Search Bar -->
     <div class="bg-white dark:bg-surface-dark p-4 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 space-y-3">
         

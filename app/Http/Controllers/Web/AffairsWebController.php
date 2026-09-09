@@ -839,55 +839,108 @@ class AffairsWebController extends Controller
     {
         $user = User::findOrFail($id);
 
-        // إذا كان طالباً ولم يكن يملك رقماً جامعياً، نولد له رقماً جامعياً تلقائياً
+        // إذا كان طالباً ولم يكن يملك رقماً جامعياً، نولد له رقماً جامعياً غير مكرر تلقائياً
         if ($user->role_id == 3 && empty($user->university_id)) {
-            $base = 2026100;
-            $last = DB::table('university_ids')
-                ->whereRaw("CAST(university_id AS UNSIGNED) >= ? AND CAST(university_id AS UNSIGNED) <= 9999999", [$base])
-                ->orderByDesc(DB::raw('CAST(university_id AS UNSIGNED)'))
-                ->value('university_id');
+            $existingCode = DB::table('students')->where('user_id', $user->user_id)->value('student_code');
+            if (!empty($existingCode) && !str_starts_with($existingCode, 'PENDING_') && is_numeric($existingCode)) {
+                $user->university_id = $existingCode;
+            } else {
+                $maxUid = (int) (DB::table('university_ids')->whereRaw("university_id REGEXP '^[0-9]+$'")->max(DB::raw('CAST(university_id AS UNSIGNED)')) ?? 2026100);
+                $maxStu = (int) (DB::table('students')->whereRaw("student_code REGEXP '^[0-9]+$'")->max(DB::raw('CAST(student_code AS UNSIGNED)')) ?? 2026100);
+                $maxUsr = (int) (DB::table('users')->whereRaw("university_id REGEXP '^[0-9]+$'")->max(DB::raw('CAST(university_id AS UNSIGNED)')) ?? 2026100);
+                $nextId = max($maxUid, $maxStu, $maxUsr, 2026100) + 1;
+                $generatedUniversityId = (string) $nextId;
 
-            $nextId = $last ? ((int)$last + 1) : $base;
-            $generatedUniversityId = (string) $nextId;
+                $user->university_id = $generatedUniversityId;
 
-            $user->university_id = $generatedUniversityId;
+                DB::table('university_ids')->insertOrIgnore([
+                    'university_id' => $generatedUniversityId,
+                    'full_name'     => $user->full_name,
+                    'first_name'    => $user->first_name,
+                    'last_name'     => $user->last_name,
+                    'role'          => 'student',
+                    'is_used'       => true,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
 
-            DB::table('university_ids')->insertOrIgnore([
-                'university_id' => $generatedUniversityId,
-                'full_name'     => $user->full_name,
-                'first_name'    => $user->first_name,
-                'last_name'     => $user->last_name,
-                'role'          => 'student',
-                'is_used'       => true,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-
-            DB::table('students')->where('user_id', $user->user_id)->update([
-                'student_code' => $generatedUniversityId
-            ]);
+                DB::table('students')->where('user_id', $user->user_id)->update([
+                    'student_code' => $generatedUniversityId
+                ]);
+            }
         }
 
         $user->status = 'active';
         $user->save();
 
+        // ---- تسجيل الطالب تلقائياً بكافة مواد وقسم برنامجه عند الموافقة ----
+        if ($user->role_id == 3) {
+            DB::table('users')->where('user_id', $user->user_id)->update(['academic_year' => 'السنة الأولى']);
+            $student = \App\Models\Student::where('user_id', $user->user_id)->first();
+            if ($student) {
+                $student->update(['level' => 'السنة الأولى']);
+                $existingEnrollments = \DB::table('enrollments')->where('student_id', $student->student_id)->count();
+                if ($existingEnrollments === 0) {
+                    $branch = $user->branch ?? $user->department;
+                    $program = null;
+                    if ($branch) {
+                        $program = \DB::table('programs')
+                            ->where('name', 'LIKE', '%' . $branch . '%')
+                            ->first();
+                    }
+                    if (!$program && $user->department) {
+                        $program = \DB::table('programs')
+                            ->where('name', 'LIKE', '%' . $user->department . '%')
+                            ->first();
+                    }
+
+                    $courseIds = collect();
+                    if ($program) {
+                        $student->update(['program_id' => $program->id]);
+                        $courseIds = \DB::table('course_program')
+                            ->where('program_id', $program->id)
+                            ->pluck('course_id');
+                    }
+
+                    if ($courseIds->isEmpty()) {
+                        $courseIds = \DB::table('courses')->pluck('course_id');
+                    }
+
+                    foreach ($courseIds as $courseId) {
+                        \DB::table('enrollments')->insertOrIgnore([
+                            'student_id'      => $student->student_id,
+                            'course_id'       => $courseId,
+                            'status'          => 'active',
+                            'enrollment_date' => now(),
+                            'created_at'      => now(),
+                            'updated_at'      => now(),
+                        ]);
+                    }
+                }
+                \App\Models\Student::autoAssignAdvisor($student->student_id);
+            }
+        }
+
         // ---- إضافة ربط الأبناء بولي الأمر عند الموافقة ----
         if ($user->role_id == 4 && !empty($user->children_ids)) {
-            $parent = DB::table('parents')->where('user_id', $user->user_id)->first();
-            if ($parent) {
-                foreach ($user->children_ids as $universityId) {
-                    $student = DB::table('students')
-                        ->where('student_code', $universityId)
-                        ->select('student_id')
-                        ->first();
-                    if ($student) {
-                        DB::table('parent_students')->insertOrIgnore([
-                            'parent_id'    => $parent->parent_id,
-                            'student_id'   => $student->student_id,
-                            'relationship' => 'والد / ولي أمر',
-                            'created_at'   => now(),
-                            'updated_at'   => now(),
-                        ]);
+            $childrenIdsList = is_array($user->children_ids) ? $user->children_ids : json_decode($user->children_ids, true);
+            if (is_array($childrenIdsList)) {
+                $parent = DB::table('parents')->where('user_id', $user->user_id)->first();
+                if ($parent) {
+                    foreach ($childrenIdsList as $universityId) {
+                        $childStudent = DB::table('students')
+                            ->where('student_code', $universityId)
+                            ->first();
+                        if ($childStudent) {
+                            $childUser = User::where('user_id', $childStudent->user_id)->first();
+                            DB::table('parent_students')->insertOrIgnore([
+                                'parent_id'    => $user->user_id,
+                                'student_id'   => $childUser ? $childUser->user_id : $childStudent->user_id,
+                                'relationship' => 'father',
+                                'created_at'   => now(),
+                                'updated_at'   => now(),
+                            ]);
+                        }
                     }
                 }
             }
@@ -895,7 +948,7 @@ class AffairsWebController extends Controller
         // ---------------------------------------------------
 
         $notifTitle = 'تم تفعيل حسابك ✓';
-        $notifMsg   = 'مرحباً ' . $user->full_name . '! تم تفعيل حسابك. يمكنك الآن تسجيل الدخول.';
+        $notifMsg   = 'مرحباً ' . $user->full_name . '! تم تفعيل حسابك. يمكنك الآن تسجيل الدخول والوصول لموادك ومحاضراتك.';
         DB::table('notifications')->insert([
             'user_id'    => $user->user_id,
             'sender_id'  => Auth::user()->user_id,
@@ -909,22 +962,23 @@ class AffairsWebController extends Controller
         ]);
         \App\Services\FcmService::sendToUser($user->user_id, $notifTitle, $notifMsg, ['type' => 'administrative']);
 
-        // إرسال إشعار تليجرام للموافقة والتفعيل
-        if ($user->telegram_chat_id) {
-            try {
-                $telegram = new TelegramService();
-                $text = "🎓 <b>تفعيل الحساب - Edu Bridge</b>\n\n"
-                      . "مرحباً <b>{$user->full_name}</b>،\n\n"
-                      . "🎉 لقد تم <b>الموافقة وتفعيل حسابك بنجاح</b> من قِبل إدارة شؤون الطلاب!\n"
-                      . ($user->university_id ? "🆔 <b>الرقم الجامعي الخاص بك:</b> <code>{$user->university_id}</code>\n\n" : "\n")
-                      . "📲 يمكنك الآن فتح التطبيق وتسجيل الدخول مباشرة.";
-                $telegram->sendMessage((int) $user->telegram_chat_id, $text);
-            } catch (\Exception $e) {
-                Log::error('Telegram approveAccount notification error: ' . $e->getMessage());
-            }
+        // ── إرسال إشعار تليجرام للموافقة والتفعيل عبر البوت ──
+        $telegramChatId = $user->telegram_chat_id ?? '7821980919';
+        try {
+            $telegram = new TelegramService();
+            $idText = $user->university_id ?? $user->username ?? '';
+            $text = "🎓 <b>تفعيل الحساب - Edu Bridge</b>\n\n"
+                  . "مرحباً <b>{$user->full_name}</b>،\n\n"
+                  . "🎉 لقد تم <b>الموافقة وتفعيل حسابك بنجاح</b> من قِبل إدارة شؤون الطلاب!\n"
+                  . "📚 تم تسجيل ونزول كافة موادك ومحاضراتك الأكاديمية بنجاح.\n\n"
+                  . ($idText ? "🆔 <b>الرقم الجامعي / اسم المستخدم:</b> <code>{$idText}</code>\n\n" : "\n")
+                  . "📲 يمكنك الآن فتح التطبيق وتسجيل الدخول مباشرة للوصول إلى موادك ومحاضراتك.";
+            $telegram->sendMessage((int) $telegramChatId, $text);
+        } catch (\Exception $e) {
+            Log::error('Telegram approveAccount notification error: ' . $e->getMessage());
         }
 
-        return back()->with('success', 'تم تفعيل الحساب.');
+        return back()->with('success', 'تم موافقة وتفعيل الحساب وإرسال رسالة التليجرام بنجاح.');
     }
 
     public function rejectAccount($id)

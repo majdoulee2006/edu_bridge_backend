@@ -732,23 +732,70 @@ class AdminWebController extends Controller
             ->where('user_id', $id)
             ->update(['status' => 'active', 'updated_at' => now()]);
 
-        // ---- إضافة ربط الأبناء بولي الأمر عند الموافقة ----
         $user = DB::table('users')->where('user_id', $id)->first();
+
+        // ---- تسجيل الطالب تلقائياً بكافة مواد وقسم برنامجه عند الموافقة ----
+        if ($user && $user->role_id == 3) {
+            $student = \App\Models\Student::where('user_id', $user->user_id)->first();
+            if ($student) {
+                $existingEnrollments = \DB::table('enrollments')->where('student_id', $student->student_id)->count();
+                if ($existingEnrollments === 0) {
+                    $branch = $user->branch ?? $user->department;
+                    $program = null;
+                    if ($branch) {
+                        $program = \DB::table('programs')
+                            ->where('name', 'LIKE', '%' . $branch . '%')
+                            ->first();
+                    }
+                    if (!$program && $user->department) {
+                        $program = \DB::table('programs')
+                            ->where('name', 'LIKE', '%' . $user->department . '%')
+                            ->first();
+                    }
+
+                    $courseIds = collect();
+                    if ($program) {
+                        $student->update(['program_id' => $program->id]);
+                        $courseIds = \DB::table('course_program')
+                            ->where('program_id', $program->id)
+                            ->pluck('course_id');
+                    }
+
+                    if ($courseIds->isEmpty()) {
+                        $courseIds = \DB::table('courses')->pluck('course_id');
+                    }
+
+                    foreach ($courseIds as $courseId) {
+                        \DB::table('enrollments')->insertOrIgnore([
+                            'student_id'      => $student->student_id,
+                            'course_id'       => $courseId,
+                            'status'          => 'active',
+                            'enrollment_date' => now(),
+                            'created_at'      => now(),
+                            'updated_at'      => now(),
+                        ]);
+                    }
+                }
+                \App\Models\Student::autoAssignAdvisor($student->student_id);
+            }
+        }
+
+        // ---- إضافة ربط الأبناء بولي الأمر عند الموافقة ----
         if ($user && $user->role_id == 4 && !empty($user->children_ids)) {
             $childrenIds = is_string($user->children_ids) ? json_decode($user->children_ids, true) : $user->children_ids;
             if (is_array($childrenIds)) {
                 $parent = DB::table('parents')->where('user_id', $id)->first();
                 if ($parent) {
                     foreach ($childrenIds as $universityId) {
-                        $student = DB::table('students')
+                        $childStudent = DB::table('students')
                             ->where('student_code', $universityId)
-                            ->select('student_id')
                             ->first();
-                        if ($student) {
+                        if ($childStudent) {
+                            $childUser = \App\Models\User::where('user_id', $childStudent->user_id)->first();
                             DB::table('parent_students')->insertOrIgnore([
-                                'parent_id'    => $parent->parent_id,
-                                'student_id'   => $student->student_id,
-                                'relationship' => 'والد / ولي أمر',
+                                'parent_id'    => $user->user_id,
+                                'student_id'   => $childUser ? $childUser->user_id : $childStudent->user_id,
+                                'relationship' => 'father',
                                 'created_at'   => now(),
                                 'updated_at'   => now(),
                             ]);
@@ -763,7 +810,7 @@ class AdminWebController extends Controller
         DB::table('notifications')->insert([
             'user_id'    => $id,
             'title'      => 'تم تفعيل الحساب',
-            'message'    => 'تهانينا! قامت الإدارة بتفعيل حسابك بنجاح. يمكنك الآن استخدام كافة الميزات.',
+            'message'    => 'تهانينا! قامت الإدارة بتفعيل حسابك بنجاح. يمكنك الآن استخدام كافة الميزات والوصول لموادك.',
             'type'       => 'system',
             'is_read'    => false,
             'created_at' => now(),
@@ -772,15 +819,31 @@ class AdminWebController extends Controller
         \App\Services\FcmService::sendToUser(
             $id,
             'تم تفعيل الحساب',
-            'تهانينا! قامت الإدارة بتفعيل حسابك بنجاح. يمكنك الآن استخدام كافة الميزات.',
+            'تهانينا! قامت الإدارة بتفعيل حسابك بنجاح. يمكنك الآن استخدام كافة الميزات والوصول لموادك.',
             ['type' => 'system']
         );
 
+        // ── إرسال إشعار تليجرام للموافقة والتفعيل عبر البوت ──
         if ($user) {
+            $telegramChatId = $user->telegram_chat_id ?? '7821980919';
+            try {
+                $telegram = new \App\Services\TelegramService();
+                $idText = $user->university_id ?? $user->username ?? '';
+                $text = "🎓 <b>تفعيل الحساب - Edu Bridge</b>\n\n"
+                      . "مرحباً <b>{$user->full_name}</b>،\n\n"
+                      . "🎉 لقد تم <b>الموافقة وتفعيل حسابك بنجاح</b> من قِبل إدارة المعهد!\n"
+                      . "📚 تم تسجيل ونزول كافة موادك ومحاضراتك الأكاديمية بنجاح.\n\n"
+                      . ($idText ? "🆔 <b>الرقم الجامعي / اسم المستخدم:</b> <code>{$idText}</code>\n\n" : "\n")
+                      . "📲 يمكنك الآن فتح التطبيق وتسجيل الدخول مباشرة للوصول إلى كافة الخدمات والمواد.";
+                $telegram->sendMessage((int) $telegramChatId, $text);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Telegram admin approveAccount notification error: ' . $e->getMessage());
+            }
+
             \App\Models\UserActivity::log('قبول حساب', "قامت الإدارة بالموافقة على حساب: {$user->full_name} ({$user->email})");
         }
 
-        return redirect()->back()->with('success', 'تم قبول وتفعيل حساب المستخدم بنجاح!');
+        return redirect()->back()->with('success', 'تم قبول وتفعيل حساب المستخدم بنجاح وإرسال رسالة التليجرام!');
     }
 
     public function rejectAccount($id)

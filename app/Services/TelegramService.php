@@ -131,8 +131,7 @@ class TelegramService
 
     public function sendMessage(int $chatId, string $text): bool
     {
-        \App\Jobs\SendTelegramMessageJob::dispatch($chatId, $text, 'message', []);
-        return true;
+        return $this->sendMessageSync($chatId, $text);
     }
 
     public function sendMessageSync(int $chatId, string $text): bool
