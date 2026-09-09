@@ -98,13 +98,40 @@ class StudentWebController extends Controller
     {
         $student = Student::where('user_id', Auth::user()->user_id)->first();
         if ($student) {
-            $enrolledCount = DB::table('enrollments')->where('student_id', $student->student_id)->count();
-            if ($enrolledCount === 0) {
-                $allCourseIds = DB::table('courses')->pluck('course_id');
-                foreach ($allCourseIds as $cid) {
+            $user = Auth::user();
+
+            if (!$student->program_id) {
+                $deptOrBranch = $user->department ?? $user->branch;
+                $progId = null;
+                if ($deptOrBranch) {
+                    $progId = DB::table('programs')
+                        ->where('name', 'LIKE', '%' . $deptOrBranch . '%')
+                        ->value('id');
+
+                    if (!$progId && (str_contains($deptOrBranch, 'نظم') || str_contains($deptOrBranch, 'معلومات'))) {
+                        $progId = 3;
+                    }
+                }
+                if ($progId) {
+                    $student->update(['program_id' => $progId]);
+                }
+            }
+
+            if ($student->program_id) {
+                $validCourseIds = DB::table('course_program')
+                    ->where('program_id', $student->program_id)
+                    ->pluck('course_id')
+                    ->toArray();
+
+                DB::table('enrollments')
+                    ->where('student_id', $student->student_id)
+                    ->whereNotIn('course_id', $validCourseIds)
+                    ->delete();
+
+                foreach ($validCourseIds as $cid) {
                     DB::table('enrollments')->updateOrInsert(
                         ['student_id' => $student->student_id, 'course_id' => $cid],
-                        ['enrollment_date' => now(), 'created_at' => now(), 'updated_at' => now()]
+                        ['enrollment_date' => now(), 'updated_at' => now()]
                     );
                 }
             }
@@ -245,18 +272,6 @@ class StudentWebController extends Controller
     public function courses()
     {
         $student = $this->getStudent();
-
-        // التأكد من تسجيل الطالب في المواد إذا كان سجله في enrollments فارغاً
-        $enrolledCount = DB::table('enrollments')->where('student_id', $student->student_id)->count();
-        if ($enrolledCount === 0) {
-            $allCourseIds = DB::table('courses')->pluck('course_id');
-            foreach ($allCourseIds as $cid) {
-                DB::table('enrollments')->updateOrInsert(
-                    ['student_id' => $student->student_id, 'course_id' => $cid],
-                    ['enrollment_date' => now(), 'created_at' => now(), 'updated_at' => now()]
-                );
-            }
-        }
 
         $query = DB::table('enrollments')
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
