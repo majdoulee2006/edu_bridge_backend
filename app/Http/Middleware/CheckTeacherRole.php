@@ -13,7 +13,7 @@ class CheckTeacherRole
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
-            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
+            return redirect()->route('login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
         }
 
         $user = Auth::user();

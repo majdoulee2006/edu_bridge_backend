@@ -145,10 +145,10 @@ class UnifiedAuthController extends Controller
         $request->session()->regenerateToken();
 
         if ($isInactivity) {
-            return redirect('/login')->with('warning', '🔒 تم تسجيل الخروج تلقائياً لحماية حسابك بسبب عدم وجود أي نشاط لمدة 20 دقيقة.');
+            return redirect()->route('login')->with('warning', '🔒 تم تسجيل الخروج تلقائياً لحماية حسابك بسبب عدم وجود أي نشاط لمدة 20 دقيقة.');
         }
 
-        return redirect('/login')->with('success', 'تم تسجيل الخروج بنجاح.');
+        return redirect()->route('login')->with('success', 'تم تسجيل الخروج بنجاح.');
     }
 
     /**
@@ -160,25 +160,25 @@ class UnifiedAuthController extends Controller
         $roleStr = strtolower($user->role ?? '');
 
         if ($roleId === 6 || $roleStr === 'affairs') {
-            return redirect('/affairs/dashboard');
+            return redirect()->to(url('/affairs/dashboard'));
         }
         if ($roleId === 5 || $roleStr === 'head' || $roleStr === 'hod') {
-            return redirect('/hod/dashboard');
+            return redirect()->to(url('/hod/dashboard'));
         }
         if ($roleId === 1 || $roleStr === 'admin' || !empty($user->is_admin)) {
-            return redirect('/admin/dashboard');
+            return redirect()->to(url('/admin/dashboard'));
         }
         if ($roleId === 2 || $roleStr === 'teacher' || $roleStr === 'instructor') {
-            return redirect('/teacher/dashboard');
+            return redirect()->to(url('/teacher/dashboard'));
         }
         if ($roleId === 3 || $roleStr === 'student' || Student::where('user_id', $user->user_id)->exists()) {
-            return redirect('/student/dashboard');
+            return redirect()->to(url('/student/dashboard'));
         }
         if ($roleId === 4 || $roleStr === 'parent' || Parents::where('user_id', $user->user_id)->exists()) {
-            return redirect('/parent/dashboard');
+            return redirect()->to(url('/parent/dashboard'));
         }
 
-        return redirect('/login');
+        return redirect()->route('login');
     }
 
     /**

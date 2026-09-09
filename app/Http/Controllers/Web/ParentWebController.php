@@ -653,6 +653,22 @@ class ParentWebController extends Controller
             }
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.',
+                'request' => [
+                    'request_id' => $absenceId,
+                    'id'         => $absenceId,
+                    'date'       => $request->date,
+                    'reason'     => $reasonText,
+                    'type'       => $request->type,
+                    'status'     => 'pending_hod',
+                    'created_at' => now()->format('Y-m-d H:i:s'),
+                ]
+            ]);
+        }
+
         return back()->with('success', 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.');
     }
 

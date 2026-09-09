@@ -668,6 +668,17 @@ class StudentWebController extends Controller
             $reasonText = "[إذن يومي - وقت الإذن: " . $leaveTime . "] - " . $request->reason;
         }
 
+        // 🔒 حماية الباك إند: منع التكرار المتزامن (Double-submit prevention within 30 seconds)
+        $existingRecent = DB::table('absence_requests')
+            ->where('student_id', $student->student_id)
+            ->where('date', $request->date)
+            ->where('created_at', '>=', now()->subSeconds(30))
+            ->first();
+
+        if ($existingRecent) {
+            return back()->with('success', 'تم تقديم طلب الإذن بنجاح سابقاً، وهو قيد المراجعة.');
+        }
+
         $requestId = DB::table('absence_requests')->insertGetId([
             'student_id' => $student->student_id,
             'reason'     => $reasonText,
@@ -710,6 +721,22 @@ class StudentWebController extends Controller
                     ['type' => 'leave_request', 'related_id' => (string)$requestId]
                 );
             }
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تقديم طلب الإذن بنجاح، وهو بانتظار موافقة ولي الأمر أولاً.',
+                'request' => [
+                    'request_id' => $requestId,
+                    'id'         => $requestId,
+                    'date'       => $request->date,
+                    'reason'     => $reasonText,
+                    'document'   => $filePath,
+                    'status'     => 'pending_parent',
+                    'created_at' => now()->format('Y-m-d H:i:s'),
+                ]
+            ]);
         }
 
         return back()->with('success', 'تم تقديم طلب الإذن بنجاح، وهو بانتظار موافقة ولي الأمر أولاً.');

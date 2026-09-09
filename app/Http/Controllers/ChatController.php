@@ -28,7 +28,7 @@ class ChatController extends Controller
                 $allowedRoles = [$roleStudent, $roleTeacher, $roleHead];
                 break;
             case $roleStudent:
-                $allowedRoles = [$roleTeacher, $roleHead];
+                $allowedRoles = [$roleTeacher, $roleHead, $roleAdmin];
                 break;
             case $roleParent:
                 $allowedRoles = [$roleAdmin, $roleHead];
@@ -37,7 +37,7 @@ class ChatController extends Controller
                 $allowedRoles = [$roleStudent, $roleTeacher, $roleParent, $roleAdmin];
                 break;
             case $roleAdmin:
-                $allowedRoles = [$roleHead, $roleAffairs, $roleTeacher];
+                $allowedRoles = [$roleHead, $roleAffairs, $roleTeacher, $roleStudent];
                 break;
             case $roleAffairs:
                 $allowedRoles = [$roleAdmin];
@@ -52,14 +52,27 @@ class ChatController extends Controller
         $userDeptName = $user->department;
         $deptId = null;
 
+        if ($myRoleId == 3 && empty($userDeptName)) { // Student department fallback lookup
+            $studentRec = \DB::table('students')->where('user_id', $user->user_id)->first();
+            if ($studentRec && isset($studentRec->department_id)) {
+                $deptId = $studentRec->department_id;
+                $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
+            } elseif ($studentRec && isset($studentRec->program_id)) {
+                $deptId = \DB::table('programs')->where('program_id', $studentRec->program_id)->value('department_id');
+                if ($deptId) {
+                    $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
+                }
+            }
+        }
+
         if ($myRoleId == 5) { // HOD
             $myHead = \DB::table('heads')->where('user_id', $user->user_id)->first();
             if ($myHead) {
                 $deptId = $myHead->department_id;
                 $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
             }
-        } else {
-            $dept = $userDeptName ? \DB::table('departments')->where('name', $userDeptName)->first() : null;
+        } else if (!$deptId && $userDeptName) {
+            $dept = \DB::table('departments')->where('name', $userDeptName)->first();
             $deptId = $dept ? $dept->department_id : null;
         }
 
@@ -417,7 +430,7 @@ class ChatController extends Controller
                 return in_array($receiverRoleId, [$roleTeacher, $roleStudent, $roleHead]);
 
             case $roleStudent:
-                return in_array($receiverRoleId, [$roleHead, $roleTeacher]);
+                return in_array($receiverRoleId, [$roleHead, $roleTeacher, $roleAdmin]);
 
             case $roleParent:
                 return in_array($receiverRoleId, [$roleAdmin, $roleHead]);
@@ -491,7 +504,7 @@ public function searchMessages(Request $request, $otherUserId)
 public function deleteMessage(Request $request, $messageId)
 {
     $myId = (int) $request->user()->user_id;
-    $type = $request->input('type', 'me'); // 'everyone' or 'me'
+    $type = $request->input('type') ?? $request->query('type') ?? $request->json('type') ?? 'me'; // 'everyone' or 'me'
 
     $message = \App\Models\Message::find($messageId);
 

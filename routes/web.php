@@ -71,9 +71,13 @@ Route::get('/hod/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthContr
 Route::get('/teacher/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'teacher'))->name('teacher.login');
 Route::get('/student/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'student'))->name('student.login');
 Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
+Route::get('/parents/login', fn() => redirect()->route('parent.login'));
+Route::get('/Parents/login', fn() => redirect()->route('parent.login'));
+Route::get('/parents', fn() => redirect()->route('parent.login'));
+Route::get('/Parents', fn() => redirect()->route('parent.login'));
 
-Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit')->name('login.post');
-Route::post('/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
+Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit');
+Route::match(['get', 'post'], '/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
 // ===== مسارات إعادة تعيين كلمة السر عبر تلغرام OTP =====
 Route::post('/password/forgot/send-otp', [UnifiedAuthController::class, 'sendResetOtp'])->name('password.forgot.send_otp');
@@ -82,7 +86,7 @@ Route::post('/password/forgot/reset', [UnifiedAuthController::class, 'resetPassw
 
 // Default Redirect
 Route::get('/', function () {
-    return redirect('/login');
+    return redirect()->route('login');
 });
 
 // ===== مسارات ماسح تيليغرام الذكي (Telegram Web App Scanner) =====
@@ -95,7 +99,7 @@ Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('t
 
 // الصفحات المحمية بـ Middleware
 Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::class])->group(function () {
-    Route::get('/', fn() => redirect('/teacher/dashboard'));
+    Route::get('/', fn() => redirect()->route('teacher.dashboard'));
     Route::get('/dashboard', [TeacherWebController::class, 'dashboard'])->name('teacher.dashboard');
 
     // الجداول
@@ -194,7 +198,7 @@ Route::post('/hod/logout', [HODWebController::class, 'logout'])->name('hod.logou
 
 // مسارات واجهات رئيس القسم (Frontend Only) محمية
 Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->group(function () {
-    Route::get('/', function() { return redirect('/hod/dashboard'); });
+    Route::get('/', function() { return redirect()->route('hod.dashboard'); });
     Route::get('/dashboard', [HODWebController::class, 'dashboard'])->name('hod.dashboard');
     Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
@@ -264,7 +268,7 @@ Route::post('/affairs/login', [UnifiedAuthController::class, 'login'])->name('af
 Route::post('/affairs/logout', [AffairsWebController::class, 'logout'])->name('affairs.logout');
 
 Route::prefix('affairs')->middleware(['affairs'])->group(function () {
-    Route::get('/', fn() => redirect('/affairs/dashboard'));
+    Route::get('/', fn() => redirect()->route('affairs.dashboard'));
     Route::get('/dashboard', [AffairsWebController::class, 'dashboard'])->name('affairs.dashboard');
     Route::get('/calendar', [AffairsWebController::class, 'calendar'])->name('affairs.calendar');
     Route::post('/calendar/events', [AffairsWebController::class, 'storeCalendarEvent'])->name('affairs.calendar.store');
@@ -364,7 +368,7 @@ Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admi
 Route::post('/admin/logout', [AdminWebController::class, 'logout'])->name('admin.logout');
 
 Route::prefix('admin')->middleware(['admin'])->group(function () {
-    Route::get('/', fn() => redirect('/admin/dashboard'));
+    Route::get('/', fn() => redirect()->route('admin.dashboard'));
     Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/profile', [AdminWebController::class, 'profile'])->name('admin.profile');
     Route::post('/profile', [AdminWebController::class, 'updateProfile'])->name('admin.profile.update');
@@ -472,7 +476,7 @@ Route::post('/student/login', [UnifiedAuthController::class, 'login'])->name('st
 Route::post('/student/logout', [StudentWebController::class, 'logout'])->name('student.logout');
 
 Route::prefix('student')->middleware(['student'])->group(function () {
-    Route::get('/', fn() => redirect('/student/dashboard'));
+    Route::get('/', fn() => redirect()->route('student.dashboard'));
     Route::get('/dashboard', [StudentWebController::class, 'dashboard'])->name('student.dashboard');
 
     // الجدول
@@ -541,11 +545,11 @@ use App\Http\Controllers\Web\ParentWebController;
 // تسجيل الدخول
 Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
 Route::post('/parent/login', [UnifiedAuthController::class, 'login'])->name('parent.login.post');
-Route::post('/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
+Route::match(['get', 'post'], '/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
 
 // العمليات المحمية
 Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
-    Route::get('/', fn() => redirect('/parent/dashboard'));
+    Route::get('/', fn() => redirect()->route('parent.dashboard'));
     Route::get('/dashboard', [ParentWebController::class, 'dashboard'])->name('parent.dashboard');
     Route::post('/select-child', [ParentWebController::class, 'selectChild'])->name('parent.select_child');
     
