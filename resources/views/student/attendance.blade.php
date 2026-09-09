@@ -190,6 +190,14 @@
             });
 
             video.srcObject = streamInstance;
+
+            // مرآة الكاميرا الأمامية عند مطابقة الوجه لتظهر حركة الوجه بشكل طبيعي ومريح للمستخدم
+            if (facingMode === 'user') {
+                video.style.transform = 'scaleX(-1)';
+            } else {
+                video.style.transform = 'none';
+            }
+
             await video.play();
             return true;
         } catch (e) {
