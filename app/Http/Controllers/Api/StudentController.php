@@ -2131,7 +2131,16 @@ class StudentController extends Controller
             ], 409);
         }
 
-        // التحقق من الجهاز معطّل مؤقتاً
+        // ─── 3. التحقق من ربط الجهاز (منع تسجيل الحضور من جهاز شخص آخر) ──
+        if ($student->is_device_locked && !empty($student->device_id) && $deviceId && $student->device_id !== $deviceId) {
+            $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'device_mismatch');
+
+            return response()->json([
+                'success'       => false,
+                'message'       => 'عذراً، لا يمكنك تسجيل الحضور من هذا الجهاز لأنه غير مقترن بحسابك.',
+                'reject_reason' => 'device_mismatch',
+            ], 403);
+        }
 
         // ─── 4. التحقق من الموقع (إن كانت الجلسة تشترطه) ────────────────
         if ($session->latitude && $session->longitude) {
@@ -2210,7 +2219,8 @@ class StudentController extends Controller
                 // مقارنة بصمة ArcFace مع البصمة المرجعية
                 $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
 
-                if ($faceScore >= 50.0) {
+                // رفعنا الحد من 50% إلى 70% لأن 50% كانت تعني تشابهاً شبه معدوم (cosine similarity ~ 0)
+                if ($faceScore >= 70.0) {
                     $faceStatus = 'verified';
                     // تحديث تدريجي للتكيف مع النمو والتغيرات الشكليّة
                     $updated = [];

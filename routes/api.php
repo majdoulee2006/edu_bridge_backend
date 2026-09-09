@@ -25,9 +25,13 @@ use App\Http\Controllers\Api\AffairsController;
 
 // خدمة ملفات التخزين (بديل الـ symlink على Windows)
 Route::get('/file/{path}', function (string $path) {
+    $base     = realpath(storage_path('app/public'));
     $decoded  = urldecode($path);
-    $absolute = storage_path('app/public/' . $decoded);
-    abort_if(!file_exists($absolute), 404);
+    $absolute = realpath($base . DIRECTORY_SEPARATOR . $decoded);
+
+    // يمنع الخروج خارج مجلد storage/app/public عبر ../ أو مسارات مطلقة
+    abort_if($absolute === false || !str_starts_with($absolute, $base . DIRECTORY_SEPARATOR), 404);
+
     return response()->file($absolute);
 })->where('path', '.*');
 
@@ -52,41 +56,49 @@ Route::get('/system/settings', function () {
     ]);
 });
 
-// -----------------------------------------------------------
-// روابط ولي الأمر العامة (بدون توكن)
-// -----------------------------------------------------------
-Route::get('/parent/info/{user_id}', function ($user_id) {
-    $user = DB::table('users')->where('user_id', $user_id)->first();
-    if ($user) {
-        return response()->json([
-            'full_name' => $user->full_name,
-            'phone'     => $user->phone ?? 'لا يوجد رقم',
-            'role'      => $user->role,
-        ]);
-    }
-    return response()->json(['message' => 'المستخدم غير موجود'], 404);
-});
-
-Route::post('/parent/link-student', function (Request $request) {
-    $student = DB::table('students')->where('student_code', $request->student_code)->first();
-    if (!$student) {
-        return response()->json(['message' => 'كود الطالب غير موجود'], 404);
-    }
-    $parent = DB::table('parents')->where('user_id', $request->user_id)->first();
-    if (!$parent) {
-        return response()->json(['message' => 'سجل الأب غير موجود'], 404);
-    }
-    DB::table('parent_students')->updateOrInsert([
-        'parent_id'  => $parent->parent_id,
-        'student_id' => $student->student_id,
-    ]);
-    return response()->json(['message' => 'تم الربط بنجاح'], 200);
-});
-
 // روابط محمية (تحتاج توكن)
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // -----------------------------------------------------------
+    // روابط ولي الأمر (تتطلب توكن + تتحقق من هوية المستخدم المسجل دخوله)
+    // -----------------------------------------------------------
+    Route::get('/parent/info/{user_id}', function (Request $request, $user_id) {
+        if ((string) $request->user()->user_id !== (string) $user_id) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+        $user = DB::table('users')->where('user_id', $user_id)->first();
+        if ($user) {
+            return response()->json([
+                'full_name' => $user->full_name,
+                'phone'     => $user->phone ?? 'لا يوجد رقم',
+                'role'      => $user->role,
+            ]);
+        }
+        return response()->json(['message' => 'المستخدم غير موجود'], 404);
+    });
+
+    Route::post('/parent/link-student', function (Request $request) {
+        $request->validate([
+            'student_code' => 'required|string',
+        ]);
+
+        $student = DB::table('students')->where('student_code', $request->student_code)->first();
+        if (!$student) {
+            return response()->json(['message' => 'كود الطالب غير موجود'], 404);
+        }
+        // نستخدم هوية المستخدم المسجل دخوله فقط، وليس أي user_id يرسله العميل
+        $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
+        if (!$parent) {
+            return response()->json(['message' => 'سجل الأب غير موجود'], 404);
+        }
+        DB::table('parent_students')->updateOrInsert([
+            'parent_id'  => $parent->parent_id,
+            'student_id' => $student->student_id,
+        ]);
+        return response()->json(['message' => 'تم الربط بنجاح'], 200);
+    });
 
     // FCM Token
     Route::post('/user/fcm-token', function (\Illuminate\Http\Request $request) {

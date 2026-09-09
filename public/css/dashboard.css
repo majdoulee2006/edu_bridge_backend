@@ -357,8 +357,36 @@ body {
 
 /* Responsive */
 
-@media (max-width: 1100px) {
-    .sidebar { width: 90px; padding: 2rem 0.5rem; }
-    .nav-link span, .logo span { display: none; }
-    .main-content { margin-right: 90px; }
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 260px;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    }
+    [dir="ltr"] .sidebar {
+        transform: translateX(-100%);
+    }
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    .main-content {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        padding: 1.25rem !important;
+    }
+    .logo span, .nav-link span {
+        display: inline !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .modal-card {
+        width: 95vw !important;
+        padding: 1.5rem 1rem !important;
+        border-radius: 20px !important;
+    }
+    .news-grid, .account-grid {
+        grid-template-columns: 1fr !important;
+    }
 }
