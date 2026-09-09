@@ -87,10 +87,15 @@
     </div>
 
     <!-- الكاميرا المضمنة مباشرة داخل عناصر الصفحة (Embedded Video) -->
-    <div class="embedded-cam-box">
+    <div class="embedded-cam-box relative">
         
+        <!-- زر عكس اتجاه الكاميرا يدوياً للمستخدم -->
+        <button type="button" onclick="toggleVideoFlip()" class="absolute top-3 left-3 z-20 bg-slate-900/80 hover:bg-slate-950 text-yellow-400 text-xs font-extrabold px-3 py-1.5 rounded-full border border-yellow-400/40 flex items-center gap-1.5 transition-all shadow-md cursor-pointer">
+            <i class="fa-solid fa-arrows-rotate"></i> <span>عكس اتجاه الكاميرا</span>
+        </button>
+
         <!-- عنصر الفيديو المباشر في الـ HTML (يعمل تلقائياً) -->
-        <video id="live-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+        <video id="live-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover" style="transform: scaleX(-1);"></video>
 
         <!-- 1. إطار مسح الـ QR المدمج -->
         <div id="frame-qr" class="absolute inset-0 z-10 flex flex-col items-center justify-center">
@@ -172,6 +177,15 @@
         }
     }
 
+    let isVideoFlipped = true;
+    function toggleVideoFlip() {
+        const video = document.getElementById('live-video');
+        isVideoFlipped = !isVideoFlipped;
+        if (video) {
+            video.style.transform = isVideoFlipped ? 'scaleX(-1)' : 'none';
+        }
+    }
+
     async function startEmbeddedCamera(facingMode) {
         if (streamInstance) {
             streamInstance.getTracks().forEach(t => t.stop());
@@ -190,13 +204,7 @@
             });
 
             video.srcObject = streamInstance;
-
-            // مرآة الكاميرا الأمامية عند مطابقة الوجه لتظهر حركة الوجه بشكل طبيعي ومريح للمستخدم
-            if (facingMode === 'user') {
-                video.style.transform = 'scaleX(-1)';
-            } else {
-                video.style.transform = 'none';
-            }
+            video.style.transform = isVideoFlipped ? 'scaleX(-1)' : 'none';
 
             await video.play();
             return true;
