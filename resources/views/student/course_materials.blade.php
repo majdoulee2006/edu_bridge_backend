@@ -52,9 +52,9 @@
             <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($m->created_at)->diffForHumans() }}
         </div>
     </div>
-    <a href="{{ route('student.lessons.download', $m->lesson_id) }}" download="{{ $m->title }}.pdf"
+    <a href="{{ route('student.lessons.download', $m->lesson_id) }}" target="_blank"
        style="background: var(--accent-color); color: #1a1a1a; padding: 0.45rem 1rem; border-radius: 0.65rem; font-size: 0.85rem; font-weight: 700; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
-        <i class="fa-solid fa-download"></i> تحميل المحاضرة
+        <i class="fa-solid fa-download"></i> تحميل / فتح المحاضرة
     </a>
 </div>
 @empty

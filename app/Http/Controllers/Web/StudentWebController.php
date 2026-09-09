@@ -387,19 +387,43 @@ class StudentWebController extends Controller
         if (!$lesson) abort(404, 'المحاضرة غير موجودة');
 
         $course = DB::table('courses')->where('course_id', $lesson->course_id)->first();
-        $safeFileName = 'Lecture_' . $lesson->lesson_id . '.pdf';
+        $rawPath = $lesson->file_path ?: $lesson->content_url;
 
-        if ($lesson->file_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($lesson->file_path)) {
-            return \Illuminate\Support\Facades\Storage::disk('public')->download($lesson->file_path, $safeFileName, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $safeFileName . '"',
-            ]);
+        if ($rawPath && !filter_var($rawPath, FILTER_VALIDATE_URL)) {
+            $cleanPath = ltrim(str_replace('/storage/', '', $rawPath), '/');
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($cleanPath)) {
+                $fullPath = storage_path('app/public/' . $cleanPath);
+                $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+
+                $mimeType = match($ext) {
+                    'png'         => 'image/png',
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'gif'         => 'image/gif',
+                    'webp'        => 'image/webp',
+                    'mp4'         => 'video/mp4',
+                    'pdf'         => 'application/pdf',
+                    'doc'         => 'application/msword',
+                    'docx'        => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    default       => mime_content_type($fullPath) ?: 'application/octet-stream',
+                };
+
+                $downloadName = ($lesson->title ?: 'Lecture_' . $lesson->lesson_id) . ($ext ? '.' . $ext : '');
+
+                return response()->download($fullPath, $downloadName, [
+                    'Content-Type' => $mimeType,
+                ]);
+            }
         }
 
-        // إنشاء ملف PDF حقيقي ومنسق واحترافي عبر DomPDF لتجنب أي مشكلة في برامج قراءة الـ PDF مثل Adobe Reader
+        if ($rawPath && filter_var($rawPath, FILTER_VALIDATE_URL)) {
+            return redirect($rawPath);
+        }
+
+        // إنشاء ملف PDF حقيقي ومنسق واحترافي عبر DomPDF في حال عدم وجود ملف مرفق
         $courseTitle = $course->title ?? 'المادة الدراسية';
         $lessonTitle = $lesson->title ?? 'المحاضرة';
-        $lessonDesc = $lesson->description ?? 'ملف المحتوى التعليمي للمحاضرة عبر منصة Edu-Bridge.';
+        $lessonDesc  = $lesson->description ?? 'ملف المحتوى التعليمي للمحاضرة عبر منصة Edu-Bridge.';
+        $safeFileName = 'Lecture_' . $lesson->lesson_id . '.pdf';
 
         $html = "
         <!DOCTYPE html>
