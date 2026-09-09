@@ -108,25 +108,39 @@
         @php
             $isRead = $n->is_read ?? false;
             $type   = $n->type ?? 'general';
-            $iconMap = [
-                'assignment' => ['icon' => 'fa-book-open',  'color' => '#ffe600', 'bg' => '#fffbe6'],
-                'message'    => ['icon' => 'fa-envelope',   'color' => '#3b82f6', 'bg' => '#eff6ff'],
-                'admin'      => ['icon' => 'fa-calendar',   'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
-                'grade'      => ['icon' => 'fa-check',      'color' => '#10b981', 'bg' => '#ecfdf5'],
-                'attendance' => ['icon' => 'fa-clipboard-user', 'color' => '#f59e0b', 'bg' => '#fffbeb'],
-                'general'    => ['icon' => 'fa-bell',       'color' => '#f59e0b', 'bg' => '#fffbeb'],
-            ];
-            $style = $iconMap[$type] ?? $iconMap['general'];
+            $titleText = mb_strtolower(($n->title ?? '') . ' ' . ($n->body ?? '') . ' ' . ($n->message ?? ''));
 
-            $linkMap = [
-                'assignment' => '/teacher/assignments',
-                'grade'      => '/teacher/assignments',
-                'attendance' => '/teacher/attendance',
-                'message'    => '/teacher/dashboard',
-                'admin'      => '/teacher/dashboard',
-                'general'    => '/teacher/notifications',
+            $isLectureRelated    = str_contains($titleText, 'محاضرة') || str_contains($titleText, 'درس') || str_contains($titleText, 'مادة') || str_contains($titleText, 'ملف') || $type === 'lecture' || $type === 'lesson';
+            $isAssignmentRelated = str_contains($titleText, 'واجب') || str_contains($titleText, 'تسليم') || str_contains($titleText, 'تكليف') || $type === 'assignment';
+            $isGradeRelated      = str_contains($titleText, 'علامة') || str_contains($titleText, 'درجة') || str_contains($titleText, 'تقييم') || $type === 'grade';
+            $isAttendanceRelated = str_contains($titleText, 'حضور') || str_contains($titleText, 'تفقد') || str_contains($titleText, 'جلسة') || $type === 'attendance';
+            $isMessageRelated    = str_contains($titleText, 'رسالة') || str_contains($titleText, 'محادثة') || str_contains($titleText, 'شات') || $type === 'message' || $type === 'chat';
+            $isScheduleRelated   = str_contains($titleText, 'جدول') || str_contains($titleText, 'برنامج') || str_contains($titleText, 'فحص') || str_contains($titleText, 'امتحان') || $type === 'exam';
+
+            $iconMap = [
+                'lecture'    => ['icon' => 'fa-file-video',     'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
+                'assignment' => ['icon' => 'fa-book-open',      'color' => '#ffe600', 'bg' => '#fffbe6'],
+                'message'    => ['icon' => 'fa-envelope',       'color' => '#3b82f6', 'bg' => '#eff6ff'],
+                'admin'      => ['icon' => 'fa-calendar',       'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
+                'grade'      => ['icon' => 'fa-check-double',   'color' => '#10b981', 'bg' => '#ecfdf5'],
+                'attendance' => ['icon' => 'fa-clipboard-user', 'color' => '#f59e0b', 'bg' => '#fffbeb'],
+                'general'    => ['icon' => 'fa-bell',           'color' => '#f59e0b', 'bg' => '#fffbeb'],
             ];
-            $link = $linkMap[$type] ?? '/teacher/notifications';
+            $style = $iconMap[$type] ?? ($isLectureRelated ? ['icon' => 'fa-file-video', 'color' => '#8b5cf6', 'bg' => '#f5f3ff'] : $iconMap['general']);
+
+            if ($isLectureRelated) {
+                $link = '/teacher/lectures';
+            } elseif ($isAssignmentRelated || $isGradeRelated) {
+                $link = '/teacher/assignments';
+            } elseif ($isAttendanceRelated) {
+                $link = '/teacher/attendance';
+            } elseif ($isMessageRelated) {
+                $link = '/teacher/messages';
+            } elseif ($isScheduleRelated) {
+                $link = '/teacher/schedule';
+            } else {
+                $link = '/teacher/notifications';
+            }
         @endphp
         <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="handleNotifClick(event, '{{ $link }}', {{ $n->id }}, {{ !$isRead ? 'true' : 'false' }})">
             <div class="notif-icon" style="background: {{ $style['bg'] }}; color: {{ $style['color'] }};">

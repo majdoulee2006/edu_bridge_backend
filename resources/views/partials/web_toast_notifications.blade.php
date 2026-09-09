@@ -101,8 +101,15 @@
 
         const type = notif.type || '';
         const titleText = ((notif.title || '') + ' ' + (notif.message || notif.body || '')).toLowerCase();
+
+        const isLecture = titleText.includes('محاضرة') || titleText.includes('درس') || titleText.includes('مادة') || titleText.includes('ملف') || type === 'lecture' || type === 'lesson';
+        const isAssignment = titleText.includes('واجب') || titleText.includes('تكليف') || titleText.includes('تسليم') || type === 'assignment';
+        const isGrade = titleText.includes('علامة') || titleText.includes('درجة') || titleText.includes('نتيجة') || type === 'grade';
         const isExam = titleText.includes('فحص') || titleText.includes('امتحان') || titleText.includes('اختبار') || type === 'exam';
-        const isService = titleText.includes('خدمة') || titleText.includes('استرحام') || titleText.includes('وثيقة') || titleText.includes('إكمال') || type === 'student_service';
+        const isAttendance = titleText.includes('حضور') || titleText.includes('غياب') || titleText.includes('تفقد') || titleText.includes('جلسة') || type === 'attendance';
+        const isLeave = titleText.includes('إذن') || titleText.includes('إجازة') || titleText.includes('خروج') || type === 'leave_request' || type === 'leave';
+        const isService = titleText.includes('خدمة') || titleText.includes('استرحام') || titleText.includes('وثيقة') || titleText.includes('إكمال') || titleText.includes('قفل') || type === 'student_service';
+        const isMessage = titleText.includes('رسالة') || titleText.includes('محادثة') || titleText.includes('شات') || type === 'message' || type === 'chat';
 
         if (isService) {
             if (prefix === '/student') return '/student/student-services';
@@ -111,19 +118,43 @@
             if (prefix === '/admin') return '/admin/student-services';
         }
 
+        if (isLecture) {
+            if (prefix === '/student') return '/student/courses';
+            if (prefix === '/teacher') return '/teacher/lectures';
+        }
+
+        if (isAssignment) {
+            if (prefix === '/student') return '/student/assignments';
+            if (prefix === '/teacher') return '/teacher/assignments';
+        }
+
+        if (isGrade) {
+            if (prefix === '/student') return '/student/grades';
+            if (prefix === '/teacher') return '/teacher/assignments';
+        }
+
         if (isExam) {
             if (prefix === '/student') return '/student/schedule#exams-section';
             if (prefix === '/parent') return '/parent/schedule#exams-section';
+            if (prefix === '/teacher') return '/teacher/schedule';
         }
 
-        if (type === 'grade') return prefix === '/student' ? '/student/grades' : prefix + '/grades';
-        if (type === 'leave_request' || type === 'leave') {
+        if (isAttendance) {
+            if (prefix === '/student') return '/student/attendance';
+            if (prefix === '/teacher') return '/teacher/attendance';
+        }
+
+        if (isLeave) {
             if (prefix === '/student') return '/student/leave-requests';
             if (prefix === '/parent') return '/parent/permissions';
+            if (prefix === '/teacher') return '/teacher/notifications';
             return prefix + '/leaves';
         }
-        if (type === 'message' || type === 'chat') return prefix + '/messages';
-        if (type === 'assignment') return prefix === '/student' ? '/student/assignments' : prefix + '/assignments';
+
+        if (isMessage) {
+            return prefix + '/messages';
+        }
+
         return prefix + '/notifications';
     }
 
