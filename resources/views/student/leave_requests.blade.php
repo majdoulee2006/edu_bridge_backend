@@ -303,27 +303,27 @@
 
                     <div id="fullDayTimeField">
                         <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت الإذن</span>
+                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت الإذن (قبل 3:00 عصراً)</span>
                             <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">ساعة : دقيقة</span>
                         </label>
-                        <input type="time" name="leave_time" id="leaveTimeInput" class="form-control" value="{{ date('H:i') }}">
+                        <input type="time" name="leave_time" id="leaveTimeInput" class="form-control" max="15:00" value="{{ date('H:i') > '15:00' ? '14:00' : date('H:i') }}">
                     </div>
                 </div>
 
                 <div id="hourlyTimeFields" style="display: none; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
                         <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> من الساعة</span>
+                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> من الساعة (قبل 3:00 عصراً)</span>
                             <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">ساعة : دقيقة</span>
                         </label>
-                        <input type="time" name="from_time" id="fromTimeInput" class="form-control" value="{{ date('H:i') }}" disabled>
+                        <input type="time" name="from_time" id="fromTimeInput" class="form-control" max="15:00" value="{{ date('H:i') > '15:00' ? '12:00' : date('H:i') }}" disabled>
                     </div>
                     <div>
                         <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> إلى الساعة</span>
+                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> إلى الساعة (قبل 3:00 عصراً)</span>
                             <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">ساعة : دقيقة</span>
                         </label>
-                        <input type="time" name="to_time" id="toTimeInput" class="form-control" value="{{ date('H:i', strtotime('+2 hours')) }}" disabled>
+                        <input type="time" name="to_time" id="toTimeInput" class="form-control" max="15:00" value="{{ date('H:i', strtotime('+2 hours')) > '15:00' ? '14:00' : date('H:i', strtotime('+2 hours')) }}" disabled>
                     </div>
                 </div>
 
@@ -504,6 +504,22 @@ function handleLeaveFormAjaxSubmit(event) {
         alert('⚠️ يرجى كتابة سبب طلب الإذن أولاً.');
         if (reasonInput) reasonInput.focus();
         return false;
+    }
+
+    const leaveType = document.getElementById('leaveTypeSelect')?.value || 'full_day';
+    if (leaveType === 'hourly') {
+        const fromTime = document.getElementById('fromTimeInput')?.value;
+        const toTime = document.getElementById('toTimeInput')?.value;
+        if ((fromTime && fromTime > '15:00') || (toTime && toTime > '15:00')) {
+            alert('⚠️ عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).');
+            return false;
+        }
+    } else {
+        const leaveTime = document.getElementById('leaveTimeInput')?.value;
+        if (leaveTime && leaveTime > '15:00') {
+            alert('⚠️ عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).');
+            return false;
+        }
     }
 
     // قفل الزر مباشرة وتغيير نصه

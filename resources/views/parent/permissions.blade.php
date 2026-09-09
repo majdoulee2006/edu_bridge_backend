@@ -383,10 +383,10 @@
 
                         <div id="parent-time-group">
                             <label for="leave-time" style="display: flex; align-items: center; justify-content: space-between;">
-                                <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت الإذن المطلوب</span>
+                                <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت الإذن (قبل 3:00 عصراً)</span>
                                 <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">ساعة : دقيقة</span>
                             </label>
-                            <input type="time" name="time" id="leave-time" class="form-control" value="{{ date('H:i') }}">
+                            <input type="time" name="time" id="leave-time" class="form-control" max="15:00" value="{{ date('H:i') > '15:00' ? '14:00' : date('H:i') }}">
                         </div>
                     </div>
                     
@@ -456,6 +456,13 @@ function handleParentLeaveFormAjaxSubmit(event) {
     if (!reasonInput || !reasonInput.value.trim()) {
         alert('⚠️ يرجى كتابة سبب طلب الإجازة أولاً.');
         if (reasonInput) reasonInput.focus();
+        return false;
+    }
+
+    const parentTimeInput = document.getElementById('leave-time');
+    if (parentTimeInput && parentTimeInput.value && parentTimeInput.value > '15:00') {
+        alert('⚠️ عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).');
+        if (parentTimeInput) parentTimeInput.focus();
         return false;
     }
 

@@ -1868,6 +1868,13 @@ class StudentController extends Controller
             ], 422);
         }
 
+        if (($request->filled('time') && $request->time > '15:00') || ($request->filled('from_time') && $request->from_time > '15:00') || ($request->filled('to_time') && $request->to_time > '15:00')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).'
+            ], 422);
+        }
+
         $student = $request->user()->student;
 
         // رفع المستند إذا وجد

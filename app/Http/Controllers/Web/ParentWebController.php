@@ -578,6 +578,10 @@ class ParentWebController extends Controller
             'reason.required' => 'سبب الإجازة مطلوب.'
         ]);
 
+        if ($request->filled('time') && $request->time > '15:00') {
+            return back()->withErrors(['time' => 'عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).'])->withInput();
+        }
+
         $parent = $this->getParentRecord();
         $linked = DB::table('parent_students')
             ->where('parent_id', $parent->parent_id)
