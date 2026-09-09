@@ -93,7 +93,31 @@
         html.dark [class*="border-slate-700/"] { border-color: rgba(42, 42, 42, 0.5) !important; }
         html.dark [class*="border-slate-800/"] { border-color: rgba(36, 36, 36, 0.5) !important; }
 
-        /* Fix Form Inputs in Dark Mode to prevent white-on-white text */
+        /* Universal Form Inputs Styling (Supports both Light and Dark Mode) */
+        input[type="text"],
+        input[type="password"],
+        input[type="email"],
+        input[type="number"],
+        select,
+        textarea,
+        .form-input {
+            border: 1px solid var(--border-color, #dbe0e6) !important;
+            background-color: var(--bg-primary, #eef0f4) !important;
+            color: var(--text-primary, #1e293b) !important;
+        }
+        input::placeholder,
+        textarea::placeholder,
+        .form-input::placeholder {
+            color: var(--text-secondary, #64748b) !important;
+            opacity: 0.85;
+        }
+        select option,
+        .form-input option {
+            background-color: var(--bg-secondary, #ffffff) !important;
+            color: var(--text-primary, #1e293b) !important;
+        }
+
+        /* Dark Mode Specific Overrides */
         html.dark input[type="text"],
         html.dark input[type="password"],
         html.dark input[type="email"],

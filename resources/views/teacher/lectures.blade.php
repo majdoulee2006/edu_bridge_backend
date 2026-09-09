@@ -10,23 +10,24 @@
     .form-input {
         width: 100%;
         padding: 0.85rem 1rem;
-        border: 1px solid var(--border-color, #242424) !important;
+        border: 1px solid var(--border-color) !important;
         border-radius: 0.75rem;
-        background-color: var(--bg-primary, #0a0a0a) !important;
-        color: #ffffff !important;
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
         font-family: inherit;
         font-size: 0.95rem;
     }
     .form-input::placeholder {
-        color: #888888 !important;
+        color: var(--text-secondary) !important;
+        opacity: 0.8;
     }
     .form-input option {
-        background-color: #121212 !important;
-        color: #ffffff !important;
+        background-color: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
     }
     .form-input:focus {
         outline: none;
-        border-color: var(--accent-color, #f2f20d) !important;
+        border-color: var(--accent-color) !important;
     }
 
     /* File Upload Area */
