@@ -92,6 +92,30 @@
         html.dark .border-slate-700 { border-color: #2a2a2a !important; }
         html.dark [class*="border-slate-700/"] { border-color: rgba(42, 42, 42, 0.5) !important; }
         html.dark [class*="border-slate-800/"] { border-color: rgba(36, 36, 36, 0.5) !important; }
+
+        /* Fix Form Inputs in Dark Mode to prevent white-on-white text */
+        html.dark input[type="text"],
+        html.dark input[type="password"],
+        html.dark input[type="email"],
+        html.dark input[type="number"],
+        html.dark select,
+        html.dark textarea,
+        html.dark .form-input {
+            background-color: #0a0a0a !important;
+            color: #ffffff !important;
+            border-color: #2e2e2e !important;
+        }
+        html.dark input::placeholder,
+        html.dark textarea::placeholder,
+        html.dark .form-input::placeholder {
+            color: #888888 !important;
+            opacity: 0.9;
+        }
+        html.dark select option,
+        html.dark .form-input option {
+            background-color: #121212 !important;
+            color: #ffffff !important;
+        }
     </style>
 
     @stack('styles')
