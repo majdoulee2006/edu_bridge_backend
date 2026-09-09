@@ -1533,8 +1533,6 @@ class AdminWebController extends Controller
             'name'          => $request->name,
             'department_id' => $deptId,
             'description'   => $request->description,
-            'year'          => $request->year,
-            'semester'      => $request->semester,
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
