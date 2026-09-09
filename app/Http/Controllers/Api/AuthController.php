@@ -83,6 +83,21 @@ class AuthController extends Controller
         if ($user->role_id === 3) {
             $student = \App\Models\Student::where('user_id', $user->user_id)->first();
             if ($student) {
+                // التحقق الإلزامي من ربط الطالب بولي الأمر
+                $isLinkedToParent = DB::table('parent_students')
+                    ->where('student_id', $student->student_id)
+                    ->orWhere('student_id', $user->user_id)
+                    ->exists();
+
+                if (!$isLinkedToParent) {
+                    \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب الطالب غير مرتبط بولي أمر عبر التطبيق', $user);
+                    return response()->json([
+                        'success'            => false,
+                        'parent_link_needed' => true,
+                        'message'            => 'عذراً، يجب ربط حساب الطالب بولي أمر أولاً للمتابعة. يرجى مراجعة شؤون الطلاب.'
+                    ], 403);
+                }
+
                 // إذا كان الحساب مقفولاً على جهاز آخر
                 if ($student->is_device_locked && !empty($student->device_id) && $request->filled('device_id') && $student->device_id !== $request->device_id) {
                     return response()->json([
@@ -188,7 +203,8 @@ class AuthController extends Controller
             'birth_date'       => 'nullable|date',
             'academic_year'    => 'nullable|string',
             'department'       => 'nullable|string',
-            'branch'           => 'nullable|string',
+            'branch'           => 'required_if:role,student|nullable|string',
+            'program_id'       => 'required_if:role,student|nullable|exists:programs,id',
             'children_ids'     => 'nullable|array',
             'fcm_token'        => 'nullable|string',
         ]);

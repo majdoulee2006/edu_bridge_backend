@@ -1892,8 +1892,8 @@ class AffairsController extends Controller
         }
 
         $academicCardData = [];
-        $totalScoresSum = 0;
-        $totalCoursesCount = 0;
+        $totalWeightedScores = 0;
+        $totalWeightsSum = 0;
         $passedCount = 0;
         $failedCount = 0;
         $notAttendedCount = 0;
@@ -1943,6 +1943,8 @@ class AffairsController extends Controller
 
             $hasAnyScore = ($quizScore !== null || $oralScore !== null || $finalScore !== null);
             $totalScore = null;
+            $weightedScore = null;
+            $courseWeight = $course->weight ?? 1;
             $status = 'لم يتم التقدم';
 
             if ($hasAnyScore) {
@@ -1950,6 +1952,7 @@ class AffairsController extends Controller
                 $o = $oralScore ?? 0;
                 $f = $finalScore ?? 0;
                 $totalScore = min(100, $q + $o + $f);
+                $weightedScore = $totalScore * $courseWeight;
 
                 if ($totalScore >= 50) {
                     $status = 'ناجح';
@@ -1959,27 +1962,29 @@ class AffairsController extends Controller
                     $failedCount++;
                 }
 
-                $totalScoresSum += $totalScore;
-                $totalCoursesCount++;
+                $totalWeightedScores += $weightedScore;
+                $totalWeightsSum += $courseWeight;
             } else {
                 $notAttendedCount++;
             }
 
             $academicCardData[] = [
-                'course_id'   => $course->course_id,
-                'title'       => $course->title,
-                'code'        => $course->code ?? '',
-                'year'        => $course->year,
-                'semester'    => $course->semester ?? 1,
-                'quiz_score'  => $quizScore !== null ? (float)$quizScore : null,
-                'oral_score'  => $oralScore !== null ? (float)$oralScore : null,
-                'final_score' => $finalScore !== null ? (float)$finalScore : null,
-                'total_score' => $totalScore !== null ? (float)$totalScore : null,
-                'status'      => $status,
+                'course_id'      => $course->course_id,
+                'title'          => $course->title,
+                'code'           => $course->code ?? '',
+                'year'           => $course->year,
+                'semester'       => $course->semester ?? 1,
+                'weight'         => $courseWeight,
+                'quiz_score'     => $quizScore !== null ? (float)$quizScore : null,
+                'oral_score'     => $oralScore !== null ? (float)$oralScore : null,
+                'final_score'    => $finalScore !== null ? (float)$finalScore : null,
+                'total_score'    => $totalScore !== null ? (float)$totalScore : null,
+                'weighted_score' => $weightedScore !== null ? (float)$weightedScore : null,
+                'status'         => $status,
             ];
         }
 
-        $average = $totalCoursesCount > 0 ? round($totalScoresSum / $totalCoursesCount, 2) : 0;
+        $average = $totalWeightsSum > 0 ? round($totalWeightedScores / $totalWeightsSum, 2) : 0;
         $programName = DB::table('programs')->where('id', $student->program_id)->value('name') ?? $student->department ?? 'عام';
 
         return response()->json([
@@ -2421,6 +2426,231 @@ class AffairsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'تم حفظ رأي الشؤون بنجاح وتحويل الطلب إلى رئيس القسم.'
+        ]);
+    }
+
+    // ── Parent-Student Linking Management for Affairs ─────────────
+
+    public function listUnlinkedStudents(Request $request)
+    {
+        $linkedStudentUserIds = DB::table('parent_students')->pluck('student_id')->toArray();
+
+        $unlinked = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->whereNotIn('users.user_id', $linkedStudentUserIds)
+            ->whereNotIn('students.student_id', $linkedStudentUserIds)
+            ->select('students.student_id', 'students.student_code', 'users.user_id', 'users.full_name', 'users.phone', 'users.email', 'users.department', 'students.level')
+            ->orderBy('users.full_name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'count'   => $unlinked->count(),
+            'data'    => $unlinked
+        ]);
+    }
+
+    public function listParentsWithStudents(Request $request)
+    {
+        $parents = User::where('role_id', 4)
+            ->get()
+            ->map(function ($p) {
+                $linkedStudents = DB::table('parent_students')
+                    ->where('parent_students.parent_id', $p->user_id)
+                    ->join('users as st_users', function($j) {
+                        $j->on('parent_students.student_id', '=', 'st_users.user_id');
+                    })
+                    ->leftJoin('students', 'st_users.user_id', '=', 'students.user_id')
+                    ->select('st_users.user_id', 'st_users.full_name', 'st_users.phone', 'students.student_code', 'parent_students.relationship')
+                    ->get();
+
+                return [
+                    'parent_user_id' => $p->user_id,
+                    'full_name'      => $p->full_name,
+                    'phone'          => $p->phone,
+                    'email'          => $p->email,
+                    'username'       => $p->username,
+                    'children_count' => $linkedStudents->count(),
+                    'children'       => $linkedStudents,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $parents
+        ]);
+    }
+
+    public function linkStudentToParent(Request $request)
+    {
+        $v = Validator::make($request->all(), [
+            'student_id'   => 'required',
+            'parent_id'    => 'required',
+            'relationship' => 'nullable|string|max:50',
+        ]);
+
+        if ($v->fails()) {
+            return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
+        }
+
+        $studentUser = User::where('user_id', $request->student_id)
+            ->orWhere('university_id', $request->student_id)
+            ->orWhere('username', $request->student_id)
+            ->first();
+
+        if (!$studentUser) {
+            $studentRow = DB::table('students')->where('student_id', $request->student_id)->orWhere('student_code', $request->student_id)->first();
+            if ($studentRow) {
+                $studentUser = User::find($studentRow->user_id);
+            }
+        }
+
+        if (!$studentUser) {
+            return response()->json(['success' => false, 'message' => 'الطالب المحدد غير موجود بالنظام'], 404);
+        }
+
+        $parentUser = User::where('user_id', $request->parent_id)->where('role_id', 4)->first();
+        if (!$parentUser) {
+            $parentRow = DB::table('parents')->where('parent_id', $request->parent_id)->first();
+            if ($parentRow) {
+                $parentUser = User::find($parentRow->user_id);
+            }
+        }
+
+        if (!$parentUser) {
+            return response()->json(['success' => false, 'message' => 'حساب ولي الأمر المحدد غير موجود'], 404);
+        }
+
+        $parentId = DB::table('parents')->where('user_id', $parentUser->user_id)->value('parent_id');
+        if (!$parentId) {
+            $parentId = DB::table('parents')->insertGetId([
+                'user_id'    => $parentUser->user_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        DB::table('parent_students')->updateOrInsert(
+            [
+                'parent_id'  => $parentUser->user_id,
+                'student_id' => $studentUser->user_id,
+            ],
+            [
+                'relationship' => $request->relationship ?? 'father',
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]
+        );
+
+        \App\Models\UserActivity::log('ربط طالب بولي أمر', "قام موظف الشؤون بربط الطالب: {$studentUser->full_name} بولي الأمر: {$parentUser->full_name}");
+
+        return response()->json([
+            'success' => true,
+            'message' => "تم ربط الطالب ({$studentUser->full_name}) بولي الأمر ({$parentUser->full_name}) بنجاح."
+        ]);
+    }
+
+    public function unlinkStudentFromParent(Request $request)
+    {
+        $v = Validator::make($request->all(), [
+            'student_id' => 'required',
+            'parent_id'  => 'required',
+        ]);
+
+        if ($v->fails()) {
+            return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
+        }
+
+        DB::table('parent_students')
+            ->where(function($q) use ($request) {
+                $q->where('student_id', $request->student_id)
+                  ->where('parent_id', $request->parent_id);
+            })
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إلغاء ربط الطالب بولي الأمر بنجاح.'
+        ]);
+    }
+
+    public function createParentAndLink(Request $request)
+    {
+        $v = Validator::make($request->all(), [
+            'student_id'   => 'required',
+            'full_name'    => 'required|string|max:255',
+            'phone'        => 'required|string|max:20',
+            'email'        => 'nullable|email|unique:users,email',
+            'password'     => 'nullable|string|min:6',
+            'relationship' => 'nullable|string|max:50',
+        ]);
+
+        if ($v->fails()) {
+            return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
+        }
+
+        $studentUser = User::where('user_id', $request->student_id)
+            ->orWhere('university_id', $request->student_id)
+            ->orWhere('username', $request->student_id)
+            ->first();
+
+        if (!$studentUser) {
+            $studentRow = DB::table('students')->where('student_id', $request->student_id)->orWhere('student_code', $request->student_id)->first();
+            if ($studentRow) {
+                $studentUser = User::find($studentRow->user_id);
+            }
+        }
+
+        if (!$studentUser) {
+            return response()->json(['success' => false, 'message' => 'الطالب المحدد غير موجود بالنظام'], 404);
+        }
+
+        $baseUsername = 'p_' . ($studentUser->university_id ?? $studentUser->username ?? rand(1000, 9999));
+        $username = $baseUsername;
+        $counter = 1;
+        while (User::where('username', $username)->exists()) {
+            $username = $baseUsername . '_' . $counter++;
+        }
+
+        $email = $request->email ?: ($username . '@edu-bridge.com');
+        $password = $request->password ?: '12345678';
+
+        $parentUser = User::create([
+            'full_name' => $request->full_name,
+            'phone'     => $request->phone,
+            'email'     => $email,
+            'username'  => $username,
+            'password'  => Hash::make($password),
+            'role_id'   => 4,
+            'status'    => 'active',
+        ]);
+
+        DB::table('parents')->insert([
+            'user_id'    => $parentUser->user_id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('parent_students')->insert([
+            'parent_id'    => $parentUser->user_id,
+            'student_id'   => $studentUser->user_id,
+            'relationship' => $request->relationship ?? 'father',
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        \App\Models\UserActivity::log('إنشاء وربط ولي أمر', "قام موظف الشؤون بإنشاء حساب ولي الأمر {$parentUser->full_name} وربطه بالطالب {$studentUser->full_name}");
+
+        return response()->json([
+            'success' => true,
+            'message' => "تم إنشاء حساب ولي الأمر ({$parentUser->full_name}) وربطه بالطالب بنجاح.",
+            'data'    => [
+                'parent_id' => $parentUser->user_id,
+                'username'  => $parentUser->username,
+                'phone'     => $parentUser->phone,
+                'email'     => $parentUser->email,
+                'password'  => $password,
+            ]
         ]);
     }
 }

@@ -53,16 +53,16 @@ class DatabaseSeeder extends Seeder
        }
 
        // 3. حساب طالب تجريبي
-       $studentUser = User::where('university_id', '2026100')
-           ->orWhere('username', '2026100')
+       $studentUser = User::where('university_id', '2026099')
+           ->orWhere('username', '2026099')
            ->orWhere('email', 'student@test.com')
            ->first();
 
        if (!$studentUser) {
            $studentUser = User::create([
                'email' => 'student@test.com',
-               'university_id' => '2026100',
-               'username' => '2026100',
+               'university_id' => '2026099',
+               'username' => '2026099',
                'full_name' => 'عمر الخالد',
                'password' => Hash::make('12345678'),
                'role_id' => 3,
@@ -75,18 +75,18 @@ class DatabaseSeeder extends Seeder
            ]);
        } else {
            $studentUser->update([
-               'username' => '2026100',
-               'university_id' => '2026100',
+               'username' => '2026099',
+               'university_id' => '2026099',
                'password' => Hash::make('12345678'),
                'role_id' => 3,
            ]);
        }
 
        // إدخال ملف الطالب في جدول students إذا لم يكن موجوداً
-       if (!\Illuminate\Support\Facades\DB::table('students')->where('student_code', '2026100')->exists()) {
+       if (!\Illuminate\Support\Facades\DB::table('students')->where('student_code', '2026099')->exists()) {
            \Illuminate\Support\Facades\DB::table('students')->insert([
                'user_id' => $studentUser->user_id,
-               'student_code' => '2026100',
+               'student_code' => '2026099',
                'level' => 'السنة الخامسة',
                'birth_date' => '2002-05-20',
                'created_at' => now(),
@@ -185,8 +185,10 @@ class DatabaseSeeder extends Seeder
             ParentSeeder::class,
             NotificationSeeder::class,
         ]);
-       $this->call([
-           AcademicSeeder::class,
+        $this->call([
+            AcademicSeeder::class,
+            EnrollAllStudentsSeeder::class,
+            EnsureAllStudentsHaveParentsSeeder::class,
         ]);
          
     }

@@ -928,7 +928,8 @@ class HODWebController extends Controller
         $allCourses = DB::table('courses')
             ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
             ->join('programs', 'course_program.program_id', '=', 'programs.id')
-            ->select('courses.course_id', 'courses.title', 'programs.name as branch_name', 'courses.year', 'courses.semester_id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
+            ->select('courses.course_id', 'courses.title', 'programs.name as branch_name', 'courses.year', 'courses.semester_id', 'courses.weight', 'courses.hours')
             ->orderBy('courses.title')
             ->get();
 
@@ -939,6 +940,7 @@ class HODWebController extends Controller
             ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
             ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
             ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
             ->select(
                 'teachers.teacher_id', 
                 'users.full_name', 
@@ -954,6 +956,25 @@ class HODWebController extends Controller
         $teachers = $allTeachers;
 
         return view('hod.organization', compact('schedules', 'exams', 'courses', 'teachers', 'allCourses', 'allTeachers'));
+    }
+
+    /**
+     * Update course weight (التثقيلات)
+     */
+    public function updateCourseWeight(Request $request, $id)
+    {
+        $request->validate([
+            'weight' => 'required|numeric|min:1',
+        ]);
+
+        DB::table('courses')
+            ->where('course_id', $id)
+            ->update([
+                'weight' => $request->weight,
+                'updated_at' => now(),
+            ]);
+
+        return redirect()->back()->with('success', 'تم تحديث تثقيل المادة بنجاح');
     }
 
     /**

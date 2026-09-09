@@ -561,6 +561,13 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs,admin'])->gr
     Route::get('/student-service-requests',               [AffairsController::class, 'listStudentRequests']);
     Route::post('/student-service-requests/{id}/process', [AffairsController::class, 'processStudentRequest']);
 
+    // Parent-Student Management for Affairs
+    Route::get('/parents-students/unlinked',             [AffairsController::class, 'listUnlinkedStudents']);
+    Route::get('/parents-students/parents',              [AffairsController::class, 'listParentsWithStudents']);
+    Route::post('/parents-students/link',                [AffairsController::class, 'linkStudentToParent']);
+    Route::post('/parents-students/unlink',              [AffairsController::class, 'unlinkStudentFromParent']);
+    Route::post('/parents-students/create-parent',       [AffairsController::class, 'createParentAndLink']);
+
     // Broadcasting channel authorization for Sanctum
 
     Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {

@@ -150,6 +150,53 @@ class AffairsWebController extends Controller
         ));
     }
 
+    // ─────────────────────────── تثقيلات المواد (Course Weights) ───────────────────────────
+    public function courseWeights()
+    {
+        // 1. جلب الأقسام
+        $departments = DB::table('departments')->select('department_id', 'name')->get();
+
+        // 2. جلب الدورات (Programs)
+        $programs = DB::table('programs')->select('id', 'name', 'department_id')->get();
+
+        // 3. جلب المواد (Courses) مع ربطها بالدورات
+        $courses = DB::table('courses')
+            ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->select('courses.course_id', 'courses.title', 'courses.weight', 'course_program.program_id')
+            ->get();
+
+        // 4. جلب الطلاب وعلاماتهم بناءً على التسجيل (Enrollments)
+        // نستخدم COALESCE لضمان أن القيمة 0 في حال عدم وجود علامات
+        $courseStudents = DB::table('enrollments')
+            ->join('users', 'enrollments.student_id', '=', 'users.user_id')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->leftJoin('grade_events', 'courses.course_id', '=', 'grade_events.course_id')
+            ->leftJoin('grade_entries', function($join) {
+                $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
+                     ->on('enrollments.student_id', '=', 'grade_entries.student_id');
+            })
+            ->where('enrollments.status', 'active')
+            ->select(
+                'enrollments.course_id',
+                'enrollments.student_id',
+                'users.full_name as student_name',
+                'courses.weight',
+                DB::raw('COALESCE(SUM(grade_entries.score), 0) as final_grade')
+            )
+            ->groupBy('enrollments.course_id', 'enrollments.student_id', 'users.full_name', 'courses.weight')
+            ->get();
+
+        // تجهيز مصفوفات متداخلة لتسهيل عرضها في الـ JavaScript
+        $data = [
+            'departments' => $departments,
+            'programs'    => $programs,
+            'courses'     => $courses,
+            'students'    => $courseStudents,
+        ];
+
+        return view('affairs.course_weights', compact('data'));
+    }
+
     public function storeSemesterWeb(Request $request)
     {
         $request->validate([
@@ -277,6 +324,13 @@ class AffairsWebController extends Controller
 
         $secondYearCount = Student::whereIn('level', ['السنة الثانية', 'ثانية', '2'])->count();
         $totalStudents = Student::count();
+        $courses = DB::table('courses')
+            ->leftJoin('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->leftJoin('programs', 'course_program.program_id', '=', 'programs.id')
+            ->select('courses.*', 'programs.name as program_name')
+            ->orderBy('courses.year')
+            ->orderBy('courses.title')
+            ->get();
 
         return view('affairs.academic_management', compact(
             'activeSemester',
@@ -284,7 +338,8 @@ class AffairsWebController extends Controller
             'students',
             'firstYearCount',
             'secondYearCount',
-            'totalStudents'
+            'totalStudents',
+            'courses'
         ));
     }
 
