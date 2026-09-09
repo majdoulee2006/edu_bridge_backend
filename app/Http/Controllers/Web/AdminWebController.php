@@ -387,23 +387,36 @@ class AdminWebController extends Controller
             'title'           => 'required|string|max:255',
             'content'         => 'required|string|max:5000',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'images.*'        => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'link_url'        => 'nullable|url|max:500',
             'target_audience' => 'nullable|in:all,students,teachers,department',
             'department_id'   => 'nullable|exists:departments,department_id',
         ]);
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('announcements', 'public');
+        $imagesList = [];
+        if ($request->hasFile('images')) {
+            $files = is_array($request->file('images')) ? $request->file('images') : [$request->file('images')];
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    $imagesList[] = $file->store('announcements', 'public');
+                }
+            }
         }
+        if (empty($imagesList) && $request->hasFile('image')) {
+            $imagesList[] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $primaryImage = !empty($imagesList) ? $imagesList[0] : null;
 
         $announcement = \App\Models\Announcement::create([
             'user_id'         => Auth::id(),
             'title'           => $request->title,
             'content'         => $request->content,
-            'image'           => $imagePath,
+            'image'           => $primaryImage,
+            'images'          => $imagesList,
             'link_url'        => $request->input('link_url'),
             'target_audience' => $request->input('target_audience', 'all'),
+            'department_id'   => $request->input('target_audience') === 'department' ? $request->input('department_id') : null,
             'type'            => 'general',
         ]);
 

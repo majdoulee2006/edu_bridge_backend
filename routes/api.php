@@ -32,7 +32,7 @@ Route::get('/file/{path}', function (string $path) {
 })->where('path', '.*');
 
 // روابط عامة
-Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('api.login');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
@@ -128,6 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/messages/{otherUserId}/search', [ChatController::class, 'searchMessages']);
     Route::delete('/messages/{messageId}', [ChatController::class, 'deleteMessage']);
     Route::put('/messages/{messageId}/edit', [ChatController::class, 'editMessage']);
+    Route::get('/messages/{id}/download', [ChatController::class, 'downloadAttachment']);
     Route::post('/messages/forward', [ChatController::class, 'forwardMessage']);
     Route::post('/groups/{groupId}/messages', [ChatController::class, 'sendGroupMessage']);
     Route::post('/groups', [ChatController::class, 'createGroup']);

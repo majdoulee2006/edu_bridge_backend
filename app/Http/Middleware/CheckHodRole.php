@@ -13,7 +13,7 @@ class CheckHodRole
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
-            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول كرئيس قسم أولاً.']);
+            return redirect()->route('login')->withErrors(['login' => 'يرجى تسجيل الدخول كرئيس قسم أولاً.']);
         }
 
         $user = Auth::user();

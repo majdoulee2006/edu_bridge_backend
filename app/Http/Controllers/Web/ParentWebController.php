@@ -190,7 +190,22 @@ class ParentWebController extends Controller
 
         $overallAverage = count($averageGrades) > 0 ? round(array_sum($averageGrades) / count($averageGrades), 1) : 0;
 
+        $childrenDeptIds = [];
+        foreach ($children as $child) {
+            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . ($child->department ?? '') . '%')->value('department_id');
+            if ($deptId) {
+                $childrenDeptIds[] = $deptId;
+            }
+        }
+
         $announcements = DB::table('announcements')
+            ->where(function($q) use ($childrenDeptIds) {
+                $q->whereNull('department_id')
+                  ->orWhere('target_audience', 'all');
+                if (!empty($childrenDeptIds)) {
+                    $q->orWhereIn('department_id', array_unique($childrenDeptIds));
+                }
+            })
             ->orderByDesc('created_at')
             ->limit(5)
             ->get();
@@ -636,6 +651,22 @@ class ParentWebController extends Controller
                     ['type' => 'leave_request', 'related_id' => (string)$absenceId]
                 );
             }
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.',
+                'request' => [
+                    'request_id' => $absenceId,
+                    'id'         => $absenceId,
+                    'date'       => $request->date,
+                    'reason'     => $reasonText,
+                    'type'       => $request->type,
+                    'status'     => 'pending_hod',
+                    'created_at' => now()->format('Y-m-d H:i:s'),
+                ]
+            ]);
         }
 
         return back()->with('success', 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.');

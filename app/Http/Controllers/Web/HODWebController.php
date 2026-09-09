@@ -86,7 +86,22 @@ class HODWebController extends Controller
      */
     public function dashboard()
     {
+        $userId = auth()->id();
+        $head = DB::table('heads')->where('user_id', $userId)->first();
+        $deptId = $head ? $head->department_id : null;
+        if (!$deptId && auth()->user()->department) {
+            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . auth()->user()->department . '%')->value('department_id');
+        }
+
         $announcements = DB::table('announcements')
+            ->where(function($q) use ($userId, $deptId) {
+                $q->where('user_id', $userId)
+                  ->orWhereNull('department_id')
+                  ->orWhere('target_audience', 'all');
+                if ($deptId) {
+                    $q->orWhere('department_id', $deptId);
+                }
+            })
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
@@ -998,13 +1013,30 @@ class HODWebController extends Controller
             'type'             => 'required|in:general,course_specific',
             'course_id'        => 'nullable|exists:courses,course_id',
             'image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'images.*'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'link_url'         => 'nullable|url|max:500',
             'target_audience'  => 'nullable|in:all,students,teachers',
         ]);
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('announcements', 'public');
+        $imagesList = [];
+        if ($request->hasFile('images')) {
+            $files = is_array($request->file('images')) ? $request->file('images') : [$request->file('images')];
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    $imagesList[] = $file->store('announcements', 'public');
+                }
+            }
+        }
+        if (empty($imagesList) && $request->hasFile('image')) {
+            $imagesList[] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $primaryImage = !empty($imagesList) ? $imagesList[0] : null;
+
+        $head = DB::table('heads')->where('user_id', auth()->id())->first();
+        $deptId = $head ? $head->department_id : null;
+        if (!$deptId && auth()->user()->department) {
+            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . auth()->user()->department . '%')->value('department_id');
         }
 
         $announcement = \App\Models\Announcement::create([
@@ -1014,8 +1046,10 @@ class HODWebController extends Controller
             'type'             => $request->type,
             'course_id'        => $request->type === 'course_specific' ? $request->course_id : null,
             'target_audience'  => $request->input('target_audience', 'all'),
+            'department_id'    => $deptId,
             'link_url'         => $request->input('link_url'),
-            'image'            => $imagePath,
+            'image'            => $primaryImage,
+            'images'           => $imagesList,
         ]);
 
         // ── إشعار FCM للطلاب والمعلمين ──────────────────────────────

@@ -64,100 +64,92 @@
 {{-- ===== News Cards ===== --}}
 @forelse($announcements ?? [] as $post)
     @php
-        $imgUrl   = (isset($post->image) && $post->image) ? Storage::url($post->image) : null;
+        $imgsArr = [];
+        if (!empty($post->images)) {
+            $imgsArr = is_string($post->images) ? json_decode($post->images, true) : $post->images;
+        }
+        if (empty($imgsArr) && !empty($post->image)) {
+            $imgsArr = [$post->image];
+        }
+
+        $formattedImgs = [];
+        if (is_array($imgsArr)) {
+            foreach ($imgsArr as $img) {
+                if ($img) {
+                    $formattedImgs[] = str_starts_with($img, 'http') ? $img : asset('storage/' . ltrim($img, '/'));
+                }
+            }
+        }
+
+        $imgUrl = !empty($formattedImgs) ? $formattedImgs[0] : null;
+        $imgCount = count($formattedImgs);
         $isOwner  = isset($post->user_id) && $post->user_id == Auth::id();
         $postId   = $post->announcement_id ?? $post->id;
     @endphp
-    @if($loop->first)
-    {{-- الكارت الأول: نص يمين + صورة يسار كبيرة --}}
-    <div class="flex flex-row-reverse rounded-2xl overflow-hidden bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 group hover:shadow-md transition-shadow" style="min-height:260px;">
-        {{-- صورة يسار --}}
-        <div class="flex-shrink-0 relative bg-gradient-to-br from-slate-700 to-slate-900 overflow-hidden" style="width:42%;">
-            @if($imgUrl)
-                <a href="{{ $imgUrl }}" target="_blank" download title="تنزيل الصورة" class="block w-full h-full absolute inset-0">
-                    <img src="{{ $imgUrl }}" alt="{{ $post->title }}"
-                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"/>
-                    <div class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors">
-                        <span class="material-symbols-outlined text-white text-[40px] opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg">download</span>
+    {{-- كارت الإعلان --}}
+    <div class="rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 p-6 flex flex-col gap-4 group hover:shadow-md transition-shadow">
+        {{-- الهيدر: شارات وأزرار التحكّم --}}
+        <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold flex-shrink-0">
+                    <span class="material-symbols-outlined text-xl">campaign</span>
+                </div>
+                <div>
+                    <h4 class="text-base font-bold text-slate-900 dark:text-white leading-snug">{{ $post->title }}</h4>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-extrabold">
+                            {{ $loop->first ? 'إعلان هام' : 'إداري' }}
+                        </span>
+                        <span class="text-xs text-slate-400 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px]">schedule</span>
+                            {{ \Carbon\Carbon::parse($post->created_at)->diffForHumans() }}
+                        </span>
                     </div>
+                </div>
+            </div>
+
+            @if($isOwner)
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+                <a href="{{ route('admin.announcements.edit', $postId) }}"
+                   class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors">
+                    <span class="material-symbols-outlined text-[15px]">edit</span> تعديل
                 </a>
-            @else
-                <span class="material-symbols-outlined absolute inset-0 m-auto text-[80px] text-white/10">campaign</span>
+                <form action="{{ route('admin.announcements.delete', $postId) }}" method="POST"
+                      onsubmit="return confirm('هل تريد حذف هذا الإعلان؟')">
+                    @csrf
+                    <button type="submit"
+                            class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 transition-colors">
+                        <span class="material-symbols-outlined text-[15px]">delete</span> حذف
+                    </button>
+                </form>
+            </div>
             @endif
         </div>
-        {{-- نص يمين --}}
-        <div class="flex-1 p-6 flex flex-col justify-between">
-            <div>
-                <div class="flex items-start justify-between gap-2 mb-3">
-                    <span class="inline-flex items-center px-3 py-1 rounded-full bg-primary text-primary-content text-[11px] font-extrabold shadow-sm">إعلان هام</span>
-                    @if($isOwner)
-                    <div class="flex items-center gap-1.5 flex-shrink-0">
-                        <a href="{{ route('admin.announcements.edit', $postId) }}"
-                           class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors">
-                            <span class="material-symbols-outlined text-[14px]">edit</span> تعديل
-                        </a>
-                        <form action="{{ route('admin.announcements.delete', $postId) }}" method="POST"
-                              onsubmit="return confirm('هل تريد حذف هذا الإعلان؟')">
-                            @csrf
-                            <button type="submit"
-                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 transition-colors">
-                                <span class="material-symbols-outlined text-[14px]">delete</span> حذف
-                            </button>
-                        </form>
-                    </div>
-                    @endif
-                </div>
-                <h4 class="text-lg font-bold text-slate-900 dark:text-white leading-snug mb-3">{{ $post->title }}</h4>
-                <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-5">{{ $post->content }}</p>
+
+        {{-- المحتوى النصي --}}
+        @if(!empty($post->content))
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                {{ $post->content }}
+            </p>
+        @endif
+
+        {{-- شبكة الصور بعرض كامل وبدون أي اقتطاع قسري --}}
+        @if(!empty($formattedImgs))
+            <div class="w-full rounded-2xl overflow-hidden shadow-xs border border-slate-200/60 dark:border-slate-700/60" style="height: 320px;">
+                @include('partials.announcement_image_grid', ['images' => $formattedImgs, 'id' => $postId])
             </div>
-            <div class="flex items-center gap-1.5 mt-4">
-                <span class="material-symbols-outlined text-slate-400 text-[15px]">schedule</span>
-                <span class="text-xs text-slate-400">{{ \Carbon\Carbon::parse($post->created_at)->diffForHumans() }}</span>
-            </div>
-        </div>
-    </div>
-    @else
-    {{-- الكروت التالية: نص يمين + صورة يسار --}}
-    <div class="flex flex-row-reverse rounded-2xl overflow-hidden bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" style="min-height:140px;">
-        {{-- صورة يسار --}}
-        <div class="flex-shrink-0 relative bg-slate-100 dark:bg-slate-700/50 overflow-hidden" style="width:180px;">
-            @if($imgUrl)
-                <a href="{{ $imgUrl }}" target="_blank" download title="تنزيل" class="block absolute inset-0 group/img">
-                    <img src="{{ $imgUrl }}" alt="" class="w-full h-full object-cover"/>
-                    <div class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors">
-                        <span class="material-symbols-outlined text-white text-[30px] opacity-0 group-hover/img:opacity-100 transition-opacity">download</span>
-                    </div>
+        @endif
+
+        {{-- رابط خارجي إذا وجد --}}
+        @if(!empty($post->link_url))
+            <div class="pt-1">
+                <a href="{{ $post->link_url }}" target="_blank"
+                   class="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
+                    <span class="material-symbols-outlined text-sm">open_in_new</span> فتح الرابط المرفق
                 </a>
-            @else
-                <span class="material-symbols-outlined absolute inset-0 m-auto text-[40px] text-slate-400">article</span>
-            @endif
-        </div>
-        {{-- نص يمين --}}
-        <div class="flex-1 p-4 flex flex-col justify-center min-w-0">
-            <div class="flex items-center justify-between gap-2 mb-1.5">
-                <span class="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-bold rounded-md w-fit">إداري</span>
-                @if($isOwner)
-                <div class="flex gap-1.5 flex-shrink-0">
-                    <a href="{{ route('admin.announcements.edit', $postId) }}"
-                       class="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                        <span class="material-symbols-outlined text-[16px]">edit</span>
-                    </a>
-                    <form action="{{ route('admin.announcements.delete', $postId) }}" method="POST"
-                          onsubmit="return confirm('هل تريد حذف هذا الإعلان؟')">
-                        @csrf
-                        <button type="submit" class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                            <span class="material-symbols-outlined text-[16px]">delete</span>
-                        </button>
-                    </form>
-                </div>
-                @endif
             </div>
-            <h4 class="text-sm font-bold text-slate-900 dark:text-white leading-snug mb-1.5">{{ $post->title }}</h4>
-            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-1.5">{{ Str::limit($post->content, 80) }}</p>
-            <span class="text-[10px] text-slate-400">{{ \Carbon\Carbon::parse($post->created_at)->diffForHumans() }}</span>
-        </div>
+        @endif
     </div>
-    @endif
 @empty
     {{-- Fallback static cards when no data --}}
     <div class="relative rounded-2xl overflow-hidden bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 group hover:shadow-md transition-shadow">

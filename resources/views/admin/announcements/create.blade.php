@@ -66,31 +66,41 @@
 
             {{-- صف 3: صورة + رابط --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {{-- رفع صورة --}}
+                {{-- رفع صورة / صور --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">صورة مرفقة <span class="normal-case">(اختياري)</span></label>
+                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">صور مرفقة <span class="normal-case">(اختياري)</span></label>
+                    
+                    {{-- Hidden file input for form submit --}}
+                    <input type="file" name="images[]" id="finalImagesInput" multiple class="hidden">
+
                     <div id="upload-zone"
-                         class="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-center cursor-pointer hover:border-primary/50 transition-all bg-slate-50 dark:bg-slate-900/30 min-h-[130px] flex flex-col items-center justify-center"
-                         onclick="document.getElementById('imgInput').click()"
+                         class="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-center bg-slate-50 dark:bg-slate-900/30 min-h-[140px] flex flex-col items-center justify-center relative transition-all"
                          ondragover="event.preventDefault(); this.classList.add('border-primary')"
-                         ondragleave="this.classList.remove('border-primary')">
-                        <input type="file" name="image" id="imgInput" accept="image/*" class="hidden"
-                               data-crop="true"
-                               data-preview-img="preview-img"
-                               data-preview-wrap="img-preview"
-                               data-placeholder="upload-placeholder"
-                               data-preview-name="preview-name">
-                        <div id="upload-placeholder" class="flex flex-col items-center">
+                         ondragleave="this.classList.remove('border-primary')"
+                         ondrop="handleAdminDrop(event)">
+                        
+                        <input type="file" id="imgSelectorInput" accept="image/*" multiple class="hidden"
+                               onchange="handleAdminFilesSelected(this.files)">
+                        
+                        <div id="upload-placeholder" class="flex flex-col items-center cursor-pointer" onclick="document.getElementById('imgSelectorInput').click()">
                             <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">add_photo_alternate</span>
-                            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">اسحب أو اضغط للاختيار</p>
-                            <p class="text-xs text-slate-400 mt-1">JPG / PNG / WebP — حتى 5MB</p>
+                            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">اسحب الصور هنا أو اضغط لاختيار صورة/عدة صور</p>
+                            <p class="text-xs text-slate-400 mt-1">يمكنك قص وتعديل أو حذف أي صورة بعد اختيارها</p>
                         </div>
-                        <div id="img-preview" class="hidden w-full">
-                            <img id="preview-img" src="" alt="" class="max-h-36 mx-auto rounded-xl object-cover shadow-soft">
-                            <p id="preview-name" class="text-xs text-slate-400 mt-2 truncate"></p>
+
+                        <div id="img-preview-container" class="hidden w-full flex flex-col items-center gap-3">
+                            <div id="preview-grid" class="flex flex-wrap gap-3 justify-center w-full max-h-56 overflow-y-auto p-2"></div>
+                            
+                            <div class="flex items-center gap-3">
+                                <span id="preview-count" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800"></span>
+                                <button type="button" onclick="document.getElementById('imgSelectorInput').click()"
+                                        class="flex items-center gap-1 text-xs font-bold text-primary hover:underline">
+                                    <span class="material-symbols-outlined text-sm">add_circle</span> إضافة المزيد
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    @error('image')<p class="text-xs text-red-500 px-1 mt-1">{{ $message }}</p>@enderror
+                    @error('images')<p class="text-xs text-red-500 px-1 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- رابط خارجي --}}
@@ -128,17 +138,83 @@ function toggleDept() {
 }
 document.addEventListener('DOMContentLoaded', toggleDept);
 
-function previewImage(input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const reader = new FileReader();
-    reader.onload = e => {
-        document.getElementById('preview-img').src = e.target.result;
-        document.getElementById('preview-name').textContent = file.name;
-        document.getElementById('upload-placeholder').classList.add('hidden');
-        document.getElementById('img-preview').classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
+let adminImagesStore = [];
+
+function handleAdminFilesSelected(files) {
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        adminImagesStore.push({
+            file: file,
+            url: URL.createObjectURL(file)
+        });
+    });
+    syncAdminImagesUI();
+    document.getElementById('imgSelectorInput').value = '';
+}
+
+function handleAdminDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.remove('border-primary');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleAdminFilesSelected(e.dataTransfer.files);
+    }
+}
+
+function syncAdminImagesUI() {
+    const container = document.getElementById('img-preview-container');
+    const placeholder = document.getElementById('upload-placeholder');
+    const grid = document.getElementById('preview-grid');
+    const countSpan = document.getElementById('preview-count');
+
+    grid.innerHTML = '';
+    if (adminImagesStore.length > 0) {
+        placeholder.classList.add('hidden');
+        container.classList.remove('hidden');
+        countSpan.textContent = 'تم اختيار ' + adminImagesStore.length + ' صور';
+
+        adminImagesStore.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 group shadow-soft flex-shrink-0 bg-slate-800';
+            card.innerHTML = `
+                <img src="${item.url}" class="w-full h-full object-cover"/>
+                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                    <button type="button" onclick="cropAdminImageIndex(${index})" title="قص وتعديل الصورة"
+                            class="w-8 h-8 rounded-xl bg-yellow-400 text-black flex items-center justify-center hover:scale-110 transition-transform shadow">
+                        <span class="material-symbols-outlined text-[18px] font-bold">crop</span>
+                    </button>
+                    <button type="button" onclick="removeAdminImageIndex(${index})" title="حذف"
+                            class="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center hover:scale-110 transition-transform shadow">
+                        <span class="material-symbols-outlined text-[18px] font-bold">delete</span>
+                    </button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    } else {
+        placeholder.classList.remove('hidden');
+        container.classList.add('hidden');
+    }
+
+    const dt = new DataTransfer();
+    adminImagesStore.forEach(item => dt.items.add(item.file));
+    document.getElementById('finalImagesInput').files = dt.files;
+}
+
+function cropAdminImageIndex(index) {
+    if (!adminImagesStore[index]) return;
+    window.triggerCropper(adminImagesStore[index].file, function(croppedFile) {
+        adminImagesStore[index] = {
+            file: croppedFile,
+            url: URL.createObjectURL(croppedFile)
+        };
+        syncAdminImagesUI();
+    });
+}
+
+function removeAdminImageIndex(index) {
+    adminImagesStore.splice(index, 1);
+    syncAdminImagesUI();
 }
 </script>
 @include('partials.image_cropper')

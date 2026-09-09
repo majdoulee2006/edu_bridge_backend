@@ -125,7 +125,23 @@
 
     @forelse($announcements as $ann)
         @php
-            $imgUrl  = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
+            $imgsArr = [];
+            if (!empty($ann->images)) {
+                $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
+            }
+            if (empty($imgsArr) && !empty($ann->image)) {
+                $imgsArr = [$ann->image];
+            }
+
+            $formattedImgs = [];
+            if (is_array($imgsArr)) {
+                foreach ($imgsArr as $img) {
+                    if ($img) {
+                        $formattedImgs[] = str_starts_with($img, 'http') ? $img : asset('storage/' . ltrim($img, '/'));
+                    }
+                }
+            }
+
             $isOwner = isset($ann->user_id) && $ann->user_id == auth()->id();
             $annId   = $ann->announcement_id ?? $ann->id;
         @endphp
@@ -134,8 +150,8 @@
         {{-- Hero card --}}
         <div class="ann-hero">
             <div class="ann-hero-img">
-                @if($imgUrl)
-                    <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
+                @if(!empty($formattedImgs))
+                    @include('partials.announcement_image_grid', ['images' => $formattedImgs, 'id' => $annId])
                 @else
                     <div class="ann-no-img" style="width:100%; height:100%;">
                         <i class="fa-solid fa-bullhorn" style="font-size:3.5rem; color:rgba(255,255,255,0.07);"></i>
@@ -170,8 +186,8 @@
         {{-- Row card --}}
         <div class="ann-row">
             <div class="ann-row-thumb">
-                @if($imgUrl)
-                    <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
+                @if(!empty($formattedImgs))
+                    @include('partials.announcement_image_grid', ['images' => $formattedImgs, 'id' => $annId])
                 @else
                     <div class="ann-no-img" style="width:100%; height:100%; position:absolute; inset:0;">
                         <i class="fa-solid fa-bullhorn" style="font-size:1.75rem; color:rgba(255,255,255,0.12);"></i>

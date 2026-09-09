@@ -385,11 +385,30 @@
 
 <div class="announcements-list">
     @forelse($announcements as $ann)
+        @php
+            $firstImg = $ann->image ?? null;
+            if (!$firstImg && !empty($ann->images)) {
+                $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
+                if (is_array($imgsArr) && !empty($imgsArr)) {
+                    $firstImg = $imgsArr[0];
+                }
+            }
+            $imgUrl = null;
+            if ($firstImg) {
+                $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
+            }
+        @endphp
         <div class="announcement-item">
-            <div class="announcement-icon">
-                <i class="fa-solid fa-bell"></i>
-            </div>
-            <div class="announcement-details">
+            @if($imgUrl)
+                <div class="announcement-icon" style="width:70px; height:70px; padding:0; overflow:hidden; border-radius:0.75rem;">
+                    <img src="{{ $imgUrl }}" style="width:100%; height:100%; object-fit:cover;">
+                </div>
+            @else
+                <div class="announcement-icon">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+            @endif
+            <div class="announcement-details flex-1">
                 <h4>{{ $ann->title }}</h4>
                 <p>{{ $ann->content ?? $ann->body }}</p>
                 <div class="announcement-date">

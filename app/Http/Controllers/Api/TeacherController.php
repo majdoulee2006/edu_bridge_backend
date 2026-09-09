@@ -56,15 +56,22 @@ class TeacherController extends Controller
             ->get();
 
         // آخر 5 إع�™ا�™ ات
+        $teacherDeptId = \DB::table('departments')->where('name', 'LIKE', '%' . ($request->user()->department ?? '') . '%')->value('department_id');
+        $courseIds     = $courses->pluck('course_id')->toArray();
+
         $recentAnnouncements = Announcement::with('user')
-            ->where(function($q) use ($request) {
+            ->where(function($q) use ($request, $teacherDeptId, $courseIds) {
                 $q->where('user_id', $request->user()->user_id)
-                  ->orWhereNull('target_audience')
-                  ->orWhereIn('target_audience', ['all', 'teachers']);
-            })
-            ->where(function($q) {
-                $q->whereNull('target_role')
-                  ->orWhere('target_role', 'teacher');
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('department_id')
+                          ->orWhere('target_audience', 'all');
+                  });
+                if ($teacherDeptId) {
+                    $q->orWhere('department_id', $teacherDeptId);
+                }
+                if (!empty($courseIds)) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->latest()
             ->limit(5)
@@ -1258,18 +1265,23 @@ class TeacherController extends Controller
     public function getAnnouncements(Request $request)
     {
         // إع�ا� ات ا��&ع��& � �س�! + إع�ا� ات رئ�`س ا��س�& ا��&��ج�!ة ���&ع��&�`�  أ�� ��ج�&�`ع
-        $headUserIds = \DB::table('users')->where('role_id', 5)->pluck('user_id');
+        $headUserIds   = \DB::table('users')->where('role_id', 5)->pluck('user_id');
+        $teacher       = $request->user()->teacher;
+        $courseIds     = $teacher ? $teacher->courses()->pluck('courses.course_id')->toArray() : [];
+        $teacherDeptId = \DB::table('departments')->where('name', 'LIKE', '%' . ($request->user()->department ?? '') . '%')->value('department_id');
 
-        $announcements = Announcement::where(function($q) use ($request) {
+        $announcements = Announcement::where(function($q) use ($request, $teacherDeptId, $courseIds) {
                 $q->where('user_id', $request->user()->user_id)
-                  ->orWhere(function($q2) {
-                      $q2->whereNull('target_audience')
-                         ->orWhereIn('target_audience', ['all', 'teachers']);
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('department_id')
+                          ->orWhere('target_audience', 'all');
                   });
-            })
-            ->where(function($q) {
-                $q->whereNull('target_role')
-                  ->orWhere('target_role', 'teacher');
+                if ($teacherDeptId) {
+                    $q->orWhere('department_id', $teacherDeptId);
+                }
+                if (!empty($courseIds)) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->with(['department', 'course', 'user'])
             ->latest()

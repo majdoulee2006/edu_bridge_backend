@@ -38,8 +38,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
         ]);
 
-        // منع التحويل لـ api/login عند استخدام auth middleware
-        $middleware->redirectGuestsTo('/affairs/login');
+        // منع التحويل لـ login عند استخدام auth middleware في طلبات الـ API أو عند توقع JSON
+        $middleware->redirectGuestsTo(fn ($request) => 
+            ($request->expectsJson() || $request->is('api/*')) ? null : route('login')
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->renderable(function (\Illuminate\Session\TokenMismatchException $e, $request) {

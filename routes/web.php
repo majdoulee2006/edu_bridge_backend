@@ -8,6 +8,61 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Web\UnifiedAuthController;
 use App\Http\Controllers\Web\TeacherWebController;
 
+// Public Storage & Attachment Download Routes for Mobile App
+Route::get('/public-download/message/{id}', function ($id) {
+    $message = \App\Models\Message::find($id);
+    if (!$message || !$message->attachment) {
+        return response('الملف المرفق غير موجود في هذه الرسالة', 404);
+    }
+    $rawAttachment = $message->attachment;
+    $cleanPath = ltrim(str_replace('/storage/', '', str_replace(asset('storage/'), '', $rawAttachment)), '/');
+    $filePath = storage_path('app/public/' . $cleanPath);
+
+    if (file_exists($filePath)) {
+        return response()->download($filePath);
+    }
+
+    foreach (['.m4a', '.mp3', '.wav', '.pdf', '.png', '.jpg', '.jpeg', '.docx', '.xlsx'] as $ext) {
+        if (file_exists($filePath . $ext)) {
+            return response()->download($filePath . $ext);
+        }
+    }
+
+    $fileName = basename($cleanPath);
+    $allFiles = \Illuminate\Support\Facades\Storage::disk('public')->allFiles();
+    foreach ($allFiles as $f) {
+        if (basename($f) === $fileName || pathinfo($f, PATHINFO_FILENAME) === $fileName) {
+            return response()->download(storage_path('app/public/' . $f));
+        }
+    }
+    return response('الملف غير موجود على السيرفر', 404);
+});
+
+Route::get('/storage/{path}', function ($path) {
+    $cleanPath = ltrim(str_replace('/storage/', '', $path), '/');
+    $filePath = storage_path('app/public/' . $cleanPath);
+    
+    if (file_exists($filePath)) {
+        return response()->file($filePath, ['Content-Type' => mime_content_type($filePath) ?: 'application/octet-stream']);
+    }
+    
+    foreach (['.m4a', '.mp3', '.pdf', '.png', '.jpg', '.jpeg', '.docx', '.xlsx'] as $ext) {
+        if (file_exists($filePath . $ext)) {
+            return response()->file($filePath . $ext);
+        }
+    }
+
+    $fileName = basename($cleanPath);
+    $allFiles = \Illuminate\Support\Facades\Storage::disk('public')->allFiles();
+    foreach ($allFiles as $f) {
+        if (basename($f) === $fileName || pathinfo($f, PATHINFO_FILENAME) === $fileName) {
+            return response()->file(storage_path('app/public/' . $f));
+        }
+    }
+
+    return response('الملف غير موجود على السيرفر', 404);
+})->where('path', '.*');
+
 // ===== Dedicated & Unified Login Routes =====
 Route::get('/login', [UnifiedAuthController::class, 'showLoginForm'])->name('login');
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
@@ -16,9 +71,13 @@ Route::get('/hod/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthContr
 Route::get('/teacher/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'teacher'))->name('teacher.login');
 Route::get('/student/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'student'))->name('student.login');
 Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
+Route::get('/parents/login', fn() => redirect()->route('parent.login'));
+Route::get('/Parents/login', fn() => redirect()->route('parent.login'));
+Route::get('/parents', fn() => redirect()->route('parent.login'));
+Route::get('/Parents', fn() => redirect()->route('parent.login'));
 
-Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit')->name('login.post');
-Route::post('/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
+Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit');
+Route::match(['get', 'post'], '/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
 // ===== مسارات إعادة تعيين كلمة السر عبر تلغرام OTP =====
 Route::post('/password/forgot/send-otp', [UnifiedAuthController::class, 'sendResetOtp'])->name('password.forgot.send_otp');
@@ -27,7 +86,7 @@ Route::post('/password/forgot/reset', [UnifiedAuthController::class, 'resetPassw
 
 // Default Redirect
 Route::get('/', function () {
-    return redirect('/login');
+    return redirect()->route('login');
 });
 
 // ===== مسارات ماسح تيليغرام الذكي (Telegram Web App Scanner) =====
@@ -40,7 +99,7 @@ Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('t
 
 // الصفحات المحمية بـ Middleware
 Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::class])->group(function () {
-    Route::get('/', fn() => redirect('/teacher/dashboard'));
+    Route::get('/', fn() => redirect()->route('teacher.dashboard'));
     Route::get('/dashboard', [TeacherWebController::class, 'dashboard'])->name('teacher.dashboard');
 
     // الجداول
@@ -139,7 +198,7 @@ Route::post('/hod/logout', [HODWebController::class, 'logout'])->name('hod.logou
 
 // مسارات واجهات رئيس القسم (Frontend Only) محمية
 Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->group(function () {
-    Route::get('/', function() { return redirect('/hod/dashboard'); });
+    Route::get('/', function() { return redirect()->route('hod.dashboard'); });
     Route::get('/dashboard', [HODWebController::class, 'dashboard'])->name('hod.dashboard');
     Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
@@ -210,7 +269,7 @@ Route::post('/affairs/login', [UnifiedAuthController::class, 'login'])->name('af
 Route::post('/affairs/logout', [AffairsWebController::class, 'logout'])->name('affairs.logout');
 
 Route::prefix('affairs')->middleware(['affairs'])->group(function () {
-    Route::get('/', fn() => redirect('/affairs/dashboard'));
+    Route::get('/', fn() => redirect()->route('affairs.dashboard'));
     Route::get('/dashboard', [AffairsWebController::class, 'dashboard'])->name('affairs.dashboard');
     Route::get('/calendar', [AffairsWebController::class, 'calendar'])->name('affairs.calendar');
     Route::post('/calendar/events', [AffairsWebController::class, 'storeCalendarEvent'])->name('affairs.calendar.store');
@@ -312,7 +371,7 @@ Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admi
 Route::post('/admin/logout', [AdminWebController::class, 'logout'])->name('admin.logout');
 
 Route::prefix('admin')->middleware(['admin'])->group(function () {
-    Route::get('/', fn() => redirect('/admin/dashboard'));
+    Route::get('/', fn() => redirect()->route('admin.dashboard'));
     Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/profile', [AdminWebController::class, 'profile'])->name('admin.profile');
     Route::post('/profile', [AdminWebController::class, 'updateProfile'])->name('admin.profile.update');
@@ -420,7 +479,7 @@ Route::post('/student/login', [UnifiedAuthController::class, 'login'])->name('st
 Route::post('/student/logout', [StudentWebController::class, 'logout'])->name('student.logout');
 
 Route::prefix('student')->middleware(['student'])->group(function () {
-    Route::get('/', fn() => redirect('/student/dashboard'));
+    Route::get('/', fn() => redirect()->route('student.dashboard'));
     Route::get('/dashboard', [StudentWebController::class, 'dashboard'])->name('student.dashboard');
 
     // الجدول
@@ -491,11 +550,11 @@ use App\Http\Controllers\Web\ParentWebController;
 // تسجيل الدخول
 Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
 Route::post('/parent/login', [UnifiedAuthController::class, 'login'])->name('parent.login.post');
-Route::post('/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
+Route::match(['get', 'post'], '/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
 
 // العمليات المحمية
 Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
-    Route::get('/', fn() => redirect('/parent/dashboard'));
+    Route::get('/', fn() => redirect()->route('parent.dashboard'));
     Route::get('/dashboard', [ParentWebController::class, 'dashboard'])->name('parent.dashboard');
     Route::post('/select-child', [ParentWebController::class, 'selectChild'])->name('parent.select_child');
     

@@ -557,6 +557,8 @@ class AuthController extends Controller
         $user = $request->user();
         if ($user) {
             \App\Models\UserActivity::log('تسجيل خروج (تطبيق)', 'قام المستخدم بتسجيل الخروج من التطبيق', $user);
+            // مسح توكن الإشعارات لضمان عدم وصول أي إشعار بعد تسجيل الخروج
+            $user->update(['device_token' => null]);
             if ($user->currentAccessToken()) {
                 $user->currentAccessToken()->delete();
             }

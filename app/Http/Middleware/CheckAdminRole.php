@@ -13,7 +13,7 @@ class CheckAdminRole
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
-            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول كمدير أولاً.']);
+            return redirect()->route('login')->withErrors(['login' => 'يرجى تسجيل الدخول كمدير أولاً.']);
         }
 
         $user = Auth::user();

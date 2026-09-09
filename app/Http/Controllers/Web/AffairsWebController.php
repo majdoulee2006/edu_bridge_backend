@@ -104,24 +104,14 @@ class AffairsWebController extends Controller
             ->take(5)
             ->get();
 
-        // إعلانات الكاروسيل — آخر 5 إعلانات عامة أو أنشأها موظف الشؤون الحالي
+        // إعلانات الكاروسيل — جميع إعلانات المعهد والأقسام لموظف الشؤون
         $carouselAnnouncements = Announcement::with('user')
-            ->where(function($q) {
-                $q->where('user_id', Auth::id())
-                  ->orWhere('target_audience', 'all')
-                  ->orWhereNull('target_audience');
-            })
             ->latest()
             ->take(5)
             ->get();
 
-        // منشورات الإدارة — آخر 6 إعلانات عامة أو أنشأها موظف الشؤون الحالي
+        // منشورات الإدارة — جميع إعلانات المعهد والأقسام لموظف الشؤون
         $posts = Announcement::with('user')
-            ->where(function($q) {
-                $q->where('user_id', Auth::id())
-                  ->orWhere('target_audience', 'all')
-                  ->orWhereNull('target_audience');
-            })
             ->latest()
             ->take(6)
             ->get();

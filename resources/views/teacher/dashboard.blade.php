@@ -333,7 +333,17 @@
 
     @forelse($announcements as $ann)
         @php
-            $imgUrl  = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
+            $firstImg = $ann->image ?? null;
+            if (!$firstImg && !empty($ann->images)) {
+                $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
+                if (is_array($imgsArr) && !empty($imgsArr)) {
+                    $firstImg = $imgsArr[0];
+                }
+            }
+            $imgUrl = null;
+            if ($firstImg) {
+                $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
+            }
             $isOwner = isset($ann->user_id) && $ann->user_id == Auth::id();
             $annId   = $ann->announcement_id ?? $ann->id;
         @endphp

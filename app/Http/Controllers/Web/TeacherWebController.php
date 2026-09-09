@@ -146,11 +146,23 @@ class TeacherWebController extends Controller
             ->where('day', $today)
             ->count();
 
-        // الإعلانات من رئيس القسم (العامة + المتعلقة بمواد المعلم)
+        // قسم المعلم
+        $teacherDeptId = DB::table('departments')->where('name', 'LIKE', '%' . (Auth::user()->department ?? '') . '%')->value('department_id');
+
+        // الإعلانات (العامة للمعهد + قسم المعلم + مواد المعلم + ما أنشأه المعلم)
         $announcements = DB::table('announcements')
-            ->where(function($q) use ($courseIds) {
-                $q->where('type', 'general')
-                  ->orWhereIn('course_id', $courseIds);
+            ->where(function($q) use ($courseIds, $teacherDeptId) {
+                $q->where('user_id', Auth::id())
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('department_id')
+                          ->orWhere('target_audience', 'all');
+                  });
+                if ($teacherDeptId) {
+                    $q->orWhere('department_id', $teacherDeptId);
+                }
+                if (!empty($courseIds) && count($courseIds) > 0) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->orderByDesc('created_at')
             ->limit(5)
@@ -1556,19 +1568,32 @@ class TeacherWebController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:5000',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('announcements', 'public');
+        $imagesList = [];
+        if ($request->hasFile('images')) {
+            $files = is_array($request->file('images')) ? $request->file('images') : [$request->file('images')];
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    $imagesList[] = $file->store('announcements', 'public');
+                }
+            }
+        }
+        if (empty($imagesList) && $request->hasFile('image')) {
+            $imagesList[] = $request->file('image')->store('announcements', 'public');
         }
 
+        $primaryImage = !empty($imagesList) ? $imagesList[0] : null;
+
         \App\Models\Announcement::create([
-            'user_id' => Auth::id(),
-            'title'   => $request->title,
-            'content' => $request->content,
-            'image'   => $imagePath,
-            'type'    => 'general',
+            'user_id'   => Auth::id(),
+            'title'     => $request->title,
+            'content'   => $request->content,
+            'image'     => $primaryImage,
+            'images'    => $imagesList,
+            'type'      => 'general',
+            'course_id' => $request->course_id ?? null,
         ]);
 
         return redirect()->route('teacher.dashboard')->with('success', 'تم نشر الإعلان بنجاح!');

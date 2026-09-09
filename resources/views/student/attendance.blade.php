@@ -288,7 +288,10 @@
             const res = await response.json();
             showResultModal(res);
         } catch (e) {
-            showResultModal({ success: false, message: "حدث خطأ أثناء الاتصال بالخادم: " + e.message });
+            showResultModal({
+                success: false,
+                message: "تعذر الاتصال بالخادم، يرجى إعادة المحاولة."
+            });
         }
     }
 
@@ -299,11 +302,16 @@
         const msg = document.getElementById('modal-msg');
         const score = document.getElementById('modal-score');
 
+        let displayMessage = res.message || "فشلت مطابقة بصمة الوجه أو رمز QR غير صالح.";
+        if (typeof displayMessage === 'string' && (displayMessage.includes('\\') || displayMessage.includes('.php') || displayMessage.includes('Argument #'))) {
+            displayMessage = "فشل التحقق من الحضور: الوجه غير مطابق لصورة الطالب المسجلة ❌";
+        }
+
         if (res.success) {
             icon.className = "text-6xl text-green-400";
             icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
             title.textContent = "تم تسجيل حضورك بنجاح ✅";
-            msg.textContent = res.message || "تم التحقق من الوجه وتثبيت الحضور.";
+            msg.textContent = displayMessage;
             if (res.face_score !== undefined && res.face_score !== null) {
                 score.style.display = "block";
                 score.textContent = "نسبة المطابقة الأمنية: " + res.face_score + "%";
@@ -314,7 +322,7 @@
             icon.className = "text-6xl text-red-500";
             icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
             title.textContent = "فشل التحقق من الحضور ❌";
-            msg.textContent = res.message || "فشلت مطابقة بصمة الوجه أو رمز QR غير صالح.";
+            msg.textContent = displayMessage;
             score.style.display = "none";
         }
 

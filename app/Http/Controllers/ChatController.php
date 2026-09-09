@@ -28,7 +28,7 @@ class ChatController extends Controller
                 $allowedRoles = [$roleStudent, $roleTeacher, $roleHead];
                 break;
             case $roleStudent:
-                $allowedRoles = [$roleTeacher, $roleHead];
+                $allowedRoles = [$roleTeacher, $roleHead, $roleAdmin];
                 break;
             case $roleParent:
                 $allowedRoles = [$roleAdmin, $roleHead];
@@ -37,7 +37,7 @@ class ChatController extends Controller
                 $allowedRoles = [$roleStudent, $roleTeacher, $roleParent, $roleAdmin];
                 break;
             case $roleAdmin:
-                $allowedRoles = [$roleHead, $roleAffairs, $roleTeacher];
+                $allowedRoles = [$roleHead, $roleAffairs, $roleTeacher, $roleStudent];
                 break;
             case $roleAffairs:
                 $allowedRoles = [$roleAdmin];
@@ -52,14 +52,27 @@ class ChatController extends Controller
         $userDeptName = $user->department;
         $deptId = null;
 
+        if ($myRoleId == 3 && empty($userDeptName)) { // Student department fallback lookup
+            $studentRec = \DB::table('students')->where('user_id', $user->user_id)->first();
+            if ($studentRec && isset($studentRec->department_id)) {
+                $deptId = $studentRec->department_id;
+                $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
+            } elseif ($studentRec && isset($studentRec->program_id)) {
+                $deptId = \DB::table('programs')->where('program_id', $studentRec->program_id)->value('department_id');
+                if ($deptId) {
+                    $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
+                }
+            }
+        }
+
         if ($myRoleId == 5) { // HOD
             $myHead = \DB::table('heads')->where('user_id', $user->user_id)->first();
             if ($myHead) {
                 $deptId = $myHead->department_id;
                 $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
             }
-        } else {
-            $dept = $userDeptName ? \DB::table('departments')->where('name', $userDeptName)->first() : null;
+        } else if (!$deptId && $userDeptName) {
+            $dept = \DB::table('departments')->where('name', $userDeptName)->first();
             $deptId = $dept ? $dept->department_id : null;
         }
 
@@ -242,7 +255,10 @@ class ChatController extends Controller
         // 4. رفع الملف (إذا وجد)
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('chat_attachments', 'public');
+            $file = $request->file('attachment');
+            $ext = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin');
+            $fileName = uniqid('chat_', true) . '.' . $ext;
+            $path = $file->storeAs('chat_attachments', $fileName, 'public');
             $attachmentPath = asset('storage/' . $path);
         }
 
@@ -277,8 +293,21 @@ class ChatController extends Controller
 
         broadcast(new MessageSent($message))->toOthers();
 
-        // إرسال إشعار FCM للمستلم
+        // إرسال إشعار FCM للمستلم وحفظه في قواعد البيانات
         $msgBody = $message->message ?: 'أرسل لك ملفاً مرفقاً';
+        
+        \DB::table('notifications')->insert([
+            'user_id'    => $receiverId,
+            'sender_id'  => $senderId,
+            'title'      => $sender->full_name ?? 'رسالة جديدة',
+            'message'    => $msgBody,
+            'type'       => 'message',
+            'category'   => 'chat',
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         \App\Services\FcmService::sendToUser($receiverId, $sender->full_name ?? 'رسالة جديدة', $msgBody, [
             'type' => 'message',
             'sender_id' => (string) $senderId,
@@ -401,7 +430,7 @@ class ChatController extends Controller
                 return in_array($receiverRoleId, [$roleTeacher, $roleStudent, $roleHead]);
 
             case $roleStudent:
-                return in_array($receiverRoleId, [$roleHead, $roleTeacher]);
+                return in_array($receiverRoleId, [$roleHead, $roleTeacher, $roleAdmin]);
 
             case $roleParent:
                 return in_array($receiverRoleId, [$roleAdmin, $roleHead]);
@@ -475,7 +504,7 @@ public function searchMessages(Request $request, $otherUserId)
 public function deleteMessage(Request $request, $messageId)
 {
     $myId = (int) $request->user()->user_id;
-    $type = $request->input('type', 'me'); // 'everyone' or 'me'
+    $type = $request->input('type') ?? $request->query('type') ?? $request->json('type') ?? 'me'; // 'everyone' or 'me'
 
     $message = \App\Models\Message::find($messageId);
 
@@ -618,4 +647,26 @@ public function getGroupMessages(Request $request, $groupId)
         'data' => $messages
     ]);
 }
+
+    /**
+     * تنزيل المرفق مباشرة للرسالة
+     */
+    public function downloadAttachment(Request $request, $id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+
+        if (!$message->attachment) {
+            return response()->json(['error' => 'لا يوجد مرفق لهذه الرسالة'], 404);
+        }
+
+        $cleanPath = str_replace(asset('storage/'), '', $message->attachment);
+        $cleanPath = ltrim(str_replace('/storage/', '', $cleanPath), '/');
+
+        $path = storage_path('app/public/' . $cleanPath);
+        if (!file_exists($path)) {
+            return response()->json(['error' => 'الملف غير موجود على السيرفر'], 404);
+        }
+
+        return response()->download($path);
+    }
 }
