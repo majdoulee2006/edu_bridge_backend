@@ -816,13 +816,31 @@ class StudentController extends Controller
                     'total_files' => $filteredLessons->count(),
 
                     'lessons' => $filteredLessons->map(function ($lesson) {
+                        $rawUrl = $lesson->content_url ?: $lesson->file_path;
+                        $ext = strtolower(pathinfo($rawUrl ?? '', PATHINFO_EXTENSION));
+
+                        $effectiveType = $lesson->file_type;
+                        if (!$effectiveType || $effectiveType === 'lecture') {
+                            if (in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'gif'])) {
+                                $effectiveType = 'image';
+                            } elseif (in_array($ext, ['mp4', 'mov', 'avi', 'mkv', 'webm'])) {
+                                $effectiveType = 'video';
+                            } elseif ($ext === 'pdf') {
+                                $effectiveType = 'pdf';
+                            } elseif (filter_var($rawUrl, FILTER_VALIDATE_URL)) {
+                                $effectiveType = 'link';
+                            } else {
+                                $effectiveType = 'document';
+                            }
+                        }
+
                         return [
                             'id' => $lesson->lesson_id,
                             'title' => $lesson->title,
-                            'type' => $lesson->type ?? 'pdf',
-                            'url' => $lesson->content_url ?
-                                    (filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_url : storageUrl($lesson->content_url))
-                                    : null,
+                            'file_name' => $lesson->file_name ?? ($rawUrl ? basename($rawUrl) : null),
+                            'file_type' => $effectiveType,
+                            'type' => $effectiveType,
+                            'url' => $rawUrl ? (filter_var($rawUrl, FILTER_VALIDATE_URL) ? $rawUrl : storageUrl($rawUrl)) : null,
                             'file_size' => $lesson->file_size,
                             'duration' => $lesson->duration,
                             'date' => $lesson->created_at ? $lesson->created_at->translatedFormat('d F') : null,
