@@ -320,19 +320,10 @@ class ChatController extends Controller
     {
         $myId = $request->user()->user_id;
 
-        // تنظيف الرسائل منتهية الصلاحية
-        $expiredMessages = Message::whereNotNull('expires_at')
-            ->where('expires_at', '<=', now())
-            ->get();
+        // ملاحظة: تنظيف الرسائل منتهية الصلاحية انتقل لمهمة مجدولة (انظر bootstrap/app.php)
+        // بدل تنفيذه بمسح كامل لجدول الرسائل بكل مرة يفتح فيها أي طالب أي محادثة (كل 3 ثواني)
 
-        foreach ($expiredMessages as $msg) {
-            if ($msg->attachment) {
-                $path = str_replace(asset('storage/'), '', $msg->attachment);
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
-            }
-            $msg->delete();
-        }
-
+        // نكتفي بآخر 200 رسالة لكل محادثة لتفادي تحميل سجل ضخم بكل استطلاع (polling)
         $messages = \App\Models\Message::where('deleted_for_everyone', 0)
             ->where(function ($q) use ($myId, $otherUserId) {
                 $q->where(function ($sub) use ($myId, $otherUserId) {
@@ -349,7 +340,9 @@ class ChatController extends Controller
                 $q->whereNull('expires_at')
                   ->orWhere('expires_at', '>', now());
             })
-            ->orderBy('created_at', 'desc')->get();
+            ->orderBy('created_at', 'desc')
+            ->limit(200)
+            ->get();
 
         return response()->json([
             'status' => 'success',

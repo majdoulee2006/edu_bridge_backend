@@ -17,6 +17,22 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         // إرسال ملخص الحضور اليومي للمربين في نهاية كل يوم
         $schedule->command('attendance:daily-summary')->dailyAt('22:00');
+
+        // حذف الرسائل منتهية الصلاحية (disappearing messages) — انتقلت هون من
+        // ChatController@getMessages لأنها كانت تُنفَّذ بكل استطلاع (polling) للمحادثة
+        $schedule->call(function (): void {
+            $expiredMessages = \App\Models\Message::whereNotNull('expires_at')
+                ->where('expires_at', '<=', now())
+                ->get();
+
+            foreach ($expiredMessages as $msg) {
+                if ($msg->attachment) {
+                    $path = str_replace(asset('storage/'), '', $msg->attachment);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
+                }
+                $msg->delete();
+            }
+        })->everyFiveMinutes();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
