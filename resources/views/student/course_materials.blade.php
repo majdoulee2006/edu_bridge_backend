@@ -52,17 +52,10 @@
             <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($m->created_at)->diffForHumans() }}
         </div>
     </div>
-    @if($m->file_path ?? false)
-        <a href="/storage/{{ $m->file_path }}" target="_blank" download="{{ $m->file_name ?? 'lecture' }}"
-           style="background: var(--accent-color); color: #1a1a1a; padding: 0.4rem 0.9rem; border-radius: 0.65rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; white-space: nowrap;">
-            <i class="fa-solid fa-download"></i> تحميل
-        </a>
-    @elseif($m->content_url ?? false)
-        <a href="{{ $m->content_url }}" target="_blank"
-           style="background: var(--accent-color); color: #1a1a1a; padding: 0.4rem 0.9rem; border-radius: 0.65rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; white-space: nowrap;">
-            <i class="fa-solid fa-up-right-from-square"></i> عرض الرابط
-        </a>
-    @endif
+    <a href="{{ route('student.lessons.download', $m->lesson_id) }}" download="{{ $m->title }}.pdf"
+       style="background: var(--accent-color); color: #1a1a1a; padding: 0.45rem 1rem; border-radius: 0.65rem; font-size: 0.85rem; font-weight: 700; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
+        <i class="fa-solid fa-download"></i> تحميل المحاضرة
+    </a>
 </div>
 @empty
 <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">

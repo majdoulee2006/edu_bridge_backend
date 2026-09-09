@@ -578,10 +578,22 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
-        $query = $student->courses()
-            ->with(['teacher.user', 'schedule']);
+        if ($student) {
+            $enrolledCount = DB::table('enrollments')->where('student_id', $student->student_id)->count();
+            if ($enrolledCount === 0) {
+                $allCourseIds = DB::table('courses')->pluck('course_id');
+                foreach ($allCourseIds as $cid) {
+                    DB::table('enrollments')->updateOrInsert(
+                        ['student_id' => $student->student_id, 'course_id' => $cid],
+                        ['enrollment_date' => now(), 'created_at' => now(), 'updated_at' => now()]
+                    );
+                }
+            }
+        }
 
-        $studentLevel = trim($student->level ?? $student->user->academic_year ?? 'السنة الأولى');
+        $query = $student ? $student->courses()->with(['teacher.user', 'schedule']) : \App\Models\Course::query();
+
+        $studentLevel = trim($student->level ?? $student?->user?->academic_year ?? 'السنة الأولى');
         $map = [
             'السنة الأولى' => 1, 'أولى' => 1, '1' => 1,
             'السنة الثانية' => 2, 'ثانية' => 2, '2' => 2,
@@ -601,9 +613,22 @@ class StudentController extends Controller
                 $q->where('courses.year', $studentYearInt)
                   ->orWhereNull('courses.year');
             });
+
+            // تصفية المواد حسب الفصل الدراسي النشط حالياً إن وجد
+            $activeSemesterId = DB::table('semesters')->where('is_active', true)->value('semester_id');
+            if ($activeSemesterId) {
+                $query->where(function($q) use ($activeSemesterId) {
+                    $q->where('courses.semester_id', $activeSemesterId)
+                      ->orWhereNull('courses.semester_id');
+                });
+            }
         }
 
         $coursesCollection = $query->get();
+
+        if ($coursesCollection->isEmpty() && !$failedOnly && $student) {
+            $coursesCollection = $student->courses()->with(['teacher.user', 'schedule'])->get();
+        }
 
         if ($failedOnly) {
             $failedCourseIds = [];

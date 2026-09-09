@@ -180,6 +180,7 @@
     <div class="type-switcher">
         <button class="type-btn active" id="btn-schedules" onclick="switchTab('schedules')"><i class="fa-solid fa-graduation-cap"></i> جدول دراسي</button>
         <button class="type-btn" id="btn-exams" onclick="switchTab('exams')"><i class="fa-solid fa-file-pen"></i> جدول امتحاني</button>
+        <button class="type-btn" id="btn-weights" onclick="switchTab('weights')"><i class="fa-solid fa-balance-scale"></i> تثقيلات المواد</button>
     </div>
 
     <!-- Weekly Schedule Tab Content -->
@@ -221,6 +222,60 @@
                     <!-- Javascript will render grid here -->
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Course Weights Tab Content -->
+    <div id="tab-weights" class="tab-content" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4 style="font-weight: 800; font-size: 1.25rem;">تثقيلات المواد</h4>
+            <span style="color: var(--text-secondary); font-size: 0.9rem;">إدارة الأوزان (تثقيل) المخصصة لكل مادة لحساب المعدل</span>
+        </div>
+
+        {{-- فلتر القسم --}}
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; overflow-x: auto; padding-bottom: 0.5rem;">
+            <button class="dept-btn active" onclick="selectWeightDept('اتصالات', this)">اتصالات</button>
+            <button class="dept-btn" onclick="selectWeightDept('معلوماتية', this)">معلوماتية</button>
+            <button class="dept-btn" onclick="selectWeightDept('الكترون', this)">الكترون</button>
+            <button class="dept-btn" onclick="selectWeightDept('ذكاء', this)">ذكاء</button>
+        </div>
+
+        {{-- فلتر السنة --}}
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+            <button class="year-btn active" onclick="selectWeightYear('سنة أولى', this)">سنة أولى</button>
+            <button class="year-btn" onclick="selectWeightYear('سنة ثانية', this)">سنة ثانية</button>
+        </div>
+
+        <div style="background-color: var(--bg-secondary); border-radius: 1.5rem; box-shadow: var(--shadow); padding: 1.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;" id="weights-grid">
+                @forelse($allCourses as $course)
+                    <div class="weight-card" data-dept="{{ $course->branch_name }}" data-year="{{ $course->year == 2 ? 'سنة ثانية' : 'سنة أولى' }}" style="background: var(--bg-primary); padding: 1.25rem; border-radius: 1rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <h5 style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">{{ $course->title }}</h5>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <span style="font-size: 0.75rem; background: var(--bg-secondary); padding: 0.2rem 0.6rem; border-radius: 1rem; color: var(--text-secondary);"><i class="fa-solid fa-clock"></i> {{ $course->hours }} ساعة</span>
+                                <span style="font-size: 0.75rem; background: var(--bg-secondary); padding: 0.2rem 0.6rem; border-radius: 1rem; color: var(--text-secondary);"><i class="fa-solid fa-layer-group"></i> {{ $course->semester_id }}</span>
+                            </div>
+                        </div>
+                        
+                        <form action="{{ route('hod.organization.course_weight', $course->course_id) }}" method="POST" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                            @csrf
+                            <div style="flex: 1;">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.4rem;">تثقيل المادة</label>
+                                <input type="number" name="weight" value="{{ $course->weight ?? 1 }}" min="1" required style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); font-weight: 700; text-align: center;">
+                            </div>
+                            <button type="submit" style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.5rem; padding: 0.6rem 1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
+                                <i class="fa-solid fa-save"></i>
+                            </button>
+                        </form>
+                    </div>
+                @empty
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <i class="fa-solid fa-book-open" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p style="font-weight: 700;">لا توجد مواد دراسية متوفرة حالياً</p>
+                    </div>
+                @endforelse
+            </div>
         </div>
     </div>
 
@@ -605,16 +660,26 @@
     });
 
     function switchTab(tab) {
+        // Hide all tabs
+        document.getElementById('tab-schedules').style.display = 'none';
+        document.getElementById('tab-exams').style.display = 'none';
+        if (document.getElementById('tab-weights')) document.getElementById('tab-weights').style.display = 'none';
+
+        // Remove active class from all buttons
+        document.getElementById('btn-schedules').classList.remove('active');
+        document.getElementById('btn-exams').classList.remove('active');
+        if (document.getElementById('btn-weights')) document.getElementById('btn-weights').classList.remove('active');
+
+        // Show selected tab and set active class
         if (tab === 'schedules') {
             document.getElementById('tab-schedules').style.display = 'block';
-            document.getElementById('tab-exams').style.display = 'none';
             document.getElementById('btn-schedules').classList.add('active');
-            document.getElementById('btn-exams').classList.remove('active');
-        } else {
-            document.getElementById('tab-schedules').style.display = 'none';
+        } else if (tab === 'exams') {
             document.getElementById('tab-exams').style.display = 'block';
-            document.getElementById('btn-schedules').classList.remove('active');
             document.getElementById('btn-exams').classList.add('active');
+        } else if (tab === 'weights') {
+            if (document.getElementById('tab-weights')) document.getElementById('tab-weights').style.display = 'block';
+            if (document.getElementById('btn-weights')) document.getElementById('btn-weights').classList.add('active');
         }
     }
 
@@ -672,5 +737,60 @@
     function closeModal(modalId) {
         document.getElementById(modalId).classList.remove('active');
     }
+
+    // ===== Weights Filter Logic =====
+    let weightDept = 'اتصالات';
+    let weightYear = 'سنة أولى';
+
+    function selectWeightDept(dept, btn) {
+        weightDept = dept;
+        document.querySelectorAll('#tab-weights .dept-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterWeights();
+    }
+
+    function selectWeightYear(year, btn) {
+        weightYear = year;
+        document.querySelectorAll('#tab-weights .year-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterWeights();
+    }
+
+    function filterWeights() {
+        const cards = document.querySelectorAll('.weight-card');
+        let visibleCount = 0;
+        cards.forEach(card => {
+            if (card.dataset.dept === weightDept && card.dataset.year === weightYear) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Show empty state if no cards visible
+        let emptyState = document.getElementById('weights-empty-state');
+        if (visibleCount === 0) {
+            if (!emptyState) {
+                const grid = document.getElementById('weights-grid');
+                emptyState = document.createElement('div');
+                emptyState.id = 'weights-empty-state';
+                emptyState.style.gridColumn = '1 / -1';
+                emptyState.style.textAlign = 'center';
+                emptyState.style.padding = '3rem';
+                emptyState.style.color = 'var(--text-secondary)';
+                emptyState.innerHTML = '<i class="fa-solid fa-book-open" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i><p style="font-weight: 700;">لا توجد مواد دراسية متوفرة حالياً</p>';
+                grid.appendChild(emptyState);
+            }
+            emptyState.style.display = 'block';
+        } else if (emptyState) {
+            emptyState.style.display = 'none';
+        }
+    }
+
+    // Initial Filter
+    document.addEventListener('DOMContentLoaded', () => {
+        filterWeights();
+    });
 </script>
 @endpush

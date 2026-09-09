@@ -515,6 +515,66 @@
     </div>
 </div>
 
+{{-- ── 3️⃣ Courses and Weights ── --}}
+<div class="collapsible-card" id="card-courses">
+    <div class="collapsible-header" onclick="toggleAcademicCard('card-courses')">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="card-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
+                <i class="fa-solid fa-book-open"></i>
+            </div>
+            <div>
+                <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: var(--text-primary);">المواد وتثقيلاتها</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.2rem 0 0;">عرض جميع المواد الدراسية، الأقسام التابعة لها، ومعامل التثقيل لكل مادة</p>
+            </div>
+        </div>
+        <div class="toggle-arrow-btn">
+            <i class="fa-solid fa-chevron-down"></i>
+        </div>
+    </div>
+    <div class="collapsible-body">
+        <div class="table-responsive">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th>المادة</th>
+                        <th>القسم (البرنامج)</th>
+                        <th>السنة الدراسية</th>
+                        <th>الفصل</th>
+                        <th style="text-align: center;">التثقيل (الوزن)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($courses as $course)
+                        <tr>
+                            <td style="font-weight: 700; color: var(--text-primary);">{{ $course->title }}</td>
+                            <td>{{ $course->program_name ?? 'عام' }}</td>
+                            <td>
+                                @if($course->year == 1)
+                                    <span class="level-badge-1"><i class="fa-solid fa-1"></i> السنة الأولى</span>
+                                @elseif($course->year == 2)
+                                    <span class="level-badge-2"><i class="fa-solid fa-2"></i> السنة الثانية</span>
+                                @else
+                                    {{ $course->year }}
+                                @endif
+                            </td>
+                            <td>{{ $course->semester_id == 1 ? 'فصل أول' : 'فصل ثاني' }}</td>
+                            <td style="text-align: center; font-weight: 800; color: var(--accent-color);">
+                                {{ $course->weight ?? 1 }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                                لا توجد مواد دراسية مضافة بعد.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')

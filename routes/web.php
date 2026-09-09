@@ -218,6 +218,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::post('/organization/schedule/delete/{id}', [HODWebController::class, 'deleteSchedule'])->name('hod.organization.delete_schedule');
     Route::post('/organization/exam', [HODWebController::class, 'storeExam'])->name('hod.organization.store_exam');
     Route::post('/organization/exam/delete/{id}', [HODWebController::class, 'deleteExam'])->name('hod.organization.delete_exam');
+    Route::post('/organization/course/{id}/weight', [HODWebController::class, 'updateCourseWeight'])->name('hod.organization.course_weight');
     Route::get('/messages', [HODWebController::class, 'messages'])->name('hod.messages');
     Route::get('/messages/contacts', [HODWebController::class, 'getContacts'])->name('hod.messages.contacts');
     Route::get('/messages/conversation/{userId}', [HODWebController::class, 'getConversation'])->name('hod.messages.conversation');
@@ -276,6 +277,8 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/calendar/events/delete/{id}', [AffairsWebController::class, 'deleteCalendarEvent'])->name('affairs.calendar.delete');
     Route::get('/activities', [AffairsWebController::class, 'activities'])->name('affairs.activities');
     
+    // تثقيلات المواد ونتائج الطلاب
+    Route::get('/course-weights', [AffairsWebController::class, 'courseWeights'])->name('affairs.course_weights');
     // الخدمات الطلابية
     Route::get('/student-services', [AffairsWebController::class, 'studentServices'])->name('affairs.student_services');
     Route::post('/student-services/{id}/process', [AffairsWebController::class, 'processStudentService'])->name('affairs.student_services.process');
@@ -482,9 +485,10 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     // الجدول
     Route::get('/schedule', [StudentWebController::class, 'schedule'])->name('student.schedule');
 
-    // المواد
+    // المواد والمحاضرات
     Route::get('/courses', [StudentWebController::class, 'courses'])->name('student.courses');
     Route::get('/courses/{courseId}/materials', [StudentWebController::class, 'courseMaterials'])->name('student.course.materials');
+    Route::get('/lessons/{lessonId}/download', [StudentWebController::class, 'downloadLesson'])->name('student.lessons.download');
 
     // الواجبات
     Route::get('/assignments', [StudentWebController::class, 'assignments'])->name('student.assignments');
@@ -493,6 +497,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     // الدرجات وكشف العلامات
     Route::get('/grades', [StudentWebController::class, 'grades'])->name('student.grades');
     Route::get('/academic-card/export-pdf', [StudentWebController::class, 'exportAcademicCardPdf'])->name('student.academic_card.pdf');
+    Route::get('/academic-card/export-excel', [StudentWebController::class, 'exportAcademicCardExcel'])->name('student.academic_card.excel');
     // الحضور بالـ QR والوجه
     Route::get('/attendance', [StudentWebController::class, 'attendance'])->name('student.attendance');
     Route::post('/attendance/scan', [StudentWebController::class, 'scanAttendanceWeb'])->name('student.attendance.scan');

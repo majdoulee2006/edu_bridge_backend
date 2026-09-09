@@ -240,6 +240,8 @@
                     <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الشفهي/العملي (25)</th>
                     <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الامتحان (50)</th>
                     <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">المجموع (100)</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">التثقيل</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">العلامة الموزونة</th>
                     <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الحالة</th>
                 </tr>
             </thead>
@@ -252,6 +254,8 @@
                     <td style="padding: 0.75rem; text-align: center;">{{ $row['oral_score'] ?? '-' }}</td>
                     <td style="padding: 0.75rem; text-align: center;">{{ $row['final_score'] ?? '-' }}</td>
                     <td style="padding: 0.75rem; text-align: center; font-weight: 800;">{{ $row['total_score'] ?? '-' }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ $row['weight'] ?? 1 }}</td>
+                    <td style="padding: 0.75rem; text-align: center; font-weight: 800; color: var(--accent-color);">{{ $row['weighted_score'] ?? '-' }}</td>
                     <td style="padding: 0.75rem; text-align: center;">
                         @if($row['status'] === 'ناجح')
                             <span style="background: #bbf7d0; color: #166534; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">ناجح</span>

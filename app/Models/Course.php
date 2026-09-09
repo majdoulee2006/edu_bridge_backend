@@ -17,6 +17,7 @@ class Course extends Model
         'level',
         'year',        // 1 = السنة الأولى، 2 = السنة الثانية
         'hours',
+        'weight',      // تثقيل المادة
         'semester_id',
     ];
 
