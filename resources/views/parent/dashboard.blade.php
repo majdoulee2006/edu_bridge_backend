@@ -379,18 +379,28 @@
     </div>
 @endif
 
-<h3 class="section-title">
-    <i class="fa-solid fa-bullhorn"></i> آخر أخبار المعهد والفعاليات
+@php
+    $announcementsCol = collect($announcements ?? []);
+    $todayAnnouncements = $announcementsCol->filter(fn($item) => \Carbon\Carbon::parse($item->created_at)->isToday());
+    $previousAnnouncements = $announcementsCol->reject(fn($item) => \Carbon\Carbon::parse($item->created_at)->isToday());
+@endphp
+
+{{-- أخبار اليوم --}}
+<h3 class="section-title" style="margin-bottom: 1rem;">
+    <i class="fa-solid fa-calendar-day" style="color: #22c55e;"></i> أخبار اليوم
 </h3>
 
-<div class="announcements-list">
-    @forelse($announcements as $ann)
+<div class="announcements-list" style="margin-bottom: 2rem; border-right: 4px solid #22c55e;">
+    @forelse($todayAnnouncements as $ann)
         <div class="announcement-item">
-            <div class="announcement-icon">
+            <div class="announcement-icon" style="background: rgba(34,197,94,0.1); color: #22c55e;">
                 <i class="fa-solid fa-bell"></i>
             </div>
             <div class="announcement-details">
-                <h4>{{ $ann->title }}</h4>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <span style="background: #22c55e; color: #fff; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.68rem; font-weight: 800;">اليوم</span>
+                    <h4 style="margin: 0;">{{ $ann->title }}</h4>
+                </div>
                 <p>{{ $ann->content ?? $ann->body }}</p>
                 <div class="announcement-date">
                     <i class="fa-regular fa-clock" style="margin-left: 0.25rem;"></i>
@@ -399,8 +409,35 @@
             </div>
         </div>
     @empty
-        <div style="text-align: center; color: var(--text-secondary); padding: 1.5rem 0;">
-            لا توجد إعلانات أو أخبار حالياً.
+        <div style="text-align: center; color: var(--text-secondary); padding: 1.25rem 0;">
+            لا توجد أخبار جديدة نشرت اليوم.
+        </div>
+    @endforelse
+</div>
+
+{{-- الأخبار السابقة --}}
+<h3 class="section-title" style="margin-bottom: 1rem;">
+    <i class="fa-solid fa-clock-rotate-left"></i> الأخبار السابقة
+</h3>
+
+<div class="announcements-list" style="opacity: 0.95;">
+    @forelse($previousAnnouncements as $ann)
+        <div class="announcement-item">
+            <div class="announcement-icon">
+                <i class="fa-solid fa-newspaper"></i>
+            </div>
+            <div class="announcement-details">
+                <h4>{{ $ann->title }}</h4>
+                <p>{{ $ann->content ?? $ann->body }}</p>
+                <div class="announcement-date">
+                    <i class="fa-regular fa-clock" style="margin-left: 0.25rem;"></i>
+                    {{ \Carbon\Carbon::parse($ann->created_at)->format('Y-m-d') }} ({{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }})
+                </div>
+            </div>
+        </div>
+    @empty
+        <div style="text-align: center; color: var(--text-secondary); padding: 1.25rem 0;">
+            لا توجد أخبار سابقة.
         </div>
     @endforelse
 </div>

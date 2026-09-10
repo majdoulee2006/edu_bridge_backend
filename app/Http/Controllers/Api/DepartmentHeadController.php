@@ -469,69 +469,30 @@ class DepartmentHeadController extends Controller
             ->where('id', $id)
             ->update(['status' => $newStatus, 'updated_at' => now()]);
             
-        // إشعار موظف الشؤون في حال القبول
-        if ($newStatus === 'pending_affairs') {
-            try {
-                // جلب اسم صاحب الطلب
-                $requesterName = DB::table('users')->where('user_id', $leaveRequest->student_id)->value('full_name') 
-                              ?? DB::table('users')->where('user_id', $leaveRequest->teacher_id)->value('full_name') 
-                              ?? 'شخص ما';
-                
-                // البحث عن موظف الشؤون (role_id = 6)
-                $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
-                
-                foreach ($affairsUserIds as $affairsId) {
-                    \App\Models\Notification::create([
-                        'user_id'    => $affairsId,
-                        'sender_id'  => auth()->id(),
-                        'title'      => 'طلب إجازة بانتظار اعتمادك',
-                        'message'    => "وافق رئيس القسم على طلب إجازة لـ $requesterName، يرجى مراجعته واعتماده.",
-                        'type'       => 'leave_request',
-                        'related_id' => $id,
-                        'is_read'    => false,
-                    ]);
-                }
-            } catch (\Exception $e) {}
-        }
-
         $studentName = DB::table('users')->where('user_id', $leaveRequest->student_id)->value('full_name') ?? 'الطالب';
 
         if ($newStatus === 'pending_affairs') {
-            // إشعار الطالب أن رئيس القسم وافق والطلب محال للشؤون
-            if ($leaveRequest->student_id) {
-                $title   = 'موافقة رئيس القسم على طلب الإجازة';
-                $message = 'وافق رئيس القسم على طلب إجازتك بتاريخ ' . $leaveRequest->date . ' وتم إحالتها لموظف الشؤون للقرار النهائي.';
-
-                DB::table('notifications')->insert([
-                    'user_id'    => $leaveRequest->student_id,
-                    'title'      => $title,
-                    'message'    => $message,
-                    'type'       => 'leave_request',
-                    'related_id' => $id,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                $studentUserId = DB::table('students')->where('student_id', $leaveRequest->student_id)->value('user_id');
-                if ($studentUserId) {
-                    \App\Services\FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request', 'related_id' => (string)$id]);
-                }
-            }
-
-            // إشعار موظف الشؤون بوجود طلب ينتظر موافقته
+            // إشعار موظف الشؤون فقط بوجود طلب ينتظر اعتماده النهائي (بطاقة واحدة فريدة)
             $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
             foreach ($affairsUserIds as $affairsId) {
-                DB::table('notifications')->insert([
-                    'user_id'    => $affairsId,
-                    'title'      => 'طلب إجازة جديد بانتظار موافقتك',
-                    'message'    => 'تمت موافقة رئيس القسم على طلب إجازة للطالب ' . $studentName . ' بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته والبت فيه.',
-                    'type'       => 'leave_request',
-                    'related_id' => $id,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser($affairsId, 'طلب إجازة جديد بانتظار موافقتك', 'تمت موافقة رئيس القسم على طلب إجازة للطالب ' . $studentName . ' بتاريخ ' . $leaveRequest->date, ['type' => 'leave_request', 'related_id' => (string)$id]);
+                $alreadyNotified = DB::table('notifications')
+                    ->where('user_id', $affairsId)
+                    ->where('type', 'leave_request')
+                    ->where('related_id', $id)
+                    ->exists();
+                if (!$alreadyNotified) {
+                    DB::table('notifications')->insert([
+                        'user_id'    => $affairsId,
+                        'title'      => 'طلب إجازة بانتظار موافقتك',
+                        'message'    => 'تمت موافقة رئيس القسم على طلب إجازة للطالب ' . $studentName . ' بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته والبت فيه.',
+                        'type'       => 'leave_request',
+                        'related_id' => $id,
+                        'is_read'    => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    \App\Services\FcmService::sendToUser($affairsId, 'طلب إجازة بانتظار موافقتك', 'تمت موافقة رئيس القسم على طلب إجازة للطالب ' . $studentName . ' بتاريخ ' . $leaveRequest->date, ['type' => 'leave_request', 'related_id' => (string)$id]);
+                }
             }
         } else {
             // رفض الطلب

@@ -388,6 +388,32 @@ class ParentController extends Controller
         ], 200);
     }
 
+    public function unlinkStudent(Request $request, $studentId)
+    {
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+
+        if (!$parent) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
+        $realStudentId = \DB::table('students')
+            ->where('student_id', $studentId)
+            ->orWhere('user_id', $studentId)
+            ->value('student_id') ?? $studentId;
+
+        \DB::table('parent_students')
+            ->where('parent_id', $parent->parent_id)
+            ->where('student_id', $realStudentId)
+            ->delete();
+
+        \App\Models\UserActivity::log('إلغاء ربط طالب', "قام ولي الأمر بإلغاء ربط الطالب رقم: {$realStudentId}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إزالة الطالب بنجاح من قائمة الأبناء',
+        ], 200);
+    }
+
     public function dashboard(Request $request)
     {
         $parent = Parents::where('user_id', $request->user()->user_id)->first();

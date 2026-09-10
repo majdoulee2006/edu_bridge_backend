@@ -430,6 +430,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [ParentController::class, 'dashboard']);
         Route::get('/children/{parent_id?}', [ParentController::class, 'getChildren']);
         Route::post('/add-student', [ParentController::class, 'linkStudent']);
+        Route::post('/children/{id}/unlink', [ParentController::class, 'unlinkStudent']);
+        Route::delete('/children/{id}', [ParentController::class, 'unlinkStudent']);
         Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
         Route::get('/children/{id}/details', [ParentController::class, 'getChildDetails']);
         Route::get('/children/{id}/attendance', [ParentController::class, 'getChildAttendance']);

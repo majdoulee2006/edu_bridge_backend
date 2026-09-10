@@ -111,96 +111,147 @@
         </div>
     </div>
 
-    {{-- ===== Announcements Header ===== --}}
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
-        <div style="display:flex; align-items:center; gap:0.5rem;">
-            <span style="width:4px; height:24px; background:var(--accent-color); border-radius:2px; display:inline-block;"></span>
-            <h3 style="font-size:1.1rem; font-weight:800;">آخر الأخبار والإعلانات</h3>
-        </div>
-        <a href="{{ route('hod.announcements.create') }}"
-           style="display:flex; align-items:center; gap:0.4rem; background:var(--accent-color); color:#1a1a1a; border-radius:2rem; padding:0.45rem 1rem; font-weight:700; font-size:0.82rem; text-decoration:none;">
-            <i class="fa-solid fa-plus"></i> إضافة إعلان
-        </a>
-    </div>
+    {{-- ===== Announcements Section ===== --}}
+    @php
+        $announcementsCol = collect($announcements ?? []);
+        $todayAnnouncements = $announcementsCol->filter(fn($item) => \Carbon\Carbon::parse($item->created_at)->isToday());
+        $previousAnnouncements = $announcementsCol->reject(fn($item) => \Carbon\Carbon::parse($item->created_at)->isToday());
+    @endphp
 
-    @forelse($announcements as $ann)
-        @php
-            $imgUrl  = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
-            $isOwner = isset($ann->user_id) && $ann->user_id == auth()->id();
-            $annId   = $ann->announcement_id ?? $ann->id;
-        @endphp
-
-        @if($loop->first)
-        {{-- Hero card --}}
-        <div class="ann-hero">
-            <div class="ann-hero-img">
-                @if($imgUrl)
-                    <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
-                @else
-                    <div class="ann-no-img" style="width:100%; height:100%;">
-                        <i class="fa-solid fa-bullhorn" style="font-size:3.5rem; color:rgba(255,255,255,0.07);"></i>
-                    </div>
-                @endif
-                <div class="ann-hero-img-grad"></div>
-                <span class="ann-hero-img-badge">إعلان هام</span>
+    {{-- أخبار اليوم --}}
+    <div style="margin-bottom: 2rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="width:8px; height:8px; background:#22c55e; border-radius:50%; display:inline-block; box-shadow: 0 0 8px #22c55e;"></span>
+                <h3 style="font-size:1.1rem; font-weight:800; margin:0;">أخبار اليوم</h3>
             </div>
-            <div class="ann-hero-body">
-                <div class="ann-hero-footer" style="margin-bottom:0.6rem;">
-                    <span style="font-size:0.75rem; color:var(--text-secondary);"><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
-                    @if($isOwner)
-                    <div class="ann-actions">
-                        <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i> تعديل</a>
-                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف الإعلان؟')" style="margin:0;">
-                            @csrf
-                            <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i> حذف</button>
-                        </form>
-                    </div>
+            <a href="{{ route('hod.announcements.create') }}"
+               style="display:flex; align-items:center; gap:0.4rem; background:var(--accent-color); color:#1a1a1a; border-radius:2rem; padding:0.45rem 1rem; font-weight:700; font-size:0.82rem; text-decoration:none;">
+                <i class="fa-solid fa-plus"></i> إضافة إعلان
+            </a>
+        </div>
+
+        @forelse($todayAnnouncements as $ann)
+            @php
+                $imgUrl  = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
+                $isOwner = isset($ann->user_id) && $ann->user_id == auth()->id();
+                $annId   = $ann->announcement_id ?? $ann->id;
+            @endphp
+
+            @if($loop->first)
+            {{-- Hero card --}}
+            <div class="ann-hero" style="border-right: 4px solid #22c55e;">
+                <div class="ann-hero-img">
+                    @if($imgUrl)
+                        <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
+                    @else
+                        <div class="ann-no-img" style="width:100%; height:100%;">
+                            <i class="fa-solid fa-bullhorn" style="font-size:3.5rem; color:rgba(255,255,255,0.07);"></i>
+                        </div>
                     @endif
+                    <div class="ann-hero-img-grad"></div>
+                    <span class="ann-hero-img-badge" style="background:#22c55e; color:#fff;">اليوم</span>
                 </div>
-                <h4 class="ann-hero-title">{{ $ann->title }}</h4>
-                <p class="ann-hero-excerpt">{{ $ann->content }}</p>
-                @if(isset($ann->link_url) && $ann->link_url)
-                    <a href="{{ $ann->link_url }}" target="_blank" style="display:inline-flex; align-items:center; gap:0.3rem; color:var(--accent-color); font-size:0.82rem; font-weight:700; text-decoration:none;">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i> فتح الرابط
-                    </a>
-                @endif
-            </div>
-        </div>
-        @else
-        {{-- Row card --}}
-        <div class="ann-row">
-            <div class="ann-row-thumb">
-                @if($imgUrl)
-                    <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
-                @else
-                    <div class="ann-no-img" style="width:100%; height:100%; position:absolute; inset:0;">
-                        <i class="fa-solid fa-bullhorn" style="font-size:1.75rem; color:rgba(255,255,255,0.12);"></i>
+                <div class="ann-hero-body">
+                    <div class="ann-hero-footer" style="margin-bottom:0.6rem;">
+                        <span style="font-size:0.75rem; color:var(--text-secondary);"><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
+                        @if($isOwner)
+                        <div class="ann-actions">
+                            <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i> تعديل</a>
+                            <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف الإعلان؟')" style="margin:0;">
+                                @csrf
+                                <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i> حذف</button>
+                            </form>
+                        </div>
+                        @endif
                     </div>
-                @endif
-            </div>
-            <div class="ann-row-body">
-                <h4 class="ann-row-title">{{ $ann->title }}</h4>
-                <div class="ann-row-meta">
-                    <span><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
-                    @if($isOwner)
-                    <div class="ann-actions" style="margin-right:auto;">
-                        <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i></a>
-                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin:0;">
-                            @csrf
-                            <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i></button>
-                        </form>
-                    </div>
-                    @endif
+                    <h4 class="ann-hero-title">{{ $ann->title }}</h4>
+                    <p class="ann-hero-excerpt">{{ $ann->content }}</p>
                 </div>
             </div>
-        </div>
-        @endif
-    @empty
-    <div style="text-align:center; padding:2rem; background:var(--bg-secondary); border-radius:1.25rem; color:var(--text-secondary);">
-        <i class="fa-solid fa-bullhorn" style="font-size:2rem; opacity:0.3; margin-bottom:0.5rem; display:block;"></i>
-        لا توجد إعلانات حالياً
+            @else
+            <div class="ann-row" style="border-right: 4px solid #22c55e;">
+                <div class="ann-row-thumb">
+                    @if($imgUrl)
+                        <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
+                    @else
+                        <div class="ann-no-img" style="width:100%; height:100%; position:absolute; inset:0;">
+                            <i class="fa-solid fa-bullhorn" style="font-size:1.75rem; color:rgba(255,255,255,0.12);"></i>
+                        </div>
+                    @endif
+                </div>
+                <div class="ann-row-body">
+                    <h4 class="ann-row-title">{{ $ann->title }}</h4>
+                    <div class="ann-row-meta">
+                        <span><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
+                        @if($isOwner)
+                        <div class="ann-actions" style="margin-right:auto;">
+                            <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i></a>
+                            <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin:0;">
+                                @csrf
+                                <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i></button>
+                            </form>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @endif
+        @empty
+            <div style="text-align:center; padding:1.5rem; background:var(--bg-secondary); border-radius:1.25rem; color:var(--text-secondary); border: 1px dashed var(--border-color); margin-bottom: 1.5rem;">
+                <i class="fa-regular fa-calendar-check" style="font-size:1.5rem; opacity:0.4; margin-bottom:0.4rem; display:block;"></i>
+                لا توجد أخبار جديدة نشرت اليوم.
+            </div>
+        @endforelse
     </div>
-    @endforelse
+
+    {{-- الأخبار السابقة --}}
+    <div>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
+            <i class="fa-solid fa-clock-rotate-left" style="color:var(--text-secondary);"></i>
+            <h3 style="font-size:1.1rem; font-weight:800; margin:0;">الأخبار السابقة</h3>
+        </div>
+
+        @forelse($previousAnnouncements as $ann)
+            @php
+                $imgUrl  = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
+                $isOwner = isset($ann->user_id) && $ann->user_id == auth()->id();
+                $annId   = $ann->announcement_id ?? $ann->id;
+            @endphp
+
+            <div class="ann-row" style="opacity: 0.92;">
+                <div class="ann-row-thumb">
+                    @if($imgUrl)
+                        <img src="{{ $imgUrl }}" alt="{{ $ann->title }}">
+                    @else
+                        <div class="ann-no-img" style="width:100%; height:100%; position:absolute; inset:0;">
+                            <i class="fa-solid fa-bullhorn" style="font-size:1.75rem; color:rgba(255,255,255,0.12);"></i>
+                        </div>
+                    @endif
+                </div>
+                <div class="ann-row-body">
+                    <h4 class="ann-row-title">{{ $ann->title }}</h4>
+                    <div class="ann-row-meta">
+                        <span><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->format('Y-m-d') }}</span>
+                        @if($isOwner)
+                        <div class="ann-actions" style="margin-right:auto;">
+                            <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i></a>
+                            <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin:0;">
+                                @csrf
+                                <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i></button>
+                            </form>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div style="text-align:center; padding:1.5rem; background:var(--bg-secondary); border-radius:1.25rem; color:var(--text-secondary); border: 1px dashed var(--border-color);">
+                <i class="fa-solid fa-bullhorn" style="font-size:1.5rem; opacity:0.3; margin-bottom:0.4rem; display:block;"></i>
+                لا توجد أخبار سابقة.
+            </div>
+        @endforelse
+    </div>
 
 @endsection
 

@@ -433,23 +433,30 @@ class HODWebController extends Controller
             $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
             foreach ($affairsUserIds as $aId) {
                 if ($aId) {
-                    DB::table('notifications')->insert([
-                        'user_id'    => $aId,
-                        'title'      => 'طلب إذن جديد بانتظار الاعتماد النهائي',
-                        'message'    => 'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $reqDate . '، يرجى مراجعته والتثبيت النهائي.',
-                        'type'       => 'leave_request',
-                        'category'   => 'administrative',
-                        'related_id' => (string)$id,
-                        'is_read'    => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    \App\Services\FcmService::sendToUser(
-                        $aId,
-                        'طلب إذن بانتظار الاعتماد',
-                        'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $reqDate . '، يرجى التثبيت.',
-                        ['type' => 'leave_request', 'related_id' => (string)$id]
-                    );
+                    $alreadyNotified = DB::table('notifications')
+                        ->where('user_id', $aId)
+                        ->where('type', 'leave_request')
+                        ->where('related_id', (string)$id)
+                        ->exists();
+                    if (!$alreadyNotified) {
+                        DB::table('notifications')->insert([
+                            'user_id'    => $aId,
+                            'title'      => 'طلب إذن جديد بانتظار الاعتماد النهائي',
+                            'message'    => 'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $reqDate . '، يرجى مراجعته والتثبيت النهائي.',
+                            'type'       => 'leave_request',
+                            'category'   => 'administrative',
+                            'related_id' => (string)$id,
+                            'is_read'    => 0,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        \App\Services\FcmService::sendToUser(
+                            $aId,
+                            'طلب إذن بانتظار الاعتماد',
+                            'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $reqDate . '، يرجى التثبيت.',
+                            ['type' => 'leave_request', 'related_id' => (string)$id]
+                        );
+                    }
                 }
             }
 

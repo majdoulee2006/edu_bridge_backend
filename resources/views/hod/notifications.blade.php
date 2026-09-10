@@ -209,7 +209,7 @@
                     </span>
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <span style="font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap;" dir="ltr">
-                            {{ $n->created_at->format('Y-m-d | h:i A') }}
+                            {{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->format('Y-m-d | h:i A') : '—' }}
                         </span>
                         @if(!$isRead)
                             <form method="POST" action="{{ route('hod.notifications.read', $n->id) }}" style="display: inline;" onclick="event.stopPropagation();">
