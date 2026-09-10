@@ -371,6 +371,7 @@ use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminMessageController;
 use App\Http\Controllers\Web\AdminCommunicationController;
 use App\Http\Controllers\Web\AdminReportController;
+use App\Http\Controllers\Web\AdminAcademicController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
@@ -464,13 +465,13 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/courses/assign-hod/unassign', [AdminWebController::class, 'unassignHOD'])->name('admin.courses.assign-hod.unassign');
 
     // الفصول والمواد
-    Route::get('/semesters-subjects', [AdminWebController::class, 'semestersSubjects'])->name('admin.semesters-subjects');
-    Route::post('/semesters-subjects', [AdminWebController::class, 'storeSubject'])->name('admin.semesters-subjects.store');
-    Route::post('/semesters-subjects/update/{id}', [AdminWebController::class, 'updateSubject'])->name('admin.semesters-subjects.update');
-    Route::post('/semesters-subjects/delete/{id}', [AdminWebController::class, 'deleteSubject'])->name('admin.semesters-subjects.delete');
+    Route::get('/semesters-subjects', [AdminAcademicController::class, 'semestersSubjects'])->name('admin.semesters-subjects');
+    Route::post('/semesters-subjects', [AdminAcademicController::class, 'storeSubject'])->name('admin.semesters-subjects.store');
+    Route::post('/semesters-subjects/update/{id}', [AdminAcademicController::class, 'updateSubject'])->name('admin.semesters-subjects.update');
+    Route::post('/semesters-subjects/delete/{id}', [AdminAcademicController::class, 'deleteSubject'])->name('admin.semesters-subjects.delete');
 
     // المحاضرات
-    Route::get('/lectures', [AdminWebController::class, 'lectures'])->name('admin.lectures');
+    Route::get('/lectures', [AdminAcademicController::class, 'lectures'])->name('admin.lectures');
 
     // التقارير
     Route::get('/reports', [AdminReportController::class, 'reports'])->name('admin.reports');
