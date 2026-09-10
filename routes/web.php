@@ -367,6 +367,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
 use App\Http\Controllers\Web\AdminWebController;
 use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminStudentServiceController;
+use App\Http\Controllers\Web\AdminDashboardController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
@@ -374,16 +375,16 @@ Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admi
 
 Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/', fn() => redirect()->route('admin.dashboard'));
-    Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
-    Route::get('/profile', [AdminWebController::class, 'profile'])->name('admin.profile');
-    Route::post('/profile', [AdminWebController::class, 'updateProfile'])->name('admin.profile.update');
-    Route::post('/profile/password', [AdminWebController::class, 'updatePassword'])->name('admin.profile.password');
-    Route::post('/profile/send-otp', [AdminWebController::class, 'sendOTP'])->name('admin.profile.send_otp');
-    Route::post('/profile/verify-otp', [AdminWebController::class, 'verifyOTP'])->name('admin.profile.verify_otp');
-    Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
-    Route::post('/settings/theme', [AdminWebController::class, 'updateThemeSettings'])->name('admin.settings.theme');
-    Route::get('/activity-logs', [AdminWebController::class, 'activityLogs'])->name('admin.activity_logs');
-    Route::post('/activity-logs/clean', [AdminWebController::class, 'cleanActivityLogs'])->name('admin.activity_logs.clean');
+    Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/profile', [AdminDashboardController::class, 'profile'])->name('admin.profile');
+    Route::post('/profile', [AdminDashboardController::class, 'updateProfile'])->name('admin.profile.update');
+    Route::post('/profile/password', [AdminDashboardController::class, 'updatePassword'])->name('admin.profile.password');
+    Route::post('/profile/send-otp', [AdminDashboardController::class, 'sendOTP'])->name('admin.profile.send_otp');
+    Route::post('/profile/verify-otp', [AdminDashboardController::class, 'verifyOTP'])->name('admin.profile.verify_otp');
+    Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('admin.settings');
+    Route::post('/settings/theme', [AdminDashboardController::class, 'updateThemeSettings'])->name('admin.settings.theme');
+    Route::get('/activity-logs', [AdminDashboardController::class, 'activityLogs'])->name('admin.activity_logs');
+    Route::post('/activity-logs/clean', [AdminDashboardController::class, 'cleanActivityLogs'])->name('admin.activity_logs.clean');
     Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
     Route::get('/messages/contacts', [AdminWebController::class, 'getContacts'])->name('admin.messages.contacts');
     Route::get('/messages/conversation/{userId}', [AdminWebController::class, 'getConversation'])->name('admin.messages.conversation');
