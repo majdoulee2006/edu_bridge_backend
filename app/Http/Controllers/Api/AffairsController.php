@@ -266,12 +266,13 @@ class AffairsController extends Controller
                 foreach ($user->children_ids as $universityId) {
                     $student = DB::table('students')
                         ->where('student_code', $universityId)
-                        ->select('student_id')
+                        ->select('student_id', 'user_id')
                         ->first();
                     if ($student) {
+                        // parent_students.parent_id/student_id هما FK على users.user_id
                         DB::table('parent_students')->insertOrIgnore([
-                            'parent_id'    => $parent->parent_id,
-                            'student_id'   => $student->student_id,
+                            'parent_id'    => $user->user_id,
+                            'student_id'   => $student->user_id,
                             'relationship' => 'والد / ولي أمر',
                             'created_at'   => now(),
                             'updated_at'   => now(),
@@ -680,12 +681,12 @@ class AffairsController extends Controller
                 ['type' => 'leave_request', 'related_id' => (string) $id]
             );
 
-            // 2. إشعار ولي الأمر
+            // 2. إشعار ولي الأمر — parent_students.parent_id/student_id هما FK على users.user_id، و $leave->student_id هو بالفعل user_id
             $studentRecord = DB::table('students')->where('user_id', $leave->student_id)->first();
             if ($studentRecord) {
                 $parentUserIds = DB::table('parent_students')
-                    ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-                    ->where('parent_students.student_id', $studentRecord->student_id)
+                    ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+                    ->where('parent_students.student_id', $leave->student_id)
                     ->pluck('parents.user_id');
 
                 $parentMsg = $status === 'approved'
@@ -1282,8 +1283,9 @@ class AffairsController extends Controller
                 ->join('users', 'students.user_id', '=', 'users.user_id')
                 ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
                 ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
-                ->leftJoin('parent_students', 'students.student_id', '=', 'parent_students.student_id')
-                ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                // parent_students.parent_id/student_id هما FK على users.user_id
+                ->leftJoin('parent_students', 'students.user_id', '=', 'parent_students.student_id')
+                ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.user_id')
                 ->leftJoin('users as parent_users', 'parents.user_id', '=', 'parent_users.user_id')
                 ->select(
                     'students.student_id',
@@ -1384,10 +1386,11 @@ class AffairsController extends Controller
                 return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
             }
 
-            $parentStudent = DB::table('parent_students')->where('student_id', $student->student_id)->first();
+            // parent_students.parent_id/student_id هما FK على users.user_id
+            $parentStudent = DB::table('parent_students')->where('student_id', $student->user_id)->first();
             $parentUserId = null;
             if ($parentStudent) {
-                $parent = DB::table('parents')->where('parent_id', $parentStudent->parent_id)->first();
+                $parent = DB::table('parents')->where('user_id', $parentStudent->parent_id)->first();
                 if ($parent) {
                     $parentUserId = $parent->user_id;
                 }

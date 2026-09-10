@@ -1246,12 +1246,13 @@ class AdminController extends Controller
                     foreach ($childrenIds as $universityId) {
                         $student = \DB::table('students')
                             ->where('student_code', $universityId)
-                            ->select('student_id')
+                            ->select('student_id', 'user_id')
                             ->first();
                         if ($student) {
+                            // parent_students.parent_id/student_id هما FK على users.user_id
                             \DB::table('parent_students')->insertOrIgnore([
-                                'parent_id'    => $parent->parent_id,
-                                'student_id'   => $student->student_id,
+                                'parent_id'    => $id,
+                                'student_id'   => $student->user_id,
                                 'relationship' => 'والد / ولي أمر',
                                 'created_at'   => now(),
                                 'updated_at'   => now(),
@@ -1299,7 +1300,8 @@ class AdminController extends Controller
             } elseif ($usr->role_id == 4) {
                 $parent = \DB::table('parents')->where('user_id', $id)->first();
                 if ($parent) {
-                    \DB::table('parent_students')->where('parent_id', $parent->parent_id)->delete();
+                    // parent_students.parent_id هو FK على users.user_id، وليس parents.parent_id
+                    \DB::table('parent_students')->where('parent_id', $id)->delete();
                     \DB::table('parents')->where('parent_id', $parent->parent_id)->delete();
                 }
             }

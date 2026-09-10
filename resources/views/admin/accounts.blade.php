@@ -86,43 +86,67 @@
     <!-- Filter Pills & Search Bar -->
     <div class="bg-white dark:bg-surface-dark p-4 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 space-y-3">
         
-        <!-- Filter Tabs -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            <a href="{{ route('admin.accounts', ['role' => 'all', 'search' => $search]) }}" 
-               class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'all' ? 'bg-primary text-slate-950 font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                <span>الكل</span>
-                <span class="opacity-75">({{ $counts['all'] }})</span>
-            </a>
+        <!-- Filter Tabs & Batch Actions -->
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <a href="{{ route('admin.accounts', ['role' => 'all', 'search' => $search]) }}" 
+                   class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'all' ? 'bg-primary text-slate-950 font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                    <span>الكل</span>
+                    <span class="opacity-75">({{ $counts['all'] }})</span>
+                </a>
 
-            <a href="{{ route('admin.accounts', ['role' => 'student', 'search' => $search]) }}" 
-               class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'student' ? 'bg-blue-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                <span>الطلاب</span>
-                <span class="opacity-75">({{ $counts['student'] }})</span>
-            </a>
+                <a href="{{ route('admin.accounts', ['role' => 'student', 'search' => $search]) }}" 
+                   class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'student' ? 'bg-blue-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                    <span>الطلاب</span>
+                    <span class="opacity-75">({{ $counts['student'] }})</span>
+                </a>
 
-            <a href="{{ route('admin.accounts', ['role' => 'teacher', 'search' => $search]) }}" 
-               class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'teacher' ? 'bg-emerald-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                <span>المعلمون</span>
-                <span class="opacity-75">({{ $counts['teacher'] }})</span>
-            </a>
+                <a href="{{ route('admin.accounts', ['role' => 'teacher', 'search' => $search]) }}" 
+                   class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'teacher' ? 'bg-emerald-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                    <span>المعلمون</span>
+                    <span class="opacity-75">({{ $counts['teacher'] }})</span>
+                </a>
 
-            <a href="{{ route('admin.accounts', ['role' => 'hod', 'search' => $search]) }}" 
-               class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'hod' ? 'bg-purple-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                <span>رؤساء الأقسام</span>
-                <span class="opacity-75">({{ $counts['hod'] }})</span>
-            </a>
+                <a href="{{ route('admin.accounts', ['role' => 'hod', 'search' => $search]) }}" 
+                   class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'hod' ? 'bg-purple-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                    <span>رؤساء الأقسام</span>
+                    <span class="opacity-75">({{ $counts['hod'] }})</span>
+                </a>
 
-            <a href="{{ route('admin.accounts', ['role' => 'parent', 'search' => $search]) }}" 
-               class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'parent' ? 'bg-orange-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                <span>أولياء الأمور</span>
-                <span class="opacity-75">({{ $counts['parent'] }})</span>
-            </a>
+                <a href="{{ route('admin.accounts', ['role' => 'parent', 'search' => $search]) }}" 
+                   class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'parent' ? 'bg-orange-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                    <span>أولياء الأمور</span>
+                    <span class="opacity-75">({{ $counts['parent'] }})</span>
+                </a>
 
-            <a href="{{ route('admin.accounts', ['role' => 'affairs', 'search' => $search]) }}" 
-               class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'affairs' ? 'bg-rose-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                <span>الشؤون</span>
-                <span class="opacity-75">({{ $counts['affairs'] }})</span>
-            </a>
+                <a href="{{ route('admin.accounts', ['role' => 'affairs', 'search' => $search]) }}" 
+                   class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'affairs' ? 'bg-rose-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                    <span>الشؤون</span>
+                    <span class="opacity-75">({{ $counts['affairs'] }})</span>
+                </a>
+            </div>
+
+            {{-- زر حذف الكل مخصص فقط لتبويب الطلاب وتبويب أولياء الأمور --}}
+            {{-- إجراء نهائي لا يمكن التراجع عنه: نطلب من الأدمن كتابة العدد الحالي للحسابات بالضبط كتأكيد إضافي بجانب فحص العدد على السيرفر --}}
+            @if($roleFilter === 'student' && ($counts['student'] ?? 0) > 0)
+                <form id="deleteAllStudentsForm" action="{{ route('admin.accounts.delete_all', 'student') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="confirm_count" value="">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllStudentsForm', {{ (int) $counts['student'] }}, 'جميع حسابات الطلاب')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                        <span class="material-symbols-outlined text-base">delete_sweep</span>
+                        <span>حذف الكل</span>
+                    </button>
+                </form>
+            @elseif($roleFilter === 'parent' && ($counts['parent'] ?? 0) > 0)
+                <form id="deleteAllParentsForm" action="{{ route('admin.accounts.delete_all', 'parent') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="confirm_count" value="">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllParentsForm', {{ (int) $counts['parent'] }}, 'جميع حسابات أولياء الأمور')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                        <span class="material-symbols-outlined text-base">delete_sweep</span>
+                        <span>حذف الكل</span>
+                    </button>
+                </form>
+            @endif
         </div>
 
         <!-- Search Bar Input -->
@@ -235,6 +259,9 @@
 
                             <!-- Actions -->
                             <td class="py-3.5 px-4 text-center">
+                                <a href="{{ route('admin.accounts.edit', $usr->user_id) }}" class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors inline-flex items-center justify-center ml-1" title="تعديل الحساب">
+                                    <span class="material-symbols-outlined text-base">edit</span>
+                                </a>
                                 <form action="{{ route('admin.accounts.delete_single', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('هل أنت متأكد من حذف حساب ({{ $usr->full_name }})؟')">
                                     @csrf
                                     <button type="submit" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors inline-flex items-center justify-center" title="حذف الحساب">
@@ -386,6 +413,23 @@
             }
         });
     });
+
+    // حذف جماعي نهائي لا يمكن التراجع عنه: يُطلب من الأدمن كتابة العدد الحالي للحسابات بالضبط
+    // كتأكيد إضافي حقيقي (بجانب التحقق الملزم من نفس العدد على السيرفر في AdminWebController::deleteAllByRole)
+    function confirmDeleteAllAccounts(formId, expectedCount, label) {
+        const typed = prompt(
+            'تحذير: إجراء نهائي لا يمكن التراجع عنه!\n' +
+            'لحذف ' + label + ' (العدد الحالي: ' + expectedCount + ')، اكتب العدد ' + expectedCount + ' بالضبط لتأكيد الحذف:'
+        );
+        if (typed === null) return;
+        if (parseInt(typed.trim(), 10) !== expectedCount) {
+            alert('العدد المُدخل غير مطابق للعدد الحالي. تم إلغاء عملية الحذف.');
+            return;
+        }
+        const form = document.getElementById(formId);
+        form.querySelector('input[name="confirm_count"]').value = typed.trim();
+        form.submit();
+    }
 </script>
 @endpush
 @endsection

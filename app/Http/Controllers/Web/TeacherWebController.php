@@ -2078,9 +2078,11 @@ class TeacherWebController extends Controller
             ->where('students.student_id', $request->student_id)
             ->value('users.full_name') ?? 'الطالب';
 
+        // parent_students.parent_id/student_id هما FK على users.user_id
+        $behavioralStudentUserId = DB::table('students')->where('student_id', $request->student_id)->value('user_id');
         $parentRows = DB::table('parent_students')
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-            ->where('parent_students.student_id', $request->student_id)
+            ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+            ->where('parent_students.student_id', $behavioralStudentUserId)
             ->pluck('parents.user_id');
 
         $notifTitle = 'تقرير سلوكي جديد';
@@ -2623,9 +2625,10 @@ class TeacherWebController extends Controller
                     ['type' => 'grade', 'event_id' => (string) $id, 'course_title' => $courseTitle]
                 );
 
+                // parent_students.parent_id/student_id هما FK على users.user_id
                 $parentUserIds = DB::table('parent_students')
-                    ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-                    ->where('parent_students.student_id', $studentId)
+                    ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+                    ->where('parent_students.student_id', $studentUserId)
                     ->pluck('parents.user_id');
 
                 foreach ($parentUserIds as $parentUserId) {

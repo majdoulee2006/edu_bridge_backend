@@ -19,15 +19,18 @@ class Parents extends Model
     }
 
     // علاقة بالطلاب عبر الجدول الوسيط
+    // parent_students.parent_id هو FK على users.user_id (وليس parents.parent_id)
     public function parentStudents()
     {
-        return $this->hasMany(StudentParent::class, 'parent_id');
+        return $this->hasMany(StudentParent::class, 'parent_id', 'user_id');
     }
 
     // علاقة مباشرة بالطلاب
+    // parent_students.parent_id/student_id هما FK على users.user_id، لذا نربط عبر عمود user_id
+    // على كلا الجدولين (parents.user_id و students.user_id) بدل المفتاحين الأساسيين parent_id/student_id
     public function students()
     {
-        return $this->belongsToMany(Student::class, 'parent_students', 'parent_id', 'student_id');
+        return $this->belongsToMany(Student::class, 'parent_students', 'parent_id', 'student_id', 'user_id', 'user_id');
     }
 
     public static function autoLinkStudentByPhoneOrId($parentId, $phone = null, $email = null)
@@ -38,16 +41,17 @@ class Parents extends Model
         $user = $parent->user;
         $phoneSearch = $phone ?? $user?->phone;
 
-        if ($phoneSearch) {
+        if ($phoneSearch && $user) {
             $students = Student::whereHas('user', function($q) use ($phoneSearch) {
                 $q->where('phone', $phoneSearch)
                   ->orWhere('username', $phoneSearch);
             })->get();
 
             foreach ($students as $student) {
+                // parent_students.parent_id/student_id هما FK على users.user_id
                 \DB::table('parent_students')->updateOrInsert([
-                    'parent_id'  => $parentId,
-                    'student_id' => $student->student_id,
+                    'parent_id'  => $user->user_id,
+                    'student_id' => $student->user_id,
                 ], [
                     'created_at' => now(),
                     'updated_at' => now(),

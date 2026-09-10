@@ -435,6 +435,11 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/accounts/delete-list/{role_id}', [AdminWebController::class, 'deleteList'])->name('admin.accounts.delete-list');
     Route::post('/accounts/delete/{role_id}', [AdminWebController::class, 'deleteAccounts'])->name('admin.accounts.delete');
     Route::post('/accounts/user/{id}/delete', [AdminWebController::class, 'deleteSingleAccount'])->name('admin.accounts.delete_single');
+    Route::post('/accounts/delete-all/{role}', [AdminWebController::class, 'deleteAllByRole'])->name('admin.accounts.delete_all');
+
+    // Edit accounts
+    Route::get('/accounts/edit/{id}', [AdminWebController::class, 'editAccount'])->name('admin.accounts.edit');
+    Route::post('/accounts/update/{id}', [AdminWebController::class, 'updateAccount'])->name('admin.accounts.update');
 
     // الدورات والأقسام الأكاديمية
     Route::get('/courses', [AdminWebController::class, 'courses'])->name('admin.courses');

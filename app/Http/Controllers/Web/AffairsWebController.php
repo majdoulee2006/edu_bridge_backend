@@ -23,6 +23,7 @@ use App\Services\TelegramService;
 class AffairsWebController extends Controller
 {
     use \App\Traits\HandlesMessagesTrait;
+    use \App\Traits\NormalizesAccountCredentialsTrait;
     // ─────────────────────────── Auth ───────────────────────────
     public function showLoginForm()
     {
@@ -189,6 +190,9 @@ class AffairsWebController extends Controller
 
     public function storeSemesterWeb(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'name'       => 'required|string|max:255',
             'start_date' => 'nullable|date',
@@ -381,6 +385,9 @@ class AffairsWebController extends Controller
 
     public function storeCalendarEvent(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'event_date'    => 'required|date',
             'title'         => 'required|string|max:255',
@@ -647,6 +654,9 @@ class AffairsWebController extends Controller
 
     public function updateAccount(Request $request, $id)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $user = DB::table('users')->where('user_id', $id)->first();
         if (!$user) {
             return redirect()->back()->with('error', 'المستخدم غير موجود.');
@@ -655,7 +665,13 @@ class AffairsWebController extends Controller
         $request->validate([
             'full_name' => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
-            'email'     => 'required|email|max:255|unique:users,email,' . $id . ',user_id',
+            'email'     => [
+                'required',
+                'email',
+                'max:255',
+                'unique:users,email,' . $id . ',user_id',
+                
+            ],
             'password'  => 'nullable|string|min:6|confirmed',
         ], [
             'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
@@ -680,6 +696,9 @@ class AffairsWebController extends Controller
 
     public function storeAccount(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'full_name' => 'required|string|max:255',
             'email'     => 'required|email|unique:users,email',
@@ -712,43 +731,45 @@ class AffairsWebController extends Controller
 
         $dept = DB::table('departments')->where('department_id', $request->department_id)->first();
 
-        $user = User::create([
-            'full_name'  => $request->full_name,
-            'email'      => $request->email,
-            'phone'      => $request->phone,
-            'role_id'    => $request->role_id,
-            'department' => $dept ? $dept->name : null,
-            'password'   => Hash::make($request->password),
-            'status'     => 'active',
-            'username'   => $username,
-        ]);
-
-        if ((int) $request->role_id === 2) {
-            $teacherId = DB::table('teachers')->insertGetId([
-                'user_id'        => $user->user_id,
-                'specialization' => $request->specialization ?? 'عام',
-                'created_at'     => now(),
-                'updated_at'     => now(),
+        DB::transaction(function () use ($request, $username, $dept) {
+            $user = User::create([
+                'full_name'  => $request->full_name,
+                'email'      => $request->email,
+                'phone'      => $request->phone,
+                'role_id'    => $request->role_id,
+                'department' => $dept ? $dept->name : null,
+                'password'   => Hash::make($request->password),
+                'status'     => 'active',
+                'username'   => $username,
             ]);
 
-            if ($request->filled('courses')) {
-                foreach ($request->courses as $courseId) {
-                    DB::table('course_teachers')->insertOrIgnore([
-                        'teacher_id' => $teacherId,
-                        'course_id'  => $courseId,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+            if ((int) $request->role_id === 2) {
+                $teacherId = DB::table('teachers')->insertGetId([
+                    'user_id'        => $user->user_id,
+                    'specialization' => $request->specialization ?? 'عام',
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+
+                if ($request->filled('courses')) {
+                    foreach ($request->courses as $courseId) {
+                        DB::table('course_teachers')->insertOrIgnore([
+                            'teacher_id' => $teacherId,
+                            'course_id'  => $courseId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
                 }
+            } elseif ((int) $request->role_id === 5) {
+                DB::table('heads')->insert([
+                    'user_id'       => $user->user_id,
+                    'department_id' => $request->department_id,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
             }
-        } elseif ((int) $request->role_id === 5) {
-            DB::table('heads')->insert([
-                'user_id'       => $user->user_id,
-                'department_id' => $request->department_id,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-        }
+        });
 
         return back()->with('success', 'تم إنشاء الحساب بنجاح.');
     }
@@ -762,6 +783,9 @@ class AffairsWebController extends Controller
 
     public function storeUniversityId(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
@@ -1646,6 +1670,9 @@ class AffairsWebController extends Controller
 
     public function storeReport(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'student_id'  => 'required|exists:students,student_id',
             'teacher_id'  => 'required|exists:teachers,teacher_id',

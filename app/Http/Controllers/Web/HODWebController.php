@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 class HODWebController extends Controller
 {
     use \App\Traits\HandlesMessagesTrait;
+    use \App\Traits\NormalizesAccountCredentialsTrait;
     /**
      * Show Login Form
      */
@@ -530,14 +531,23 @@ class HODWebController extends Controller
         }
 
         // 4. الأهل (الآباء الذين لديهم أبناء في هذا القسم)
+        // ملاحظة: parent_students.parent_id/student_id هما FK على users.user_id، لكن بعض السجلات القديمة
+        // في قاعدة البيانات أُدخلت (عبر أكواد سابقة) بقيم parents.parent_id/students.student_id الخاطئة،
+        // لذا نتحقق من الاحتمالين معاً لضمان عدم فقدان أي ربط قديم.
         $parents = DB::table('parents')
             ->join('users', 'parents.user_id', '=', 'users.user_id')
             ->whereExists(function ($query) use ($hodDept) {
                 $query->select(DB::raw(1))
                       ->from('parent_students')
-                      ->join('students', 'parent_students.student_id', '=', 'students.student_id')
+                      ->join('students', function ($j) {
+                          $j->on('parent_students.student_id', '=', 'students.user_id')
+                            ->orOn('parent_students.student_id', '=', 'students.student_id');
+                      })
                       ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
-                      ->whereColumn('parent_students.parent_id', 'parents.parent_id')
+                      ->where(function ($q) {
+                          $q->whereColumn('parent_students.parent_id', 'parents.user_id')
+                            ->orWhereColumn('parent_students.parent_id', 'parents.parent_id');
+                      })
                       ->where('student_users.department', $hodDept);
             })
             ->select('parents.parent_id', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone')
@@ -545,9 +555,15 @@ class HODWebController extends Controller
 
         foreach ($parents as $parent) {
             $parent->children = DB::table('parent_students')
-                ->join('students', 'parent_students.student_id', '=', 'students.student_id')
+                ->join('students', function ($j) {
+                    $j->on('parent_students.student_id', '=', 'students.user_id')
+                      ->orOn('parent_students.student_id', '=', 'students.student_id');
+                })
                 ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->where('parent_students.parent_id', $parent->parent_id)
+                ->where(function ($q) use ($parent) {
+                    $q->where('parent_students.parent_id', $parent->user_id)
+                      ->orWhere('parent_students.parent_id', $parent->parent_id);
+                })
                 ->pluck('users.full_name');
         }
 
@@ -601,10 +617,19 @@ class HODWebController extends Controller
      */
     public function storeTeacher(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'full_name'       => 'required|string|max:255',
             'phone'           => 'nullable|string|max:20',
-            'email'           => 'required|email|unique:users,email|max:255',
+            'email'           => [
+                'required',
+                'email',
+                'unique:users,email',
+                'max:255',
+                
+            ],
             'department'      => 'required|string|max:255',
             'specializations' => 'required|array',
             'password'        => 'required|string|min:6|confirmed',
@@ -622,38 +647,40 @@ class HODWebController extends Controller
             $username = $base . $i++;
         }
 
-        $userId = DB::table('users')->insertGetId([
-            'role_id'        => 2,
-            'full_name'      => $request->full_name,
-            'username'       => $username,
-            'email'          => $request->email,
-            'phone'          => $request->phone,
-            'department'     => $request->department,
-            'password'       => bcrypt($request->password),
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ]);
+        DB::transaction(function () use ($request, $username) {
+            $userId = DB::table('users')->insertGetId([
+                'role_id'        => 2,
+                'full_name'      => $request->full_name,
+                'username'       => $username,
+                'email'          => $request->email,
+                'phone'          => $request->phone,
+                'department'     => $request->department,
+                'password'       => bcrypt($request->password),
+                'status'         => 'active',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
 
-        $specializationString = implode(' - ', $request->specializations);
+            $specializationString = implode(' - ', $request->specializations);
 
-        $teacherId = DB::table('teachers')->insertGetId([
-            'user_id'        => $userId,
-            'specialization' => $specializationString,
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ]);
+            $teacherId = DB::table('teachers')->insertGetId([
+                'user_id'        => $userId,
+                'specialization' => $specializationString,
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
 
-        if ($request->filled('courses')) {
-            foreach ($request->courses as $courseId) {
-                DB::table('course_teachers')->insert([
-                    'teacher_id' => $teacherId,
-                    'course_id'  => $courseId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            if ($request->filled('courses')) {
+                foreach ($request->courses as $courseId) {
+                    DB::table('course_teachers')->insert([
+                        'teacher_id' => $teacherId,
+                        'course_id'  => $courseId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
-        }
+        });
 
         return redirect()->back()->with('success', 'تمت إضافة حساب المدرب بنجاح!');
     }
@@ -712,10 +739,19 @@ class HODWebController extends Controller
      */
     public function storeStudent(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'full_name'        => 'required|string|max:255',
             'university_id'    => 'required|string|unique:users,university_id|max:255',
-            'email'            => 'required|email|unique:users,email|max:255',
+            'email'            => [
+                'required',
+                'email',
+                'unique:users,email',
+                'max:255',
+                
+            ],
             'phone'            => 'nullable|string|max:20',
             'telegram_chat_id' => 'nullable|string|max:100',
             'department'       => 'required|string|max:255',
@@ -732,39 +768,53 @@ class HODWebController extends Controller
             'program_id.exists'    => 'التخصص المختار غير موجود.'
         ]);
 
-        $userId = DB::table('users')->insertGetId([
-            'role_id'          => 3,
-            'full_name'        => $request->full_name,
-            'username'         => $request->university_id,
-            'university_id'    => $request->university_id,
-            'email'            => $request->email,
-            'phone'            => $request->phone,
-            'telegram_chat_id' => $request->telegram_chat_id,
-            'department'       => $request->department,
-            'gender'           => $request->gender,
-            'birth_date'       => $request->birth_date,
-            'academic_year'    => $request->level,
-            'password'         => bcrypt($request->password),
-            'status'           => 'active',
-            'created_at'       => now(),
-            'updated_at'       => now(),
-        ]);
+        DB::transaction(function () use ($request) {
+            $userId = DB::table('users')->insertGetId([
+                'role_id'          => 3,
+                'full_name'        => $request->full_name,
+                'username'         => $request->university_id,
+                'university_id'    => $request->university_id,
+                'email'            => $request->email,
+                'phone'            => $request->phone,
+                'telegram_chat_id' => $request->telegram_chat_id,
+                'department'       => $request->department,
+                'gender'           => $request->gender,
+                'birth_date'       => $request->birth_date,
+                'academic_year'    => $request->level,
+                'password'         => bcrypt($request->password),
+                'status'           => 'active',
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ]);
 
-        // إرسال بيانات الطالب عبر تليجرام مباشرة
+            $studentId = DB::table('students')->insertGetId([
+                'user_id'      => $userId,
+                'student_code' => $request->university_id,
+                'level'        => $request->level,
+                'birth_date'   => $request->birth_date,
+                'program_id'   => $request->program_id,
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+
+            \App\Models\Student::autoAssignAdvisor($studentId);
+        });
+
+        // إرسال بيانات الطالب عبر تليجرام مباشرة (بعد نجاح الحفظ بالكامل)
         if ($request->filled('telegram_chat_id')) {
             try {
-                $botToken = '8729068851:AAHILif3EtFWGKaTLgYxm7ZPuw6uqXV0A2k';
+                $botToken = config('services.telegram.bot_token');
                 $message = "🎓 <b>مرحباً بك في جامعة Edu-Bridge!</b> 🎉\n\n"
                          . "تم إنشاء حساب الطالب الخاص بك بنجاح. إليك كافة التفاصيل والمعلومات:\n\n"
-                         . "👤 <b>الاسم الكامل:</b> {$request->full_name}\n"
-                         . "🔑 <b>الرقم الجامعي (اسم المستخدم):</b> <code>{$request->university_id}</code>\n"
-                         . "🔒 <b>كلمة المرور:</b> <code>{$request->password}</code>\n"
-                         . "📧 <b>البريد الإلكتروني:</b> <code>{$request->email}</code>\n"
-                         . "📞 <b>رقم الهاتف:</b> <code>" . ($request->phone ?? '—') . "</code>\n"
-                         . "🏢 <b>القسم:</b> <code>{$request->department}</code>\n"
-                         . "📚 <b>المستوى الدراسي:</b> <code>{$request->level}</code>\n"
-                         . "📅 <b>تاريخ الميلاد:</b> <code>{$request->birth_date}</code>\n"
-                         . "🚻 <b>الجنس:</b> <code>{$request->gender}</code>\n\n"
+                         . "👤 <b>الاسم الكامل:</b> " . e($request->full_name) . "\n"
+                         . "🔑 <b>الرقم الجامعي (اسم المستخدم):</b> <code>" . e($request->university_id) . "</code>\n"
+                         . "🔒 <b>كلمة المرور:</b> <code>" . e($request->password) . "</code>\n"
+                         . "📧 <b>البريد الإلكتروني:</b> <code>" . e($request->email) . "</code>\n"
+                         . "📞 <b>رقم الهاتف:</b> <code>" . e($request->phone ?? '—') . "</code>\n"
+                         . "🏢 <b>القسم:</b> <code>" . e($request->department) . "</code>\n"
+                         . "📚 <b>المستوى الدراسي:</b> <code>" . e($request->level) . "</code>\n"
+                         . "📅 <b>تاريخ الميلاد:</b> <code>" . e($request->birth_date) . "</code>\n"
+                         . "🚻 <b>الجنس:</b> <code>" . e($request->gender) . "</code>\n\n"
                          . "📲 يمكنك الآن تسجيل الدخول مباشرة إلى تطبيق الجامعة باستخدام رقمك الجامعي وكلمة المرور أعلاه.";
 
                 \Illuminate\Support\Facades\Http::timeout(5)->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
@@ -777,18 +827,6 @@ class HODWebController extends Controller
             }
         }
 
-        $studentId = DB::table('students')->insertGetId([
-            'user_id'      => $userId,
-            'student_code' => $request->university_id,
-            'level'        => $request->level,
-            'birth_date'   => $request->birth_date,
-            'program_id'   => $request->program_id,
-            'created_at'   => now(),
-            'updated_at'   => now(),
-        ]);
-
-        \App\Models\Student::autoAssignAdvisor($studentId);
-
         return redirect()->back()->with('success', 'تمت إضافة حساب الطالب بنجاح!');
     }
 
@@ -797,6 +835,9 @@ class HODWebController extends Controller
      */
     public function storeParent(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'full_name'               => 'required|string|max:255',
             'phone'                   => 'required|string|max:20',
@@ -810,41 +851,45 @@ class HODWebController extends Controller
             'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.',
         ]);
 
-        $userId = DB::table('users')->insertGetId([
-            'role_id'    => 4,
-            'full_name'  => $request->full_name,
-            'username'   => $request->username,
-            'email'      => $request->email,
-            'phone'      => $request->phone,
-            'password'   => bcrypt($request->password),
-            'status'     => 'active',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        DB::transaction(function () use ($request) {
+            $userId = DB::table('users')->insertGetId([
+                'role_id'    => 4,
+                'full_name'  => $request->full_name,
+                'username'   => $request->username,
+                'email'      => $request->email,
+                'phone'      => $request->phone,
+                'password'   => bcrypt($request->password),
+                'status'     => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        $parentId = DB::table('parents')->insertGetId([
-            'user_id'    => $userId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            DB::table('parents')->insertGetId([
+                'user_id'    => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        if ($request->filled('children_university_ids')) {
-            foreach (array_filter($request->children_university_ids) as $universityId) {
-                $student = DB::table('students')
-                    ->join('users', 'students.user_id', '=', 'users.user_id')
-                    ->where('students.student_code', $universityId)
-                    ->select('students.student_id')
-                    ->first();
-                if (!$student) continue;
-                DB::table('parent_students')->insert([
-                    'parent_id'    => $parentId,
-                    'student_id'   => $student->student_id,
-                    'relationship' => 'guardian',
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]);
+            if ($request->filled('children_university_ids')) {
+                foreach (array_filter($request->children_university_ids) as $universityId) {
+                    $student = DB::table('students')
+                        ->join('users', 'students.user_id', '=', 'users.user_id')
+                        ->where('students.student_code', $universityId)
+                        ->select('students.student_id', 'users.user_id as student_user_id')
+                        ->first();
+                    if (!$student) continue;
+
+                    // parent_students.parent_id/student_id هما FK على users.user_id (وليس parents.parent_id/students.student_id)
+                    DB::table('parent_students')->insertOrIgnore([
+                        'parent_id'    => $userId,
+                        'student_id'   => $student->student_user_id,
+                        'relationship' => 'guardian',
+                        'created_at'   => now(),
+                        'updated_at'   => now(),
+                    ]);
+                }
             }
-        }
+        });
 
         return redirect()->back()->with('success', 'تمت إضافة حساب ولي الأمر بنجاح!');
     }
@@ -854,6 +899,9 @@ class HODWebController extends Controller
      */
     public function updateAccount(Request $request, $id)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $user = DB::table('users')->where('user_id', $id)->first();
         if (!$user) {
             return redirect()->back()->with('error', 'المستخدم غير موجود.');
@@ -862,7 +910,13 @@ class HODWebController extends Controller
         $request->validate([
             'full_name' => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
-            'email'     => 'required|email|max:255|unique:users,email,' . $id . ',user_id',
+            'email'     => [
+                'required',
+                'email',
+                'max:255',
+                'unique:users,email,' . $id . ',user_id',
+                
+            ],
             'password'  => 'nullable|string|min:6|confirmed',
         ], [
             'email.unique'       => 'البريد الإلكتروني مستخدم بالفعل.',
@@ -880,29 +934,31 @@ class HODWebController extends Controller
             $updates['password'] = bcrypt($request->password);
         }
 
-        DB::table('users')->where('user_id', $id)->update($updates);
+        DB::transaction(function () use ($request, $user, $id, $updates) {
+            DB::table('users')->where('user_id', $id)->update($updates);
 
-        if ($user->role_id == 2) {
-            $teacher = DB::table('teachers')->where('user_id', $id)->first();
-            if ($teacher) {
-                // Remove all existing courses
-                DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->delete();
-                
-                // Add new courses
-                if ($request->has('courses') && is_array($request->courses)) {
-                    $courseInserts = [];
-                    foreach ($request->courses as $courseId) {
-                        $courseInserts[] = [
-                            'teacher_id' => $teacher->teacher_id,
-                            'course_id'  => $courseId,
-                        ];
-                    }
-                    if (count($courseInserts) > 0) {
-                        DB::table('course_teachers')->insert($courseInserts);
+            if ($user->role_id == 2) {
+                $teacher = DB::table('teachers')->where('user_id', $id)->first();
+                if ($teacher) {
+                    // Remove all existing courses
+                    DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->delete();
+
+                    // Add new courses
+                    if ($request->has('courses') && is_array($request->courses)) {
+                        $courseInserts = [];
+                        foreach ($request->courses as $courseId) {
+                            $courseInserts[] = [
+                                'teacher_id' => $teacher->teacher_id,
+                                'course_id'  => $courseId,
+                            ];
+                        }
+                        if (count($courseInserts) > 0) {
+                            DB::table('course_teachers')->insert($courseInserts);
+                        }
                     }
                 }
             }
-        }
+        });
 
         return redirect()->back()->with('success', 'تم تحديث بيانات الحساب بنجاح!');
     }
@@ -1007,6 +1063,9 @@ class HODWebController extends Controller
      */
     public function storeAnnouncement(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'title'            => 'required|string|max:255',
             'content'          => 'required|string|max:5000',
@@ -1125,6 +1184,9 @@ class HODWebController extends Controller
      */
     public function storeSchedule(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'course_id' => 'required|exists:courses,course_id',
             'day' => 'required|string',
@@ -1194,6 +1256,9 @@ class HODWebController extends Controller
      */
     public function storeExam(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'course_id' => 'required|exists:courses,course_id',
             'exam_name' => 'required|string|max:255',
@@ -1481,6 +1546,9 @@ class HODWebController extends Controller
      */
     public function storeReport(Request $request)
     {
+        $this->normalizeAccountCredentials($request);
+
+
         $request->validate([
             'student_id' => 'required|exists:students,student_id',
             'report_type' => 'required|in:academic,behavioral',
@@ -1574,14 +1642,23 @@ class HODWebController extends Controller
                 ]);
         }
 
+        $studentUserId = DB::table('students')->where('student_id', $report->student_id)->value('user_id');
+
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة
+        // أُدخلت خطأً بقيم parents.parent_id/students.student_id (كود سابق قبل الإصلاح)
         $parentIds = DB::table('parent_students')
-            ->where('student_id', $report->student_id)
-            ->pluck('parent_id');
+            ->where(function ($q) use ($studentUserId, $report) {
+                $q->where('student_id', $studentUserId)
+                  ->orWhere('student_id', $report->student_id);
+            })
+            ->pluck('parent_id')
+            ->unique();
 
         $notificationMessage = $report->recommendations ?? 'تم إرسال تقرير أداء جديد.';
 
         foreach ($parentIds as $parentId) {
-            $parentUserId = DB::table('parents')->where('parent_id', $parentId)->value('user_id');
+            $parentIsUser = DB::table('users')->where('user_id', $parentId)->where('role_id', 4)->exists();
+            $parentUserId = $parentIsUser ? $parentId : DB::table('parents')->where('parent_id', $parentId)->value('user_id');
             if ($parentUserId) {
                 DB::table('notifications')->insert([
                     'user_id'    => $parentUserId,

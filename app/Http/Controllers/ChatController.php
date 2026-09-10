@@ -84,8 +84,15 @@ class ChatController extends Controller
             $childDepartments = collect();
             $parentRecord = \DB::table('parents')->where('user_id', $user->user_id)->first();
             if ($parentRecord) {
-                $studentIds = \DB::table('parent_students')->where('parent_id', $parentRecord->parent_id)->pluck('student_id');
-                $childUserIds = \DB::table('students')->whereIn('student_id', $studentIds)->pluck('user_id');
+                // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+                $linkedIds = \DB::table('parent_students')
+                    ->where(function ($q) use ($user, $parentRecord) {
+                        $q->where('parent_id', $user->user_id)
+                          ->orWhere('parent_id', $parentRecord->parent_id);
+                    })
+                    ->pluck('student_id');
+                $resolvedFromLegacy = \DB::table('students')->whereIn('student_id', $linkedIds)->pluck('user_id');
+                $childUserIds = $linkedIds->merge($resolvedFromLegacy)->unique();
                 $childDepts = \App\Models\User::whereIn('user_id', $childUserIds)->pluck('department')->filter()->unique();
                 $childDepartments = $childDepartments->merge($childDepts);
             }

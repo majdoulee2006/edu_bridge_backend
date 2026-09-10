@@ -851,10 +851,10 @@ class StudentWebController extends Controller
         $notifTitle  = 'طلب إذن جديد من الابن';
         $notifMsg    = 'قام ابنكم ' . $studentName . ' بتقديم طلب إذن غياب بتاريخ ' . $request->date . '، يرجى مراجعته والموافقة عليه.';
 
-        // الخطوة 1 في المسار المتسلسل: إرسال الإشعار لولي الأمر أولاً
+        // الخطوة 1 في المسار المتسلسل: إرسال الإشعار لولي الأمر أولاً — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserIds = DB::table('parent_students')
-            ->where('student_id', $student->student_id)
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+            ->where('student_id', $student->user_id)
+            ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
             ->pluck('parents.user_id');
 
         foreach ($parentUserIds as $pId) {

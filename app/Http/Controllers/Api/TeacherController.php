@@ -1230,9 +1230,11 @@ class TeacherController extends Controller
                 'updated_at'      => now(),
             ]);
 
+            // parent_students.parent_id/student_id هما FK على users.user_id، وreportRequest->student_id هو students.student_id
+            $reportStudentUserId = DB::table('students')->where('student_id', $reportRequest->student_id)->value('user_id');
             $parentUserId = DB::table('parent_students')
-                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-                ->where('parent_students.student_id', $reportRequest->student_id)
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+                ->where('parent_students.student_id', $reportStudentUserId)
                 ->value('parents.user_id');
 
             if ($parentUserId) {
@@ -2758,10 +2760,10 @@ class TeacherController extends Controller
                 ['type' => 'grade', 'event_id' => (string) $id, 'course_title' => $courseTitle]
             );
 
-            // إشعار لأولياء أمور الطالب — parent_students.student_id = students.student_id
+            // إشعار لأولياء أمور الطالب — parent_students.parent_id/student_id هما FK على users.user_id
             $parentUserIds = DB::table('parent_students')
-                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-                ->where('parent_students.student_id', $entry['student_id'])
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+                ->where('parent_students.student_id', $studentUserId)
                 ->pluck('parents.user_id');
 
             foreach ($parentUserIds as $parentUserId) {
@@ -2937,10 +2939,10 @@ class TeacherController extends Controller
             $hodUserId = DB::table('departments')->where('department_id', $student->department_id)->value('hod_user_id');
         }
 
-        // جلب ولي أمر الطالب للتسجيل المبدئي
+        // جلب ولي أمر الطالب للتسجيل المبدئي — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserId = DB::table('parent_students')
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-            ->where('parent_students.student_id', $student->student_id)
+            ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+            ->where('parent_students.student_id', $student->user_id)
             ->value('parents.user_id');
 
         $summonId = DB::table('parent_summons')->insertGetId([

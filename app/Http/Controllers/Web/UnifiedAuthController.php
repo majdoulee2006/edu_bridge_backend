@@ -63,6 +63,8 @@ class UnifiedAuthController extends Controller
             ->orWhere('phone', $input)
             ->orWhere('username', $input)
             ->orWhere('university_id', $input)
+            ->orWhere('username', $input . '@edu-bridge.com')
+            ->orWhere('email', $input . '@gmail.com')
             ->first();
 
         // 2. If not found, search in Student table by student_code
@@ -204,6 +206,8 @@ class UnifiedAuthController extends Controller
             ->orWhere('phone', $input)
             ->orWhere('username', $input)
             ->orWhere('university_id', $input)
+            ->orWhere('username', $input . '@edu-bridge.com')
+            ->orWhere('email', $input . '@gmail.com')
             ->first();
 
         if (!$user && ($role === 'student' || $role === 'unified')) {

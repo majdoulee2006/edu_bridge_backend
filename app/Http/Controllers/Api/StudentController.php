@@ -1899,13 +1899,17 @@ class StudentController extends Controller
         $student = $request->user()->student;
 
         if ($student) {
+            // parent_students.parent_id/student_id هما FK على users.user_id
             $parentIds = \DB::table('parent_students')
-                ->where('student_id', $student->student_id)
+                ->where('student_id', $student->user_id)
                 ->pluck('parent_id');
 
             if ($parentIds->isNotEmpty()) {
                 foreach ($parentIds as $parentId) {
-                    $parent = \DB::table('parents')->where('parent_id', $parentId)->first();
+                    $parentIsUser = \DB::table('users')->where('user_id', $parentId)->where('role_id', 4)->exists();
+                    $parent = $parentIsUser
+                        ? \DB::table('users')->where('user_id', $parentId)->first()
+                        : \DB::table('parents')->where('parent_id', $parentId)->first();
                     if ($parent) {
                         \DB::table('notifications')->insert([
                             'user_id'    => $parent->user_id,
@@ -2555,10 +2559,17 @@ class StudentController extends Controller
             return response()->json(['message' => 'سجل ولي الأمر غير موجود'], 404);
         }
 
-        DB::table('parent_students')->updateOrInsert([
-            'parent_id'  => $parent->parent_id,
-            'student_id' => $student->student_id,
-        ]);
+        // parent_students.parent_id/student_id هما FK على users.user_id
+        DB::table('parent_students')->updateOrInsert(
+            [
+                'parent_id'  => $parent->user_id,
+                'student_id' => $student->user_id,
+            ],
+            [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
 
         return response()->json(['message' => 'تم ربط الطالب بنجاح'], 200);
     }

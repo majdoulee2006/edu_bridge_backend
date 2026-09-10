@@ -156,7 +156,7 @@ tr:last-child td { border-bottom:none; }
 
             <div class="form-group">
                 <label>معرّف التليجرام (Telegram Chat ID) <span class="optional-label">(اختياري)</span></label>
-                <input type="text" name="telegram_chat_id" class="form-control" placeholder="مثال: 7650604064">
+                <input type="text" name="telegram_chat_id" class="form-control" placeholder="مثال: 123456789">
             </div>
 
             <div class="form-group">

@@ -829,15 +829,23 @@ class DepartmentHeadController extends Controller
                 'updated_at' => now()
             ]);
 
+        $requestStudentUserId = DB::table('students')->where('student_id', $requestRow->student_id)->value('user_id');
+
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
         $parentIds = DB::table('parent_students')
-            ->where('student_id', $requestRow->student_id)
-            ->pluck('parent_id');
+            ->where(function ($q) use ($requestRow, $requestStudentUserId) {
+                $q->where('student_id', $requestStudentUserId)
+                  ->orWhere('student_id', $requestRow->student_id);
+            })
+            ->pluck('parent_id')
+            ->unique();
 
         $performanceReport = DB::table('performance_reports')->where('report_request_id', $id)->first();
         $notificationMessage = $performanceReport ? $performanceReport->recommendations : $requestRow->notes;
 
         foreach ($parentIds as $parentId) {
-            $parentUserId = DB::table('parents')->where('parent_id', $parentId)->value('user_id');
+            $parentIsUser = DB::table('users')->where('user_id', $parentId)->where('role_id', 4)->exists();
+            $parentUserId = $parentIsUser ? $parentId : DB::table('parents')->where('parent_id', $parentId)->value('user_id');
             if ($parentUserId) {
                 DB::table('notifications')->insert([
                     'user_id'    => $parentUserId,
