@@ -364,7 +364,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
 
 
 // ===== مسارات الإدارة (Admin) =====
-use App\Http\Controllers\Web\AdminWebController;
+use App\Http\Controllers\Web\AdminAccountController;
 use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminStudentServiceController;
 use App\Http\Controllers\Web\AdminDashboardController;
@@ -419,35 +419,35 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/notifications/read-all', [AdminCommunicationController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');
 
     // ─── Accounts Management ───
-    Route::get('/accounts', [AdminWebController::class, 'accounts'])->name('admin.accounts');
-    Route::post('/accounts/approve/{id}', [AdminWebController::class, 'approveAccount'])->name('admin.accounts.approve');
-    Route::post('/accounts/reject/{id}', [AdminWebController::class, 'rejectAccount'])->name('admin.accounts.reject');
+    Route::get('/accounts', [AdminAccountController::class, 'accounts'])->name('admin.accounts');
+    Route::post('/accounts/approve/{id}', [AdminAccountController::class, 'approveAccount'])->name('admin.accounts.approve');
+    Route::post('/accounts/reject/{id}', [AdminAccountController::class, 'rejectAccount'])->name('admin.accounts.reject');
 
     // Create accounts
-    Route::get('/accounts/create/student', [AdminWebController::class, 'createStudent'])->name('admin.accounts.create.student');
-    Route::post('/accounts/store/student', [AdminWebController::class, 'storeStudent'])->name('admin.accounts.store.student');
+    Route::get('/accounts/create/student', [AdminAccountController::class, 'createStudent'])->name('admin.accounts.create.student');
+    Route::post('/accounts/store/student', [AdminAccountController::class, 'storeStudent'])->name('admin.accounts.store.student');
 
-    Route::get('/accounts/create/parent', [AdminWebController::class, 'createParent'])->name('admin.accounts.create.parent');
-    Route::post('/accounts/store/parent', [AdminWebController::class, 'storeParent'])->name('admin.accounts.store.parent');
+    Route::get('/accounts/create/parent', [AdminAccountController::class, 'createParent'])->name('admin.accounts.create.parent');
+    Route::post('/accounts/store/parent', [AdminAccountController::class, 'storeParent'])->name('admin.accounts.store.parent');
 
-    Route::get('/accounts/create/teacher', [AdminWebController::class, 'createTeacher'])->name('admin.accounts.create.teacher');
-    Route::post('/accounts/store/teacher', [AdminWebController::class, 'storeTeacher'])->name('admin.accounts.store.teacher');
+    Route::get('/accounts/create/teacher', [AdminAccountController::class, 'createTeacher'])->name('admin.accounts.create.teacher');
+    Route::post('/accounts/store/teacher', [AdminAccountController::class, 'storeTeacher'])->name('admin.accounts.store.teacher');
 
-    Route::get('/accounts/create/hod', [AdminWebController::class, 'createHOD'])->name('admin.accounts.create.hod');
-    Route::post('/accounts/store/hod', [AdminWebController::class, 'storeHOD'])->name('admin.accounts.store.hod');
+    Route::get('/accounts/create/hod', [AdminAccountController::class, 'createHOD'])->name('admin.accounts.create.hod');
+    Route::post('/accounts/store/hod', [AdminAccountController::class, 'storeHOD'])->name('admin.accounts.store.hod');
 
-    Route::get('/accounts/create/affairs', [AdminWebController::class, 'createAffairs'])->name('admin.accounts.create.affairs');
-    Route::post('/accounts/store/affairs', [AdminWebController::class, 'storeAffairs'])->name('admin.accounts.store.affairs');
+    Route::get('/accounts/create/affairs', [AdminAccountController::class, 'createAffairs'])->name('admin.accounts.create.affairs');
+    Route::post('/accounts/store/affairs', [AdminAccountController::class, 'storeAffairs'])->name('admin.accounts.store.affairs');
 
     // Delete accounts
-    Route::get('/accounts/delete-list/{role_id}', [AdminWebController::class, 'deleteList'])->name('admin.accounts.delete-list');
-    Route::post('/accounts/delete/{role_id}', [AdminWebController::class, 'deleteAccounts'])->name('admin.accounts.delete');
-    Route::post('/accounts/user/{id}/delete', [AdminWebController::class, 'deleteSingleAccount'])->name('admin.accounts.delete_single');
-    Route::post('/accounts/delete-all/{role}', [AdminWebController::class, 'deleteAllByRole'])->name('admin.accounts.delete_all');
+    Route::get('/accounts/delete-list/{role_id}', [AdminAccountController::class, 'deleteList'])->name('admin.accounts.delete-list');
+    Route::post('/accounts/delete/{role_id}', [AdminAccountController::class, 'deleteAccounts'])->name('admin.accounts.delete');
+    Route::post('/accounts/user/{id}/delete', [AdminAccountController::class, 'deleteSingleAccount'])->name('admin.accounts.delete_single');
+    Route::post('/accounts/delete-all/{role}', [AdminAccountController::class, 'deleteAllByRole'])->name('admin.accounts.delete_all');
 
     // Edit accounts
-    Route::get('/accounts/edit/{id}', [AdminWebController::class, 'editAccount'])->name('admin.accounts.edit');
-    Route::post('/accounts/update/{id}', [AdminWebController::class, 'updateAccount'])->name('admin.accounts.update');
+    Route::get('/accounts/edit/{id}', [AdminAccountController::class, 'editAccount'])->name('admin.accounts.edit');
+    Route::post('/accounts/update/{id}', [AdminAccountController::class, 'updateAccount'])->name('admin.accounts.update');
 
     // الدورات والأقسام الأكاديمية
     Route::get('/courses', [AdminCourseController::class, 'courses'])->name('admin.courses');

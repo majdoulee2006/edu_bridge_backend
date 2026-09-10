@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use App\Models\User;
 use App\Models\Admin;
 
-class AdminWebController extends Controller
+class AdminAccountController extends Controller
 {
     use \App\Traits\NormalizesAccountCredentialsTrait;
 
