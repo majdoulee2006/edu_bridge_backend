@@ -13,7 +13,7 @@ class CheckStudentRole
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
-            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
+            return redirect()->route('login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
         }
 
         $user = Auth::user();
@@ -23,7 +23,13 @@ class CheckStudentRole
 
         $student = \App\Models\Student::where('user_id', $user->user_id)->first();
         if (!$student) {
-            return (new UnifiedAuthController)->redirectUserByRole($user);
+            // إنشاء قيد الطالب تلقائياً في حال عدم وجوده لمنع الـ Redirect Loop
+            $student = \App\Models\Student::create([
+                'user_id'      => $user->user_id,
+                'student_code' => $user->university_id ?? $user->username,
+                'level'        => $user->academic_year ?? 'السنة الأولى',
+                'birth_date'   => $user->birth_date ?? '2005-01-01',
+            ]);
         }
 
         $request->merge(['student_record' => $student]);

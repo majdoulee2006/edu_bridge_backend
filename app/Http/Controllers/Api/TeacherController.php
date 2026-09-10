@@ -56,15 +56,22 @@ class TeacherController extends Controller
             ->get();
 
         // آخر 5 إع�™ا�™ ات
+        $teacherDeptId = \DB::table('departments')->where('name', 'LIKE', '%' . ($request->user()->department ?? '') . '%')->value('department_id');
+        $courseIds     = $courses->pluck('course_id')->toArray();
+
         $recentAnnouncements = Announcement::with('user')
-            ->where(function($q) use ($request) {
+            ->where(function($q) use ($request, $teacherDeptId, $courseIds) {
                 $q->where('user_id', $request->user()->user_id)
-                  ->orWhereNull('target_audience')
-                  ->orWhereIn('target_audience', ['all', 'teachers']);
-            })
-            ->where(function($q) {
-                $q->whereNull('target_role')
-                  ->orWhere('target_role', 'teacher');
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('department_id')
+                          ->orWhere('target_audience', 'all');
+                  });
+                if ($teacherDeptId) {
+                    $q->orWhere('department_id', $teacherDeptId);
+                }
+                if (!empty($courseIds)) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->latest()
             ->limit(5)
@@ -1223,9 +1230,11 @@ class TeacherController extends Controller
                 'updated_at'      => now(),
             ]);
 
+            // parent_students.parent_id/student_id هما FK على users.user_id، وreportRequest->student_id هو students.student_id
+            $reportStudentUserId = DB::table('students')->where('student_id', $reportRequest->student_id)->value('user_id');
             $parentUserId = DB::table('parent_students')
-                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-                ->where('parent_students.student_id', $reportRequest->student_id)
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+                ->where('parent_students.student_id', $reportStudentUserId)
                 ->value('parents.user_id');
 
             if ($parentUserId) {
@@ -1258,18 +1267,23 @@ class TeacherController extends Controller
     public function getAnnouncements(Request $request)
     {
         // إع�ا� ات ا��&ع��& � �س�! + إع�ا� ات رئ�`س ا��س�& ا��&��ج�!ة ���&ع��&�`�  أ�� ��ج�&�`ع
-        $headUserIds = \DB::table('users')->where('role_id', 5)->pluck('user_id');
+        $headUserIds   = \DB::table('users')->where('role_id', 5)->pluck('user_id');
+        $teacher       = $request->user()->teacher;
+        $courseIds     = $teacher ? $teacher->courses()->pluck('courses.course_id')->toArray() : [];
+        $teacherDeptId = \DB::table('departments')->where('name', 'LIKE', '%' . ($request->user()->department ?? '') . '%')->value('department_id');
 
-        $announcements = Announcement::where(function($q) use ($request) {
+        $announcements = Announcement::where(function($q) use ($request, $teacherDeptId, $courseIds) {
                 $q->where('user_id', $request->user()->user_id)
-                  ->orWhere(function($q2) {
-                      $q2->whereNull('target_audience')
-                         ->orWhereIn('target_audience', ['all', 'teachers']);
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('department_id')
+                          ->orWhere('target_audience', 'all');
                   });
-            })
-            ->where(function($q) {
-                $q->whereNull('target_role')
-                  ->orWhere('target_role', 'teacher');
+                if ($teacherDeptId) {
+                    $q->orWhere('department_id', $teacherDeptId);
+                }
+                if (!empty($courseIds)) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->with(['department', 'course', 'user'])
             ->latest()
@@ -2746,10 +2760,10 @@ class TeacherController extends Controller
                 ['type' => 'grade', 'event_id' => (string) $id, 'course_title' => $courseTitle]
             );
 
-            // إشعار لأولياء أمور الطالب — parent_students.student_id = students.student_id
+            // إشعار لأولياء أمور الطالب — parent_students.parent_id/student_id هما FK على users.user_id
             $parentUserIds = DB::table('parent_students')
-                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-                ->where('parent_students.student_id', $entry['student_id'])
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+                ->where('parent_students.student_id', $studentUserId)
                 ->pluck('parents.user_id');
 
             foreach ($parentUserIds as $parentUserId) {
@@ -2925,10 +2939,16 @@ class TeacherController extends Controller
             $hodUserId = DB::table('departments')->where('department_id', $student->department_id)->value('hod_user_id');
         }
 
-        // جلب ولي أمر الطالب للتسجيل المبدئي
+        // جلب ولي أمر الطالب للتسجيل المبدئي — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserId = DB::table('parent_students')
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-            ->where('parent_students.student_id', $student->student_id)
+            ->join('parents', function($j) {
+                $j->on('parent_students.parent_id', '=', 'parents.user_id')
+                  ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
+            })
+            ->where(function($q) use ($student) {
+                $q->where('parent_students.student_id', $student->user_id)
+                  ->orWhere('parent_students.student_id', $student->student_id);
+            })
             ->value('parents.user_id');
 
         $summonId = DB::table('parent_summons')->insertGetId([

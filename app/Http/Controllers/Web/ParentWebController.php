@@ -39,10 +39,19 @@ class ParentWebController extends Controller
 
         // Get children linked to parent
         $children = DB::table('parent_students')
-            ->join('students', 'parent_students.student_id', '=', 'students.student_id')
+            ->join('students', function($j) {
+                $j->on('parent_students.student_id', '=', 'students.student_id')
+                  ->orOn('parent_students.student_id', '=', 'students.user_id');
+            })
             ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
-            ->where('parent_students.parent_id', $parent->parent_id)
+            ->where(function($q) use ($parent, $user) {
+                $q->where('parent_students.parent_id', $user->user_id);
+                if ($parent) {
+                    $q->orWhere('parent_students.parent_id', $parent->parent_id);
+                }
+            })
             ->select('students.student_id', 'students.level', 'student_users.academic_year', 'student_users.full_name', 'student_users.department', 'student_users.avatar', 'students.student_code')
+            ->distinct()
             ->get();
 
         foreach ($children as $child) {
@@ -154,9 +163,22 @@ class ParentWebController extends Controller
         ]);
 
         $parent = $this->getParentRecord();
+        $user = auth()->user();
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+        $studentUserId = DB::table('students')->where('student_id', $request->student_id)->value('user_id');
         $exists = DB::table('parent_students')
-            ->where('parent_id', $parent->parent_id)
-            ->where('student_id', $request->student_id)
+            ->where(function ($q) use ($user, $parent) {
+                $q->where('parent_id', $user->user_id);
+                if ($parent) {
+                    $q->orWhere('parent_id', $parent->parent_id);
+                }
+            })
+            ->where(function ($q) use ($request, $studentUserId) {
+                $q->where('student_id', $request->student_id);
+                if ($studentUserId) {
+                    $q->orWhere('student_id', $studentUserId);
+                }
+            })
             ->exists();
 
         if ($exists) {
@@ -190,7 +212,22 @@ class ParentWebController extends Controller
 
         $overallAverage = count($averageGrades) > 0 ? round(array_sum($averageGrades) / count($averageGrades), 1) : 0;
 
+        $childrenDeptIds = [];
+        foreach ($children as $child) {
+            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . ($child->department ?? '') . '%')->value('department_id');
+            if ($deptId) {
+                $childrenDeptIds[] = $deptId;
+            }
+        }
+
         $announcements = DB::table('announcements')
+            ->where(function($q) use ($childrenDeptIds) {
+                $q->whereNull('department_id')
+                  ->orWhere('target_audience', 'all');
+                if (!empty($childrenDeptIds)) {
+                    $q->orWhereIn('department_id', array_unique($childrenDeptIds));
+                }
+            })
             ->orderByDesc('created_at')
             ->limit(5)
             ->get();
@@ -242,8 +279,14 @@ class ParentWebController extends Controller
 
         // Check if already linked
         $exists = DB::table('parent_students')
-            ->where('parent_id', $parent->parent_id)
-            ->where('student_id', $student->student_id)
+            ->where(function($q) use ($parent, $parentUser) {
+                $q->where('parent_id', $parentUser->user_id);
+                if ($parent) $q->orWhere('parent_id', $parent->parent_id);
+            })
+            ->where(function($q) use ($student, $studentUser) {
+                $q->where('student_id', $studentUser->user_id)
+                  ->orWhere('student_id', $student->student_id);
+            })
             ->exists();
 
         if ($exists) {
@@ -251,9 +294,10 @@ class ParentWebController extends Controller
         }
 
         // Link student
-        DB::table('parent_students')->insert([
-            'parent_id'  => $parent->parent_id,
-            'student_id' => $student->student_id,
+        DB::table('parent_students')->insertOrIgnore([
+            'parent_id'  => $parentUser->user_id,
+            'student_id' => $studentUser->user_id,
+            'relationship' => 'father',
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -462,9 +506,22 @@ class ParentWebController extends Controller
         }
 
         $parent = $this->getParentRecord();
+        $user = auth()->user();
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+        $absenceStudentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
         $linked = DB::table('parent_students')
-            ->where('parent_id', $parent->parent_id)
-            ->where('student_id', $absenceRequest->student_id)
+            ->where(function ($q) use ($user, $parent) {
+                $q->where('parent_id', $user->user_id);
+                if ($parent) {
+                    $q->orWhere('parent_id', $parent->parent_id);
+                }
+            })
+            ->where(function ($q) use ($absenceRequest, $absenceStudentUserId) {
+                $q->where('student_id', $absenceRequest->student_id);
+                if ($absenceStudentUserId) {
+                    $q->orWhere('student_id', $absenceStudentUserId);
+                }
+            })
             ->exists();
 
         if (!$linked) {
@@ -563,10 +620,27 @@ class ParentWebController extends Controller
             'reason.required' => 'سبب الإجازة مطلوب.'
         ]);
 
+        if ($request->filled('time') && $request->time > '15:00') {
+            return back()->withErrors(['time' => 'عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).'])->withInput();
+        }
+
         $parent = $this->getParentRecord();
+        $user = auth()->user();
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+        $requestedStudentUserId = DB::table('students')->where('student_id', $request->student_id)->value('user_id');
         $linked = DB::table('parent_students')
-            ->where('parent_id', $parent->parent_id)
-            ->where('student_id', $request->student_id)
+            ->where(function ($q) use ($user, $parent) {
+                $q->where('parent_id', $user->user_id);
+                if ($parent) {
+                    $q->orWhere('parent_id', $parent->parent_id);
+                }
+            })
+            ->where(function ($q) use ($request, $requestedStudentUserId) {
+                $q->where('student_id', $request->student_id);
+                if ($requestedStudentUserId) {
+                    $q->orWhere('student_id', $requestedStudentUserId);
+                }
+            })
             ->exists();
 
         if (!$linked) {
@@ -638,6 +712,22 @@ class ParentWebController extends Controller
             }
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.',
+                'request' => [
+                    'request_id' => $absenceId,
+                    'id'         => $absenceId,
+                    'date'       => $request->date,
+                    'reason'     => $reasonText,
+                    'type'       => $request->type,
+                    'status'     => 'pending_hod',
+                    'created_at' => now()->format('Y-m-d H:i:s'),
+                ]
+            ]);
+        }
+
         return back()->with('success', 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.');
     }
 
@@ -682,9 +772,22 @@ class ParentWebController extends Controller
         $studentId = $request->student_id;
         $reportType = $request->report_type;
 
+        $user = auth()->user();
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+        $reportStudentUserId = DB::table('students')->where('student_id', $studentId)->value('user_id');
         $linked = DB::table('parent_students')
-            ->where('parent_id', $parent->parent_id)
-            ->where('student_id', $studentId)
+            ->where(function ($q) use ($user, $parent) {
+                $q->where('parent_id', $user->user_id);
+                if ($parent) {
+                    $q->orWhere('parent_id', $parent->parent_id);
+                }
+            })
+            ->where(function ($q) use ($studentId, $reportStudentUserId) {
+                $q->where('student_id', $studentId);
+                if ($reportStudentUserId) {
+                    $q->orWhere('student_id', $reportStudentUserId);
+                }
+            })
             ->exists();
 
         if (!$linked) {

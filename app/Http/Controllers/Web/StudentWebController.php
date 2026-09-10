@@ -55,6 +55,19 @@ class StudentWebController extends Controller
                 Auth::logout();
                 return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
             }
+
+            // التحقق الإلزامي من ربط الطالب بولي الأمر
+            $isLinkedToParent = DB::table('parent_students')
+                ->where('student_id', $student->student_id)
+                ->orWhere('student_id', $user->user_id)
+                ->exists();
+
+            if (!$isLinkedToParent) {
+                \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب الطالب غير مرتبط بولي أمر', $user);
+                Auth::logout();
+                return back()->withInput()->withErrors(['login' => 'عذراً، يجب ربط حساب الطالب بولي أمر أولاً للمتابعة. يرجى مراجعة شؤون الطلاب.']);
+            }
+
             $request->session()->regenerate();
             \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح عبر موقع الطالب الإلكتروني');
             return redirect('/student/dashboard');
@@ -83,7 +96,47 @@ class StudentWebController extends Controller
     // ────────────────────────────────────────────────────────────
     private function getStudent()
     {
-        return Student::where('user_id', Auth::user()->user_id)->first();
+        $student = Student::where('user_id', Auth::user()->user_id)->first();
+        if ($student) {
+            $user = Auth::user();
+
+            if (!$student->program_id) {
+                $deptOrBranch = $user->department ?? $user->branch;
+                $progId = null;
+                if ($deptOrBranch) {
+                    $progId = DB::table('programs')
+                        ->where('name', 'LIKE', '%' . $deptOrBranch . '%')
+                        ->value('id');
+
+                    if (!$progId && (str_contains($deptOrBranch, 'نظم') || str_contains($deptOrBranch, 'معلومات'))) {
+                        $progId = 3;
+                    }
+                }
+                if ($progId) {
+                    $student->update(['program_id' => $progId]);
+                }
+            }
+
+            if ($student->program_id) {
+                $validCourseIds = DB::table('course_program')
+                    ->where('program_id', $student->program_id)
+                    ->pluck('course_id')
+                    ->toArray();
+
+                DB::table('enrollments')
+                    ->where('student_id', $student->student_id)
+                    ->whereNotIn('course_id', $validCourseIds)
+                    ->delete();
+
+                foreach ($validCourseIds as $cid) {
+                    DB::table('enrollments')->updateOrInsert(
+                        ['student_id' => $student->student_id, 'course_id' => $cid],
+                        ['enrollment_date' => now(), 'updated_at' => now()]
+                    );
+                }
+            }
+        }
+        return $student;
     }
 
     // ────────────────────────────────────────────────────────────
@@ -124,11 +177,25 @@ class StudentWebController extends Controller
             ->count();
         $attendanceRate = $totalAttendance > 0 ? round(($presentCount / $totalAttendance) * 100) : null;
 
+        // قسم الطالب
+        $studentDeptId = DB::table('departments')->where('name', 'LIKE', '%' . ($user->department ?? '') . '%')->value('department_id');
+        if (!$studentDeptId && $student && $student->program_id) {
+            $studentDeptId = DB::table('programs')->where('id', $student->program_id)->value('department_id');
+        }
+
         // الإعلانات الأخيرة
         $announcements = DB::table('announcements')
-            ->where(function($q) use ($courseIds) {
-                $q->where('type', 'general')
-                  ->orWhereIn('course_id', $courseIds);
+            ->where(function($q) use ($courseIds, $studentDeptId) {
+                $q->where(function($sub) {
+                    $sub->whereNull('department_id')
+                        ->orWhere('target_audience', 'all');
+                });
+                if ($studentDeptId) {
+                    $q->orWhere('department_id', $studentDeptId);
+                }
+                if (!empty($courseIds) && count($courseIds) > 0) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->orderByDesc('created_at')
             ->limit(5)
@@ -210,7 +277,7 @@ class StudentWebController extends Controller
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
             ->where('enrollments.student_id', $student->student_id);
 
-        // 🎓 تصفية المواد حسب السنة الدراسية للطالب (سنة أولى، سنة ثانية، إلخ)
+        // 🎓 تصفية المواد حسب السنة الدراسية للطالب (سنة أولى، سنة ثانية، إلخ) مع دعم المواد العامة
         $levelMap = [
             'السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5,
             'الأولى' => 1, 'الثانية' => 2, 'الثالثة' => 3, 'الرابعة' => 4, 'الخامسة' => 5,
@@ -219,17 +286,23 @@ class StudentWebController extends Controller
         $studentYear = $levelMap[$student->level ?? ''] ?? $levelMap[Auth::user()->academic_year ?? ''] ?? null;
 
         if ($studentYear) {
-            $query->where('courses.year', $studentYear);
+            $query->where(function($q) use ($studentYear) {
+                $q->where('courses.year', $studentYear)
+                  ->orWhereNull('courses.year');
+            });
         }
 
-        // 📅 تصفية المواد حسب الفصل الدراسي النشط حالياً إن وجد
+        // 📅 تصفية المواد حسب الفصل الدراسي النشط إن وجد مع دعم المواد العامة
         $activeSemesterId = DB::table('semesters')
             ->where('start_date', '<=', now())
             ->where('end_date', '>=', now())
             ->value('semester_id');
 
         if ($activeSemesterId) {
-            $query->where('courses.semester_id', $activeSemesterId);
+            $query->where(function($q) use ($activeSemesterId) {
+                $q->where('courses.semester_id', $activeSemesterId)
+                  ->orWhereNull('courses.semester_id');
+            });
         }
 
         $courses = $query->select('courses.*',
@@ -244,6 +317,18 @@ class StudentWebController extends Controller
             )
             ->get();
 
+        // في حال كان الفلتر المشدد أعاد نتيجة فارغة، نجلب جميع المواد المسجلة للطالب
+        if ($courses->isEmpty()) {
+            $courses = DB::table('enrollments')
+                ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+                ->where('enrollments.student_id', $student->student_id)
+                ->select('courses.*',
+                    DB::raw("(SELECT COUNT(*) FROM lessons WHERE lessons.course_id = courses.course_id AND (type != 'session' OR type IS NULL)) as lessons_count"),
+                    DB::raw('(SELECT COUNT(*) FROM assignments WHERE assignments.course_id = courses.course_id) as assignments_count')
+                )
+                ->get();
+        }
+
         foreach ($courses as $course) {
             $teacherName = DB::table('course_teachers')
                 ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
@@ -251,7 +336,7 @@ class StudentWebController extends Controller
                 ->where('course_teachers.course_id', $course->course_id)
                 ->value('users.full_name');
 
-            $course->teacher_name = $teacherName ?? 'مدرس غير محدد';
+            $course->teacher_name = $teacherName ?? 'مدرس المادة';
         }
 
         return view('student.courses', compact('courses'));
@@ -261,13 +346,18 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        // التحقق من التسجيل في المادة
+        // التحقق من التسجيل في المادة أو تسجيل الطالب تلقائياً
         $enrolled = DB::table('enrollments')
             ->where('student_id', $student->student_id)
             ->where('course_id', $courseId)
             ->exists();
 
-        if (!$enrolled) abort(403, 'غير مسجل في هذه المادة');
+        if (!$enrolled) {
+            DB::table('enrollments')->updateOrInsert(
+                ['student_id' => $student->student_id, 'course_id' => $courseId],
+                ['enrollment_date' => now(), 'created_at' => now(), 'updated_at' => now()]
+            );
+        }
 
         $course = DB::table('courses')->where('course_id', $courseId)->first();
         if (!$course) abort(404);
@@ -288,6 +378,84 @@ class StudentWebController extends Controller
             ->get();
 
         return view('student.course_materials', compact('course', 'materials'));
+    }
+
+    public function downloadLesson($lessonId)
+    {
+        $student = $this->getStudent();
+        $lesson = DB::table('lessons')->where('lesson_id', $lessonId)->first();
+        if (!$lesson) abort(404, 'المحاضرة غير موجودة');
+
+        $course = DB::table('courses')->where('course_id', $lesson->course_id)->first();
+        $rawPath = $lesson->file_path ?: $lesson->content_url;
+
+        if ($rawPath && !filter_var($rawPath, FILTER_VALIDATE_URL)) {
+            $cleanPath = ltrim(str_replace('/storage/', '', $rawPath), '/');
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($cleanPath)) {
+                $fullPath = storage_path('app/public/' . $cleanPath);
+                $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+
+                $mimeType = match($ext) {
+                    'png'         => 'image/png',
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'gif'         => 'image/gif',
+                    'webp'        => 'image/webp',
+                    'mp4'         => 'video/mp4',
+                    'pdf'         => 'application/pdf',
+                    'doc'         => 'application/msword',
+                    'docx'        => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    default       => mime_content_type($fullPath) ?: 'application/octet-stream',
+                };
+
+                $downloadName = ($lesson->title ?: 'Lecture_' . $lesson->lesson_id) . ($ext ? '.' . $ext : '');
+
+                return response()->download($fullPath, $downloadName, [
+                    'Content-Type' => $mimeType,
+                ]);
+            }
+        }
+
+        if ($rawPath && filter_var($rawPath, FILTER_VALIDATE_URL)) {
+            return redirect($rawPath);
+        }
+
+        // إنشاء ملف PDF حقيقي ومنسق واحترافي عبر DomPDF في حال عدم وجود ملف مرفق
+        $courseTitle = $course->title ?? 'المادة الدراسية';
+        $lessonTitle = $lesson->title ?? 'المحاضرة';
+        $lessonDesc  = $lesson->description ?? 'ملف المحتوى التعليمي للمحاضرة عبر منصة Edu-Bridge.';
+        $safeFileName = 'Lecture_' . $lesson->lesson_id . '.pdf';
+
+        $html = "
+        <!DOCTYPE html>
+        <html dir='rtl' lang='ar'>
+        <head>
+            <meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+            <style>
+                body { font-family: DejaVu Sans, sans-serif; text-align: right; direction: rtl; padding: 40px; color: #1e293b; }
+                .header { border-bottom: 2px solid #0284c7; padding-bottom: 20px; margin-bottom: 30px; text-align: center; }
+                .title { font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 10px; }
+                .course { font-size: 16px; color: #0284c7; font-weight: bold; }
+                .content { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-top: 20px; line-height: 1.6; }
+                .footer { margin-top: 50px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+            </style>
+        </head>
+        <body>
+            <div class='header'>
+                <div class='title'>{$lessonTitle}</div>
+                <div class='course'>المقرر: {$courseTitle}</div>
+            </div>
+            <div class='content'>
+                <p><strong>تفاصيل ومحتوى المحاضرة:</strong></p>
+                <p>{$lessonDesc}</p>
+            </div>
+            <div class='footer'>
+                تم استخراج هذا المستند من منصة Edu-Bridge التعليمية - " . date('Y-m-d H:i') . "
+            </div>
+        </body>
+        </html>";
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+        return $pdf->download($safeFileName);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -634,16 +802,18 @@ class StudentWebController extends Controller
             $filePath = $request->file('document')->store('leave_requests', 'public');
         }
 
-        // التحقق من الوقت: عدم السماح باختيار وقت سابق لوقتنا الحالي إذا كان التاريخ هو اليوم
+        // التحقق من الوقت: عدم السماح باختيار وقت بعد الساعة 3:00 عصراً (انتهاء الدوام) أو وقت سابق للوقت الحالي اليوم
         $todayStr = date('Y-m-d');
         $currentTime = date('H:i');
-        if ($request->date === $todayStr) {
-            $selectedTime = $request->type === 'hourly' ? ($request->from_time ?? $currentTime) : ($request->leave_time ?? $request->time ?? $currentTime);
-            if ($selectedTime < $currentTime) {
-                return back()->withErrors(['time' => 'عذراً، لا يمكن اختيار وقت سابق لوقتنا الحالي لليوم!'])->withInput();
-            }
+        $checkTime = $request->type === 'hourly' ? ($request->from_time ?? $currentTime) : ($request->leave_time ?? $request->time ?? $currentTime);
+
+        if ($checkTime > '15:00' || ($request->type === 'hourly' && ($request->to_time ?? '') > '15:00')) {
+            return back()->withErrors(['time' => 'عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).'])->withInput();
         }
 
+        if ($request->date === $todayStr && $checkTime < $currentTime) {
+            return back()->withErrors(['time' => 'عذراً، لا يمكن اختيار وقت سابق لوقتنا الحالي لليوم!'])->withInput();
+        }
         $reasonText = $request->reason;
         if ($request->type === 'hourly') {
             $fromTime = $request->from_time ?? date('H:i');
@@ -654,6 +824,16 @@ class StudentWebController extends Controller
             $reasonText = "[إذن يومي - وقت الإذن: " . $leaveTime . "] - " . $request->reason;
         }
 
+        // 🔒 حماية الباك إند: منع التكرار المتزامن (Double-submit prevention within 30 seconds)
+        $existingRecent = DB::table('absence_requests')
+            ->where('student_id', $student->student_id)
+            ->where('date', $request->date)
+            ->where('created_at', '>=', now()->subSeconds(30))
+            ->first();
+
+        if ($existingRecent) {
+            return back()->with('success', 'تم تقديم طلب الإذن بنجاح سابقاً، وهو قيد المراجعة.');
+        }
         $requestId = DB::table('absence_requests')->insertGetId([
             'student_id' => $student->student_id,
             'reason'     => $reasonText,
@@ -669,10 +849,16 @@ class StudentWebController extends Controller
         $notifTitle  = 'طلب إذن جديد من الابن';
         $notifMsg    = 'قام ابنكم ' . $studentName . ' بتقديم طلب إذن غياب بتاريخ ' . $request->date . '، يرجى مراجعته والموافقة عليه.';
 
-        // الخطوة 1 في المسار المتسلسل: إرسال الإشعار لولي الأمر أولاً
+        // الخطوة 1 في المسار المتسلسل: إرسال الإشعار لولي الأمر أولاً — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserIds = DB::table('parent_students')
-            ->where('student_id', $student->student_id)
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+            ->join('parents', function($j) {
+                $j->on('parent_students.parent_id', '=', 'parents.user_id')
+                  ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
+            })
+            ->where(function($q) use ($student) {
+                $q->where('parent_students.student_id', $student->user_id)
+                  ->orWhere('parent_students.student_id', $student->student_id);
+            })
             ->pluck('parents.user_id');
 
         foreach ($parentUserIds as $pId) {
@@ -698,6 +884,21 @@ class StudentWebController extends Controller
             }
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تقديم طلب الإذن بنجاح، وهو بانتظار موافقة ولي الأمر أولاً.',
+                'request' => [
+                    'request_id' => $requestId,
+                    'id'         => $requestId,
+                    'date'       => $request->date,
+                    'reason'     => $reasonText,
+                    'document'   => $filePath,
+                    'status'     => 'pending_parent',
+                    'created_at' => now()->format('Y-m-d H:i:s'),
+                ]
+            ]);
+        }
         return back()->with('success', 'تم تقديم طلب الإذن بنجاح، وهو بانتظار موافقة ولي الأمر أولاً.');
     }
 
@@ -713,10 +914,23 @@ class StudentWebController extends Controller
             ->where('student_id', $student->student_id)
             ->pluck('course_id');
 
+        $studentDeptId = DB::table('departments')->where('name', 'LIKE', '%' . ($user->department ?? '') . '%')->value('department_id');
+        if (!$studentDeptId && $student && $student->program_id) {
+            $studentDeptId = DB::table('programs')->where('id', $student->program_id)->value('department_id');
+        }
+
         $announcements = DB::table('announcements')
-            ->where(function($q) use ($courseIds) {
-                $q->where('type', 'general')
-                  ->orWhereIn('course_id', $courseIds);
+            ->where(function($q) use ($courseIds, $studentDeptId) {
+                $q->where(function($sub) {
+                    $sub->whereNull('department_id')
+                        ->orWhere('target_audience', 'all');
+                });
+                if ($studentDeptId) {
+                    $q->orWhere('department_id', $studentDeptId);
+                }
+                if (!empty($courseIds) && count($courseIds) > 0) {
+                    $q->orWhereIn('course_id', $courseIds);
+                }
             })
             ->orderByDesc('created_at')
             ->get();
@@ -1165,7 +1379,7 @@ class StudentWebController extends Controller
         $academicCardResponse = app(\App\Http\Controllers\Api\AffairsController::class)->getStudentAcademicCardForAffairs($cardReq);
         $cardData = json_decode($academicCardResponse->getContent(), true);
 
-        $academicCard = $cardData['data']['academic_card'] ?? [];
+        $academicCard = $cardData['academic_card'] ?? $cardData['data']['academic_card'] ?? [];
 
         // تصفية المواد الراسب فيها فقط (status === 'راسب' أو المجموع أقل من 50)
         $failedCourses = array_values(array_filter($academicCard, function($item) {

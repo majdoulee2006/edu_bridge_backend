@@ -7,8 +7,28 @@
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
     .modal-overlay.active { display: flex; }
     .modal-card { background: var(--bg-secondary); border-radius: 1.5rem; padding: 2rem; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-    .form-input { width: 100%; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; }
-    .form-input:focus { outline: none; border-color: var(--accent-color); }
+    .form-input {
+        width: 100%;
+        padding: 0.85rem 1rem;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 0.75rem;
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        font-family: inherit;
+        font-size: 0.95rem;
+    }
+    .form-input::placeholder {
+        color: var(--text-secondary) !important;
+        opacity: 0.8;
+    }
+    .form-input option {
+        background-color: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-color) !important;
+    }
 
     /* File Upload Area */
     .upload-area {

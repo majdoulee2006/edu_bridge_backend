@@ -108,17 +108,25 @@
         @php
             $isRead = $n->is_read ?? false;
             $type   = $n->type ?? 'general';
-
             $titleText = mb_strtolower(($n->title ?? '') . ' ' . ($n->body ?? '') . ' ' . ($n->message ?? ''));
-            $isExamRelated = str_contains($titleText, 'فحص') || str_contains($titleText, 'امتحان') || str_contains($titleText, 'اختبار') || $type === 'exam';
-            $isServiceRelated = str_contains($titleText, 'خدمة') || str_contains($titleText, 'استرحام') || str_contains($titleText, 'وثيقة') || str_contains($titleText, 'إكمال') || str_contains($titleText, 'قفل') || $type === 'student_service';
+
+            $isLectureRelated    = str_contains($titleText, 'محاضرة') || str_contains($titleText, 'درس') || str_contains($titleText, 'مادة') || str_contains($titleText, 'ملف') || str_contains($titleText, 'تنزيل') || $type === 'lecture' || $type === 'lesson';
+            $isAssignmentRelated = str_contains($titleText, 'واجب') || str_contains($titleText, 'تكليف') || str_contains($titleText, 'تسليم') || str_contains($titleText, 'تظلم') || $type === 'assignment';
+            $isGradeRelated      = str_contains($titleText, 'علامة') || str_contains($titleText, 'درجة') || str_contains($titleText, 'نتيجة') || str_contains($titleText, 'تقييم') || $type === 'grade';
+            $isExamRelated       = str_contains($titleText, 'فحص') || str_contains($titleText, 'امتحان') || str_contains($titleText, 'اختبار') || $type === 'exam';
+            $isAttendanceRelated = str_contains($titleText, 'حضور') || str_contains($titleText, 'غياب') || str_contains($titleText, 'جلسة') || $type === 'attendance';
+            $isLeaveRelated      = str_contains($titleText, 'إذن') || str_contains($titleText, 'إجازة') || str_contains($titleText, 'خروج') || $type === 'leave_request' || $type === 'leave';
+            $isServiceRelated    = str_contains($titleText, 'خدمة') || str_contains($titleText, 'استرحام') || str_contains($titleText, 'وثيقة') || str_contains($titleText, 'إكمال') || str_contains($titleText, 'قفل') || str_contains($titleText, 'بصمة') || $type === 'student_service';
+            $isMessageRelated    = str_contains($titleText, 'رسالة') || str_contains($titleText, 'محادثة') || str_contains($titleText, 'شات') || $type === 'message' || $type === 'chat';
 
             $iconMap = [
                 'student_service'=> ['icon' => 'fa-hand-holding-hand', 'color' => '#ca8a04', 'bg' => '#fef9c3'],
                 'assignment'    => ['icon' => 'fa-book-open',          'color' => '#ffe600', 'bg' => '#fffbe6'],
+                'lecture'       => ['icon' => 'fa-file-video',         'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
+                'lesson'        => ['icon' => 'fa-file-video',         'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
                 'message'       => ['icon' => 'fa-envelope',           'color' => '#3b82f6', 'bg' => '#eff6ff'],
                 'admin'         => ['icon' => 'fa-calendar',           'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
-                'grade'         => $isExamRelated ? ['icon' => 'fa-pencil', 'color' => '#ef4444', 'bg' => '#fee2e2'] : ['icon' => 'fa-check', 'color' => '#10b981', 'bg' => '#ecfdf5'],
+                'grade'         => ['icon' => 'fa-check-double',       'color' => '#10b981', 'bg' => '#ecfdf5'],
                 'exam'          => ['icon' => 'fa-pencil',             'color' => '#ef4444', 'bg' => '#fee2e2'],
                 'attendance'    => ['icon' => 'fa-clipboard-user',     'color' => '#f59e0b', 'bg' => '#fffbeb'],
                 'leave_request' => ['icon' => 'fa-calendar-xmark',     'color' => '#ef4444', 'bg' => '#fef2f2'],
@@ -142,19 +150,25 @@
 
             $studentServiceLink = '/student/student-services?tab=' . $serviceTab;
 
-            $linkMap = [
-                'student_service'=> $studentServiceLink,
-                'assignment'    => '/student/assignments',
-                'grade'         => $isExamRelated ? '/student/schedule#exams-section' : '/student/grades',
-                'exam'          => '/student/schedule#exams-section',
-                'attendance'    => '/student/attendance',
-                'leave_request' => $isServiceRelated ? $studentServiceLink : '/student/leave-requests',
-                'leave'         => $isServiceRelated ? $studentServiceLink : '/student/leave-requests',
-                'message'       => '/student/messages',
-                'admin'         => $isServiceRelated ? $studentServiceLink : '/student/dashboard',
-                'general'       => $isServiceRelated ? $studentServiceLink : ($isExamRelated ? '/student/schedule#exams-section' : '/student/notifications'),
-            ];
-            $link = $linkMap[$type] ?? ($isServiceRelated ? $studentServiceLink : ($isExamRelated ? '/student/schedule#exams-section' : '/student/notifications'));
+            if ($isLectureRelated) {
+                $link = '/student/courses';
+            } elseif ($isAssignmentRelated) {
+                $link = '/student/assignments';
+            } elseif ($isGradeRelated) {
+                $link = '/student/grades';
+            } elseif ($isExamRelated) {
+                $link = '/student/schedule#exams-section';
+            } elseif ($isAttendanceRelated) {
+                $link = '/student/attendance';
+            } elseif ($isLeaveRelated) {
+                $link = '/student/leave-requests';
+            } elseif ($isServiceRelated) {
+                $link = $studentServiceLink;
+            } elseif ($isMessageRelated) {
+                $link = '/student/messages';
+            } else {
+                $link = '/student/notifications';
+            }
         @endphp
         <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="handleNotifClick(event, '{{ $link }}', {{ $n->id }}, {{ !$isRead ? 'true' : 'false' }})">
             <div class="notif-icon" style="background: {{ $style['bg'] }}; color: {{ $style['color'] }};">

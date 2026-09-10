@@ -146,10 +146,10 @@
 
     <div class="flex min-h-screen">
         <!-- Mobile Sidebar Overlay -->
-        <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+        <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden backdrop-blur-sm transition-opacity"></div>
 
         {{-- ======= SIDEBAR ======= --}}
-        <aside id="sidebar" class="w-72 bg-white dark:bg-[#121212] text-slate-800 dark:text-white flex flex-col fixed top-0 bottom-0 right-0 z-50 transition-transform duration-300 border-l border-slate-200 dark:border-slate-800 translate-x-full md:translate-x-0">
+        <aside id="sidebar" class="w-72 bg-white dark:bg-[#121212] text-slate-800 dark:text-white flex flex-col fixed top-0 bottom-0 right-0 z-50 transition-transform duration-300 border-l border-slate-200 dark:border-slate-800 translate-x-full lg:translate-x-0">
             <!-- Brand Logo -->
             <div class="pt-8 pb-4 px-6 flex items-center justify-center gap-2">
                 <span class="text-2xl font-black text-slate-800 dark:text-white tracking-wide">Edu-Bridge</span>
@@ -268,11 +268,11 @@
         </aside>
 
         {{-- ======= MAIN CONTENT AREA ======= --}}
-        <div class="flex-1 mr-0 md:mr-72 flex flex-col min-h-screen transition-all duration-300">
+        <div class="flex-1 mr-0 lg:mr-72 flex flex-col min-h-screen transition-all duration-300">
             <!-- Top Bar Header -->
             <header class="bg-white dark:bg-[#121212] border-b border-slate-200 dark:border-slate-800/80 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20 transition-colors">
                 <div class="flex items-center gap-3">
-                    <button id="mobile-menu-btn" class="md:hidden flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-[#1f1f1f] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all">
+                    <button id="mobile-menu-btn" class="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-[#1f1f1f] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all">
                         <i class="fa-solid fa-bars text-lg"></i>
                     </button>
                     <h1 class="text-base md:text-lg font-bold text-slate-800 dark:text-white truncate max-w-[200px] md:max-w-none">

@@ -8,6 +8,61 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Web\UnifiedAuthController;
 use App\Http\Controllers\Web\TeacherWebController;
 
+// Public Storage & Attachment Download Routes for Mobile App
+Route::get('/public-download/message/{id}', function ($id) {
+    $message = \App\Models\Message::find($id);
+    if (!$message || !$message->attachment) {
+        return response('الملف المرفق غير موجود في هذه الرسالة', 404);
+    }
+    $rawAttachment = $message->attachment;
+    $cleanPath = ltrim(str_replace('/storage/', '', str_replace(asset('storage/'), '', $rawAttachment)), '/');
+    $filePath = storage_path('app/public/' . $cleanPath);
+
+    if (file_exists($filePath)) {
+        return response()->download($filePath);
+    }
+
+    foreach (['.m4a', '.mp3', '.wav', '.pdf', '.png', '.jpg', '.jpeg', '.docx', '.xlsx'] as $ext) {
+        if (file_exists($filePath . $ext)) {
+            return response()->download($filePath . $ext);
+        }
+    }
+
+    $fileName = basename($cleanPath);
+    $allFiles = \Illuminate\Support\Facades\Storage::disk('public')->allFiles();
+    foreach ($allFiles as $f) {
+        if (basename($f) === $fileName || pathinfo($f, PATHINFO_FILENAME) === $fileName) {
+            return response()->download(storage_path('app/public/' . $f));
+        }
+    }
+    return response('الملف غير موجود على السيرفر', 404);
+});
+
+Route::get('/storage/{path}', function ($path) {
+    $cleanPath = ltrim(str_replace('/storage/', '', $path), '/');
+    $filePath = storage_path('app/public/' . $cleanPath);
+    
+    if (file_exists($filePath)) {
+        return response()->file($filePath, ['Content-Type' => mime_content_type($filePath) ?: 'application/octet-stream']);
+    }
+    
+    foreach (['.m4a', '.mp3', '.pdf', '.png', '.jpg', '.jpeg', '.docx', '.xlsx'] as $ext) {
+        if (file_exists($filePath . $ext)) {
+            return response()->file($filePath . $ext);
+        }
+    }
+
+    $fileName = basename($cleanPath);
+    $allFiles = \Illuminate\Support\Facades\Storage::disk('public')->allFiles();
+    foreach ($allFiles as $f) {
+        if (basename($f) === $fileName || pathinfo($f, PATHINFO_FILENAME) === $fileName) {
+            return response()->file(storage_path('app/public/' . $f));
+        }
+    }
+
+    return response('الملف غير موجود على السيرفر', 404);
+})->where('path', '.*');
+
 // ===== Dedicated & Unified Login Routes =====
 Route::get('/login', [UnifiedAuthController::class, 'showLoginForm'])->name('login');
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
@@ -16,9 +71,13 @@ Route::get('/hod/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthContr
 Route::get('/teacher/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'teacher'))->name('teacher.login');
 Route::get('/student/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'student'))->name('student.login');
 Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
+Route::get('/parents/login', fn() => redirect()->route('parent.login'));
+Route::get('/Parents/login', fn() => redirect()->route('parent.login'));
+Route::get('/parents', fn() => redirect()->route('parent.login'));
+Route::get('/Parents', fn() => redirect()->route('parent.login'));
 
-Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit')->name('login.post');
-Route::post('/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
+Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit');
+Route::match(['get', 'post'], '/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
 // ===== مسارات إعادة تعيين كلمة السر عبر تلغرام OTP =====
 Route::post('/password/forgot/send-otp', [UnifiedAuthController::class, 'sendResetOtp'])->name('password.forgot.send_otp');
@@ -27,7 +86,7 @@ Route::post('/password/forgot/reset', [UnifiedAuthController::class, 'resetPassw
 
 // Default Redirect
 Route::get('/', function () {
-    return redirect('/login');
+    return redirect()->route('login');
 });
 
 // ===== مسارات ماسح تيليغرام الذكي (Telegram Web App Scanner) =====
@@ -40,7 +99,7 @@ Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('t
 
 // الصفحات المحمية بـ Middleware
 Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::class])->group(function () {
-    Route::get('/', fn() => redirect('/teacher/dashboard'));
+    Route::get('/', fn() => redirect()->route('teacher.dashboard'));
     Route::get('/dashboard', [TeacherWebController::class, 'dashboard'])->name('teacher.dashboard');
 
     // الجداول
@@ -139,7 +198,7 @@ Route::post('/hod/logout', [HODWebController::class, 'logout'])->name('hod.logou
 
 // مسارات واجهات رئيس القسم (Frontend Only) محمية
 Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->group(function () {
-    Route::get('/', function() { return redirect('/hod/dashboard'); });
+    Route::get('/', function() { return redirect()->route('hod.dashboard'); });
     Route::get('/dashboard', [HODWebController::class, 'dashboard'])->name('hod.dashboard');
     Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
@@ -159,6 +218,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::post('/organization/schedule/delete/{id}', [HODWebController::class, 'deleteSchedule'])->name('hod.organization.delete_schedule');
     Route::post('/organization/exam', [HODWebController::class, 'storeExam'])->name('hod.organization.store_exam');
     Route::post('/organization/exam/delete/{id}', [HODWebController::class, 'deleteExam'])->name('hod.organization.delete_exam');
+    Route::post('/organization/course/{id}/weight', [HODWebController::class, 'updateCourseWeight'])->name('hod.organization.course_weight');
     Route::get('/messages', [HODWebController::class, 'messages'])->name('hod.messages');
     Route::get('/messages/contacts', [HODWebController::class, 'getContacts'])->name('hod.messages.contacts');
     Route::get('/messages/conversation/{userId}', [HODWebController::class, 'getConversation'])->name('hod.messages.conversation');
@@ -209,7 +269,7 @@ Route::post('/affairs/login', [UnifiedAuthController::class, 'login'])->name('af
 Route::post('/affairs/logout', [AffairsWebController::class, 'logout'])->name('affairs.logout');
 
 Route::prefix('affairs')->middleware(['affairs'])->group(function () {
-    Route::get('/', fn() => redirect('/affairs/dashboard'));
+    Route::get('/', fn() => redirect()->route('affairs.dashboard'));
     Route::get('/dashboard', [AffairsWebController::class, 'dashboard'])->name('affairs.dashboard');
     Route::get('/calendar', [AffairsWebController::class, 'calendar'])->name('affairs.calendar');
     Route::post('/calendar/events', [AffairsWebController::class, 'storeCalendarEvent'])->name('affairs.calendar.store');
@@ -217,6 +277,8 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/calendar/events/delete/{id}', [AffairsWebController::class, 'deleteCalendarEvent'])->name('affairs.calendar.delete');
     Route::get('/activities', [AffairsWebController::class, 'activities'])->name('affairs.activities');
     
+    // تثقيلات المواد ونتائج الطلاب
+    Route::get('/course-weights', [AffairsWebController::class, 'courseWeights'])->name('affairs.course_weights');
     // الخدمات الطلابية
     Route::get('/student-services', [AffairsWebController::class, 'studentServices'])->name('affairs.student_services');
     Route::post('/student-services/{id}/process', [AffairsWebController::class, 'processStudentService'])->name('affairs.student_services.process');
@@ -302,111 +364,124 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
 
 
 // ===== مسارات الإدارة (Admin) =====
-use App\Http\Controllers\Web\AdminWebController;
+use App\Http\Controllers\Web\AdminAccountController;
+use App\Http\Controllers\Web\AdminAuthController;
+use App\Http\Controllers\Web\AdminStudentServiceController;
+use App\Http\Controllers\Web\AdminDashboardController;
+use App\Http\Controllers\Web\AdminMessageController;
+use App\Http\Controllers\Web\AdminCommunicationController;
+use App\Http\Controllers\Web\AdminReportController;
+use App\Http\Controllers\Web\AdminAcademicController;
+use App\Http\Controllers\Web\AdminCourseController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
-Route::post('/admin/logout', [AdminWebController::class, 'logout'])->name('admin.logout');
+Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 
 Route::prefix('admin')->middleware(['admin'])->group(function () {
-    Route::get('/', fn() => redirect('/admin/dashboard'));
-    Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
-    Route::get('/profile', [AdminWebController::class, 'profile'])->name('admin.profile');
-    Route::post('/profile', [AdminWebController::class, 'updateProfile'])->name('admin.profile.update');
-    Route::post('/profile/password', [AdminWebController::class, 'updatePassword'])->name('admin.profile.password');
-    Route::post('/profile/send-otp', [AdminWebController::class, 'sendOTP'])->name('admin.profile.send_otp');
-    Route::post('/profile/verify-otp', [AdminWebController::class, 'verifyOTP'])->name('admin.profile.verify_otp');
-    Route::get('/settings', [AdminWebController::class, 'settings'])->name('admin.settings');
-    Route::post('/settings/theme', [AdminWebController::class, 'updateThemeSettings'])->name('admin.settings.theme');
-    Route::get('/activity-logs', [AdminWebController::class, 'activityLogs'])->name('admin.activity_logs');
-    Route::post('/activity-logs/clean', [AdminWebController::class, 'cleanActivityLogs'])->name('admin.activity_logs.clean');
-    Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
-    Route::get('/messages/contacts', [AdminWebController::class, 'getContacts'])->name('admin.messages.contacts');
-    Route::get('/messages/conversation/{userId}', [AdminWebController::class, 'getConversation'])->name('admin.messages.conversation');
-    Route::get('/messages/conversation/{userId}/search', [AdminWebController::class, 'searchMessages'])->name('admin.messages.search');
-    Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
-    Route::put('/messages/{id}/edit', [AdminWebController::class, 'updateMessage'])->name('admin.messages.update');
-    Route::delete('/messages/{id}', [AdminWebController::class, 'deleteMessage'])->name('admin.messages.delete');
-    Route::get('/messages/{id}/download', [AdminWebController::class, 'downloadAttachment'])->name('admin.messages.download');
-    Route::post('/messages/forward', [AdminWebController::class, 'forwardMessage'])->name('admin.messages.forward');
+    Route::get('/', fn() => redirect()->route('admin.dashboard'));
+    Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/profile', [AdminDashboardController::class, 'profile'])->name('admin.profile');
+    Route::post('/profile', [AdminDashboardController::class, 'updateProfile'])->name('admin.profile.update');
+    Route::post('/profile/password', [AdminDashboardController::class, 'updatePassword'])->name('admin.profile.password');
+    Route::post('/profile/send-otp', [AdminDashboardController::class, 'sendOTP'])->name('admin.profile.send_otp');
+    Route::post('/profile/verify-otp', [AdminDashboardController::class, 'verifyOTP'])->name('admin.profile.verify_otp');
+    Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('admin.settings');
+    Route::post('/settings/theme', [AdminDashboardController::class, 'updateThemeSettings'])->name('admin.settings.theme');
+    Route::get('/activity-logs', [AdminDashboardController::class, 'activityLogs'])->name('admin.activity_logs');
+    Route::post('/activity-logs/clean', [AdminDashboardController::class, 'cleanActivityLogs'])->name('admin.activity_logs.clean');
+    Route::get('/messages', [AdminMessageController::class, 'messages'])->name('admin.messages');
+    Route::get('/messages/contacts', [AdminMessageController::class, 'getContacts'])->name('admin.messages.contacts');
+    Route::get('/messages/conversation/{userId}', [AdminMessageController::class, 'getConversation'])->name('admin.messages.conversation');
+    Route::get('/messages/conversation/{userId}/search', [AdminMessageController::class, 'searchMessages'])->name('admin.messages.search');
+    Route::post('/messages', [AdminMessageController::class, 'sendMessage'])->name('admin.messages.send');
+    Route::put('/messages/{id}/edit', [AdminMessageController::class, 'updateMessage'])->name('admin.messages.update');
+    Route::delete('/messages/{id}', [AdminMessageController::class, 'deleteMessage'])->name('admin.messages.delete');
+    Route::get('/messages/{id}/download', [AdminMessageController::class, 'downloadAttachment'])->name('admin.messages.download');
+    Route::post('/messages/forward', [AdminMessageController::class, 'forwardMessage'])->name('admin.messages.forward');
     
     // الخدمات الطلابية للإدارة
-    Route::get('/student-services', [AdminWebController::class, 'studentServices'])->name('admin.student_services');
-    Route::post('/student-services/{id}/process', [AdminWebController::class, 'processStudentService'])->name('admin.student_services.process');
+    Route::get('/student-services', [AdminStudentServiceController::class, 'studentServices'])->name('admin.student_services');
+    Route::post('/student-services/{id}/process', [AdminStudentServiceController::class, 'processStudentService'])->name('admin.student_services.process');
 
     // المواعيد واللقاءات للإدارة
     Route::get('/appointments', [App\Http\Controllers\Web\AppointmentWebController::class, 'index'])->name('admin.appointments');
     Route::post('/appointments/{id}/respond', [App\Http\Controllers\Web\AppointmentWebController::class, 'respondToMeeting'])->name('admin.appointments.respond');
     Route::post('/summons', [App\Http\Controllers\Web\AppointmentWebController::class, 'storeSummon'])->name('admin.summons.store');
-    Route::get('/announcements/create', [AdminWebController::class, 'createAnnouncement'])->name('admin.announcements.create');
-    Route::post('/announcements', [AdminWebController::class, 'storeAnnouncement'])->name('admin.announcements.store');
-    Route::get('/announcements/{id}/edit', [AdminWebController::class, 'editAnnouncement'])->name('admin.announcements.edit');
-    Route::post('/announcements/{id}/update', [AdminWebController::class, 'updateAnnouncement'])->name('admin.announcements.update');
-    Route::post('/announcements/{id}/delete', [AdminWebController::class, 'deleteAnnouncement'])->name('admin.announcements.delete');
-    Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');
-    Route::post('/notifications/send', [AdminWebController::class, 'sendNotification'])->name('admin.notifications.send');
-    Route::post('/notifications/{id}/read', [AdminWebController::class, 'markNotificationRead'])->name('admin.notifications.read');
-    Route::post('/notifications/read-all', [AdminWebController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');
+    Route::get('/announcements/create', [AdminCommunicationController::class, 'createAnnouncement'])->name('admin.announcements.create');
+    Route::post('/announcements', [AdminCommunicationController::class, 'storeAnnouncement'])->name('admin.announcements.store');
+    Route::get('/announcements/{id}/edit', [AdminCommunicationController::class, 'editAnnouncement'])->name('admin.announcements.edit');
+    Route::post('/announcements/{id}/update', [AdminCommunicationController::class, 'updateAnnouncement'])->name('admin.announcements.update');
+    Route::post('/announcements/{id}/delete', [AdminCommunicationController::class, 'deleteAnnouncement'])->name('admin.announcements.delete');
+    Route::get('/notifications', [AdminCommunicationController::class, 'notifications'])->name('admin.notifications');
+    Route::post('/notifications/send', [AdminCommunicationController::class, 'sendNotification'])->name('admin.notifications.send');
+    Route::post('/notifications/{id}/read', [AdminCommunicationController::class, 'markNotificationRead'])->name('admin.notifications.read');
+    Route::post('/notifications/read-all', [AdminCommunicationController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');
 
     // ─── Accounts Management ───
-    Route::get('/accounts', [AdminWebController::class, 'accounts'])->name('admin.accounts');
-    Route::post('/accounts/approve/{id}', [AdminWebController::class, 'approveAccount'])->name('admin.accounts.approve');
-    Route::post('/accounts/reject/{id}', [AdminWebController::class, 'rejectAccount'])->name('admin.accounts.reject');
+    Route::get('/accounts', [AdminAccountController::class, 'accounts'])->name('admin.accounts');
+    Route::post('/accounts/approve/{id}', [AdminAccountController::class, 'approveAccount'])->name('admin.accounts.approve');
+    Route::post('/accounts/reject/{id}', [AdminAccountController::class, 'rejectAccount'])->name('admin.accounts.reject');
 
     // Create accounts
-    Route::get('/accounts/create/student', [AdminWebController::class, 'createStudent'])->name('admin.accounts.create.student');
-    Route::post('/accounts/store/student', [AdminWebController::class, 'storeStudent'])->name('admin.accounts.store.student');
+    Route::get('/accounts/create/student', [AdminAccountController::class, 'createStudent'])->name('admin.accounts.create.student');
+    Route::post('/accounts/store/student', [AdminAccountController::class, 'storeStudent'])->name('admin.accounts.store.student');
 
-    Route::get('/accounts/create/parent', [AdminWebController::class, 'createParent'])->name('admin.accounts.create.parent');
-    Route::post('/accounts/store/parent', [AdminWebController::class, 'storeParent'])->name('admin.accounts.store.parent');
+    Route::get('/accounts/create/parent', [AdminAccountController::class, 'createParent'])->name('admin.accounts.create.parent');
+    Route::post('/accounts/store/parent', [AdminAccountController::class, 'storeParent'])->name('admin.accounts.store.parent');
 
-    Route::get('/accounts/create/teacher', [AdminWebController::class, 'createTeacher'])->name('admin.accounts.create.teacher');
-    Route::post('/accounts/store/teacher', [AdminWebController::class, 'storeTeacher'])->name('admin.accounts.store.teacher');
+    Route::get('/accounts/create/teacher', [AdminAccountController::class, 'createTeacher'])->name('admin.accounts.create.teacher');
+    Route::post('/accounts/store/teacher', [AdminAccountController::class, 'storeTeacher'])->name('admin.accounts.store.teacher');
 
-    Route::get('/accounts/create/hod', [AdminWebController::class, 'createHOD'])->name('admin.accounts.create.hod');
-    Route::post('/accounts/store/hod', [AdminWebController::class, 'storeHOD'])->name('admin.accounts.store.hod');
+    Route::get('/accounts/create/hod', [AdminAccountController::class, 'createHOD'])->name('admin.accounts.create.hod');
+    Route::post('/accounts/store/hod', [AdminAccountController::class, 'storeHOD'])->name('admin.accounts.store.hod');
 
-    Route::get('/accounts/create/affairs', [AdminWebController::class, 'createAffairs'])->name('admin.accounts.create.affairs');
-    Route::post('/accounts/store/affairs', [AdminWebController::class, 'storeAffairs'])->name('admin.accounts.store.affairs');
+    Route::get('/accounts/create/affairs', [AdminAccountController::class, 'createAffairs'])->name('admin.accounts.create.affairs');
+    Route::post('/accounts/store/affairs', [AdminAccountController::class, 'storeAffairs'])->name('admin.accounts.store.affairs');
 
     // Delete accounts
-    Route::get('/accounts/delete-list/{role_id}', [AdminWebController::class, 'deleteList'])->name('admin.accounts.delete-list');
-    Route::post('/accounts/delete/{role_id}', [AdminWebController::class, 'deleteAccounts'])->name('admin.accounts.delete');
-    Route::post('/accounts/user/{id}/delete', [AdminWebController::class, 'deleteSingleAccount'])->name('admin.accounts.delete_single');
+    Route::get('/accounts/delete-list/{role_id}', [AdminAccountController::class, 'deleteList'])->name('admin.accounts.delete-list');
+    Route::post('/accounts/delete/{role_id}', [AdminAccountController::class, 'deleteAccounts'])->name('admin.accounts.delete');
+    Route::post('/accounts/user/{id}/delete', [AdminAccountController::class, 'deleteSingleAccount'])->name('admin.accounts.delete_single');
+    Route::post('/accounts/delete-all/{role}', [AdminAccountController::class, 'deleteAllByRole'])->name('admin.accounts.delete_all');
+
+    // Edit accounts
+    Route::get('/accounts/edit/{id}', [AdminAccountController::class, 'editAccount'])->name('admin.accounts.edit');
+    Route::post('/accounts/update/{id}', [AdminAccountController::class, 'updateAccount'])->name('admin.accounts.update');
 
     // الدورات والأقسام الأكاديمية
-    Route::get('/courses', [AdminWebController::class, 'courses'])->name('admin.courses');
-    Route::post('/departments/store', [AdminWebController::class, 'storeDepartment'])->name('admin.departments.store');
-    Route::post('/departments/update/{id}', [AdminWebController::class, 'updateDepartment'])->name('admin.departments.update');
-    Route::post('/departments/delete/{id}', [AdminWebController::class, 'deleteDepartment'])->name('admin.departments.delete');
-    Route::get('/courses/create', [AdminWebController::class, 'createCourse'])->name('admin.courses.create');
-    Route::post('/courses', [AdminWebController::class, 'storeCourse'])->name('admin.courses.store');
-    Route::post('/courses/delete/{id}', [AdminWebController::class, 'deleteCourse'])->name('admin.courses.delete');
-    Route::post('/courses/assign-programs', [AdminWebController::class, 'assignProgramsToDepartment'])->name('admin.courses.assign-programs');
+    Route::get('/courses', [AdminCourseController::class, 'courses'])->name('admin.courses');
+    Route::post('/departments/store', [AdminCourseController::class, 'storeDepartment'])->name('admin.departments.store');
+    Route::post('/departments/update/{id}', [AdminCourseController::class, 'updateDepartment'])->name('admin.departments.update');
+    Route::post('/departments/delete/{id}', [AdminCourseController::class, 'deleteDepartment'])->name('admin.departments.delete');
+    Route::get('/courses/create', [AdminCourseController::class, 'createCourse'])->name('admin.courses.create');
+    Route::post('/courses', [AdminCourseController::class, 'storeCourse'])->name('admin.courses.store');
+    Route::post('/courses/delete/{id}', [AdminCourseController::class, 'deleteCourse'])->name('admin.courses.delete');
+    Route::post('/courses/assign-programs', [AdminCourseController::class, 'assignProgramsToDepartment'])->name('admin.courses.assign-programs');
 
     // تخصيص رئيس قسم
-    Route::get('/courses/assign-hod', [AdminWebController::class, 'assignHODForm'])->name('admin.courses.assign-hod');
-    Route::post('/courses/assign-hod', [AdminWebController::class, 'assignHOD'])->name('admin.courses.assign-hod.store');
-    Route::post('/courses/assign-hod/store-new', [AdminWebController::class, 'storeNewHOD'])->name('admin.courses.assign-hod.store-new');
-    Route::post('/courses/assign-hod/unassign', [AdminWebController::class, 'unassignHOD'])->name('admin.courses.assign-hod.unassign');
+    Route::get('/courses/assign-hod', [AdminCourseController::class, 'assignHODForm'])->name('admin.courses.assign-hod');
+    Route::post('/courses/assign-hod', [AdminCourseController::class, 'assignHOD'])->name('admin.courses.assign-hod.store');
+    Route::post('/courses/assign-hod/store-new', [AdminCourseController::class, 'storeNewHOD'])->name('admin.courses.assign-hod.store-new');
+    Route::post('/courses/assign-hod/unassign', [AdminCourseController::class, 'unassignHOD'])->name('admin.courses.assign-hod.unassign');
 
     // الفصول والمواد
-    Route::get('/semesters-subjects', [AdminWebController::class, 'semestersSubjects'])->name('admin.semesters-subjects');
-    Route::post('/semesters-subjects', [AdminWebController::class, 'storeSubject'])->name('admin.semesters-subjects.store');
-    Route::post('/semesters-subjects/update/{id}', [AdminWebController::class, 'updateSubject'])->name('admin.semesters-subjects.update');
-    Route::post('/semesters-subjects/delete/{id}', [AdminWebController::class, 'deleteSubject'])->name('admin.semesters-subjects.delete');
+    Route::get('/semesters-subjects', [AdminAcademicController::class, 'semestersSubjects'])->name('admin.semesters-subjects');
+    Route::post('/semesters-subjects', [AdminAcademicController::class, 'storeSubject'])->name('admin.semesters-subjects.store');
+    Route::post('/semesters-subjects/update/{id}', [AdminAcademicController::class, 'updateSubject'])->name('admin.semesters-subjects.update');
+    Route::post('/semesters-subjects/delete/{id}', [AdminAcademicController::class, 'deleteSubject'])->name('admin.semesters-subjects.delete');
 
     // المحاضرات
-    Route::get('/lectures', [AdminWebController::class, 'lectures'])->name('admin.lectures');
+    Route::get('/lectures', [AdminAcademicController::class, 'lectures'])->name('admin.lectures');
 
     // التقارير
-    Route::get('/reports', [AdminWebController::class, 'reports'])->name('admin.reports');
-    Route::post('/reports/generate', [AdminWebController::class, 'generateReport'])->name('admin.reports.generate');
-    Route::post('/reports/export', [AdminWebController::class, 'exportReport'])->name('admin.reports.export');
-    Route::delete('/reports/{id}', [AdminWebController::class, 'deleteReport'])->name('admin.reports.delete');
+    Route::get('/reports', [AdminReportController::class, 'reports'])->name('admin.reports');
+    Route::post('/reports/generate', [AdminReportController::class, 'generateReport'])->name('admin.reports.generate');
+    Route::post('/reports/export', [AdminReportController::class, 'exportReport'])->name('admin.reports.export');
+    Route::delete('/reports/{id}', [AdminReportController::class, 'deleteReport'])->name('admin.reports.delete');
 
     // التقويم والأحداث
-    Route::post('/calendar/events', [AdminWebController::class, 'storeCalendarEvent'])->name('admin.calendar.store');
+    Route::post('/calendar/events', [AdminCommunicationController::class, 'storeCalendarEvent'])->name('admin.calendar.store');
 });
 
 // ===== مسارات الطالب (Student) =====
@@ -417,15 +492,16 @@ Route::post('/student/login', [UnifiedAuthController::class, 'login'])->name('st
 Route::post('/student/logout', [StudentWebController::class, 'logout'])->name('student.logout');
 
 Route::prefix('student')->middleware(['student'])->group(function () {
-    Route::get('/', fn() => redirect('/student/dashboard'));
+    Route::get('/', fn() => redirect()->route('student.dashboard'));
     Route::get('/dashboard', [StudentWebController::class, 'dashboard'])->name('student.dashboard');
 
     // الجدول
     Route::get('/schedule', [StudentWebController::class, 'schedule'])->name('student.schedule');
 
-    // المواد
+    // المواد والمحاضرات
     Route::get('/courses', [StudentWebController::class, 'courses'])->name('student.courses');
     Route::get('/courses/{courseId}/materials', [StudentWebController::class, 'courseMaterials'])->name('student.course.materials');
+    Route::get('/lessons/{lessonId}/download', [StudentWebController::class, 'downloadLesson'])->name('student.lessons.download');
 
     // الواجبات
     Route::get('/assignments', [StudentWebController::class, 'assignments'])->name('student.assignments');
@@ -434,6 +510,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     // الدرجات وكشف العلامات
     Route::get('/grades', [StudentWebController::class, 'grades'])->name('student.grades');
     Route::get('/academic-card/export-pdf', [StudentWebController::class, 'exportAcademicCardPdf'])->name('student.academic_card.pdf');
+    Route::get('/academic-card/export-excel', [StudentWebController::class, 'exportAcademicCardExcel'])->name('student.academic_card.excel');
     // الحضور بالـ QR والوجه
     Route::get('/attendance', [StudentWebController::class, 'attendance'])->name('student.attendance');
     Route::post('/attendance/scan', [StudentWebController::class, 'scanAttendanceWeb'])->name('student.attendance.scan');
@@ -486,11 +563,11 @@ use App\Http\Controllers\Web\ParentWebController;
 // تسجيل الدخول
 Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
 Route::post('/parent/login', [UnifiedAuthController::class, 'login'])->name('parent.login.post');
-Route::post('/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
+Route::match(['get', 'post'], '/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
 
 // العمليات المحمية
 Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
-    Route::get('/', fn() => redirect('/parent/dashboard'));
+    Route::get('/', fn() => redirect()->route('parent.dashboard'));
     Route::get('/dashboard', [ParentWebController::class, 'dashboard'])->name('parent.dashboard');
     Route::post('/select-child', [ParentWebController::class, 'selectChild'])->name('parent.select_child');
     

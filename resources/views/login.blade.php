@@ -345,6 +345,14 @@
                     تسجيل الدخول
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
+
+                <div style="text-align: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+                    <span style="color: #a1a1aa; font-size: 0.88rem;">ليس لديك حساب؟ </span>
+                    <a href="javascript:void(0)" onclick="openRegisterModal()" style="color: var(--accent-yellow); font-weight: 700; text-decoration: none; font-size: 0.92rem; margin-right: 4px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                        <i class="fa-solid fa-user-plus" style="margin-left: 3px;"></i>
+                        إنشاء حساب جديد
+                    </a>
+                </div>
             </form>
             
         </div>
@@ -480,6 +488,166 @@
                     </button>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal إنشاء حساب جديد -->
+    <div id="registerModal" class="reset-modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
+        <div class="reset-modal-card" style="background: #18181b; border: 1px solid #27272a; border-radius: 20px; width: 100%; max-width: 540px; max-height: 92vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); position: relative; animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+            
+            <div style="height: 4px; background: linear-gradient(90deg, #facc15, #eab308);"></div>
+            
+            <div style="padding: 1.8rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <div style="background: rgba(250, 204, 21, 0.15); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #facc15;">
+                            <i class="fa-solid fa-user-plus" style="font-size: 1.1rem;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; color: #fff; font-size: 1.15rem; font-weight: 700;">إنشاء حساب جديد</h3>
+                            <p style="margin: 2px 0 0 0; color: #71717a; font-size: 0.8rem;">سجل حساب جديد للوصول إلى المنصة</p>
+                        </div>
+                    </div>
+                    <button onclick="closeRegisterModal()" style="background: rgba(255, 255, 255, 0.05); border: none; color: #a1a1aa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- اختيار نوع الحساب -->
+                <div style="display: flex; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 4px; margin-bottom: 1.2rem;">
+                    <button type="button" id="regTabStudent" onclick="switchRegRole('student')" style="flex: 1; padding: 8px; border: none; border-radius: 9px; background: #facc15; color: #000; font-weight: bold; cursor: pointer; font-family: inherit; transition: all 0.2s;">
+                        <i class="fa-solid fa-graduation-cap"></i> طالب
+                    </button>
+                    <button type="button" id="regTabParent" onclick="switchRegRole('parent')" style="flex: 1; padding: 8px; border: none; border-radius: 9px; background: transparent; color: #a1a1aa; font-weight: bold; cursor: pointer; font-family: inherit; transition: all 0.2s;">
+                        <i class="fa-solid fa-users"></i> ولي أمر
+                    </button>
+                </div>
+
+                <div id="regAlertMsg" style="display: none; padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1rem;"></div>
+
+                <form id="registerWebForm" onsubmit="handleWebRegister(event)">
+                    <input type="hidden" id="regRole" value="student">
+
+                    <!-- صورة البروفايل (إجبارية للطالب) -->
+                    <div id="avatarContainer" style="text-align: center; margin-bottom: 1.2rem;">
+                        <label style="cursor: pointer; display: inline-block; position: relative;">
+                            <div style="width: 95px; height: 95px; border-radius: 50%; background: #27272a; border: 3px solid #facc15; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; box-shadow: 0 4px 15px rgba(250, 204, 21, 0.2);">
+                                <i id="avatarPlaceholderIcon" class="fa-solid fa-user" style="font-size: 2.5rem; color: #71717a;"></i>
+                                <img id="avatarPreviewImg" src="" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                            <div style="position: absolute; bottom: 0; right: 0; background: #facc15; color: #000; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
+                                <i class="fa-solid fa-camera" style="font-size: 0.85rem;"></i>
+                            </div>
+                            <input type="file" id="regAvatar" accept="image/*" onchange="previewRegAvatar(event)" style="display: none;">
+                        </label>
+                        <p style="margin: 6px 0 0 0; color: #ef4444; font-size: 0.78rem; font-weight: 600;">* صورة البروفايل إجبارية</p>
+                    </div>
+
+                    <!-- الاسم الأول والاسم الأخير -->
+                    <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
+                        <div style="flex: 1;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الاسم الأول <span style="color:#ef4444">*</span></label>
+                            <input type="text" id="regFirstName" required placeholder="أحمد" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الاسم الأخير <span style="color:#ef4444">*</span></label>
+                            <input type="text" id="regLastName" required placeholder="محمد" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                        </div>
+                    </div>
+
+                    <!-- معرف التليغرام -->
+                    <div style="margin-bottom: 0.8rem;">
+                        <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">معرّف التليغرام (Telegram ID) <span style="color:#ef4444">*</span></label>
+                        <input type="text" id="regTelegramId" required value="7821980919" placeholder="7821980919" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                    </div>
+
+                    <!-- الجنس وتاريخ الميلاد -->
+                    <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
+                        <div style="flex: 1;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الجنس <span style="color:#ef4444">*</span></label>
+                            <select id="regGender" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                                <option value="ذكر">ذكر</option>
+                                <option value="أنثى">أنثى</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">تاريخ الميلاد (العمر 18 - 23) <span style="color:#ef4444">*</span></label>
+                            <input type="date" id="regBirthDate" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                        </div>
+                    </div>
+
+                    <!-- رقم الهاتف والبريد الإلكتروني -->
+                    <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
+                        <div style="flex: 1;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">رقم الهاتف <span style="color:#ef4444">*</span></label>
+                            <input type="text" id="regPhone" required placeholder="09xxxxxxx" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                            <input type="email" id="regEmail" required placeholder="example@domain.com" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                        </div>
+                    </div>
+
+                    <!-- القسم والدورة / الفرع (خاص بالطالب) -->
+                    <div id="studentRegFields">
+                        <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
+                            <div style="flex: 1;">
+                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">القسم <span style="color:#ef4444">*</span></label>
+                                <select id="regDept" onchange="updateRegBranches()" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                                    <option value="نظم معلومات">نظم معلومات</option>
+                                    <option value="طبي">طبي</option>
+                                    <option value="تجاري">تجاري</option>
+                                    <option value="هندسي">هندسي</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الدورة / الفرع <span style="color:#ef4444">*</span></label>
+                                <select id="regBranch" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                                    <option value="معلوماتي">معلوماتي</option>
+                                    <option value="اتصالات">اتصالات</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- حقول خاصة بولي الأمر -->
+                    <div id="parentRegFields" style="display: none; margin-bottom: 0.8rem;">
+                        <div style="margin-bottom: 0.8rem;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">عدد الأبناء في الجامعة / المعهد <span style="color:#ef4444">*</span></label>
+                            <select id="regChildCount" onchange="updateParentChildFields()" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                                <option value="1">ولد واحد (1)</option>
+                                <option value="2">ابنان (2)</option>
+                                <option value="3">ثلاثة أبناء (3)</option>
+                                <option value="4">أربعة أبناء (4)</option>
+                                <option value="5">خمسة أبناء (5)</option>
+                            </select>
+                        </div>
+                        <div id="parentChildIdsContainer">
+                            <div style="margin-bottom: 0.6rem;">
+                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الرقم الجامعي للابن 1 <span style="color:#ef4444">*</span></label>
+                                <input type="text" class="reg-child-id-input" placeholder="مثال: 2026101" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- كلمة المرور وتأكيدها -->
+                    <div style="display: flex; gap: 0.8rem; margin-bottom: 1.2rem;">
+                        <div style="flex: 1;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">كلمة المرور <span style="color:#ef4444">*</span></label>
+                            <input type="password" id="regPassword" required placeholder="••••••••" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">تأكيد كلمة المرور <span style="color:#ef4444">*</span></label>
+                            <input type="password" id="regConfirmPassword" required placeholder="••••••••" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnSubmitRegister" style="width: 100%; background: #facc15; color: #000; border: none; padding: 11px; border-radius: 10px; font-weight: bold; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit;">
+                        <span>تقديم طلب إنشاء الحساب</span>
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -779,6 +947,221 @@
                 btn.disabled = false;
                 btn.innerHTML = '<span>تحديث كلمة المرور في النظام</span> <i class="fa-solid fa-floppy-disk"></i>';
                 showResetAlert('خطأ في الاتصال بالسيرفر: ' + e.message);
+            }
+        }
+
+        const deptBranchesMap = {
+            'نظم معلومات': ['معلوماتي', 'اتصالات'],
+            'طبي': ['صيدلة', 'مخابر'],
+            'تجاري': ['ادارة اعمال', 'محاسبة'],
+            'هندسي': ['هندسة عمارة', 'ديكور']
+        };
+
+        function updateRegBranches() {
+            const deptSelect = document.getElementById('regDept');
+            if (!deptSelect) return;
+            const dept = deptSelect.value;
+            const branchSelect = document.getElementById('regBranch');
+            if (!branchSelect) return;
+            const branches = deptBranchesMap[dept] || [];
+            branchSelect.innerHTML = '';
+            branches.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                branchSelect.appendChild(opt);
+            });
+        }
+
+        function previewRegAvatar(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('avatarPreviewImg').src = e.target.result;
+                    document.getElementById('avatarPreviewImg').style.display = 'block';
+                    document.getElementById('avatarPlaceholderIcon').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function updateParentChildFields() {
+            const countSelect = document.getElementById('regChildCount');
+            if (!countSelect) return;
+            const count = parseInt(countSelect.value) || 1;
+            const container = document.getElementById('parentChildIdsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            for (let i = 1; i <= count; i++) {
+                const div = document.createElement('div');
+                div.style.marginBottom = '0.6rem';
+                div.innerHTML = `
+                    <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الرقم الجامعي للابن ${i} <span style="color:#ef4444">*</span></label>
+                    <input type="text" class="reg-child-id-input" placeholder="مثال: 202610${i}" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function openRegisterModal() {
+            document.getElementById('registerModal').style.display = 'flex';
+            updateRegBranches();
+            updateParentChildFields();
+        }
+
+        function closeRegisterModal() {
+            document.getElementById('registerModal').style.display = 'none';
+        }
+
+        function switchRegRole(role) {
+            document.getElementById('regRole').value = role;
+            const avatarBox = document.getElementById('avatarContainer');
+            if (role === 'student') {
+                document.getElementById('regTabStudent').style.background = '#facc15';
+                document.getElementById('regTabStudent').style.color = '#000';
+                document.getElementById('regTabParent').style.background = 'transparent';
+                document.getElementById('regTabParent').style.color = '#a1a1aa';
+                document.getElementById('studentRegFields').style.display = 'block';
+                document.getElementById('parentRegFields').style.display = 'none';
+                if (avatarBox) avatarBox.style.display = 'block';
+            } else {
+                document.getElementById('regTabParent').style.background = '#facc15';
+                document.getElementById('regTabParent').style.color = '#000';
+                document.getElementById('regTabStudent').style.background = 'transparent';
+                document.getElementById('regTabStudent').style.color = '#a1a1aa';
+                document.getElementById('studentRegFields').style.display = 'none';
+                document.getElementById('parentRegFields').style.display = 'block';
+                if (avatarBox) avatarBox.style.display = 'none';
+            }
+        }
+
+        async function handleWebRegister(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('regAlertMsg');
+            const btn = document.getElementById('btnSubmitRegister');
+
+            const p1 = document.getElementById('regPassword').value;
+            const p2 = document.getElementById('regConfirmPassword').value;
+
+            if (p1 !== p2) {
+                alertBox.style.display = 'block';
+                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                alertBox.style.color = '#f87171';
+                alertBox.innerText = 'كلمات المرور غير متطابقة!';
+                return;
+            }
+
+            const role = document.getElementById('regRole').value;
+            const fn = document.getElementById('regFirstName').value.trim();
+            const ln = document.getElementById('regLastName').value.trim();
+            const avatarInput = document.getElementById('regAvatar');
+
+            // 1. التحقق من رفع الصورة (إجبارية للطالب)
+            if (role === 'student' && (!avatarInput.files || avatarInput.files.length === 0)) {
+                alertBox.style.display = 'block';
+                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                alertBox.style.color = '#f87171';
+                alertBox.innerText = 'يرجى تحميل صورة البروفايل (الصورة إجبارية للطالب)';
+                return;
+            }
+
+            // 2. التحقق من العمر (بين 18 و 23 سنة للطالب)
+            if (role === 'student') {
+                const birthVal = document.getElementById('regBirthDate').value;
+                if (!birthVal) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#f87171';
+                    alertBox.innerText = 'يرجى إدخال تاريخ الميلاد';
+                    return;
+                }
+                const birthDate = new Date(birthVal);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) { age--; }
+
+                if (age < 18 || age > 23) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#f87171';
+                    alertBox.innerText = `عذراً، يجب أن يكون العمر بين 18 و 23 سنة (العمر الحالي: ${age} سنة).`;
+                    return;
+                }
+            }
+
+            // إعداد الـ FormData لإرسال الصورة والبيانات
+            const formData = new FormData();
+            formData.append('role', role);
+            formData.append('full_name', `${fn} ${ln}`);
+            formData.append('first_name', fn);
+            formData.append('last_name', ln);
+            formData.append('email', document.getElementById('regEmail').value.trim());
+            formData.append('phone', document.getElementById('regPhone').value.trim());
+            formData.append('telegram_chat_id', document.getElementById('regTelegramId').value.trim());
+            formData.append('telegram_username', document.getElementById('regTelegramId').value.trim());
+            formData.append('password', p1);
+
+            if (role === 'student') {
+                formData.append('gender', document.getElementById('regGender').value);
+                formData.append('birth_date', document.getElementById('regBirthDate').value);
+                formData.append('department', document.getElementById('regDept').value);
+                formData.append('branch', document.getElementById('regBranch').value);
+                if (avatarInput.files && avatarInput.files[0]) {
+                    formData.append('avatar', avatarInput.files[0]);
+                }
+            } else {
+                const childInputs = document.querySelectorAll('.reg-child-id-input');
+                let hasChild = false;
+                childInputs.forEach(input => {
+                    const val = input.value.trim();
+                    if (val) {
+                        formData.append('children_ids[]', val);
+                        hasChild = true;
+                    }
+                });
+                if (!hasChild) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#f87171';
+                    alertBox.innerText = 'يرجى إدخال الرقم الجامعي لكل ابن من الأبناء.';
+                    return;
+                }
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'جاري تقديم الطلب...';
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: formData
+                });
+                const data = await res.json();
+                btn.disabled = false;
+                btn.innerHTML = '<span>تقديم طلب إنشاء الحساب</span> <i class="fa-solid fa-arrow-left"></i>';
+
+                if (res.ok || data.success) {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = 'rgba(34, 197, 94, 0.15)';
+                    alertBox.style.color = '#4ade80';
+                    alertBox.innerText = 'تم تقديم طلب إنشاء الحساب بنجاح! يرجى الانتظار لحين اعتماد حسابك من قبل الإدارة.';
+                    setTimeout(() => { closeRegisterModal(); }, 3000);
+                } else {
+                    alertBox.style.display = 'block';
+                    alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    alertBox.style.color = '#f87171';
+                    alertBox.innerText = data.message || 'حدث خطأ في تقديم الطلب.';
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = '<span>تقديم طلب إنشاء الحساب</span> <i class="fa-solid fa-arrow-left"></i>';
+                alertBox.style.display = 'block';
+                alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                alertBox.style.color = '#f87171';
+                alertBox.innerText = 'عذراً، يتعذر الاتصال بالسيرفر حالياً.';
             }
         }
     </script>

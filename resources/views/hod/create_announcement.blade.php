@@ -68,7 +68,7 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">صورة مرفقة <span style="font-weight:400; color:#9ca3af;">(اختياري)</span></label>
+                <label class="form-label">صور مرفقة <span style="font-weight:400; color:#9ca3af;">(اختياري)</span></label>
                 <div id="hod-upload-zone"
                      onclick="document.getElementById('hod-img-input').click()"
                      style="border:2px dashed var(--border-color); border-radius:0.75rem; padding:1.5rem 1rem; text-align:center; cursor:pointer; background:var(--bg-primary); transition:border-color .2s;"
@@ -76,20 +76,17 @@
                      onmouseout="this.style.borderColor='var(--border-color)'"
                      ondragover="event.preventDefault(); this.style.borderColor='var(--accent-color)'"
                      ondragleave="this.style.borderColor='var(--border-color)'">
-                    <input type="file" name="image" id="hod-img-input" accept="image/*"
-                           data-crop="true" data-preview-img="hod-prev-img" data-preview-wrap="hod-prev-wrap" data-placeholder="hod-prev-placeholder"
-                           style="display:none;">
+                    <input type="file" name="images[]" id="hod-img-input" accept="image/*" multiple
+                           style="display:none;" onchange="previewMultipleImages(this, 'hod-prev-wrap', 'hod-prev-placeholder')">
                     <div id="hod-prev-placeholder">
                         <div style="font-size:2rem; margin-bottom:0.4rem;">🖼️</div>
-                        <p style="font-weight:600; color:var(--text-primary); font-size:0.9rem; margin:0 0 0.25rem;">اسحب الصورة هنا أو اضغط للاختيار</p>
-                        <p style="font-size:0.78rem; color:var(--text-secondary); margin:0;">JPG / PNG / WebP — حتى 5MB</p>
+                        <p style="font-weight:600; color:var(--text-primary); font-size:0.9rem; margin:0 0 0.25rem;">اسحب الصور هنا أو اضغط لاختيار صورة/عدة صور</p>
+                        <p style="font-size:0.78rem; color:var(--text-secondary); margin:0;">JPG / PNG / WebP — حتى 5MB لكل صورة</p>
                     </div>
-                    <div id="hod-prev-wrap" style="display:none;">
-                        <img id="hod-prev-img" src="" alt="" style="max-height:150px; border-radius:0.5rem; object-fit:cover; margin:0 auto; display:block;">
-                        <p style="margin-top:0.5rem; font-size:0.78rem; color:var(--text-secondary);">اضغط مجدداً لتغيير الصورة</p>
+                    <div id="hod-prev-wrap" style="display:none; flex-wrap:wrap; gap:0.5rem; justify-content:center;">
                     </div>
                 </div>
-                @error('image') <p class="text-red-600 mt-1" style="font-size:0.875rem;">{{ $message }}</p> @enderror
+                @error('images') <p class="text-red-600 mt-1" style="font-size:0.875rem;">{{ $message }}</p> @enderror
             </div>
 
             <div class="form-group">
@@ -115,6 +112,33 @@
     }
     typeSelect.addEventListener('change', toggleCourseDiv);
     document.addEventListener('DOMContentLoaded', toggleCourseDiv);
+
+    function previewMultipleImages(input, wrapId, placeholderId) {
+        const wrap = document.getElementById(wrapId);
+        const placeholder = document.getElementById(placeholderId);
+        wrap.innerHTML = '';
+        if (input.files && input.files.length > 0) {
+            placeholder.style.display = 'none';
+            wrap.style.display = 'flex';
+            Array.from(input.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '100px';
+                    img.style.height = '100px';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '0.5rem';
+                    img.style.border = '1px solid var(--border-color)';
+                    wrap.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        } else {
+            placeholder.style.display = 'block';
+            wrap.style.display = 'none';
+        }
+    }
 </script>
 
 @include('partials.image_cropper')

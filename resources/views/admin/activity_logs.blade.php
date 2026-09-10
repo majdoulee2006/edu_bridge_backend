@@ -142,8 +142,8 @@
 
                             <!-- Timestamp -->
                             <td class="py-4 px-6 text-slate-500 dark:text-slate-400 font-semibold text-xs dir-ltr">
-                                {{ $act->created_at ? $act->created_at->format('Y-m-d H:i:s') : '—' }}
-                                <span class="text-[11px] block text-slate-400 font-normal">{{ $act->created_at ? $act->created_at->diffForHumans() : '' }}</span>
+                                {{ $act->created_at ? \Carbon\Carbon::parse($act->created_at)->format('Y-m-d H:i:s') : '—' }}
+                                <span class="text-[11px] block text-slate-400 font-normal">{{ $act->created_at ? \Carbon\Carbon::parse($act->created_at)->diffForHumans() : '' }}</span>
                             </td>
 
                         </tr>

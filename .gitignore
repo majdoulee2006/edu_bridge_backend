@@ -26,3 +26,11 @@ Thumbs.db
 seed_dummy_data.php
 /public/exports/*.pdf
 /public/exports/*.csv
+
+# ملفات تحتوي بيانات اعتماد/بيانات حقيقية لا يجب رفعها أبداً للمستودع
+get_creds.php
+export_creds_xls.php
+unlock_joudi.php
+students_parents_credentials.csv
+students_parents_credentials.xls
+*.sql

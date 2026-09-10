@@ -31,18 +31,14 @@
         </div>
 
         <div>
-            <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">صورة (اختياري)</label>
+            <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">صور (اختياري)</label>
             <div id="upload-zone" onclick="document.getElementById('imgInput').click()"
                  style="border: 2px dashed var(--border-color); border-radius: 0.75rem; padding: 1.5rem; text-align: center; cursor: pointer; background: var(--bg-primary);">
-                <input type="file" name="image" id="imgInput" accept="image/*" class="hidden" style="display:none;"
-                       data-crop="true" data-preview-img="preview-img" data-preview-wrap="img-preview" data-placeholder="upload-placeholder" data-preview-name="preview-name">
+                <input type="file" name="images[]" id="imgInput" accept="image/*" multiple style="display:none;"
+                       onchange="if(this.files && this.files.length){ document.getElementById('upload-placeholder').innerText = 'تم اختيار ' + this.files.length + ' صور'; }">
                 <div id="upload-placeholder">
                     <i class="fa-solid fa-image" style="font-size: 2rem; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;"></i>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem;">اسحب أو اضغط لاختيار صورة</p>
-                </div>
-                <div id="img-preview" style="display: none;">
-                    <img id="preview-img" src="" style="max-height: 150px; border-radius: 0.5rem; object-fit: fill;">
-                    <p id="preview-name" style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.5rem;"></p>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem;">اسحب أو اضغط لاختيار صورة / عدة صور</p>
                 </div>
             </div>
         </div>

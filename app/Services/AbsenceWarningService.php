@@ -99,10 +99,16 @@ class AbsenceWarningService
         $title = "🚨 إنذار غياب ثانٍ واستدعاء ولي أمر (10 أيام)";
         $message = "تحذير شديد: لقد بلغ عدد أيام غيابك ({$absenceDays} أيام). وبناءً على لائحة المعهد تم إصدار استدعاء رسمي لولي أمرك لمراجعة الإدارة.";
 
-        // جلب معرف ولي الأمر
+        // جلب معرف ولي الأمر — يدعم الربط عبر student_id أو user_id
         $parentUserId = DB::table('parent_students')
-            ->where('student_id', $student->student_id)
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+            ->where(function($q) use ($student) {
+                $q->where('student_id', $student->user_id)
+                  ->orWhere('student_id', $student->student_id);
+            })
+            ->join('parents', function($j) {
+                $j->on('parent_students.parent_id', '=', 'parents.user_id')
+                  ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
+            })
             ->value('parents.user_id');
 
         $summonId = null;

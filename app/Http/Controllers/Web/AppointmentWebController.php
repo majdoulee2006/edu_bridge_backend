@@ -183,10 +183,10 @@ class AppointmentWebController extends Controller
 
         $student = Student::findOrFail($request->student_id);
 
-        // جلب ولي أمر الطالب
+        // جلب ولي أمر الطالب — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserId = DB::table('parent_students')
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-            ->where('parent_students.student_id', $student->student_id)
+            ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+            ->where('parent_students.student_id', $student->user_id)
             ->value('parents.user_id');
 
         if (!$parentUserId) {

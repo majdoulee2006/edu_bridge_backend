@@ -375,8 +375,9 @@ class HODController extends Controller
             $studentsQuery = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
                 ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-                ->leftJoin('parent_students', 'students.student_id', '=', 'parent_students.student_id')
-                ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                // parent_students.parent_id/student_id هما FK على users.user_id
+                ->leftJoin('parent_students', 'students.user_id', '=', 'parent_students.student_id')
+                ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.user_id')
                 ->leftJoin('users as parent_users', 'parents.user_id', '=', 'parent_users.user_id')
                 ->select(
                     'students.student_id',
@@ -410,8 +411,9 @@ class HODController extends Controller
                 $studentsRaw = DB::table('students')
                     ->join('users', 'students.user_id', '=', 'users.user_id')
                     ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-                    ->leftJoin('parent_students', 'students.student_id', '=', 'parent_students.student_id')
-                    ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                    // parent_students.parent_id/student_id هما FK على users.user_id
+                    ->leftJoin('parent_students', 'students.user_id', '=', 'parent_students.student_id')
+                    ->leftJoin('parents', 'parent_students.parent_id', '=', 'parents.user_id')
                     ->leftJoin('users as parent_users', 'parents.user_id', '=', 'parent_users.user_id')
                     ->select(
                         'students.student_id',
@@ -572,10 +574,10 @@ class HODController extends Controller
                 return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
             }
 
-            // جلب ولي أمر الطالب
+            // جلب ولي أمر الطالب — parent_students.parent_id/student_id هما FK على users.user_id
             $parentUserId = DB::table('parent_students')
-                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-                ->where('parent_students.student_id', $request->student_id)
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+                ->where('parent_students.student_id', $student->user_id)
                 ->value('parents.user_id');
 
             if (!$parentUserId) {

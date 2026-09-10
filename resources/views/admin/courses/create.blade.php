@@ -49,36 +49,7 @@
             @enderror
         </div>
 
-        {{-- Academic Year & Semester --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {{-- Academic Year --}}
-            <div class="flex flex-col gap-2">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">السنة الدراسية</label>
-                <div class="relative">
-                    <select name="year" required
-                            class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="" disabled selected>اختر السنة الدراسية</option>
-                        <option value="سنة أولى" {{ old('year') == 'سنة أولى' ? 'selected' : '' }}>سنة أولى</option>
-                        <option value="سنة ثانية" {{ old('year') == 'سنة ثانية' ? 'selected' : '' }}>سنة ثانية</option>
-                    </select>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg pointer-events-none">expand_more</span>
-                </div>
-            </div>
 
-            {{-- Semester --}}
-            <div class="flex flex-col gap-2">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-200 text-right">الفصل الدراسي</label>
-                <div class="relative">
-                    <select name="semester" required
-                            class="w-full bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="" disabled selected>اختر الفصل الدراسي</option>
-                        <option value="فصل أول" {{ old('semester') == 'فصل أول' ? 'selected' : '' }}>فصل أول</option>
-                        <option value="فصل ثاني" {{ old('semester') == 'فصل ثاني' ? 'selected' : '' }}>فصل ثاني</option>
-                    </select>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-lg pointer-events-none">expand_more</span>
-                </div>
-            </div>
-        </div>
 
         {{-- Description --}}
         <div class="flex flex-col gap-2">

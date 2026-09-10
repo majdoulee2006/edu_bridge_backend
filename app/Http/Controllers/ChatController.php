@@ -28,7 +28,7 @@ class ChatController extends Controller
                 $allowedRoles = [$roleStudent, $roleTeacher, $roleHead];
                 break;
             case $roleStudent:
-                $allowedRoles = [$roleTeacher, $roleHead];
+                $allowedRoles = [$roleTeacher, $roleHead, $roleAdmin];
                 break;
             case $roleParent:
                 $allowedRoles = [$roleAdmin, $roleHead];
@@ -37,7 +37,7 @@ class ChatController extends Controller
                 $allowedRoles = [$roleStudent, $roleTeacher, $roleParent, $roleAdmin];
                 break;
             case $roleAdmin:
-                $allowedRoles = [$roleHead, $roleAffairs, $roleTeacher];
+                $allowedRoles = [$roleHead, $roleAffairs, $roleTeacher, $roleStudent];
                 break;
             case $roleAffairs:
                 $allowedRoles = [$roleAdmin];
@@ -52,14 +52,27 @@ class ChatController extends Controller
         $userDeptName = $user->department;
         $deptId = null;
 
+        if ($myRoleId == 3 && empty($userDeptName)) { // Student department fallback lookup
+            $studentRec = \DB::table('students')->where('user_id', $user->user_id)->first();
+            if ($studentRec && isset($studentRec->department_id)) {
+                $deptId = $studentRec->department_id;
+                $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
+            } elseif ($studentRec && isset($studentRec->program_id)) {
+                $deptId = \DB::table('programs')->where('program_id', $studentRec->program_id)->value('department_id');
+                if ($deptId) {
+                    $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
+                }
+            }
+        }
+
         if ($myRoleId == 5) { // HOD
             $myHead = \DB::table('heads')->where('user_id', $user->user_id)->first();
             if ($myHead) {
                 $deptId = $myHead->department_id;
                 $userDeptName = \DB::table('departments')->where('department_id', $deptId)->value('name');
             }
-        } else {
-            $dept = $userDeptName ? \DB::table('departments')->where('name', $userDeptName)->first() : null;
+        } else if (!$deptId && $userDeptName) {
+            $dept = \DB::table('departments')->where('name', $userDeptName)->first();
             $deptId = $dept ? $dept->department_id : null;
         }
 
@@ -71,8 +84,15 @@ class ChatController extends Controller
             $childDepartments = collect();
             $parentRecord = \DB::table('parents')->where('user_id', $user->user_id)->first();
             if ($parentRecord) {
-                $studentIds = \DB::table('parent_students')->where('parent_id', $parentRecord->parent_id)->pluck('student_id');
-                $childUserIds = \DB::table('students')->whereIn('student_id', $studentIds)->pluck('user_id');
+                // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+                $linkedIds = \DB::table('parent_students')
+                    ->where(function ($q) use ($user, $parentRecord) {
+                        $q->where('parent_id', $user->user_id)
+                          ->orWhere('parent_id', $parentRecord->parent_id);
+                    })
+                    ->pluck('student_id');
+                $resolvedFromLegacy = \DB::table('students')->whereIn('student_id', $linkedIds)->pluck('user_id');
+                $childUserIds = $linkedIds->merge($resolvedFromLegacy)->unique();
                 $childDepts = \App\Models\User::whereIn('user_id', $childUserIds)->pluck('department')->filter()->unique();
                 $childDepartments = $childDepartments->merge($childDepts);
             }
@@ -242,7 +262,10 @@ class ChatController extends Controller
         // 4. رفع الملف (إذا وجد)
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $path = $request->file('attachment')->store('chat_attachments', 'public');
+            $file = $request->file('attachment');
+            $ext = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin');
+            $fileName = uniqid('chat_', true) . '.' . $ext;
+            $path = $file->storeAs('chat_attachments', $fileName, 'public');
             $attachmentPath = asset('storage/' . $path);
         }
 
@@ -277,8 +300,20 @@ class ChatController extends Controller
 
         broadcast(new MessageSent($message))->toOthers();
 
-        // إرسال إشعار FCM للمستلم
+        // إرسال إشعار FCM للمستلم وحفظه في قواعد البيانات
         $msgBody = $message->message ?: 'أرسل لك ملفاً مرفقاً';
+        
+        \DB::table('notifications')->insert([
+            'user_id'    => $receiverId,
+            'sender_id'  => $senderId,
+            'title'      => $sender->full_name ?? 'رسالة جديدة',
+            'message'    => $msgBody,
+            'type'       => 'message',
+            'category'   => 'chat',
+            'is_read'    => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         \App\Services\FcmService::sendToUser($receiverId, $sender->full_name ?? 'رسالة جديدة', $msgBody, [
             'type' => 'message',
             'sender_id' => (string) $senderId,
@@ -291,19 +326,10 @@ class ChatController extends Controller
     {
         $myId = $request->user()->user_id;
 
-        // تنظيف الرسائل منتهية الصلاحية
-        $expiredMessages = Message::whereNotNull('expires_at')
-            ->where('expires_at', '<=', now())
-            ->get();
+        // ملاحظة: تنظيف الرسائل منتهية الصلاحية انتقل لمهمة مجدولة (انظر bootstrap/app.php)
+        // بدل تنفيذه بمسح كامل لجدول الرسائل بكل مرة يفتح فيها أي طالب أي محادثة (كل 3 ثواني)
 
-        foreach ($expiredMessages as $msg) {
-            if ($msg->attachment) {
-                $path = str_replace(asset('storage/'), '', $msg->attachment);
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($path);
-            }
-            $msg->delete();
-        }
-
+        // نكتفي بآخر 200 رسالة لكل محادثة لتفادي تحميل سجل ضخم بكل استطلاع (polling)
         $messages = \App\Models\Message::where('deleted_for_everyone', 0)
             ->where(function ($q) use ($myId, $otherUserId) {
                 $q->where(function ($sub) use ($myId, $otherUserId) {
@@ -320,7 +346,9 @@ class ChatController extends Controller
                 $q->whereNull('expires_at')
                   ->orWhere('expires_at', '>', now());
             })
-            ->orderBy('created_at', 'desc')->get();
+            ->orderBy('created_at', 'desc')
+            ->limit(200)
+            ->get();
 
         return response()->json([
             'status' => 'success',
@@ -401,7 +429,7 @@ class ChatController extends Controller
                 return in_array($receiverRoleId, [$roleTeacher, $roleStudent, $roleHead]);
 
             case $roleStudent:
-                return in_array($receiverRoleId, [$roleHead, $roleTeacher]);
+                return in_array($receiverRoleId, [$roleHead, $roleTeacher, $roleAdmin]);
 
             case $roleParent:
                 return in_array($receiverRoleId, [$roleAdmin, $roleHead]);
@@ -475,7 +503,7 @@ public function searchMessages(Request $request, $otherUserId)
 public function deleteMessage(Request $request, $messageId)
 {
     $myId = (int) $request->user()->user_id;
-    $type = $request->input('type', 'me'); // 'everyone' or 'me'
+    $type = $request->input('type') ?? $request->query('type') ?? $request->json('type') ?? 'me'; // 'everyone' or 'me'
 
     $message = \App\Models\Message::find($messageId);
 
@@ -618,4 +646,26 @@ public function getGroupMessages(Request $request, $groupId)
         'data' => $messages
     ]);
 }
+
+    /**
+     * تنزيل المرفق مباشرة للرسالة
+     */
+    public function downloadAttachment(Request $request, $id)
+    {
+        $message = \App\Models\Message::findOrFail($id);
+
+        if (!$message->attachment) {
+            return response()->json(['error' => 'لا يوجد مرفق لهذه الرسالة'], 404);
+        }
+
+        $cleanPath = str_replace(asset('storage/'), '', $message->attachment);
+        $cleanPath = ltrim(str_replace('/storage/', '', $cleanPath), '/');
+
+        $path = storage_path('app/public/' . $cleanPath);
+        if (!file_exists($path)) {
+            return response()->json(['error' => 'الملف غير موجود على السيرفر'], 404);
+        }
+
+        return response()->download($path);
+    }
 }

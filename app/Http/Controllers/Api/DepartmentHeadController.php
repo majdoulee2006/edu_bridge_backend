@@ -20,15 +20,22 @@ class DepartmentHeadController extends Controller
         $user    = $request->user();
         $pending = DB::table('leave_requests')->where('status', 'pending')->count();
 
+        $head   = DB::table('heads')->where('user_id', $user->user_id)->first();
+        $deptId = $head ? $head->department_id : null;
+        if (!$deptId && $user->department) {
+            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . $user->department . '%')->value('department_id');
+        }
+
         $announcements = Announcement::with(['department', 'course', 'user'])
-            ->where(function($q) use ($user) {
+            ->where(function($q) use ($user, $deptId) {
                 $q->where('user_id', $user->user_id)
-                  ->orWhereNull('target_audience')
-                  ->orWhereIn('target_audience', ['all', 'heads']);
-            })
-            ->where(function($q) {
-                $q->whereNull('target_role')
-                  ->orWhere('target_role', 'head');
+                  ->orWhere(function($sub) {
+                      $sub->whereNull('department_id')
+                          ->orWhere('target_audience', 'all');
+                  });
+                if ($deptId) {
+                    $q->orWhere('department_id', $deptId);
+                }
             })
             ->latest()
             ->limit(10)
@@ -783,15 +790,23 @@ class DepartmentHeadController extends Controller
                 'updated_at' => now()
             ]);
 
+        $requestStudentUserId = DB::table('students')->where('student_id', $requestRow->student_id)->value('user_id');
+
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
         $parentIds = DB::table('parent_students')
-            ->where('student_id', $requestRow->student_id)
-            ->pluck('parent_id');
+            ->where(function ($q) use ($requestRow, $requestStudentUserId) {
+                $q->where('student_id', $requestStudentUserId)
+                  ->orWhere('student_id', $requestRow->student_id);
+            })
+            ->pluck('parent_id')
+            ->unique();
 
         $performanceReport = DB::table('performance_reports')->where('report_request_id', $id)->first();
         $notificationMessage = $performanceReport ? $performanceReport->recommendations : $requestRow->notes;
 
         foreach ($parentIds as $parentId) {
-            $parentUserId = DB::table('parents')->where('parent_id', $parentId)->value('user_id');
+            $parentIsUser = DB::table('users')->where('user_id', $parentId)->where('role_id', 4)->exists();
+            $parentUserId = $parentIsUser ? $parentId : DB::table('parents')->where('parent_id', $parentId)->value('user_id');
             if ($parentUserId) {
                 DB::table('notifications')->insert([
                     'user_id'    => $parentUserId,
@@ -873,10 +888,20 @@ class DepartmentHeadController extends Controller
             default    => null,
         };
 
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('announcements', 'public');
+        $imagesList = [];
+        if ($request->hasFile('images')) {
+            $files = is_array($request->file('images')) ? $request->file('images') : [$request->file('images')];
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    $imagesList[] = $file->store('announcements', 'public');
+                }
+            }
         }
+        if (empty($imagesList) && $request->hasFile('image')) {
+            $imagesList[] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $primaryImage = !empty($imagesList) ? $imagesList[0] : null;
 
         $announcementId = DB::table('announcements')->insertGetId([
             'user_id'         => $request->user()->user_id,
@@ -890,7 +915,8 @@ class DepartmentHeadController extends Controller
             'event_date'      => $request->input('event_date'),
             'event_time'      => $request->input('event_time'),
             'location'        => $request->input('location'),
-            'image'           => $imagePath,
+            'image'           => $primaryImage,
+            'images'          => !empty($imagesList) ? json_encode($imagesList) : null,
             'link_url'        => $request->link_url ?? null,
             'created_at'      => now(),
             'updated_at'      => now(),
@@ -1073,18 +1099,26 @@ class DepartmentHeadController extends Controller
 
     public function getAnnouncements(Request $request)
     {
-        $userId = $request->user()?->user_id;
+        $user   = $request->user();
+        $userId = $user?->user_id;
+        $head   = $userId ? DB::table('heads')->where('user_id', $userId)->first() : null;
+        $deptId = $head ? $head->department_id : null;
+        if (!$deptId && $user?->department) {
+            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . $user->department . '%')->value('department_id');
+        }
+
         $announcements = Announcement::with(['department', 'course', 'user'])
-            ->where(function($q) use ($userId) {
+            ->where(function($q) use ($userId, $deptId) {
                 if ($userId) {
                     $q->where('user_id', $userId);
                 }
-                $q->orWhereNull('target_audience')
-                  ->orWhereIn('target_audience', ['all', 'heads']);
-            })
-            ->where(function($q) {
-                $q->whereNull('target_role')
-                  ->orWhere('target_role', 'head');
+                $q->orWhere(function($sub) {
+                    $sub->whereNull('department_id')
+                        ->orWhere('target_audience', 'all');
+                });
+                if ($deptId) {
+                    $q->orWhere('department_id', $deptId);
+                }
             })
             ->latest()
             ->limit(20)

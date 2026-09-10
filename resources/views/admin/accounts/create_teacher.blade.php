@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    <form class="space-y-5 pb-10" action="{{ route('admin.accounts.store.teacher') }}" method="POST">
+    <form class="space-y-5 pb-10" action="{{ route('admin.accounts.store.teacher') }}" method="POST" autocomplete="off">
         @csrf
 
         <!-- الاسم الأول + الاسم الثاني (النسبة / الكنية) -->
@@ -41,8 +41,8 @@
             </div>
         </div>
 
-        <!-- رقم الهاتف + البريد -->
-        <div class="grid grid-cols-2 gap-4">
+        <!-- رقم الهاتف + اسم المستخدم -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">رقم الهاتف</label>
                 <input name="phone" value="{{ old('phone') }}" type="tel" dir="ltr" placeholder="09xxxxxxxx"
@@ -50,14 +50,33 @@
                 @error('phone')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
             <div class="space-y-1.5">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">البريد الإلكتروني</label>
-                <div class="relative group">
-                    <input required name="email" value="{{ old('email') }}" type="email" dir="ltr" placeholder="teacher@test.com"
-                           class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 text-right focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
-                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">mail</span>
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">اسم المستخدم (Username)</label>
+                <div class="relative flex items-center bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary transition-all overflow-hidden" dir="ltr">
+                    <span class="pl-4 pr-3 text-slate-400 flex items-center justify-center">
+                        <span class="material-symbols-outlined">badge</span>
+                    </span>
+                    <input required name="username" class="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 py-3.5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium min-w-0" placeholder="teacher_user" type="text" value="{{ old('username') }}"/>
+                    <span class="pr-4 pl-2 text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap select-none">
+                        @edu-bridge.com
+                    </span>
                 </div>
-                @error('email')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+                @error('username')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
+        </div>
+
+        <!-- البريد الإلكتروني -->
+        <div class="space-y-1.5">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">البريد الإلكتروني</label>
+            <div class="relative flex items-center bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary transition-all overflow-hidden" dir="ltr">
+                <span class="pl-4 pr-3 text-slate-400 flex items-center justify-center">
+                    <span class="material-symbols-outlined">mail</span>
+                </span>
+                <input required name="email" autocomplete="off" class="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 py-3.5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium min-w-0" placeholder="teacher" type="text" value="{{ old('email') }}"/>
+                <span class="pr-4 pl-2 text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap select-none">
+                    @gmail.com
+                </span>
+            </div>
+            @error('email')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
         </div>
 
         <!-- القسم + الدورة -->
@@ -105,7 +124,7 @@
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">كلمة المرور</label>
                 <div class="relative group">
-                    <input required name="password" type="password" placeholder="••••••••"
+                    <input required name="password" autocomplete="new-password" type="password" placeholder="••••••••"
                            class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
                     <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer" onclick="togglePasswordVisibility(this)">visibility_off</span>
                 </div>
@@ -114,7 +133,7 @@
             <div class="space-y-1.5">
                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">تأكيد كلمة المرور</label>
                 <div class="relative group">
-                    <input required name="password_confirmation" type="password" placeholder="••••••••"
+                    <input required name="password_confirmation" autocomplete="new-password" type="password" placeholder="••••••••"
                            class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
                     <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer" onclick="togglePasswordVisibility(this)">visibility_off</span>
                 </div>

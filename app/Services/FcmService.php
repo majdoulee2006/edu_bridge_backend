@@ -50,9 +50,13 @@ class FcmService
 
     public static function sendToUser(int $userId, string $title, string $body, array $data = []): bool
     {
-        // إرسال المهمة للخلفية (Queue) لتجنب تأخير الواجهة
-        \App\Jobs\SendFcmNotificationJob::dispatch($userId, $title, $body, $data);
-        return true;
+        try {
+            // Send synchronously to ensure instant delivery during testing & production
+            return self::sendToUserSync($userId, $title, $body, $data);
+        } catch (\Exception $e) {
+            Log::error('FcmService sendToUser error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     public static function sendToUserSync(int $userId, string $title, string $body, array $data = []): bool

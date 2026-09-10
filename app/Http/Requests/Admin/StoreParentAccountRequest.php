@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreParentAccountRequest extends FormRequest
+{
+    use \App\Traits\NormalizesAccountCredentialsTrait;
+
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->normalizeAccountCredentials($this);
+
+        $fullName = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+        if (empty($fullName)) {
+            $fullName = $this->full_name ?? '';
+        }
+        $this->merge(['full_name' => $fullName]);
+    }
+
+    public function rules(): array
+    {
+        return [
+            'first_name'              => 'required|string|max:100',
+            'last_name'               => 'required|string|max:100',
+            'phone'                   => 'required|string|max:20',
+            'username'                => [
+                'required',
+                'string',
+                'unique:users,username',
+                'max:255',
+            ],
+            'email'                   => [
+                'required',
+                'email',
+                'unique:users,email',
+                'max:255',
+            ],
+            'telegram_id'             => 'nullable|string|max:255',
+            'children_university_ids' => 'nullable|array',
+            'password'                => 'required|string|min:6|confirmed',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'first_name.required' => 'الاسم الأول مطلوب.',
+            'last_name.required'  => 'الاسم الثاني مطلوب.',
+            'username.unique'     => 'اسم المستخدم مستخدم بالفعل.',
+            'email.unique'        => 'البريد الإلكتروني مستخدم بالفعل.',
+            'password.confirmed'  => 'تأكيد كلمة المرور غير متطابق.',
+        ];
+    }
+}

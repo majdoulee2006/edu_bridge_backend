@@ -302,13 +302,15 @@
                 <thead>
                     <tr>
                         <th style="width: 5%;">#</th>
-                        <th style="width: 30%;">اسم المادة الدراسية</th>
+                        <th style="width: 25%;">اسم المادة الدراسية</th>
                         <th style="width: 15%;">السنة / الفصل</th>
-                        <th style="width: 10%;">المذاكرة (25)</th>
-                        <th style="width: 10%;">الشفهي (25)</th>
-                        <th style="width: 10%;">النهائي (50)</th>
-                        <th style="width: 10%;">المجموع (100)</th>
-                        <th style="width: 10%;">الحالة</th>
+                        <th style="width: 8%;">المذاكرة (25)</th>
+                        <th style="width: 8%;">الشفهي (25)</th>
+                        <th style="width: 8%;">النهائي (50)</th>
+                        <th style="width: 8%;">المجموع (100)</th>
+                        <th style="width: 6%;">التثقيل</th>
+                        <th style="width: 8%;">الموزونة</th>
+                        <th style="width: 9%;">الحالة</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -326,11 +328,13 @@
                             <td>{{ $c['oral_score'] !== null ? $c['oral_score'] : '-' }}</td>
                             <td>{{ $c['final_score'] !== null ? $c['final_score'] : '-' }}</td>
                             <td><strong>{{ $c['total_score'] !== null ? $c['total_score'] : '-' }}</strong></td>
+                            <td>{{ $c['weight'] ?? 1 }}</td>
+                            <td><strong style="color: #475569;">{{ $c['weighted_score'] !== null ? $c['weighted_score'] : '-' }}</strong></td>
                             <td class="{{ $statusClass }}">{{ $c['status'] ?? '—' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="padding: 2rem; color: #94a3b8;">لا توجد سجلات علامات مدمجة حتى الآن</td>
+                            <td colspan="10" style="padding: 2rem; color: #94a3b8;">لا توجد سجلات علامات مدمجة حتى الآن</td>
                         </tr>
                     @endforelse
                 </tbody>

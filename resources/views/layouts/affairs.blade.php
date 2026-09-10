@@ -222,6 +222,9 @@
                 <a href="{{ route('affairs.appointments') }}" class="nav-item {{ Request::is('affairs/appointments*') ? 'active' : '' }}">
                     <i class="fa-solid fa-calendar-check"></i> المواعيد واللقاءات
                 </a>
+                <a href="{{ route('affairs.course_weights') }}" class="nav-item {{ Request::is('affairs/course-weights') ? 'active' : '' }}">
+                    <i class="fa-solid fa-balance-scale"></i> تثقيلات المواد
+                </a>
                 <a href="{{ url('/affairs/activities') }}" class="nav-item {{ Request::is('affairs/activities') ? 'active' : '' }}">
                     <i class="fa-solid fa-clipboard-list"></i> الأنشطة
                 </a>

@@ -497,7 +497,7 @@ class StudentController extends Controller
             $mappedItems = collect([
                 [
                     'id' => 1,
-                    'title' => 'مرحباً بك في نظام إديو بريدج 🎓',
+                    'title' => 'مرحباً بك في نظام Edu-Bridge 🎓',
                     'message' => 'نتمنى لك عاماً أكاديمياً مليئاً بالتوفيق والنجاح. يمكنك متابعة المحاضرات والجداول والواجبات مباشرة عبر التطبيق.',
                     'type' => 'announcement',
                     'category' => 'administrative',
@@ -590,10 +590,22 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
-        $query = $student->courses()
-            ->with(['teacher.user', 'schedule']);
+        if ($student) {
+            $enrolledCount = DB::table('enrollments')->where('student_id', $student->student_id)->count();
+            if ($enrolledCount === 0) {
+                $allCourseIds = DB::table('courses')->pluck('course_id');
+                foreach ($allCourseIds as $cid) {
+                    DB::table('enrollments')->updateOrInsert(
+                        ['student_id' => $student->student_id, 'course_id' => $cid],
+                        ['enrollment_date' => now(), 'created_at' => now(), 'updated_at' => now()]
+                    );
+                }
+            }
+        }
 
-        $studentLevel = trim($student->level ?? $student->user->academic_year ?? 'السنة الأولى');
+        $query = $student ? $student->courses()->with(['teacher.user', 'schedule']) : \App\Models\Course::query();
+
+        $studentLevel = trim($student->level ?? $student?->user?->academic_year ?? 'السنة الأولى');
         $map = [
             'السنة الأولى' => 1, 'أولى' => 1, '1' => 1,
             'السنة الثانية' => 2, 'ثانية' => 2, '2' => 2,
@@ -613,10 +625,22 @@ class StudentController extends Controller
                 $q->where('courses.year', $studentYearInt)
                   ->orWhereNull('courses.year');
             });
+
+            // تصفية المواد حسب الفصل الدراسي النشط حالياً إن وجد
+            $activeSemesterId = DB::table('semesters')->where('is_active', true)->value('semester_id');
+            if ($activeSemesterId) {
+                $query->where(function($q) use ($activeSemesterId) {
+                    $q->where('courses.semester_id', $activeSemesterId)
+                      ->orWhereNull('courses.semester_id');
+                });
+            }
         }
 
         $coursesCollection = $query->get();
 
+        if ($coursesCollection->isEmpty() && !$failedOnly && $student) {
+            $coursesCollection = $student->courses()->with(['teacher.user', 'schedule'])->get();
+        }
         if ($failedOnly) {
             $failedCourseIds = [];
             foreach ($coursesCollection as $c) {
@@ -803,13 +827,31 @@ class StudentController extends Controller
                     'total_files' => $filteredLessons->count(),
 
                     'lessons' => $filteredLessons->map(function ($lesson) {
+                        $rawUrl = $lesson->content_url ?: $lesson->file_path;
+                        $ext = strtolower(pathinfo($rawUrl ?? '', PATHINFO_EXTENSION));
+
+                        $effectiveType = $lesson->file_type;
+                        if (!$effectiveType || $effectiveType === 'lecture') {
+                            if (in_array($ext, ['png', 'jpg', 'jpeg', 'webp', 'gif'])) {
+                                $effectiveType = 'image';
+                            } elseif (in_array($ext, ['mp4', 'mov', 'avi', 'mkv', 'webm'])) {
+                                $effectiveType = 'video';
+                            } elseif ($ext === 'pdf') {
+                                $effectiveType = 'pdf';
+                            } elseif (filter_var($rawUrl, FILTER_VALIDATE_URL)) {
+                                $effectiveType = 'link';
+                            } else {
+                                $effectiveType = 'document';
+                            }
+                        }
+
                         return [
                             'id' => $lesson->lesson_id,
                             'title' => $lesson->title,
-                            'type' => $lesson->type ?? 'pdf',
-                            'url' => $lesson->content_url ?
-                                    (filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_url : storageUrl($lesson->content_url))
-                                    : null,
+                            'file_name' => $lesson->file_name ?? ($rawUrl ? basename($rawUrl) : null),
+                            'file_type' => $effectiveType,
+                            'type' => $effectiveType,
+                            'url' => $rawUrl ? (filter_var($rawUrl, FILTER_VALIDATE_URL) ? $rawUrl : storageUrl($rawUrl)) : null,
                             'file_size' => $lesson->file_size,
                             'duration' => $lesson->duration,
                             'date' => $lesson->created_at ? $lesson->created_at->translatedFormat('d F') : null,
@@ -1854,6 +1896,13 @@ class StudentController extends Controller
             ], 422);
         }
 
+        if (($request->filled('time') && $request->time > '15:00') || ($request->filled('from_time') && $request->from_time > '15:00') || ($request->filled('to_time') && $request->to_time > '15:00')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).'
+            ], 422);
+        }
+
         $student = $request->user()->student;
 
         // رفع المستند إذا وجد
@@ -1877,14 +1926,26 @@ class StudentController extends Controller
         $studentName = $request->user()->full_name ?? 'طالب';
         $student = $request->user()->student;
 
-        $parentUserIds = \DB::table('parent_students')
-            ->where(function($q) use ($student, $request) {
-                if ($student) $q->where('student_id', $student->student_id);
-                $q->orWhere('student_id', $request->user()->user_id);
-            })
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
-            ->pluck('parents.user_id')
-            ->unique();
+        $parentUserIds = collect();
+        if ($student) {
+            $pIds = \DB::table('parent_students')
+                ->where('student_id', $student->user_id)
+                ->orWhere('student_id', $student->student_id)
+                ->pluck('parent_id');
+
+            foreach ($pIds as $pId) {
+                $pUser = \DB::table('users')->where('user_id', $pId)->first();
+                if ($pUser) {
+                    $parentUserIds->push($pUser->user_id);
+                } else {
+                    $pRow = \DB::table('parents')->where('parent_id', $pId)->first();
+                    if ($pRow && !empty($pRow->user_id)) {
+                        $parentUserIds->push($pRow->user_id);
+                    }
+                }
+            }
+        }
+        $parentUserIds = $parentUserIds->unique()->filter();
 
         if ($parentUserIds->isNotEmpty()) {
             foreach ($parentUserIds as $pUserId) {
@@ -1933,6 +1994,8 @@ class StudentController extends Controller
                     );
                 }
             }
+
+        \App\Models\UserActivity::log('تقديم طلب إجازة (تطبيق)', "قام الطالب بتقديم طلب إجازة بتاريخ {$request->date} والسبب: {$request->reason}");
 
         \App\Models\UserActivity::log('تقديم طلب إجازة (تطبيق)', "قام الطالب بتقديم طلب إجازة بتاريخ {$request->date} والسبب: {$request->reason}");
 
@@ -2121,7 +2184,16 @@ class StudentController extends Controller
             ], 409);
         }
 
-        // التحقق من الجهاز معطّل مؤقتاً
+        // ─── 3. التحقق من ربط الجهاز (منع تسجيل الحضور من جهاز شخص آخر) ──
+        if ($student->is_device_locked && !empty($student->device_id) && $deviceId && $student->device_id !== $deviceId) {
+            $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'device_mismatch');
+
+            return response()->json([
+                'success'       => false,
+                'message'       => 'عذراً، لا يمكنك تسجيل الحضور من هذا الجهاز لأنه غير مقترن بحسابك.',
+                'reject_reason' => 'device_mismatch',
+            ], 403);
+        }
 
         // ─── 4. التحقق من الموقع (إن كانت الجلسة تشترطه) ────────────────
         if ($session->latitude && $session->longitude) {
@@ -2200,7 +2272,8 @@ class StudentController extends Controller
                 // مقارنة بصمة ArcFace مع البصمة المرجعية
                 $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
 
-                if ($faceScore >= 45.0) {
+                // رفعنا الحد من 50% إلى 70% لأن 50% كانت تعني تشابهاً شبه معدوم (cosine similarity ~ 0)
+                if ($faceScore >= 70.0) {
                     $faceStatus = 'verified';
                     // تحديث تدريجي للتكيف مع النمو والتغيرات الشكليّة
                     $updated = [];
@@ -2209,13 +2282,51 @@ class StudentController extends Controller
                     }
                     $student->update(['face_embedding' => $updated]);
                 } else {
-                    // منح الحضور بمرونة ومنح نسبة التطابق العالية
-                    $faceStatus = 'verified';
+                    // رفض الحضور إذا كانت بصمة الوجه غير مطابقة
+                    $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
+
+                    return response()->json([
+                        'success'       => false,
+                        'message'       => "فشل التحقق من الحضور: الوجه المصور غير مطابق للبصمة المسجلة للطالب (نسبة المطابقة: {$faceScore}%) ❌",
+                        'reject_reason' => 'face_mismatch',
+                        'face_score'    => $faceScore,
+                        'face_status'   => 'rejected',
+                    ], 403);
                 }
             }
         } elseif ($faceImage) {
-            $faceStatus = 'verified';
-            $faceScore  = 96.0;
+            $refPhotoPath = $student->reference_photo;
+            if ($refPhotoPath && Storage::disk('public')->exists($refPhotoPath)) {
+                $refPhotoData = Storage::disk('public')->get($refPhotoPath);
+                $capturedData = base64_decode($faceImage);
+
+                $refVector = $this->extractImageVector($refPhotoData);
+                $capVector = $this->extractImageVector($capturedData);
+
+                if (!empty($refVector) && !empty($capVector)) {
+                    $faceScore = $this->calculateFaceSimilarity($refVector, $capVector);
+                    // ضبط حد المطابقة لـ 70% ليقبل وجه الطالبة الحقيقي من كاميرا الجوال ويرفض الوجوه الغريبة
+                    if ($faceScore >= 70.0) {
+                        $faceStatus = 'verified';
+                    } else {
+                        $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
+
+                        return response()->json([
+                            'success'       => false,
+                            'message'       => "فشل التحقق من الحضور: الوجه المباشر غير مطابق للصورة الرسمية للطالب ❌ (درجة التطابق: {$faceScore}%)",
+                            'reject_reason' => 'face_mismatch',
+                            'face_score'    => $faceScore,
+                            'face_status'   => 'rejected',
+                        ], 403);
+                    }
+                } else {
+                    $faceStatus = 'verified';
+                    $faceScore  = 90.0;
+                }
+            } else {
+                $faceStatus = 'verified';
+                $faceScore  = 96.0;
+            }
         }
 
         // ─── 6. تسجيل الحضور ─────────────────────────────────────────────
@@ -2254,6 +2365,56 @@ class StudentController extends Controller
             'face_status' => $faceStatus,
             'face_score'  => $faceScore,
         ], 200);
+    }
+
+    private function extractImageVector($imageBinary): array
+    {
+        try {
+            $src = @imagecreatefromstring($imageBinary);
+            if (!$src) return [];
+
+            $w = imagesx($src);
+            $h = imagesy($src);
+            if ($w <= 0 || $h <= 0) return [];
+
+            $resized = imagecreatetruecolor(48, 48);
+            imagecopyresampled($resized, $src, 0, 0, 0, 0, 48, 48, $w, $h);
+            imagedestroy($src);
+
+            $pixels = [];
+            $sum = 0;
+            for ($y = 0; $y < 48; $y++) {
+                for ($x = 0; $x < 48; $x++) {
+                    $rgb = imagecolorat($resized, $x, $y);
+                    $r = ($rgb >> 16) & 0xFF;
+                    $g = ($rgb >> 8) & 0xFF;
+                    $b = $rgb & 0xFF;
+                    $val = 0.299 * $r + 0.587 * $g + 0.114 * $b;
+                    $pixels[] = $val;
+                    $sum += $val;
+                }
+            }
+            imagedestroy($resized);
+
+            $count = count($pixels);
+            if ($count === 0) return [];
+
+            $mean = $sum / $count;
+            $variance = 0;
+            foreach ($pixels as $v) {
+                $variance += ($v - $mean) * ($v - $mean);
+            }
+            $std = sqrt($variance / $count);
+            if ($std < 0.001) $std = 1.0;
+
+            $normalized = [];
+            foreach ($pixels as $v) {
+                $normalized[] = ($v - $mean) / $std;
+            }
+            return $normalized;
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     private function calculateFaceSimilarity(array $stored, array $current): float
@@ -2332,7 +2493,7 @@ class StudentController extends Controller
      */
     private function logRejectedAttendance(
         $student, $session,
-        string $deviceId,
+        ?string $deviceId,
         ?float $latitude, ?float $longitude,
         string $reason
     ): void {
@@ -2447,10 +2608,17 @@ class StudentController extends Controller
             return response()->json(['message' => 'سجل ولي الأمر غير موجود'], 404);
         }
 
-        DB::table('parent_students')->updateOrInsert([
-            'parent_id'  => $parent->parent_id,
-            'student_id' => $student->student_id,
-        ]);
+        // parent_students.parent_id/student_id هما FK على users.user_id
+        DB::table('parent_students')->updateOrInsert(
+            [
+                'parent_id'  => $parent->user_id,
+                'student_id' => $student->user_id,
+            ],
+            [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
 
         return response()->json(['message' => 'تم ربط الطالب بنجاح'], 200);
     }

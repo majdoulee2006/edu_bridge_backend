@@ -12,7 +12,7 @@ class CheckAffairsRole
     public function handle(Request $request, Closure $next): Response
     {
         if (!\Illuminate\Support\Facades\Auth::check()) {
-            return redirect('/login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
+            return redirect()->route('login')->withErrors(['login' => 'يرجى تسجيل الدخول أولاً.']);
         }
 
         $user = \Illuminate\Support\Facades\Auth::user();

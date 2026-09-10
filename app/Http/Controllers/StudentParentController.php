@@ -307,13 +307,19 @@ class StudentParentController extends Controller
         $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
         if (!$parent) return response()->json(['success' => true, 'data' => []]);
 
-        $studentIds = DB::table('parent_students')
-            ->where('parent_id', $parent->parent_id)
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+        $linkedIds = DB::table('parent_students')
+            ->where(function ($q) use ($request, $parent) {
+                $q->where('parent_id', $request->user()->user_id)
+                  ->orWhere('parent_id', $parent->parent_id);
+            })
             ->pluck('student_id');
 
-        $userIds = DB::table('students')
-            ->whereIn('student_id', $studentIds)
+        $resolvedFromLegacy = DB::table('students')
+            ->whereIn('student_id', $linkedIds)
             ->pluck('user_id');
+
+        $userIds = $linkedIds->merge($resolvedFromLegacy)->unique();
 
         $query = DB::table('leave_requests')
             ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
@@ -447,9 +453,22 @@ class StudentParentController extends Controller
         $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
         if (!$parent) return response()->json(['success' => true, 'data' => []]);
 
-        $allStudentIds = DB::table('parent_students')
-            ->where('parent_id', $parent->parent_id)
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+        $linkedIds = DB::table('parent_students')
+            ->where(function ($q) use ($request, $parent) {
+                $q->where('parent_id', $request->user()->user_id)
+                  ->orWhere('parent_id', $parent->parent_id);
+            })
             ->pluck('student_id');
+
+        // performance_reports/report_requests تُخزَّن بمفتاح students.student_id، لذا نحوّل قيم user_id الناتجة إليه
+        $allStudentIds = DB::table('students')
+            ->where(function ($q) use ($linkedIds) {
+                $q->whereIn('user_id', $linkedIds)
+                  ->orWhereIn('student_id', $linkedIds);
+            })
+            ->pluck('student_id')
+            ->unique();
 
         // فلترة اختيارية حسب طالب محدد
         $filterStudentId = $request->query('student_id');
@@ -517,19 +536,28 @@ class StudentParentController extends Controller
         $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
         if (!$parent) return response()->json(['message' => 'ولي الأمر غير موجود'], 404);
 
-        $linked = DB::table('parent_students')
-            ->where('parent_id', $parent->parent_id)
-            ->where('student_id', $request->student_id)
-            ->exists();
-
-        if (!$linked) return response()->json(['message' => 'الطالب غير مرتبط بهذا الحساب'], 403);
-
         // Get student user_id (leave_requests uses user_id as student_id column)
         $studentUser = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->where('students.student_id', $request->student_id)
             ->select('users.user_id', 'users.full_name')
             ->first();
+
+        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+        $linked = DB::table('parent_students')
+            ->where(function ($q) use ($request, $parent) {
+                $q->where('parent_id', $request->user()->user_id)
+                  ->orWhere('parent_id', $parent->parent_id);
+            })
+            ->where(function ($q) use ($request, $studentUser) {
+                $q->where('student_id', $request->student_id);
+                if ($studentUser) {
+                    $q->orWhere('student_id', $studentUser->user_id);
+                }
+            })
+            ->exists();
+
+        if (!$linked) return response()->json(['message' => 'الطالب غير مرتبط بهذا الحساب'], 403);
 
         if (!$studentUser) return response()->json(['message' => 'الطالب غير موجود'], 404);
 

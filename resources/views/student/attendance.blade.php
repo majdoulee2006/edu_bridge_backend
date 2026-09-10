@@ -87,10 +87,15 @@
     </div>
 
     <!-- الكاميرا المضمنة مباشرة داخل عناصر الصفحة (Embedded Video) -->
-    <div class="embedded-cam-box">
+    <div class="embedded-cam-box relative">
         
+        <!-- زر عكس اتجاه الكاميرا يدوياً للمستخدم -->
+        <button type="button" onclick="toggleVideoFlip()" class="absolute top-3 left-3 z-20 bg-slate-900/80 hover:bg-slate-950 text-yellow-400 text-xs font-extrabold px-3 py-1.5 rounded-full border border-yellow-400/40 flex items-center gap-1.5 transition-all shadow-md cursor-pointer">
+            <i class="fa-solid fa-arrows-rotate"></i> <span>عكس اتجاه الكاميرا</span>
+        </button>
+
         <!-- عنصر الفيديو المباشر في الـ HTML (يعمل تلقائياً) -->
-        <video id="live-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+        <video id="live-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover" style="transform: scaleX(-1);"></video>
 
         <!-- 1. إطار مسح الـ QR المدمج -->
         <div id="frame-qr" class="absolute inset-0 z-10 flex flex-col items-center justify-center">
@@ -172,6 +177,15 @@
         }
     }
 
+    let isVideoFlipped = true;
+    function toggleVideoFlip() {
+        const video = document.getElementById('live-video');
+        isVideoFlipped = !isVideoFlipped;
+        if (video) {
+            video.style.transform = isVideoFlipped ? 'scaleX(-1)' : 'none';
+        }
+    }
+
     async function startEmbeddedCamera(facingMode) {
         if (streamInstance) {
             streamInstance.getTracks().forEach(t => t.stop());
@@ -190,6 +204,8 @@
             });
 
             video.srcObject = streamInstance;
+            video.style.transform = isVideoFlipped ? 'scaleX(-1)' : 'none';
+
             await video.play();
             return true;
         } catch (e) {
@@ -288,7 +304,10 @@
             const res = await response.json();
             showResultModal(res);
         } catch (e) {
-            showResultModal({ success: false, message: "حدث خطأ أثناء الاتصال بالخادم: " + e.message });
+            showResultModal({
+                success: false,
+                message: "تعذر الاتصال بالخادم، يرجى إعادة المحاولة."
+            });
         }
     }
 
@@ -299,11 +318,16 @@
         const msg = document.getElementById('modal-msg');
         const score = document.getElementById('modal-score');
 
+        let displayMessage = res.message || "فشلت مطابقة بصمة الوجه أو رمز QR غير صالح.";
+        if (typeof displayMessage === 'string' && (displayMessage.includes('\\') || displayMessage.includes('.php') || displayMessage.includes('Argument #'))) {
+            displayMessage = "فشل التحقق من الحضور: الوجه غير مطابق لصورة الطالب المسجلة ❌";
+        }
+
         if (res.success) {
             icon.className = "text-6xl text-green-400";
             icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
             title.textContent = "تم تسجيل حضورك بنجاح ✅";
-            msg.textContent = res.message || "تم التحقق من الوجه وتثبيت الحضور.";
+            msg.textContent = displayMessage;
             if (res.face_score !== undefined && res.face_score !== null) {
                 score.style.display = "block";
                 score.textContent = "نسبة المطابقة الأمنية: " + res.face_score + "%";
@@ -314,7 +338,7 @@
             icon.className = "text-6xl text-red-500";
             icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
             title.textContent = "فشل التحقق من الحضور ❌";
-            msg.textContent = res.message || "فشلت مطابقة بصمة الوجه أو رمز QR غير صالح.";
+            msg.textContent = displayMessage;
             score.style.display = "none";
         }
 

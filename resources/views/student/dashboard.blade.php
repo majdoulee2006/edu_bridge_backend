@@ -224,125 +224,78 @@
 
 {{-- Announcements --}}
 <div style="margin-bottom: 2rem;">
-    @php
-        $announcementsCol = collect($announcements ?? []);
-        $todayAnnouncements = $announcementsCol->filter(fn($item) => \Carbon\Carbon::parse($item->created_at)->isToday());
-        $previousAnnouncements = $announcementsCol->reject(fn($item) => \Carbon\Carbon::parse($item->created_at)->isToday());
-    @endphp
+    <p class="section-title">
+        <i class="fa-solid fa-bullhorn" style="color: var(--accent-color);"></i>
+        آخر الأخبار والإعلانات
+    </p>
 
-    {{-- أخبار اليوم --}}
-    <div style="margin-bottom: 2rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-            <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; box-shadow: 0 0 8px #22c55e;"></span>
-            <p class="section-title" style="margin-bottom: 0;">
-                <i class="fa-solid fa-calendar-day" style="color: var(--accent-color);"></i>
-                أخبار اليوم
-            </p>
+    @forelse($announcements as $ann)
+        @php
+            $firstImg = $ann->image ?? null;
+            if (!$firstImg && !empty($ann->images)) {
+                $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
+                if (is_array($imgsArr) && !empty($imgsArr)) {
+                    $firstImg = $imgsArr[0];
+                }
+            }
+            $imgUrl = null;
+            if ($firstImg) {
+                $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
+            }
+            $gradients = [
+                'linear-gradient(135deg,#1a2633,#f2f20d33)',
+                'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
+                'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
+                'linear-gradient(135deg,#2d1b69,#11998e)',
+                'linear-gradient(135deg,#232526,#414345)',
+            ];
+            $grad = $gradients[$loop->index % count($gradients)];
+            $icons = ['fa-bullhorn','fa-bell','fa-star','fa-bookmark','fa-flag'];
+            $icon  = $icons[$loop->index % count($icons)];
+        @endphp
+
+        @if($loop->first)
+        <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 1.25rem; min-height: 200px;">
+            <div style="width: 38%; flex-shrink: 0; background: {{ $grad }}; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                @if($imgUrl)
+                    <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;"
+                         onerror="this.style.display='none'">
+                @endif
+                <i class="fa-solid {{ $icon }}" style="font-size: 4rem; color: rgba(242,242,13,0.25);"></i>
+            </div>
+            <div style="flex: 1; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <span style="background: var(--accent-color); color: #1a1a1a; padding: 0.2rem 0.75rem; border-radius: 2rem; font-size: 0.78rem; font-weight: 700; display: inline-block; margin-bottom: 0.75rem;">إعلان هام</span>
+                    <h4 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.5rem;">{{ $ann->title }}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">{{ Str::limit($ann->content, 200) }}</p>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.75rem;">
+                    <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}
+                </div>
+            </div>
         </div>
-
-        @forelse($todayAnnouncements as $ann)
-            @php
-                $imgUrl = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
-                $gradients = [
-                    'linear-gradient(135deg,#1a2633,#f2f20d33)',
-                    'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
-                    'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
-                ];
-                $grad = $gradients[$loop->index % count($gradients)];
-                $icons = ['fa-bullhorn','fa-bell','fa-star'];
-                $icon  = $icons[$loop->index % count($icons)];
-            @endphp
-
-            @if($loop->first)
-            <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 1rem; min-height: 180px; border: 1px solid rgba(34,197,94,0.3);">
-                <div style="width: 35%; flex-shrink: 0; background: {{ $grad }}; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                    @if($imgUrl)
-                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;" onerror="this.style.display='none'">
-                    @endif
-                    <i class="fa-solid {{ $icon }}" style="font-size: 3.5rem; color: rgba(242,242,13,0.25);"></i>
-                </div>
-                <div style="flex: 1; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <span style="background: #22c55e; color: #ffffff; padding: 0.15rem 0.65rem; border-radius: 2rem; font-size: 0.72rem; font-weight: 800;">اليوم</span>
-                            <span style="background: var(--accent-color); color: #1a1a1a; padding: 0.15rem 0.65rem; border-radius: 2rem; font-size: 0.72rem; font-weight: 700;">إعلان جديد</span>
-                        </div>
-                        <h4 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.4rem;">{{ $ann->title }}</h4>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5;">{{ Str::limit($ann->content, 180) }}</p>
-                    </div>
-                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                        <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}
-                    </div>
-                </div>
+        @else
+        <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 0.75rem; min-height: 110px;">
+            <div style="width: 150px; flex-shrink: 0; background: {{ $grad }}; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                @if($imgUrl)
+                    <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;"
+                         onerror="this.style.display='none'">
+                @endif
+                <i class="fa-solid {{ $icon }}" style="font-size: 2.5rem; color: rgba(242,242,13,0.3);"></i>
             </div>
-            @else
-            <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 0.75rem; min-height: 100px;">
-                <div style="width: 140px; flex-shrink: 0; background: {{ $grad }}; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                    @if($imgUrl)
-                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;" onerror="this.style.display='none'">
-                    @endif
-                    <i class="fa-solid {{ $icon }}" style="font-size: 2.2rem; color: rgba(242,242,13,0.3);"></i>
-                </div>
-                <div style="flex: 1; padding: 0.85rem 1.1rem; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem;">
-                        <span style="background: #22c55e; color: #fff; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.68rem; font-weight: 800;">اليوم</span>
-                        <h4 style="font-size: 0.9rem; font-weight: 700; margin: 0;">{{ $ann->title }}</h4>
-                    </div>
-                    <p style="font-size: 0.8rem; color: var(--text-secondary); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin: 0;">{{ $ann->content }}</p>
-                    <span style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 0.3rem;">{{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
-                </div>
+            <div style="flex: 1; padding: 1rem 1.25rem; display: flex; flex-direction: column; justify-content: center;">
+                <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem;">{{ $ann->title }}</h4>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ $ann->content }}</p>
+                <span style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">{{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
             </div>
-            @endif
-        @empty
-            <div style="text-align: center; padding: 1.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary); border: 1px dashed var(--border-color); margin-bottom: 1.5rem;">
-                <i class="fa-regular fa-calendar-check" style="font-size: 1.5rem; margin-bottom: 0.4rem; display: block; color: var(--text-secondary); opacity: 0.5;"></i>
-                لا توجد أخبار جديدة نشرت اليوم.
-            </div>
-        @endforelse
-    </div>
-
-    {{-- الأخبار السابقة --}}
-    <div>
-        <p class="section-title" style="margin-bottom: 1rem;">
-            <i class="fa-solid fa-clock-rotate-left" style="color: var(--text-secondary);"></i>
-            الأخبار السابقة
-        </p>
-
-        @forelse($previousAnnouncements as $ann)
-            @php
-                $imgUrl = ($ann->image ?? false) ? asset('storage/' . $ann->image) : null;
-                $gradients = [
-                    'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
-                    'linear-gradient(135deg,#232526,#414345)',
-                    'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
-                ];
-                $grad = $gradients[$loop->index % count($gradients)];
-                $icons = ['fa-bullhorn','fa-bookmark','fa-flag'];
-                $icon  = $icons[$loop->index % count($icons)];
-            @endphp
-
-            <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 0.75rem; min-height: 100px; opacity: 0.95;">
-                <div style="width: 140px; flex-shrink: 0; background: {{ $grad }}; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                    @if($imgUrl)
-                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;" onerror="this.style.display='none'">
-                    @endif
-                    <i class="fa-solid {{ $icon }}" style="font-size: 2.2rem; color: rgba(255,255,255,0.2);"></i>
-                </div>
-                <div style="flex: 1; padding: 0.85rem 1.1rem; display: flex; flex-direction: column; justify-content: center;">
-                    <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.2rem;">{{ $ann->title }}</h4>
-                    <p style="font-size: 0.8rem; color: var(--text-secondary); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin: 0;">{{ $ann->content }}</p>
-                    <span style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                        <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->format('Y-m-d') }} ({{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }})
-                    </span>
-                </div>
-            </div>
-        @empty
-            <div style="text-align: center; padding: 1.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary); border: 1px dashed var(--border-color);">
-                <i class="fa-solid fa-bullhorn" style="font-size: 1.5rem; margin-bottom: 0.4rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>
-                لا توجد أخبار سابقة.
-            </div>
-        @endforelse
-    </div>
+        </div>
+        @endif
+    @empty
+        <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
+            <i class="fa-solid fa-bullhorn" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>
+            لا توجد إعلانات حالياً
+        </div>
+    @endforelse
 </div>
 
 @endsection

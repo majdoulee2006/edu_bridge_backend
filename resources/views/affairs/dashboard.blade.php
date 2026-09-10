@@ -315,10 +315,21 @@
 
 @forelse($posts as $post)
     @php
-        // اختيار لون الأفاتار بناءً على الـ index
         $colors = ['#111827','#1d4ed8','#065f46','#7c3aed','#be123c','#b45309'];
         $color  = $colors[$loop->index % count($colors)];
         $initials = mb_substr($post->user->full_name ?? 'إ', 0, 1);
+
+        $firstImg = $post->image ?? null;
+        if (!$firstImg && !empty($post->images)) {
+            $imgsArr = is_string($post->images) ? json_decode($post->images, true) : $post->images;
+            if (is_array($imgsArr) && !empty($imgsArr)) {
+                $firstImg = $imgsArr[0];
+            }
+        }
+        $imgUrl = null;
+        if ($firstImg) {
+            $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
+        }
     @endphp
     <div class="post-card">
         <div class="post-header">
@@ -336,8 +347,8 @@
         <h3 class="post-title">{{ $post->title }}</h3>
         <p class="post-content">{{ $post->content }}</p>
 
-        @if($post->image)
-            <img src="{{ asset('storage/' . $post->image) }}" alt="{{ $post->title }}" class="post-image">
+        @if($imgUrl)
+            <img src="{{ $imgUrl }}" alt="{{ $post->title }}" class="post-image">
         @endif
     </div>
 @empty

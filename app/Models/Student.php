@@ -62,12 +62,13 @@ class Student extends Model
         return $this->hasMany(Attendance::class, 'student_id', 'student_id');
     }
 
+    // parent_students.student_id/parent_id هما FK على users.user_id (وليس students.student_id/parents.parent_id)
     public function parentStudents() {
-    return $this->hasMany(StudentParent::class, 'student_id');
-}
+        return $this->hasMany(StudentParent::class, 'student_id', 'user_id');
+    }
 
     public function parents() {
-        return $this->belongsToMany(Parents::class, 'parent_students', 'student_id', 'parent_id');
+        return $this->belongsToMany(Parents::class, 'parent_students', 'student_id', 'parent_id', 'user_id', 'user_id');
     }
 
     public static function autoAssignAdvisor($studentId)
