@@ -370,6 +370,7 @@ use App\Http\Controllers\Web\AdminStudentServiceController;
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminMessageController;
 use App\Http\Controllers\Web\AdminCommunicationController;
+use App\Http\Controllers\Web\AdminReportController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
@@ -472,10 +473,10 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/lectures', [AdminWebController::class, 'lectures'])->name('admin.lectures');
 
     // التقارير
-    Route::get('/reports', [AdminWebController::class, 'reports'])->name('admin.reports');
-    Route::post('/reports/generate', [AdminWebController::class, 'generateReport'])->name('admin.reports.generate');
-    Route::post('/reports/export', [AdminWebController::class, 'exportReport'])->name('admin.reports.export');
-    Route::delete('/reports/{id}', [AdminWebController::class, 'deleteReport'])->name('admin.reports.delete');
+    Route::get('/reports', [AdminReportController::class, 'reports'])->name('admin.reports');
+    Route::post('/reports/generate', [AdminReportController::class, 'generateReport'])->name('admin.reports.generate');
+    Route::post('/reports/export', [AdminReportController::class, 'exportReport'])->name('admin.reports.export');
+    Route::delete('/reports/{id}', [AdminReportController::class, 'deleteReport'])->name('admin.reports.delete');
 
     // التقويم والأحداث
     Route::post('/calendar/events', [AdminCommunicationController::class, 'storeCalendarEvent'])->name('admin.calendar.store');
