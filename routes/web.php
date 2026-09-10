@@ -366,6 +366,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
 // ===== مسارات الإدارة (Admin) =====
 use App\Http\Controllers\Web\AdminWebController;
 use App\Http\Controllers\Web\AdminAuthController;
+use App\Http\Controllers\Web\AdminStudentServiceController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
@@ -394,8 +395,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/messages/forward', [AdminWebController::class, 'forwardMessage'])->name('admin.messages.forward');
     
     // الخدمات الطلابية للإدارة
-    Route::get('/student-services', [AdminWebController::class, 'studentServices'])->name('admin.student_services');
-    Route::post('/student-services/{id}/process', [AdminWebController::class, 'processStudentService'])->name('admin.student_services.process');
+    Route::get('/student-services', [AdminStudentServiceController::class, 'studentServices'])->name('admin.student_services');
+    Route::post('/student-services/{id}/process', [AdminStudentServiceController::class, 'processStudentService'])->name('admin.student_services.process');
 
     // المواعيد واللقاءات للإدارة
     Route::get('/appointments', [App\Http\Controllers\Web\AppointmentWebController::class, 'index'])->name('admin.appointments');
