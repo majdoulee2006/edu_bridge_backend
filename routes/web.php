@@ -365,10 +365,11 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
 
 // ===== مسارات الإدارة (Admin) =====
 use App\Http\Controllers\Web\AdminWebController;
+use App\Http\Controllers\Web\AdminAuthController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
-Route::post('/admin/logout', [AdminWebController::class, 'logout'])->name('admin.logout');
+Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 
 Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/', fn() => redirect()->route('admin.dashboard'));
