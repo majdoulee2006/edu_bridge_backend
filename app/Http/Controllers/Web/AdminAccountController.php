@@ -425,67 +425,12 @@ class AdminAccountController extends Controller
         }
     }
 
-    public function updateAccount(Request $request, $id)
+    public function updateAccount(\App\Http\Requests\Admin\UpdateAccountRequest $request, $id)
     {
-        $this->normalizeAccountCredentials($request);
-
-
         $usr = DB::table('users')->where('user_id', $id)->first();
         if (!$usr) {
             return back()->with('error', 'الحساب غير موجود.');
         }
-
-        $rules = [
-            'first_name' => 'nullable|string|max:100',
-            'last_name'  => 'nullable|string|max:100',
-            'full_name'  => 'nullable|string|max:255',
-            'phone'      => 'nullable|string|max:20',
-            'email'      => [
-                'required',
-                'email',
-                'max:255',
-                'unique:users,email,'.$id.',user_id',
-                
-            ],
-            'password'   => 'nullable|min:6|confirmed',
-            'status'     => 'required|in:active,inactive',
-        ];
-        
-        $usernameValidation = function ($attribute, $value, $fail) {
-            if (str_contains(strtolower($value), '@edu-bridge.com') || str_contains(strtolower($value), '@edu-bridge') || str_contains($value, '@')) {
-                $fail('اسم المستخدم يجب ألا يحتوي على @ أو نطاق (@edu-bridge.com).');
-            }
-        };
-
-        if ($usr->role_id == 3) { // Student
-            $rules['university_id']    = 'required|string|unique:users,university_id,'.$id.',user_id|max:255';
-            $rules['department']       = 'required|string|max:255';
-            $rules['program_id']       = 'required|integer|exists:programs,id';
-            $rules['level']            = 'required|string|max:255';
-            $rules['birth_date']       = 'required|date';
-            $rules['gender']           = 'required|in:ذكر,أنثى';
-            $rules['telegram_chat_id'] = 'nullable|string|max:100';
-        } elseif ($usr->role_id == 2) { // Teacher
-            $rules['department']     = 'required|string|max:255';
-            $rules['specialization'] = 'required|string|max:255';
-            $rules['username']       = ['required', 'string', 'max:255', 'unique:users,username,'.$id.',user_id'];
-            $rules['courses']        = 'nullable|array';
-        } elseif ($usr->role_id == 5) { // HOD
-            $rules['department_id']  = 'required|exists:departments,department_id';
-            $rules['username']       = ['required', 'string', 'max:255', 'unique:users,username,'.$id.',user_id'];
-        } elseif ($usr->role_id == 6) { // Affairs
-            $rules['username']       = ['required', 'string', 'max:255', 'unique:users,username,'.$id.',user_id'];
-        } elseif ($usr->role_id == 4) { // Parent
-            $rules['username']       = ['nullable', 'string', 'max:255', 'unique:users,username,'.$id.',user_id'];
-        }
-
-        $request->validate($rules, [
-            'email.unique'         => 'البريد الإلكتروني مستخدم بالفعل لحساب آخر.',
-            'username.unique'      => 'اسم المستخدم مستخدم بالفعل لحساب آخر.',
-            'university_id.unique' => 'الرقم الجامعي مستخدم بالفعل لحساب آخر.',
-            'password.confirmed'   => 'تأكيد كلمة المرور غير متطابق.',
-            'password.min'         => 'يجب ألا تقل كلمة المرور عن 6 أحرف.',
-        ]);
 
         $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
         if (empty($fullName)) {
@@ -609,43 +554,9 @@ class AdminAccountController extends Controller
         return view('admin.accounts.create_student', compact('departments', 'programs'));
     }
 
-    public function storeStudent(Request $request)
+    public function storeStudent(\App\Http\Requests\Admin\StoreStudentAccountRequest $request)
     {
-        $this->normalizeAccountCredentials($request);
-
-
-        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
-        if (empty($fullName)) {
-            $fullName = $request->full_name ?? '';
-        }
-        $request->merge(['full_name' => $fullName]);
-
-        $request->validate([
-            'first_name'       => 'required|string|max:100',
-            'last_name'        => 'required|string|max:100',
-            'university_id'    => 'required|string|unique:users,university_id|max:255',
-            'email'            => [
-                'required',
-                'email',
-                'unique:users,email',
-                'max:255',
-                
-            ],
-            'phone'            => 'nullable|string|max:20',
-            'telegram_chat_id' => 'nullable|string|max:100',
-            'department'       => 'required|string|max:255',
-            'program_id'       => 'required|integer|exists:programs,id',
-            'level'            => 'required|string|max:255',
-            'birth_date'       => 'required|date',
-            'gender'           => 'required|in:ذكر,أنثى',
-            'password'         => 'required|string|min:6|confirmed',
-        ], [
-            'first_name.required'  => 'الاسم الأول مطلوب.',
-            'last_name.required'   => 'الاسم الثاني مطلوب.',
-            'university_id.unique' => 'الرقم الجامعي مستخدم بالفعل لحساب آخر.',
-            'email.unique'         => 'البريد الإلكتروني مستخدم بالفعل لحساب آخر.',
-            'password.confirmed'   => 'تأكيد كلمة المرور غير متطابق.',
-        ]);
+        $fullName = $request->full_name;
 
         $courseIds = collect();
 
@@ -747,46 +658,9 @@ class AdminAccountController extends Controller
         return view('admin.accounts.create_parent', compact('students'));
     }
 
-    public function storeParent(Request $request)
+    public function storeParent(\App\Http\Requests\Admin\StoreParentAccountRequest $request)
     {
-        $this->normalizeAccountCredentials($request);
-
-
-        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
-        if (empty($fullName)) {
-            $fullName = $request->full_name ?? '';
-        }
-
-        $request->merge(['full_name' => $fullName]);
-
-        $request->validate([
-            'first_name'              => 'required|string|max:100',
-            'last_name'               => 'required|string|max:100',
-            'phone'                   => 'required|string|max:20',
-            'username'                => [
-                'required',
-                'string',
-                'unique:users,username',
-                'max:255',
-                
-            ],
-            'email'                   => [
-                'required',
-                'email',
-                'unique:users,email',
-                'max:255',
-                
-            ],
-            'telegram_id'             => 'nullable|string|max:255',
-            'children_university_ids' => 'nullable|array',
-            'password'                => 'required|string|min:6|confirmed',
-        ], [
-            'first_name.required' => 'الاسم الأول مطلوب.',
-            'last_name.required'  => 'الاسم الثاني مطلوب.',
-            'username.unique'     => 'اسم المستخدم مستخدم بالفعل.',
-            'email.unique'        => 'البريد الإلكتروني مستخدم بالفعل.',
-            'password.confirmed'  => 'تأكيد كلمة المرور غير متطابق.',
-        ]);
+        $fullName = $request->full_name;
 
         DB::transaction(function () use ($request, $fullName) {
             $userId = DB::table('users')->insertGetId([
@@ -864,46 +738,9 @@ class AdminAccountController extends Controller
         return view('admin.accounts.create_teacher', compact('departments', 'courses', 'deptCourses', 'deptBranches'));
     }
 
-    public function storeTeacher(Request $request)
+    public function storeTeacher(\App\Http\Requests\Admin\StoreTeacherAccountRequest $request)
     {
-        $this->normalizeAccountCredentials($request);
-
-
-        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
-        if (empty($fullName)) {
-            $fullName = $request->full_name ?? '';
-        }
-        $request->merge(['full_name' => $fullName]);
-
-        $request->validate([
-            'first_name'     => 'required|string|max:100',
-            'last_name'      => 'required|string|max:100',
-            'username'       => [
-                'required',
-                'string',
-                'unique:users,username',
-                'max:255',
-                
-            ],
-            'phone'          => 'nullable|string|max:20',
-            'email'          => [
-                'required',
-                'email',
-                'unique:users,email',
-                'max:255',
-                
-            ],
-            'department'     => 'required|string|max:255',
-            'specialization' => 'required|string|max:255',
-            'password'       => 'required|string|min:6|confirmed',
-            'courses'        => 'nullable|array',
-        ], [
-            'first_name.required' => 'الاسم الأول مطلوب.',
-            'last_name.required'  => 'الاسم الثاني مطلوب.',
-            'username.unique'     => 'اسم المستخدم مستخدم بالفعل.',
-            'email.unique'        => 'البريد الإلكتروني مستخدم بالفعل.',
-            'password.confirmed'  => 'تأكيد كلمة المرور غير متطابق.',
-        ]);
+        $fullName = $request->full_name;
 
         DB::transaction(function () use ($request, $fullName) {
             $userId = DB::table('users')->insertGetId([
@@ -951,44 +788,9 @@ class AdminAccountController extends Controller
         return view('admin.accounts.create_hod', compact('departments'));
     }
 
-    public function storeHOD(Request $request)
+    public function storeHOD(\App\Http\Requests\Admin\StoreHODAccountRequest $request)
     {
-        $this->normalizeAccountCredentials($request);
-
-
-        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
-        if (empty($fullName)) {
-            $fullName = $request->full_name ?? '';
-        }
-        $request->merge(['full_name' => $fullName]);
-
-        $request->validate([
-            'first_name'    => 'required|string|max:100',
-            'last_name'     => 'required|string|max:100',
-            'username'      => [
-                'required',
-                'string',
-                'unique:users,username',
-                'max:255',
-                
-            ],
-            'phone'         => 'nullable|string|max:20',
-            'email'         => [
-                'required',
-                'email',
-                'unique:users,email',
-                'max:255',
-                
-            ],
-            'department_id' => 'required|exists:departments,department_id',
-            'password'      => 'required|string|min:6|confirmed',
-        ], [
-            'first_name.required' => 'الاسم الأول مطلوب.',
-            'last_name.required'  => 'الاسم الثاني مطلوب.',
-            'username.unique'     => 'اسم المستخدم مستخدم بالفعل.',
-            'email.unique'        => 'البريد الإلكتروني مستخدم بالفعل.',
-            'password.confirmed'  => 'تأكيد كلمة المرور غير متطابق.',
-        ]);
+        $fullName = $request->full_name;
 
         $dept = DB::table('departments')->where('department_id', $request->department_id)->first();
 
@@ -1025,43 +827,9 @@ class AdminAccountController extends Controller
         return view('admin.accounts.create_affairs');
     }
 
-    public function storeAffairs(Request $request)
+    public function storeAffairs(\App\Http\Requests\Admin\StoreAffairsAccountRequest $request)
     {
-        $this->normalizeAccountCredentials($request);
-
-
-        $fullName = trim(($request->first_name ?? '') . ' ' . ($request->last_name ?? ''));
-        if (empty($fullName)) {
-            $fullName = $request->full_name ?? '';
-        }
-        $request->merge(['full_name' => $fullName]);
-
-        $request->validate([
-            'first_name' => 'required|string|max:100',
-            'last_name'  => 'required|string|max:100',
-            'username'   => [
-                'required',
-                'string',
-                'unique:users,username',
-                'max:255',
-                
-            ],
-            'phone'      => 'nullable|string|max:20',
-            'email'      => [
-                'required',
-                'email',
-                'unique:users,email',
-                'max:255',
-                
-            ],
-            'password'   => 'required|string|min:6|confirmed',
-        ], [
-            'first_name.required' => 'الاسم الأول مطلوب.',
-            'last_name.required'  => 'الاسم الثاني مطلوب.',
-            'username.unique'     => 'اسم المستخدم مستخدم بالفعل.',
-            'email.unique'        => 'البريد الإلكتروني مستخدم بالفعل.',
-            'password.confirmed'  => 'تأكيد كلمة المرور غير متطابق.',
-        ]);
+        $fullName = $request->full_name;
 
         DB::table('users')->insert([
             'role_id'    => 6,
