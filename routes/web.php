@@ -368,6 +368,7 @@ use App\Http\Controllers\Web\AdminWebController;
 use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminStudentServiceController;
 use App\Http\Controllers\Web\AdminDashboardController;
+use App\Http\Controllers\Web\AdminMessageController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
@@ -385,15 +386,15 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::post('/settings/theme', [AdminDashboardController::class, 'updateThemeSettings'])->name('admin.settings.theme');
     Route::get('/activity-logs', [AdminDashboardController::class, 'activityLogs'])->name('admin.activity_logs');
     Route::post('/activity-logs/clean', [AdminDashboardController::class, 'cleanActivityLogs'])->name('admin.activity_logs.clean');
-    Route::get('/messages', [AdminWebController::class, 'messages'])->name('admin.messages');
-    Route::get('/messages/contacts', [AdminWebController::class, 'getContacts'])->name('admin.messages.contacts');
-    Route::get('/messages/conversation/{userId}', [AdminWebController::class, 'getConversation'])->name('admin.messages.conversation');
-    Route::get('/messages/conversation/{userId}/search', [AdminWebController::class, 'searchMessages'])->name('admin.messages.search');
-    Route::post('/messages', [AdminWebController::class, 'sendMessage'])->name('admin.messages.send');
-    Route::put('/messages/{id}/edit', [AdminWebController::class, 'updateMessage'])->name('admin.messages.update');
-    Route::delete('/messages/{id}', [AdminWebController::class, 'deleteMessage'])->name('admin.messages.delete');
-    Route::get('/messages/{id}/download', [AdminWebController::class, 'downloadAttachment'])->name('admin.messages.download');
-    Route::post('/messages/forward', [AdminWebController::class, 'forwardMessage'])->name('admin.messages.forward');
+    Route::get('/messages', [AdminMessageController::class, 'messages'])->name('admin.messages');
+    Route::get('/messages/contacts', [AdminMessageController::class, 'getContacts'])->name('admin.messages.contacts');
+    Route::get('/messages/conversation/{userId}', [AdminMessageController::class, 'getConversation'])->name('admin.messages.conversation');
+    Route::get('/messages/conversation/{userId}/search', [AdminMessageController::class, 'searchMessages'])->name('admin.messages.search');
+    Route::post('/messages', [AdminMessageController::class, 'sendMessage'])->name('admin.messages.send');
+    Route::put('/messages/{id}/edit', [AdminMessageController::class, 'updateMessage'])->name('admin.messages.update');
+    Route::delete('/messages/{id}', [AdminMessageController::class, 'deleteMessage'])->name('admin.messages.delete');
+    Route::get('/messages/{id}/download', [AdminMessageController::class, 'downloadAttachment'])->name('admin.messages.download');
+    Route::post('/messages/forward', [AdminMessageController::class, 'forwardMessage'])->name('admin.messages.forward');
     
     // الخدمات الطلابية للإدارة
     Route::get('/student-services', [AdminStudentServiceController::class, 'studentServices'])->name('admin.student_services');

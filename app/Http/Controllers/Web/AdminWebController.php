@@ -13,7 +13,6 @@ use App\Models\Admin;
 
 class AdminWebController extends Controller
 {
-    use \App\Traits\HandlesMessagesTrait;
     use \App\Traits\NormalizesAccountCredentialsTrait;
 
     // ────────────────────────────────────────────────────────────
@@ -145,16 +144,6 @@ class AdminWebController extends Controller
         $announcement->delete();
 
         return redirect()->route('admin.dashboard')->with('success', 'تم حذف الإعلان.');
-    }
-
-    public function messages()
-    {
-        $currentUserId = Auth::id();
-
-        // Admin can chat with all active users
-        $allUsers = \App\Models\User::where('user_id', '!=', $currentUserId)->get();
-
-        return view('admin.messages', compact('allUsers'));
     }
 
 
