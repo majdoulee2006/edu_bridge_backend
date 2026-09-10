@@ -369,6 +369,7 @@ use App\Http\Controllers\Web\AdminAuthController;
 use App\Http\Controllers\Web\AdminStudentServiceController;
 use App\Http\Controllers\Web\AdminDashboardController;
 use App\Http\Controllers\Web\AdminMessageController;
+use App\Http\Controllers\Web\AdminCommunicationController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
 Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
@@ -404,15 +405,15 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::get('/appointments', [App\Http\Controllers\Web\AppointmentWebController::class, 'index'])->name('admin.appointments');
     Route::post('/appointments/{id}/respond', [App\Http\Controllers\Web\AppointmentWebController::class, 'respondToMeeting'])->name('admin.appointments.respond');
     Route::post('/summons', [App\Http\Controllers\Web\AppointmentWebController::class, 'storeSummon'])->name('admin.summons.store');
-    Route::get('/announcements/create', [AdminWebController::class, 'createAnnouncement'])->name('admin.announcements.create');
-    Route::post('/announcements', [AdminWebController::class, 'storeAnnouncement'])->name('admin.announcements.store');
-    Route::get('/announcements/{id}/edit', [AdminWebController::class, 'editAnnouncement'])->name('admin.announcements.edit');
-    Route::post('/announcements/{id}/update', [AdminWebController::class, 'updateAnnouncement'])->name('admin.announcements.update');
-    Route::post('/announcements/{id}/delete', [AdminWebController::class, 'deleteAnnouncement'])->name('admin.announcements.delete');
-    Route::get('/notifications', [AdminWebController::class, 'notifications'])->name('admin.notifications');
-    Route::post('/notifications/send', [AdminWebController::class, 'sendNotification'])->name('admin.notifications.send');
-    Route::post('/notifications/{id}/read', [AdminWebController::class, 'markNotificationRead'])->name('admin.notifications.read');
-    Route::post('/notifications/read-all', [AdminWebController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');
+    Route::get('/announcements/create', [AdminCommunicationController::class, 'createAnnouncement'])->name('admin.announcements.create');
+    Route::post('/announcements', [AdminCommunicationController::class, 'storeAnnouncement'])->name('admin.announcements.store');
+    Route::get('/announcements/{id}/edit', [AdminCommunicationController::class, 'editAnnouncement'])->name('admin.announcements.edit');
+    Route::post('/announcements/{id}/update', [AdminCommunicationController::class, 'updateAnnouncement'])->name('admin.announcements.update');
+    Route::post('/announcements/{id}/delete', [AdminCommunicationController::class, 'deleteAnnouncement'])->name('admin.announcements.delete');
+    Route::get('/notifications', [AdminCommunicationController::class, 'notifications'])->name('admin.notifications');
+    Route::post('/notifications/send', [AdminCommunicationController::class, 'sendNotification'])->name('admin.notifications.send');
+    Route::post('/notifications/{id}/read', [AdminCommunicationController::class, 'markNotificationRead'])->name('admin.notifications.read');
+    Route::post('/notifications/read-all', [AdminCommunicationController::class, 'markAllNotificationsRead'])->name('admin.notifications.read_all');
 
     // ─── Accounts Management ───
     Route::get('/accounts', [AdminWebController::class, 'accounts'])->name('admin.accounts');
@@ -477,7 +478,7 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     Route::delete('/reports/{id}', [AdminWebController::class, 'deleteReport'])->name('admin.reports.delete');
 
     // التقويم والأحداث
-    Route::post('/calendar/events', [AdminWebController::class, 'storeCalendarEvent'])->name('admin.calendar.store');
+    Route::post('/calendar/events', [AdminCommunicationController::class, 'storeCalendarEvent'])->name('admin.calendar.store');
 });
 
 // ===== مسارات الطالب (Student) =====
