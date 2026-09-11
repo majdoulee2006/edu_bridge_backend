@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Services\StudentAcademicService;
 
 class StudentParentController extends Controller
 {
@@ -107,8 +108,7 @@ class StudentParentController extends Controller
             $presentCount    = DB::table('attendance')->where('student_id', $studentId)->where('status', 'present')->count();
             $attendanceRate  = ($totalAttendance > 0) ? round(($presentCount / $totalAttendance) * 100, 1) : 100;
 
-            $averageGrade = DB::table('grades')->where('student_id', $studentId)->avg('score');
-            $averageGrade = $averageGrade ? round($averageGrade, 1) : 0;
+            $averageGrade = StudentAcademicService::getWeightedAverage($studentId);
 
             $reportId = DB::table('performance_reports')->insertGetId([
                 'student_id'      => $studentId,
@@ -243,8 +243,10 @@ class StudentParentController extends Controller
         $effectiveTotal = $totalDays - $pendingDays;
         $attendanceRate = ($effectiveTotal > 0) ? round(($presentDays / $effectiveTotal) * 100) : 100;
 
+        $weightedAverage = StudentAcademicService::getWeightedAverage($internalStudentId);
+
         return response()->json([
-            'gpa'             => count($grades) > 0 ? round((array_sum(array_column($grades, 'score')) / count($grades) / 100) * 4, 2) : 0,
+            'gpa'             => round(($weightedAverage / 100) * 4, 2),
             'attendance_rate' => $attendanceRate,
             'present_count'   => $presentDays,
             'absent_count'    => $absentDays,

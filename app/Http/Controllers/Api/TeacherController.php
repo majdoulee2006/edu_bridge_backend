@@ -19,6 +19,7 @@ use App\Models\Notification;
 use App\Models\Schedule;
 use App\Models\AbsenceRequest;
 use App\Models\Message;
+use App\Services\StudentAcademicService;
 
 class TeacherController extends Controller
 {
@@ -1160,10 +1161,12 @@ class TeacherController extends Controller
         $courseId  = $reportRequest->course_id;
 
         // �&ت��سط ا�ع�ا�&ات
-        $gradesQuery = DB::table('grades')->where('student_id', $studentId);
-        if ($courseId) $gradesQuery->where('course_id', $courseId);
-        $grades    = $gradesQuery->get(['score']);
-        $avgGrade  = $grades->count() > 0 ? round($grades->avg('score'), 1) : null;
+        if ($courseId) {
+            $grades   = DB::table('grades')->where('student_id', $studentId)->where('course_id', $courseId)->get(['score']);
+            $avgGrade = $grades->count() > 0 ? round($grades->avg('score'), 1) : null;
+        } else {
+            $avgGrade = StudentAcademicService::getWeightedAverage($studentId);
+        }
 
         // � سبة ا�حض��ر
         $attQuery = DB::table('attendances')->where('student_id', $studentId);

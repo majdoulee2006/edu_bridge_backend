@@ -245,7 +245,6 @@ class AdminAcademicController extends Controller
             'semester_id' => 'required|integer',
             'program_id'  => 'required|integer',
             'hours'       => 'required|integer|min:1',
-            'weight'      => 'required|integer|min:1',
         ]);
 
         // Prevent duplicate insertions caused by rapid multiple clicks or network lag (15-second window)
@@ -268,7 +267,6 @@ class AdminAcademicController extends Controller
             'year'        => $request->year,
             'semester_id' => $request->semester_id,
             'hours'       => $request->hours,
-            'weight'      => $request->weight,
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
@@ -324,7 +322,6 @@ class AdminAcademicController extends Controller
             'semester_id' => 'required|integer',
             'program_id'  => 'required|integer',
             'hours'       => 'required|integer|min:1',
-            'weight'      => 'required|integer|min:1',
         ]);
 
         DB::table('courses')->where('course_id', $id)->update([
@@ -334,7 +331,6 @@ class AdminAcademicController extends Controller
             'year'        => $request->year,
             'semester_id' => $request->semester_id,
             'hours'       => $request->hours,
-            'weight'      => $request->weight,
             'updated_at'  => now(),
         ]);
 

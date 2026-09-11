@@ -23,6 +23,7 @@ use App\Models\Course;
 use App\Models\Schedule;
 use Carbon\Carbon;
 use App\Models\StudentRequest;
+use App\Services\StudentAcademicService;
 
 class StudentController extends Controller
 {
@@ -1317,11 +1318,8 @@ class StudentController extends Controller
                 ];
             })->values();
 
-        // المعدل العام
-        $overallAverage = Grade::where('student_id', $student->student_id)
-            ->selectRaw('AVG((score / exams.max_score) * 100) as average')
-            ->join('exams', 'grades.exam_id', '=', 'exams.exam_id')
-            ->value('average');
+        // المعدل العام الموزون بتثقيل المواد (نفس معادلة بطاقة الطالب الأكاديمية عند الشؤون)
+        $overallAverage = StudentAcademicService::getWeightedAverage($student->student_id);
 
         return response()->json([
             'success' => true,
@@ -1404,8 +1402,6 @@ class StudentController extends Controller
 
 
         $coursesData = [];
-        $totalOverallScore = 0;
-        $totalCoursesCount = 0;
 
         foreach ($enrolledCourses as $c) {
             $quizScore = null;
@@ -1472,14 +1468,10 @@ class StudentController extends Controller
                 'max_score'    => 100,
                 'status'       => $statusText,
             ];
-
-            if ($hasGrades) {
-                $totalOverallScore += $totalCourseScore;
-                $totalCoursesCount++;
-            }
         }
 
-        $overallGpa = $totalCoursesCount > 0 ? round($totalOverallScore / $totalCoursesCount, 1) : 0;
+        // المعدل الموزون بتثقيل المواد (نفس معادلة بطاقة الطالب الأكاديمية عند الشؤون)
+        $overallGpa = StudentAcademicService::getWeightedAverage($student->student_id, $studentYearInt);
 
 
         // Attendance summary

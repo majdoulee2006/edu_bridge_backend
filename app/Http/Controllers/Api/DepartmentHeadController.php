@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use App\Services\StudentAcademicService;
 
 class DepartmentHeadController extends Controller
 {
@@ -719,11 +720,14 @@ class DepartmentHeadController extends Controller
 
         // ─── أكاديمي: النظام يحسب تلقائياً ─────────────────────────
         if ($request->report_type === 'academic') {
-            // متوسط العلامات
-            $gradesQ = DB::table('grades')->where('student_id', $studentId);
-            if ($courseId) $gradesQ->where('course_id', $courseId);
-            $grades   = $gradesQ->avg('score');
-            $avgGrade = $grades !== null ? round($grades, 1) : null;
+            // متوسط العلامات: إن كان الطلب عن مادة محددة فالمتوسط الخام لعلاماتها كافٍ،
+            // أما المعدل العام (بدون تحديد مادة) فيُحسب موزوناً بتثقيل المواد
+            if ($courseId) {
+                $grades   = DB::table('grades')->where('student_id', $studentId)->where('course_id', $courseId)->avg('score');
+                $avgGrade = $grades !== null ? round($grades, 1) : null;
+            } else {
+                $avgGrade = StudentAcademicService::getWeightedAverage($studentId);
+            }
 
             // نسبة الحضور
             $attQ  = DB::table('attendance')->where('student_id', $studentId);

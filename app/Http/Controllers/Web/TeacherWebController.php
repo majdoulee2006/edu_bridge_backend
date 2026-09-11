@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Services\StudentAcademicService;
 
 class TeacherWebController extends Controller
 {
@@ -2236,18 +2237,17 @@ class TeacherWebController extends Controller
             $presentSessions = DB::table('attendance')->where('student_id', $studentId)->where('status', 'present')->count();
             $attendanceRate  = $totalSessions > 0 ? round(($presentSessions / $totalSessions) * 100, 1) : 0;
 
-            // المعدل من الامتحانات
-            $avgGrade = DB::table('grades')->where('student_id', $studentId)->avg('score');
+            // المعدل الموزون بتثقيل المواد (نفس معادلة بطاقة الطالب الأكاديمية عند الشؤون)
+            $avgGrade = StudentAcademicService::getWeightedAverage($studentId);
 
-            // إذا ما في درجات امتحان، نأخذ من الواجبات
-            if ($avgGrade === null) {
-                $avgGrade = DB::table('assignment_submissions')
+            // إذا ما في أي علامات مرصودة أصلاً، نأخذ من الواجبات كبديل
+            if (!$avgGrade) {
+                $assignmentAvg = DB::table('assignment_submissions')
                     ->where('student_id', $studentId)
                     ->whereNotNull('grade')
                     ->avg('grade');
+                $avgGrade = $assignmentAvg !== null ? round($assignmentAvg, 1) : null;
             }
-
-            $avgGrade = $avgGrade !== null ? round($avgGrade, 1) : null;
 
             // توليد التوصية تلقائياً
             $attendancePart = '';
