@@ -450,6 +450,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
     // Edit accounts
     Route::get('/accounts/edit/{id}', [AdminAccountController::class, 'editAccount'])->name('admin.accounts.edit');
     Route::post('/accounts/update/{id}', [AdminAccountController::class, 'updateAccount'])->name('admin.accounts.update');
+    Route::post('/accounts/{id}/link-child', [AdminAccountController::class, 'linkChild'])->name('admin.accounts.link_child');
+    Route::post('/accounts/{id}/unlink-child/{studentId}', [AdminAccountController::class, 'unlinkChild'])->name('admin.accounts.unlink_child');
 
     // الدورات والأقسام الأكاديمية
     Route::get('/courses', [AdminCourseController::class, 'courses'])->name('admin.courses');

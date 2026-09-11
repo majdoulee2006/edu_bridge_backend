@@ -465,7 +465,25 @@ class AdminAccountController extends Controller
             return view('admin.accounts.edit_teacher', compact('usr', 'teacher', 'departments', 'teacherCourses', 'deptCourses', 'deptBranches'));
         } elseif ($usr->role_id == 4) { // Parent
             $parent = DB::table('parents')->where('user_id', $id)->first();
-            return view('admin.accounts.edit_parent', compact('usr', 'parent'));
+
+            // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+            $children = DB::table('parent_students')
+                ->join('students', function ($j) {
+                    $j->on('parent_students.student_id', '=', 'students.student_id')
+                      ->orOn('parent_students.student_id', '=', 'students.user_id');
+                })
+                ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+                ->where(function ($q) use ($parent, $id) {
+                    $q->where('parent_students.parent_id', $id);
+                    if ($parent) {
+                        $q->orWhere('parent_students.parent_id', $parent->parent_id);
+                    }
+                })
+                ->select('student_users.user_id as student_user_id', 'student_users.full_name', DB::raw('COALESCE(student_users.university_id, students.student_code) as university_id'))
+                ->distinct()
+                ->get();
+
+            return view('admin.accounts.edit_parent', compact('usr', 'parent', 'children'));
         } elseif ($usr->role_id == 5) { // HOD
             $hod = DB::table('heads')->where('user_id', $id)->first();
             $departments = DB::table('departments')->get();
@@ -614,6 +632,86 @@ class AdminAccountController extends Controller
         \App\Models\UserActivity::log('تعديل حساب', "قامت الإدارة بتعديل بيانات الحساب: {$fullName} ({$request->email})");
 
         return redirect()->route('admin.accounts')->with('success', 'تم تحديث بيانات الحساب بنجاح!');
+    }
+
+    /**
+     * ربط طالب (بحسب رقمه الجامعي) بحساب ولي أمر، مباشرة من لوحة الأدمن.
+     */
+    public function linkChild(Request $request, $id)
+    {
+        $request->validate([
+            'university_id' => 'required|string',
+        ], [
+            'university_id.required' => 'الرقم الجامعي مطلوب.',
+        ]);
+
+        $parentUser = DB::table('users')->where('user_id', $id)->where('role_id', 4)->first();
+        if (!$parentUser) {
+            return back()->with('error', 'حساب ولي الأمر غير موجود.');
+        }
+
+        $studentUser = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where(function ($q) use ($request) {
+                $q->where('users.university_id', $request->university_id)
+                  ->orWhere('students.student_code', $request->university_id);
+            })
+            ->select('users.user_id', 'users.full_name')
+            ->first();
+
+        if (!$studentUser) {
+            return back()->with('error', 'لا يوجد طالب مسجَّل بهذا الرقم الجامعي.');
+        }
+
+        $parentRecord = DB::table('parents')->where('user_id', $id)->first();
+
+        $alreadyLinked = DB::table('parent_students')
+            ->where(function ($q) use ($id, $parentRecord) {
+                $q->where('parent_id', $id);
+                if ($parentRecord) {
+                    $q->orWhere('parent_id', $parentRecord->parent_id);
+                }
+            })
+            ->where('student_id', $studentUser->user_id)
+            ->exists();
+
+        if ($alreadyLinked) {
+            return back()->with('error', 'هذا الطالب مرتبط بحساب ولي الأمر هذا بالفعل.');
+        }
+
+        DB::table('parent_students')->insertOrIgnore([
+            'parent_id'    => $id,
+            'student_id'   => $studentUser->user_id,
+            'relationship' => 'father',
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        \App\Models\UserActivity::log('ربط ابن بولي أمر', "قامت الإدارة بربط الطالب {$studentUser->full_name} بحساب ولي الأمر: {$parentUser->full_name}");
+
+        return back()->with('success', 'تم ربط الطالب ' . $studentUser->full_name . ' بحساب ولي الأمر بنجاح.');
+    }
+
+    /**
+     * فك ربط طالب عن حساب ولي أمر.
+     */
+    public function unlinkChild($id, $studentId)
+    {
+        $parentRecord = DB::table('parents')->where('user_id', $id)->first();
+
+        DB::table('parent_students')
+            ->where(function ($q) use ($id, $parentRecord) {
+                $q->where('parent_id', $id);
+                if ($parentRecord) {
+                    $q->orWhere('parent_id', $parentRecord->parent_id);
+                }
+            })
+            ->where(function ($q) use ($studentId) {
+                $q->where('student_id', $studentId);
+            })
+            ->delete();
+
+        return back()->with('success', 'تم فك ربط الطالب بنجاح.');
     }
 
     // ─── Student Create & Store ───

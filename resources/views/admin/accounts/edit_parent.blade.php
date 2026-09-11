@@ -87,6 +87,17 @@
             @error('email')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
         </div>
 
+        <!-- اسم المستخدم -->
+        <div class="space-y-1.5">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">اسم المستخدم</label>
+            <div class="relative group">
+                <input name="username" value="{{ old('username', $usr->username) }}" type="text" dir="ltr" autocomplete="off"
+                       class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm"/>
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">badge</span>
+            </div>
+            @error('username')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+        </div>
+
         <!-- كلمة المرور -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
@@ -116,6 +127,41 @@
             </button>
         </div>
     </form>
+
+    <!-- أبناء ولي الأمر (نموذج مستقل عن نموذج تعديل الحساب) -->
+    <div class="space-y-1.5 pb-10">
+        <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">
+            الأبناء المرتبطون بهذا الحساب ({{ $children->count() }})
+        </label>
+        <div class="bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
+            @forelse($children as $child)
+                <div class="flex items-center justify-between px-4 py-3">
+                    <span class="text-slate-800 dark:text-slate-100 font-semibold">{{ $child->full_name }}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-bold text-primary" dir="ltr">{{ $child->university_id ?? 'بدون رقم جامعي' }}</span>
+                        <form action="{{ route('admin.accounts.unlink_child', [$usr->user_id, $child->student_user_id]) }}" method="POST" onsubmit="return confirm('فك ربط {{ $child->full_name }} عن هذا الحساب؟');">
+                            @csrf
+                            <button type="submit" class="text-red-500 hover:text-red-600" title="فك الربط">
+                                <span class="material-symbols-outlined text-[20px]">link_off</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @empty
+                <div class="px-4 py-3 text-sm text-slate-400">لا يوجد أبناء مرتبطون بهذا الحساب حالياً.</div>
+            @endforelse
+        </div>
+
+        <form action="{{ route('admin.accounts.link_child', $usr->user_id) }}" method="POST" class="flex items-center gap-2 mt-2">
+            @csrf
+            <input name="university_id" type="text" dir="ltr" placeholder="أدخلي الرقم الجامعي لربط ابن جديد"
+                   class="flex-1 bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"/>
+            <button type="submit" class="bg-primary hover:bg-primary-dark text-primary-content font-bold rounded-2xl px-5 py-3 shadow-sm transition-all flex items-center gap-1 whitespace-nowrap">
+                <span class="material-symbols-outlined text-[20px]">link</span>
+                <span>ربط</span>
+            </button>
+        </form>
+    </div>
 
 @endsection
 
