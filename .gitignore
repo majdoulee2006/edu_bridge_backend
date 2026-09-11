@@ -34,3 +34,5 @@ unlock_joudi.php
 students_parents_credentials.csv
 students_parents_credentials.xls
 *.sql
+accounts.xlsx
+accounts_report.xlsx

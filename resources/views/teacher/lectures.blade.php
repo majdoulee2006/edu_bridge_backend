@@ -123,7 +123,7 @@
                         };
                     @endphp
                     <div style="margin-top: 0.5rem;">
-                        <a href="{{ asset('storage/' . $l->file_path) }}"
+                        <a href="{{ '/storage/' . $l->file_path }}"
                            target="_blank"
                            class="attach-chip {{ $chipClass }}">
                             <i class="fa-solid {{ $chipIcon }}"></i>

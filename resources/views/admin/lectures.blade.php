@@ -167,10 +167,13 @@
                                     if (str_starts_with($path, 'public/')) {
                                         $path = substr($path, 7);
                                     }
-                                    if (!str_starts_with($path, 'storage/')) {
+                                    if (!str_starts_with($path, 'storage/') && !str_starts_with($path, 'lectures/')) {
                                         $path = 'storage/' . $path;
                                     }
-                                    $finalUrl = asset($path);
+                                    // Relative URL on purpose — asset()/APP_URL points at whatever
+                                    // ngrok tunnel was active when .env was last saved, which breaks
+                                    // as soon as that tunnel rotates or you open the panel locally.
+                                    $finalUrl = '/' . $path;
                                 }
                             @endphp
 
