@@ -167,7 +167,7 @@
                                     if (str_starts_with($path, 'public/')) {
                                         $path = substr($path, 7);
                                     }
-                                    if (!str_starts_with($path, 'storage/') && !str_starts_with($path, 'lectures/')) {
+                                    if (!str_starts_with($path, 'storage/')) {
                                         $path = 'storage/' . $path;
                                     }
                                     // Relative URL on purpose — asset()/APP_URL points at whatever
