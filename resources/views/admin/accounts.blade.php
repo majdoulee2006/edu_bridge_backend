@@ -126,7 +126,7 @@
                 </a>
             </div>
 
-            {{-- زر حذف الكل مخصص فقط لتبويب الطلاب وتبويب أولياء الأمور --}}
+            {{-- زر حذف الكل مخصص لمختلف التبويبات عند وجود حسابات فيها --}}
             {{-- إجراء نهائي لا يمكن التراجع عنه: نطلب من الأدمن كتابة العدد الحالي للحسابات بالضبط كتأكيد إضافي بجانب فحص العدد على السيرفر --}}
             @if($roleFilter === 'student' && ($counts['student'] ?? 0) > 0)
                 <form id="deleteAllStudentsForm" action="{{ route('admin.accounts.delete_all', 'student') }}" method="POST">
@@ -137,11 +137,38 @@
                         <span>حذف الكل</span>
                     </button>
                 </form>
+            @elseif($roleFilter === 'teacher' && ($counts['teacher'] ?? 0) > 0)
+                <form id="deleteAllTeachersForm" action="{{ route('admin.accounts.delete_all', 'teacher') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="confirm_count" value="">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllTeachersForm', {{ (int) $counts['teacher'] }}, 'جميع حسابات المعلمين')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                        <span class="material-symbols-outlined text-base">delete_sweep</span>
+                        <span>حذف الكل</span>
+                    </button>
+                </form>
+            @elseif($roleFilter === 'hod' && ($counts['hod'] ?? 0) > 0)
+                <form id="deleteAllHodForm" action="{{ route('admin.accounts.delete_all', 'hod') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="confirm_count" value="">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllHodForm', {{ (int) $counts['hod'] }}, 'جميع حسابات رؤساء الأقسام')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                        <span class="material-symbols-outlined text-base">delete_sweep</span>
+                        <span>حذف الكل</span>
+                    </button>
+                </form>
             @elseif($roleFilter === 'parent' && ($counts['parent'] ?? 0) > 0)
                 <form id="deleteAllParentsForm" action="{{ route('admin.accounts.delete_all', 'parent') }}" method="POST">
                     @csrf
                     <input type="hidden" name="confirm_count" value="">
                     <button type="button" onclick="confirmDeleteAllAccounts('deleteAllParentsForm', {{ (int) $counts['parent'] }}, 'جميع حسابات أولياء الأمور')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                        <span class="material-symbols-outlined text-base">delete_sweep</span>
+                        <span>حذف الكل</span>
+                    </button>
+                </form>
+            @elseif($roleFilter === 'affairs' && ($counts['affairs'] ?? 0) > 0)
+                <form id="deleteAllAffairsForm" action="{{ route('admin.accounts.delete_all', 'affairs') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="confirm_count" value="">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllAffairsForm', {{ (int) $counts['affairs'] }}, 'جميع حسابات موظفي الشؤون')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
                         <span class="material-symbols-outlined text-base">delete_sweep</span>
                         <span>حذف الكل</span>
                     </button>
