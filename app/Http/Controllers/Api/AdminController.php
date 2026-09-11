@@ -202,7 +202,7 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'تم إنشاء المستخدم بنجاح',
-            'data' => $user->load('role')
+            'data' => $user
         ], 201);
     }
 
