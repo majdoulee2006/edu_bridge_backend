@@ -1948,7 +1948,8 @@ class AffairsController extends Controller
             return view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard'));
         }
 
-        $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard'))->render();
+        $forPdf = true;
+        $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard', 'forPdf'))->render();
 
         $fileName = 'academic_card_' . ($student['university_id'] ?? $student['student_id']) . '.pdf';
         $pdfContent = null;

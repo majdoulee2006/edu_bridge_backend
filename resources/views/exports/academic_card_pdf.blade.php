@@ -84,11 +84,15 @@
             transform: translateY(-2px);
         }
 
-        /* Document Container (Rendered off-screen for PDF capture) */
+        /* Document Container (Rendered off-screen for PDF capture عبر html2pdf.js بالمتصفح فقط) */
         .pdf-render-wrapper {
-            position: absolute;
-            left: -9999px;
-            top: -9999px;
+            @if($forPdf ?? false)
+                position: static;
+            @else
+                position: absolute;
+                left: -9999px;
+                top: -9999px;
+            @endif
             width: 800px;
         }
 
@@ -249,16 +253,21 @@
 </head>
 <body>
 
+    {{-- شاشة الانتظار مخصّصة لزائر متصفح حقيقي (بتختفي بجافاسكربت بعد توليد PDF بالمتصفح نفسه).
+         عند توليد الملف من السيرفر مباشرة (mPDF) ما في جافاسكربت بيشتغل إطلاقاً، فلازم تختفي
+         هاي الشاشة بالكامل وإلا بيطلع كل الملف عبارة عن نص "جاري التحميل" بس. --}}
+    @unless($forPdf ?? false)
     <!-- On-screen Status View for User -->
     <div class="loading-screen">
         <i class="fa-solid fa-circle-notch spinner-icon" id="status-icon"></i>
         <div class="status-title" id="status-title">جاري تحميل ملف PDF...</div>
         <div class="status-desc" id="status-desc">سيتم تنزيل كشف العلامات تلقائياً وإغلاق هذه النافذة.</div>
-        
+
         <button class="btn-manual-download" id="btn-download" onclick="generateAndSavePDF()">
             <i class="fa-solid fa-download"></i> اضغط هنا إذا لم يبدأ التحميل تلقائياً
         </button>
     </div>
+    @endunless
 
     <!-- Hidden HTML Canvas Target for PDF Generation -->
     <div class="pdf-render-wrapper">
@@ -309,7 +318,6 @@
                         <th style="width: 8%;">النهائي (50)</th>
                         <th style="width: 8%;">المجموع (100)</th>
                         <th style="width: 6%;">التثقيل</th>
-                        <th style="width: 8%;">الموزونة</th>
                         <th style="width: 9%;">الحالة</th>
                     </tr>
                 </thead>
@@ -329,7 +337,6 @@
                             <td>{{ $c['final_score'] !== null ? $c['final_score'] : '-' }}</td>
                             <td><strong>{{ $c['total_score'] !== null ? $c['total_score'] : '-' }}</strong></td>
                             <td>{{ $c['weight'] ?? 1 }}</td>
-                            <td><strong style="color: #475569;">{{ $c['weighted_score'] !== null ? $c['weighted_score'] : '-' }}</strong></td>
                             <td class="{{ $statusClass }}">{{ $c['status'] ?? '—' }}</td>
                         </tr>
                     @empty

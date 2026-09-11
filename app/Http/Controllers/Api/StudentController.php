@@ -1391,7 +1391,7 @@ class StudentController extends Controller
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
             ->where('enrollments.student_id', $student->student_id)
             ->where('courses.year', '=', $studentYearInt)
-            ->select('courses.course_id', 'courses.title', 'courses.hours', 'courses.level', 'courses.year')
+            ->select('courses.course_id', 'courses.title', 'courses.hours', 'courses.level', 'courses.year', 'courses.weight')
             ->get();
 
         if ($enrolledCourses->isEmpty()) {
@@ -1466,6 +1466,7 @@ class StudentController extends Controller
                 'final_score'  => $finalScore,
                 'total_score'  => $hasGrades ? $totalCourseScore : 0,
                 'max_score'    => 100,
+                'weight'       => $c->weight ?? 1,
                 'status'       => $statusText,
             ];
         }
@@ -1545,11 +1546,13 @@ class StudentController extends Controller
                 'oral_score' => $c['oral_score'],
                 'final_score' => $c['final_score'],
                 'total_score' => $c['total_score'],
+                'weight' => $c['weight'] ?? 1,
                 'status' => $c['status'] ?? 'لم يتم التقدم',
             ];
         }, $courses);
 
-        $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard'))->render();
+        $forPdf = true;
+        $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard', 'forPdf'))->render();
 
         $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
