@@ -1197,7 +1197,11 @@ class HODWebController extends Controller
         ]);
 
         // جلب الأستاذ تلقائياً بناءً على المادة المختارة
-        $teacherId = DB::table('course_teachers')->where('course_id', $request->course_id)->value('teacher_id');
+        // schedules.teacher_id مرتبط بـ users.user_id (وليس teachers.teacher_id)، لذا نمرّ عبر جدول teachers لجلب user_id الصحيح
+        $teacherId = DB::table('course_teachers')
+            ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+            ->where('course_teachers.course_id', $request->course_id)
+            ->value('teachers.user_id');
 
         // تعيين أوقات الحصص بناءً على الرقم
         $periods = [
