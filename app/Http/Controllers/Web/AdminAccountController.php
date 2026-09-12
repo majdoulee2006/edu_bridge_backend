@@ -113,7 +113,13 @@ class AdminAccountController extends Controller
 
     public function deleteAllByRole(Request $request, $role)
     {
-        $roleMap = ['student' => 3, 'parent' => 4];
+        $roleMap = [
+            'student' => 3,
+            'teacher' => 2,
+            'hod'     => 5,
+            'parent'  => 4,
+            'affairs' => 6,
+        ];
         if (!isset($roleMap[$role])) {
             return back()->with('error', 'إجراء غير مصرح به لهذه الفئة.');
         }
@@ -172,6 +178,43 @@ class AdminAccountController extends Controller
 
                 return redirect()->route('admin.accounts', ['role' => 'student'])->with('success', 'تم حذف جميع حسابات الطلاب بنجاح!');
 
+            } elseif ($role === 'teacher') {
+                $teacherUsers = DB::table('users')->where('role_id', 2)->pluck('user_id')->toArray();
+                $teacherIds = DB::table('teachers')->whereIn('user_id', $teacherUsers)->pluck('teacher_id')->toArray();
+
+                if (!empty($teacherIds)) {
+                    DB::table('course_teachers')->whereIn('teacher_id', $teacherIds)->delete();
+                    DB::table('teachers')->whereIn('teacher_id', $teacherIds)->delete();
+                }
+
+                if (!empty($teacherUsers)) {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('notifications')) {
+                        DB::table('notifications')->whereIn('user_id', $teacherUsers)->delete();
+                    }
+                    DB::table('users')->whereIn('user_id', $teacherUsers)->delete();
+                }
+
+                \App\Models\UserActivity::log('حذف جماعي', "قامت الإدارة بحذف جميع حسابات المعلمين (" . count($teacherUsers) . " معلم)");
+                DB::commit();
+
+                return redirect()->route('admin.accounts', ['role' => 'teacher'])->with('success', 'تم حذف جميع حسابات المعلمين بنجاح!');
+
+            } elseif ($role === 'hod') {
+                $hodUsers = DB::table('users')->where('role_id', 5)->pluck('user_id')->toArray();
+
+                if (!empty($hodUsers)) {
+                    DB::table('heads')->whereIn('user_id', $hodUsers)->delete();
+                    if (\Illuminate\Support\Facades\Schema::hasTable('notifications')) {
+                        DB::table('notifications')->whereIn('user_id', $hodUsers)->delete();
+                    }
+                    DB::table('users')->whereIn('user_id', $hodUsers)->delete();
+                }
+
+                \App\Models\UserActivity::log('حذف جماعي', "قامت الإدارة بحذف جميع حسابات رؤساء الأقسام (" . count($hodUsers) . " رئيس قسم)");
+                DB::commit();
+
+                return redirect()->route('admin.accounts', ['role' => 'hod'])->with('success', 'تم حذف جميع حسابات رؤساء الأقسام بنجاح!');
+
             } elseif ($role === 'parent') {
                 $parentUsers = DB::table('users')->where('role_id', 4)->pluck('user_id')->toArray();
                 $parentIds = DB::table('parents')->whereIn('user_id', $parentUsers)->pluck('parent_id')->toArray();
@@ -193,6 +236,21 @@ class AdminAccountController extends Controller
                 DB::commit();
 
                 return redirect()->route('admin.accounts', ['role' => 'parent'])->with('success', 'تم حذف جميع حسابات أولياء الأمور بنجاح!');
+
+            } elseif ($role === 'affairs') {
+                $affairsUsers = DB::table('users')->where('role_id', 6)->pluck('user_id')->toArray();
+
+                if (!empty($affairsUsers)) {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('notifications')) {
+                        DB::table('notifications')->whereIn('user_id', $affairsUsers)->delete();
+                    }
+                    DB::table('users')->whereIn('user_id', $affairsUsers)->delete();
+                }
+
+                \App\Models\UserActivity::log('حذف جماعي', "قامت الإدارة بحذف جميع حسابات موظفي الشؤون (" . count($affairsUsers) . " موظف شؤون)");
+                DB::commit();
+
+                return redirect()->route('admin.accounts', ['role' => 'affairs'])->with('success', 'تم حذف جميع حسابات موظفي الشؤون بنجاح!');
             }
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -497,18 +555,30 @@ class AdminAccountController extends Controller
                 );
             } elseif ($usr->role_id == 2) {
                 $teacher = DB::table('teachers')->where('user_id', $id)->first();
+                $isAdvisor = $request->has('is_advisor') && $request->is_advisor == '1';
+                $advisorBranch = $isAdvisor ? $request->advisor_branch : null;
+                $advisorYear = $isAdvisor ? $request->advisor_year : null;
+                $advisorSection = $isAdvisor ? $request->advisor_section : null;
+                $specialization = $advisorBranch ?? ($teacher->specialization ?? 'عام');
+
                 if (!$teacher) {
                     $teacherId = DB::table('teachers')->insertGetId([
-                        'user_id'        => $id,
-                        'specialization' => $request->specialization,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'user_id'         => $id,
+                        'specialization'  => $specialization,
+                        'advisor_branch'  => $advisorBranch,
+                        'advisor_year'    => $advisorYear,
+                        'advisor_section' => $advisorSection,
+                        'created_at'      => now(),
+                        'updated_at'      => now(),
                     ]);
                 } else {
                     $teacherId = $teacher->teacher_id;
                     DB::table('teachers')->where('teacher_id', $teacherId)->update([
-                        'specialization' => $request->specialization,
-                        'updated_at'     => now(),
+                        'specialization'  => $specialization,
+                        'advisor_branch'  => $advisorBranch,
+                        'advisor_year'    => $advisorYear,
+                        'advisor_section' => $advisorSection,
+                        'updated_at'      => now(),
                     ]);
                 }
 
@@ -758,11 +828,20 @@ class AdminAccountController extends Controller
                 'updated_at' => now(),
             ]);
 
+            $isAdvisor = $request->has('is_advisor') && $request->is_advisor == '1';
+            $advisorBranch = $isAdvisor ? $request->advisor_branch : null;
+            $advisorYear = $isAdvisor ? $request->advisor_year : null;
+            $advisorSection = $isAdvisor ? $request->advisor_section : null;
+            $specialization = $advisorBranch ?? 'عام';
+
             $teacherId = DB::table('teachers')->insertGetId([
-                'user_id'        => $userId,
-                'specialization' => $request->specialization,
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'user_id'         => $userId,
+                'specialization'  => $specialization,
+                'advisor_branch'  => $advisorBranch,
+                'advisor_year'    => $advisorYear,
+                'advisor_section' => $advisorSection,
+                'created_at'      => now(),
+                'updated_at'      => now(),
             ]);
 
             // ربط المواد

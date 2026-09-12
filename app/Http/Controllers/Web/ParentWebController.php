@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\OtpMail;
 use App\Models\User;
 use Carbon\Carbon;
+use App\Services\StudentAcademicService;
 
 class ParentWebController extends Controller
 {
@@ -206,8 +207,8 @@ class ParentWebController extends Controller
             $totalAbsences += $attendances->where('status', 'absent')->count();
             $totalLate += $attendances->where('status', 'late')->count();
             
-            $avgGrade = DB::table('grades')->where('student_id', $child->student_id)->avg('score');
-            $averageGrades[] = $avgGrade ?? 0;
+            $avgGrade = StudentAcademicService::getWeightedAverage($child->student_id);
+            $averageGrades[] = $avgGrade;
         }
 
         $overallAverage = count($averageGrades) > 0 ? round(array_sum($averageGrades) / count($averageGrades), 1) : 0;
@@ -438,23 +439,15 @@ class ParentWebController extends Controller
             ->get();
 
         $allGrades = $newGrades->merge($oldGrades);
-
-        // Calculate average using percentage out of 4 GPA logic
-        $totalScores = 0;
-        $totalMax = 0;
-        foreach ($allGrades as $g) {
-            $totalScores += (float)$g->score;
-            $totalMax += (float)($g->max_score ?? 100);
-        }
-        $overallAverage = $totalMax > 0 ? round(($totalScores / $totalMax) * 100, 1) : 0;
-
         $grades = $allGrades->groupBy('course_title');
 
         $academicCardData = null;
+        $overallAverage = 0;
         if ($studentId) {
             $cardReq = new \Illuminate\Http\Request(['student_id' => $studentId]);
             $academicCardResponse = app(\App\Http\Controllers\Api\AffairsController::class)->getStudentAcademicCardForAffairs($cardReq);
             $academicCardData = json_decode($academicCardResponse->getContent(), true);
+            $overallAverage = $academicCardData['summary']['average'] ?? 0;
         }
 
         return $this->parentView('parent.grades', compact('grades', 'overallAverage', 'academicCardData'));
@@ -818,8 +811,7 @@ class ParentWebController extends Controller
             $presentCount    = DB::table('attendance')->where('student_id', $studentId)->where('status', 'present')->count();
             $attendanceRate  = ($totalAttendance > 0) ? round(($presentCount / $totalAttendance) * 100, 1) : 100;
 
-            $averageGrade = DB::table('grades')->where('student_id', $studentId)->avg('score');
-            $averageGrade = $averageGrade ? round($averageGrade, 1) : 0;
+            $averageGrade = StudentAcademicService::getWeightedAverage($studentId);
 
             $requestId = DB::table('report_requests')->insertGetId([
                 'head_id'     => auth()->user()->user_id,

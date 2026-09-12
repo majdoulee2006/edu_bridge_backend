@@ -15,6 +15,7 @@ use App\Models\Announcement;
 use App\Models\Parents;
 use App\Models\ParentStudent;
 use App\Models\StudentParent;
+use App\Services\StudentAcademicService;
 
 class ParentController extends Controller
 {
@@ -183,7 +184,7 @@ class ParentController extends Controller
                 ];
             })->values();
 
-        $overallAverage = Grade::where('student_id', $child->student_id)->avg('score');
+        $overallAverage = StudentAcademicService::getWeightedAverage($child->student_id);
 
         return response()->json([
             'success' => true,
@@ -437,6 +438,7 @@ class ParentController extends Controller
         $totalAbsences = 0;
         $totalLate = 0;
         $averageGrades = [];
+        $weightedAverages = [];
 
         foreach ($children as $child) {
             $attendances = $child->attendances;
@@ -449,7 +451,8 @@ class ParentController extends Controller
             }
             $totalAbsences += $absentCount;
             $totalLate += $attendances->where('status', 'late')->count();
-            $averageGrades[] = $child->grades->avg('score') ?? 0;
+            $weightedAverages[$child->student_id] = StudentAcademicService::getWeightedAverage($child->student_id);
+            $averageGrades[] = $weightedAverages[$child->student_id];
         }
 
         $childrenDeptIds = [];
@@ -481,7 +484,7 @@ class ParentController extends Controller
                 'total_late' => $totalLate,
                 'average_children_grades' => round(collect($averageGrades)->avg(), 1),
                 'recent_announcements' => $recentAnnouncements,
-                'children' => $children->map(function($child) {
+                'children' => $children->map(function($child) use ($weightedAverages) {
                     $attendances = $child->attendances;
                     
                     $total = $attendances->count();
@@ -504,7 +507,7 @@ class ParentController extends Controller
                         'student_id' => $child->student_id,
                         'full_name' => $child->user->full_name,
                         'attendance_rate' => $attendanceRate,
-                        'average_grade' => round($child->grades->avg('score') ?? 0, 1),
+                        'average_grade' => $weightedAverages[$child->student_id] ?? 0,
                         'level' => $child->level ?? 'غير محدد'
                     ];
                 }),
@@ -578,8 +581,8 @@ class ParentController extends Controller
                 ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
                 : 0;
 
-            // حساب المعدل
-            $averageGrade = round(Grade::where('student_id', $child->student_id)->avg('score') ?? 0, 1);
+            // حساب المعدل الموزون بتثقيل المواد
+            $averageGrade = StudentAcademicService::getWeightedAverage($child->student_id);
 
             // إنشاء الطلب بحالة مكتمل
             $requestId = \Illuminate\Support\Facades\DB::table('report_requests')->insertGetId([

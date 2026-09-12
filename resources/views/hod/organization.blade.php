@@ -197,7 +197,7 @@
             <button class="dept-btn active" onclick="selectDept('اتصالات', this)">اتصالات</button>
             <button class="dept-btn" onclick="selectDept('معلوماتية', this)">معلوماتية</button>
             <button class="dept-btn" onclick="selectDept('الكترون', this)">الكترون</button>
-            <button class="dept-btn" onclick="selectDept('ذكاء', this)">ذكاء</button>
+            <button class="dept-btn" onclick="selectDept('ذكاء اصطناعي', this)">ذكاء اصطناعي</button>
         </div>
 
         <!-- Years Navigation -->
@@ -237,7 +237,7 @@
             <button class="dept-btn active" onclick="selectWeightDept('اتصالات', this)">اتصالات</button>
             <button class="dept-btn" onclick="selectWeightDept('معلوماتية', this)">معلوماتية</button>
             <button class="dept-btn" onclick="selectWeightDept('الكترون', this)">الكترون</button>
-            <button class="dept-btn" onclick="selectWeightDept('ذكاء', this)">ذكاء</button>
+            <button class="dept-btn" onclick="selectWeightDept('ذكاء اصطناعي', this)">ذكاء اصطناعي</button>
         </div>
 
         {{-- فلتر السنة --}}
@@ -293,7 +293,7 @@
             <button class="dept-btn active" onclick="selectExamDept('اتصالات', this)">اتصالات</button>
             <button class="dept-btn" onclick="selectExamDept('معلوماتية', this)">معلوماتية</button>
             <button class="dept-btn" onclick="selectExamDept('الكترون', this)">الكترون</button>
-            <button class="dept-btn" onclick="selectExamDept('ذكاء', this)">ذكاء</button>
+            <button class="dept-btn" onclick="selectExamDept('ذكاء اصطناعي', this)">ذكاء اصطناعي</button>
         </div>
 
         {{-- فلتر السنة --}}
@@ -348,7 +348,7 @@
                             <option value="اتصالات">اتصالات</option>
                             <option value="معلوماتية">معلوماتية</option>
                             <option value="الكترون">الكترون</option>
-                            <option value="ذكاء">ذكاء</option>
+                            <option value="ذكاء اصطناعي">ذكاء اصطناعي</option>
                         </select>
                     </div>
                     <div class="form-group" style="flex: 1;">
@@ -458,7 +458,7 @@
                             <option value="اتصالات">اتصالات</option>
                             <option value="معلوماتية">معلوماتية</option>
                             <option value="الكترون">الكترون</option>
-                            <option value="ذكاء">ذكاء</option>
+                            <option value="ذكاء اصطناعي">ذكاء اصطناعي</option>
                         </select>
                     </div>
                     <div class="form-group" style="flex: 1;">

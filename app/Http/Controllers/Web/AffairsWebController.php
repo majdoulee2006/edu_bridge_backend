@@ -153,15 +153,23 @@ class AffairsWebController extends Controller
         // 3. جلب المواد (Courses) مع ربطها بالدورات
         $courses = DB::table('courses')
             ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
-            ->select('courses.course_id', 'courses.title', 'courses.weight', 'course_program.program_id')
+            ->select('courses.course_id', 'courses.title', 'courses.weight', 'courses.year', 'course_program.program_id')
             ->get();
 
         // 4. جلب الطلاب وعلاماتهم بناءً على التسجيل (Enrollments)
         // نستخدم COALESCE لضمان أن القيمة 0 في حال عدم وجود علامات
+        // ملاحظة: مادة زي c++ أو شبكات ممكن تكون مشتركة بين أكثر من دورة (اتصالات والكترون مثلاً)،
+        // فلازم نربط grade_events بـ program_id الطالب كمان (وليس فقط course_id) حتى ما تختلط
+        // علامات شعبة بشعبة تانية لنفس المادة، ونمرّر برنامج الطالب الحقيقي عشان تصفية القائمة بالواجهة.
         $courseStudents = DB::table('enrollments')
-            ->join('users', 'enrollments.student_id', '=', 'users.user_id')
+            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
-            ->leftJoin('grade_events', 'courses.course_id', '=', 'grade_events.course_id')
+            ->leftJoin('grade_events', function($join) {
+                $join->on('courses.course_id', '=', 'grade_events.course_id')
+                     ->on('students.program_id', '=', 'grade_events.program_id')
+                     ->where('grade_events.type', '=', 'exam');
+            })
             ->leftJoin('grade_entries', function($join) {
                 $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
                      ->on('enrollments.student_id', '=', 'grade_entries.student_id');
@@ -170,11 +178,14 @@ class AffairsWebController extends Controller
             ->select(
                 'enrollments.course_id',
                 'enrollments.student_id',
+                'students.program_id as student_program_id',
+                'students.student_code',
                 'users.full_name as student_name',
                 'courses.weight',
-                DB::raw('COALESCE(SUM(grade_entries.score), 0) as final_grade')
+                DB::raw('COALESCE(SUM(grade_entries.score), 0) as exam_score'),
+                DB::raw('COALESCE(MAX(grade_events.max_score), 100) as exam_max_score')
             )
-            ->groupBy('enrollments.course_id', 'enrollments.student_id', 'users.full_name', 'courses.weight')
+            ->groupBy('enrollments.course_id', 'enrollments.student_id', 'students.program_id', 'students.student_code', 'users.full_name', 'courses.weight')
             ->get();
 
         // تجهيز مصفوفات متداخلة لتسهيل عرضها في الـ JavaScript
@@ -186,6 +197,425 @@ class AffairsWebController extends Controller
         ];
 
         return view('affairs.course_weights', compact('data'));
+    }
+
+    /**
+     * تصدير نتائج طلاب مادة معينة ضمن دورة معينة (Excel أو PDF).
+     */
+    public function exportCourseWeightsCourse(Request $request)
+    {
+        $request->validate([
+            'course_id'  => 'required|integer|exists:courses,course_id',
+            'program_id' => 'required|integer|exists:programs,id',
+            'status'     => 'nullable|in:pass,fail,all',
+            'format'     => 'required|in:excel,pdf',
+        ]);
+
+        $courseId  = (int) $request->course_id;
+        $programId = (int) $request->program_id;
+        $status    = $request->input('status', 'all');
+
+        $course  = DB::table('courses')->where('course_id', $courseId)->first();
+        $program = DB::table('programs')->where('id', $programId)->first();
+
+        $rows = DB::table('enrollments')
+            ->join('students', 'enrollments.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('grade_events', function ($join) use ($courseId) {
+                $join->on('students.program_id', '=', 'grade_events.program_id')
+                     ->where('grade_events.course_id', '=', $courseId)
+                     ->where('grade_events.type', '=', 'exam');
+            })
+            ->leftJoin('grade_entries', function ($join) {
+                $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
+                     ->on('enrollments.student_id', '=', 'grade_entries.student_id');
+            })
+            ->where('enrollments.status', 'active')
+            ->where('enrollments.course_id', $courseId)
+            ->where('students.program_id', $programId)
+            ->select(
+                'users.full_name as student_name',
+                DB::raw('COALESCE(SUM(grade_entries.score), 0) as exam_score'),
+                DB::raw('COALESCE(MAX(grade_events.max_score), 100) as exam_max_score')
+            )
+            ->groupBy('enrollments.student_id', 'users.full_name')
+            ->get()
+            ->map(function ($r) use ($course) {
+                $percentage = $r->exam_max_score > 0 ? ($r->exam_score / $r->exam_max_score) * 100 : 0;
+                return [
+                    'name'       => $r->student_name,
+                    'exam'       => number_format($r->exam_score, 2) . ' / ' . number_format($r->exam_max_score, 0),
+                    'weight'     => $course->weight ?? 1,
+                    'percentage' => round($percentage, 2),
+                    'status'     => $percentage >= 50 ? 'ناجح' : 'راسب',
+                ];
+            });
+
+        if ($status === 'pass') {
+            $rows = $rows->where('status', 'ناجح')->values();
+        } elseif ($status === 'fail') {
+            $rows = $rows->where('status', 'راسب')->values();
+        }
+
+        $yearLabel = ($course->year ?? 1) == 1 ? 'سنة_أولى' : 'سنة_ثانية';
+        $title     = 'نتائج مادة ' . ($course->title ?? '') . ' - ' . ($program->name ?? '');
+        $columns   = ['اسم الطالب', 'علامة الامتحان', 'التثقيل', 'المعدل', 'الحالة'];
+        $fileBase  = $this->sanitizeFileName('كشف_نتائج_' . ($course->title ?? 'مادة') . '_' . ($program->name ?? '') . '_' . $yearLabel);
+
+        return $request->format === 'excel'
+            ? $this->downloadExcelTable($title, $columns, $rows, $fileBase)
+            : $this->downloadPdfTable($title, $columns, $rows, $fileBase);
+    }
+
+    /**
+     * تصدير نتائج كل مواد طالب معين ضمن دورة وسنة معينة (Excel أو PDF)، مع المعدل العام.
+     */
+    public function exportCourseWeightsStudent(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|integer|exists:students,student_id',
+            'program_id' => 'required|integer|exists:programs,id',
+            'year'       => 'required|integer|in:1,2',
+            'format'     => 'required|in:excel,pdf',
+        ]);
+
+        $studentId = (int) $request->student_id;
+        $programId = (int) $request->program_id;
+        $year      = (int) $request->year;
+
+        $student = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->where('students.student_id', $studentId)
+            ->select('users.full_name', 'students.student_code')
+            ->first();
+        $program = DB::table('programs')->where('id', $programId)->first();
+
+        $rawRows = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->leftJoin('grade_events', function ($join) use ($programId) {
+                $join->on('courses.course_id', '=', 'grade_events.course_id')
+                     ->where('grade_events.program_id', '=', $programId)
+                     ->where('grade_events.type', '=', 'exam');
+            })
+            ->leftJoin('grade_entries', function ($join) use ($studentId) {
+                $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
+                     ->where('grade_entries.student_id', '=', $studentId);
+            })
+            ->where('enrollments.status', 'active')
+            ->where('enrollments.student_id', $studentId)
+            ->where('courses.year', $year)
+            ->select(
+                'courses.title',
+                'courses.weight',
+                DB::raw('COALESCE(SUM(grade_entries.score), 0) as exam_score'),
+                DB::raw('COALESCE(MAX(grade_events.max_score), 100) as exam_max_score')
+            )
+            ->groupBy('enrollments.course_id', 'courses.title', 'courses.weight')
+            ->get();
+
+        $sumWeighted = 0;
+        $sumWeight = 0;
+
+        $rows = $rawRows->map(function ($r) use (&$sumWeighted, &$sumWeight) {
+            $percentage = $r->exam_max_score > 0 ? ($r->exam_score / $r->exam_max_score) * 100 : 0;
+            $sumWeighted += ($percentage / 100) * $r->weight;
+            $sumWeight += $r->weight;
+
+            return [
+                'name'       => $r->title,
+                'exam'       => number_format($r->exam_score, 2) . ' / ' . number_format($r->exam_max_score, 0),
+                'weight'     => $r->weight,
+                'percentage' => round($percentage, 2),
+                'status'     => $percentage >= 50 ? 'ناجح' : 'راسب',
+            ];
+        });
+
+        $overallAverage = $sumWeight > 0 ? round(($sumWeighted / $sumWeight) * 100, 2) : 0;
+
+        $yearLabel = $year == 1 ? 'سنة_أولى' : 'سنة_ثانية';
+        $title     = 'نتائج الطالب ' . ($student->full_name ?? '') . ' - ' . ($program->name ?? '');
+        $columns   = ['اسم المادة', 'علامة الامتحان', 'التثقيل', 'المعدل', 'الحالة'];
+        $footer    = 'المعدل العام: ' . $overallAverage . '%';
+        $fileBase  = $this->sanitizeFileName('كشف_علامات_' . ($student->full_name ?? 'طالب') . '_' . ($program->name ?? '') . '_' . $yearLabel);
+
+        return $request->format === 'excel'
+            ? $this->downloadExcelTable($title, $columns, $rows, $fileBase, $footer)
+            : $this->downloadPdfTable($title, $columns, $rows, $fileBase, $footer);
+    }
+
+    /**
+     * اسم ملف نظيف ورسمي: يستبدل الفراغات بـ "_" ويحذف الرموز غير المسموحة بأسماء الملفات.
+     */
+    private function sanitizeFileName(string $name): string
+    {
+        $name = trim($name);
+        $name = preg_replace('/\s+/u', '_', $name);
+        $name = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '', $name);
+        return $name;
+    }
+
+    /**
+     * يحوّل ملف شعار (لو موجود فعلاً بـ public/images/logos) إلى data URI مضمّن بالـ HTML،
+     * حتى يظهر بالـ PDF/Excel المُصدَّر بدون الاعتماد على تحميل عن بعد. يرجع سلسلة فارغة إن لم يوجد الملف.
+     */
+    private function logoImgTag(string $fileName, string $alt, string $style = 'max-height:60px;'): string
+    {
+        $path = public_path('images/logos/' . $fileName);
+        if (!file_exists($path)) {
+            return '';
+        }
+
+        $mime = match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'svg' => 'image/svg+xml',
+            default => 'image/png',
+        };
+
+        $base64 = base64_encode(file_get_contents($path));
+
+        return '<img src="data:' . $mime . ';base64,' . $base64 . '" alt="' . htmlspecialchars($alt) . '" style="' . $style . '">';
+    }
+
+    /**
+     * HTML موحّد (بنمط جدول Excel/طباعة RTL) يُستخدم لكل من تصدير Excel وPDF، بشكل رسمي أكاديمي
+     * (ترويسة بثلاثة شعارات + عنوان كشف علامات + بيانات إصدار + مكان توقيع وختم).
+     */
+    private function buildResultsHtml(string $title, array $columns, $rows, ?string $footer = null): string
+    {
+        $headerCells = '';
+        foreach ($columns as $col) {
+            $headerCells .= '<th>' . htmlspecialchars($col) . '</th>';
+        }
+
+        $bodyRows = '';
+        foreach ($rows as $row) {
+            $rowClass = ($row['status'] ?? '') === 'راسب' ? 'fail' : 'pass';
+            $bodyRows .= '<tr>'
+                . '<td>' . htmlspecialchars($row['name']) . '</td>'
+                . '<td>' . htmlspecialchars($row['exam']) . '</td>'
+                . '<td>' . htmlspecialchars((string) $row['weight']) . '</td>'
+                . '<td class="' . $rowClass . '">' . htmlspecialchars($row['percentage'] . '%') . '</td>'
+                . '<td class="' . $rowClass . '">' . htmlspecialchars($row['status']) . '</td>'
+                . '</tr>';
+        }
+
+        $footerHtml = $footer ? '<tr><td colspan="5" class="footer-row"><b>' . htmlspecialchars($footer) . '</b></td></tr>' : '';
+
+        $activeSemester = DB::table('semesters')->where('is_active', 1)->value('name') ?? '-';
+
+        $logoStyle     = 'max-height:52px; max-width:100px;';
+        $edubridgeLogo = $this->logoImgTag('edubridge.png', 'EduBridge', $logoStyle);
+        $unrwaLogo     = $this->logoImgTag('unrwa.png', 'UNRWA', $logoStyle);
+        $dtcLogo       = $this->logoImgTag('dtc.png', 'Damascus Training Centre', $logoStyle);
+
+        return '<html dir="rtl" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!--[if gte mso 9]>
+    <xml>
+     <x:ExcelWorkbook>
+      <x:ExcelWorksheets>
+       <x:ExcelWorksheet>
+        <x:Name>كشف العلامات</x:Name>
+        <x:WorksheetOptions>
+         <x:DisplayRightToLeft/>
+        </x:WorksheetOptions>
+       </x:ExcelWorksheet>
+      </x:ExcelWorksheets>
+     </x:ExcelWorkbook>
+    </xml>
+    <![endif]-->
+    <style>
+        /* DejaVu Sans أولاً لأن محرك PDF (Dompdf) يتعرف عليه كخط مضمّن يدعم الأحرف العربية؛
+           برامج Excel/Word بتتجاهله وبتستخدم Segoe UI/Tahoma تلقائياً بما إنه غير مثبت عندها */
+        body { font-family: "DejaVu Sans", "Segoe UI", Tahoma, Arial, sans-serif; direction: rtl; text-align: right; }
+        .doc-frame { border: 3px double #0f172a; padding: 14px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #94a3b8; padding: 10px; text-align: center; vertical-align: middle; font-size: 10pt; }
+        th { background-color: #0f172a; color: #ffffff; font-weight: bold; font-size: 11pt; }
+        .plain, .plain td, .plain th { border: none; padding: 4px; }
+        .letterhead-name { font-size: 12pt; font-weight: bold; color: #0f172a; }
+        .letterhead-sub { font-size: 9pt; color: #64748b; }
+        .doc-title { font-size: 17pt; font-weight: bold; color: #ffffff; background-color: #0f172a; text-align: center; padding: 12px; }
+        .doc-subtitle { font-size: 11pt; font-weight: normal; color: #e2e8f0; }
+        .meta-row { text-align: center; font-size: 9pt; color: #475569; background-color: #f1f5f9; padding: 8px; }
+        .pass { color: #15803d; font-weight: bold; background-color: #dcfce7; }
+        .fail { color: #b91c1c; font-weight: bold; background-color: #fee2e2; }
+        .footer-row { background-color: #fef9c3; text-align: center; font-size: 12pt; padding: 12px; }
+    </style>
+</head>
+<body>
+<div class="doc-frame">
+    <table class="plain">
+        <tr>
+            <td class="plain" style="width: 33%; text-align: center; vertical-align: middle;">' . $unrwaLogo . '</td>
+            <td class="plain" style="width: 34%; text-align: center; vertical-align: middle;">' . $edubridgeLogo . '</td>
+            <td class="plain" style="width: 33%; text-align: center; vertical-align: middle;">' . $dtcLogo . '</td>
+        </tr>
+    </table>
+
+    <div style="text-align: center; padding: 8px 0 4px;">
+        <div class="letterhead-name">معهد دمشق المتوسط</div>
+        <div class="letterhead-sub" style="margin-top: 2px;">نظام إدارة العملية التعليمية</div>
+    </div>
+
+    <div style="border-bottom: 2px solid #0f172a; margin-bottom: 10px;"></div>
+
+    <table>
+        <tr><td colspan="5" class="doc-title">كشف علامات رسمي<br><span class="doc-subtitle">' . htmlspecialchars($title) . '</span></td></tr>
+        <tr><td colspan="5" class="meta-row">الفصل الدراسي: ' . htmlspecialchars($activeSemester) . ' &nbsp;|&nbsp; تاريخ الإصدار: ' . now()->format('Y-m-d H:i') . '</td></tr>
+        <thead><tr>' . $headerCells . '</tr></thead>
+        <tbody>' . $bodyRows . $footerHtml . '</tbody>
+    </table>
+</div>
+</body>
+</html>';
+    }
+
+    /**
+     * HTML مخصّص لإكسل فقط: جدول مسطّح واحد بدون جداول متداخلة وبدون صور مضمّنة (data URI)،
+     * لأن آلية استيراد إكسل لملفات HTML لا تدعم الصور المضمّنة، وتتشوّش أعمدة الجدول عند وجود
+     * أكثر من <table> منفصل بنفس الصفحة. الشعارات هنا نص فقط بدل الصور.
+     */
+    private function buildExcelHtml(string $title, array $columns, $rows, ?string $footer = null): string
+    {
+        $colCount = count($columns);
+
+        $headerCells = '';
+        foreach ($columns as $col) {
+            $headerCells .= '<th>' . htmlspecialchars($col) . '</th>';
+        }
+
+        $bodyRows = '';
+        foreach ($rows as $row) {
+            $rowClass = ($row['status'] ?? '') === 'راسب' ? 'fail' : 'pass';
+            $bodyRows .= '<tr>'
+                . '<td>' . htmlspecialchars($row['name']) . '</td>'
+                . '<td>' . htmlspecialchars($row['exam']) . '</td>'
+                . '<td>' . htmlspecialchars((string) $row['weight']) . '</td>'
+                . '<td class="' . $rowClass . '">' . htmlspecialchars($row['percentage'] . '%') . '</td>'
+                . '<td class="' . $rowClass . '">' . htmlspecialchars($row['status']) . '</td>'
+                . '</tr>';
+        }
+
+        $footerHtml = $footer ? '<tr><td colspan="' . $colCount . '" class="footer-row"><b>' . htmlspecialchars($footer) . '</b></td></tr>' : '';
+
+        $activeSemester = DB::table('semesters')->where('is_active', 1)->value('name') ?? '-';
+
+        return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!--[if gte mso 9]>
+    <xml>
+     <x:ExcelWorkbook>
+      <x:ExcelWorksheets>
+       <x:ExcelWorksheet>
+        <x:Name>كشف العلامات</x:Name>
+        <x:WorksheetOptions>
+         <x:DisplayRightToLeft/>
+        </x:WorksheetOptions>
+       </x:ExcelWorksheet>
+      </x:ExcelWorksheets>
+     </x:ExcelWorkbook>
+    </xml>
+    <![endif]-->
+    <style>
+        body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; direction: rtl; text-align: right; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #94a3b8; padding: 10px; text-align: center; vertical-align: middle; font-size: 10pt; }
+        th { background-color: #0f172a; color: #ffffff; font-weight: bold; font-size: 11pt; }
+        .institution-row { font-size: 11pt; font-weight: bold; color: #0f172a; background-color: #f1f5f9; text-align: center; padding: 8px; }
+        .header-title { font-size: 16pt; font-weight: bold; color: #ffffff; background-color: #0f172a; text-align: center; padding: 14px; }
+        .subtitle-row { font-size: 11pt; color: #334155; text-align: center; padding: 8px; }
+        .meta-row { font-size: 9pt; color: #475569; background-color: #f1f5f9; text-align: center; padding: 8px; }
+        .pass { color: #15803d; font-weight: bold; background-color: #dcfce7; }
+        .fail { color: #b91c1c; font-weight: bold; background-color: #fee2e2; }
+        .footer-row { background-color: #fef9c3; text-align: center; font-size: 12pt; padding: 12px; }
+    </style>
+</head>
+<body>
+    <table>
+        <tr><td colspan="' . $colCount . '" class="institution-row">معهد دمشق المتوسط</td></tr>
+        <tr><td colspan="' . $colCount . '" class="header-title">كشف علامات رسمي</td></tr>
+        <tr><td colspan="' . $colCount . '" class="subtitle-row">' . htmlspecialchars($title) . '</td></tr>
+        <tr><td colspan="' . $colCount . '" class="meta-row">الفصل الدراسي: ' . htmlspecialchars($activeSemester) . '  |  تاريخ الإصدار: ' . now()->format('Y-m-d H:i') . '</td></tr>
+        <thead><tr>' . $headerCells . '</tr></thead>
+        <tbody>' . $bodyRows . $footerHtml . '</tbody>
+    </table>
+</body>
+</html>';
+    }
+
+    private function downloadExcelTable(string $title, array $columns, $rows, string $fileBase, ?string $footer = null)
+    {
+        $html = $this->buildExcelHtml($title, $columns, $rows, $footer);
+        $fileName = $fileBase . '_' . now()->format('Y-m-d') . '.xls';
+
+        return response($html, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+        ]);
+    }
+
+    private function downloadPdfTable(string $title, array $columns, $rows, string $fileBase, ?string $footer = null)
+    {
+        $html = $this->buildResultsHtml($title, $columns, $rows, $footer);
+        $fileName = $fileBase . '_' . now()->format('Y-m-d') . '.pdf';
+        $pdfContent = null;
+
+        if (class_exists('\Mpdf\Mpdf')) {
+            try {
+                $mpdf = new \Mpdf\Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4',
+                    'orientation' => 'P',
+                    'autoScriptToLang' => true,
+                    'autoLangToFont' => true,
+                    'useSubsets' => false,
+                ]);
+                $mpdf->SetDirectionality('rtl');
+                $mpdf->WriteHTML($html);
+                $pdfContent = $mpdf->Output('', 'S');
+            } catch (\Throwable $e) {
+                Log::warning('mPDF error: ' . $e->getMessage());
+            }
+        }
+
+        if (!$pdfContent && class_exists('\Barryvdh\DomPDF\Facade\Pdf')) {
+            try {
+                $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isRemoteEnabled' => false])
+                    ->loadHTML($html)->setPaper('a4', 'portrait')->output();
+            } catch (\Throwable $e) {
+                Log::warning('DomPDF Facade error: ' . $e->getMessage());
+            }
+        }
+
+        if (!$pdfContent && class_exists('\Dompdf\Dompdf')) {
+            try {
+                $options = new \Dompdf\Options();
+                $options->set('defaultFont', 'DejaVu Sans');
+                $dompdf = new \Dompdf\Dompdf($options);
+                $dompdf->loadHtml($html);
+                $dompdf->setPaper('A4', 'portrait');
+                $dompdf->render();
+                $pdfContent = $dompdf->output();
+            } catch (\Throwable $e) {
+                Log::warning('Dompdf direct error: ' . $e->getMessage());
+            }
+        }
+
+        if (!$pdfContent) {
+            return response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
+        }
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Length' => strlen($pdfContent),
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 
     public function storeSemesterWeb(Request $request)

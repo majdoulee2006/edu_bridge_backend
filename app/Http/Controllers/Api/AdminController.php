@@ -17,6 +17,7 @@ use App\Models\Attendance;
 use App\Models\Grade;
 use App\Models\Exam;
 use App\Models\Role;
+use App\Services\StudentAcademicService;
 
 class AdminController extends Controller
 {
@@ -202,7 +203,7 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'تم إنشاء المستخدم بنجاح',
-            'data' => $user->load('role')
+            'data' => $user
         ], 201);
     }
 
@@ -783,7 +784,6 @@ class AdminController extends Controller
                 if (!$student) return null;
 
                 $attendances = $student->attendances;
-                $grades = $student->grades;
 
                 return [
                     'id' => $user->user_id,
@@ -793,7 +793,7 @@ class AdminController extends Controller
                     'attendance_rate' => $attendances->count() > 0
                         ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
                         : 0,
-                    'average_grade' => round($grades->avg('score'), 1),
+                    'average_grade' => StudentAcademicService::getWeightedAverage($student->student_id),
                 ];
             })->filter();
 

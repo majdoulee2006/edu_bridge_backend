@@ -21,7 +21,13 @@ class StoreTeacherAccountRequest extends FormRequest
         if (empty($fullName)) {
             $fullName = $this->full_name ?? '';
         }
-        $this->merge(['full_name' => $fullName]);
+
+        $specialization = $this->advisor_branch ?? 'عام';
+
+        $this->merge([
+            'full_name'      => $fullName,
+            'specialization' => $specialization,
+        ]);
     }
 
     public function rules(): array
@@ -43,7 +49,7 @@ class StoreTeacherAccountRequest extends FormRequest
                 'max:255',
             ],
             'department'     => 'required|string|max:255',
-            'specialization' => 'required|string|max:255',
+            'specialization' => 'nullable|string|max:255',
             'password'       => 'required|string|min:6|confirmed',
             'courses'        => 'nullable|array',
         ];

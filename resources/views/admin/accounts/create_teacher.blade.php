@@ -79,32 +79,52 @@
             @error('email')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
         </div>
 
-        <!-- القسم + الدورة -->
-        <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">القسم</label>
-                <div class="relative group">
-                    <select required name="department" id="department-select" onchange="filterDeptData()"
-                            class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">
-                        <option disabled selected value="">اختر القسم</option>
-                        @foreach($departments as $dept)
-                            <option value="{{ $dept->name }}" data-id="{{ $dept->department_id }}" {{ old('department') == $dept->name ? 'selected' : '' }}>{{ $dept->name }}</option>
-                        @endforeach
-                    </select>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                </div>
-                @error('department')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+        <!-- القسم -->
+        <div class="space-y-1.5">
+            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">القسم</label>
+            <div class="relative group">
+                <select required name="department" id="department-select" onchange="filterDeptData()"
+                        class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 pl-10 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">
+                    <option disabled selected value="">اختر القسم</option>
+                    @foreach($departments as $dept)
+                        <option value="{{ $dept->name }}" data-id="{{ $dept->department_id }}" {{ old('department') == $dept->name ? 'selected' : '' }}>{{ $dept->name }}</option>
+                    @endforeach
+                </select>
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
             </div>
-            <div class="space-y-1.5">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">الدورة</label>
-                <div class="relative group">
-                    <select required name="specialization" id="spec-select"
-                            class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl px-4 py-3.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none shadow-sm cursor-pointer">
-                        <option disabled selected value="">اختر القسم أولاً</option>
-                    </select>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+            @error('department')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+        </div>
+
+        <!-- صفة مربي الدورة (Course Advisor) -->
+        <div class="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-500">star</span>
+                    <label for="is_advisor_checkbox" class="text-sm font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+                        تعيين كـ "مربي دورة" (إشراف تربوي)
+                    </label>
                 </div>
-                @error('specialization')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
+                <input type="checkbox" id="is_advisor_checkbox" name="is_advisor" value="1" 
+                       {{ old('is_advisor') == '1' ? 'checked' : '' }}
+                       onchange="document.getElementById('advisor-fields-container').style.display = this.checked ? 'grid' : 'none';"
+                       class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 cursor-pointer">
+            </div>
+
+            <div id="advisor-fields-container" class="grid grid-cols-1 md:grid-cols-2 gap-3" style="display: {{ old('is_advisor') == '1' ? 'grid' : 'none' }};">
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300">الدورة الإشرافية (المربى عليها) <span class="text-red-500">*</span></label>
+                    <select name="advisor_branch" id="advisor-branch-select" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+                        <option value="" disabled selected>اختر القسم أولاً لظهور الدورات</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300">السنة الدراسية للمربي <span class="text-red-500">*</span></label>
+                    <select name="advisor_year" id="advisor_year_select" class="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+                        <option value="" disabled selected>اختر السنة الدراسية</option>
+                        <option value="السنة الأولى" {{ old('advisor_year') == 'السنة الأولى' ? 'selected' : '' }}>السنة الأولى</option>
+                        <option value="السنة الثانية" {{ old('advisor_year') == 'السنة الثانية' ? 'selected' : '' }}>السنة الثانية</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -168,13 +188,16 @@ function filterDeptData() {
     const deptId = selectedOption ? selectedOption.getAttribute('data-id') : null;
     
     const specSelect = document.getElementById('spec-select');
+    const advisorBranchSelect = document.getElementById('advisor-branch-select');
     const coursesContainer = document.getElementById('courses-container');
     
-    specSelect.innerHTML = '';
+    if (specSelect) specSelect.innerHTML = '';
+    if (advisorBranchSelect) advisorBranchSelect.innerHTML = '';
     coursesContainer.innerHTML = '';
     
     if (!deptId) {
-        specSelect.innerHTML = '<option disabled selected value="">اختر القسم أولاً</option>';
+        if (specSelect) specSelect.innerHTML = '<option disabled selected value="">اختر القسم أولاً</option>';
+        if (advisorBranchSelect) advisorBranchSelect.innerHTML = '<option disabled selected value="">اختر القسم أولاً لظهور الدورات</option>';
         coursesContainer.innerHTML = '<div class="text-xs text-slate-500">الرجاء اختيار القسم أولاً</div>';
         return;
     }
@@ -182,11 +205,14 @@ function filterDeptData() {
     // Fill Courses/Branches
     const branches = deptBranches[deptId] || [];
     if (branches.length === 0) {
-        specSelect.innerHTML = '<option disabled selected value="">لا توجد دورات لهذا القسم</option>';
+        if (specSelect) specSelect.innerHTML = '<option disabled selected value="">لا توجد دورات لهذا القسم</option>';
+        if (advisorBranchSelect) advisorBranchSelect.innerHTML = '<option disabled selected value="">لا توجد دورات لهذا القسم</option>';
     } else {
-        specSelect.innerHTML = '<option disabled selected value="">اختر الدورة</option>';
+        if (specSelect) specSelect.innerHTML = '<option disabled selected value="">اختر الدورة</option>';
+        if (advisorBranchSelect) advisorBranchSelect.innerHTML = '<option disabled selected value="">اختر الدورة الإشرافية</option>';
         branches.forEach(b => {
-            specSelect.innerHTML += `<option value="${b.name}">${b.name}</option>`;
+            if (specSelect) specSelect.innerHTML += `<option value="${b.name}">${b.name}</option>`;
+            if (advisorBranchSelect) advisorBranchSelect.innerHTML += `<option value="${b.name}">${b.name}</option>`;
         });
     }
     

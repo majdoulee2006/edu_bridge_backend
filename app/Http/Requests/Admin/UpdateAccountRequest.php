@@ -17,6 +17,12 @@ class UpdateAccountRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->normalizeAccountCredentials($this);
+
+        if ($this->has('advisor_branch') && !empty($this->advisor_branch)) {
+            $this->merge(['specialization' => $this->advisor_branch]);
+        } elseif (!$this->has('specialization') || empty($this->specialization)) {
+            $this->merge(['specialization' => 'عام']);
+        }
     }
 
     public function rules(): array
@@ -51,7 +57,7 @@ class UpdateAccountRequest extends FormRequest
             $rules['telegram_chat_id'] = 'nullable|string|max:100';
         } elseif ($roleId == 2) { // Teacher
             $rules['department']     = 'required|string|max:255';
-            $rules['specialization'] = 'required|string|max:255';
+            $rules['specialization'] = 'nullable|string|max:255';
             $rules['username']       = ['required', 'string', 'max:255', 'unique:users,username,'.$id.',user_id'];
             $rules['courses']        = 'nullable|array';
         } elseif ($roleId == 5) { // HOD
