@@ -814,7 +814,6 @@ class StudentWebController extends Controller
         if ($request->date === $todayStr && $checkTime < $currentTime) {
             return back()->withErrors(['time' => 'عذراً، لا يمكن اختيار وقت سابق لوقتنا الحالي لليوم!'])->withInput();
         }
-
         $reasonText = $request->reason;
         if ($request->type === 'hourly') {
             $fromTime = $request->from_time ?? date('H:i');
@@ -835,7 +834,6 @@ class StudentWebController extends Controller
         if ($existingRecent) {
             return back()->with('success', 'تم تقديم طلب الإذن بنجاح سابقاً، وهو قيد المراجعة.');
         }
-
         $requestId = DB::table('absence_requests')->insertGetId([
             'student_id' => $student->student_id,
             'reason'     => $reasonText,
@@ -853,8 +851,14 @@ class StudentWebController extends Controller
 
         // الخطوة 1 في المسار المتسلسل: إرسال الإشعار لولي الأمر أولاً — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserIds = DB::table('parent_students')
-            ->where('student_id', $student->user_id)
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
+            ->join('parents', function($j) {
+                $j->on('parent_students.parent_id', '=', 'parents.user_id')
+                  ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
+            })
+            ->where(function($q) use ($student) {
+                $q->where('parent_students.student_id', $student->user_id)
+                  ->orWhere('parent_students.student_id', $student->student_id);
+            })
             ->pluck('parents.user_id');
 
         foreach ($parentUserIds as $pId) {
@@ -895,7 +899,6 @@ class StudentWebController extends Controller
                 ]
             ]);
         }
-
         return back()->with('success', 'تم تقديم طلب الإذن بنجاح، وهو بانتظار موافقة ولي الأمر أولاً.');
     }
 

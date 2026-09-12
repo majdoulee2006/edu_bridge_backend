@@ -314,7 +314,6 @@ class ChatController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-
         \App\Services\FcmService::sendToUser($receiverId, $sender->full_name ?? 'رسالة جديدة', $msgBody, [
             'type' => 'message',
             'sender_id' => (string) $senderId,

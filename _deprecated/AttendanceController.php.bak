@@ -85,9 +85,30 @@ class AttendanceController extends Controller
             'status'     => 'pending',
         ]);
         
-        // إشعار رئيس القسم بطلب الإجازة
+        // إشعار ولي الأمر بالطلب جديد
         try {
             $studentName = $student->user->full_name ?? 'طالب';
+
+            $parentUserIds = \DB::table('parent_students')
+                ->where(function($q) use ($student) {
+                    $q->where('student_id', $student->student_id)
+                      ->orWhere('student_id', $student->user_id);
+                })
+                ->join('parents', 'parent_students.parent_id', '=', 'parents.parent_id')
+                ->pluck('parents.user_id')
+                ->unique();
+
+            foreach ($parentUserIds as $pUserId) {
+                \App\Models\Notification::create([
+                    'user_id'    => $pUserId,
+                    'sender_id'  => auth()->id(),
+                    'title'      => 'طلب إجازة جديد من الابن',
+                    'message'    => "قام الابن $studentName بتقديم طلب إجازة بتاريخ {$request->date}، يرجى مراجعته والرد عليه.",
+                    'type'       => 'leave_request',
+                    'related_id' => $leaveRequest->id,
+                    'is_read'    => false,
+                ]);
+            }
             
             // إيجاد رئيس القسم الخاص بالطالب (بناءً على التخصص أو رئيس القسم العام)
             $hodId = null;

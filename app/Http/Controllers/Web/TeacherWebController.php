@@ -2627,8 +2627,14 @@ class TeacherWebController extends Controller
 
                 // parent_students.parent_id/student_id هما FK على users.user_id
                 $parentUserIds = DB::table('parent_students')
-                    ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
-                    ->where('parent_students.student_id', $studentUserId)
+                    ->join('parents', function($j) {
+                        $j->on('parent_students.parent_id', '=', 'parents.user_id')
+                          ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
+                    })
+                    ->where(function($q) use ($studentUserId, $studentId) {
+                        $q->where('parent_students.student_id', $studentUserId)
+                          ->orWhere('parent_students.student_id', $studentId);
+                    })
                     ->pluck('parents.user_id');
 
                 foreach ($parentUserIds as $parentUserId) {

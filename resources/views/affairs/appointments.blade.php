@@ -267,7 +267,7 @@
                                             {{ $meeting->details }}
                                         </div>
                                     </td>
-                                    <td>{{ \Carbon\Carbon::parse($meeting->created_at)->format('Y-m-d H:i') }}</td>
+                                    <td>{{ $meeting->created_at ? \Carbon\Carbon::parse($meeting->created_at)->format('Y-m-d H:i') : '—' }}</td>
                                     <td>
                                         @if($meeting->scheduled_at)
                                             <span style="font-weight: 700; color: #3b82f6;">

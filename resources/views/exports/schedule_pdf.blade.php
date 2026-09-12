@@ -103,7 +103,7 @@
 
     <div class="header">
         <h2>الجدول الدراسي الأسبوعي</h2>
-        <p>معهد بريدج التعليمي (Edu Bridge)</p>
+        <p>معهد Edu-Bridge</p>
     </div>
 
     <div class="student-info">

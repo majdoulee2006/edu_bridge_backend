@@ -2944,8 +2944,14 @@ class TeacherController extends Controller
 
         // جلب ولي أمر الطالب للتسجيل المبدئي — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserId = DB::table('parent_students')
-            ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
-            ->where('parent_students.student_id', $student->user_id)
+            ->join('parents', function($j) {
+                $j->on('parent_students.parent_id', '=', 'parents.user_id')
+                  ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
+            })
+            ->where(function($q) use ($student) {
+                $q->where('parent_students.student_id', $student->user_id)
+                  ->orWhere('parent_students.student_id', $student->student_id);
+            })
             ->value('parents.user_id');
 
         $summonId = DB::table('parent_summons')->insertGetId([

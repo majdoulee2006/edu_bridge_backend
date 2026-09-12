@@ -621,8 +621,6 @@ class AffairsWebController extends Controller
     public function storeSemesterWeb(Request $request)
     {
         $this->normalizeAccountCredentials($request);
-
-
         $request->validate([
             'name'       => 'required|string|max:255',
             'start_date' => 'nullable|date',

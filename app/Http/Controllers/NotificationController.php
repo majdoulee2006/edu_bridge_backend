@@ -26,7 +26,11 @@ class NotificationController extends Controller
               DB::raw("CASE WHEN notifications.type = 'announcement' AND announcements.image IS NOT NULL THEN CONCAT('" . url('storage') . "/', announcements.image) ELSE NULL END as image_url")
           )
           ->orderBy('notifications.created_at', 'desc')
-          ->get();
+          ->get()
+          ->map(function ($item) {
+              $item->is_read = (bool) $item->is_read;
+              return $item;
+          });
 
       return response()->json($notifications);
   }
@@ -36,7 +40,7 @@ class NotificationController extends Controller
       $updated = DB::table('notifications')
           ->where('id', $id)
           ->where('user_id', auth()->id())
-          ->update(['is_read' => true]);
+          ->update(['is_read' => 1]);
 
       if (!$updated) {
           return response()->json(['success' => false, 'message' => 'الإشعار غير موجود'], 404);
@@ -49,8 +53,8 @@ class NotificationController extends Controller
   {
       DB::table('notifications')
           ->where('user_id', auth()->id())
-          ->where('is_read', false)
-          ->update(['is_read' => true]);
+          ->where('is_read', 0)
+          ->update(['is_read' => 1]);
 
       return response()->json(['success' => true, 'message' => 'تم تحديد جميع الإشعارات كمقروءة']);
   }

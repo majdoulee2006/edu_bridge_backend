@@ -48,6 +48,27 @@ Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset
 
 // Telegram Webhook
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
+Route::get('/system/settings', function () {
+    return response()->json([
+        'success' => true,
+        'data'    => \App\Models\SystemSetting::getThemeSettings()
+    ]);
+});
+
+// -----------------------------------------------------------
+// روابط ولي الأمر العامة (بدون توكن)
+// -----------------------------------------------------------
+Route::get('/parent/info/{user_id}', function ($user_id) {
+    $user = DB::table('users')->where('user_id', $user_id)->first();
+    if ($user) {
+        return response()->json([
+            'full_name' => $user->full_name,
+            'phone'     => $user->phone ?? 'لا يوجد رقم',
+            'role'      => $user->role,
+        ]);
+    }
+    return response()->json(['message' => 'المستخدم غير موجود'], 404);
+});
 
 Route::get('/system/settings', function () {
     return response()->json([
@@ -443,6 +464,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [ParentController::class, 'dashboard']);
         Route::get('/children/{parent_id?}', [ParentController::class, 'getChildren']);
         Route::post('/add-student', [ParentController::class, 'linkStudent']);
+        Route::post('/children/{id}/unlink', [ParentController::class, 'unlinkStudent']);
+        Route::delete('/children/{id}', [ParentController::class, 'unlinkStudent']);
         Route::get('/announcements', [ParentController::class, 'getAnnouncements']);
         Route::get('/children/{id}/details', [ParentController::class, 'getChildDetails']);
         Route::get('/children/{id}/attendance', [ParentController::class, 'getChildAttendance']);
@@ -580,7 +603,6 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs,admin'])->gr
     Route::post('/parents-students/link',                [AffairsController::class, 'linkStudentToParent']);
     Route::post('/parents-students/unlink',              [AffairsController::class, 'unlinkStudentFromParent']);
     Route::post('/parents-students/create-parent',       [AffairsController::class, 'createParentAndLink']);
-
     // Broadcasting channel authorization for Sanctum
 
     Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {

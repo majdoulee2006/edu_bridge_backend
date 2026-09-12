@@ -157,19 +157,60 @@
                     <i class="fas fa-info-circle" style="color: var(--primary-yellow); font-size: 1.5rem;"></i>
                     <div><h4 style="margin-bottom: 5px;">تحديث القوائم</h4><p style="font-size: 0.9rem; color: var(--text-muted);">تم نقل كافة الأقسام إلى القائمة الجانبية لتسهيل الوصول.</p></div>
                 </div>
-                <h3>آخر الأخبار</h3>
-                <div class="news-grid">
-                    @foreach($announcements as $news)
-                    <div class="card news-card">
-                        <div style="background: linear-gradient(135deg, #FFD200 0%, #FFB000 100%); height: 160px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem;"><i class="fas fa-bullhorn"></i></div>
-                        <div class="news-body">
-                            <span class="tag">{{ $news->type == 'general' ? 'إعلان عام' : 'تحديث' }}</span>
-                            <h4>{{ $news->title }}</h4>
-                            <p style="color: var(--text-muted); font-size: 0.9rem;">{{ $news->content }}</p>
-                            <small style="color: #AAA; margin-top: 10px; display: block;">{{ $news->created_at->diffForHumans() }}</small>
+                @php
+                    $announcementsCol = collect($announcements ?? []);
+                    $todayAnnouncements = $announcementsCol->filter(fn($item) => \Carbon\Carbon::parse($item->created_at)->isToday());
+                    $previousAnnouncements = $announcementsCol->reject(fn($item) => \Carbon\Carbon::parse($item->created_at)->isToday());
+                @endphp
+
+                {{-- أخبار اليوم --}}
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                        <span style="width: 10px; height: 10px; border-radius: 50%; background: #22c55e; display: inline-block;"></span>
+                        أخبار اليوم
+                    </h3>
+                    <div class="news-grid">
+                        @forelse($todayAnnouncements as $news)
+                        <div class="card news-card" style="border: 2px solid #22c55e;">
+                            <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); height: 140px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem;"><i class="fas fa-bullhorn"></i></div>
+                            <div class="news-body">
+                                <span class="tag" style="background: #22c55e; color: #fff;">اليوم</span>
+                                <h4>{{ $news->title }}</h4>
+                                <p style="color: var(--text-muted); font-size: 0.9rem;">{{ $news->content }}</p>
+                                <small style="color: #AAA; margin-top: 10px; display: block;">{{ \Carbon\Carbon::parse($news->created_at)->diffForHumans() }}</small>
+                            </div>
                         </div>
+                        @empty
+                        <div style="grid-column: 1 / -1; padding: 1.5rem; text-align: center; background: var(--bg-card); border-radius: 12px; color: var(--text-muted);">
+                            لا توجد أخبار جديدة نشرت اليوم.
+                        </div>
+                        @endforelse
                     </div>
-                    @endforeach
+                </div>
+
+                {{-- الأخبار السابقة --}}
+                <div>
+                    <h3 style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                        <i class="fas fa-history" style="color: var(--text-muted);"></i>
+                        الأخبار السابقة
+                    </h3>
+                    <div class="news-grid">
+                        @forelse($previousAnnouncements as $news)
+                        <div class="card news-card" style="opacity: 0.95;">
+                            <div style="background: linear-gradient(135deg, #FFD200 0%, #FFB000 100%); height: 140px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem;"><i class="fas fa-newspaper"></i></div>
+                            <div class="news-body">
+                                <span class="tag">{{ $news->type == 'general' ? 'إعلان عام' : 'تحديث' }}</span>
+                                <h4>{{ $news->title }}</h4>
+                                <p style="color: var(--text-muted); font-size: 0.9rem;">{{ $news->content }}</p>
+                                <small style="color: #AAA; margin-top: 10px; display: block;">{{ \Carbon\Carbon::parse($news->created_at)->format('Y-m-d') }} ({{ \Carbon\Carbon::parse($news->created_at)->diffForHumans() }})</small>
+                            </div>
+                        </div>
+                        @empty
+                        <div style="grid-column: 1 / -1; padding: 1.5rem; text-align: center; background: var(--bg-card); border-radius: 12px; color: var(--text-muted);">
+                            لا توجد أخبار سابقة.
+                        </div>
+                        @endforelse
+                    </div>
                 </div>
 
             </section>

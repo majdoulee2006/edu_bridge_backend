@@ -428,20 +428,32 @@ class StudentController extends Controller
             ->where('user_id', $user->user_id)
             ->latest();
 
-        if ($request->has('filter')) {
-            $f = $request->filter;
-            if ($f == 'unread') $query->where('is_read', false);
-            elseif ($f == 'read') $query->where('is_read', true);
-            elseif ($f == 'academic') {
-                $query->where(function($q) {
+        $academicTypes = [
+            'grade', 'marks', 'exam_grade', 'exam', 'exam_schedule',
+            'assignment', 'lecture', 'schedule', 'attendance', 'academic'
+        ];
+
+        $adminTypes = [
+            'announcement', 'leave_request', 'parent_summon', 'warning',
+            'service_request', 'administrative', 'general'
+        ];
+
+        if ($request->has('filter') && !empty($request->filter) && $request->filter !== 'all') {
+            $filter = strtolower($request->filter);
+            if ($filter == 'unread') {
+                $query->where('is_read', false);
+            } elseif ($filter == 'read') {
+                $query->where('is_read', true);
+            } elseif ($filter == 'academic') {
+                $query->where(function($q) use ($academicTypes) {
                     $q->where('category', 'academic')
-                      ->orWhereIn('type', ['grade', 'marks', 'assignment', 'lecture', 'schedule', 'exam']);
+                      ->orWhereIn('type', $academicTypes);
                 });
-            }
-            elseif ($f == 'administrative') {
-                $query->where(function($q) {
+            } elseif ($filter == 'administrative') {
+                $query->where(function($q) use ($academicTypes, $adminTypes) {
                     $q->where('category', 'administrative')
-                      ->orWhereIn('type', ['announcement', 'leave_request', 'general']);
+                      ->orWhereIn('type', $adminTypes)
+                      ->orWhereNotIn('type', $academicTypes);
                 });
             }
         }
@@ -454,7 +466,7 @@ class StudentController extends Controller
             ->get(['announcement_id', 'image', 'link_url'])
             ->keyBy('announcement_id');
 
-        $mappedItems = collect($paginator->items())->map(function ($notify) use ($announcementsData) {
+        $mappedItems = collect($paginator->items())->map(function ($notify) use ($announcementsData, $academicTypes) {
             $imageUrl = null;
             $linkUrl = null;
             if ($notify->type === 'announcement' && $notify->related_id) {
@@ -462,7 +474,7 @@ class StudentController extends Controller
                 $imageUrl = $ann && $ann->image ? url('storage/' . $ann->image) : null;
                 $linkUrl  = $ann->link_url ?? null;
             }
-            $isAcademic = $notify->category === 'academic' || in_array($notify->type, ['grade', 'marks', 'assignment', 'lecture']);
+            $isAcademic = $notify->category === 'academic' || in_array($notify->type, $academicTypes);
             $cat = $notify->category ?? ($isAcademic ? 'academic' : 'administrative');
 
             return [
@@ -491,7 +503,7 @@ class StudentController extends Controller
                     'type' => 'announcement',
                     'category' => 'administrative',
                     'sender_name' => 'إدارة الكلية',
-                    'is_read' => true,
+                    'is_read' => false,
                     'related_id' => null,
                     'image_url' => null,
                     'link_url' => null,
@@ -630,7 +642,6 @@ class StudentController extends Controller
         if ($coursesCollection->isEmpty() && !$failedOnly && $student) {
             $coursesCollection = $student->courses()->with(['teacher.user', 'schedule'])->get();
         }
-
         if ($failedOnly) {
             $failedCourseIds = [];
             foreach ($coursesCollection as $c) {
@@ -866,26 +877,24 @@ class StudentController extends Controller
         
         // بناء اسم المجموعة لتطابق الجداول المضافة من رئيس القسم
         // مثال: "معلوماتية" و "السنة الثانية" -> "معلوماتية - سنة ثانية"
-        $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? '');
+        $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? $student->level ?? '');
         $branchName = \Illuminate\Support\Facades\DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
         $classGroup = $branchName . ' - ' . $academicYearStr;
 
-        $schedulesCollection = Schedule::where(function($query) use ($student, $classGroup) {
-                $query->whereHas('course', function($qCourse) use ($student) {
-                    $qCourse->whereHas('students', function($qEnrolled) use ($student) {
-                        $qEnrolled->where('enrollments.student_id', $student->student_id);
-                    });
-                })
-                ->orWhere('class_group', $classGroup);
-            })
-           ->with(['course', 'course.teachers.user'])
-            ->orderBy('day')
+        $schedulesCollection = Schedule::where('class_group', $classGroup)
+            ->with(['course', 'course.teachers.user'])
+            ->orderByRaw("CASE day WHEN 'Sunday' THEN 1 WHEN 'Monday' THEN 2 WHEN 'Tuesday' THEN 3 WHEN 'Wednesday' THEN 4 WHEN 'Thursday' THEN 5 ELSE 6 END")
             ->orderBy('start_time')
             ->get();
 
         if ($schedulesCollection->isEmpty()) {
-            $schedulesCollection = Schedule::with(['course', 'course.teachers.user'])
-                ->orderBy('day')
+            $schedulesCollection = Schedule::whereHas('course', function($qCourse) use ($student) {
+                    $qCourse->whereHas('students', function($qEnrolled) use ($student) {
+                        $qEnrolled->where('enrollments.student_id', $student->student_id);
+                    });
+                })
+                ->with(['course', 'course.teachers.user'])
+                ->orderByRaw("CASE day WHEN 'Sunday' THEN 1 WHEN 'Monday' THEN 2 WHEN 'Tuesday' THEN 3 WHEN 'Wednesday' THEN 4 WHEN 'Thursday' THEN 5 ELSE 6 END")
                 ->orderBy('start_time')
                 ->get();
         }
@@ -905,7 +914,7 @@ class StudentController extends Controller
             ->map(function($items, $translatedDay) {
                 return [
                     'day' => $translatedDay,
-                    'lectures' => $items->map(function($item) {
+                    'lectures' => $items->sortBy('start_time')->values()->map(function($item) {
                         return [
                             'course_name' => $item->course->title ?? 'مادة غير معروفة',
                             'teacher' => $item->course->teachers->first()?->user?->name ?? $item->course->teachers->first()?->user?->full_name ?? 'مدرس الكلية',
@@ -986,15 +995,22 @@ class StudentController extends Controller
             ->whereIn('grade_events.type', ['exam', 'quiz'])
             ->whereNotNull('grade_events.date')
             ->where(function ($q) use ($myCourseIds, $student, $yearInt) {
-                // إما أن يكون التقييم لمادة مسجل بها الطالب
-                $q->whereIn('grade_events.course_id', $myCourseIds);
+                $hasCondition = false;
+                if (!empty($myCourseIds)) {
+                    $q->whereIn('grade_events.course_id', $myCourseIds);
+                    $hasCondition = true;
+                }
                 
-                // أو أن يكون لبرنامج الطالب وسنته الدراسية
                 if ($student->program_id && $yearInt > 0) {
-                    $q->orWhere(function ($q2) use ($student, $yearInt) {
-                        $q2->where('grade_events.program_id', $student->program_id)
-                           ->where('grade_events.year_level', $yearInt);
-                    });
+                    if ($hasCondition) {
+                        $q->orWhere(function ($q2) use ($student, $yearInt) {
+                            $q2->where('grade_events.program_id', $student->program_id)
+                               ->where('grade_events.year_level', $yearInt);
+                        });
+                    } else {
+                        $q->where('grade_events.program_id', $student->program_id)
+                          ->where('grade_events.year_level', $yearInt);
+                    }
                 }
             })
             ->select(
@@ -1169,22 +1185,27 @@ class StudentController extends Controller
         $user = $request->user();
         $student = $user->student;
         
-        $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? '');
+        $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? $student->level ?? '');
         $branchName = \Illuminate\Support\Facades\DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
         $classGroup = $branchName . ' - ' . $academicYearStr;
 
-        $schedules = Schedule::where(function($query) use ($student, $classGroup) {
-                $query->whereHas('course', function($qCourse) use ($student) {
+        $schedules = Schedule::where('class_group', $classGroup)
+            ->with(['course', 'course.teachers.user'])
+            ->orderByRaw("CASE day WHEN 'Sunday' THEN 1 WHEN 'Monday' THEN 2 WHEN 'Tuesday' THEN 3 WHEN 'Wednesday' THEN 4 WHEN 'Thursday' THEN 5 ELSE 6 END")
+            ->orderBy('start_time')
+            ->get();
+
+        if ($schedules->isEmpty()) {
+            $schedules = Schedule::whereHas('course', function($qCourse) use ($student) {
                     $qCourse->whereHas('students', function($qEnrolled) use ($student) {
                         $qEnrolled->where('enrollments.student_id', $student->student_id);
                     });
                 })
-                ->orWhere('class_group', $classGroup);
-            })
-            ->with(['course', 'course.teachers.user'])
-            ->orderBy('day')
-            ->orderBy('start_time')
-            ->get();
+                ->with(['course', 'course.teachers.user'])
+                ->orderByRaw("CASE day WHEN 'Sunday' THEN 1 WHEN 'Monday' THEN 2 WHEN 'Tuesday' THEN 3 WHEN 'Wednesday' THEN 4 WHEN 'Thursday' THEN 5 ELSE 6 END")
+                ->orderBy('start_time')
+                ->get();
+        }
 
         foreach ($schedules as $s) {
             $s->course_title = $s->course->title ?? 'مادة غير معروفة';
@@ -1591,15 +1612,22 @@ class StudentController extends Controller
 
         // 1. جلب أرقام المواد اللي مسجل فيها الطالب
         $enrolledCourseIds = Enrollment::where('student_id', $student->student_id)
-            ->pluck('course_id');
+            ->pluck('course_id')
+            ->toArray();
 
-        // 2. جلب كل واجبات هاي المواد
-        $assignments = Assignment::with(['course.teachers.user', 'submissions' => function($query) use ($student) {
+        // 2. جلب كافة الواجبات الحقيقية المتاحة بالطالب أو المواد المسجل فيها
+        $assignmentsQuery = Assignment::with(['course.teachers.user', 'submissions' => function($query) use ($student) {
             $query->where('student_id', $student->student_id);
-        }])
-        ->whereIn('course_id', $enrolledCourseIds)
-        ->orderBy('created_at', 'desc')
-        ->get();
+        }]);
+
+        if (!empty($enrolledCourseIds)) {
+            $assignmentsQuery->where(function($q) use ($enrolledCourseIds) {
+                $q->whereIn('course_id', $enrolledCourseIds)
+                  ->orWhereIn('course_id', Assignment::pluck('course_id')->toArray());
+            });
+        }
+
+        $assignments = $assignmentsQuery->orderBy('created_at', 'desc')->get();
 
         $formattedAssignments = [];
         $now = Carbon::now();
@@ -1893,38 +1921,47 @@ class StudentController extends Controller
         $studentName = $request->user()->full_name ?? 'طالب';
         $student = $request->user()->student;
 
+        $parentUserIds = collect();
         if ($student) {
-            // parent_students.parent_id/student_id هما FK على users.user_id
-            $parentIds = \DB::table('parent_students')
+            $pIds = \DB::table('parent_students')
                 ->where('student_id', $student->user_id)
+                ->orWhere('student_id', $student->student_id)
                 ->pluck('parent_id');
 
-            if ($parentIds->isNotEmpty()) {
-                foreach ($parentIds as $parentId) {
-                    $parentIsUser = \DB::table('users')->where('user_id', $parentId)->where('role_id', 4)->exists();
-                    $parent = $parentIsUser
-                        ? \DB::table('users')->where('user_id', $parentId)->first()
-                        : \DB::table('parents')->where('parent_id', $parentId)->first();
-                    if ($parent) {
-                        \DB::table('notifications')->insert([
-                            'user_id'    => $parent->user_id,
-                            'title'      => 'طلب إجازة يحتاج موافقتك',
-                            'message'    => 'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
-                            'type'       => 'leave_request',
-                            'related_id' => $leaveRequest->id,
-                            'is_read'    => 0,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                        \App\Services\FcmService::sendToUser(
-                            $parent->user_id,
-                            'طلب إجازة يحتاج موافقتك',
-                            'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
-                            ['type' => 'leave_request', 'related_id' => (string)$leaveRequest->id]
-                        );
+            foreach ($pIds as $pId) {
+                $pUser = \DB::table('users')->where('user_id', $pId)->first();
+                if ($pUser) {
+                    $parentUserIds->push($pUser->user_id);
+                } else {
+                    $pRow = \DB::table('parents')->where('parent_id', $pId)->first();
+                    if ($pRow && !empty($pRow->user_id)) {
+                        $parentUserIds->push($pRow->user_id);
                     }
                 }
-            } else {
+            }
+        }
+        $parentUserIds = $parentUserIds->unique()->filter();
+
+        if ($parentUserIds->isNotEmpty()) {
+            foreach ($parentUserIds as $pUserId) {
+                \DB::table('notifications')->insert([
+                    'user_id'    => $pUserId,
+                    'title'      => 'طلب إجازة يحتاج موافقتك',
+                    'message'    => 'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
+                    'type'       => 'leave_request',
+                    'related_id' => $leaveRequest->id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                \App\Services\FcmService::sendToUser(
+                    $pUserId,
+                    'طلب إجازة يحتاج موافقتك',
+                    'قدّم ' . $studentName . ' طلب إجازة بتاريخ ' . $request->date . '، يرجى مراجعة الطلب والرد عليه',
+                    ['type' => 'leave_request', 'related_id' => (string)$leaveRequest->id]
+                );
+            }
+        } else {
                 $leaveRequest->status = 'pending_hod';
                 $leaveRequest->save();
 
@@ -1952,7 +1989,8 @@ class StudentController extends Controller
                     );
                 }
             }
-        }
+
+        \App\Models\UserActivity::log('تقديم طلب إجازة (تطبيق)', "قام الطالب بتقديم طلب إجازة بتاريخ {$request->date} والسبب: {$request->reason}");
 
         \App\Models\UserActivity::log('تقديم طلب إجازة (تطبيق)', "قام الطالب بتقديم طلب إجازة بتاريخ {$request->date} والسبب: {$request->reason}");
 
@@ -2010,11 +2048,14 @@ class StudentController extends Controller
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
+        $studentUser = \DB::table('users')->where('user_id', $req->student_id)->first();
+        $studentRec  = $studentUser ? \DB::table('students')->where('user_id', $studentUser->user_id)->first() : null;
+
         $dateCarbon = \Carbon\Carbon::parse($req->date);
         $dayName = $dateCarbon->locale('ar')->dayName;
 
         $statusText = 'قيد المراجعة';
-        if ($req->status == 'approved') $statusText = 'تمت الموافقة من قبل إدارة شؤون الطلاب';
+        if ($req->status == 'approved') $statusText = 'تصريح خروج معتمد نهائياً - يُسمح بالمغادرة';
         elseif ($req->status == 'rejected') $statusText = 'تم الرفض من قبل إدارة شؤون الطلاب';
         elseif ($req->status == 'pending_hod') $statusText = 'بانتظار موافقة رئيس القسم';
         elseif ($req->status == 'pending_affairs') $statusText = 'بانتظار موافقة شؤون الطلاب';
@@ -2023,16 +2064,24 @@ class StudentController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'id'             => $req->id,
-                'type'           => $req->type == 'hourly' ? 'إجازة ساعية' : 'إجازة يوم كامل',
-                'raw_type'       => $req->type,
-                'date'           => $dateCarbon->format('Y-m-d'),
-                'formatted_date' => $dateCarbon->translatedFormat('d F Y'),
-                'day_name'       => $dayName,
-                'reason'         => $req->reason,
-                'status'         => $req->status,
-                'status_text'    => $statusText,
-                'created_at'     => $req->created_at ? $req->created_at->format('Y-m-d H:i') : null,
+                'id'               => $req->id,
+                'permit_number'    => 'EX-' . str_pad($req->id, 5, '0', STR_PAD_LEFT) . '#',
+                'student_name'     => $studentUser->full_name ?? 'الطالب',
+                'student_code'     => $studentRec->student_code ?? $studentUser->university_id ?? '202601',
+                'department'       => $studentUser->department ?? 'نظم معلومات',
+                'avatar'           => $studentUser->avatar ?? null,
+                'type'             => $req->type == 'hourly' ? 'إجازة ساعية' : 'إذن يومي',
+                'raw_type'         => $req->type,
+                'date'             => $dateCarbon->format('Y-m-d'),
+                'formatted_date'   => $dateCarbon->translatedFormat('d F Y'),
+                'day_name'         => $dayName,
+                'reason'           => $req->reason,
+                'status'           => $req->status,
+                'status_text'      => $statusText,
+                'parent_approved'  => in_array($req->status, ['pending_hod', 'pending_affairs', 'approved']),
+                'hod_approved'     => in_array($req->status, ['pending_affairs', 'approved']),
+                'affairs_approved' => $req->status === 'approved',
+                'created_at'       => $req->created_at ? $req->created_at->format('Y-m-d H:i') : null,
             ]
         ], 200);
     }
