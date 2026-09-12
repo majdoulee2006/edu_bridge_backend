@@ -1403,16 +1403,19 @@ class AffairsWebController extends Controller
                             ->first();
                     }
 
+                    // الطالب انضبط لتوّه على "السنة الأولى" أعلاه، فلازم يسجَّل بمواد سنته فقط (لا كل سنوات البرنامج)
                     $courseIds = collect();
                     if ($program) {
                         $student->update(['program_id' => $program->id]);
                         $courseIds = \DB::table('course_program')
-                            ->where('program_id', $program->id)
-                            ->pluck('course_id');
+                            ->join('courses', 'course_program.course_id', '=', 'courses.course_id')
+                            ->where('course_program.program_id', $program->id)
+                            ->where('courses.year', 1)
+                            ->pluck('course_program.course_id');
                     }
 
                     if ($courseIds->isEmpty()) {
-                        $courseIds = \DB::table('courses')->pluck('course_id');
+                        $courseIds = \DB::table('courses')->where('year', 1)->pluck('course_id');
                     }
 
                     foreach ($courseIds as $courseId) {
