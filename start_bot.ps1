@@ -20,14 +20,17 @@ if (-not $BotToken) {
     exit
 }
 
-# 2. Start Laravel server if not already running on port 8000
-$PortCheck = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
+# 2. Start Laravel server if not already running on port 8001
+# 🔧 كان هون 8000 (بورت افتراضي بلا --port)، بينما التطبيق وكل الاختبارات
+# شغالين فعلياً على 8001. عدّلناها هون بدل ما نضطر نكرر التغيير يدوياً
+# كل مرة.
+$PortCheck = Get-NetTCPConnection -LocalPort 8001 -ErrorAction SilentlyContinue
 if (-not $PortCheck) {
-    Write-Host "[INFO] Starting Laravel server (php artisan serve)..." -ForegroundColor Yellow
-    Start-Process -FilePath "php" -ArgumentList "artisan serve" -WorkingDirectory $ScriptDir -WindowStyle Minimized
+    Write-Host "[INFO] Starting Laravel server (php artisan serve --host=0.0.0.0 --port=8001)..." -ForegroundColor Yellow
+    Start-Process -FilePath "php" -ArgumentList "artisan serve --host=0.0.0.0 --port=8001" -WorkingDirectory $ScriptDir -WindowStyle Minimized
     Start-Sleep -Seconds 2
 } else {
-    Write-Host "[OK] Laravel server is already running on port 8000." -ForegroundColor Green
+    Write-Host "[OK] Laravel server is already running on port 8001." -ForegroundColor Green
 }
 
 # 3. Start Tunnel (ngrok or localtunnel)
@@ -43,11 +46,11 @@ if (Test-Path $LocalNgrok) {
 }
 
 if ($NgrokExecutable) {
-    Write-Host "[INFO] Starting ngrok tunnel on port 8000 ($NgrokExecutable)..." -ForegroundColor Yellow
+    Write-Host "[INFO] Starting ngrok tunnel on port 8001 ($NgrokExecutable)..." -ForegroundColor Yellow
     Get-Process -Name "ngrok" -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep -Milliseconds 500
 
-    Start-Process -FilePath $NgrokExecutable -ArgumentList "http 8000" -WindowStyle Minimized
+    Start-Process -FilePath $NgrokExecutable -ArgumentList "http 8001" -WindowStyle Minimized
 
     for ($i = 1; $i -le 10; $i++) {
         Start-Sleep -Seconds 1
@@ -64,7 +67,7 @@ if ($NgrokExecutable) {
 
 if (-not $TunnelUrl) {
     Write-Host "[INFO] ngrok not found, starting localtunnel..." -ForegroundColor Yellow
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c npx localtunnel --port 8000 --subdomain edubridge-attend" -WindowStyle Minimized
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c npx localtunnel --port 8001 --subdomain edubridge-attend" -WindowStyle Minimized
     Start-Sleep -Seconds 3
     $TunnelUrl = "https://edubridge-attend.loca.lt"
 }

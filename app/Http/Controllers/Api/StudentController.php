@@ -433,11 +433,15 @@ class StudentController extends Controller
             'assignment', 'lecture', 'schedule', 'attendance', 'academic'
         ];
 
-        $adminTypes = [
-            'announcement', 'leave_request', 'parent_summon', 'warning',
-            'service_request', 'administrative', 'general'
-        ];
-
+        // 🐛 كان الفلتر هون بيخلط بين عمود category وقائمة أنواع (type) قصيرة
+        // ومش شاملة كل الأنواع الفعلية المستخدمة بالمشروع. تحديداً فلتر
+        // "إدارية" كان فيه ->orWhereNotIn('type', $academicTypes) وهاد شرط
+        // واسع جداً بيلقط أي إشعار نوعه (type) مش مطابق حرفياً لأحد الـ10
+        // أنواع بالقائمة — حتى لو كان category تبعو academic فعلياً وصح.
+        // هيك كانت نفس الإشعارات الأكاديمية تظهر بتبويب الإداري كمان.
+        // عمود category موجود أصلاً بالضبط لهالغرض (enum: academic /
+        // administrative / chat) ومضبوط صح بمعظم نقاط الإنشاء، فهلق
+        // الفلترة بتعتمد عليه حصراً بدون أي خلط مع type.
         if ($request->has('filter') && !empty($request->filter) && $request->filter !== 'all') {
             $filter = strtolower($request->filter);
             if ($filter == 'unread') {
@@ -445,16 +449,9 @@ class StudentController extends Controller
             } elseif ($filter == 'read') {
                 $query->where('is_read', true);
             } elseif ($filter == 'academic') {
-                $query->where(function($q) use ($academicTypes) {
-                    $q->where('category', 'academic')
-                      ->orWhereIn('type', $academicTypes);
-                });
+                $query->where('category', 'academic');
             } elseif ($filter == 'administrative') {
-                $query->where(function($q) use ($academicTypes, $adminTypes) {
-                    $q->where('category', 'administrative')
-                      ->orWhereIn('type', $adminTypes)
-                      ->orWhereNotIn('type', $academicTypes);
-                });
+                $query->where('category', 'administrative');
             }
         }
 

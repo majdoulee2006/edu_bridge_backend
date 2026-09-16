@@ -1,7 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
-cd /d "%~dp0"
+rem 🔧 الملف صار جوا مجلد فرعي (سيرفر)، فلازم نطلع درجة وحدة لفوق
+rem لنوصل لمجلد المشروع الرئيسي يلي فيه ملف artisan ومجلد storage
+cd /d "%~dp0.."
 
 echo ============================================
 echo   Preparing project after copy to new PC

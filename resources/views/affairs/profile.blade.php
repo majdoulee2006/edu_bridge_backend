@@ -441,7 +441,7 @@
             
             <div id="phoneInputGroup" style="display: none; text-align: right; margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700;">رقم الهاتف</label>
-                <input type="text" name="phone" class="form-control" value="{{ $user->phone }}" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+                <input type="text" name="phone" class="form-control" value="{{ $user->phone }}" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             </div>
 
             <button type="submit" class="modal-confirm-btn">حفظ التغييرات</button>
@@ -458,15 +458,15 @@
             @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الحالية</label>
-                <input type="password" name="current_password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+                <input type="password" name="current_password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             </div>
             <div style="margin-bottom: 1rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الجديدة</label>
-                <input type="password" name="password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+                <input type="password" name="password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700;">تأكيد كلمة المرور الجديدة</label>
-                <input type="password" name="password_confirmation" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+                <input type="password" name="password_confirmation" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             </div>
 
             <button type="submit" class="modal-confirm-btn">تغيير كلمة المرور</button>
@@ -482,10 +482,10 @@
         <h3 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem;">التحقق الأمني (OTP)</h3>
         <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">أرسلنا رمزاً مؤلفاً من 4 أرقام لتأكيد هويتك. أدخله أدناه للمتابعة.</p>
         <div style="display: flex; gap: 0.8rem; justify-content: center; margin-bottom: 1.5rem;">
-            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary); color: var(--text-primary);">
-            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary); color: var(--text-primary);">
-            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary); color: var(--text-primary);">
-            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary); color: var(--text-primary);">
+            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
+            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
+            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
+            <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
         </div>
         <button type="button" class="modal-confirm-btn" onclick="submitProfileForm()">تأكيد وحفظ</button>
         <button type="button" class="modal-cancel-btn" onclick="closeOTPModal()">إلغاء</button>
@@ -513,13 +513,53 @@
         document.getElementById('editPasswordModal').classList.remove('active');
     }
 
-    // Intercept form submission to show OTP
+    // 🐛 كان هون بس بيفتح شكل الـOTP شكلياً وبعدين يحفظ التغيير مباشرة
+    // (pendingForm.submit() يروح لـ updateProfile اللي بيحفظ بدون أي تحقق)
+    // بدون ما يطلب أو يتحقق من رمز حقيقي من السيرفر إطلاقاً. هلق منادي
+    // فعلياً على /profile/send-otp و/profile/verify-otp الموجودين
+    // بالباك إند أصلاً وما كانوا مستخدمين.
+    let otpBusy = false;
+
     document.getElementById('profileUpdateForm').addEventListener('submit', function(e) {
         e.preventDefault();
         pendingForm = this;
-        closeModals();
-        openOTPModal();
+
+        const csrfToken = pendingForm.querySelector('input[name="_token"]').value;
+        const fullName  = pendingForm.querySelector('input[name="full_name"]').value;
+        const phoneEl   = pendingForm.querySelector('input[name="phone"]');
+        const phone     = phoneEl ? phoneEl.value : null;
+
+        setOtpBusy(true);
+        fetch(@json(route('affairs.profile.send_otp')), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ full_name: fullName, phone: phone }),
+        })
+        .then(res => res.json())
+        .then(data => {
+            setOtpBusy(false);
+            if (data.success) {
+                closeModals();
+                openOTPModal();
+            } else {
+                alert(data.message || 'تعذّر إرسال رمز التحقق.');
+            }
+        })
+        .catch(() => {
+            setOtpBusy(false);
+            alert('تعذّر الاتصال بالسيرفر، حاول مرة أخرى.');
+        });
     });
+
+    function setOtpBusy(busy) {
+        otpBusy = busy;
+        const btn = pendingForm ? pendingForm.querySelector('.modal-confirm-btn') : null;
+        if (btn) btn.disabled = busy;
+    }
 
     function openOTPModal() {
         document.getElementById('otpModal').classList.add('active');
@@ -533,13 +573,37 @@
 
     function submitProfileForm() {
         const code = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
-        if(code.length < 4) {
+        if (code.length < 4) {
             alert('يرجى إدخال الرمز كاملاً (4 أرقام)');
             return;
         }
-        if (pendingForm) {
-            pendingForm.submit();
-        }
+        if (!pendingForm || otpBusy) return;
+
+        const csrfToken = pendingForm.querySelector('input[name="_token"]').value;
+
+        otpBusy = true;
+        fetch(@json(route('affairs.profile.verify_otp')), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ otp: code }),
+        })
+        .then(res => res.json())
+        .then(data => {
+            otpBusy = false;
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.message || 'رمز التحقق غير صحيح.');
+            }
+        })
+        .catch(() => {
+            otpBusy = false;
+            alert('تعذّر الاتصال بالسيرفر، حاول مرة أخرى.');
+        });
     }
 
     // Auto-advance OTP inputs

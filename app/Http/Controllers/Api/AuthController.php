@@ -713,18 +713,22 @@ class AuthController extends Controller
             'expires_at' => now()->addMinutes(15),
         ]);
 
+        // 📵 ألغينا إرسال نسخة عبر البريد الإلكتروني بطلب صريح — كل رموز
+        // التحقق (OTP) لكل المستخدمين بتوصل حصراً عبر بوت تيليغرام هلق،
+        // بشرط إنه المستخدم يكون سبق وربط حسابه (/start على البوت).
         $telegram = new TelegramService();
-        $telegram->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
+        $res = $telegram->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
 
-        try {
-            Mail::to($request->email)->send(new OtpMail($otp, $user->full_name));
-        } catch (\Exception $e) {
-            Log::error('Change Email OTP Error: ' . $e->getMessage());
+        if (!$res['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $res['message'],
+            ], 400);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال رمز التحقق (OTP) إلى بوت تيليغرام والبريد الإلكتروني الجديد',
+            'message' => 'تم إرسال رمز التحقق (OTP) إلى بوت تيليغرام',
         ], 200);
     }
 

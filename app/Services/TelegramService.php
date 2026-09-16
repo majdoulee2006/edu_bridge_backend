@@ -57,8 +57,12 @@ class TelegramService
 
     public function sendOtp(int $chatId, string $otp, string $name = ''): bool
     {
-        \App\Jobs\SendTelegramMessageJob::dispatch($chatId, $otp, 'otp', ['name' => $name]);
-        return true;
+        // 🐛 كانت هون بترمي المهمة على قائمة انتظار (Queue) وترجع true فوراً
+        // بغض النظر إذا انبعتت فعلاً أو لأ — بدون عامل قائمة انتظار (queue
+        // worker) شغال بشكل دائم، الرسالة تضل عالقة للأبد وما توصل أبداً.
+        // بما إن إرسال الـOTP لازم يكون فوري، هلق منستخدم الإرسال المباشر
+        // (نفس منطق sendOtpSync) بدل التأجيل لقائمة الانتظار.
+        return $this->sendOtpSync($chatId, $otp, $name);
     }
 
     public function sendOtpSync(int $chatId, string $otp, string $name = ''): bool
@@ -90,14 +94,10 @@ class TelegramService
 
     public function sendCredentials(int $chatId, string $universityId, string $defaultPassword, string $name = '', string $nationalId = '', string $birthDate = ''): bool
     {
-        \App\Jobs\SendTelegramMessageJob::dispatch($chatId, '', 'credentials', [
-            'universityId' => $universityId,
-            'defaultPassword' => $defaultPassword,
-            'name' => $name,
-            'nationalId' => $nationalId,
-            'birthDate' => $birthDate
-        ]);
-        return true;
+        // 🐛 نفس مشكلة sendOtp فوق: كانت بترمي على قائمة انتظار ما حدا
+        // يعالجها بشكل دائم، فبيانات الدخول (الرقم الجامعي وكلمة السر
+        // الافتراضية) ما كانت توصل أبداً. هلق إرسال مباشر بدل قائمة الانتظار.
+        return $this->sendCredentialsSync($chatId, $universityId, $defaultPassword, $name, $nationalId, $birthDate);
     }
 
     public function sendCredentialsSync(int $chatId, string $universityId, string $defaultPassword, string $name = '', string $nationalId = '', string $birthDate = ''): bool

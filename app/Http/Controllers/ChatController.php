@@ -438,7 +438,12 @@ class ChatController extends Controller
                 return in_array($receiverRoleId, [$roleParent, $roleTeacher, $roleStudent, $roleAdmin]);
 
             case $roleAdmin:
-                return in_array($receiverRoleId, [$roleHead, $roleAffairs, $roleTeacher]);
+                // 🛠️ أُضيف $roleStudent هون لأن getContacts() فوق أصلاً كانت
+                // بتعرض الطلاب ضمن جهات اتصال الإدارة، لكن هالدالة كانت
+                // ترفض إرسال الرسالة الفعلية بـ403 — تعارض بين الشاشتين كان
+                // بيخلّي رسائل الإدارة للطلاب تظهر "مرسلة" بالواجهة بينما
+                // بالحقيقة السيرفر رافضها بصمت.
+                return in_array($receiverRoleId, [$roleHead, $roleAffairs, $roleTeacher, $roleStudent]);
 
             case $roleAffairs:
                 return in_array($receiverRoleId, [$roleAdmin]);
@@ -552,7 +557,7 @@ public function editMessage(Request $request, $messageId)
         'message' => 'required|string',
     ]);
 
-    $myId = $request->user()->user_id; // أو id
+    $myId = (int) $request->user()->user_id;
     $message = \App\Models\Message::find($messageId);
 
     // 2. هل الرسالة موجودة؟
@@ -560,8 +565,10 @@ public function editMessage(Request $request, $messageId)
         return response()->json(['error' => 'الرسالة غير موجودة'], 404);
     }
 
-    // 3. هل هو صاحب الرسالة؟
-    if ($message->sender_id !== $myId) {
+    // 3. هل هو صاحب الرسالة؟ (مقارنة بعد تحويل النوع، بنفس أسلوب باقي
+    // دوال الملف — كانت هون مقارنة صارمة (!==) بدون تحويل، فأي فرق
+    // بنوع البيانات كان ممكن يرفض صاحب الرسالة الحقيقي بالخطأ)
+    if ((int) $message->sender_id !== $myId) {
         return response()->json(['error' => 'غير مصرح لك بتعديل هذه الرسالة'], 403);
     }
 
@@ -652,7 +659,22 @@ public function getGroupMessages(Request $request, $groupId)
      */
     public function downloadAttachment(Request $request, $id)
     {
+        $myId = (int) $request->user()->user_id;
         $message = \App\Models\Message::findOrFail($id);
+
+        // 🛡️ لازم يكون المستخدم طرف بهاي الرسالة (مرسل أو مستقبل)، أو عضو
+        // بالجروب لو كانت رسالة جماعية. قبل هالتحقق كان أي مستخدم مسجل
+        // دخول (بأي دور) فيه يحمّل مرفق أي محادثة تانية بس لو خمّن رقم الرسالة.
+        $isDirectParty = (int) $message->sender_id === $myId || (int) $message->receiver_id === $myId;
+        $isGroupMember = false;
+        if ($message->group_id) {
+            $group = \App\Models\Group::find($message->group_id);
+            $isGroupMember = $group && $group->users()->where('users.user_id', $myId)->exists();
+        }
+
+        if (!$isDirectParty && !$isGroupMember) {
+            return response()->json(['error' => 'غير مصرح لك بتحميل هذا المرفق'], 403);
+        }
 
         if (!$message->attachment) {
             return response()->json(['error' => 'لا يوجد مرفق لهذه الرسالة'], 404);

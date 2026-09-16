@@ -38,7 +38,15 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\DB::statement("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
         
         \Illuminate\Support\Facades\RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            // 🐛 كانت هون ->id بينما مفتاح المستخدم الحقيقي هو user_id (primary
+            // key مخصص بموديل User)، فـ ->id كانت دايماً null وبالتالي كل
+            // المستخدمين المصادقين كانوا يشاركوا نفس سقف الـ IP الواحد بدل
+            // سقف مستقل لكل مستخدم — وهاد كان بيسبب 429 بسرعة لأي عدد أجهزة
+            // خلف نفس الشبكة/الـ IP (متل كل الطلاب بجامعة وحدة، أو هون عبر
+            // نفق USB reverse يلي بيخلي كل الطلبات تبدو جايي من 127.0.0.1).
+            // كمان رفعت السقف لأن شات فعلي بـ polling (رسائل كل ٢-٥ ثواني +
+            // جهات اتصال) بيحتاج أكتر بكتير من ٦٠ طلب بالدقيقة الواحدة.
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(240)->by($request->user()?->user_id ?: $request->ip());
         });
 
         // Register Observers

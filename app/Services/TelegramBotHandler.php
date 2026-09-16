@@ -51,10 +51,18 @@ class TelegramBotHandler
         $state = Cache::get($stateKey);
 
         if ($text === '/start') {
-            if ($user && $user->role === 'student') {
-                $this->sendStudentMainMenu($chatId, "مرحباً مجدداً **{$user->full_name}** 🎓");
+            // 🔓 كل الأدوار هلق فيها تربط حسابها (مش الطلاب بس)، عشان
+            // تقدر تستقبل رموز التحقق (OTP) عبر البوت. الطالب بس بيشوف
+            // قائمة خدمات الطالب الكاملة، وباقي الأدوار بتاخد رسالة تأكيد
+            // ربط بسيطة.
+            if ($user) {
+                if ($user->role === 'student') {
+                    $this->sendStudentMainMenu($chatId, "مرحباً مجدداً **{$user->full_name}** 🎓");
+                } else {
+                    $this->sendMessage($chatId, "مرحباً مجدداً **{$user->full_name}** 👋\nحسابك مربوط بالفعل، وأي رمز تحقق (OTP) رح يوصلك هون تلقائياً.");
+                }
             } else {
-                $this->sendMessage($chatId, "مرحباً بك في البوت الرسمي لـ Edu Bridge 🎓\nللبدء، يرجى إدخال **الرقم الجامعي** الخاص بك:");
+                $this->sendMessage($chatId, "مرحباً بك في البوت الرسمي لـ Edu Bridge 🎓\nللبدء، يرجى إدخال **اسم المستخدم / البريد الإلكتروني / رقم الهاتف / الرقم الجامعي** الخاص بحسابك:");
                 Cache::put($stateKey, 'awaiting_university_id', 3600);
             }
             return;
@@ -122,6 +130,11 @@ class TelegramBotHandler
             } else {
                 $this->sendStudentMainMenu($chatId);
             }
+        } elseif ($user) {
+            // مستخدم مربوط بحسابه بس مش طالب (ولي أمر/معلم/رئيس قسم/إدارة) —
+            // هالبوت حالياً بس بيستقبل رموز التحقق (OTP) لهالأدوار، ما عندو
+            // قائمة خدمات تفاعلية إلهم بعد.
+            $this->sendMessage($chatId, "مرحباً **{$user->full_name}** 👋\nحسابك مربوط، ورح توصلك رموز التحقق (OTP) هون تلقائياً وقت الحاجة.");
         } else {
             $this->sendMessage($chatId, "عذراً، لم أتمكن من التعرف على حسابك. يرجى الضغط على /start للبدء من جديد.");
         }
@@ -192,17 +205,31 @@ class TelegramBotHandler
 
     private function handleUniversityIdInput($chatId, $text)
     {
-        $universityId = trim($text);
-        $user = User::where('university_id', $universityId)->first();
+        // 🔓 نفس منطق تحديد الهوية المستخدم بتسجيل الدخول الرئيسي بالتطبيق
+        // (AuthController@login) بالظبط، بدل الاقتصار على الرقم الجامعي بس
+        // — هيك ولي الأمر والمعلم ورئيس القسم والإدارة (يلي ما إلهم رقم
+        // جامعي) فيهم يربطوا حسابهم كمان عبر اسم المستخدم أو الإيميل أو الهاتف.
+        $input = trim($text);
+        $digitsOnly = preg_replace('/[^0-9]/', '', $input);
+
+        $user = User::where(function ($q) use ($input, $digitsOnly) {
+                $q->where('username', $input)
+                  ->orWhere('email', $input)
+                  ->orWhere('phone', $input)
+                  ->orWhere('university_id', $input)
+                  ->orWhereHas('student', function ($sq) use ($input) {
+                      $sq->where('student_code', $input);
+                  });
+                if (!empty($digitsOnly)) {
+                    $q->orWhere('university_id', $digitsOnly)
+                      ->orWhere('phone', '+' . $digitsOnly)
+                      ->orWhereRaw("REPLACE(REPLACE(phone, '+', ''), ' ', '') = ?", [$digitsOnly]);
+                }
+            })
+            ->first();
 
         if (!$user) {
-            $this->sendMessage($chatId, "❌ الرقم الجامعي غير صحيح. يرجى المحاولة مرة أخرى أو التأكد من إدخال الرقم باللغة الإنجليزية.");
-            return;
-        }
-
-        if ($user->role !== 'student') {
-            $this->sendMessage($chatId, "عذراً، هذا البوت مخصص للطلاب حالياً.");
-            Cache::forget("telegram_state_{$chatId}");
+            $this->sendMessage($chatId, "❌ لم يتم العثور على حساب بهذه البيانات. تأكد من إدخال اسم المستخدم أو الإيميل أو رقم الهاتف أو الرقم الجامعي بشكل صحيح.");
             return;
         }
 
@@ -235,7 +262,11 @@ class TelegramBotHandler
             // Delete the password message for security if possible (optional)
             // Telegram API supports deleteMessage but we need message_id
 
-            $this->sendStudentMainMenu($chatId, "✅ **تم تسجيل الدخول وربط حسابك بنجاح!**\nمرحباً بك **{$user->full_name}** 🎓");
+            if ($user->role === 'student') {
+                $this->sendStudentMainMenu($chatId, "✅ **تم تسجيل الدخول وربط حسابك بنجاح!**\nمرحباً بك **{$user->full_name}** 🎓");
+            } else {
+                $this->sendMessage($chatId, "✅ **تم ربط حسابك بنجاح!**\nمرحباً بك **{$user->full_name}** 🎓\n\nمن الآن، أي رمز تحقق (OTP) — لتغيير كلمة السر أو البريد أو رقم الهاتف — رح يوصلك مباشرة هون على هالمحادثة.");
+            }
         } else {
             $this->sendMessage($chatId, "❌ كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى:");
         }
