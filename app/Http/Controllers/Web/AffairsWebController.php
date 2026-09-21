@@ -141,34 +141,221 @@ class AffairsWebController extends Controller
         ));
     }
 
-    // ─────────────────────────── تثقيلات المواد (Course Weights) ───────────────────────────
-    public function courseWeights()
+    // ─────────────────────────── تثقيلات المواد والكنترول الأكاديمي (Course Weights & Academic Control) ───────────────────────────
+    public function getCourseWeightsPayload()
     {
-        // 1. جلب الأقسام
+        // 1. الأقسام
         $departments = DB::table('departments')->select('department_id', 'name')->get();
 
-        // 2. جلب الدورات (Programs)
+        // 2. التخصصات / البرامج
         $programs = DB::table('programs')->select('id', 'name', 'department_id')->get();
 
-        // 3. جلب المواد (Courses) مع ربطها بالدورات
+        // 3. الفصول الدراسية
+        $semesters = DB::table('semesters')->select('semester_id', 'name')->get();
+
+        // 4. المواد المرتبطة بالبرامج مع التثقيلات
         $courses = DB::table('courses')
-            ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
-            ->select('courses.course_id', 'courses.title', 'courses.weight', 'courses.year', 'course_program.program_id')
+            ->leftJoin('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->select(
+                'courses.course_id',
+                'courses.title',
+                'courses.weight',
+                'courses.year',
+                'courses.semester_id',
+                'course_program.program_id'
+            )
             ->get();
 
-        // 4. جلب الطلاب وعلاماتهم بناءً على التسجيل (Enrollments)
-        // نستخدم COALESCE لضمان أن القيمة 0 في حال عدم وجود علامات
-        // ملاحظة: مادة زي c++ أو شبكات ممكن تكون مشتركة بين أكثر من دورة (اتصالات والكترون مثلاً)،
-        // فلازم نربط grade_events بـ program_id الطالب كمان (وليس فقط course_id) حتى ما تختلط
-        // علامات شعبة بشعبة تانية لنفس المادة، ونمرّر برنامج الطالب الحقيقي عشان تصفية القائمة بالواجهة.
+        // 5. رؤساء الأقسام والمرشدين الأكاديميين
+        $hods = DB::table('departments')
+            ->leftJoin('heads', 'departments.department_id', '=', 'heads.department_id')
+            ->leftJoin('users', 'heads.user_id', '=', 'users.user_id')
+            ->pluck('users.full_name', 'departments.department_id');
+
+        $advisors = DB::table('teachers')
+            ->join('users', 'teachers.user_id', '=', 'users.user_id')
+            ->whereNotNull('teachers.advisor_branch')
+            ->select('teachers.advisor_branch', 'teachers.advisor_year', 'users.full_name')
+            ->get()
+            ->keyBy(fn($t) => trim((string)$t->advisor_branch) . '_' . trim((string)$t->advisor_year));
+
+        // 6. جلب الطلاب مع بياناتهم المؤسساتية
+        $rawStudents = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
+            ->select(
+                'students.student_id',
+                'students.user_id',
+                'students.student_code',
+                'users.full_name',
+                'students.program_id',
+                'programs.name as program_name',
+                'departments.department_id',
+                'departments.name as department_name',
+                'students.level',
+                'users.academic_year',
+                'users.status as user_status',
+                'users.created_at as joined_at'
+            )
+            ->get();
+
+        // 7. علامات الطلاب في المواد المسجلة
+        $studentGrades = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->leftJoin('grade_events', function($join) {
+                $join->on('courses.course_id', '=', 'grade_events.course_id');
+            })
+            ->leftJoin('grade_entries', function($join) {
+                $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
+                     ->on('enrollments.student_id', '=', 'grade_entries.student_id');
+            })
+            ->where('enrollments.status', 'active')
+            ->select(
+                'enrollments.student_id',
+                'courses.course_id',
+                'courses.title',
+                'courses.weight',
+                'courses.year',
+                'courses.semester_id',
+                DB::raw('COALESCE(SUM(grade_entries.score), 0) as total_score'),
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "quiz" THEN grade_entries.score ELSE 0 END), 0) as quiz_score'),
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "oral" THEN grade_entries.score ELSE 0 END), 0) as oral_score'),
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "exam" THEN grade_entries.score ELSE 0 END), 0) as exam_score'),
+                DB::raw('100 as event_max_score')
+            )
+            ->groupBy('enrollments.student_id', 'courses.course_id', 'courses.title', 'courses.weight', 'courses.year', 'courses.semester_id')
+            ->get()
+            ->groupBy('student_id');
+
+        // تجميع بيانات الطلاب وربطها بالمواد والقرارات
+        $studentsList = $rawStudents->map(function ($s) use ($hods, $advisors, $studentGrades) {
+            $isYear1 = str_contains(trim((string)$s->level), 'الأولى');
+            $stdCourses = $studentGrades->get($s->student_id, collect())
+                ->filter(function($c) use ($isYear1) {
+                    if ($isYear1 && (int)($c->year ?? 1) > 1) {
+                        return false;
+                    }
+                    return true;
+                })
+                ->map(function ($c) use ($isYear1) {
+                    $cYear = (int) ($c->year ?? 1);
+                    $semId = (int) ($c->semester_id ?? 1);
+
+                    // لطالب السنة الأولى: الفصل الثاني فقط مغلق (year 1, sem 2)
+                    // لطالب السنة الثانية: الفصل الأخير فقط مغلق (year 2, sem 2)
+                    $isClosed = $isYear1 ? ($cYear === 1 && $semId === 2) : ($cYear === 2 && $semId === 2);
+                    $isPastCompleted = !$isYear1 && ($cYear === 1);
+                    $isCurrentActive = $isYear1 ? ($cYear === 1 && $semId === 1) : ($cYear === 2 && $semId === 1);
+
+                    $maxScore = 100;
+                    $rawPct = (float) $c->total_score;
+                    $pct = min(100, max(0, round($rawPct, 1)));
+                    $w = (float) ($c->weight ?? 1);
+                    if ($w <= 0) $w = 1;
+                    $weightedPts = round($pct * $w, 2);
+
+                    $status = 'ناجح';
+                    if ($isClosed) {
+                        $status = 'مغلق المقرر لحين انتهاء الفصل الساري';
+                    } elseif ($isPastCompleted) {
+                        $status = 'مجتاز (السنة السابقة)';
+                    } else {
+                        $status = $pct >= 50 ? 'ناجح' : 'راسب';
+                    }
+
+                    return [
+                        'course_id'         => $c->course_id,
+                        'title'             => $c->title,
+                        'year'              => $cYear,
+                        'semester_id'       => $semId,
+                        'is_closed'         => $isClosed,
+                        'is_past_completed' => $isPastCompleted,
+                        'is_current_active' => $isCurrentActive,
+                        'weight'            => $w,
+                        'quiz_score'        => $isClosed ? null : ($isPastCompleted ? null : round((float) ($c->quiz_score ?? 0), 1)),
+                        'oral_score'        => $isClosed ? null : ($isPastCompleted ? null : round((float) ($c->oral_score ?? 0), 1)),
+                        'exam_score'        => $isClosed ? null : ($isPastCompleted ? null : round((float) ($c->exam_score ?? 0), 1)),
+                        'score'             => $isClosed ? null : ($isPastCompleted ? null : round((float) $c->total_score, 1)),
+                        'max_score'         => (float) $maxScore,
+                        'percentage'        => $isClosed ? null : ($isPastCompleted ? null : $pct),
+                        'weighted_points'   => $isCurrentActive ? $weightedPts : 0,
+                        'status'            => $status,
+                    ];
+                })->values();
+
+            // احتساب المعدل التراكمي والحالة الأكاديمية اعتماداً على الفصل الساري حالياً بالمعهد
+            $activeCourses = $stdCourses->where('is_current_active', true);
+            $semGroups = $activeCourses->groupBy(function($c) {
+                return $c['year'] . '_' . $c['semester_id'];
+            });
+            $semGpas = [];
+            foreach ($semGroups as $coursesInSem) {
+                $semW = $coursesInSem->sum('weight');
+                $semPts = $coursesInSem->sum('weighted_points');
+                if ($semW > 0) {
+                    $semGpas[] = round($semPts / $semW, 2);
+                }
+            }
+            // المعدل التراكمي النهائي: مجموع معدلات الفصول المنتهية المجتازة على عدد الفصول المجتازة
+            // طالب السنة الأولى لديه فصل مجتاز واحد (المقام 1)
+            // طالب السنة الثانية لديه 3 فصول مجتازة (فصلان من السنة الأولى + الفصل الساري إذا كان ناجحاً، المقام 3)
+            $activePassedGpas = array_values(array_filter($semGpas, fn($g) => $g >= 50));
+            $passedCount = $isYear1 ? count($activePassedGpas) : (2 + count($activePassedGpas));
+            $sumPassed = array_sum($activePassedGpas);
+            $weightedGpa = $passedCount > 0 ? round($sumPassed / $passedCount, 2) : 0;
+            $sumWeight = $activeCourses->sum('weight');
+            $failedCourses = $activeCourses->where('status', 'راسب')->pluck('title')->toArray();
+            $failedCount = count($failedCourses);
+
+            $levelStr = trim((string)$s->level);
+            $isGrad = in_array($levelStr, ['خريج', 'graduate']) || $s->user_status === 'graduated';
+            $isSupp = in_array($levelStr, ['دورة تكميلية', 'تكميلي']) || ($levelStr == 'السنة الثانية' && $failedCount > 0);
+
+            $standing = 'passed';
+            if ($isGrad) {
+                $standing = 'graduated';
+            } elseif ($isSupp) {
+                $standing = 'supplementary';
+            } elseif ($failedCount > 0) {
+                $standing = 'failed';
+            }
+
+            $advKey = trim((string)$s->program_name) . '_' . trim((string)$s->level);
+            $advisor = $advisors->get($advKey);
+
+            return [
+                'student_id'      => $s->student_id,
+                'user_id'         => $s->user_id,
+                'student_code'    => $s->student_code ?? '',
+                'full_name'       => $s->full_name,
+                'program_id'      => $s->program_id,
+                'program_name'    => $s->program_name ?? 'عام',
+                'department_id'   => $s->department_id,
+                'department_name' => $s->department_name ?? 'عام',
+                'level'           => $s->level ?? 'السنة الأولى',
+                'joined_at'       => $s->joined_at ? \Carbon\Carbon::parse($s->joined_at)->format('Y-m-d') : '2026-09-01',
+                'hod_name'        => $hods->get($s->department_id) ?? 'د. أحمد ديب (رئيس القسم)',
+                'advisor_name'    => $advisor ? $advisor->full_name : 'أ. أحمد نصلى (المرشد الأكاديمي)',
+                'status'          => $s->user_status ?? 'active',
+                'courses'         => $stdCourses,
+                'summary'         => [
+                    'total_weight'   => $sumWeight,
+                    'weighted_gpa'   => $weightedGpa,
+                    'failed_count'   => $failedCount,
+                    'failed_courses' => $failedCourses,
+                    'standing'       => $standing,
+                ],
+            ];
+        });
+
+        // 8. تجهيز طلاب المواد للمنظور الأول (Course View)
         $courseStudents = DB::table('enrollments')
             ->join('students', 'enrollments.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
             ->leftJoin('grade_events', function($join) {
-                $join->on('courses.course_id', '=', 'grade_events.course_id')
-                     ->on('students.program_id', '=', 'grade_events.program_id')
-                     ->where('grade_events.type', '=', 'exam');
+                $join->on('courses.course_id', '=', 'grade_events.course_id');
             })
             ->leftJoin('grade_entries', function($join) {
                 $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
@@ -182,25 +369,137 @@ class AffairsWebController extends Controller
                 'students.student_code',
                 'users.full_name as student_name',
                 'courses.weight',
+                'courses.year',
+                'courses.semester_id',
                 DB::raw('COALESCE(SUM(grade_entries.score), 0) as exam_score'),
-                DB::raw('COALESCE(MAX(grade_events.max_score), 100) as exam_max_score')
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "quiz" THEN grade_entries.score ELSE 0 END), 0) as quiz_score'),
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "oral" THEN grade_entries.score ELSE 0 END), 0) as oral_score'),
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "exam" THEN grade_entries.score ELSE 0 END), 0) as final_exam_score'),
+                DB::raw('100 as exam_max_score')
             )
-            ->groupBy('enrollments.course_id', 'enrollments.student_id', 'students.program_id', 'students.student_code', 'users.full_name', 'courses.weight')
+            ->groupBy('enrollments.course_id', 'enrollments.student_id', 'students.program_id', 'students.student_code', 'users.full_name', 'courses.weight', 'courses.year', 'courses.semester_id')
             ->get();
 
-        // تجهيز مصفوفات متداخلة لتسهيل عرضها في الـ JavaScript
-        $data = [
-            'departments' => $departments,
-            'programs'    => $programs,
-            'courses'     => $courses,
-            'students'    => $courseStudents,
+        return [
+            'departments'  => $departments,
+            'programs'     => $programs,
+            'semesters'    => $semesters,
+            'courses'      => $courses,
+            'students'     => $courseStudents,
+            'studentsList' => $studentsList,
         ];
+    }
+
+    public function courseWeights()
+    {
+        $data = $this->getCourseWeightsPayload();
+
+        if (request()->wantsJson() || request()->ajax() || request()->has('api') || request()->is('api/*')) {
+            return response()->json([
+                'success' => true,
+                'data'    => $data,
+            ]);
+        }
 
         return view('affairs.course_weights', compact('data'));
     }
 
     /**
-     * تصدير نتائج طلاب مادة معينة ضمن دورة معينة (Excel أو PDF).
+     * اتخاذ القرار الأكاديمي للطالب (ترفيع، تخرج، دورة تكميلية، إعادة سنة)
+     */
+    public function studentAcademicDecision(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,student_id',
+            'decision'   => 'required|in:promote_semester_2,promote_year_2,promote_semester_4,graduate,supplementary,repeat_year',
+            'notes'      => 'nullable|string|max:1000',
+        ]);
+
+        $student = Student::with('user')->findOrFail($request->student_id);
+        $user = $student->user;
+        $decision = $request->decision;
+        $notes = $request->input('notes', '');
+
+        $title = '';
+        $message = '';
+        $newLevel = '';
+        $newStanding = '';
+
+        if ($decision === 'promote_semester_2') {
+            $newLevel = 'السنة الأولى - الفصل الثاني';
+            $newStanding = 'passed';
+            $student->update(['updated_at' => now()]);
+            $title = 'مبروك! تم الترفيع إلى الفصل الثاني 📚';
+            $message = 'قررت شؤون الطلاب ترفيعك بنجاح إلى الفصل الدراسي الثاني بعد استيفاء مقررات الفصل الأول.' . ($notes ? " ملاحظة: {$notes}" : '');
+        } elseif ($decision === 'promote_year_2') {
+            $newLevel = 'السنة الثانية';
+            $newStanding = 'passed';
+            $student->update(['level' => $newLevel, 'updated_at' => now()]);
+            if ($user) {
+                $user->update(['academic_year' => $newLevel]);
+            }
+            Student::autoEnrollCourses($student->student_id);
+            $title = 'مبروك! تم الترفيع للسنة الثانية 🎓';
+            $message = 'قررت شؤون الطلاب ترفيعك بنجاح إلى السنة الثانية وتسجيل مواد الفصل الجديد.' . ($notes ? " ملاحظة: {$notes}" : '');
+        } elseif ($decision === 'promote_semester_4') {
+            $newLevel = 'السنة الثانية - الفصل الرابع';
+            $newStanding = 'passed';
+            $student->update(['updated_at' => now()]);
+            $title = 'مبروك! تم الترفيع إلى الفصل الرابع 📚✨';
+            $message = 'قررت شؤون الطلاب ترفيعك بنجاح إلى الفصل الدراسي الرابع (فصل التخرج النهائي) بعد استيفاء مقررات الفصل الثالث.' . ($notes ? " ملاحظة: {$notes}" : '');
+        } elseif ($decision === 'graduate') {
+            $newLevel = 'خريج';
+            $newStanding = 'graduated';
+            $student->update(['level' => $newLevel, 'updated_at' => now()]);
+            if ($user) {
+                $user->update(['academic_year' => $newLevel, 'status' => 'graduated']);
+            }
+            $title = 'مبارك التخرج! 🎓✨';
+            $message = 'اعتمدت شؤون الطلاب تخرجك الرسمي بنجاح من المعهد. نتمنى لك دوام التوفيق والنجاح.' . ($notes ? " ملاحظة: {$notes}" : '');
+        } elseif ($decision === 'supplementary') {
+            $newLevel = 'دورة تكميلية';
+            $newStanding = 'supplementary';
+            $student->update(['level' => $newLevel, 'updated_at' => now()]);
+            $title = 'إشعار الدورة التكميلية 📝';
+            $message = 'تم اعتماد إحالتك للدورة التكميلية في المواد غير المجتازة. يرجى مراجعة شؤون الطلاب.' . ($notes ? " ملاحظة: {$notes}" : '');
+        } elseif ($decision === 'repeat_year') {
+            $newLevel = 'راسب - إعادة سنة';
+            $newStanding = 'failed';
+            $student->update(['level' => $newLevel, 'updated_at' => now()]);
+            $title = 'تنبيه أكاديمي - إعادة السنة ⚠️';
+            $message = 'تم تثبيت حالة إعادة السنة الدراسية بناءً على النتائج والمعدل العام.' . ($notes ? " ملاحظة: {$notes}" : '');
+        }
+
+        // إشعار داخلي و FCM
+        if ($user) {
+            DB::table('notifications')->insert([
+                'user_id'    => $user->user_id,
+                'title'      => $title,
+                'message'    => $message,
+                'type'       => 'academic',
+                'category'   => 'academic',
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            try {
+                \App\Services\FcmService::sendToUser($user->user_id, $title, $message, ['type' => 'academic']);
+            } catch (\Exception $e) {
+                Log::warning("FCM failed: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'تم حفظ القرار الأكاديمي بنجاح وإشعار الطالب.',
+            'new_level'    => $newLevel,
+            'new_standing' => $newStanding,
+        ]);
+    }
+
+    /**
+     * تصدير نتائج طلاب مادة معينة (Excel أو PDF).
      */
     public function exportCourseWeightsCourse(Request $request)
     {
@@ -222,9 +521,7 @@ class AffairsWebController extends Controller
             ->join('students', 'enrollments.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->leftJoin('grade_events', function ($join) use ($courseId) {
-                $join->on('students.program_id', '=', 'grade_events.program_id')
-                     ->where('grade_events.course_id', '=', $courseId)
-                     ->where('grade_events.type', '=', 'exam');
+                $join->on('courses.course_id', '=', 'grade_events.course_id');
             })
             ->leftJoin('grade_entries', function ($join) {
                 $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
@@ -235,18 +532,20 @@ class AffairsWebController extends Controller
             ->where('students.program_id', $programId)
             ->select(
                 'users.full_name as student_name',
+                'students.student_code',
                 DB::raw('COALESCE(SUM(grade_entries.score), 0) as exam_score'),
-                DB::raw('COALESCE(MAX(grade_events.max_score), 100) as exam_max_score')
+                DB::raw('100 as exam_max_score')
             )
-            ->groupBy('enrollments.student_id', 'users.full_name')
+            ->groupBy('enrollments.student_id', 'users.full_name', 'students.student_code')
             ->get()
             ->map(function ($r) use ($course) {
                 $percentage = $r->exam_max_score > 0 ? ($r->exam_score / $r->exam_max_score) * 100 : 0;
                 return [
+                    'code'       => $r->student_code ?? '-',
                     'name'       => $r->student_name,
-                    'exam'       => number_format($r->exam_score, 2) . ' / ' . number_format($r->exam_max_score, 0),
+                    'exam'       => number_format($r->exam_score, 1) . ' / ' . number_format($r->exam_max_score, 0),
                     'weight'     => $course->weight ?? 1,
-                    'percentage' => round($percentage, 2),
+                    'percentage' => round($percentage, 1),
                     'status'     => $percentage >= 50 ? 'ناجح' : 'راسب',
                 ];
             });
@@ -257,90 +556,860 @@ class AffairsWebController extends Controller
             $rows = $rows->where('status', 'راسب')->values();
         }
 
-        $yearLabel = ($course->year ?? 1) == 1 ? 'سنة_أولى' : 'سنة_ثانية';
-        $title     = 'نتائج مادة ' . ($course->title ?? '') . ' - ' . ($program->name ?? '');
-        $columns   = ['اسم الطالب', 'علامة الامتحان', 'التثقيل', 'المعدل', 'الحالة'];
-        $fileBase  = $this->sanitizeFileName('كشف_نتائج_' . ($course->title ?? 'مادة') . '_' . ($program->name ?? '') . '_' . $yearLabel);
+        $yearLabel = ($course->year ?? 1) == 1 ? 'السنة الأولى' : 'السنة الثانية';
+        $title     = 'كشف ملتحقين ونتائج مادة: ' . ($course->title ?? '') . ' - ' . ($program->name ?? '');
+        $columns   = ['الرقم الجامعي', 'اسم الطالب', 'علامة الامتحان', 'التثقيل', 'المعدل', 'الحالة'];
+        $fileBase  = $this->sanitizeFileName('كشف_مادة_' . ($course->title ?? 'مادة') . '_' . ($program->name ?? ''));
+
+        $meta = [
+            'المادة' => ($course->title ?? '') . ' (وزن: ' . ($course->weight ?? 1) . ')',
+            'التخصص / الفرع' => $program->name ?? '-',
+            'السنة الدراسية' => $yearLabel,
+            'إجمالي الطلاب' => $rows->count(),
+            'نسبة النجاح' => $rows->count() > 0 ? round(($rows->where('status', 'ناجح')->count() / $rows->count()) * 100, 1) . '%' : '0%',
+        ];
 
         return $request->format === 'excel'
-            ? $this->downloadExcelTable($title, $columns, $rows, $fileBase)
-            : $this->downloadPdfTable($title, $columns, $rows, $fileBase);
+            ? $this->downloadExcelTable($title, $columns, $rows, $fileBase, null, $meta)
+            : $this->downloadPdfTable($title, $columns, $rows, $fileBase, null, $meta);
     }
 
-    /**
-     * تصدير نتائج كل مواد طالب معين ضمن دورة وسنة معينة (Excel أو PDF)، مع المعدل العام.
+/**
+     * تصدير كشف علامات رسمي معتمد لطالب واحد بمطابقة تامة لنموذج معهد دمشق المتوسط (UNRWA / DTC)
+     * مع الطابع المؤسساتي لمنظومة Edu-Bridge والاعتمادات الرسمية.
      */
     public function exportCourseWeightsStudent(Request $request)
     {
         $request->validate([
             'student_id' => 'required|integer|exists:students,student_id',
-            'program_id' => 'required|integer|exists:programs,id',
-            'year'       => 'required|integer|in:1,2',
             'format'     => 'required|in:excel,pdf',
         ]);
 
         $studentId = (int) $request->student_id;
-        $programId = (int) $request->program_id;
-        $year      = (int) $request->year;
-
         $student = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
             ->where('students.student_id', $studentId)
-            ->select('users.full_name', 'students.student_code')
+            ->select(
+                'students.student_id',
+                'students.student_code',
+                'students.birth_date',
+                'users.full_name',
+                'users.gender',
+                'programs.name as program_name',
+                'departments.name as department_name',
+                'departments.department_id',
+                'students.level',
+                'users.academic_year',
+                'users.created_at as joined_at'
+            )
             ->first();
-        $program = DB::table('programs')->where('id', $programId)->first();
 
+        if (!$student) {
+            return back()->with('error', 'الطالب غير موجود');
+        }
+
+        $isYear1 = str_contains(trim((string)$student->level), 'الأولى');
+
+        // جلب المقررات المسجلة مع تفاصيل المذاكرة والشفهي والامتحان
         $rawRows = DB::table('enrollments')
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
-            ->leftJoin('grade_events', function ($join) use ($programId) {
-                $join->on('courses.course_id', '=', 'grade_events.course_id')
-                     ->where('grade_events.program_id', '=', $programId)
-                     ->where('grade_events.type', '=', 'exam');
+            ->leftJoin('grade_events', function ($join) {
+                $join->on('courses.course_id', '=', 'grade_events.course_id');
             })
             ->leftJoin('grade_entries', function ($join) use ($studentId) {
                 $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
-                     ->where('grade_entries.student_id', '=', $studentId);
+                     ->on('enrollments.student_id', '=', 'grade_entries.student_id');
             })
             ->where('enrollments.status', 'active')
             ->where('enrollments.student_id', $studentId)
-            ->where('courses.year', $year)
             ->select(
+                'courses.course_id',
                 'courses.title',
                 'courses.weight',
-                DB::raw('COALESCE(SUM(grade_entries.score), 0) as exam_score'),
-                DB::raw('COALESCE(MAX(grade_events.max_score), 100) as exam_max_score')
+                'courses.year',
+                'courses.semester_id',
+                DB::raw('COALESCE(SUM(grade_entries.score), 0) as total_score'),
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "quiz" THEN grade_entries.score ELSE 0 END), 0) as quiz_score'),
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "oral" THEN grade_entries.score ELSE 0 END), 0) as oral_score'),
+                DB::raw('COALESCE(SUM(CASE WHEN grade_events.type = "exam" THEN grade_entries.score ELSE 0 END), 0) as exam_score')
             )
-            ->groupBy('enrollments.course_id', 'courses.title', 'courses.weight')
+            ->groupBy('enrollments.course_id', 'courses.course_id', 'courses.title', 'courses.weight', 'courses.year', 'courses.semester_id')
+            ->orderBy('courses.year')
+            ->orderBy('courses.semester_id')
+            ->orderBy('courses.course_id')
             ->get();
 
-        $sumWeighted = 0;
-        $sumWeight = 0;
+        $coursesList = [];
+        $totalHours = 0;
+        $totalPoints = 0;
+        $failedCount = 0;
+        $activePoints = 0;
+        $activeHours = 0;
 
-        $rows = $rawRows->map(function ($r) use (&$sumWeighted, &$sumWeight) {
-            $percentage = $r->exam_max_score > 0 ? ($r->exam_score / $r->exam_max_score) * 100 : 0;
-            $sumWeighted += ($percentage / 100) * $r->weight;
-            $sumWeight += $r->weight;
+        foreach ($rawRows as $c) {
+            $cYear = (int)($c->year ?? 1);
+            $cSem = (int)($c->semester_id ?? 1);
 
-            return [
-                'name'       => $r->title,
-                'exam'       => number_format($r->exam_score, 2) . ' / ' . number_format($r->exam_max_score, 0),
-                'weight'     => $r->weight,
-                'percentage' => round($percentage, 2),
-                'status'     => $percentage >= 50 ? 'ناجح' : 'راسب',
+            // طالب السنة الأولى لا تظهر له مقررات السنة الثانية إطلاقاً
+            if ($isYear1 && $cYear > 1) {
+                continue;
+            }
+
+            $isClosed = $isYear1 ? ($cYear === 1 && $cSem === 2) : ($cYear === 2 && $cSem === 2);
+            $isPastCompleted = !$isYear1 && ($cYear === 1);
+            $isCurrentActive = $isYear1 ? ($cYear === 1 && $cSem === 1) : ($cYear === 2 && $cSem === 1);
+
+            $w = (float)($c->weight ?? 1);
+            if ($w <= 0) $w = 1;
+            $totalHours += $w;
+
+            $semLabel = '';
+            if ($cYear === 1 && $cSem === 1) $semLabel = 'الأول';
+            elseif ($cYear === 1 && $cSem === 2) $semLabel = 'الثاني';
+            elseif ($cYear === 2 && $cSem === 1) $semLabel = 'الثالث';
+            elseif ($cYear === 2 && $cSem === 2) $semLabel = 'الرابع';
+
+            if ($isCurrentActive) {
+                $rawScore = (float)$c->total_score;
+                $pct = min(100, max(0, round($rawScore, 1)));
+                $pts = round($pct * $w, 2);
+                $totalPoints += $pts;
+                $activePoints += $pts;
+                $activeHours += $w;
+
+                $isPass = $pct >= 50;
+                if (!$isPass) $failedCount++;
+
+                $statusLabel = 'ناجح (مقبول)';
+                if ($pct >= 85) $statusLabel = 'ناجح (ممتاز)';
+                elseif ($pct >= 75) $statusLabel = 'ناجح (جيد جداً)';
+                elseif ($pct >= 65) $statusLabel = 'ناجح (جيد)';
+                elseif ($pct >= 50) $statusLabel = 'ناجح (مقبول)';
+                else $statusLabel = 'راسب';
+
+                $coursesList[] = [
+                    'title'        => $c->title,
+                    'sem_label'    => $semLabel,
+                    'weight'       => $w,
+                    'quiz_score'   => number_format((float)$c->quiz_score, 1),
+                    'exam_score'   => number_format((float)$c->exam_score, 1),
+                    'oral_score'   => number_format((float)$c->oral_score, 1),
+                    'score'        => number_format($pct, 1),
+                    'points'       => number_format($pts, 1),
+                    'is_pass'      => $isPass,
+                    'is_closed'    => false,
+                    'is_past'      => false,
+                    'status_label' => $statusLabel,
+                ];
+            } elseif ($isPastCompleted) {
+                $coursesList[] = [
+                    'title'        => $c->title,
+                    'sem_label'    => $semLabel,
+                    'weight'       => $w,
+                    'quiz_score'   => '-',
+                    'exam_score'   => '-',
+                    'oral_score'   => '-',
+                    'score'        => '-',
+                    'points'       => '-',
+                    'is_pass'      => true,
+                    'is_closed'    => false,
+                    'is_past'      => true,
+                    'status_label' => 'مجتاز (العام الماضي)',
+                ];
+            } else {
+                $coursesList[] = [
+                    'title'        => $c->title,
+                    'sem_label'    => $semLabel,
+                    'weight'       => $w,
+                    'quiz_score'   => '-',
+                    'exam_score'   => '-',
+                    'oral_score'   => '-',
+                    'score'        => '-',
+                    'points'       => '-',
+                    'is_pass'      => null,
+                    'is_closed'    => true,
+                    'is_past'      => false,
+                    'status_label' => 'مغلق المقرر',
+                ];
+            }
+        }
+
+        // معدل الفصل الساري
+        $currentSemGpa = $activeHours > 0 ? round($activePoints / $activeHours, 2) : 0;
+
+        // المعدل التراكمي النهائي وفق القاعدة الأكاديمية المعتمدة (مجموع الفصول المجتازة ÷ عدد الفصول المجتازة)
+        $passedSemCount = $isYear1 ? ($currentSemGpa >= 50 ? 1 : 0) : (2 + ($currentSemGpa >= 50 ? 1 : 0));
+        $cumGpa = $passedSemCount > 0 ? round($currentSemGpa / $passedSemCount, 2) : 0;
+
+        $appreciation = 'مقبول';
+        if ($cumGpa >= 85) $appreciation = 'ممتاز';
+        elseif ($cumGpa >= 75) $appreciation = 'جيد جداً';
+        elseif ($cumGpa >= 65) $appreciation = 'جيد';
+        elseif ($cumGpa >= 50) $appreciation = 'مقبول';
+        else $appreciation = 'راسب';
+
+        $cumulativeStats = [
+            'cum_gpa'      => number_format($cumGpa, 2),
+            'appreciation' => $appreciation,
+            'birth_date'   => $student->birth_date ? \Carbon\Carbon::parse($student->birth_date)->format('Y/m/d') : '2004/01/01',
+            'birth_place'  => 'حمص',
+            'nationality'  => 'الفلسطينية',
+            'joined_at'    => $student->joined_at ? \Carbon\Carbon::parse($student->joined_at)->format('Y/m/d') : '2024/10/01',
+            'plan_code'    => '72502 - ' . ($student->joined_at ? \Carbon\Carbon::parse($student->joined_at)->format('Y') : '2024'),
+            'issue_date'   => now()->format('Y/m/d'),
+        ];
+
+        // نصوص القرار والتوجيهات بناءً على الفصول المنتهية
+        $isSem2Active = collect($coursesList)->where('sem_label', 'الفصل الثاني')->where('is_closed', false)->count() > 0;
+        $isSem4Active = collect($coursesList)->where('sem_label', 'الفصل الرابع')->where('is_closed', false)->count() > 0;
+
+        $decisionTitle = '';
+        $directivesText = '';
+        if ($isYear1) {
+            if ($failedCount === 0 && $currentSemGpa >= 50) {
+                if ($isSem2Active) {
+                    $decisionTitle = 'مرفّع بنجاح إلى السنة الدراسية الثانية';
+                    $directivesText = 'استوفى الطالب متطلبات السنة الأولى كاملة بنجاح، ويحق له الانتقال الرسمي إلى السنة الدراسية الثانية وتسجيل مقرراتها.';
+                } else {
+                    $decisionTitle = 'مرفّع بنجاح إلى الفصل الدراسي الثاني';
+                    $directivesText = 'استوفى الطالب شروط النجاح للفصل الدراسي الأول، ويحق له متابعة المسار الأكاديمي والتسجيل في الفصل الدراسي الثاني.';
+                }
+            } else {
+                $decisionTitle = 'راسب في ' . $failedCount . ' مواد - قيد الاستدراك والتكميلية';
+                $directivesText = 'يتوجب على الطالب استدراك المقررات غير المجتازة ومراجعة الكنترول الأكاديمي.';
+            }
+        } else {
+            if ($failedCount === 0 && $currentSemGpa >= 50) {
+                if ($isSem4Active) {
+                    $decisionTitle = 'مستوفٍ لشروط التخرج (خريج رسمي معتمد 🎓)';
+                    $directivesText = 'أتم الطالب كافة المتطلبات الأكاديمية والتدريبية المعتمدة في الخطة الدراسية (الفصول الأربعة كاملة). بريء الذمة نظامياً لاعتماد تخرجه الرسمي.';
+                } else {
+                    $decisionTitle = 'مرفّع بنجاح إلى الفصل الدراسي الرابع';
+                    $directivesText = 'استوفى الطالب شروط النجاح للفصل الدراسي الثالث، ويحق له متابعة المسار الأكاديمي في الفصل الدراسي الرابع (الفصل النهائي والتخرج).';
+                }
+            } else {
+                $decisionTitle = 'دورة تكميلية في ' . $failedCount . ' مواد';
+                $directivesText = 'يحال الطالب للدورة التكميلية في المقررات غير المجتازة تمهيداً لاستكمال المسار الأكاديمي بعد استيفاء شروط النجاح.';
+            }
+        }
+
+        // الأحرف الأولى
+        $nameParts = preg_split('/\s+/', trim((string)$student->full_name));
+        $studentInitials = (count($nameParts) >= 2) 
+            ? (mb_substr($nameParts[0], 0, 1) . '.' . mb_substr($nameParts[count($nameParts) - 1], 0, 1))
+            : (mb_substr($nameParts[0] ?? 'ط', 0, 1));
+
+        $issueDateFormatted = now()->format('d-m-Y (h:i') . ' ' . (now()->format('A') === 'AM' ? 'ص' : 'م') . ')';
+        $joinedAtFormatted = $student->joined_at ? \Carbon\Carbon::parse($student->joined_at)->format('d-m-Y') : '10-09-2024';
+        $planCode = 'DTC-PLAN-' . ($isYear1 ? '2024/1' : '2023/2');
+        $academicYearLabel = '2024 - 2025';
+
+        $dtcLogoPath = public_path('images/logos/dtc.png');
+        $dtcLogoBase64 = file_exists($dtcLogoPath) ? ('data:image/png;base64,' . base64_encode(file_get_contents($dtcLogoPath))) : '';
+
+        $watermarkPath = public_path('images/logos/edubridge_clean.png');
+        $watermarkBase64 = file_exists($watermarkPath) ? ('data:image/png;base64,' . base64_encode(file_get_contents($watermarkPath))) : '';
+
+        $verificationHash = substr(md5($student->student_id . ($student->student_code ?? '') . 'edubridge_salt'), 0, 24) . 'dtc';
+
+        if ($request->format === 'pdf') {
+            return view('affairs.transcript_template', compact(
+                'student',
+                'isYear1',
+                'coursesList',
+                'totalHours',
+                'totalPoints',
+                'currentSemGpa',
+                'passedSemCount',
+                'cumulativeStats',
+                'decisionTitle',
+                'directivesText',
+                'studentInitials',
+                'issueDateFormatted',
+                'joinedAtFormatted',
+                'planCode',
+                'academicYearLabel',
+                'dtcLogoBase64',
+                'watermarkBase64',
+                'verificationHash'
+            ));
+        }
+
+        // Excel format
+        $columns = ['اسم المقرر الدراسي', 'الفصل', 'الساعات (W)', 'المذاكرة (25)', 'الامتحان (50)', 'الشفهي (25)', 'المجموع (100)', 'النقاط', 'الحالة والتقدير'];
+        $flatRows = collect();
+        foreach ($coursesList as $c) {
+            $flatRows->push([
+                'title'      => $c['title'],
+                'semester'   => $c['sem_label'],
+                'weight'     => $c['weight'],
+                'quiz'       => $c['quiz_score'],
+                'exam'       => $c['exam_score'],
+                'oral'       => $c['oral_score'],
+                'total'      => $c['score'],
+                'points'     => $c['points'],
+                'status'     => $c['status_label'],
+            ]);
+        }
+        $footer = 'المعدل التراكمي العام: ' . $cumulativeStats['cum_gpa'] . '% (' . $cumulativeStats['appreciation'] . ') - عدد الفصول المجتازة: ' . $passedSemCount;
+        $fileBase = $this->sanitizeFileName('كشف_علامات_' . ($student->full_name ?? 'طالب') . '_' . ($student->student_code ?? ''));
+
+        return $this->downloadExcelTable('كشف علامات الطالب: ' . $student->full_name, $columns, $flatRows, $fileBase, $footer);
+    }
+
+    /**
+     * توليد كود HTML بمطابقة تامة 100% لكشف علامات معهد دمشق المتوسط (DTC / UNRWA)
+     * مع الطابع المؤسساتي لمنظومة Edu-Bridge.
+     */
+    private function buildOfficialDtcTranscriptHtml($student, array $semestersData, array $cumulativeStats): string
+    {
+        $unrwaLogo     = $this->logoImgTag('unrwa.png', 'UNRWA', 'height:48px; max-width:85px;');
+        $dtcLogo       = $this->logoImgTag('dtc.png', 'Damascus Training Centre', 'height:45px; max-width:85px;');
+        $edubridgeLogo = $this->logoImgTag('edubridge.png', 'EduBridge', 'height:40px; max-width:80px;');
+
+        // جداول الفصول الدراسية
+        $semestersHtml = '';
+        foreach ($semestersData as $sem) {
+            $coursesRows = '';
+            foreach ($sem['courses'] as $c) {
+                $coursesRows .= '<tr>'
+                    . '<td style="border:1px solid #000; text-align:center; padding:3.5px 5px; font-family:monospace; font-size:8.5pt;">' . htmlspecialchars($c['code']) . '</td>'
+                    . '<td style="border:1px solid #000; text-align:right; padding:3.5px 8px; font-weight:bold; font-size:8.5pt;">' . htmlspecialchars($c['title']) . '</td>'
+                    . '<td style="border:1px solid #000; text-align:center; padding:3.5px 5px; font-size:8.5pt;">' . htmlspecialchars((string)$c['weight']) . '</td>'
+                    . '<td style="border:1px solid #000; text-align:center; padding:3.5px 5px; font-weight:bold; font-size:9pt;">' . htmlspecialchars((string)$c['score']) . '</td>'
+                    . '<td style="border:1px solid #000; text-align:center; padding:3.5px 5px; font-size:8pt; color:#b91c1c;">' . htmlspecialchars($c['remarks']) . '</td>'
+                    . '</tr>';
+            }
+
+            $semestersHtml .= '
+            <table class="sem-title-table" style="width:100%; margin-top:10px; margin-bottom:3px;">
+                <tr>
+                    <td style="border:none; text-align:right; width:35%;">
+                        <b style="color:#004085; font-size:10.5pt;">' . htmlspecialchars($sem['semester_name']) . '</b>
+                    </td>
+                    <td style="border:none; text-align:center; width:65%;">
+                        <b style="font-size:10.5pt;">العام الدراسي &nbsp; ' . htmlspecialchars($sem['academic_year']) . '</b>
+                    </td>
+                </tr>
+            </table>
+
+            <table style="border:1.5px solid #000; width:100%; border-collapse:collapse; margin-bottom:8px;">
+                <thead>
+                    <tr style="background-color:#f8fafc;">
+                        <th style="border:1px solid #000; width:18%; padding:4.5px; font-size:8.5pt; font-weight:bold; text-align:center;">رقم المادة</th>
+                        <th style="border:1px solid #000; width:45%; padding:4.5px 8px; font-size:8.5pt; font-weight:bold; text-align:right;">اسم المادة الرئيسية</th>
+                        <th style="border:1px solid #000; width:14%; padding:4.5px; font-size:8.5pt; font-weight:bold; text-align:center;">الساعات المعتمدة</th>
+                        <th style="border:1px solid #000; width:11%; padding:4.5px; font-size:8.5pt; font-weight:bold; text-align:center;">العلامة %</th>
+                        <th style="border:1px solid #000; width:12%; padding:4.5px; font-size:8.5pt; font-weight:bold; text-align:center;">ملاحظات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ' . $coursesRows . '
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td style="border:1px solid #000; font-size:8pt; font-weight:bold; text-align:center; background-color:#fff; padding:3px;">فصلي &nbsp;:</td>
+                        <td colspan="4" style="border:1px solid #000; padding:2px 4px; background-color:#fff;">
+                            <table style="width:100%; border:none;">
+                                <tr>
+                                    <td style="border:none; width:30%; text-align:right; font-size:7.8pt; font-weight:bold;">الساعات المعتمدة المسجلة &nbsp;:&nbsp; ' . $sem['sem_registered_hours'] . '</td>
+                                    <td style="border:none; width:30%; text-align:right; font-size:7.8pt; font-weight:bold;">ساعات النجاح المعتمدة &nbsp;:&nbsp; ' . $sem['sem_passed_hours'] . '</td>
+                                    <td style="border:none; width:22%; text-align:right; font-size:7.8pt; font-weight:bold;">المجموع &nbsp;:&nbsp; ' . $sem['sem_total_points'] . '</td>
+                                    <td style="border:none; width:18%; text-align:left; font-size:7.8pt; font-weight:bold;">المعدل &nbsp;:&nbsp; ' . $sem['sem_gpa'] . '</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border:1px solid #000; font-size:8pt; font-weight:bold; text-align:center; background-color:#fff; padding:3px;">تراكمي &nbsp;:</td>
+                        <td colspan="4" style="border:1px solid #000; padding:2px 4px; background-color:#fff;">
+                            <table style="width:100%; border:none;">
+                                <tr>
+                                    <td style="border:none; width:30%; text-align:right; font-size:7.8pt; font-weight:bold;">الساعات المعتمدة المسجلة &nbsp;:&nbsp; ' . $sem['cum_registered_hours'] . '</td>
+                                    <td style="border:none; width:30%; text-align:right; font-size:7.8pt; font-weight:bold;">ساعات النجاح المعتمدة &nbsp;:&nbsp; ' . $sem['cum_passed_hours'] . '</td>
+                                    <td style="border:none; width:22%; text-align:right; font-size:7.8pt; font-weight:bold;">المجموع &nbsp;:&nbsp; ' . $sem['cum_total_points'] . '</td>
+                                    <td style="border:none; width:18%; text-align:left; font-size:7.8pt; font-weight:bold;">المعدل &nbsp;:&nbsp; ' . $sem['cum_gpa'] . '</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>';
+        }
+
+        return '<html dir="rtl" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <style>
+        body {
+            font-family: "DejaVu Sans", "Segoe UI", Tahoma, Arial, sans-serif;
+            direction: rtl;
+            text-align: right;
+            margin: 0;
+            padding: 8px 12px;
+            font-size: 8.5pt;
+            color: #000;
+        }
+        table { border-collapse: collapse; width: 100%; }
+        .plain, .plain td, .plain th { border: none; padding: 2px; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. ترويسة الوكالة والمعهد الرسمية ثلاثية الأعمدة -->
+    <table style="border: 1.5px solid #000; width: 100%; margin-bottom: 5px;">
+        <tr>
+            <!-- العمود الأيمن (العربي) -->
+            <td style="border: none; width: 34%; text-align: right; vertical-align: middle; padding: 5px 8px; line-height: 1.35;">
+                <div style="font-size: 11pt; font-weight: bold; margin-bottom: 2px;">وكالة الأمم المتحدة</div>
+                <div style="font-size: 8pt;">لإغاثة وتشغيل اللاجئين الفلسطينيين</div>
+                <div style="font-size: 8pt;">في الشرق الأدنى</div>
+                <div style="font-size: 8.5pt; font-weight: bold; margin-top: 3px;">برنامج التدريب الفني والمهني/سوريا</div>
+                <div style="font-size: 9pt; font-weight: bold;">معهد دمشق المتوسط</div>
+            </td>
+
+            <!-- العمود الأوسط (الشعار المزدوج) -->
+            <td style="border: none; width: 32%; text-align: center; vertical-align: middle; padding: 4px;">
+                <div style="display: inline-block;">
+                    ' . $unrwaLogo . '
+                    ' . $dtcLogo . '
+                </div>
+                <div style="font-weight: bold; font-size: 10.5pt; letter-spacing: 1px; margin-top: 2px;">UNRWA</div>
+                <div style="font-size: 7.5pt; font-weight: bold; color: #004085; margin-top: 1px;">Edu-Bridge Academic Control System</div>
+            </td>
+
+            <!-- العمود الأيسر (الإنجليزي) -->
+            <td style="border: none; width: 34%; text-align: left; vertical-align: middle; padding: 5px 8px; line-height: 1.3; direction: ltr;">
+                <div style="font-size: 10.5pt; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px;">UNITED NATIONS</div>
+                <div style="font-size: 7.5pt;">RELIEF AND WORKS AGENCY FOR</div>
+                <div style="font-size: 7.5pt;">PALESTINE REFUGEES IN THE NEAR EAST</div>
+                <div style="font-size: 8pt; font-weight: bold; margin-top: 3px;">Technical and Vocational Training Programme \Syria</div>
+                <div style="font-size: 8.5pt; font-weight: bold;">Damascus Training Center</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 2. عنوان الكشف وتاريخ الإصدار -->
+    <div style="text-align: center; font-size: 13.5pt; font-weight: bold; text-decoration: underline; margin: 3px 0 2px;">كشف علامات الطالب</div>
+    <div style="text-align: left; font-size: 8pt; font-weight: bold; margin-bottom: 3px;">
+        تاريخ إصدار الشهادة &nbsp;:&nbsp; <span>' . htmlspecialchars($cumulativeStats['issue_date']) . '</span>
+    </div>
+
+    <!-- 3. بطاقة بيانات الطالب الرسمية -->
+    <table style="border: 1.5px solid #000; width: 100%; margin-bottom: 4px; border-collapse: collapse;">
+        <tr>
+            <td colspan="2" style="background-color: #f1f5f9; border-bottom: 1.5px solid #000; padding: 4px 8px;">
+                <table class="plain" style="width: 100%;">
+                    <tr>
+                        <td class="plain" style="width: 60%; font-size: 10pt; font-weight: bold; text-align: right;">
+                            اسم الطالب &nbsp;:&nbsp; <span>' . htmlspecialchars($student->full_name) . '</span>
+                        </td>
+                        <td class="plain" style="width: 40%; font-size: 10pt; font-weight: bold; text-align: left; font-family: monospace;">
+                            <span style="direction: ltr; display: inline-block;">' . htmlspecialchars($student->student_code ?? '-') . '</span> &nbsp;:&nbsp; رقم الطالب
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td style="width: 50%; padding: 3px 8px; font-size: 8.5pt; border: none; text-align: right;">
+                مكان الولادة &nbsp;:&nbsp; <span>' . htmlspecialchars($cumulativeStats['birth_place']) . '</span>
+            </td>
+            <td style="width: 50%; padding: 3px 8px; font-size: 8.5pt; border: none; text-align: left;">
+                تاريخ الولادة &nbsp;:&nbsp; <span>' . htmlspecialchars($cumulativeStats['birth_date']) . '</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="width: 50%; padding: 3px 8px; font-size: 8.5pt; border: none; text-align: right;">
+                الجنسية &nbsp;:&nbsp; <span>' . htmlspecialchars($cumulativeStats['nationality']) . '</span>
+            </td>
+            <td style="width: 50%; padding: 3px 8px; font-size: 8.5pt; border: none; text-align: left;">
+                تاريخ الالتحاق &nbsp;:&nbsp; <span>' . htmlspecialchars($cumulativeStats['joined_at']) . '</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="width: 50%; padding: 3px 8px; font-size: 8.5pt; border: none; text-align: right;">
+                التخصص &nbsp;:&nbsp; <span>' . htmlspecialchars($student->program_name ?? 'نظم المعلومات الحاسوبية') . '</span>
+            </td>
+            <td style="width: 50%; padding: 3px 8px; font-size: 8.5pt; border: none; text-align: left;">
+                الخطة الدراسية &nbsp;:&nbsp; <span>' . htmlspecialchars($cumulativeStats['plan_code']) . '</span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top: 1.5px solid #000; padding: 4px 8px; background-color: #fafafa;">
+                <table class="plain" style="width: 100%;">
+                    <tr>
+                        <td class="plain" style="width: 50%; font-size: 9.5pt; font-weight: bold; text-align: right;">
+                            المعدل التراكمي &nbsp;:&nbsp; <span style="font-size: 11pt;">' . htmlspecialchars($cumulativeStats['cum_gpa']) . '</span>
+                        </td>
+                        <td class="plain" style="width: 50%; font-size: 9.5pt; font-weight: bold; text-align: left;">
+                            التقدير &nbsp;:&nbsp; <span style="font-size: 10.5pt;">' . htmlspecialchars($cumulativeStats['appreciation']) . '</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div style="border-bottom: 3px solid #000; margin-bottom: 10px;"></div>
+
+    <!-- 4. جداول الفصول الدراسية والمقررات -->
+    ' . $semestersHtml . '
+
+    <!-- 5. خانة التوقيعات والاعتماد الرسمي المزدوج -->
+    <table class="plain" style="width: 100%; margin-top: 25px;">
+        <tr>
+            <td class="plain" style="width: 50%; text-align: center; vertical-align: top;">
+                <div style="font-size: 10pt; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">العميد / المدير</div>
+                <div style="font-size: 10pt; font-weight: bold;">' . htmlspecialchars($cumulativeStats['dean']) . '</div>
+                <div style="font-size: 8pt; color: #64748b; margin-top: 25px;">التوقيع وخاتم العمادة: ............................</div>
+            </td>
+            <td class="plain" style="width: 50%; text-align: center; vertical-align: top;">
+                <div style="font-size: 10pt; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">المسجل</div>
+                <div style="font-size: 10pt; font-weight: bold;">' . htmlspecialchars($cumulativeStats['registrar']) . '</div>
+                <div style="font-size: 8pt; color: #64748b; margin-top: 25px;">التوقيع وخاتم المسجل: ............................</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 6. خط الفوتر مع الهواتف -->
+    <table class="plain" style="width: 100%; margin-top: 15px; border-top: 1.5px solid #000; padding-top: 4px; font-size: 7.5pt; font-weight: bold;">
+        <tr>
+            <td class="plain" style="width: 30%; text-align: right;">فاكس &nbsp;:&nbsp; +963116133035</td>
+            <td class="plain" style="width: 40%; text-align: center; color: #004085;">منظومة Edu-Bridge للكنترول الأكاديمي والامتحانات</td>
+            <td class="plain" style="width: 30%; text-align: left;">هاتف &nbsp;:&nbsp; +963116133035</td>
+        </tr>
+    </table>
+
+    <!-- التنبيه القانوني الإلزامي -->
+    <div style="margin-top: 6px; padding: 4px 8px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 4px; text-align: center; font-size: 6.8pt; color: #9f1239; line-height: 1.35;">
+        <strong>تنبيه قانوني هام:</strong> تعتبر هذه الوثيقة مسودة إلكترونية صادرة وموثقة عبر نظام Edu-Bridge، وتفقد مصداقيتها وصلاحيتها القانونية والرسمية بشكل كامل عند طباعتها ورقياً ما لم تكن ممهورة بالختم الرسمي الحي والتوقيع المعتمد لكل من شؤون الطلاب وعمادة المعهد.
+    </div>
+
+</body>
+</html>';
+    }
+
+    /**
+     * إخراج مستند PDF
+     */
+    private function outputPdfDocument(string $html, string $fileName)
+    {
+        $pdfContent = null;
+
+        if (class_exists('\Mpdf\Mpdf')) {
+            try {
+                $mpdf = new \Mpdf\Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4',
+                    'orientation' => 'P',
+                    'margin_left' => 10,
+                    'margin_right' => 10,
+                    'margin_top' => 8,
+                    'margin_bottom' => 8,
+                    'autoScriptToLang' => true,
+                    'autoLangToFont' => true,
+                    'useSubsets' => false,
+                ]);
+                $mpdf->SetDirectionality('rtl');
+                $mpdf->WriteHTML($html);
+                $pdfContent = $mpdf->Output('', 'S');
+            } catch (\Throwable $e) {
+                Log::warning('mPDF error: ' . $e->getMessage());
+            }
+        }
+
+        if (!$pdfContent && class_exists('\Barryvdh\DomPDF\Facade\Pdf')) {
+            try {
+                $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isRemoteEnabled' => false])
+                    ->loadHTML($html)->setPaper('a4', 'portrait')->output();
+            } catch (\Throwable $e) {
+                Log::warning('DomPDF Facade error: ' . $e->getMessage());
+            }
+        }
+
+        if (!$pdfContent && class_exists('\Dompdf\Dompdf')) {
+            try {
+                $options = new \Dompdf\Options();
+                $options->set('defaultFont', 'DejaVu Sans');
+                $dompdf = new \Dompdf\Dompdf($options);
+                $dompdf->loadHtml($html);
+                $dompdf->setPaper('A4', 'portrait');
+                $dompdf->render();
+                $pdfContent = $dompdf->output();
+            } catch (\Throwable $e) {
+                Log::warning('Dompdf direct error: ' . $e->getMessage());
+            }
+        }
+
+        if (!$pdfContent) {
+            return response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
+        }
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+            'Content-Length' => strlen($pdfContent),
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
+    }
+
+    public function exportCourseWeightsCohort(Request $request)
+    {
+        $departmentId = $request->input('department_id');
+        $programId    = $request->input('program_id');
+        $year         = $request->input('year', 'both');
+        $semesterId   = $request->input('semester_id', 'both');
+        $standing     = $request->input('standing', 'all');
+        $format       = $request->input('format', 'pdf');
+
+        $studentsQuery = DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
+            ->select(
+                'students.student_id',
+                'students.student_code',
+                'users.full_name',
+                'students.program_id',
+                'programs.name as program_name',
+                'departments.department_id',
+                'departments.name as department_name',
+                'students.level',
+                'users.academic_year',
+                'users.status as user_status'
+            );
+
+        if ($departmentId && $departmentId !== 'all') {
+            $studentsQuery->where('departments.department_id', $departmentId);
+        }
+        if ($programId && $programId !== 'all') {
+            $studentsQuery->where('students.program_id', $programId);
+        }
+        if ($year === '1') {
+            $studentsQuery->where(function($q) {
+                $q->where('students.level', 'like', '%الأولى%')->orWhere('users.academic_year', 'like', '%الأولى%');
+            });
+        } elseif ($year === '2') {
+            $studentsQuery->where(function($q) {
+                $q->where('students.level', 'like', '%الثانية%')->orWhere('users.academic_year', 'like', '%الثانية%');
+            });
+        }
+
+        $rawStudents = $studentsQuery->get();
+
+        $studentGrades = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->leftJoin('grade_events', 'courses.course_id', '=', 'grade_events.course_id')
+            ->leftJoin('grade_entries', function($join) {
+                $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
+                     ->on('enrollments.student_id', '=', 'grade_entries.student_id');
+            })
+            ->where('enrollments.status', 'active');
+
+        if ($semesterId !== 'both' && !empty($semesterId)) {
+            $studentGrades->where('courses.semester_id', $semesterId);
+        }
+
+        $gradesData = $studentGrades->select(
+            'enrollments.student_id',
+            'courses.course_id',
+            'courses.title',
+            'courses.year',
+            'courses.semester_id',
+            'courses.weight',
+            DB::raw('COALESCE(SUM(grade_entries.score), 0) as total_score')
+        )
+        ->groupBy('enrollments.student_id', 'courses.course_id', 'courses.title', 'courses.year', 'courses.semester_id', 'courses.weight')
+        ->get()
+        ->groupBy('student_id');
+
+        $filteredStudentsList = [];
+        $excelRows = collect();
+
+        foreach ($rawStudents as $s) {
+            $isYear1 = str_contains(trim((string)$s->level), 'الأولى');
+            $allStudentCourses = $gradesData->get($s->student_id, collect());
+
+            // المقررات السارية التقييمية
+            $activeCourses = $allStudentCourses->filter(function($c) use ($isYear1) {
+                $cYear = (int)($c->year ?? 1);
+                $cSem = (int)($c->semester_id ?? 1);
+                return $isYear1 ? ($cYear === 1 && $cSem === 1) : ($cYear === 2 && $cSem === 1);
+            });
+
+            $sumWeight = 0;
+            $sumPoints = 0;
+            $failedCourses = [];
+
+            foreach ($activeCourses as $c) {
+                $pct = min(100, max(0, (float)$c->total_score));
+                $w = (float)($c->weight ?? 1);
+                if ($w <= 0) $w = 1;
+                $sumWeight += $w;
+                $sumPoints += ($pct * $w);
+                if ($pct < 50) {
+                    $failedCourses[] = $c->title;
+                }
+            }
+
+            $activeSemGpa = $sumWeight > 0 ? round($sumPoints / $sumWeight, 2) : 0;
+            // المعادلة المعتمدة: طالب السنة الأولى مقامه 1، طالب السنة الثانية مقامه 3
+            $cumGpa = $isYear1 ? $activeSemGpa : round($activeSemGpa / 3, 2);
+            $failedCount = count($failedCourses);
+            $failedCoursesTitles = $failedCount === 0 ? 'لا يوجد (مستوفٍ المقررات كافة)' : implode('، ', $failedCourses);
+
+            // هل التقرير يفرز الفصل الثاني (نهاية السنة الأولى أو نهاية السنة الثانية)؟
+            $isSem2Cohort = ($semesterId === '2');
+
+            // تحديد القرار والوسام
+            $decisionType = 'pass';
+            $decisionLabel = '';
+            if ($failedCount === 0) {
+                if ($cumGpa >= 90) {
+                    $decisionType = 'honor';
+                    if ($isYear1) {
+                        $decisionLabel = $isSem2Cohort ? 'ترفيع بمرتبة شرف للسنة الثانية' : 'ترفيع بمرتبة شرف للفصل الثاني';
+                    } else {
+                        $decisionLabel = $isSem2Cohort ? 'تخرج رسمي بمرتبة الشرف الأولى 🎓' : 'ترفيع بمرتبة شرف للفصل الرابع';
+                    }
+                } else {
+                    $decisionType = 'pass';
+                    if ($isYear1) {
+                        $decisionLabel = $isSem2Cohort ? 'ترفيع نظامي إلى السنة الثانية' : 'ترفيع نظامي إلى الفصل الثاني';
+                    } else {
+                        $decisionLabel = $isSem2Cohort ? 'تخرج نظامي معتمد 🎓' : 'ترفيع نظامي إلى الفصل الرابع';
+                    }
+                }
+            } else {
+                if ($failedCount <= 4) {
+                    $decisionType = 'supplementary';
+                    $decisionLabel = 'تحويل لدورة تكميلية واستدراك';
+                } else {
+                    $decisionType = 'fail';
+                    $decisionLabel = $isYear1 ? 'رسوب وإعادة السنة الأولى' : 'رسوب وإعادة السنة الثانية';
+                }
+            }
+
+            // تطبيق فلترة الحالة الأكاديمية
+            if ($standing !== 'all') {
+                if ($standing === 'passed' && $failedCount > 0) continue;
+                if ($standing === 'failed' && $failedCount === 0) continue;
+                if ($standing === 'supplementary' && ($isYear1 || $failedCount === 0)) continue;
+            }
+
+            $studentItem = [
+                'student_id'            => $s->student_id,
+                'student_code'          => $s->student_code ?? '-',
+                'full_name'             => $s->full_name,
+                'program_name'          => $s->program_name ?? 'عام',
+                'department_name'       => $s->department_name ?? 'عام',
+                'level'                 => $s->level ?? 'السنة الأولى',
+                'is_year_1'             => $isYear1,
+                'total_hours'           => $sumWeight,
+                'cum_gpa'               => $cumGpa,
+                'failed_count'          => $failedCount,
+                'failed_courses_titles' => $failedCoursesTitles,
+                'decision_type'         => $decisionType,
+                'decision_label'        => $decisionLabel,
             ];
-        });
 
-        $overallAverage = $sumWeight > 0 ? round(($sumWeighted / $sumWeight) * 100, 2) : 0;
+            $filteredStudentsList[] = $studentItem;
 
-        $yearLabel = $year == 1 ? 'سنة_أولى' : 'سنة_ثانية';
-        $title     = 'نتائج الطالب ' . ($student->full_name ?? '') . ' - ' . ($program->name ?? '');
-        $columns   = ['اسم المادة', 'علامة الامتحان', 'التثقيل', 'المعدل', 'الحالة'];
-        $footer    = 'المعدل العام: ' . $overallAverage . '%';
-        $fileBase  = $this->sanitizeFileName('كشف_علامات_' . ($student->full_name ?? 'طالب') . '_' . ($program->name ?? '') . '_' . $yearLabel);
+            $excelRows->push([
+                'name'    => $s->full_name,
+                'code'    => $s->student_code ?? '-',
+                'program' => $s->program_name ?? '-',
+                'level'   => $s->level ?? 'السنة الأولى',
+                'gpa'     => $cumGpa . '%',
+                'failed'  => $failedCoursesTitles,
+                'status'  => $decisionLabel,
+            ]);
+        }
 
-        return $request->format === 'excel'
-            ? $this->downloadExcelTable($title, $columns, $rows, $fileBase, $footer)
-            : $this->downloadPdfTable($title, $columns, $rows, $fileBase, $footer);
+        $deptName = ($departmentId && $departmentId !== 'all') ? (DB::table('departments')->where('department_id', $departmentId)->value('name') ?? 'كل الأقسام') : 'جميع الأقسام';
+        $progName = ($programId && $programId !== 'all') ? (DB::table('programs')->where('id', $programId)->value('name') ?? 'كل التخصصات') : 'جميع التخصصات';
+        $yearLabel = $year === '1' ? 'السنة الأولى' : ($year === '2' ? 'السنة الثانية' : 'كافة السنوات');
+        $semesterLabel = $semesterId === 'both' ? 'كافة الفصول' : ('الفصل ' . $semesterId);
+
+        // إحصائيات الدفعة (KPIs)
+        $totalStudentsCount  = count($filteredStudentsList);
+        $passedStudentsCount = count(array_filter($filteredStudentsList, fn($st) => $st['failed_count'] === 0));
+        $supplementaryCount  = count(array_filter($filteredStudentsList, fn($st) => $st['decision_type'] === 'supplementary'));
+        $repeatCount         = count(array_filter($filteredStudentsList, fn($st) => $st['decision_type'] === 'fail'));
+        $failedTotalCount    = $supplementaryCount + $repeatCount;
+        $passRate            = $totalStudentsCount > 0 ? round(($passedStudentsCount / $totalStudentsCount) * 100, 2) : 0;
+        $gpaValues           = array_column($filteredStudentsList, 'cum_gpa');
+        $maxGpa              = !empty($gpaValues) ? max($gpaValues) : 0;
+        $minGpa              = !empty($gpaValues) ? min($gpaValues) : 0;
+        $avgGpa              = !empty($gpaValues) ? round(array_sum($gpaValues) / count($gpaValues), 2) : 0;
+
+        $academicYearLabel  = '2024 - 2025';
+        $yearScopeLabel     = $year === '1' ? 'السنة الأولى (الدفعة المستجدة)' : ($year === '2' ? 'السنة الثانية' : 'كافة السنوات (الأولى والثانية)');
+        $semesterScopeLabel = $semesterId === '1' ? 'الفصل الأول' : ($semesterId === '2' ? 'الفصل الثاني' : 'الفصلان (الأول والثاني التراكمي)');
+        $standingScopeLabel = $standing === 'all' ? 'جميع الحالات' : ($standing === 'passed' ? 'الناجحون والمترفعون' : ($standing === 'supplementary' ? 'الدورة التكميلية' : 'الراسبون'));
+        $reportNumber       = 'DTC-COHORT-' . date('Y') . '/REG-' . str_pad($programId && $programId !== 'all' ? $programId : '04', 2, '0', STR_PAD_LEFT);
+        $issueDateFormatted = now()->format('d-m-Y (h:i') . ' ' . (now()->format('A') === 'AM' ? 'ص' : 'م') . ')';
+
+        $dtcLogoPath   = public_path('images/logos/dtc.png');
+        $dtcLogoBase64 = file_exists($dtcLogoPath) ? ('data:image/png;base64,' . base64_encode(file_get_contents($dtcLogoPath))) : '';
+
+        $watermarkPath   = public_path('images/logos/edubridge_clean.png');
+        $watermarkBase64 = file_exists($watermarkPath) ? ('data:image/png;base64,' . base64_encode(file_get_contents($watermarkPath))) : '';
+
+        $verificationHash = 'DTC-' . substr(md5(json_encode($request->all()) . 'edubridge_cohort_salt'), 0, 16) . '-ARCH';
+
+        if ($format === 'pdf') {
+            return view('affairs.cohort_results_template', compact(
+                'filteredStudentsList',
+                'deptName',
+                'progName',
+                'year',
+                'semesterId',
+                'standing',
+                'totalStudentsCount',
+                'passedStudentsCount',
+                'supplementaryCount',
+                'repeatCount',
+                'failedTotalCount',
+                'passRate',
+                'maxGpa',
+                'minGpa',
+                'avgGpa',
+                'academicYearLabel',
+                'yearScopeLabel',
+                'semesterScopeLabel',
+                'standingScopeLabel',
+                'reportNumber',
+                'issueDateFormatted',
+                'dtcLogoBase64',
+                'watermarkBase64',
+                'verificationHash'
+            ));
+        }
+
+        // Excel format
+        $title    = 'المحضر العام لنتائج واعتمادات الدفعة الدراسية - ' . $progName;
+        $columns  = ['اسم الطالب', 'الرقم الجامعي', 'التخصص', 'السنة/المستوى', 'المعدل التراكمي الموزون', 'المقررات غير المستوفاة', 'الحالة والقرار الأكاديمي'];
+        $footer   = 'إجمالي عدد طلاب الدفعة المعتمدين في المحضر: ' . $excelRows->count() . ' - متوسط المعدل العام: ' . $avgGpa . '%';
+        $fileBase = $this->sanitizeFileName('محضر_نتائج_الدفعة_' . $progName . '_' . $yearLabel);
+
+        $dossier = [
+            'القسم العلمي'       => $deptName,
+            'الفرع / التخصص'     => $progName,
+            'السنة الأكاديمية'   => $yearLabel,
+            'الفصل الدراسي'      => $semesterLabel,
+            'فلتر الحالة'        => $standingScopeLabel,
+            'إجمالي الطلاب'      => $excelRows->count(),
+            'نسبة النجاح'        => $passRate . '%',
+            'تاريخ إصدار المحضر' => now()->format('Y-m-d H:i'),
+        ];
+
+        return $this->downloadExcelTable($title, $columns, $excelRows, $fileBase, $footer, $dossier);
     }
 
     /**
@@ -355,8 +1424,7 @@ class AffairsWebController extends Controller
     }
 
     /**
-     * يحوّل ملف شعار (لو موجود فعلاً بـ public/images/logos) إلى data URI مضمّن بالـ HTML،
-     * حتى يظهر بالـ PDF/Excel المُصدَّر بدون الاعتماد على تحميل عن بعد. يرجع سلسلة فارغة إن لم يوجد الملف.
+     * يحوّل ملف شعار إلى data URI مضمّن بالـ HTML
      */
     private function logoImgTag(string $fileName, string $alt, string $style = 'max-height:60px;'): string
     {
@@ -377,10 +1445,9 @@ class AffairsWebController extends Controller
     }
 
     /**
-     * HTML موحّد (بنمط جدول Excel/طباعة RTL) يُستخدم لكل من تصدير Excel وPDF، بشكل رسمي أكاديمي
-     * (ترويسة بثلاثة شعارات + عنوان كشف علامات + بيانات إصدار + مكان توقيع وختم).
+     * HTML موحّد للـ PDF بكافة المعايير المؤسساتية والاعتمادات والأختام والتنبيه القانوني
      */
-    private function buildResultsHtml(string $title, array $columns, $rows, ?string $footer = null): string
+    private function buildResultsHtml(string $title, array $columns, $rows, ?string $footer = null, ?array $dossier = null): string
     {
         $headerCells = '';
         foreach ($columns as $col) {
@@ -389,95 +1456,133 @@ class AffairsWebController extends Controller
 
         $bodyRows = '';
         foreach ($rows as $row) {
-            $rowClass = ($row['status'] ?? '') === 'راسب' ? 'fail' : 'pass';
-            $bodyRows .= '<tr>'
-                . '<td>' . htmlspecialchars($row['name']) . '</td>'
-                . '<td>' . htmlspecialchars($row['exam']) . '</td>'
-                . '<td>' . htmlspecialchars((string) $row['weight']) . '</td>'
-                . '<td class="' . $rowClass . '">' . htmlspecialchars($row['percentage'] . '%') . '</td>'
-                . '<td class="' . $rowClass . '">' . htmlspecialchars($row['status']) . '</td>'
-                . '</tr>';
+            $statusText = (string)($row['status'] ?? '');
+            $isFail = str_contains($statusText, 'راسب') || str_contains($statusText, 'تكميلية');
+            $rowClass = $isFail ? 'fail' : 'pass';
+
+            $bodyRows .= '<tr>';
+            foreach ($row as $cellKey => $cellVal) {
+                $cellClass = ($cellKey === 'status') ? $rowClass : '';
+                $bodyRows .= '<td class="' . $cellClass . '">' . htmlspecialchars((string)$cellVal) . '</td>';
+            }
+            $bodyRows .= '</tr>';
         }
 
-        $footerHtml = $footer ? '<tr><td colspan="5" class="footer-row"><b>' . htmlspecialchars($footer) . '</b></td></tr>' : '';
+        $colCount = count($columns);
+        $footerHtml = $footer ? '<tr><td colspan="' . $colCount . '" class="footer-row"><b>' . htmlspecialchars($footer) . '</b></td></tr>' : '';
 
-        $activeSemester = DB::table('semesters')->where('is_active', 1)->value('name') ?? '-';
+        $activeSemester = DB::table('semesters')->where('is_active', 1)->value('name') ?? 'الفصل الدراسي الحالي';
 
-        $logoStyle     = 'max-height:52px; max-width:100px;';
+        $logoStyle     = 'max-height:50px; max-width:110px;';
         $edubridgeLogo = $this->logoImgTag('edubridge.png', 'EduBridge', $logoStyle);
         $unrwaLogo     = $this->logoImgTag('unrwa.png', 'UNRWA', $logoStyle);
         $dtcLogo       = $this->logoImgTag('dtc.png', 'Damascus Training Centre', $logoStyle);
 
+        // جدول البطاقة المؤسساتية إن وجدت
+        $dossierHtml = '';
+        if (!empty($dossier)) {
+            $dossierHtml .= '<table style="width: 100%; margin-bottom: 12px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;"><tbody>';
+            $dossierPairs = [];
+            foreach ($dossier as $k => $v) {
+                $dossierPairs[] = ['k' => $k, 'v' => $v];
+            }
+            for ($i = 0; $i < count($dossierPairs); $i += 2) {
+                $dossierHtml .= '<tr>';
+                $dossierHtml .= '<td class="plain" style="width: 20%; font-weight: bold; color: #1e293b; background-color: #f1f5f9; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 9pt;">' . htmlspecialchars($dossierPairs[$i]['k']) . ':</td>';
+                $dossierHtml .= '<td class="plain" style="width: 30%; color: #0f172a; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 9.5pt;">' . htmlspecialchars($dossierPairs[$i]['v']) . '</td>';
+                if (isset($dossierPairs[$i+1])) {
+                    $dossierHtml .= '<td class="plain" style="width: 20%; font-weight: bold; color: #1e293b; background-color: #f1f5f9; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 9pt;">' . htmlspecialchars($dossierPairs[$i+1]['k']) . ':</td>';
+                    $dossierHtml .= '<td class="plain" style="width: 30%; color: #0f172a; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 9.5pt;">' . htmlspecialchars($dossierPairs[$i+1]['v']) . '</td>';
+                } else {
+                    $dossierHtml .= '<td colspan="2" class="plain" style="border: 1px solid #e2e8f0;"></td>';
+                }
+                $dossierHtml .= '</tr>';
+            }
+            $dossierHtml .= '</tbody></table>';
+        }
+
         return '<html dir="rtl" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <!--[if gte mso 9]>
-    <xml>
-     <x:ExcelWorkbook>
-      <x:ExcelWorksheets>
-       <x:ExcelWorksheet>
-        <x:Name>كشف العلامات</x:Name>
-        <x:WorksheetOptions>
-         <x:DisplayRightToLeft/>
-        </x:WorksheetOptions>
-       </x:ExcelWorksheet>
-      </x:ExcelWorksheets>
-     </x:ExcelWorkbook>
-    </xml>
-    <![endif]-->
     <style>
-        /* DejaVu Sans أولاً لأن محرك PDF (Dompdf) يتعرف عليه كخط مضمّن يدعم الأحرف العربية؛
-           برامج Excel/Word بتتجاهله وبتستخدم Segoe UI/Tahoma تلقائياً بما إنه غير مثبت عندها */
-        body { font-family: "DejaVu Sans", "Segoe UI", Tahoma, Arial, sans-serif; direction: rtl; text-align: right; }
-        .doc-frame { border: 3px double #0f172a; padding: 14px; }
+        body { font-family: "DejaVu Sans", "Segoe UI", Tahoma, Arial, sans-serif; direction: rtl; text-align: right; margin: 0; padding: 0; }
+        .doc-frame { border: 2px solid #0f172a; padding: 14px; border-radius: 4px; }
         table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #94a3b8; padding: 10px; text-align: center; vertical-align: middle; font-size: 10pt; }
-        th { background-color: #0f172a; color: #ffffff; font-weight: bold; font-size: 11pt; }
-        .plain, .plain td, .plain th { border: none; padding: 4px; }
-        .letterhead-name { font-size: 12pt; font-weight: bold; color: #0f172a; }
-        .letterhead-sub { font-size: 9pt; color: #64748b; }
-        .doc-title { font-size: 17pt; font-weight: bold; color: #ffffff; background-color: #0f172a; text-align: center; padding: 12px; }
-        .doc-subtitle { font-size: 11pt; font-weight: normal; color: #e2e8f0; }
-        .meta-row { text-align: center; font-size: 9pt; color: #475569; background-color: #f1f5f9; padding: 8px; }
+        th, td { border: 1px solid #94a3b8; padding: 7px 8px; text-align: center; vertical-align: middle; font-size: 9pt; }
+        th { background-color: #0f172a; color: #ffffff; font-weight: bold; font-size: 9.5pt; }
+        .plain, .plain td, .plain th { border: none; padding: 3px; }
+        .letterhead-name { font-size: 13pt; font-weight: bold; color: #0f172a; }
+        .letterhead-sub { font-size: 9pt; color: #475569; }
+        .doc-title { font-size: 14pt; font-weight: bold; color: #ffffff; background-color: #0f172a; text-align: center; padding: 10px; }
+        .doc-subtitle { font-size: 10pt; font-weight: normal; color: #e2e8f0; }
+        .meta-row { text-align: center; font-size: 8.5pt; color: #475569; background-color: #f1f5f9; padding: 6px; }
         .pass { color: #15803d; font-weight: bold; background-color: #dcfce7; }
         .fail { color: #b91c1c; font-weight: bold; background-color: #fee2e2; }
-        .footer-row { background-color: #fef9c3; text-align: center; font-size: 12pt; padding: 12px; }
+        .footer-row { background-color: #fef9c3; text-align: center; font-size: 10pt; padding: 9px; color: #854d0e; }
+        .stamp-box { border: 1.5px dashed #64748b; border-radius: 6px; padding: 10px; text-align: center; vertical-align: top; }
+        .stamp-title { font-weight: bold; font-size: 10pt; color: #0f172a; margin-bottom: 4px; }
+        .stamp-sub { font-size: 8pt; color: #64748b; margin-bottom: 36px; }
+        .stamp-line { font-size: 8.5pt; color: #334155; border-top: 1px solid #cbd5e1; padding-top: 4px; width: 80%; margin: 0 auto; }
+        .legal-notice { margin-top: 18px; padding: 8px 12px; background-color: #fff1f2; border: 1px solid #fecdd3; border-radius: 4px; text-align: center; font-size: 8pt; color: #9f1239; line-height: 1.5; }
     </style>
 </head>
 <body>
 <div class="doc-frame">
     <table class="plain">
         <tr>
-            <td class="plain" style="width: 33%; text-align: center; vertical-align: middle;">' . $unrwaLogo . '</td>
-            <td class="plain" style="width: 34%; text-align: center; vertical-align: middle;">' . $edubridgeLogo . '</td>
-            <td class="plain" style="width: 33%; text-align: center; vertical-align: middle;">' . $dtcLogo . '</td>
+            <td class="plain" style="width: 30%; text-align: right; vertical-align: middle;">' . $unrwaLogo . '</td>
+            <td class="plain" style="width: 40%; text-align: center; vertical-align: middle;">
+                <div class="letterhead-name">معهد دمشق المتوسط (DTC)</div>
+                <div class="letterhead-sub">مديرية شؤون الطلاب والامتحانات - نظام الكنترول الأكاديمي</div>
+            </td>
+            <td class="plain" style="width: 30%; text-align: left; vertical-align: middle;">' . $edubridgeLogo . ' ' . $dtcLogo . '</td>
         </tr>
     </table>
 
-    <div style="text-align: center; padding: 8px 0 4px;">
-        <div class="letterhead-name">معهد دمشق المتوسط</div>
-        <div class="letterhead-sub" style="margin-top: 2px;">نظام إدارة العملية التعليمية</div>
-    </div>
+    <div style="border-bottom: 2px solid #0f172a; margin: 8px 0 12px;"></div>
 
-    <div style="border-bottom: 2px solid #0f172a; margin-bottom: 10px;"></div>
+    ' . $dossierHtml . '
 
     <table>
-        <tr><td colspan="5" class="doc-title">كشف علامات رسمي<br><span class="doc-subtitle">' . htmlspecialchars($title) . '</span></td></tr>
-        <tr><td colspan="5" class="meta-row">الفصل الدراسي: ' . htmlspecialchars($activeSemester) . ' &nbsp;|&nbsp; تاريخ الإصدار: ' . now()->format('Y-m-d H:i') . '</td></tr>
+        <tr><td colspan="' . $colCount . '" class="doc-title">وثيقة كشف درجات واعتماد رسمي<br><span class="doc-subtitle">' . htmlspecialchars($title) . '</span></td></tr>
+        <tr><td colspan="' . $colCount . '" class="meta-row">الفصل الدراسي: ' . htmlspecialchars($activeSemester) . ' &nbsp;|&nbsp; تاريخ التوليد الإلكتروني: ' . now()->format('Y-m-d H:i') . '</td></tr>
         <thead><tr>' . $headerCells . '</tr></thead>
         <tbody>' . $bodyRows . $footerHtml . '</tbody>
     </table>
+
+    <!-- خانة الاعتماد المزدوجة الرسمية -->
+    <table class="plain" style="width: 100%; margin-top: 25px;">
+        <tr>
+            <td class="plain" style="width: 50%; padding-left: 10px;">
+                <div class="stamp-box">
+                    <div class="stamp-title">اعتماد وتوقيع شؤون الطلاب</div>
+                    <div class="stamp-sub">تدقيق السجلات والدرجات الأكاديمية</div>
+                    <div class="stamp-line">التوقيع والختم الحي: .......................................</div>
+                </div>
+            </td>
+            <td class="plain" style="width: 50%; padding-right: 10px;">
+                <div class="stamp-box">
+                    <div class="stamp-title">اعتماد عمادة المعهد / الإدارة العليا</div>
+                    <div class="stamp-sub">المصادقة الرسمية والاعتماد النهائي للوثيقة</div>
+                    <div class="stamp-line">التوقيع وخاتم العمادة: .......................................</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- التنبيه القانوني الإلزامي الصريح -->
+    <div class="legal-notice">
+        <strong>تنبيه قانوني هام:</strong> تعتبر هذه الوثيقة مسودة إلكترونية، وتفقد مصداقيتها وصلاحيتها القانونية والرسمية بشكل كامل عند طباعتها ورقياً ما لم تكن ممهورة بالختم الرسمي الحي والتوقيع المعتمد لكل من شؤون الطلاب والإدارة العليا للمعهد.
+    </div>
 </div>
 </body>
 </html>';
     }
 
     /**
-     * HTML مخصّص لإكسل فقط: جدول مسطّح واحد بدون جداول متداخلة وبدون صور مضمّنة (data URI)،
-     * لأن آلية استيراد إكسل لملفات HTML لا تدعم الصور المضمّنة، وتتشوّش أعمدة الجدول عند وجود
-     * أكثر من <table> منفصل بنفس الصفحة. الشعارات هنا نص فقط بدل الصور.
+     * HTML مخصّص لتصدير Excel
      */
-    private function buildExcelHtml(string $title, array $columns, $rows, ?string $footer = null): string
+    private function buildExcelHtml(string $title, array $columns, $rows, ?string $footer = null, ?array $dossier = null): string
     {
         $colCount = count($columns);
 
@@ -488,57 +1593,53 @@ class AffairsWebController extends Controller
 
         $bodyRows = '';
         foreach ($rows as $row) {
-            $rowClass = ($row['status'] ?? '') === 'راسب' ? 'fail' : 'pass';
-            $bodyRows .= '<tr>'
-                . '<td>' . htmlspecialchars($row['name']) . '</td>'
-                . '<td>' . htmlspecialchars($row['exam']) . '</td>'
-                . '<td>' . htmlspecialchars((string) $row['weight']) . '</td>'
-                . '<td class="' . $rowClass . '">' . htmlspecialchars($row['percentage'] . '%') . '</td>'
-                . '<td class="' . $rowClass . '">' . htmlspecialchars($row['status']) . '</td>'
-                . '</tr>';
+            $statusText = (string)($row['status'] ?? '');
+            $isFail = str_contains($statusText, 'راسب') || str_contains($statusText, 'تكميلية');
+            $rowClass = $isFail ? 'fail' : 'pass';
+
+            $bodyRows .= '<tr>';
+            foreach ($row as $cellKey => $cellVal) {
+                $cellClass = ($cellKey === 'status') ? $rowClass : '';
+                $bodyRows .= '<td class="' . $cellClass . '">' . htmlspecialchars((string)$cellVal) . '</td>';
+            }
+            $bodyRows .= '</tr>';
         }
 
         $footerHtml = $footer ? '<tr><td colspan="' . $colCount . '" class="footer-row"><b>' . htmlspecialchars($footer) . '</b></td></tr>' : '';
+
+        $dossierRows = '';
+        if (!empty($dossier)) {
+            foreach ($dossier as $k => $v) {
+                $dossierRows .= '<tr><td style="font-weight:bold; background-color:#f1f5f9;">' . htmlspecialchars($k) . '</td><td colspan="' . ($colCount - 1) . '">' . htmlspecialchars((string)$v) . '</td></tr>';
+            }
+        }
 
         $activeSemester = DB::table('semesters')->where('is_active', 1)->value('name') ?? '-';
 
         return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <!--[if gte mso 9]>
-    <xml>
-     <x:ExcelWorkbook>
-      <x:ExcelWorksheets>
-       <x:ExcelWorksheet>
-        <x:Name>كشف العلامات</x:Name>
-        <x:WorksheetOptions>
-         <x:DisplayRightToLeft/>
-        </x:WorksheetOptions>
-       </x:ExcelWorksheet>
-      </x:ExcelWorksheets>
-     </x:ExcelWorkbook>
-    </xml>
-    <![endif]-->
     <style>
         body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; direction: rtl; text-align: right; }
         table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #94a3b8; padding: 10px; text-align: center; vertical-align: middle; font-size: 10pt; }
-        th { background-color: #0f172a; color: #ffffff; font-weight: bold; font-size: 11pt; }
+        th, td { border: 1px solid #94a3b8; padding: 8px; text-align: center; vertical-align: middle; font-size: 10pt; }
+        th { background-color: #0f172a; color: #ffffff; font-weight: bold; font-size: 10pt; }
         .institution-row { font-size: 11pt; font-weight: bold; color: #0f172a; background-color: #f1f5f9; text-align: center; padding: 8px; }
-        .header-title { font-size: 16pt; font-weight: bold; color: #ffffff; background-color: #0f172a; text-align: center; padding: 14px; }
+        .header-title { font-size: 15pt; font-weight: bold; color: #ffffff; background-color: #0f172a; text-align: center; padding: 12px; }
         .subtitle-row { font-size: 11pt; color: #334155; text-align: center; padding: 8px; }
-        .meta-row { font-size: 9pt; color: #475569; background-color: #f1f5f9; text-align: center; padding: 8px; }
+        .meta-row { font-size: 9pt; color: #475569; background-color: #f1f5f9; text-align: center; padding: 6px; }
         .pass { color: #15803d; font-weight: bold; background-color: #dcfce7; }
         .fail { color: #b91c1c; font-weight: bold; background-color: #fee2e2; }
-        .footer-row { background-color: #fef9c3; text-align: center; font-size: 12pt; padding: 12px; }
+        .footer-row { background-color: #fef9c3; text-align: center; font-size: 11pt; padding: 10px; }
     </style>
 </head>
 <body>
     <table>
-        <tr><td colspan="' . $colCount . '" class="institution-row">معهد دمشق المتوسط</td></tr>
-        <tr><td colspan="' . $colCount . '" class="header-title">كشف علامات رسمي</td></tr>
+        <tr><td colspan="' . $colCount . '" class="institution-row">معهد دمشق المتوسط (DTC) - شؤون الطلاب والكنترول</td></tr>
+        <tr><td colspan="' . $colCount . '" class="header-title">كشف درجات واعتماد رسمي</td></tr>
         <tr><td colspan="' . $colCount . '" class="subtitle-row">' . htmlspecialchars($title) . '</td></tr>
         <tr><td colspan="' . $colCount . '" class="meta-row">الفصل الدراسي: ' . htmlspecialchars($activeSemester) . '  |  تاريخ الإصدار: ' . now()->format('Y-m-d H:i') . '</td></tr>
+        ' . $dossierRows . '
         <thead><tr>' . $headerCells . '</tr></thead>
         <tbody>' . $bodyRows . $footerHtml . '</tbody>
     </table>
@@ -546,9 +1647,9 @@ class AffairsWebController extends Controller
 </html>';
     }
 
-    private function downloadExcelTable(string $title, array $columns, $rows, string $fileBase, ?string $footer = null)
+    private function downloadExcelTable(string $title, array $columns, $rows, string $fileBase, ?string $footer = null, ?array $dossier = null)
     {
-        $html = $this->buildExcelHtml($title, $columns, $rows, $footer);
+        $html = $this->buildExcelHtml($title, $columns, $rows, $footer, $dossier);
         $fileName = $fileBase . '_' . now()->format('Y-m-d') . '.xls';
 
         return response($html, 200, [
@@ -557,9 +1658,9 @@ class AffairsWebController extends Controller
         ]);
     }
 
-    private function downloadPdfTable(string $title, array $columns, $rows, string $fileBase, ?string $footer = null)
+    private function downloadPdfTable(string $title, array $columns, $rows, string $fileBase, ?string $footer = null, ?array $dossier = null)
     {
-        $html = $this->buildResultsHtml($title, $columns, $rows, $footer);
+        $html = $this->buildResultsHtml($title, $columns, $rows, $footer, $dossier);
         $fileName = $fileBase . '_' . now()->format('Y-m-d') . '.pdf';
         $pdfContent = null;
 

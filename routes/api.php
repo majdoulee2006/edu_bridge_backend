@@ -263,6 +263,7 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // التقارير السلوكية المطلوبة من المعلم
         Route::get('/report-requests', [TeacherController::class, 'getReportRequests']);
+        Route::get('/report-requests/{id}/stats', [TeacherController::class, 'getStudentAcademicStats']);
         Route::post('/report-requests/{id}/submit', [TeacherController::class, 'submitEvaluation']);
 
         // الحضور والغياب
@@ -593,6 +594,12 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs,admin'])->gr
     Route::get('/students-academic',                     [AffairsController::class, 'getFilteredStudentsForAcademicCard']);
     Route::get('/academic-card',                         [AffairsController::class, 'getStudentAcademicCardForAffairs']);
     Route::get('/academic-card/export-pdf',              [AffairsController::class, 'exportStudentAcademicCardPdf']);
+    
+    // Academic Pathway (المسار الأكاديمي الطلابي وأوزان المقررات ومحاضر الدفعات)
+    Route::get('/course-weights/data',                   [AffairsController::class, 'getCourseWeightsData']);
+    Route::post('/course-weights/student-decision',      [AffairsController::class, 'updateStudentAcademicDecision']);
+    Route::get('/course-weights/export-student-pdf',     [AffairsController::class, 'exportCourseWeightsStudentPdf']);
+    Route::get('/course-weights/export-cohort-pdf',      [AffairsController::class, 'exportCourseWeightsCohortPdf']);
     // Student Service Requests
     Route::get('/student-service-requests',               [AffairsController::class, 'listStudentRequests']);
     Route::post('/student-service-requests/{id}/process', [AffairsController::class, 'processStudentRequest']);

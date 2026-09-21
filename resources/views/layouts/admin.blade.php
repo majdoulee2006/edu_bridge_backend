@@ -139,6 +139,14 @@
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* Enforce constant tab height & prevent two-line wrapping across all tabs */
+        #sidebar nav a {
+            min-height: 44px;
+            max-height: 44px;
+            height: 44px;
+            white-space: nowrap !important;
+        }
     </style>
     @stack('styles')
 </head>

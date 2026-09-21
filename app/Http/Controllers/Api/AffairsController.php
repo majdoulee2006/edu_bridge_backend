@@ -2569,6 +2569,100 @@ class AffairsController extends Controller
             ]
         ]);
     }
+
+    /**
+     * جلب بيانات المسار الأكاديمي الطلابي وأوزان المقررات والفرز لتطبيق الموبايل
+     */
+    public function getCourseWeightsData(Request $request)
+    {
+        $webCtrl = app(\App\Http\Controllers\Web\AffairsWebController::class);
+        $data = $webCtrl->getCourseWeightsPayload();
+        return response()->json([
+            'success' => true,
+            'data'    => $data,
+        ]);
+    }
+
+    /**
+     * تحديث واعتماد القرار الأكاديمي للطالب من الموبايل
+     */
+    public function updateStudentAcademicDecision(Request $request)
+    {
+        $webCtrl = app(\App\Http\Controllers\Web\AffairsWebController::class);
+        return $webCtrl->studentAcademicDecision($request);
+    }
+
+    /**
+     * تصدير كشف علامات الطالب الرسمي بصيغة PDF حقيقية لتطبيق الموبايل
+     */
+    public function exportCourseWeightsStudentPdf(Request $request)
+    {
+        $webCtrl = app(\App\Http\Controllers\Web\AffairsWebController::class);
+        $request->merge(['format' => 'pdf']);
+        $response = $webCtrl->exportCourseWeightsStudent($request);
+
+        $html = ($response instanceof \Illuminate\View\View) ? $response->render() : (string) $response;
+        $pdfContent = $this->renderHtmlToBinaryPdf($html, 'A4', 'P');
+        $fileName = 'transcript_' . ($request->student_id ?? 'student') . '.pdf';
+
+        return response($pdfContent, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+        ]);
+    }
+
+    /**
+     * تصدير محضر نتائج الدفعة الرسمي بصيغة PDF حقيقية لتطبيق الموبايل
+     */
+    public function exportCourseWeightsCohortPdf(Request $request)
+    {
+        $webCtrl = app(\App\Http\Controllers\Web\AffairsWebController::class);
+        $request->merge(['format' => 'pdf']);
+        $response = $webCtrl->exportCourseWeightsCohort($request);
+
+        $html = ($response instanceof \Illuminate\View\View) ? $response->render() : (string) $response;
+        $pdfContent = $this->renderHtmlToBinaryPdf($html, 'A4', 'L');
+        $fileName = 'cohort_report_' . ($request->program_id ?? 'all') . '.pdf';
+
+        return response($pdfContent, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+        ]);
+    }
+
+    private function renderHtmlToBinaryPdf(string $html, string $format = 'A4', string $orientation = 'P'): string
+    {
+        if (class_exists('\Mpdf\Mpdf')) {
+            try {
+                $mpdf = new \Mpdf\Mpdf([
+                    'mode'             => 'utf-8',
+                    'format'           => $format,
+                    'orientation'      => $orientation,
+                    'autoScriptToLang' => true,
+                    'autoLangToFont'   => true,
+                    'useSubsets'       => false,
+                ]);
+                $mpdf->SetDirectionality('rtl');
+                $mpdf->WriteHTML($html);
+                return $mpdf->Output('', 'S');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('mPDF error: ' . $e->getMessage());
+            }
+        }
+
+        if (class_exists('\Barryvdh\DomPDF\Facade\Pdf')) {
+            try {
+                return \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)
+                    ->setPaper(strtolower($format), $orientation === 'L' ? 'landscape' : 'portrait')
+                    ->output();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('DomPDF error: ' . $e->getMessage());
+            }
+        }
+
+        return '';
+    }
 }
+
 
 

@@ -449,9 +449,18 @@ class StudentController extends Controller
             } elseif ($filter == 'read') {
                 $query->where('is_read', true);
             } elseif ($filter == 'academic') {
-                $query->where('category', 'academic');
+                $query->where(function($q) use ($academicTypes) {
+                    $q->where('category', 'academic')
+                      ->orWhereIn('type', $academicTypes);
+                });
             } elseif ($filter == 'administrative') {
-                $query->where('category', 'administrative');
+                $query->where(function($q) use ($academicTypes) {
+                    $q->where('category', 'administrative')
+                      ->orWhere(function($sub) use ($academicTypes) {
+                          $sub->whereNotIn('type', $academicTypes)
+                              ->where('category', '!=', 'academic');
+                      });
+                });
             }
         }
 
@@ -490,41 +499,6 @@ class StudentController extends Controller
                 'time_ago' => $notify->created_at ? $notify->created_at->diffForHumans() : 'منذ قليل',
             ];
         });
-
-        if ($mappedItems->isEmpty()) {
-            $mappedItems = collect([
-                [
-                    'id' => 1,
-                    'title' => 'مرحباً بك في نظام Edu-Bridge 🎓',
-                    'message' => 'نتمنى لك عاماً أكاديمياً مليئاً بالتوفيق والنجاح. يمكنك متابعة المحاضرات والجداول والواجبات مباشرة عبر التطبيق.',
-                    'type' => 'announcement',
-                    'category' => 'administrative',
-                    'sender_name' => 'إدارة الكلية',
-                    'is_read' => false,
-                    'related_id' => null,
-                    'image_url' => null,
-                    'link_url' => null,
-                    'created_at' => now()->format('Y-m-d H:i:s'),
-                    'formatted_date' => now()->translatedFormat('d F Y - h:i A'),
-                    'time_ago' => 'منذ قليل',
-                ],
-                [
-                    'id' => 2,
-                    'title' => 'تحديث الجدول الدراسي الأسبوعي 📅',
-                    'message' => 'تم اعتماد ونشر جدول الحصص والمحاضرات الأسبوعية لجميع الفصول الدراسية.',
-                    'type' => 'schedule',
-                    'category' => 'academic',
-                    'sender_name' => 'قسم شؤون الطلاب',
-                    'is_read' => true,
-                    'related_id' => null,
-                    'image_url' => null,
-                    'link_url' => null,
-                    'created_at' => now()->subDay()->format('Y-m-d H:i:s'),
-                    'formatted_date' => now()->subDay()->translatedFormat('d F Y - h:i A'),
-                    'time_ago' => 'منذ يوم',
-                ]
-            ]);
-        }
 
         return response()->json([
             'success' => true,

@@ -38,12 +38,24 @@ class ExportDatabase extends Command
 
         $this->info("Starting professional database export for '{$database}'...");
 
-        // Constructing the mysqldump command
-        // We use --add-drop-table to ensure fresh import for other developers
+        // Locate mysqldump binary
+        $mysqldump = 'mysqldump';
+        $possiblePaths = [
+            'C:\xampp 8.2\mysql\bin\mysqldump.exe',
+            'C:\xampp\mysql\bin\mysqldump.exe',
+            'D:\xampp\mysql\bin\mysqldump.exe',
+        ];
+        foreach ($possiblePaths as $path) {
+            if (file_exists($path)) {
+                $mysqldump = "\"{$path}\"";
+                break;
+            }
+        }
+
         $passwordStr = empty($password) ? '' : "-p\"{$password}\"";
-        
+
         // Command runs via system shell to support file redirection (>)
-        $command = "mysqldump -h{$host} -P{$port} -u{$username} {$passwordStr} --add-drop-table {$database} > \"{$outputFile}\"";
+        $command = "{$mysqldump} -h{$host} -P{$port} -u{$username} {$passwordStr} --add-drop-table {$database} > \"{$outputFile}\"";
 
         $process = Process::fromShellCommandline($command);
         $process->setTimeout(300); // Allow up to 5 minutes for large databases
