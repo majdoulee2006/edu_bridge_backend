@@ -520,9 +520,7 @@ class AffairsWebController extends Controller
         $rows = DB::table('enrollments')
             ->join('students', 'enrollments.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('grade_events', function ($join) use ($courseId) {
-                $join->on('courses.course_id', '=', 'grade_events.course_id');
-            })
+            ->leftJoin('grade_events', 'enrollments.course_id', '=', 'grade_events.course_id')
             ->leftJoin('grade_entries', function ($join) {
                 $join->on('grade_events.id', '=', 'grade_entries.grade_event_id')
                      ->on('enrollments.student_id', '=', 'grade_entries.student_id');
