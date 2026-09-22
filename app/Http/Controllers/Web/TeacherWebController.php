@@ -450,18 +450,11 @@ class TeacherWebController extends Controller
                     <th>تاريخ ووقت التسجيل</th>
                 </tr>";
 
-        $isToday = \Carbon\Carbon::parse($session->created_at)->isToday();
         foreach ($students as $student) {
             $att = $attendances->get($student->student_id);
             $statusRaw = $att ? $att->status : 'absent';
-            
-            if ($statusRaw === 'absent' && $isToday) {
-                $statusText = 'قيد الانتظار';
-                $color = '#d97706';
-            } else {
-                $statusText = ($statusRaw === 'present') ? 'حاضر' : 'غائب';
-                $color = ($statusRaw === 'present') ? '#166534' : '#b91c1c';
-            }
+            $statusText = ($statusRaw === 'present') ? 'حاضر' : 'غائب';
+            $color = ($statusRaw === 'present') ? '#166534' : '#b91c1c';
             
             $timeText = ($statusRaw === 'present') ? \Carbon\Carbon::parse($att->created_at)->format('Y-m-d H:i') : '-';
             
@@ -644,12 +637,6 @@ class TeacherWebController extends Controller
             foreach ($allStudents as $studentId => $studentInfo) {
                 $att = $attendances->get($studentId);
                 $statusRaw = $att ? $att->status : 'absent';
-                
-                $isToday = \Carbon\Carbon::parse($session->created_at)->isToday();
-                if ($statusRaw === 'absent' && $isToday) {
-                    $statusRaw = 'pending';
-                }
-                
                 $matrix[$studentId][$session->lesson_id] = $statusRaw;
             }
         }
@@ -669,7 +656,6 @@ class TeacherWebController extends Controller
             tr:nth-child(even) { background: #f7fafc; }
             .present { color: #166534; font-weight: bold; }
             .absent  { color: #b91c1c; font-weight: bold; }
-            .pending { color: #d97706; font-weight: bold; }
             .late    { color: #7c3aed; font-weight: bold; }
             .summary { margin-top: 10px; font-size: 13px; background: #f0f4f8; padding: 10px; border-radius: 8px; }
             @media print { body { margin: 0; } .no-print { display: none; } }
@@ -701,7 +687,6 @@ class TeacherWebController extends Controller
                 $text = '-';
                 if ($status === 'present') { $class = 'present'; $text = 'حاضر'; $presentCount++; }
                 elseif ($status === 'absent') { $class = 'absent'; $text = 'غائب'; }
-                elseif ($status === 'pending') { $class = 'pending'; $text = 'قيد الانتظار'; }
                 elseif ($status === 'late') { $class = 'late'; $text = 'متأخر'; $presentCount++; }
                 $rows .= "<td class=\"{$class}\">{$text}</td>";
             }
