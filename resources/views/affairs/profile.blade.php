@@ -412,7 +412,7 @@
                 </div>
                 <div style="text-align: right;">
                     <div class="action-row-title">الإعدادات العامة</div>
-                    <div class="action-row-desc">الإشعارات، المظهر، اللغة</div>
+                    <div class="action-row-desc">الإشعارات، المظهر</div>
                 </div>
             </div>
             <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary);"></i>
