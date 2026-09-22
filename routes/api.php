@@ -575,6 +575,10 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'role:affairs,admin'])->gr
     Route::post('/photo-change-requests/{id}/approve',   [AffairsController::class, 'approvePhotoChange']);
     Route::post('/photo-change-requests/{id}/reject',    [AffairsController::class, 'rejectPhotoChange']);
 
+    // Student Services (استرحام/وثائق/مذاكرة تعويضية/فك قفل جهاز) بمرحلة الشؤون
+    Route::get('/student-services',                      [AffairsController::class, 'getStudentServices']);
+    Route::post('/student-services/{id}/process',        [AffairsController::class, 'processStudentService']);
+
     // Appointments & Summons (المواعيد واستدعاء الأهل للإدارة)
     Route::get('/appointments/metadata', [AffairsController::class, 'getAppointmentsMetadata']);
     Route::get('/appointments/summons',  [AffairsController::class, 'getSummons']);

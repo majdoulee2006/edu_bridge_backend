@@ -144,6 +144,8 @@ class GenerateAcademicSchedules extends Command
         $classGroupBusy = [];
         $teacherBusy = [];
         $courseUsedDays = [];
+        $classGroupDayLoad = [];
+        $classGroupPeriodCursor = [];
 
         $scheduleRows = [];
         $examRows = [];
@@ -162,7 +164,8 @@ class GenerateAcademicSchedules extends Command
                 $usedDaysKey = $courseId . '|' . $groupKey;
 
                 for ($s = 0; $s < $sessions; $s++) {
-                    $slot = $this->findSlot($groupKey, $teacherUserId, $classGroupBusy, $teacherBusy, $courseUsedDays[$usedDaysKey] ?? []);
+                    $periodStartIdx = $classGroupPeriodCursor[$groupKey] ?? 0;
+                    $slot = $this->findSlot($groupKey, $teacherUserId, $classGroupBusy, $teacherBusy, $courseUsedDays[$usedDaysKey] ?? [], $classGroupDayLoad[$groupKey] ?? [], $periodStartIdx);
                     if (!$slot) {
                         $this->warn("تعذر إيجاد وقت متاح للمادة \"{$course['title']}\" في \"{$cg['class_group']}\" بدون تعارض — تم تخطيها.");
                         continue;
@@ -173,6 +176,11 @@ class GenerateAcademicSchedules extends Command
                         $teacherBusy["{$teacherUserId}|{$day}|{$period}"] = true;
                     }
                     $courseUsedDays[$usedDaysKey][] = $day;
+                    $classGroupDayLoad[$groupKey][$day] = ($classGroupDayLoad[$groupKey][$day] ?? 0) + 1;
+                    // ندوّر نقطة البداية المفضّلة للحصة الجاية بنفس الشعبة على فترة تالية
+                    // (بدل ما ترجع تبلش دايماً من الفترة الأولى 8:00 صباحاً)
+                    $periodIdx = array_search($period, array_keys(self::PERIODS), true);
+                    $classGroupPeriodCursor[$groupKey] = ($periodIdx + 1) % count(self::PERIODS);
 
                     $scheduleRows[] = [
                         'course_id' => $courseId,
@@ -211,15 +219,33 @@ class GenerateAcademicSchedules extends Command
         return [$scheduleRows, $examRows];
     }
 
-    private function findSlot(string $groupKey, ?int $teacherUserId, array &$classGroupBusy, array &$teacherBusy, array $usedDaysForCourse): ?array
+    private function findSlot(string $groupKey, ?int $teacherUserId, array &$classGroupBusy, array &$teacherBusy, array $usedDaysForCourse, array $groupDayLoad, int $periodStartIdx = 0): ?array
     {
+        // نرتّب الأيام من الأقل ازدحاماً للشعبة ككل (لتوزيع الحصص على كل أيام الأسبوع
+        // بدل تكديسها بالأحد والاثنين)، مع الحفاظ على ترتيب الأيام الأصلي عند التساوي
+        $daysByLoad = self::DAYS;
+        usort($daysByLoad, function ($a, $b) use ($groupDayLoad) {
+            $loadA = $groupDayLoad[$a] ?? 0;
+            $loadB = $groupDayLoad[$b] ?? 0;
+            if ($loadA === $loadB) {
+                return array_search($a, self::DAYS) <=> array_search($b, self::DAYS);
+            }
+            return $loadA <=> $loadB;
+        });
+
+        // ندوّر ترتيب الفترات بحيث ما تبلش كل حصة من 8:00 صباحاً — كل حصة جديدة
+        // بنفس الشعبة بتفضّل فترة تالية عن الحصة يلي قبلها، لتنويع أوقات المحاضرات
+        $periodsList = array_keys(self::PERIODS);
+        $periodStartIdx = $periodStartIdx % count($periodsList);
+        $rotatedPeriods = array_merge(array_slice($periodsList, $periodStartIdx), array_slice($periodsList, 0, $periodStartIdx));
+
         // أولاً: نفضّل يوماً لم تُجدول فيه هذه المادة بعد (لتوزيع حصصها على أيام مختلفة)
         foreach ([true, false] as $preferNewDay) {
-            foreach (self::DAYS as $day) {
+            foreach ($daysByLoad as $day) {
                 if ($preferNewDay && in_array($day, $usedDaysForCourse, true)) {
                     continue;
                 }
-                foreach (array_keys(self::PERIODS) as $period) {
+                foreach ($rotatedPeriods as $period) {
                     if (isset($classGroupBusy["{$groupKey}|{$day}|{$period}"])) {
                         continue;
                     }

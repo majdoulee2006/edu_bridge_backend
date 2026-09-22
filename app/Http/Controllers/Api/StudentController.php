@@ -319,6 +319,7 @@ class StudentController extends Controller
                 'phone' => $user->phone ?? 'غير متوفر',
                 'email' => $user->email ?? 'غير متوفر',
                 'department' => $departmentVal,
+                'program' => $programName ?? 'غير محدد',
                 'academic_year' => $academicYearVal,
                 'birth_date' => $birthDateVal,
                 'gender' => $genderVal,
@@ -1612,19 +1613,19 @@ class StudentController extends Controller
             ->pluck('course_id')
             ->toArray();
 
-        // 2. جلب كافة الواجبات الحقيقية المتاحة بالطالب أو المواد المسجل فيها
+        // 2. جلب الواجبات الخاصة بالمواد المسجل فيها الطالب فقط
+        // (كان هون شرط orWhereIn('course_id', Assignment::pluck('course_id'))
+        // بيلغي فعلياً شرط التسجيل، لأنه بيطابق أي واجب أصلاً موجود بالجدول
+        // بغض النظر عن تسجيل الطالب فيه)
         $assignmentsQuery = Assignment::with(['course.teachers.user', 'submissions' => function($query) use ($student) {
             $query->where('student_id', $student->student_id);
-        }]);
+        }])->whereIn('course_id', $enrolledCourseIds);
 
-        if (!empty($enrolledCourseIds)) {
-            $assignmentsQuery->where(function($q) use ($enrolledCourseIds) {
-                $q->whereIn('course_id', $enrolledCourseIds)
-                  ->orWhereIn('course_id', Assignment::pluck('course_id')->toArray());
-            });
-        }
-
-        $assignments = $assignmentsQuery->orderBy('created_at', 'desc')->get();
+        $assignments = $assignmentsQuery->orderBy('created_at', 'desc')->get()
+            // 🛡️ استبعاد أي واجب يتيم (course_id ما إلو مادة حقيقية موجودة) حتى ما يوقف
+            // الطلب كله بخطأ 500 لطالب واحد بسبب بيانات قديمة تالفة عند طالب تاني
+            ->filter(fn($a) => $a->course !== null)
+            ->values();
 
         $formattedAssignments = [];
         $now = Carbon::now();
@@ -1656,7 +1657,7 @@ class StudentController extends Controller
                 'due_date'      => $assignment->due_date->format('Y-m-d h:i A'),
                 'max_points'    => $assignment->max_points,
                 'course_name'   => $assignment->course->title ?? 'مادة غير معروفة',
-                'teacher_name'  => $assignment->course->teachers->first()?->user?->name ?? 'مدرس غير محدد',
+                'teacher_name'  => $assignment->course->teachers->first()?->user?->full_name ?? 'مدرس غير محدد',
                 'status'        => $status,
                 'file_url'      => $attachmentPath ? storageUrl($attachmentPath) : null,
                 'file_name'     => $attachmentName,
