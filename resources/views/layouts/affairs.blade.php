@@ -150,14 +150,17 @@
         }
 
         @media (max-width: 768px) {
-            .main-content {
+            .main-content,
+            [dir="rtl"] .main-content,
+            [dir="ltr"] .main-content {
                 margin-right: 0 !important;
                 margin-left: 0 !important;
-                padding: 1rem;
-                padding-bottom: 80px; /* space for bottom nav */
+                padding: 1rem !important;
+                padding-bottom: 85px !important; /* space for bottom nav */
+                width: 100% !important;
             }
             .bottom-nav {
-                display: flex;
+                display: flex !important;
             }
         }
         
@@ -223,7 +226,7 @@
                     <i class="fa-solid fa-calendar-check"></i> المواعيد واللقاءات
                 </a>
                 <a href="{{ route('affairs.course_weights') }}" class="nav-item {{ Request::is('affairs/course-weights') ? 'active' : '' }}">
-                    <i class="fa-solid fa-balance-scale"></i> تثقيلات المواد
+                    <i class="fa-solid fa-route"></i> المسار الأكاديمي الطلابي
                 </a>
                 <a href="{{ url('/affairs/activities') }}" class="nav-item {{ Request::is('affairs/activities') ? 'active' : '' }}">
                     <i class="fa-solid fa-clipboard-list"></i> الأنشطة

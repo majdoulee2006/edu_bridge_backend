@@ -1132,6 +1132,7 @@ class TeacherController extends Controller
             ->join('students', 'report_requests.student_id', '=', 'students.student_id')
             ->join('users as su', 'students.user_id', '=', 'su.user_id')
             ->leftJoin('courses', 'report_requests.course_id', '=', 'courses.course_id')
+            ->leftJoin('users as hu', 'report_requests.head_id', '=', 'hu.user_id')
             ->where('report_requests.teacher_id', $teacher->teacher_id)
             ->orderBy('report_requests.created_at', 'desc')
             ->get([
@@ -1145,6 +1146,7 @@ class TeacherController extends Controller
                 'report_requests.created_at',
                 'su.full_name as student_name',
                 'courses.title as course_name',
+                'hu.full_name as requester_name',
             ]);
 
         return response()->json(['success' => true, 'data' => $requests]);

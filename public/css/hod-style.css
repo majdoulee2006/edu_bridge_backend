@@ -36,6 +36,7 @@
 
 html {
     font-size: var(--base-font-size);
+    overflow-x: hidden;
 }
 
 body {
@@ -44,6 +45,7 @@ body {
     color: var(--text-primary);
     direction: rtl; /* Default Arabic */
     transition: background-color 0.3s, color 0.3s;
+    overflow-x: hidden;
 }
 
 [dir="ltr"] {
@@ -58,12 +60,12 @@ body {
 
 /* Sidebar */
 .sidebar {
-    width: 260px;
+    width: 285px !important;
     background-color: var(--bg-secondary);
     border-inline-end: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    padding: 2rem 1rem;
+    padding: 1.5rem 0.85rem;
     transition: all 0.3s;
     position: fixed;
     height: 100vh;
@@ -103,17 +105,34 @@ body {
 }
 
 .nav-item {
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
-    border-radius: 0.5rem;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 0 0.85rem !important;
+    margin-bottom: 0.35rem;
+    border-radius: 0.65rem;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.7rem;
     color: var(--text-secondary);
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 0.88rem;
+    white-space: nowrap !important;
+    box-sizing: border-box;
     transition: all 0.2s;
+}
+
+.nav-item i {
+    font-size: 1.05rem;
+    width: 1.25rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.nav-item span {
+    white-space: nowrap !important;
 }
 
 .nav-item:hover {
@@ -132,14 +151,20 @@ body {
     flex: 1;
     padding: 2rem;
     transition: all 0.3s;
+    min-width: 0;
+    width: 100%;
 }
 
-[dir="rtl"] .main-content {
-    margin-right: 260px;
-}
+@media (min-width: 1025px) {
+    [dir="rtl"] .main-content {
+        margin-right: 285px !important;
+        margin-left: 0 !important;
+    }
 
-[dir="ltr"] .main-content {
-    margin-left: 260px;
+    [dir="ltr"] .main-content {
+        margin-left: 285px !important;
+        margin-right: 0 !important;
+    }
 }
 
 /* Header */
@@ -527,6 +552,7 @@ input, select, textarea, button {
         transform: translateX(100%);
         box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
         z-index: 1000;
+        max-width: 85vw !important;
     }
     
     [dir="ltr"] .sidebar {
@@ -534,13 +560,17 @@ input, select, textarea, button {
     }
 
     .sidebar.active {
-        transform: translateX(0);
+        transform: translateX(0) !important;
     }
 
-    .main-content {
+    .main-content,
+    [dir="rtl"] .main-content,
+    [dir="ltr"] .main-content {
         margin-right: 0 !important;
         margin-left: 0 !important;
         padding: 1rem !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .mobile-menu-btn {

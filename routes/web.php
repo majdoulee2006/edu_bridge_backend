@@ -279,8 +279,10 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     
     // تثقيلات المواد ونتائج الطلاب
     Route::get('/course-weights', [AffairsWebController::class, 'courseWeights'])->name('affairs.course_weights');
+    Route::post('/course-weights/student-decision', [AffairsWebController::class, 'studentAcademicDecision'])->name('affairs.course_weights.student_decision');
     Route::get('/course-weights/export-course', [AffairsWebController::class, 'exportCourseWeightsCourse'])->name('affairs.course_weights.export_course');
     Route::get('/course-weights/export-student', [AffairsWebController::class, 'exportCourseWeightsStudent'])->name('affairs.course_weights.export_student');
+    Route::get('/course-weights/export-cohort', [AffairsWebController::class, 'exportCourseWeightsCohort'])->name('affairs.course_weights.export_cohort');
     // الخدمات الطلابية
     Route::get('/student-services', [AffairsWebController::class, 'studentServices'])->name('affairs.student_services');
     Route::post('/student-services/{id}/process', [AffairsWebController::class, 'processStudentService'])->name('affairs.student_services.process');

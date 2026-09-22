@@ -656,48 +656,125 @@ class ParentController extends Controller
 
     public function getReportsHistory(Request $request)
     {
-        $parent = Parents::where('user_id', $request->user()->user_id)->first();
+        $user = $request->user();
+        $parent = Parents::where('user_id', $user->user_id)->first();
 
         if (!$parent) {
             return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
         }
 
-        $query = \Illuminate\Support\Facades\DB::table('report_requests')
-            ->join('students', 'report_requests.student_id', '=', 'students.student_id')
-            ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->where('report_requests.head_id', $request->user()->user_id)
-            ->select(
-                'report_requests.*',
-                'users.full_name as student_name',
-                \Illuminate\Support\Facades\DB::raw("IF(report_requests.status = 'pending', 'pending_teacher', report_requests.status) as status")
-            )
-            ->orderByDesc('report_requests.created_at');
+        // 1. جلب معرفات أبناء ولي الأمر
+        $linkedStudentIds = \Illuminate\Support\Facades\DB::table('parent_students')
+            ->where(function ($q) use ($user, $parent) {
+                $q->where('parent_id', $user->user_id)
+                  ->orWhere('parent_id', $parent->parent_id);
+            })
+            ->pluck('student_id');
 
-        if ($request->has('student_id')) {
-            $query->where('report_requests.student_id', $request->input('student_id'));
+        $childStudentIds = \Illuminate\Support\Facades\DB::table('students')
+            ->where(function ($q) use ($linkedStudentIds) {
+                $q->whereIn('user_id', $linkedStudentIds)
+                  ->orWhereIn('student_id', $linkedStudentIds);
+            })
+            ->pluck('student_id')
+            ->unique()
+            ->toArray();
+
+        if (empty($childStudentIds)) {
+            return response()->json(['success' => true, 'data' => []], 200);
         }
 
-        $history = $query->get();
+        // فلترة اختيارية إذا تم تمرير student_id (قد يكون student_id أو user_id)
+        if ($request->has('student_id') && $request->input('student_id')) {
+            $inputSid = $request->input('student_id');
+            $resolvedSid = \Illuminate\Support\Facades\DB::table('students')
+                ->where('student_id', $inputSid)
+                ->orWhere('user_id', $inputSid)
+                ->value('student_id');
 
-        // لجلب التقارير السابقة من performance_reports
-        // سنفترض أن الطلبات المكتملة تعود بمعلومات التقرير
-        $completedRequests = $history->where('status', 'completed');
-        foreach ($completedRequests as $req) {
-            $report = \Illuminate\Support\Facades\DB::table('performance_reports')
-                ->where('student_id', $req->student_id)
-                ->where('report_type', $req->report_type)
-                ->where('created_at', '>=', $req->updated_at) // تقريبي
-                ->orderByDesc('created_at')
-                ->first();
-                
-            if ($report) {
-                $req->average_grade = $report->average_grade;
-                $req->attendance_rate = $report->attendance_rate;
-                $req->recommendations = $report->recommendations;
+            if ($resolvedSid && in_array($resolvedSid, $childStudentIds)) {
+                $childStudentIds = [$resolvedSid];
             }
         }
 
-        return response()->json(['success' => true, 'data' => $history], 200);
+        // 2. التقارير المكتملة من performance_reports
+        $completedReports = \Illuminate\Support\Facades\DB::table('performance_reports')
+            ->whereIn('performance_reports.student_id', $childStudentIds)
+            ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select(
+                'performance_reports.report_id as id',
+                'performance_reports.report_type',
+                'performance_reports.attendance_rate',
+                'performance_reports.average_grade',
+                'performance_reports.recommendations',
+                'performance_reports.created_at',
+                'users.full_name as student_name',
+                \Illuminate\Support\Facades\DB::raw("'completed' as status")
+            )
+            ->get()
+            ->map(function ($item) {
+                $arr = (array) $item;
+                if (empty($arr['recommendations'])) {
+                    $reqNote = \Illuminate\Support\Facades\DB::table('report_requests')
+                        ->where('student_id', $item->student_id ?? 0)
+                        ->where('report_type', $arr['report_type'])
+                        ->value('notes');
+                    if ($reqNote) $arr['recommendations'] = $reqNote;
+                }
+                return $arr;
+            });
+
+        // 3. طلبات التقارير المرسلة لولي الأمر من report_requests
+        $reqReports = \Illuminate\Support\Facades\DB::table('report_requests')
+            ->whereIn('report_requests.student_id', $childStudentIds)
+            ->where('report_requests.sent_to_parent', 1)
+            ->where('report_requests.status', 'completed')
+            ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select(
+                'report_requests.id',
+                'report_requests.report_type',
+                \Illuminate\Support\Facades\DB::raw('null as attendance_rate'),
+                \Illuminate\Support\Facades\DB::raw('null as average_grade'),
+                'report_requests.notes as recommendations',
+                'report_requests.created_at',
+                'users.full_name as student_name',
+                \Illuminate\Support\Facades\DB::raw("'completed' as status")
+            )
+            ->get()
+            ->map(fn($r) => (array) $r);
+
+        // 4. طلبات التقارير المعلقة
+        $pendingReports = \Illuminate\Support\Facades\DB::table('report_requests')
+            ->whereIn('report_requests.student_id', $childStudentIds)
+            ->where('report_requests.status', 'pending')
+            ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->select(
+                'report_requests.id',
+                'report_requests.report_type',
+                \Illuminate\Support\Facades\DB::raw('null as attendance_rate'),
+                \Illuminate\Support\Facades\DB::raw('null as average_grade'),
+                \Illuminate\Support\Facades\DB::raw('null as recommendations'),
+                'report_requests.created_at',
+                'users.full_name as student_name',
+                \Illuminate\Support\Facades\DB::raw("'pending_teacher' as status")
+            )
+            ->get()
+            ->map(fn($r) => (array) $r);
+
+        // دمج السجلات وتجنب التكرار
+        $all = collect($completedReports)
+            ->concat($reqReports)
+            ->unique(function ($item) {
+                return ($item['student_name'] ?? '') . '_' . ($item['report_type'] ?? '') . '_' . substr($item['created_at'] ?? '', 0, 10);
+            })
+            ->concat($pendingReports)
+            ->sortByDesc('created_at')
+            ->values();
+
+        return response()->json(['success' => true, 'data' => $all], 200);
     }
 
     /**
