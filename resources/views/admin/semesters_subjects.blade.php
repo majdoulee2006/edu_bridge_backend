@@ -168,7 +168,10 @@
                     </div>
                     
                     <div class="flex-1 min-w-0 font-Cairo">
-                        <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 block">{{ $course->semester_name }}</span>
+                        <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 block">
+                            {{ $course->semester_name }}
+                            @if(!empty($course->code)) &bull; <span class="font-extrabold text-primary-dark dark:text-primary">[{{ $course->code }}]</span> @endif
+                        </span>
                         <h4 class="text-base font-bold text-slate-850 dark:text-white leading-snug group-hover:text-primary-dark dark:group-hover:text-primary transition-colors truncate">{{ $course->title }}</h4>
                         
                         <div class="flex items-center gap-1.5 mt-2 text-slate-500 dark:text-slate-400">
@@ -307,6 +310,13 @@
             <form action="{{ route('admin.semesters-subjects.store') }}" method="POST" onsubmit="preventSubjectDoubleSubmit(this)" class="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh] hide-scrollbar font-Cairo">
                 @csrf
                 
+                {{-- Subject Code --}}
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">رمز المادة (الكود)</label>
+                    <input type="text" name="code" placeholder="مثال: CS101، MATH201..."
+                           class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
+                </div>
+
                 {{-- Subject Name --}}
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">اسم المادة الدراسية</label>
@@ -406,6 +416,10 @@
 
             <form id="edit-subject-form" method="POST" class="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh] hide-scrollbar font-Cairo">
                 @csrf
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">رمز المادة (الكود)</label>
+                    <input type="text" id="edit-code" name="code" placeholder="مثال: CS101، MATH201..." class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
+                </div>
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">اسم المادة الدراسية</label>
                     <input type="text" id="edit-title" name="title" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none animate-input" />
@@ -584,6 +598,9 @@
         const modalCard = document.getElementById('edit-modal-card');
         
         document.getElementById('edit-subject-form').action = `/admin/semesters-subjects/update/${course.course_id}`;
+        if (document.getElementById('edit-code')) {
+            document.getElementById('edit-code').value = course.code || '';
+        }
         document.getElementById('edit-title').value = course.title || '';
         document.getElementById('edit-description').value = course.description || '';
         if (document.getElementById('edit-level')) {

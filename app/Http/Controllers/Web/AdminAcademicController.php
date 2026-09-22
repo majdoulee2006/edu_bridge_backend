@@ -238,6 +238,7 @@ class AdminAcademicController extends Controller
 
 
         $request->validate([
+            'code'        => 'nullable|string|max:50',
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
             'level'       => 'nullable|string',
@@ -261,6 +262,7 @@ class AdminAcademicController extends Controller
 
         // حفظ المادة مع السنة
         $courseId = DB::table('courses')->insertGetId([
+            'code'        => $request->code,
             'title'       => $request->title,
             'description' => $request->description,
             'level'       => $request->level ?? 'عام',
@@ -315,6 +317,7 @@ class AdminAcademicController extends Controller
     public function updateSubject(Request $request, $id)
     {
         $request->validate([
+            'code'        => 'nullable|string|max:50',
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
             'level'       => 'nullable|string',
@@ -325,6 +328,7 @@ class AdminAcademicController extends Controller
         ]);
 
         DB::table('courses')->where('course_id', $id)->update([
+            'code'        => $request->code,
             'title'       => $request->title,
             'description' => $request->description,
             'level'       => $request->level ?? 'عام',
