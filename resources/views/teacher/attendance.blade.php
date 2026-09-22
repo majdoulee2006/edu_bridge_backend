@@ -37,21 +37,26 @@
                 <form action="{{ route('teacher.attendance.store') }}" method="POST">
                     @csrf
                     <div style="margin-bottom: 1rem;">
-                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة الدراسية</label>
-                        <select name="course_id" id="course_select" class="select-field" required onchange="showCourseLevel()">
-                            <option value="">← اختر المادة</option>
-                            @foreach($courses as $c)
-                                <option value="{{ $c->course_id }}" data-level="{{ $c->level ?? 'عام' }}">{{ $c->title }}</option>
+                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">الدورة / الفرع والسنة</label>
+                        <select id="start_batch_select" class="select-field" onchange="filterStartCourses()">
+                            <option value="">← اختر الدورة</option>
+                            <option value="all">جميع الدورات</option>
+                            @foreach($batches as $b)
+                                <option value="{{ $b['key'] }}">{{ $b['label'] }}</option>
                             @endforeach
                         </select>
-                        <div id="course_level_hint" style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.5rem; display: none;">
-                            <i class="fa-solid fa-info-circle"></i> هذه المادة مخصصة لـ: <span id="level_text" style="font-weight: 700; color: var(--accent-color);"></span>
-                        </div>
                     </div>
+
                     <div style="margin-bottom: 1.5rem;">
-                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">القاعة / الصف</label>
-                        <input type="text" name="room" class="select-field" placeholder="مثال: قاعة 302">
+                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة الدراسية</label>
+                        <select name="course_id" id="start_course_select" class="select-field" required>
+                            <option value="">← اختر الدورة أولاً</option>
+                            @foreach($courses as $c)
+                                <option value="{{ $c->course_id }}" data-batch="{{ $c->batch_key }}">{{ $c->title }} ({{ $c->batch_label }})</option>
+                            @endforeach
+                        </select>
                     </div>
+
                     <button type="submit" style="width: 100%; padding: 0.9rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
                         <i class="fa-solid fa-qrcode"></i> توليد QR Code وبدء الجلسة
                     </button>
@@ -265,17 +270,43 @@
 <script>
     let qrcodeInstance = null;
 
-    function showCourseLevel() {
-        const select = document.getElementById('course_select');
-        const hint = document.getElementById('course_level_hint');
-        const levelText = document.getElementById('level_text');
-        
-        if (select.selectedIndex > 0) {
-            const level = select.options[select.selectedIndex].getAttribute('data-level');
-            levelText.innerText = level;
-            hint.style.display = 'block';
-        } else {
-            hint.style.display = 'none';
+    function filterStartCourses() {
+        const selectedBatch = document.getElementById('start_batch_select').value;
+        const courseSelect = document.getElementById('start_course_select');
+        const options = courseSelect.querySelectorAll('option');
+
+        courseSelect.value = '';
+
+        if (!selectedBatch) {
+            options.forEach(opt => {
+                if (opt.value === '') {
+                    opt.style.display = 'block';
+                    opt.textContent = '← اختر الدورة أولاً';
+                } else {
+                    opt.style.display = 'none';
+                }
+            });
+            return;
+        }
+
+        let firstMatch = null;
+        options.forEach(opt => {
+            if (opt.value === '') {
+                opt.style.display = 'block';
+                opt.textContent = '← اختر المادة';
+            } else {
+                const batch = opt.getAttribute('data-batch');
+                if (selectedBatch === 'all' || batch === selectedBatch) {
+                    opt.style.display = 'block';
+                    if (!firstMatch) firstMatch = opt.value;
+                } else {
+                    opt.style.display = 'none';
+                }
+            }
+        });
+
+        if (firstMatch) {
+            courseSelect.value = firstMatch;
         }
     }
 

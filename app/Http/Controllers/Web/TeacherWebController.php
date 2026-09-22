@@ -225,11 +225,58 @@ class TeacherWebController extends Controller
     {
         $teacher = $this->getTeacher();
 
-        $courses = DB::table('course_teachers')
+        $rawCourses = DB::table('course_teachers')
             ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
+            ->leftJoin('course_program', 'courses.course_id', '=', 'course_program.course_id')
+            ->leftJoin('programs', 'course_program.program_id', '=', 'programs.id')
             ->where('course_teachers.teacher_id', $teacher->teacher_id)
-            ->select('courses.course_id', 'courses.title', 'courses.level')
+            ->select(
+                'courses.course_id',
+                'courses.title',
+                'courses.year',
+                'courses.level',
+                'programs.id as program_id',
+                'programs.name as program_name'
+            )
+            ->distinct()
             ->get();
+
+        $yearMap = [
+            1 => 'السنة الأولى',
+            2 => 'السنة الثانية',
+            3 => 'السنة الثالثة',
+            4 => 'السنة الرابعة',
+            5 => 'السنة الخامسة',
+        ];
+
+        $batches = [];
+        $courses = [];
+
+        foreach ($rawCourses as $c) {
+            $progId = $c->program_id ?? 0;
+            $progName = $c->program_name ?? ($c->level ?? 'عام');
+            $yearStr = $yearMap[$c->year] ?? ($c->year ? 'السنة ' . $c->year : '');
+            
+            $batchKey = $progId . '_' . ($c->year ?? 0);
+            $batchLabel = trim($progName . ($yearStr ? ' - ' . $yearStr : ''));
+
+            if (!isset($batches[$batchKey]) && $batchLabel !== '') {
+                $batches[$batchKey] = [
+                    'key'   => $batchKey,
+                    'label' => $batchLabel,
+                ];
+            }
+
+            if (!isset($courses[$c->course_id])) {
+                $courses[$c->course_id] = (object)[
+                    'course_id' => $c->course_id,
+                    'title'     => $c->title,
+                    'batch_key' => $batchKey,
+                    'batch_label' => $batchLabel,
+                    'level'     => $c->level,
+                ];
+            }
+        }
 
         // جلسات الحضور الأخيرة (عبر lessons)
         $recentSessions = DB::table('attendance_sessions')
@@ -243,14 +290,13 @@ class TeacherWebController extends Controller
 
         $isAdvisor = !empty($teacher->advisor_branch) && !empty($teacher->advisor_year);
 
-        return view('teacher.attendance', compact('courses', 'recentSessions', 'isAdvisor', 'teacher'));
+        return view('teacher.attendance', compact('courses', 'batches', 'recentSessions', 'isAdvisor', 'teacher'));
     }
 
     public function storeAttendanceSession(Request $request)
     {
         $request->validate([
             'course_id' => 'required|exists:courses,course_id',
-            'room'      => 'nullable|string|max:100',
         ]);
 
         $teacher = $this->getTeacher();
