@@ -105,29 +105,6 @@
         </div>
     </div>
 
-    {{-- تغيير كلمة المرور --}}
-    <div class="settings-card">
-        <h3><i class="fas fa-lock"></i> تغيير كلمة المرور</h3>
-        <form method="POST" action="{{ route('affairs.settings.password') }}">
-            @csrf
-            @method('PUT')
-            <div class="form-group">
-                <label>كلمة المرور الحالية</label>
-                <input type="password" name="current_password" class="form-control" placeholder="أدخل كلمة المرور الحالية" required>
-                @error('current_password') <p style="color:#ef4444;font-size:0.8rem;margin-top:0.25rem;">{{ $message }}</p> @enderror
-            </div>
-            <div class="form-group">
-                <label>كلمة المرور الجديدة</label>
-                <input type="password" name="password" class="form-control" placeholder="أدخل كلمة المرور الجديدة (6 أحرف على الأقل)" required minlength="6">
-                @error('password') <p style="color:#ef4444;font-size:0.8rem;margin-top:0.25rem;">{{ $message }}</p> @enderror
-            </div>
-            <div class="form-group">
-                <label>تأكيد كلمة المرور</label>
-                <input type="password" name="password_confirmation" class="form-control" placeholder="أعد إدخال كلمة المرور الجديدة" required>
-            </div>
-            <button type="submit" class="btn-save"><i class="fas fa-save me-1"></i> حفظ التغييرات</button>
-        </form>
-    </div>
 
     {{-- إعدادات النظام --}}
     <div class="settings-card">
