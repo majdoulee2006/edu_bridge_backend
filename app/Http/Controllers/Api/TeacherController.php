@@ -1411,13 +1411,24 @@ class TeacherController extends Controller
         return response()->json(['success' => true, 'data' => $lessons], 200);
     }
 
+    private static function lessonTypeFromExtension(string $ext): string
+    {
+        if (in_array($ext, ['mp4', 'mov', 'avi', 'mkv'])) {
+            return 'video';
+        }
+        if (in_array($ext, ['doc', 'docx', 'ppt', 'pptx'])) {
+            return 'document';
+        }
+        return 'pdf';
+    }
+
     public function createLesson(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'title'        => 'required|string|max:255',
             'course_id'    => 'required|exists:courses,course_id',
             'description'  => 'nullable|string',
-            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv|max:204800',
+            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv,doc,docx,ppt,pptx|max:204800',
             'video_url'    => 'nullable|string|max:500',
         ]);
 
@@ -1441,7 +1452,7 @@ class TeacherController extends Controller
             $file     = $request->file('content_file');
             $filePath = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
             $ext      = strtolower($file->getClientOriginalExtension());
-            $type     = in_array($ext, ['mp4', 'mov', 'avi', 'mkv']) ? 'video' : 'pdf';
+            $type     = self::lessonTypeFromExtension($ext);
             $contentUrl = $filePath;
         } else {
             $type       = 'link';
@@ -1505,7 +1516,7 @@ class TeacherController extends Controller
             'title'        => 'required|string|max:255',
             'course_id'    => 'required|exists:courses,course_id',
             'description'  => 'nullable|string',
-            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv|max:204800',
+            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv,doc,docx,ppt,pptx|max:204800',
             'video_url'    => 'nullable|string|max:500',
         ]);
 
@@ -1524,7 +1535,7 @@ class TeacherController extends Controller
             $file = $request->file('content_file');
             $ext  = strtolower($file->getClientOriginalExtension());
             $lesson->content_url = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
-            $lesson->type        = in_array($ext, ['mp4', 'mov', 'avi', 'mkv']) ? 'video' : 'pdf';
+            $lesson->type        = self::lessonTypeFromExtension($ext);
         } elseif ($request->filled('video_url')) {
             $lesson->content_url = $request->video_url;
             $lesson->type        = 'link';
@@ -2101,11 +2112,9 @@ class TeacherController extends Controller
             // بناء CSV بسيط (متوافق مع Excel)
             $csv = "\xEF\xBB\xBF"; // BOM للعربية
             $csv .= "اسم الطالب,المادة,التاريخ,الحالة\n";
-            foreach ($rows as $row) {
-                $isToday = \Carbon\Carbon::parse($row->attendance_date)->isToday();
                 $status = match($row->status) {
                     'present' => 'حاضر',
-                    'absent'  => ($isToday ? 'قيد الانتظار' : 'غائب'),
+                    'absent'  => 'غائب',
                     'late'    => 'متأخر',
                     default   => $row->status,
                 };
@@ -2131,14 +2140,13 @@ class TeacherController extends Controller
             $html .= '<h2>كشف الحضور والغياب — ' . now()->format('Y-m-d') . '</h2>';
             $html .= '<table><thead><tr><th>اسم الطالب</th><th>المادة</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>';
             foreach ($rows as $row) {
-                $isToday = \Carbon\Carbon::parse($row->attendance_date)->isToday();
                 $status = match($row->status) {
                     'present' => 'حاضر',
-                    'absent'  => ($isToday ? 'قيد الانتظار' : 'غائب'),
+                    'absent'  => 'غائب',
                     'late'    => 'متأخر',
                     default   => $row->status,
                 };
-                $color = $row->status === 'present' ? '#16a34a' : ($row->status === 'absent' ? ($isToday ? '#d97706' : '#dc2626') : '#d97706');
+                $color = $row->status === 'present' ? '#16a34a' : '#dc2626';
                 $html .= "<tr><td>{$row->student_name}</td><td>{$row->course_name}</td><td>{$row->attendance_date}</td><td style='color:{$color};font-weight:bold'>{$status}</td></tr>";
             }
             $html .= '</tbody></table></body></html>';
@@ -2291,10 +2299,6 @@ class TeacherController extends Controller
 
                 $att = $attendances->get($student->student_id);
                 $statusRaw = $att ? $att->status : 'absent';
-                $isToday = \Carbon\Carbon::parse($session->created_at)->isToday();
-                if ($statusRaw === 'absent' && $isToday) {
-                    $statusRaw = 'pending';
-                }
                 $matrix[$student->student_id][$session->lesson_id] = $statusRaw;
             }
         }
@@ -2319,8 +2323,6 @@ class TeacherController extends Controller
                 if ($status !== null) {
                     $currentDaily = $dailyStatus[$studentId][$dateString] ?? null;
                     if ($currentDaily === null || $currentDaily === 'absent') {
-                        $dailyStatus[$studentId][$dateString] = $status;
-                    } elseif ($currentDaily === 'pending' && ($status === 'present' || $status === 'late')) {
                         $dailyStatus[$studentId][$dateString] = $status;
                     } elseif ($currentDaily === 'late' && $status === 'present') {
                         $dailyStatus[$studentId][$dateString] = $status;

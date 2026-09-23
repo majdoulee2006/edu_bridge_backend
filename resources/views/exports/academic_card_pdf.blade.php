@@ -25,11 +25,18 @@
             background-color: #0f172a;
             color: #f8fafc;
             direction: rtl;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
+            @if($forPdf ?? false)
+                /* بدون توسيط بالفليكس عند التوليد الفعلي عبر mPDF — التوسيط
+                   العمودي (min-height: 100vh) بيخلق مساحة فاضية زايدة بتفيض
+                   لصفحة تانية غامقة فاضية بعد نهاية بطاقة العلامات */
+                min-height: auto;
+            @else
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+            @endif
         }
 
         /* Download Status Screen */
@@ -100,7 +107,7 @@
             background: #ffffff;
             color: #0f172a;
             width: 800px;
-            padding: 2.5rem;
+            padding: 2rem;
             border-radius: 0;
             position: relative;
         }
@@ -108,8 +115,8 @@
         .doc-header {
             text-align: center;
             border-bottom: 3px double #facc15;
-            padding-bottom: 1.2rem;
-            margin-bottom: 1.5rem;
+            padding-bottom: 0.8rem;
+            margin-bottom: 1rem;
         }
 
         .brand-title {
@@ -144,7 +151,7 @@
             border: 1px solid #e2e8f0;
             border-radius: 10px;
             padding: 1rem 1.2rem;
-            margin-bottom: 1.2rem;
+            margin-bottom: 1rem;
         }
 
         .info-item {
@@ -160,7 +167,7 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 0.6rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             text-align: center;
         }
 
@@ -187,7 +194,7 @@
         .grades-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 2rem;
+            margin-bottom: 0.8rem;
         }
 
         .grades-table th, .grades-table td {
@@ -205,6 +212,7 @@
 
         .grades-table td {
             font-size: 0.85rem;
+            color: #0f172a;
         }
 
         .course-title-td {
@@ -220,9 +228,10 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             text-align: center;
-            margin-top: 2rem;
-            padding-top: 1.2rem;
+            margin-top: 1rem;
+            padding-top: 0.8rem;
             border-top: 1px solid #e2e8f0;
+            page-break-inside: avoid;
         }
 
         .sig-box {
@@ -232,7 +241,7 @@
 
         .sig-box strong {
             display: block;
-            margin-bottom: 2rem;
+            margin-bottom: 1.2rem;
             color: #0f172a;
         }
 

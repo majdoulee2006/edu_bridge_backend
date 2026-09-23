@@ -12,6 +12,7 @@ class Course extends Model
     protected $primaryKey = 'course_id';
 
     protected $fillable = [
+        'code',
         'title',
         'description',
         'level',

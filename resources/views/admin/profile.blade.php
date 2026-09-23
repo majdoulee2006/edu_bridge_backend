@@ -110,7 +110,7 @@
                 </div>
                 <div>
                     <p class="font-bold text-slate-900 dark:text-white">الإعدادات العامة</p>
-                    <p class="text-xs text-slate-400">المظهر، الإشعارات، اللغة</p>
+                    <p class="text-xs text-slate-400">المظهر، الإشعارات</p>
                 </div>
             </div>
             <i class="fa-solid fa-chevron-left text-slate-400 text-sm"></i>

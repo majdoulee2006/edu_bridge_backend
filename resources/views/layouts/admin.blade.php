@@ -703,15 +703,11 @@
                         <i class="fa-solid fa-sun text-base hidden dark:inline"></i>
                     </button>
 
-                    <!-- Language Toggle – hidden on very small screens -->
-                    <button onclick="toggleAdminLanguage()" class="admin-header-lang-btn h-10 px-3 rounded-full bg-slate-50 dark:bg-[#1f1f1f] flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all text-xs font-bold">
-                        <i class="fa-solid fa-globe text-sm"></i>
-                        <span id="admin-lang-btn-text">EN</span>
-                    </button>
-
-                    {{-- Profile Avatar --}}
-                    <div class="w-10 h-10 rounded-full bg-[#f2f20d] flex items-center justify-center font-black text-sm text-[#101924] shadow-glow flex-shrink-0">
-                        إ
+                    {{-- Profile Avatar info --}}
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#f2f20d] flex items-center justify-center font-black text-sm text-[#101924] shadow-glow">
+                            إ
+                        </div>
                     </div>
                 </div>
             </header>
@@ -823,15 +819,7 @@
         });
 
         // Language Toggle for Admin
-        function toggleAdminLanguage() {
-            const currentLang = localStorage.getItem('app-lang') || 'ar';
-            const newLang = currentLang === 'ar' ? 'en' : 'ar';
-            localStorage.setItem('app-lang', newLang);
-            document.documentElement.setAttribute('dir', newLang === 'ar' ? 'rtl' : 'ltr');
-            document.documentElement.setAttribute('lang', newLang);
-            const btn = document.getElementById('admin-lang-btn-text');
-            if (btn) btn.textContent = newLang === 'ar' ? 'EN' : 'عر';
-        }
+        function toggleAdminLanguage() {}
 
         // Auto-dismiss alerts after 5 seconds
         document.addEventListener('DOMContentLoaded', function() {

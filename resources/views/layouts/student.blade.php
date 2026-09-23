@@ -712,11 +712,6 @@
                     <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
                     </button>
-                    <!-- Language Toggle -->
-                    <button onclick="toggleLanguage()" title="تبديل اللغة" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 2rem; height: 40px; padding: 0 1rem; cursor: pointer; color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; font-family: inherit;">
-                        <i class="fa-solid fa-globe"></i>
-                        <span id="lang-btn-text">EN</span>
-                    </button>
                 </div>
             </header>
 

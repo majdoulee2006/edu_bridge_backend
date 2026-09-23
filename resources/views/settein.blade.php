@@ -139,16 +139,8 @@
             </div>
         </div>
 
-        <span class="section-label">اللغة والإشعارات</span>
+        <span class="section-label">الإشعارات</span>
         <div class="settings-box">
-            <div class="row">
-                <div class="label-with-icon"><i class="fa-solid fa-globe"></i> اللغة</div>
-                <div class="lang-group">
-                    <button class="lang-btn" id="enBtn">EN</button>
-                    <button class="lang-btn active" id="arBtn">العربية</button>
-                </div>
-            </div>
-
             <div class="row">
                 <div class="label-with-icon"><i class="fa-solid fa-bell"></i> الإشعارات</div>
                 <label class="toggle">
@@ -200,22 +192,6 @@
             localStorage.setItem('fontSize', size);
         });
 
-        // --- 4. برمجة اللغة والاتجاه (اختياري للحفظ) ---
-        const arBtn = document.getElementById('arBtn');
-        const enBtn = document.getElementById('enBtn');
-
-        enBtn.addEventListener('click', () => {
-            document.dir = 'ltr';
-            enBtn.classList.add('active');
-            arBtn.classList.remove('active');
-            localStorage.setItem('dir', 'ltr');
-        });
-        arBtn.addEventListener('click', () => {
-            document.dir = 'rtl';
-            arBtn.classList.add('active');
-            enBtn.classList.remove('active');
-            localStorage.setItem('dir', 'rtl');
-        });
     </script>
 </body>
 </html>

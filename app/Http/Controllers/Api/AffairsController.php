@@ -2571,6 +2571,173 @@ class AffairsController extends Controller
     }
 
     /**
+     * طلبات خدمات الطلاب (استرحام/وثائق/مذاكرة تعويضية/فك قفل جهاز) بمرحلة الشؤون.
+     * 🛠️ هاي نسخة مخصّصة لدور الشؤون — كانت شاشة "طلبات الاسترحام" وأخواتها بتطبيق
+     * الموبايل عم تستدعي endpoint الإدارة (/admin/student-services) يلي مقصور فعلياً
+     * على role:admin وكمان بيفلتر بس على status = pending_admin (مرحلة الإدارة النهائية،
+     * بعد ما يخلص رأي الشؤون ورئيس القسم) — فموظف الشؤون كان يوصلو 403 صامت (يتحول
+     * لقائمة فاضية بالتطبيق) ومحال لو وصل كان رح يشوف الطلبات الجديدة أصلاً لأنها لسا
+     * pending_affairs مش pending_admin.
+     */
+    public function getStudentServices(Request $request)
+    {
+        $type   = $request->query('type');
+        $status = $request->query('status');
+
+        $query = \App\Models\StudentRequest::with(['student.user', 'student.program.department']);
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        if ($status && $status !== 'all') {
+            if ($status === 'pending') {
+                $query->whereIn('status', ['pending_affairs', 'pending']);
+            } elseif ($status === 'completed') {
+                $query->whereNotIn('status', ['pending_affairs', 'pending']);
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->get()->map(function ($req) {
+            return [
+                'id'               => $req->id,
+                'student_id'       => $req->student_id,
+                'type'             => $req->type,
+                'details'          => $req->formatted_details,
+                'status'           => $req->status,
+                'can_respond'      => in_array($req->status, ['pending_affairs', 'pending']),
+                'affairs_decision' => $req->affairs_decision,
+                'hod_decision'     => $req->hod_decision,
+                'admin_decision'   => $req->admin_decision,
+                'affairs_notes'    => $req->affairs_notes ?? 'لا توجد ملاحظات',
+                'hod_notes'        => $req->hod_notes ?? 'لا توجد ملاحظات',
+                'admin_notes'      => $req->admin_notes,
+                'created_at'       => $req->created_at ? $req->created_at->format('Y-m-d H:i') : '',
+                'student_name'     => $req->student?->user?->full_name ?? 'غير معروف',
+                'student_code'     => $req->student?->student_code ?? 'N/A',
+                'academic_year'    => $req->student?->user?->academic_year ?? 'N/A',
+                'department_name'  => $req->student?->program?->department?->name ?? 'غير محدد',
+                'program_name'     => $req->student?->program?->name ?? 'غير محدد',
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $requests,
+        ], 200);
+    }
+
+    /**
+     * إبداء رأي الشؤون بطلب خدمة طالب — نفس منطق AffairsWebController::processStudentService
+     * (فك قفل الجهاز يُحسم مباشرة، وباقي الأنواع تتحول لرئيس القسم).
+     */
+    public function processStudentService(Request $request, $id)
+    {
+        $studentReq = \App\Models\StudentRequest::findOrFail($id);
+
+        if (!in_array($studentReq->status, ['pending_affairs', 'pending'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لقد قمت بإبداء رأيك على هذا الطلب مسبقاً (مسموح برد واحد فقط).',
+            ], 422);
+        }
+
+        $request->validate([
+            'decision' => 'required|in:approved,rejected',
+            'notes'    => 'required|string|max:1000',
+        ]);
+
+        $studentReq->affairs_decision = $request->decision;
+        $studentReq->affairs_notes    = $request->notes;
+
+        if ($studentReq->type === 'device_reset') {
+            $studentReq->status = $request->decision === 'approved' ? 'approved' : 'rejected';
+            $studentReq->save();
+
+            $student = $studentReq->student;
+            if ($student && $request->decision === 'approved') {
+                $student->update([
+                    'device_id'        => null,
+                    'is_device_locked' => 0,
+                ]);
+
+                \DB::table('personal_access_tokens')
+                    ->where('tokenable_id', $student->user_id)
+                    ->delete();
+
+                \DB::table('notifications')->insert([
+                    'user_id'    => $student->user_id,
+                    'title'      => 'تم فك قفل الجهاز',
+                    'message'    => 'وافقت شؤون الطلاب على طلب فك قفل الجهاز الخاص بك. تم تسجيل الخروج من الأجهزة القديمة وتصفير القفل، يمكنك الآن تسجيل الدخول من جهازك الجديد.',
+                    'type'       => 'academic',
+                    'category'   => 'academic',
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $request->decision === 'approved'
+                    ? 'تمت الموافقة على طلب فك قفل الجهاز وتصفير الجهاز وتسجيل الخروج من الحساب بنجاح.'
+                    : 'تم رفض طلب فك قفل الجهاز.',
+            ]);
+        }
+
+        $studentReq->status = 'pending_hod';
+        $studentReq->save();
+
+        $studentObj = $studentReq->student;
+        if ($studentObj) {
+            $studentUser  = \DB::table('users')->where('user_id', $studentObj->user_id)->first();
+            $studentName  = $studentUser?->full_name ?? 'الطالب';
+            $decisionText = $request->decision === 'approved' ? 'الموافقة المبدئية' : 'إبداء الرأي والتحفظات';
+
+            \DB::table('notifications')->insert([
+                'user_id'    => $studentObj->user_id,
+                'title'      => 'تحديث من الشؤون الطلابية على طلبك',
+                'message'    => "قامت الشؤون الطلابية بإبداء ($decisionText) وملاحظاتها على طلبك (#{$studentReq->id})، وتم تحويل الطلب إلى رئيس القسم للمتابعة.",
+                'type'       => 'student_service',
+                'category'   => 'administrative',
+                'related_id' => $studentReq->id,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 🎯 نستهدف فقط رئيس/رؤساء قسم نفس دائرة الطالب (مش كل الرؤساء بالمعهد)،
+            // ونضمّن نوع الطلب الحقيقي (mercy/document/makeup/device_reset) بقيمة
+            // type نفسها بدل قيمة عامة "student_service" — الفرونت إند محتاج يعرف
+            // أي تبويب/شاشة يفتح بالضبط لما يُضغط على الإشعار.
+            $hodUserIds = \DB::table('users')
+                ->where('role_id', 5)
+                ->where('department', $studentUser?->department)
+                ->pluck('user_id');
+            foreach ($hodUserIds as $hodUserId) {
+                \DB::table('notifications')->insert([
+                    'user_id'    => $hodUserId,
+                    'title'      => 'طلب خدمة محول من الشؤون',
+                    'message'    => "تمت مراجعة طلب الطالب $studentName من قبل الشؤون وهو بانتظار موافقتك وملاحظاتك كرئيس قسم.",
+                    'type'       => 'student_service_' . $studentReq->type,
+                    'category'   => 'administrative',
+                    'related_id' => $studentReq->id,
+                    'is_read'    => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حفظ رأي الشؤون بنجاح وتحويل الطلب إلى رئيس القسم.',
+        ]);
+    }
+
+    /**
      * جلب بيانات المسار الأكاديمي الطلابي وأوزان المقررات والفرز لتطبيق الموبايل
      */
     public function getCourseWeightsData(Request $request)
