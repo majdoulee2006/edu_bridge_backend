@@ -35,7 +35,9 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        \Illuminate\Support\Facades\DB::statement("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'mysql') {
+            \Illuminate\Support\Facades\DB::statement("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        }
         
         \Illuminate\Support\Facades\RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
             // 🐛 كانت هون ->id بينما مفتاح المستخدم الحقيقي هو user_id (primary
@@ -52,5 +54,16 @@ class AppServiceProvider extends ServiceProvider
         // Register Observers
         \App\Models\Grade::observe(\App\Observers\GradeObserver::class);
         \App\Models\Attendance::observe(\App\Observers\AttendanceObserver::class);
+
+        // مسح بيانات الجلسة النشطة على الويب عند تسجيل الخروج لأي مستخدم
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Logout::class, function ($event) {
+            if ($event->user instanceof \App\Models\User) {
+                $event->user->update([
+                    'active_web_session_id' => null,
+                    'web_last_active_at'    => null,
+                    'web_active_device_ip'  => null,
+                ]);
+            }
+        });
     }
 }

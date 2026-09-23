@@ -3,7 +3,6 @@
 @section('title', 'إنشاء إعلان جديد')
 
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
     body { font-family: 'Cairo', sans-serif; background: var(--bg-primary); color: var(--text-primary); }
     .card { background: var(--bg-secondary); border-radius: 0.75rem; box-shadow: var(--shadow); padding: 2rem; border: 1px solid var(--border-color); }

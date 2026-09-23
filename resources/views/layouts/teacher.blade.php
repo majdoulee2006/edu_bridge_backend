@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Edu-Bridge | المدرس</title>
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     
-    <!-- Google Fonts: Cairo & Material Symbols -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <!-- Local Fonts: Cairo & Material Symbols (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fonts-local.css') }}">
     
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local FontAwesome (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fontawesome.min.css') }}">
     
     <!-- Shared HOD Style -->
     <link rel="stylesheet" href="{{ asset('css/hod-style.css') }}?v={{ filemtime(public_path('css/hod-style.css')) }}">
@@ -24,8 +22,8 @@
 @php
     $sysPrimary = \App\Models\SystemSetting::getSetting('primary_color', '#f2f20d');
 @endphp
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Local Tailwind CSS Engine (100% Offline) -->
+    <script src="{{ asset('js/tailwind-play.js') }}"></script>
     <script id="tailwind-config">
     tailwind.config = {
         darkMode: "class",
@@ -139,6 +137,267 @@
         html.dark .form-input option {
             background-color: #121212 !important;
             color: #ffffff !important;
+        }
+
+        /* Notification Dropdown Component */
+        .notif-dropdown-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .notif-bell-trigger {
+            position: relative;
+            background: var(--bg-secondary, #181818);
+            border: 1px solid var(--border-color, #2a2a2a);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            color: var(--text-secondary, #a3a3a3);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .notif-bell-trigger:hover, .notif-dropdown-wrapper:hover .notif-bell-trigger, .notif-dropdown-wrapper.is-open .notif-bell-trigger {
+            background: var(--accent-color);
+            color: #1a1a1a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(242, 242, 13, 0.3);
+        }
+        .notif-badge-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 10px;
+            height: 10px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            border: 2px solid var(--bg-secondary, #181818);
+            box-shadow: 0 0 8px #ef4444;
+            animation: notifPulse 2s infinite;
+        }
+        @keyframes notifPulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* Dropdown Card */
+        .notif-dropdown-card {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            width: 350px;
+            max-width: calc(100vw - 2rem);
+            background: var(--bg-primary, #121212);
+            border: 1px solid var(--border-color, #2a2a2a);
+            border-radius: 1.25rem;
+            box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.5), 0 10px 20px -5px rgba(0, 0, 0, 0.25);
+            z-index: 999999;
+            display: none;
+            flex-direction: column;
+            overflow: visible;
+            transform-origin: top left;
+            animation: notifCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Continuous Invisible Hover Bridge */
+        .notif-dropdown-card::before {
+            content: '';
+            position: absolute;
+            top: -24px;
+            left: -40px;
+            right: -40px;
+            height: 30px;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .notif-dropdown-wrapper:hover .notif-dropdown-card,
+        .notif-dropdown-wrapper.is-open .notif-dropdown-card {
+            display: flex;
+        }
+
+        @keyframes notifCardIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px) scale(0.97);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Card Header */
+        .notif-card-header {
+            padding: 0.85rem 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color, #2a2a2a);
+            background: var(--bg-secondary, #181818);
+        }
+        .notif-card-header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .notif-card-header-title h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+        .notif-pill {
+            background: rgba(242, 242, 13, 0.15);
+            color: var(--accent-color);
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 0.15rem 0.55rem;
+            border-radius: 1rem;
+        }
+        .btn-mark-all-read {
+            background: transparent;
+            border: none;
+            color: #3b82f6;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-mark-all-read:hover {
+            background: rgba(59, 130, 246, 0.1);
+            text-decoration: underline;
+        }
+
+        /* Card List Body */
+        .notif-card-body {
+            max-height: 310px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .notif-card-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid var(--border-color, #2a2a2a);
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.2s;
+            position: relative;
+            text-align: right;
+        }
+        .notif-card-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        html[data-theme="light"] .notif-card-item:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+        .notif-card-item.is-unread {
+            background: rgba(242, 242, 13, 0.04);
+        }
+        .notif-item-icon-wrap {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            border-radius: 9px;
+            background: rgba(242, 242, 13, 0.12);
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+        .notif-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .notif-item-title {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.15rem;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .notif-item-msg {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 0.3rem;
+        }
+        .notif-item-time {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            opacity: 0.8;
+        }
+        .notif-unread-dot {
+            width: 8px;
+            height: 8px;
+            min-width: 8px;
+            border-radius: 50%;
+            background-color: #3b82f6;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        /* Empty State */
+        .notif-card-empty {
+            padding: 2.2rem 1rem;
+            text-align: center;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .notif-card-empty i {
+            font-size: 1.8rem;
+            opacity: 0.35;
+        }
+        .notif-card-empty span {
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+
+        /* Card Footer */
+        .notif-card-footer {
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary, #181818);
+            border-top: 1px solid var(--border-color, #2a2a2a);
+            text-align: center;
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+        .notif-card-footer:hover {
+            background: rgba(242, 242, 13, 0.1);
         }
     </style>
 
@@ -268,18 +527,72 @@
                     </div>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
+                    <!-- Notification Bell Dropdown Card -->
                     @php
-                        $unreadTeacherNotifs = \Illuminate\Support\Facades\DB::table('notifications')
-                            ->where('user_id', auth()->id())
-                            ->where('is_read', 0)
-                            ->count();
+                        $headerUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count();
+                        $headerRecentNotifs = \App\Models\Notification::where('user_id', auth()->id())
+                            ->orderBy('created_at', 'desc')
+                            ->limit(6)
+                            ->get();
                     @endphp
-                    <a href="{{ url('/teacher/notifications') }}" style="position: relative; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; text-decoration: none;" title="الإشعارات">
-                        <i class="fa-solid fa-bell"></i>
-                        @if($unreadTeacherNotifs > 0)
-                            <span style="position: absolute; top: 2px; right: 2px; width: 11px; height: 11px; background-color: #ef4444; border-radius: 50%; border: 2px solid var(--bg-secondary); box-shadow: 0 0 8px #ef4444;"></span>
-                        @endif
-                    </a>
+                    <div class="notif-dropdown-wrapper" id="teacherNotifDropdown">
+                        <a href="{{ url('/teacher/notifications') }}" class="notif-bell-trigger" id="teacherNotifBellBtn" title="الإشعارات">
+                            <i class="fa-solid fa-bell"></i>
+                            @if($headerUnread > 0)
+                                <span class="notif-badge-dot" id="headerNotifBadgeDot"></span>
+                            @endif
+                        </a>
+
+                        <div class="notif-dropdown-card" id="teacherNotifDropdownCard">
+                            <div class="notif-card-header">
+                                <div class="notif-card-header-title">
+                                    <h4>الإشعارات</h4>
+                                    @if($headerUnread > 0)
+                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} جديدة</span>
+                                    @endif
+                                </div>
+                                @if($headerUnread > 0)
+                                    <button type="button" class="btn-mark-all-read" id="btnMarkAllHeaderNotif" onclick="markAllHeaderNotificationsAsRead(event)">
+                                        تحديد الكل كمقروء
+                                    </button>
+                                @endif
+                            </div>
+
+                            <div class="notif-card-body" id="headerNotifListBody">
+                                @forelse($headerRecentNotifs as $n)
+                                    <a href="{{ url('/teacher/notifications') }}" 
+                                       class="notif-card-item {{ !$n->is_read ? 'is-unread' : '' }}" 
+                                       id="header-notif-item-{{ $n->id }}"
+                                       onclick="markSingleHeaderNotifAsRead(event, {{ $n->id }}, '{{ url('/teacher/notifications') }}')">
+                                        <div class="notif-item-icon-wrap">
+                                            <i class="fa-solid fa-bell"></i>
+                                        </div>
+                                        <div class="notif-item-content">
+                                            <div class="notif-item-title">{{ $n->title }}</div>
+                                            <div class="notif-item-msg">{{ Str::limit($n->message ?? $n->body, 70) }}</div>
+                                            <div class="notif-item-time">
+                                                <i class="fa-regular fa-clock"></i>
+                                                <span>{{ $n->created_at?->diffForHumans() }}</span>
+                                            </div>
+                                        </div>
+                                        @if(!$n->is_read)
+                                            <span class="notif-unread-dot"></span>
+                                        @endif
+                                    </a>
+                                @empty
+                                    <div class="notif-card-empty">
+                                        <i class="fa-regular fa-bell-slash"></i>
+                                        <span>لا توجد إشعارات حالياً</span>
+                                    </div>
+                                @endforelse
+                            </div>
+
+                            <a href="{{ url('/teacher/notifications') }}" class="notif-card-footer">
+                                <span>عرض كافة الإشعارات</span>
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </a>
+                        </div>
+                    </div>
                     <!-- Dark Mode Toggle -->
                     <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
@@ -309,6 +622,33 @@
         </main>
     </div>
 
+    <!-- Mobile Bottom Navigation (Teacher) -->
+    <nav class="bottom-nav">
+        <a href="{{ url('/teacher/dashboard') }}" class="bottom-nav-item {{ Request::is('teacher/dashboard') ? 'active' : '' }}">
+            <i class="fa-solid fa-house"></i>
+            <span>الرئيسية</span>
+        </a>
+        <a href="{{ url('/teacher/profile') }}" class="bottom-nav-item {{ Request::is('teacher/profile*') ? 'active' : '' }}">
+            <i class="fa-solid fa-user"></i>
+            <span>الملف الشخصي</span>
+        </a>
+        <div class="center-btn" onclick="toggleMobileMenu()">
+            <i class="fa-solid fa-border-all"></i>
+        </div>
+        <a href="{{ url('/teacher/notifications') }}" class="bottom-nav-item {{ Request::is('teacher/notifications') ? 'active' : '' }}" style="position:relative;">
+            <i class="fa-solid fa-bell"></i>
+            <span>الإشعارات</span>
+            @php $teacherUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
+            @if($teacherUnread > 0)
+                <span style="position:absolute;top:-2px;right:6px;background:#ef4444;width:8px;height:8px;border-radius:50%;"></span>
+            @endif
+        </a>
+        <a href="{{ url('/teacher/messages') }}" class="bottom-nav-item {{ Request::is('teacher/messages*') ? 'active' : '' }}">
+            <i class="fa-solid fa-envelope"></i>
+            <span>الرسائل</span>
+        </a>
+    </nav>
+
     <!-- Shared JS -->
     <script src="{{ asset('js/hod-settings.js') }}"></script>
     <script>
@@ -317,6 +657,7 @@
             const overlay = document.getElementById('mobile-overlay');
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
+            document.body.classList.toggle('sidebar-body-lock', sidebar.classList.contains('active'));
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -329,6 +670,84 @@
                 });
             }, 5000);
         });
+
+        // Notification Header Dropdown functions
+        function markAllHeaderNotificationsAsRead(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+            fetch("{{ route('teacher.notifications.read_all') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": token,
+                    "Accept": "application/json",
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            }).then(res => res.json()).then(data => {
+                document.querySelectorAll('#headerNotifListBody .notif-card-item').forEach(el => {
+                    el.classList.remove('is-unread');
+                    const dot = el.querySelector('.notif-unread-dot');
+                    if (dot) dot.remove();
+                });
+                const badge = document.getElementById('headerNotifBadgeDot');
+                if (badge) badge.remove();
+                const unreadChip = document.getElementById('notifUnreadChip');
+                if (unreadChip) unreadChip.remove();
+                const btnMarkAll = document.getElementById('btnMarkAllHeaderNotif');
+                if (btnMarkAll) btnMarkAll.remove();
+            }).catch(err => {
+                console.error("Error marking all notifications as read:", err);
+            });
+        }
+
+        function markSingleHeaderNotifAsRead(e, id, targetUrl) {
+            if (e) e.preventDefault();
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+            fetch(`/teacher/notifications/${id}/read`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": token,
+                    "Accept": "application/json",
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            }).finally(() => {
+                if (targetUrl) {
+                    window.location.href = targetUrl;
+                }
+            });
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('teacherNotifDropdown');
+            if (dropdown && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('is-open');
+            }
+        });
+
+        // Hover grace delay
+        (function() {
+            const dropdownWrap = document.getElementById('teacherNotifDropdown');
+            let timer = null;
+
+            if (dropdownWrap) {
+                dropdownWrap.addEventListener('mouseenter', function() {
+                    if (timer) clearTimeout(timer);
+                    dropdownWrap.classList.add('is-open');
+                });
+
+                dropdownWrap.addEventListener('mouseleave', function() {
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(function() {
+                        dropdownWrap.classList.remove('is-open');
+                    }, 450);
+                });
+            }
+        })();
     </script>
     @stack('scripts')
 

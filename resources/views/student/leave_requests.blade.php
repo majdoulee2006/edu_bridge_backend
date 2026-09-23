@@ -265,7 +265,7 @@
 
 {{-- 🌟 1. النافذة المنبثقة لتقديم طلب إذن جديد (New Leave Request Modal) 🌟 --}}
 <div id="newLeaveRequestModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(5px); z-index: 99999; align-items: center; justify-content: center; padding: 1rem;">
-    <div style="background: var(--bg-secondary); border-radius: 1.35rem; width: 100%; max-width: 580px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid var(--border-color); border-top: 5px solid var(--accent-color); overflow: hidden; position: relative; animation: modalPop 0.25s ease-out;">
+    <div style="background: var(--bg-secondary); border-radius: 1.35rem; width: 100%; max-width: 480px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid var(--border-color); border-top: 5px solid var(--accent-color); overflow: hidden; position: relative; animation: modalPop 0.25s ease-out;">
         
         {{-- Modal Header مع زر الرجوع والإغلاق --}}
         <div style="background: var(--bg-primary); padding: 1rem 1.35rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">

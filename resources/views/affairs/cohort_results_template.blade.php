@@ -27,12 +27,10 @@
             }
         })();
     </script>
-    <!-- Google Fonts: Cairo for crisp official Arabic typography -->
-    <link href="https://fonts.googleapis.com" rel="preconnect">
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
-    <!-- Tailwind CSS v3 -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Local Fonts: Cairo (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fonts-local.css') }}">
+    <!-- Local Tailwind CSS Engine (100% Offline) -->
+    <script src="{{ asset('js/tailwind-play.js') }}"></script>
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -189,6 +187,12 @@
             <button class="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-semibold px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition" onclick="window.close(); if(window.opener){window.opener.focus();}" type="button">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
                 <span>العودة للمسار الأكاديمي</span>
+            </button>
+
+            <!-- Share Cohort Button -->
+            <button class="flex-1 sm:flex-initial flex items-center justify-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 transition shadow-md whitespace-nowrap" onclick="openCohortShareModal()" type="button">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                <span>مشاركة المحضر إدارياً</span>
             </button>
 
             <!-- Print / PDF Button -->
@@ -629,6 +633,240 @@
 
         document.addEventListener('DOMContentLoaded', updateThemeIcons);
         updateThemeIcons();
+
+        function openCohortShareModal() {
+            const m = document.getElementById('shareCohortModal');
+            m.classList.remove('hidden');
+            setTimeout(() => {
+                m.classList.remove('opacity-0');
+            }, 10);
+            updateSelectedCount();
+        }
+
+        function closeCohortShareModal() {
+            const m = document.getElementById('shareCohortModal');
+            m.classList.add('opacity-0');
+            setTimeout(() => {
+                m.classList.add('hidden');
+            }, 300);
+        }
+
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('.staff-checkbox:checked').length;
+            const counter = document.getElementById('selectedStaffCount');
+            if (counter) counter.innerText = checked;
+        }
+
+        function selectAllStaff(selectAll) {
+            const items = document.querySelectorAll('.staff-item');
+            items.forEach(item => {
+                if (!item.classList.contains('hidden')) {
+                    const cb = item.querySelector('.staff-checkbox');
+                    if (cb) cb.checked = selectAll;
+                }
+            });
+            updateSelectedCount();
+        }
+
+        let currentActiveCategory = 'all';
+
+        function filterStaffCategory(cat, btn) {
+            currentActiveCategory = cat;
+            document.querySelectorAll('.filter-cat-btn').forEach(b => {
+                b.classList.remove('bg-indigo-600', 'text-white');
+                b.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400');
+            });
+            if (btn) {
+                btn.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400');
+                btn.classList.add('bg-indigo-600', 'text-white');
+            }
+            applyStaffFilter();
+        }
+
+        function applyStaffFilter() {
+            const q = (document.getElementById('searchStaffInput')?.value || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.staff-item');
+            let visibleCount = 0;
+
+            items.forEach(item => {
+                const itemCat = item.getAttribute('data-category');
+                const itemSearch = item.getAttribute('data-search') || '';
+                const matchCategory = (currentActiveCategory === 'all' || itemCat === currentActiveCategory);
+                const matchSearch = (!q || itemSearch.includes(q));
+
+                if (matchCategory && matchSearch) {
+                    item.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+
+            const noResults = document.getElementById('noStaffFound');
+            if (noResults) {
+                if (visibleCount === 0) noResults.classList.remove('hidden');
+                else noResults.classList.add('hidden');
+            }
+        }
+
+        function submitCohortShare() {
+            const checkboxes = document.querySelectorAll('.staff-checkbox:checked');
+            const userIds = Array.from(checkboxes).map(cb => cb.value);
+
+            if (userIds.length === 0) {
+                alert('يرجى تحديد شخص واحد على الأقل من القائمة لمشاركة المحضر معه.');
+                return;
+            }
+
+            const notes = document.getElementById('cohortShareNotes')?.value || '';
+            const btn = document.getElementById('btnConfirmCohortShare');
+            const originalHtml = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span> جاري إرسال الإشعارات والمشاركة...`;
+
+            fetch("{{ route('affairs.course_weights.share_cohort') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    user_ids: userIds,
+                    dept_name: @json($deptName ?? 'جميع الأقسام'),
+                    prog_name: @json($progName ?? 'جميع التخصصات'),
+                    year_label: @json($yearLabel ?? $yearScopeLabel ?? 'كافة السنوات'),
+                    notes: notes
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    closeCohortShareModal();
+                } else {
+                    alert('❌ ' + (data.message || 'تعذر إتمام عملية مشاركة المحضر'));
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                alert('حدث خطأ أثناء إرسال البيانات: ' + err);
+            });
+        }
     </script>
+
+    @php
+        $staffList = isset($academicStaffList) ? $academicStaffList : collect();
+    @endphp
+
+    <!-- نافذة منبثقة لمشاركة محضر وقرار الدفعة إدارياً بالأسماء والمناصب -->
+    <div id="shareCohortModal" class="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 hidden transition-opacity duration-300 opacity-0">
+        <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 max-w-2xl w-full shadow-2xl space-y-4 text-right max-h-[92vh] flex flex-col" dir="rtl">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg font-black">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white">مشاركة محضر وقرار نتائج الدفعة مع الكادر</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ $deptName ?? 'جميع الأقسام' }} - {{ $progName ?? 'جميع التخصصات' }} ({{ $yearLabel ?? $yearScopeLabel ?? 'كافة السنوات' }})</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCohortShareModal()" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center justify-center text-sm font-bold transition">✕</button>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="space-y-2.5 shrink-0">
+                <div class="relative">
+                    <input type="text" id="searchStaffInput" oninput="applyStaffFilter()" placeholder="🔍 ابحث باسم الشخص، المنصب، أو القسم الأكاديمي..." class="w-full text-xs p-2.5 pr-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/70 text-slate-800 dark:text-slate-200 outline-hidden focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <!-- Category Tabs -->
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                        <button type="button" onclick="filterStaffCategory('all', this)" class="filter-cat-btn px-2.5 py-1 rounded-lg font-bold bg-indigo-600 text-white transition text-[11px]">الكل</button>
+                        <button type="button" onclick="filterStaffCategory('admin', this)" class="filter-cat-btn px-2.5 py-1 rounded-lg font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-[11px]">العمادة والإدارة</button>
+                        <button type="button" onclick="filterStaffCategory('hod', this)" class="filter-cat-btn px-2.5 py-1 rounded-lg font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-[11px]">رؤساء الأقسام</button>
+                        <button type="button" onclick="filterStaffCategory('teachers', this)" class="filter-cat-btn px-2.5 py-1 rounded-lg font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-[11px]">المعلمون</button>
+                    </div>
+
+                    <!-- Quick Selection & Counter -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/60">
+                            المحدد: <strong id="selectedStaffCount">0</strong>
+                        </span>
+                        <button type="button" onclick="selectAllStaff(true)" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-bold">تحديد الكل</button>
+                        <span class="text-slate-300 dark:text-slate-700">|</span>
+                        <button type="button" onclick="selectAllStaff(false)" class="text-[11px] text-slate-500 hover:underline">إلغاء</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff List (Multi-Select with Names and Positions) -->
+            <div class="overflow-y-auto space-y-2 p-1 border border-slate-100 dark:border-slate-800 rounded-2xl flex-1 max-h-[36vh] sm:max-h-[40vh] divide-y divide-slate-100 dark:divide-slate-800/50">
+                @forelse($staffList as $staff)
+                    <label class="staff-item flex items-center justify-between p-2.5 rounded-xl hover:bg-indigo-50/50 dark:hover:bg-slate-800/60 cursor-pointer transition select-none"
+                           data-category="{{ $staff->category }}"
+                           data-search="{{ mb_strtolower($staff->name . ' ' . $staff->position . ' ' . $staff->category_label) }}">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" name="cohortUserIds[]" value="{{ $staff->user_id }}" class="staff-checkbox rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" onchange="updateSelectedCount()">
+                            
+                            <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-black text-slate-700 dark:text-slate-200 shrink-0">
+                                {{ mb_substr($staff->name, 0, 1) }}
+                            </div>
+
+                            <div class="text-right">
+                                <div class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <span>{{ $staff->name }}</span>
+                                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $staff->badge_class }}">
+                                        {{ $staff->category_label }}
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                                    {{ $staff->position }}
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                @empty
+                    <div class="p-6 text-center text-xs text-slate-500">
+                        لم يتم العثور على أفراد كادر مسجلين بالنظام حالياً.
+                    </div>
+                @endforelse
+
+                <div id="noStaffFound" class="hidden p-6 text-center text-xs text-slate-500">
+                    لا يوجد نتائج مطابقة للبحث أو التصفية الحالية.
+                </div>
+            </div>
+
+            <!-- Additional Notes -->
+            <div class="shrink-0">
+                <label for="cohortShareNotes" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">ملاحظات أو توجيهات إدارية ملحقة (اختياري):</label>
+                <textarea id="cohortShareNotes" rows="2" placeholder="اكتب أية توجيهات خاصة باللجنة الامتحانية أو التنسيق الأكاديمي..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-hidden"></textarea>
+            </div>
+
+            <!-- Notice -->
+            <div class="shrink-0 p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 text-indigo-950 dark:text-indigo-300 text-xs flex items-center gap-2.5">
+                <span class="text-base select-none">🔒</span>
+                <span><strong>وثيقة رسمية وسرية:</strong> سيصل إشعار فوري للأشخاص المحددين أعلاه بالاسم والمنصب لمراجعة المحضر.</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-3 pt-1 shrink-0">
+                <button type="button" id="btnConfirmCohortShare" onclick="submitCohortShare()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    <span>تأكيد المشاركة للأعضاء المحددين</span>
+                </button>
+                <button type="button" onclick="closeCohortShareModal()" class="py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

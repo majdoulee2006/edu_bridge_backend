@@ -1363,12 +1363,82 @@ class AffairsWebController extends Controller
 
         $verificationHash = 'DTC-' . substr(md5(json_encode($request->all()) . 'edubridge_cohort_salt'), 0, 16) . '-ARCH';
 
+        // تجهيز قائمة الكادر الإداري والأكاديمي بالأسماء والمناصب للمشاركة المحددة
+        $academicStaffList = collect();
+
+        // 1. العمادة وإدارة المعهد
+        $admins = DB::table('users')
+            ->where('role_id', 1)
+            ->where('status', 'active')
+            ->select('user_id', 'full_name', 'department')
+            ->get()
+            ->map(function ($u) {
+                return (object)[
+                    'user_id'        => $u->user_id,
+                    'name'           => $u->full_name,
+                    'position'       => 'عمادة وإدارة المعهد المركزية',
+                    'category'       => 'admin',
+                    'category_label' => 'العمادة والإدارة',
+                    'badge_class'    => 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+                ];
+            });
+        $academicStaffList = $academicStaffList->concat($admins);
+
+        // 2. رؤساء الأقسام الأكاديمية
+        $hods = DB::table('users')
+            ->join('heads', 'users.user_id', '=', 'heads.user_id')
+            ->leftJoin('departments', 'heads.department_id', '=', 'departments.department_id')
+            ->where('users.role_id', 5)
+            ->where('users.status', 'active')
+            ->select('users.user_id', 'users.full_name', 'departments.name as dept_name', 'users.department')
+            ->get()
+            ->map(function ($u) {
+                $dept = $u->dept_name ?? $u->department ?? 'الأكاديمي';
+                return (object)[
+                    'user_id'        => $u->user_id,
+                    'name'           => $u->full_name,
+                    'position'       => 'رئيس قسم ' . $dept,
+                    'category'       => 'hod',
+                    'category_label' => 'رؤساء الأقسام الأكاديمية',
+                    'badge_class'    => 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+                ];
+            });
+        $academicStaffList = $academicStaffList->concat($hods);
+
+        // 3. المعلمون ومدرسو المقررات
+        $teachers = DB::table('users')
+            ->leftJoin('teachers', 'users.user_id', '=', 'teachers.user_id')
+            ->where('users.role_id', 2)
+            ->where('users.status', 'active')
+            ->select('users.user_id', 'users.full_name', 'users.department', 'teachers.specialization')
+            ->get()
+            ->map(function ($u) {
+                $pos = 'أستاذ ومدرس';
+                if ($u->department) {
+                    $pos .= ' بقسم ' . $u->department;
+                }
+                if ($u->specialization) {
+                    $pos .= ' (' . $u->specialization . ')';
+                }
+                return (object)[
+                    'user_id'        => $u->user_id,
+                    'name'           => $u->full_name,
+                    'position'       => $pos,
+                    'category'       => 'teachers',
+                    'category_label' => 'المعلمون ومدرسو المقررات',
+                    'badge_class'    => 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+                ];
+            });
+        $academicStaffList = $academicStaffList->concat($teachers);
+
         if ($format === 'pdf') {
             return view('affairs.cohort_results_template', compact(
                 'filteredStudentsList',
+                'academicStaffList',
                 'deptName',
                 'progName',
                 'year',
+                'yearLabel',
                 'semesterId',
                 'standing',
                 'totalStudentsCount',
@@ -2092,6 +2162,48 @@ class AffairsWebController extends Controller
                 : 'تم رفض طلب فك قفل الجهاز.');
         }
 
+        // إذا كان نوع الطلب تحديث صورة بصمة الوجه
+        if ($studentReq->type === 'face_photo') {
+            $studentReq->status = $request->decision === 'approved' ? 'approved' : 'rejected';
+            $studentReq->save();
+
+            $student = $studentReq->student;
+            if ($student && $request->decision === 'approved') {
+                $photoPath = null;
+                if ($request->hasFile('photo')) {
+                    $request->validate([
+                        'photo' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+                    ]);
+                    $photoPath = $request->file('photo')->store('photo_requests', 'public');
+                } else {
+                    $raw = $studentReq->details;
+                    $decoded = json_decode($raw, true);
+                    if (is_array($decoded) && !empty($decoded['photo'])) {
+                        $photoPath = $decoded['photo'];
+                    }
+                }
+
+                if ($photoPath) {
+                    DB::table('users')->where('user_id', $student->user_id)->update(['avatar' => $photoPath]);
+                    DB::table('students')->where('user_id', $student->user_id)->update(['reference_photo' => $photoPath]);
+                    DB::table('photo_change_requests')->where('user_id', $student->user_id)->where('status', 'pending')->update(['status' => 'approved', 'updated_at' => now()]);
+                }
+
+                \App\Models\Notification::create([
+                    'user_id' => $student->user_id,
+                    'title'   => 'تمت الموافقة على تغيير صورة بصمة الوجه',
+                    'message' => 'وافقت شؤون الطلاب على طلب تحديث صورة بصمة الوجه الخاصة بك، وتم اعتماد الصورة بنجاح.',
+                    'type'    => 'academic',
+                ]);
+
+                \App\Services\FcmService::sendToUser($student->user_id, 'تمت الموافقة على تغيير صورة الوجه', 'وافقت شؤون الطلاب على طلب تحديث صورة بصمة الوجه الخاصة بك وتم اعتمادها.', ['type' => 'academic']);
+            }
+
+            return back()->with('success', $request->decision === 'approved' 
+                ? 'تمت الموافقة على طلب تحديث صورة بصمة الوجه واعتماد الصورة بنجاح.' 
+                : 'تم رفض طلب تحديث صورة بصمة الوجه.');
+        }
+
         // الطلبات الأخرى تنتقل لرئيس القسم
         $studentReq->status = 'pending_hod';
         $studentReq->save();
@@ -2135,6 +2247,51 @@ class AffairsWebController extends Controller
         }
 
         return back()->with('success', 'تم حفظ رأي الشؤون بنجاح وتحويل الطلب إلى رئيس القسم.');
+    }
+
+    /**
+     * فك قفل الجهاز مباشرة من جدول الخدمات الطلابية
+     */
+    public function directResetDeviceFromRequest(Request $request, $id)
+    {
+        $studentReq = \App\Models\StudentRequest::findOrFail($id);
+
+        if ($studentReq->type !== 'device_reset') {
+            return back()->with('error', 'هذا الإجراء مخصص لطلبات فك قفل الجهاز فقط.');
+        }
+
+        $student = $studentReq->student;
+        if (!$student) {
+            return back()->with('error', 'سجل الطالب غير موجود.');
+        }
+
+        // تصفير قفل الجهاز
+        $student->update([
+            'device_id'        => null,
+            'is_device_locked' => 0,
+        ]);
+
+        // حذف التوكنات لتسجيل الخروج من الجهاز القديم
+        DB::table('personal_access_tokens')
+            ->where('tokenable_id', $student->user_id)
+            ->delete();
+
+        // تحديث حالة الطلب إلى تمت الموافقة
+        $studentReq->affairs_decision = 'approved';
+        $studentReq->affairs_notes = 'تم فك قفل الجهاز وتصفير التقييد مباشرة بواسطة موظف الشؤون من جدول الطلبات.';
+        $studentReq->status = 'approved';
+        $studentReq->save();
+
+        // إرسال إشعار للطالب
+        \App\Models\Notification::create([
+            'user_id' => $student->user_id,
+            'title'   => 'تم فك قفل الجهاز',
+            'message' => 'وافقت شؤون الطلاب على طلب فك قفل الجهاز الخاص بك. تم تصفير القفل بنجاح، يمكنك الآن تسجيل الدخول مباشرة من جهازك الجديد.',
+            'type'    => 'academic',
+        ]);
+
+        $studentName = $student->user?->full_name ?? 'الطالب';
+        return back()->with('success', "تم فك قفل الجهاز للطالب ($studentName) وتصفير بيانات الجهاز بنجاح ✓");
     }
 
     // ─────────────────────────── Accounts (معلم + رئيس قسم فقط) ────
@@ -3020,6 +3177,10 @@ class AffairsWebController extends Controller
         Notification::where('user_id', Auth::id())
             ->update(['is_read' => true]);
 
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
+
         return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 
@@ -3364,10 +3525,142 @@ class AffairsWebController extends Controller
         return $apiController->exportStudentAcademicCardPdf($request);
     }
 
-    public function exportAcademicCardExcel(Request $request)
+    public function shareStudentTranscript(Request $request)
     {
-        $apiController = app(\App\Http\Controllers\Api\AffairsController::class);
-        return $apiController->exportStudentAcademicCardExcel($request);
+        $request->validate([
+            'student_id' => 'required|exists:students,student_id',
+            'target'     => 'required|in:student,parent,both',
+            'notes'      => 'nullable|string|max:500',
+        ]);
+
+        $student = \App\Models\Student::with('user')->findOrFail($request->student_id);
+        $studentUser = $student->user;
+        $studentName = $studentUser?->full_name ?? 'الطالب';
+
+        $paperNotice = "⚠️ تنبيه رسمي: هذه النسخة المعروضة للمعاينة الرقمية المعتمدة فقط. للحصول على كشف علامات ورقي رسمي مختوم وموقع، يرجى مراجعة موظف شؤون الطلاب بالمعهد.";
+        $sharedTitle = "كشف درجات وسجل أكاديمي موثق 🎓";
+
+        $notifiedUsers = [];
+
+        // 1. إرسال للطالب
+        if (in_array($request->target, ['student', 'both']) && $student->user_id) {
+            $msg = "قامت شؤون الطلاب بمشاركة كشف العلامات والسجل الأكاديمي الرقمي المعتمد لك. يمكنك معاينته فورياً داخل التطبيق.\n" . $paperNotice;
+            if ($request->filled('notes')) {
+                $msg .= "\nملاحظات الشؤون: " . $request->notes;
+            }
+
+            \App\Models\Notification::create([
+                'user_id'    => $student->user_id,
+                'sender_id'  => auth()->id(),
+                'title'      => $sharedTitle,
+                'message'    => $msg,
+                'type'       => 'transcript_shared',
+                'category'   => 'academic',
+                'related_id' => $student->student_id,
+                'is_read'    => false,
+            ]);
+            $notifiedUsers[] = 'الطالب (' . $studentName . ')';
+        }
+
+        // 2. إرسال لولي الأمر
+        if (in_array($request->target, ['parent', 'both'])) {
+            $parentUserIds = [];
+            if ($student->parent_id) {
+                $pUser = \DB::table('parents')->where('parent_id', $student->parent_id)->value('user_id');
+                if ($pUser) $parentUserIds[] = $pUser;
+            }
+            $pivotParents = \DB::table('parent_students')->where('student_id', $student->user_id)->pluck('parent_id')->toArray();
+            $parentUserIds = array_unique(array_merge($parentUserIds, $pivotParents));
+
+            foreach ($parentUserIds as $pUserId) {
+                $msg = "قامت شؤون الطلاب بمشاركة كشف علامات وسجل ابنكم الأكاديمي ({$studentName}). يمكنكم معاينته فورياً داخل التطبيق.\n" . $paperNotice;
+                if ($request->filled('notes')) {
+                    $msg .= "\nملاحظات الشؤون: " . $request->notes;
+                }
+
+                \App\Models\Notification::create([
+                    'user_id'    => $pUserId,
+                    'sender_id'  => auth()->id(),
+                    'title'      => $sharedTitle,
+                    'message'    => $msg,
+                    'type'       => 'transcript_shared',
+                    'category'   => 'academic',
+                    'related_id' => $student->student_id,
+                    'is_read'    => false,
+                ]);
+            }
+
+            if (!empty($parentUserIds)) {
+                $notifiedUsers[] = 'ولي أمر الطالب';
+            } elseif ($request->target === 'parent') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لم يتم العثور على حساب ولي أمر مرتبط بهذا الطالب في النظام.'
+                ], 422);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تمت مشاركة كشف العلامات بنجاح مع: ' . implode(' و ', $notifiedUsers),
+        ]);
+    }
+
+    public function shareCohortResults(Request $request)
+    {
+        $request->validate([
+            'user_ids'    => 'nullable|array|min:1',
+            'user_ids.*'  => 'integer|exists:users,user_id',
+            'targets'     => 'nullable|array',
+            'targets.*'   => 'in:admin,hod,teachers',
+            'dept_name'   => 'nullable|string',
+            'prog_name'   => 'nullable|string',
+            'year_label'  => 'nullable|string',
+            'notes'       => 'nullable|string|max:500',
+        ]);
+
+        $cohortDesc = ($request->dept_name ?? 'جميع الأقسام') . ' - ' . ($request->prog_name ?? 'جميع التخصصات') . ' (' . ($request->year_label ?? 'كافة السنوات') . ')';
+
+        $users = collect();
+        if ($request->filled('user_ids')) {
+            $users = \App\Models\User::whereIn('user_id', $request->user_ids)->where('status', 'active')->pluck('user_id');
+        } elseif ($request->filled('targets')) {
+            $recipientRoles = [];
+            if (in_array('admin', $request->targets))    $recipientRoles[] = 1; // إدارة
+            if (in_array('teachers', $request->targets)) $recipientRoles[] = 2; // معلمون
+            if (in_array('hod', $request->targets))      $recipientRoles[] = 5; // رؤساء أقسام
+            $users = \App\Models\User::whereIn('role_id', $recipientRoles)->where('status', 'active')->pluck('user_id');
+        }
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يرجى تحديد شخص واحد على الأقل من القائمة لمشاركة المحضر معه.',
+            ], 422);
+        }
+
+        $notifTitle = "محضر نتائج الدفعة وقرارات الترفيع 📑";
+        $notifMsg = "شاركت إدارة شؤون الطلاب محضر وقرارات نتائج الدفعة: {$cohortDesc}.";
+        if ($request->filled('notes')) {
+            $notifMsg .= "\nملاحظات الشؤون: " . $request->notes;
+        }
+
+        foreach ($users as $uId) {
+            \App\Models\Notification::create([
+                'user_id'    => $uId,
+                'sender_id'  => auth()->id(),
+                'title'      => $notifTitle,
+                'message'    => $notifMsg,
+                'type'       => 'cohort_results_shared',
+                'category'   => 'administrative',
+                'is_read'    => false,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تمت مشاركة محضر الدفعة بنجاح مع ' . count($users) . ' عضو من الكادر الأكاديمي والإداري.',
+        ]);
     }
 }
 

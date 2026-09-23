@@ -24,7 +24,7 @@ class StudentRequest extends Model
         'admin_notes',
     ];
 
-    protected $appends = ['formatted_details'];
+    protected $appends = ['formatted_details', 'photo_url'];
 
     /**
      * ربط الطلب مع الطالب صاحب الطلب
@@ -53,11 +53,32 @@ class StudentRequest extends Model
                 if (!empty($decoded['new_device_id'])) {
                     $parts[] = "معرف الجهاز الجديد: " . $decoded['new_device_id'];
                 }
+                if (!empty($decoded['photo'])) {
+                    $parts[] = "تم إرفاق صورة جديدة لبصمة الوجه";
+                }
                 if (!empty($parts)) {
                     return implode(' | ', $parts);
                 }
             }
         }
         return $raw;
+    }
+
+    /**
+     * جلب رابط الصورة المرفقة إن وجدت
+     */
+    public function getPhotoUrlAttribute()
+    {
+        $raw = $this->details;
+        if (empty($raw)) return null;
+
+        $trimmed = trim($raw);
+        if (str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[')) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded) && !empty($decoded['photo'])) {
+                return asset('storage/' . $decoded['photo']);
+            }
+        }
+        return null;
     }
 }

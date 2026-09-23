@@ -27,12 +27,10 @@
             }
         })();
     </script>
-    <!-- Google Fonts: Cairo for crisp official Arabic typography -->
-    <link href="https://fonts.googleapis.com" rel="preconnect">
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
-    <!-- Tailwind CSS v3 -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Local Cairo Font (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fonts-local.css') }}">
+    <!-- Local Tailwind CSS Engine (100% Offline) -->
+    <script src="{{ asset('js/tailwind-play.js') }}"></script>
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -62,7 +60,7 @@
     <style data-purpose="print-and-page-setup">
         @page {
             size: A4 portrait;
-            margin: 6mm;
+            margin: 4mm 5mm 4mm 5mm;
         }
         @media print {
             html, body {
@@ -80,13 +78,13 @@
                 margin: 0 !important;
                 width: 100% !important;
                 max-width: 100% !important;
-                padding: 3mm 4mm !important;
+                padding: 2mm 3mm !important;
                 page-break-after: always !important;
                 break-after: page !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
-                min-height: 283mm !important;
-                height: 283mm !important;
+                min-height: 275mm !important;
+                height: 275mm !important;
                 box-sizing: border-box !important;
             }
             .page-sheet:last-child {
@@ -189,6 +187,12 @@
             <button class="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-semibold px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition" onclick="window.close(); if(window.opener){window.opener.focus();}" type="button">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
                 <span>العودة للمسار الأكاديمي</span>
+            </button>
+
+            <!-- Share Transcript Button -->
+            <button class="flex-1 sm:flex-initial flex items-center justify-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 transition shadow-md whitespace-nowrap" onclick="openShareModal()" type="button">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                <span>إرسال / مشاركة الكشف</span>
             </button>
 
             <!-- Print / PDF Button -->
@@ -617,6 +621,135 @@
 
         document.addEventListener('DOMContentLoaded', updateThemeIcons);
         updateThemeIcons();
+
+        // ─────────────────────────── Share Modal Logic ───────────────────────────
+        function openShareModal() {
+            const m = document.getElementById('shareTranscriptModal');
+            m.classList.remove('hidden');
+            setTimeout(() => {
+                m.classList.remove('opacity-0');
+            }, 10);
+        }
+
+        function closeShareModal() {
+            const m = document.getElementById('shareTranscriptModal');
+            m.classList.add('opacity-0');
+            setTimeout(() => {
+                m.classList.add('hidden');
+            }, 300);
+        }
+
+        function submitShareTranscript() {
+            const selectedTarget = document.querySelector('input[name="shareTarget"]:checked')?.value || 'student';
+            const notes = document.getElementById('shareNotes')?.value || '';
+            const btn = document.getElementById('btnConfirmShare');
+            const originalHtml = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span> جاري المشاركة وإرسال الإشعار...`;
+
+            fetch("{{ route('affairs.course_weights.share_transcript') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    student_id: {{ $student->student_id }},
+                    target: selectedTarget,
+                    notes: notes
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    closeShareModal();
+                } else {
+                    alert('❌ ' + (data.message || 'تعذر إتمام عملية المشاركة'));
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                alert('حدث خطأ أثناء إرسال البيانات: ' + err);
+            });
+        }
     </script>
+
+    <!-- نافذة منبثقة لمشاركة كشف العلامات -->
+    <div id="shareTranscriptModal" class="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 hidden transition-opacity duration-300 opacity-0">
+        <div class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 text-right" dir="rtl">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg font-black">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white">مشاركة كشف درجات الطالب</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ $student->full_name }} ({{ $student->student_code ?? 'طالب' }})</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeShareModal()" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center justify-center text-sm font-bold transition">✕</button>
+            </div>
+
+            <!-- Target Selection -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">اختر جهة استلام الإشعار والمعاينة الرقمية:</label>
+                <div class="space-y-2.5">
+                    <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 hover:border-blue-500/50 cursor-pointer transition">
+                        <input type="radio" name="shareTarget" value="student" class="text-blue-600 focus:ring-blue-500 w-4 h-4" checked>
+                        <div class="text-xs">
+                            <span class="font-bold text-slate-900 dark:text-white block">الطالب نفسه فقط</span>
+                            <span class="text-slate-500 dark:text-slate-400 text-[11px]">يصل إشعار فوري بحساب الطالب داخل التطبيق مع زر المشاهدة الرقمية.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 hover:border-blue-500/50 cursor-pointer transition">
+                        <input type="radio" name="shareTarget" value="parent" class="text-blue-600 focus:ring-blue-500 w-4 h-4">
+                        <div class="text-xs">
+                            <span class="font-bold text-slate-900 dark:text-white block">ولي أمر الطالب فقط</span>
+                            <span class="text-slate-500 dark:text-slate-400 text-[11px]">يصل إشعار فوري لحساب ولي الأمر المرتبط بالطالب للاطلاع على درجات ابنه.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 hover:border-blue-500/50 cursor-pointer transition">
+                        <input type="radio" name="shareTarget" value="both" class="text-blue-600 focus:ring-blue-500 w-4 h-4">
+                        <div class="text-xs">
+                            <span class="font-bold text-slate-900 dark:text-white block">كلاهما (الطالب وولي الأمر معاً)</span>
+                            <span class="text-slate-500 dark:text-slate-400 text-[11px]">إرسال إشعار متزامن لحسابي الطالب وولي أمره في آنٍ واحد.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Additional Notes -->
+            <div>
+                <label for="shareNotes" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">ملاحظات إضافية (اختياري تظهر في الإشعار):</label>
+                <textarea id="shareNotes" rows="2" placeholder="اكتب ملاحظة أو توجيهات إدارية للطالب أو ولي أمره..." class="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-hidden"></textarea>
+            </div>
+
+            <!-- Official Warning Notice -->
+            <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-300 text-xs flex items-start gap-2.5 leading-relaxed">
+                <span class="text-base select-none">⚠️</span>
+                <span><strong>تنبيه إداري رسمي:</strong> هذه المشاركة تمنح الطالب أو ولي أمره إمكانية <strong>المعاينة الرقمية المعتمدة فوراً</strong> داخل تطبيق الموبايل. في حال الرغبة بالحصول على النسخة الورقية الرسمية المختومة والموقعة، يتعين على الطالب مراجعة موظف شؤون الطلاب بالمعهد شخصياً لاستلامها.</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-3 pt-2">
+                <button type="button" id="btnConfirmShare" onclick="submitShareTranscript()" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    <span>تأكيد الإرسال والمشاركة</span>
+                </button>
+                <button type="button" onclick="closeShareModal()" class="py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

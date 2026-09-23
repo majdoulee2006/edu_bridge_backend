@@ -155,6 +155,10 @@ class HODWebController extends Controller
             ->where('user_id', auth()->id())
             ->update(['is_read' => true]);
 
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
+
         return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 

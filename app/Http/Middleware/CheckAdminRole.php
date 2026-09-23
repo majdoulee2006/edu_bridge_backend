@@ -21,6 +21,26 @@ class CheckAdminRole
             return (new UnifiedAuthController)->redirectUserByRole($user);
         }
 
+        // التحقق من الجلسة النشطة الوحيدة للأدمن
+        $currentSessionId = $request->session()->getId();
+        if (!empty($user->active_web_session_id) && $user->active_web_session_id !== $currentSessionId) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('admin.login')->withErrors([
+                'login' => '🔒 تم إنهاء هذه الجلسة تلقائياً لعدم تطابق الجلسة النشطة المعتمدة.'
+            ]);
+        }
+
+        // تحديث توقيت آخر نشاط للجلسة الحالية كل 30 ثانية
+        if (!$user->web_last_active_at || \Carbon\Carbon::parse($user->web_last_active_at)->diffInSeconds(now()) >= 30) {
+            $user->update([
+                'active_web_session_id' => $currentSessionId,
+                'web_last_active_at'    => now(),
+                'web_active_device_ip'  => $request->ip(),
+            ]);
+        }
+
         return $next($request);
     }
 }

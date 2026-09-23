@@ -9,9 +9,10 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- HTML5 QR Code Library -->
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local Fonts: Cairo (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fonts-local.css') }}">
+    <!-- Local FontAwesome (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fontawesome.min.css') }}">
 
     <style>
         * {

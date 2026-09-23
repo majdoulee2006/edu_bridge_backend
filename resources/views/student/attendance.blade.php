@@ -4,8 +4,8 @@
 @section('subtitle', 'الكاميرا تعمل تلقائياً من داخل الصفحة لمسح الـ QR والتحقق من الوجه ⚡')
 
 @push('styles')
-<!-- jsQR for real-time video frame decoding -->
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<!-- jsQR for real-time video frame decoding (100% Offline) -->
+<script src="{{ asset('js/jsQR.min.js') }}"></script>
 <style>
     .embedded-cam-box {
         position: relative;
@@ -68,6 +68,68 @@
         }
     }
 
+    .status-banner {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+        transition: background 0.3s, border-color 0.3s;
+    }
+    html.dark .status-banner,
+    [data-theme="dark"] .status-banner {
+        background: #18181b;
+        border-color: #3f3f46;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .status-title-text {
+        color: var(--text-primary);
+    }
+    html.dark .status-title-text,
+    [data-theme="dark"] .status-title-text {
+        color: #ffffff;
+    }
+    .status-sub-text {
+        color: var(--text-secondary);
+    }
+    html.dark .status-sub-text,
+    [data-theme="dark"] .status-sub-text {
+        color: #a1a1aa;
+    }
+
+    .result-modal-box {
+        background: var(--bg-secondary);
+        border-color: var(--border-color);
+    }
+    html.dark .result-modal-box,
+    [data-theme="dark"] .result-modal-box {
+        background: #18181b;
+        border-color: #3f3f46;
+    }
+    .modal-title-text {
+        color: var(--text-primary);
+    }
+    html.dark .modal-title-text,
+    [data-theme="dark"] .modal-title-text {
+        color: #ffffff;
+    }
+    .modal-msg-text {
+        color: var(--text-secondary);
+    }
+    html.dark .modal-msg-text,
+    [data-theme="dark"] .modal-msg-text {
+        color: #d4d4d8;
+    }
+    .modal-score-box {
+        background: var(--bg-primary);
+        border-color: var(--border-color);
+        color: #92400e;
+    }
+    html.dark .modal-score-box,
+    [data-theme="dark"] .modal-score-box {
+        background: #121212;
+        border-color: #27272a;
+        color: var(--accent-color);
+    }
+
 </style>
 @endpush
 
@@ -75,12 +137,12 @@
 <div class="py-2 flex flex-col items-center justify-center space-y-4">
 
     <!-- إشعار حالة الكاميرا المباشرة -->
-    <div id="status-bar" class="w-full max-w-md bg-slate-900 border border-yellow-400/40 rounded-2xl p-3.5 flex items-center justify-between shadow-lg">
+    <div id="status-bar" class="w-full max-w-md status-banner rounded-2xl p-3.5 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <span id="status-dot" class="w-3.5 h-3.5 rounded-full bg-yellow-400 animate-pulse"></span>
             <div>
-                <div id="status-title" class="font-extrabold text-white text-sm">مسح رمز الـ QR (الكاميرا الخلفية)</div>
-                <div id="status-subtitle" class="text-[11px] text-slate-400">وجه الكاميرا نحو رمز الـ QR المباشر</div>
+                <div id="status-title" class="font-extrabold text-sm status-title-text">مسح رمز الـ QR (الكاميرا الخلفية)</div>
+                <div id="status-subtitle" class="text-[11px] status-sub-text">وجه الكاميرا نحو رمز الـ QR المباشر</div>
             </div>
         </div>
         <span id="step-badge" class="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-full">1 / 2</span>
@@ -134,16 +196,16 @@
 <canvas id="hidden-canvas" class="hidden"></canvas>
 
 <!-- Modal النتيجة الفورية -->
-<div id="result-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-card-dark border border-slate-700 rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
+<div id="result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="result-modal-box border rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
         <div id="modal-icon" class="text-6xl text-green-400">
             <i class="fa-solid fa-circle-check"></i>
         </div>
-        <h3 id="modal-title" class="text-2xl font-bold text-white">تم تسجيل الحضور</h3>
-        <p id="modal-msg" class="text-sm text-slate-300 leading-relaxed"></p>
-        <div id="modal-score" class="text-sm font-bold text-yellow-400 bg-slate-900 py-2.5 rounded-xl border border-slate-800"></div>
+        <h3 id="modal-title" class="text-2xl font-bold modal-title-text">تم تسجيل الحضور</h3>
+        <p id="modal-msg" class="text-sm modal-msg-text leading-relaxed"></p>
+        <div id="modal-score" class="text-sm font-bold py-2.5 rounded-xl border modal-score-box"></div>
 
-        <button onclick="closeModal()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3.5 rounded-xl transition text-base">
+        <button onclick="closeModal()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-extrabold py-3.5 rounded-xl transition text-base cursor-pointer">
             تم
         </button>
     </div>

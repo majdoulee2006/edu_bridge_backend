@@ -134,6 +134,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/send-otp', [AuthController::class, 'sendProfileOtp']);
     Route::post('/profile/verify-otp', [AuthController::class, 'verifyProfileOtp']);
 
+    // تصدير كشف علامات الطالب المعتمد (متاح للطلاب وأولياء الأمور والشؤون)
+    Route::get('/transcript/export-pdf', [\App\Http\Controllers\Api\AffairsController::class, 'exportCourseWeightsStudentPdf']);
+
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {
         $user = $request->user();

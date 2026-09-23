@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edu-Bridge Dashboard</title>
+    <!-- Local Fonts: Cairo (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fonts-local.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local FontAwesome (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fontawesome.min.css') }}">
 </head>
 <body>
     <div class="dashboard-container">

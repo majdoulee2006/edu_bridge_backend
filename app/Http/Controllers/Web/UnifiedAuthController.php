@@ -10,9 +10,14 @@ use App\Models\User;
 use App\Models\Student;
 use App\Models\Parents;
 use App\Models\UserActivity;
+use App\Traits\FaceRecognitionTrait;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class UnifiedAuthController extends Controller
 {
+    use FaceRecognitionTrait;
+
     /**
      * Role configurations for dedicated login routes.
      */
@@ -118,9 +123,63 @@ class UnifiedAuthController extends Controller
                 }
             }
 
+            // 5. حصر الجلسة النشطة في جهاز واحد فقط في نفس الوقت على الويب لجميع المستخدمين
+            $isStudent = ($user->role_id == 3 || strtolower($user->role ?? '') === 'student' || Student::where('user_id', $user->user_id)->exists());
+
+            if (!empty($user->active_web_session_id)) {
+                $sessionFilePath = storage_path('framework/sessions/' . $user->active_web_session_id);
+                $sessionFileExists = file_exists($sessionFilePath);
+
+                // فحص ما إذا كان آخر نشاط للجلسة الحالية تم خلال نافذة الـ 20 دقيقة
+                $lastActive = $user->web_last_active_at ? \Carbon\Carbon::parse($user->web_last_active_at) : null;
+                $isRecentlyActive = $lastActive && $lastActive->diffInMinutes(now()) < 20;
+
+                $currentSessionId = $request->session()->getId();
+
+                if ($sessionFileExists && $isRecentlyActive && $currentSessionId !== $user->active_web_session_id) {
+                    // لباقي المستخدمين عدا الطالب: منع تسجيل الدخول المتزامن من جهاز آخر قطعياً
+                    if (!$isStudent) {
+                        UserActivity::log('دخول مرفوض (جلسة مسبقة)', 'محاولة تسجيل دخول بينما توجد جلسة نشطة بالفعل على جهاز آخر', $user);
+                        return back()->withErrors([
+                            'login' => '⚠️ تنبيه أمني: هذا الحساب مسجل دخول حالياً على جهاز آخر. وفقاً لسياسة الأمان، يُسمح بجلسة واحدة نشطة فقط. يجب تسجيل الخروج من الجهاز الأول أولاً لتتمكن من تسجيل الدخول هنا.'
+                        ])->withInput($request->only('login'));
+                    }
+                }
+            }
+
+            // 6. التحقق من أجهزة الطالب (إلزام التحقق بالوجه عند التبديل أو الدخول من جهاز جديد)
+            if ($isStudent) {
+                $student = Student::where('user_id', $user->user_id)->first();
+                if ($student) {
+                    $deviceCookie = $request->cookie('edubridge_student_web_device');
+
+                    // إذا كان الكوكيز غير موجود، أو مختلف عن توكن الجهاز المسجل للطالب، يتوجب مطابقة الوجه
+                    if (empty($deviceCookie) || empty($student->web_device_token) || $deviceCookie !== $student->web_device_token) {
+                        $request->session()->put('pending_face_auth', [
+                            'user_id'    => $user->user_id,
+                            'student_id' => $student->student_id,
+                            'remember'   => $request->has('remember'),
+                            'time'       => now()->timestamp,
+                        ]);
+
+                        UserActivity::log('طلب تحقق بالوجه', 'محاولة دخول طالب من جهاز ويب جديد تتطلب التحقق بالوجه', $user);
+
+                        return redirect()->route('student.face_auth.show');
+                    }
+                }
+            }
+
             $remember = $request->has('remember');
             Auth::login($user, $remember);
             $request->session()->regenerate();
+
+            // حفظ معرف الجلسة النشطة وتحديث النشاط لكافة المستخدمين
+            $user->update([
+                'active_web_session_id' => $request->session()->getId(),
+                'web_last_active_at'    => now(),
+                'web_active_device_ip'  => $request->ip(),
+            ]);
+
             UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح', $user);
 
             return $this->redirectUserByRole($user);
@@ -130,12 +189,163 @@ class UnifiedAuthController extends Controller
     }
 
     /**
+     * Show Student Face Verification Screen (when switching devices or new web device)
+     */
+    public function showFaceAuth(Request $request)
+    {
+        $pending = $request->session()->get('pending_face_auth');
+        if (!$pending || empty($pending['user_id']) || empty($pending['student_id'])) {
+            return redirect()->route('login')->withErrors(['login' => 'انتهت صلاحية جلسة التحقق، يرجى تسجيل الدخول مجدداً.']);
+        }
+
+        $user = User::find($pending['user_id']);
+        $student = Student::with('program')->find($pending['student_id']);
+
+        if (!$user || !$student) {
+            $request->session()->forget('pending_face_auth');
+            return redirect()->route('login');
+        }
+
+        $hasReferencePhoto = !empty($student->reference_photo) && Storage::disk('public')->exists($student->reference_photo);
+
+        return view('auth.student_face_verify', compact('user', 'student', 'hasReferencePhoto'));
+    }
+
+    /**
+     * Verify Live Face Capture against Reference Photo
+     */
+    public function verifyFaceAuth(Request $request)
+    {
+        $pending = $request->session()->get('pending_face_auth');
+        if (!$pending || empty($pending['user_id']) || empty($pending['student_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت صلاحية جلسة التحقق، يرجى إعادة تسجيل الدخول.',
+            ], 401);
+        }
+
+        $request->validate([
+            'face_image' => 'required|string',
+        ], [
+            'face_image.required' => 'صورة الوجه المباشرة مطلوبة للتحقق.',
+        ]);
+
+        $user = User::find($pending['user_id']);
+        $student = Student::find($pending['student_id']);
+
+        if (!$user || !$student) {
+            $request->session()->forget('pending_face_auth');
+            return response()->json([
+                'success' => false,
+                'message' => 'بيانات الحساب غير موجودة.',
+            ], 404);
+        }
+
+        $rawBase64 = $request->face_image;
+        $cleanBase64 = preg_replace('/^data:image\/\w+;base64,/', '', $rawBase64);
+        $capturedBinary = base64_decode($cleanBase64);
+
+        if (!$capturedBinary) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر قراءة بيانات صورة الوجه، يرجى إعادة المحاولة.',
+            ], 422);
+        }
+
+        $refPhotoPath = $student->reference_photo;
+        $faceScore = 100.0;
+        $isFirstTimePhoto = false;
+
+        if ($refPhotoPath && Storage::disk('public')->exists($refPhotoPath)) {
+            $refBinary = Storage::disk('public')->get($refPhotoPath);
+            $refVector = $this->extractImageVector($refBinary);
+            $capVector = $this->extractImageVector($capturedBinary);
+
+            if (!empty($refVector) && !empty($capVector)) {
+                $faceScore = $this->calculateFaceSimilarity($refVector, $capVector);
+
+                // حد القبول 70% مطابق تماماً لما هو معتمد في نظام الحضور
+                if ($faceScore < 70.0) {
+                    UserActivity::log('فشل التحقق بالوجه', "محاولة دخول غير مطابقة لبصمة وجه الطالب (نسبة التطابق: {$faceScore}%)", $user);
+
+                    return response()->json([
+                        'success'    => false,
+                        'message'    => "فشل التحقق من الوجه: الوجه المصور غير مطابق للصورة الرسمية المعتمدة للطالب ❌ (نسبة التطابق: {$faceScore}%)",
+                        'face_score' => $faceScore,
+                    ], 403);
+                }
+            }
+        } else {
+            // إذا لم يكن لديه صورة مرجعية مسجلة سابقاً، نحفظ هذه الصورة لتصبح صورته المرجعية الرسمية
+            $fileName = 'students/reference_photos/ref_' . $student->student_id . '_' . time() . '.jpg';
+            Storage::disk('public')->put($fileName, $capturedBinary);
+            $student->update(['reference_photo' => $fileName]);
+            $isFirstTimePhoto = true;
+        }
+
+        // نجاح التحقق بالوجه!
+        // إبطال أي جلسة نشطة سابقة للمستخدم لضمان جلسة واحدة نشطة فقط
+        if (!empty($user->active_web_session_id)) {
+            $prevSessionFile = storage_path('framework/sessions/' . $user->active_web_session_id);
+            if (file_exists($prevSessionFile)) {
+                @unlink($prevSessionFile);
+            }
+        }
+
+        // تسجيل الدخول الرسمي
+        Auth::login($user, $pending['remember'] ?? false);
+        $request->session()->regenerate();
+        $request->session()->forget('pending_face_auth');
+
+        // توليد رمز جهاز ويب جديد للطالب وتحديث قاعدة البيانات
+        $newDeviceToken = Str::random(64);
+        $student->update([
+            'web_device_token' => $newDeviceToken,
+        ]);
+
+        $user->update([
+            'active_web_session_id' => $request->session()->getId(),
+            'web_last_active_at'    => now(),
+            'web_active_device_ip'  => $request->ip(),
+        ]);
+
+        UserActivity::log('تسجيل دخول بالوجه', "تم التحقق من بصمة الوجه بنجاح وتسجيل الدخول من جهاز ويب جديد (نسبة التطابق: {$faceScore}%)", $user);
+
+        $cookie = cookie()->forever('edubridge_student_web_device', $newDeviceToken);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => $isFirstTimePhoto 
+                ? 'تم اعتماد بصمة الوجه الأولى وتوثيق الجهاز بنجاح! جاري تحويلك...' 
+                : "تم التحقق من بصمة الوجه بنجاح (تطابق {$faceScore}%)! جاري تحويلك...",
+            'face_score'   => $faceScore,
+            'redirect_url' => route('student.dashboard'),
+        ])->withCookie($cookie);
+    }
+
+    /**
+     * Cancel face auth and go back to login
+     */
+    public function cancelFaceAuth(Request $request)
+    {
+        $request->session()->forget('pending_face_auth');
+        return redirect()->route('login');
+    }
+
+    /**
      * Logout user.
      */
     public function logout(Request $request)
     {
         $isInactivity = $request->has('is_inactivity_logout');
         if (Auth::check()) {
+            $user = Auth::user();
+            $user->update([
+                'active_web_session_id' => null,
+                'web_last_active_at'    => null,
+                'web_active_device_ip'  => null,
+            ]);
+
             if ($isInactivity) {
                 UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
             } else {

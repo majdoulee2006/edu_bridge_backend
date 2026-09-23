@@ -45,6 +45,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'parent'  => \App\Http\Middleware\CheckParentRole::class,
         ]);
 
+        $middleware->web(append: [
+            \App\Http\Middleware\EnforceSingleWebSession::class,
+        ]);
+
         $middleware->validateCsrfTokens(except: [
             'affairs/accounts',
             'affairs/accounts/*',

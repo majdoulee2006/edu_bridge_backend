@@ -60,6 +60,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const applySettings = (settings) => {
         // Theme
         document.documentElement.setAttribute('data-theme', settings.theme);
+        if (settings.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+        } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+        }
         
         // Language - Always maintain RTL direction to protect system layout structure
         document.documentElement.setAttribute('dir', 'rtl');

@@ -10,8 +10,9 @@
        data-simple-preview="<img-id>"      (simple standalone preview)
 --}}
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
-<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+<!-- Local CropperJS (100% Offline) -->
+<link rel="stylesheet" href="{{ asset('css/cropper.min.css') }}">
+<script src="{{ asset('js/cropper.min.js') }}"></script>
 
 <div id="cropModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:99999; align-items:center; justify-content:center; padding:1rem; font-family:'Cairo',sans-serif;" dir="rtl">
     <div style="background:#121212; border-radius:1.5rem; padding:1.5rem; max-width:680px; width:100%; max-height:95vh; display:flex; flex-direction:column; gap:1rem; box-shadow:0 30px 80px rgba(0,0,0,0.5); overflow-y:auto; border: 1px solid #242424;">
