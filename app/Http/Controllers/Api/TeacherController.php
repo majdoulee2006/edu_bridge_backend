@@ -2112,6 +2112,7 @@ class TeacherController extends Controller
             // بناء CSV بسيط (متوافق مع Excel)
             $csv = "\xEF\xBB\xBF"; // BOM للعربية
             $csv .= "اسم الطالب,المادة,التاريخ,الحالة\n";
+            foreach ($rows as $row) {
                 $status = match($row->status) {
                     'present' => 'حاضر',
                     'absent'  => 'غائب',

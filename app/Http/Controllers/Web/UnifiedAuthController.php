@@ -142,6 +142,9 @@ class UnifiedAuthController extends Controller
                 UserActivity::log('تسجيل خروج', 'قام المستخدم بتسجيل الخروج يدوياً');
             }
         }
+        if (Auth::check()) {
+            Auth::user()->update(['current_session_id' => null]);
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

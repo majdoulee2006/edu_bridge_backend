@@ -52,5 +52,20 @@ class AppServiceProvider extends ServiceProvider
         // Register Observers
         \App\Models\Grade::observe(\App\Observers\GradeObserver::class);
         \App\Models\Attendance::observe(\App\Observers\AttendanceObserver::class);
+
+        // منع تسجيل الدخول المتزامن على الويب: كل تسجيل دخول ناجح (عبر
+        // Auth::login أو Auth::attempt من أي controller) يسجّل جلسته كـ
+        // "الجلسة الحالية" الوحيدة الصالحة للحساب، فتُطرد أي جلسة ويب سابقة
+        // (راجع EnsureSingleWebSession).
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Auth\Events\Login::class,
+            function (\Illuminate\Auth\Events\Login $event) {
+                if ($event->guard === 'web') {
+                    $event->user->forceFill([
+                        'current_session_id' => request()->session()->getId(),
+                    ])->save();
+                }
+            }
+        );
     }
 }

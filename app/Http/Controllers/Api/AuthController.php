@@ -20,6 +20,19 @@ use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
+    /**
+     * يصدر توكن Sanctum جديد لليوزر ويُبطل كل التوكنات السابقة (تسجيل دخول
+     * واحد فعّال بنفس الوقت عبر التطبيق - راجع EnsureSingleApiSession).
+     */
+    private function issueToken(User $user): string
+    {
+        $user->tokens()->delete();
+        $newToken = $user->createToken('auth_token');
+        $user->forceFill(['current_token_id' => $newToken->accessToken->id])->save();
+
+        return $newToken->plainTextToken;
+    }
+
     // ──────────────────────────────────────────────
     // LOGIN
     // ──────────────────────────────────────────────
@@ -117,7 +130,7 @@ class AuthController extends Controller
             }
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $this->issueToken($user);
 
         $parentId = null;
         if ($user->role_id == 4) {
@@ -588,6 +601,9 @@ class AuthController extends Controller
             if ($user->currentAccessToken()) {
                 $user->currentAccessToken()->delete();
             }
+            if ($user->current_token_id) {
+                $user->update(['current_token_id' => null]);
+            }
         }
 
         return response()->json(['success' => true, 'message' => 'تم تسجيل الخروج بنجاح'], 200);
@@ -864,7 +880,7 @@ class AuthController extends Controller
         $record->update(['used' => true]);
         $user->update(['last_login' => now()]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $this->issueToken($user);
 
         $parentId = null;
         if ($user->role_id == 4) {

@@ -36,13 +36,19 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'role'    => \App\Http\Middleware\RoleMiddleware::class,
-            'hod'     => \App\Http\Middleware\CheckHodRole::class,
-            'teacher' => \App\Http\Middleware\CheckTeacherRole::class,
-            'affairs' => \App\Http\Middleware\CheckAffairsRole::class,
-            'admin'   => \App\Http\Middleware\CheckAdminRole::class,
-            'student' => \App\Http\Middleware\CheckStudentRole::class,
-            'parent'  => \App\Http\Middleware\CheckParentRole::class,
+            'role'          => \App\Http\Middleware\RoleMiddleware::class,
+            'hod'           => \App\Http\Middleware\CheckHodRole::class,
+            'teacher'       => \App\Http\Middleware\CheckTeacherRole::class,
+            'affairs'       => \App\Http\Middleware\CheckAffairsRole::class,
+            'admin'         => \App\Http\Middleware\CheckAdminRole::class,
+            'student'       => \App\Http\Middleware\CheckStudentRole::class,
+            'parent'        => \App\Http\Middleware\CheckParentRole::class,
+            'single.session' => \App\Http\Middleware\EnsureSingleApiSession::class,
+        ]);
+
+        // يمنع تسجيل الدخول المتزامن لنفس الحساب من أكثر من متصفح على الويب
+        $middleware->web(append: [
+            \App\Http\Middleware\EnsureSingleWebSession::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

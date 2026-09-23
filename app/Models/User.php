@@ -35,6 +35,8 @@ class User extends Authenticatable
         'telegram_id',
         'device_token',
         'last_login',
+        'current_session_id',
+        'current_token_id',
     ];
 
     protected $appends = ['role'];
