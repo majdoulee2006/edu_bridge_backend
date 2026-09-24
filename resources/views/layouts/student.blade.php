@@ -181,6 +181,10 @@
                     <i class="fa-solid fa-user"></i>
                     الملف الشخصي
                 </a>
+                <a href="{{ url('/student/settings') }}" class="nav-item {{ Request::is('student/settings*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-gear"></i>
+                    الإعدادات
+                </a>
 
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form action="{{ route('student.logout') }}" method="POST">
@@ -244,7 +248,7 @@
                     <i class="fa-solid fa-circle-xmark"></i> {{ session('error') }}
                 </div>
             @endif
-            @if($errors->any())
+            @if(isset($errors) && $errors->any())
                 <div class="global-alert-box" style="background-color: hsl(0, 70%, 95%); color: hsl(0, 50%, 30%); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; transition: all 0.5s ease;">
                     <i class="fa-solid fa-circle-xmark"></i>
                     <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">

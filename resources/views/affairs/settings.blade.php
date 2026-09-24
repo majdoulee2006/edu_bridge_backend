@@ -111,7 +111,7 @@
         <h3><i class="fas fa-cog"></i> إعدادات النظام</h3>
         <div class="info-row">
             <span class="info-label">إصدار النظام</span>
-            <span class="info-value">EduBridge v1.0</span>
+            <span class="info-value">EduBridge v1.0.2</span>
         </div>
 
         <div class="info-row">
@@ -120,5 +120,43 @@
         </div>
     </div>
 
+    {{-- الدعم والمعلومات والأمان --}}
+    <div class="settings-card" style="padding: 1.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <h3 style="margin: 0; padding: 0; border: none; font-size: 1.15rem; font-weight: 800; color: var(--text);">
+                <i class="fas fa-shield-alt" style="color: var(--primary);"></i> الدعم والمعلومات والأمان
+            </h3>
+            <span style="font-size: 0.78rem; font-weight: 700; background: rgba(255,204,0,0.15); color: #eab308; padding: 0.25rem 0.75rem; border-radius: 20px; border: 1px solid rgba(255,204,0,0.3);">
+                منظومة معتمدة
+            </span>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            <!-- About Card -->
+            <div onclick="openEduBridgeModal('tab-about')" style="background: var(--bg); border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.25rem; cursor: pointer; transition: all 0.25s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='var(--primary)';" onmouseout="this.style.transform='none'; this.style.borderColor='var(--border)';">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; background: rgba(255, 204, 0, 0.2); color: #eab308; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.35rem;">
+                        استعراض <i class="fas fa-arrow-left" style="font-size: 0.7rem;"></i>
+                    </span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--text);">حول المنصة وفريق التطوير</h4>
+                    <p style="margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+                        معلومات نظام Edu-Bridge الأكاديمي، كادر الهندسة والبرمجة، سياسة الخصوصية، والتقنيات المعتمدة.
+                    </p>
+                </div>
+                <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+                    <span>5 مهندسين معتمدين</span>
+                    <span style="color: #eab308; font-weight: 700;">منظومة معتمدة</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+
+@include('partials.about_privacy_modal')
 @endsection

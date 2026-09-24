@@ -234,9 +234,9 @@
                         <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
                     @endif
                 </a>
-                <a href="{{ url('/teacher/profile') }}" class="nav-item {{ Request::is('teacher/profile') ? 'active' : '' }}">
-                    <i class="fa-solid fa-user"></i>
-                    الملف الشخصي
+                <a href="{{ url('/teacher/settings') }}" class="nav-item {{ Request::is('teacher/settings*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-gear"></i>
+                    الإعدادات
                 </a>
                 
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">

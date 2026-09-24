@@ -1402,4 +1402,9 @@ class ParentWebController extends Controller
 
         return back()->with('success', 'تم تمييز جميع الإشعارات كمقروءة.');
     }
+
+    public function settings()
+    {
+        return $this->parentView('parent.settings');
+    }
 }

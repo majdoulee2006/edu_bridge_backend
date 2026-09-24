@@ -171,7 +171,8 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::get('/advisor', [TeacherWebController::class, 'advisorTools'])->name('teacher.advisor');
     Route::post('/advisor/attendance', [TeacherWebController::class, 'storeAdvisorAttendance'])->name('teacher.advisor.attendance');
     Route::post('/advisor/report', [TeacherWebController::class, 'storeAdvisorReport'])->name('teacher.advisor.report');
-    Route::post('/profile/password', [TeacherWebController::class, 'updatePassword'])->name('teacher.profile.password');
+    // الإعدادات
+    Route::get('/settings', [TeacherWebController::class, 'settings'])->name('teacher.settings');
 });
 
 // ===== Utility Routes =====
@@ -297,6 +298,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/accounts', [AffairsWebController::class, 'storeAccount'])->name('affairs.accounts.store');
     Route::post('/accounts/update/{id}', [AffairsWebController::class, 'updateAccount'])->name('affairs.accounts.update');
     Route::post('/accounts/{id}/toggle', [AffairsWebController::class, 'toggleAccountStatus'])->name('affairs.accounts.toggle');
+    Route::post('/accounts/{id}/unlink', [AffairsWebController::class, 'unlinkAccount'])->name('affairs.accounts.unlink');
     Route::post('/accounts/{id}/delete', [AffairsWebController::class, 'deleteAccount'])->name('affairs.accounts.delete');
     Route::post('/students/{id}/reset-device', [AffairsWebController::class, 'resetStudentDevice'])->name('affairs.students.reset-device');
 
@@ -559,6 +561,8 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::delete('/messages/{id}', [StudentWebController::class, 'deleteMessage'])->name('student.messages.delete');
     Route::get('/messages/{id}/download', [StudentWebController::class, 'downloadAttachment'])->name('student.messages.download');
     Route::post('/messages/forward', [StudentWebController::class, 'forwardMessage'])->name('student.messages.forward');
+    // الإعدادات
+    Route::get('/settings', [StudentWebController::class, 'settings'])->name('student.settings');
 });
 
 // ==========================================
@@ -628,6 +632,8 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::delete('/messages/{id}', [ParentWebController::class, 'deleteMessage'])->name('parent.messages.delete');
     Route::get('/messages/{id}/download', [ParentWebController::class, 'downloadAttachment'])->name('parent.messages.download');
     Route::post('/messages/forward', [ParentWebController::class, 'forwardMessage'])->name('parent.messages.forward');
+    // الإعدادات
+    Route::get('/settings', [ParentWebController::class, 'settings'])->name('parent.settings');
 });
 
 // ===== Live Web Notifications Polling Route =====
@@ -654,3 +660,29 @@ Route::middleware(['web'])->get('/web-notifications/latest', function () {
         'latest'       => $latest,
     ]);
 })->name('web.notifications.latest');
+
+Route::middleware(['web'])->match(['delete', 'post'], '/web-notifications/{id}/delete', function ($id) {
+    $userId = Auth::id();
+    if ($userId) {
+        \Illuminate\Support\Facades\DB::table('notifications')
+            ->where('id', $id)
+            ->where('user_id', $userId)
+            ->delete();
+    }
+    return response()->json(['success' => true]);
+})->name('web.notifications.delete');
+
+Route::middleware(['web'])->match(['delete', 'post'], '/web-notifications/chat/{senderId}/delete', function ($senderId) {
+    $userId = Auth::id();
+    if ($userId) {
+        \Illuminate\Support\Facades\DB::table('notifications')
+            ->where('user_id', $userId)
+            ->where('type', 'message')
+            ->where(function ($q) use ($senderId) {
+                $q->where('sender_id', $senderId)
+                  ->orWhere('related_id', $senderId);
+            })
+            ->delete();
+    }
+    return response()->json(['success' => true]);
+})->name('web.notifications.delete_chat');

@@ -495,6 +495,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'getNotifications']);
         Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::delete('/notifications/{id}', [NotificationController::class, 'deleteNotification']);
+        Route::delete('/notifications/chat/{senderId}', [NotificationController::class, 'deleteChatNotifications']);
+        Route::delete('/teacher/notifications/{id}', [NotificationController::class, 'deleteNotification']);
+        Route::delete('/student/notifications/{id}', [NotificationController::class, 'deleteNotification']);
+        Route::delete('/hod/notifications/{id}', [NotificationController::class, 'deleteNotification']);
+        Route::delete('/affairs/notifications/{id}', [NotificationController::class, 'deleteNotification']);
         Route::put('/notifications/read-by-type', [NotificationController::class, 'markByTypeAndRelatedId']);
         Route::post('/notifications/toggle-mute', [NotificationController::class, 'toggleMute']);
     });
