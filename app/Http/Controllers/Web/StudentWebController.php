@@ -1584,4 +1584,10 @@ class StudentWebController extends Controller
 
         return back()->with('success', 'تم إرسال طلب الخدمة الطلابية بنجاح، وستتم مراجعته من قبل شؤون الطلاب والإدارة قريباً.');
     }
+
+    public function settings()
+    {
+        $student = Student::where('user_id', Auth::id())->first();
+        return view('student.settings', compact('student'));
+    }
 }

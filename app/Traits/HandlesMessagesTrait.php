@@ -150,6 +150,16 @@ trait HandlesMessagesTrait
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
+        // 🧹 حذف كافة إشعارات الرسائل من هذا المستخدم فور فتح المحادثة على الويب
+        DB::table('notifications')
+            ->where('user_id', $currentUserId)
+            ->where('type', 'message')
+            ->where(function ($q) use ($userId) {
+                $q->where('sender_id', $userId)
+                  ->orWhere('related_id', $userId);
+            })
+            ->delete();
+
         return response()->json($messages);
     }
 
@@ -203,9 +213,12 @@ trait HandlesMessagesTrait
         // Add Notification for recipient
         DB::table('notifications')->insert([
             'user_id'    => $request->receiver_id,
+            'sender_id'  => Auth::id(),
+            'related_id' => Auth::id(),
             'title'      => 'رسالة جديدة',
             'message'    => 'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
             'type'       => 'message',
+            'category'   => 'administrative',
             'is_read'    => false,
             'created_at' => now(),
             'updated_at' => now(),
@@ -215,7 +228,11 @@ trait HandlesMessagesTrait
             $request->receiver_id,
             'رسالة جديدة',
             'لقد تلقيت رسالة جديدة من ' . Auth::user()->full_name,
-            ['type' => 'message']
+            [
+                'type' => 'message',
+                'sender_id' => (string) Auth::id(),
+                'related_id' => (string) Auth::id(),
+            ]
         );
 
         if ($request->expectsJson()) {

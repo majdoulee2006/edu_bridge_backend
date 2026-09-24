@@ -2292,10 +2292,56 @@ class AffairsWebController extends Controller
         return back()->with('success', "تم فك قفل الجهاز للطالب ($studentName) وتصفير بيانات الجهاز بنجاح ✓");
     }
 
-    // ─────────────────────────── Accounts (معلم + رئيس قسم فقط) ────
-    public function accounts()
+    // ─────────────────────────── Accounts ───────────────────────────
+    public function accounts(Request $request)
     {
-        $users = User::whereIn('role_id', [2, 3, 4, 5, 6])->with('student')->latest()->get();
+        $roleFilter = $request->input('role', 'all');
+        $search = trim($request->input('search', ''));
+
+        $query = DB::table('users')
+            ->select(['user_id', 'role_id', 'full_name', 'username', 'email', 'phone', 'university_id', 'status', 'created_at'])
+            ->where('role_id', '!=', 1); // استبعاد المدير العام
+
+        if ($roleFilter !== 'all') {
+            $roleMap = [
+                'student' => 3,
+                'teacher' => 2,
+                'hod'     => 5,
+                'parent'  => 4,
+                'affairs' => 6,
+            ];
+            if (isset($roleMap[$roleFilter])) {
+                $query->where('role_id', $roleMap[$roleFilter]);
+            }
+        }
+
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('full_name', 'LIKE', "%{$search}%")
+                  ->orWhere('username', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhere('phone', 'LIKE', "%{$search}%")
+                  ->orWhere('university_id', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $users = $query->orderByDesc('created_at')->paginate(24)->withQueryString();
+
+        $counts = [
+            'all'     => DB::table('users')->where('role_id', '!=', 1)->count(),
+            'student' => DB::table('users')->where('role_id', 3)->count(),
+            'teacher' => DB::table('users')->where('role_id', 2)->count(),
+            'hod'     => DB::table('users')->where('role_id', 5)->count(),
+            'parent'  => DB::table('users')->where('role_id', 4)->count(),
+            'affairs' => DB::table('users')->where('role_id', 6)->count(),
+        ];
+
+        $pendingUsers = DB::table('users')
+            ->where('status', 'inactive')
+            ->where('role_id', '!=', 1)
+            ->orderByDesc('created_at')
+            ->get();
+
         $departments = DB::table('departments')->orderBy('name')->get();
         
         $coursesList = DB::table('courses')
@@ -2317,7 +2363,11 @@ class AffairsWebController extends Controller
         }
         
         $courses = DB::table('courses')->orderBy('title')->get();
-        return view('affairs.accounts', compact('users', 'departments', 'courses', 'deptCourses', 'deptBranches'));
+
+        return view('affairs.accounts', compact(
+            'users', 'roleFilter', 'search', 'counts', 'pendingUsers',
+            'departments', 'courses', 'deptCourses', 'deptBranches'
+        ));
     }
 
     public function resetStudentDevice(Request $request, int $studentId)
@@ -2778,16 +2828,113 @@ class AffairsWebController extends Controller
 
     public function toggleAccountStatus(Request $request, $id)
     {
-        $user = User::findOrFail($id);
-        $user->status = ($user->status === 'active') ? 'inactive' : 'active';
-        $user->save();
-        return back()->with('success', 'تم تحديث حالة الحساب.');
+        $user = DB::table('users')->where('user_id', $id)->first();
+        if (!$user) {
+            return back()->with('error', 'الحساب غير موجود.');
+        }
+
+        $newStatus = ($user->status === 'active') ? 'inactive' : 'active';
+        DB::table('users')->where('user_id', $id)->update([
+            'status'     => $newStatus,
+            'updated_at' => now(),
+        ]);
+
+        $statusText = ($newStatus === 'active') ? 'تفعيل' : 'إيقاف';
+        \App\Models\UserActivity::log('تغيير حالة حساب', "قام موظف الشؤون بـ {$statusText} حساب: {$user->full_name} ({$user->username})");
+
+        return back()->with('success', "تم {$statusText} حساب ({$user->full_name}) بنجاح.");
+    }
+
+    public function unlinkAccount(Request $request, $id)
+    {
+        $user = DB::table('users')->where('user_id', $id)->first();
+        if (!$user) {
+            return back()->with('error', 'الحساب غير موجود.');
+        }
+
+        $details = [];
+
+        // 1. فك ربط جهاز الطالب
+        if ($user->role_id == 3) {
+            DB::table('students')->where('user_id', $id)->update([
+                'device_id'        => null,
+                'is_device_locked' => 0,
+            ]);
+            $details[] = 'فك ربط الجهاز';
+        }
+
+        // 2. فك ربط الأبناء بحساب ولي الأمر
+        if ($user->role_id == 4) {
+            $deletedLinks = DB::table('parent_students')->where('parent_id', $id)->delete();
+            if ($deletedLinks > 0) {
+                $details[] = 'فك ربط الأبناء (' . $deletedLinks . ' طالب)';
+            }
+        }
+
+        // 3. إنهاء الجلسات ورموز الوصول النشطة (Tokens)
+        if (\Illuminate\Support\Facades\Schema::hasTable('personal_access_tokens')) {
+            DB::table('personal_access_tokens')->where('tokenable_id', $id)->delete();
+            $details[] = 'إنهاء الجلسات النشطة';
+        }
+
+        $actionDesc = !empty($details) ? implode(' و ', $details) : 'فك ربط الحساب والجلسات';
+
+        \App\Models\UserActivity::log('فك ربط حساب', "قام موظف الشؤون بفك ربط حساب: {$user->full_name} ({$user->username})");
+
+        return back()->with('success', "تم {$actionDesc} لحساب ({$user->full_name}) بنجاح!");
     }
 
     public function deleteAccount($id)
     {
-        User::findOrFail($id)->delete();
-        return back()->with('success', 'تم حذف الحساب بنجاح.');
+        $usr = DB::table('users')->where('user_id', $id)->first();
+        if (!$usr) {
+            return back()->with('error', 'الحساب غير موجود.');
+        }
+
+        $roleId = intval($usr->role_id);
+
+        DB::beginTransaction();
+        try {
+            if ($roleId == 3) {
+                $student = DB::table('students')->where('user_id', $id)->first();
+                if ($student) {
+                    DB::table('parent_students')->where('student_id', $id)->delete();
+                    DB::table('enrollments')->where('student_id', $student->student_id)->delete();
+                    DB::table('students')->where('student_id', $student->student_id)->delete();
+                }
+            } elseif ($roleId == 2) {
+                $teacher = DB::table('teachers')->where('user_id', $id)->first();
+                if ($teacher) {
+                    DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->delete();
+                    DB::table('teachers')->where('teacher_id', $teacher->teacher_id)->delete();
+                }
+            } elseif ($roleId == 5) {
+                DB::table('heads')->where('user_id', $id)->delete();
+            } elseif ($roleId == 4) {
+                $parent = DB::table('parents')->where('user_id', $id)->first();
+                if ($parent) {
+                    DB::table('parent_students')->where('parent_id', $id)->delete();
+                    DB::table('parents')->where('parent_id', $parent->parent_id)->delete();
+                }
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('personal_access_tokens')) {
+                DB::table('personal_access_tokens')->where('tokenable_id', $id)->delete();
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('notifications')) {
+                DB::table('notifications')->where('user_id', $id)->delete();
+            }
+
+            DB::table('users')->where('user_id', $id)->delete();
+            DB::commit();
+
+            \App\Models\UserActivity::log('حذف حساب', "قام موظف الشؤون بحذف حساب: {$usr->full_name} ({$usr->username})");
+
+            return back()->with('success', "تم حذف حساب ({$usr->full_name}) بنجاح!");
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'حدث خطأ أثناء حذف الحساب: ' . $e->getMessage());
+        }
     }
 
     // ─────────────────────────── Leaves ───────────────────────────

@@ -854,7 +854,22 @@
                 if (data.status === 'success' && data.data && data.data.length > 0) {
                     renderContactsList(data.data);
                     wrapperDiv.classList.remove('hidden');
-                    if (!activeContactId && data.data.length > 0 && window.innerWidth >= 768) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const targetContactId = urlParams.get('contact');
+                    let targetContact = null;
+                    if (targetContactId) {
+                        targetContact = data.data.find(c => String(c.id) === String(targetContactId));
+                    }
+                    if (targetContact) {
+                        let roleAr = targetContact.role;
+                        if (targetContact.role === 'admin') roleAr = 'الإدارة';
+                        else if (targetContact.role === 'teacher') roleAr = 'المدرب';
+                        else if (targetContact.role === 'student') roleAr = 'الطالب';
+                        else if (targetContact.role === 'parent') roleAr = 'الأهل';
+                        else if (targetContact.role === 'head') roleAr = 'رئيس القسم';
+                        else if (targetContact.role === 'affairs') roleAr = 'الشؤون';
+                        selectContact(targetContact.id, targetContact.name, roleAr, targetContact.image || '');
+                    } else if (!activeContactId && data.data.length > 0 && window.innerWidth >= 768) {
                         const first = data.data[0];
                         let roleAr = first.role;
                         if (first.role === 'admin') roleAr = 'الإدارة';

@@ -91,4 +91,30 @@ class NotificationController extends Controller
           'message' => $user->notifications_muted ? 'تم كتم الإشعارات بنجاح' : 'تم تفعيل الإشعارات بنجاح'
       ]);
   }
+
+  public function deleteNotification(Request $request, $id)
+  {
+      $userId = auth()->id() ?? $request->user()?->user_id;
+      DB::table('notifications')
+          ->where('id', $id)
+          ->where('user_id', $userId)
+          ->delete();
+
+      return response()->json(['success' => true, 'message' => 'تم حذف الإشعار بنجاح']);
+  }
+
+  public function deleteChatNotifications(Request $request, $senderId)
+  {
+      $userId = auth()->id() ?? $request->user()?->user_id;
+      DB::table('notifications')
+          ->where('user_id', $userId)
+          ->where('type', 'message')
+          ->where(function ($q) use ($senderId) {
+              $q->where('sender_id', $senderId)
+                ->orWhere('related_id', $senderId);
+          })
+          ->delete();
+
+      return response()->json(['success' => true, 'message' => 'تم تنظيف إشعارات المحادثة بنجاح']);
+  }
 }

@@ -163,7 +163,8 @@
         }
 
         if (isMessage) {
-            return prefix + '/messages';
+            const senderId = notif.sender_id || notif.related_id || '';
+            return prefix + '/messages' + (senderId ? ('?contact=' + encodeURIComponent(senderId)) : '');
         }
 
         return prefix + '/notifications';
@@ -194,6 +195,15 @@
         `;
 
         toast.addEventListener('click', function() {
+            if (notif.id) {
+                fetch('/web-notifications/' + notif.id + '/delete', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        'Accept': 'application/json'
+                    }
+                }).catch(() => {});
+            }
             window.location.href = targetUrl;
         });
 

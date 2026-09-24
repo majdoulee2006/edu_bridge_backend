@@ -235,6 +235,43 @@
         </div>
     </div>
 
+    {{-- الدعم والمعلومات والأمان --}}
+    <div class="settings-group" style="padding: 1.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <div class="settings-group-title" style="margin: 0;">
+                <i class="fa-solid fa-shield-halved" style="color: var(--accent-color); margin-left: 0.5rem;"></i> الدعم والمعلومات والأمان
+            </div>
+            <span style="font-size: 0.78rem; font-weight: 700; background: rgba(255,204,0,0.15); color: #eab308; padding: 0.25rem 0.75rem; border-radius: 20px; border: 1px solid rgba(255,204,0,0.3);">
+                منظومة معتمدة
+            </span>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            <!-- About Card -->
+            <div onclick="openEduBridgeModal('tab-about')" style="background: var(--bg-primary, #1e1e1e); border: 1px solid var(--border-color); border-radius: 1.25rem; padding: 1.25rem; cursor: pointer; transition: all 0.25s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='var(--accent-color)';" onmouseout="this.style.transform='none'; this.style.borderColor='var(--border-color)';">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; background: rgba(255, 204, 0, 0.15); color: var(--accent-color); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-color); display: flex; align-items: center; gap: 0.35rem;">
+                        استعراض <i class="fa-solid fa-arrow-left" style="font-size: 0.7rem;"></i>
+                    </span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--text-primary);">حول المنصة وفريق التطوير</h4>
+                    <p style="margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+                        معلومات نظام Edu-Bridge الأكاديمي، كادر الهندسة والبرمجة، سياسة الخصوصية، والتقنيات المعتمدة.
+                    </p>
+                </div>
+                <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
+                    <span>5 مهندسين معتمدين</span>
+                    <span style="color: #eab308; font-weight: 700;">منظومة معتمدة</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+@include('partials.about_privacy_modal')
 @endsection
 
 @push('scripts')

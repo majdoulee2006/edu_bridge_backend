@@ -2848,4 +2848,10 @@ class TeacherWebController extends Controller
         $quiz->delete();
         return redirect()->route('teacher.quizzes')->with('success', 'تم حذف الاختبار');
     }
+
+    public function settings()
+    {
+        $teacher = $this->getTeacher();
+        return view('teacher.settings', compact('teacher'));
+    }
 }
