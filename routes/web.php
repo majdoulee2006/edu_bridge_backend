@@ -238,6 +238,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::post('/reports', [HODWebController::class, 'storeReport'])->name('hod.reports.store');
     Route::post('/reports/delete/{id}', [HODWebController::class, 'deleteReport'])->name('hod.reports.delete');
     Route::post('/reports/{id}/send-to-parent', [HODWebController::class, 'sendReportToParent'])->name('hod.reports.send_to_parent');
+    Route::post('/reports/{id}/hod-notes', [HODWebController::class, 'updateHodNotes'])->name('hod.reports.hod_notes');
     Route::get('/reports/{id}/download', [HODWebController::class, 'downloadReport'])->name('hod.reports.download');
     
     // الخدمات الطلابية

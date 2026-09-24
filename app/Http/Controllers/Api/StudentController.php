@@ -1544,35 +1544,7 @@ class StudentController extends Controller
             ];
         }, $courses);
 
-        $forPdf = true;
-        $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard', 'forPdf'))->render();
-
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'orientation' => 'P',
-            'autoScriptToLang' => true,
-            'autoLangToFont' => true,
-            'useSubsets' => false,
-        ]);
-        $mpdf->SetDirectionality('rtl');
-        $mpdf->WriteHTML($html);
-
-        $fileName = 'academic_card_student_' . time() . '.pdf';
-        $directory = public_path('exports');
-        if (!file_exists($directory)) {
-            mkdir($directory, 0755, true);
-        }
-        $filePath = $directory . '/' . $fileName;
-        file_put_contents($filePath, $mpdf->Output('', 'S'));
-
-        $pdfUrl = url('exports/' . $fileName);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'تم إنشاء ملف PDF بنجاح',
-            'file_url' => $pdfUrl,
-        ]);
+        return app(\App\Http\Controllers\Api\AffairsController::class)->exportStudentAcademicCardPdf($request);
     }
 
     /**

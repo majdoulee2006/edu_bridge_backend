@@ -155,11 +155,8 @@
             <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">عرض شامل لكافة المقررات والعلامات والحالة الأكاديمية</p>
         </div>
         <div style="display: flex; gap: 0.75rem;">
-            <a href="{{ route('student.academic_card.pdf') }}" target="_blank" style="background: #ef4444; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 10px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
-                <i class="fa-solid fa-file-pdf"></i> تصدير PDF
-            </a>
-            <a href="{{ route('student.academic_card.excel') }}" target="_blank" style="background: #10b981; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 10px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
-                <i class="fa-solid fa-file-excel"></i> تصدير Excel
+            <a href="{{ route('student.academic_card.pdf') }}" target="_blank" style="background: var(--accent-color, #eab308); color: #000; border: none; padding: 0.65rem 1.15rem; border-radius: 12px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(234, 179, 8, 0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                <i class="fa-solid fa-eye"></i> معاينة كشف الدرجات والسجل المعتمد
             </a>
         </div>
     </div>

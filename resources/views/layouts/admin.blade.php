@@ -810,6 +810,7 @@
             var newTheme = isDark ? 'light' : 'dark';
             document.documentElement.classList.toggle('dark',  !isDark);
             document.documentElement.classList.toggle('light',  isDark);
+            document.documentElement.setAttribute('data-theme', newTheme);
             // Save to both keys so HOD/teacher/other layouts pick it up
             localStorage.setItem('color-theme', newTheme);
             var hodRaw = localStorage.getItem('hodSettings');

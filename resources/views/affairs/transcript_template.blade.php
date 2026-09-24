@@ -1,3 +1,8 @@
+@php
+    $currentUser = auth()->user();
+    $roleName = $currentUser?->role ?? ($currentUser?->role_id == 3 ? 'student' : ($currentUser?->role_id == 4 ? 'parent' : ''));
+    $isStudentOrParent = in_array($roleName, ['student', 'parent']) || (request()->query('for_student') == '1');
+@endphp
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -62,6 +67,29 @@
             size: A4 portrait;
             margin: 4mm 5mm 4mm 5mm;
         }
+        @if($isStudentOrParent)
+        @media print {
+            html, body, .page-sheet, * {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+        }
+        body {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -ms-user-select: none !important;
+        }
+        .report-viewport-wrapper {
+            transition: filter 0.15s ease-out, opacity 0.15s ease-out;
+        }
+        .content-protected-blackout {
+            filter: blur(50px) brightness(0.05) grayscale(1) !important;
+            opacity: 0.02 !important;
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        @else
         @media print {
             html, body {
                 background-color: #ffffff !important;
@@ -92,6 +120,7 @@
                 break-after: auto !important;
             }
         }
+        @endif
         body {
             font-family: 'Cairo', sans-serif;
             -webkit-font-smoothing: antialiased;
@@ -164,6 +193,33 @@
 </head>
 <body class="bg-slate-100 dark:bg-[#070a13] min-h-screen text-slate-800 dark:text-slate-100 antialiased py-4 sm:py-6 px-1.5 sm:px-3 flex flex-col items-center justify-start transition-colors duration-200">
 
+    @if($isStudentOrParent)
+    <!-- Fullscreen Blackout Shield when Focus is Lost or Snipping Tool is Triggered -->
+    <div id="security-blackout-shield" class="fixed inset-0 z-[99999] bg-[#050811] flex flex-col items-center justify-center p-6 text-center text-white transition-all duration-150 opacity-0 pointer-events-none" style="display: none;" onclick="resumeViewing()">
+        <div class="max-w-md w-full bg-slate-900/95 border-2 border-red-500/50 rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-4 backdrop-blur-xl">
+            <div class="w-20 h-20 rounded-full bg-red-500/10 border-2 border-red-500/40 flex items-center justify-center text-red-500 animate-pulse">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-black text-red-400">⚠️ شاشة حماية الخصوصية ومكافحة التصوير</h2>
+            <p class="text-xs text-slate-300 leading-relaxed font-semibold">
+                تم حجب محتوى الوثيقة الأكاديمية تلقائياً لمنع التقاط الشاشة أو استخدام أدوات القص (Snipping Tool / Screen Capture).
+            </p>
+            <div class="p-3.5 bg-red-950/40 border border-red-900/60 rounded-2xl text-[11px] text-red-300 text-right w-full space-y-1">
+                <strong class="text-red-200 font-bold block mb-1">🛡️ التوثيق الأمني المعتمد:</strong>
+                <p class="text-slate-400">• المستند مخصص للمعاينة الشخصية المصرحة فقط داخل المنصة.</p>
+                <p class="text-slate-400">• تم وسم المستند رقمياً برقم الطالب، والاسم، وعنوان IP: <span class="font-mono text-amber-300">{{ request()->ip() }}</span>.</p>
+                <p class="text-slate-400">• يمنع منعاً باتاً تصوير أو تسجيل الشاشة تحت طائلة المسؤولية الأكاديمية.</p>
+            </div>
+            <button type="button" onclick="resumeViewing()" class="w-full mt-2 py-3 px-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+                <span>انقر هنا لاستئناف القراءة والمعاينة</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+        </div>
+    </div>
+    @endif
+
     <!-- Top Action Toolbar (مرن يتبع ثيم الواجهة ومتجاوب على الموبايل) -->
     <nav class="no-print w-full max-w-[210mm] mb-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-[#0f172a] p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors" data-purpose="top-action-bar">
         <div class="flex items-center justify-between gap-3">
@@ -189,6 +245,7 @@
                 <span>العودة للمسار الأكاديمي</span>
             </button>
 
+            @if(!$isStudentOrParent)
             <!-- Share Transcript Button -->
             <button class="flex-1 sm:flex-initial flex items-center justify-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 transition shadow-md whitespace-nowrap" onclick="openShareModal()" type="button">
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
@@ -200,6 +257,13 @@
                 <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
                 <span>طباعة السجل (PDF)</span>
             </button>
+            @else
+            <!-- Protected Preview Badge (For Student & Parent) -->
+            <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800/60 text-xs font-bold shadow-xs">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                <span>🔒 معاينة رقمية آمنة (غير مصرح بالطباعة أو التحميل المباشر)</span>
+            </div>
+            @endif
         </div>
     </nav>
 
@@ -265,6 +329,17 @@
             <div class="absolute inset-0 flex items-center justify-center opacity-[0.035] pointer-events-none select-none z-0">
                 <img alt="EduBridge Watermark" class="w-[450px] h-auto object-contain filter grayscale" src="{{ $watermarkBase64 }}">
             </div>
+
+            @if($isStudentOrParent)
+            <!-- Dynamic Forensic Anti-Camera Watermark Layer -->
+            <div class="absolute inset-0 z-20 pointer-events-none select-none overflow-hidden flex flex-col justify-around opacity-[0.06] -rotate-12 scale-110" aria-hidden="true">
+                @for($w = 0; $w < 8; $w++)
+                <div class="whitespace-nowrap text-[11px] font-black tracking-widest text-slate-900 select-none">
+                    {{ $student->full_name }} • {{ $student->student_code ?? 'STU' }} • IP: {{ request()->ip() }} • {{ now()->format('Y/m/d H:i') }} • DTC SECURE PREVIEW • {{ $student->full_name }} • {{ $student->student_code ?? 'STU' }}
+                </div>
+                @endfor
+            </div>
+            @endif
 
             <!-- Content Layer -->
             <div class="relative z-10 flex flex-col justify-between h-full">
@@ -751,5 +826,133 @@
             </div>
         </div>
     </div>
+
+    @if($isStudentOrParent)
+    <script>
+        (function() {
+            const blackoutShield = document.getElementById('security-blackout-shield');
+            const viewportWrapper = document.querySelector('.report-viewport-wrapper');
+            let isBlackoutActive = false;
+
+            window.activateBlackout = function(fromMouseLeave = false) {
+                if (isBlackoutActive) return;
+                isBlackoutActive = true;
+
+                // 1. مسح الحافظة فوراً
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    try { navigator.clipboard.writeText(''); } catch(e) {}
+                }
+
+                // 2. تشويش وتعتيم المستند الأكاديمي
+                if (viewportWrapper) {
+                    viewportWrapper.classList.add('content-protected-blackout');
+                }
+
+                // 3. إظهار الشاشة السوداء التحذيرية
+                if (blackoutShield) {
+                    blackoutShield.style.display = 'flex';
+                    // Force reflow
+                    void blackoutShield.offsetWidth;
+                    blackoutShield.classList.remove('opacity-0', 'pointer-events-none');
+                    blackoutShield.classList.add('opacity-100', 'pointer-events-auto');
+                }
+            };
+
+            window.resumeViewing = function() {
+                if (!isBlackoutActive) return;
+                isBlackoutActive = false;
+
+                if (blackoutShield) {
+                    blackoutShield.classList.remove('opacity-100', 'pointer-events-auto');
+                    blackoutShield.classList.add('opacity-0', 'pointer-events-none');
+                    setTimeout(() => {
+                        if (!isBlackoutActive) {
+                            blackoutShield.style.display = 'none';
+                        }
+                    }, 150);
+                }
+
+                if (viewportWrapper) {
+                    viewportWrapper.classList.remove('content-protected-blackout');
+                }
+            };
+
+            // عند فقدان تركيز النافذة (مثل ضغط Win + Shift + S أو فتح أداة Snipping Tool أو فتح تطبيق آخر)
+            window.addEventListener('blur', function() {
+                activateBlackout();
+            });
+
+            // عند تبديل التبويب أو إخفاء الصفحة
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    activateBlackout();
+                }
+            });
+
+            // عند عودة التركيز للنافذة
+            window.addEventListener('focus', function() {
+                // يعود بالضغط على زر المتابعة لضمان إغلاق أداة اللقطات أولاً
+            });
+
+            // عند خروج مؤشر الفأرة من حدود نافذة المتصفح (لمنع التقاط الشاشة من شريط المهام أو شاشة ثانية)
+            document.addEventListener('mouseleave', function(e) {
+                // تفعيل التعتيم إذا تحركت الفأرة خارج الصفحة لأعلى أو للخارج
+                if (e.clientY <= 0 || e.clientX <= 0 || (e.clientX >= window.innerWidth || e.clientY >= window.innerHeight)) {
+                    activateBlackout(true);
+                }
+            });
+
+            // حظر النقر بزر الفأرة الأيمن
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // حظر السحب والإفلات للصور والنصوص
+            document.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // حظر اختصارات لوحة المفاتيح: الطباعة، الحفظ، معاينة السورس، لقطات الشاشة
+            document.addEventListener('keydown', function(e) {
+                const key = e.key ? e.key.toLowerCase() : '';
+                const code = e.code || '';
+
+                // PrintScreen / Snipping Tool Hotkeys
+                if (key === 'printscreen' || code === 'PrintScreen' || e.keyCode === 44) {
+                    e.preventDefault();
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        try { navigator.clipboard.writeText(''); } catch(err) {}
+                    }
+                    activateBlackout();
+                    alert('⚠️ تنبيه أمني: يمنع التقاط الشاشة للوثائق الأكاديمية الرسمية.');
+                    return false;
+                }
+
+                // Ctrl + Shift + S / Win + Shift + S detection attempt
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 's') {
+                    e.preventDefault();
+                    activateBlackout();
+                    return false;
+                }
+
+                // Ctrl+P (Print), Ctrl+S (Save), Ctrl+U (Source), F12 / DevTools
+                if ((e.ctrlKey || e.metaKey) && (key === 'p' || key === 's' || key === 'u')) {
+                    e.preventDefault();
+                    activateBlackout();
+                    alert('⚠️ تنبيه أمني: هذه الوثيقة مخصصة للمعاينة الرقمية المعتمدة فقط، ومحمية من الطباعة أو الحفظ المباشر.');
+                    return false;
+                }
+
+                if (key === 'f12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === 'i' || key === 'j' || key === 'c'))) {
+                    e.preventDefault();
+                    activateBlackout();
+                    return false;
+                }
+            });
+        })();
+    </script>
+    @endif
 </body>
 </html>

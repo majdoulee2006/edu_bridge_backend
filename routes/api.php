@@ -352,6 +352,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/teachers',        [DepartmentHeadController::class, 'getTeachers']);
         Route::get('/report-requests',  [DepartmentHeadController::class, 'getReportRequests']);
         Route::post('/report-requests', [DepartmentHeadController::class, 'createReportRequest']);
+        Route::post('/report-requests/{id}/hod-notes',      [DepartmentHeadController::class, 'updateHodNotes']);
         Route::post('/report-requests/{id}/send-to-parent', [DepartmentHeadController::class, 'sendReportToParent']);
         Route::delete('/report-requests/{id}', [DepartmentHeadController::class, 'deleteReportRequest']);
 

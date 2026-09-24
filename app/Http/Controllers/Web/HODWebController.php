@@ -1533,12 +1533,23 @@ class HODWebController extends Controller
             ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
             ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
             ->leftJoin('report_requests', 'performance_reports.report_request_id', '=', 'report_requests.id')
+            ->leftJoin('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as teacher_users', 'teachers.user_id', '=', 'teacher_users.user_id')
             ->where('student_users.department', $departmentName)
             ->where(function($query) {
                 $query->where('report_requests.head_id', auth()->id())
                       ->orWhereNull('performance_reports.report_request_id');
             })
-            ->select('performance_reports.*', 'student_users.full_name as student_name', 'report_requests.sent_to_parent')
+            ->select(
+                'performance_reports.*',
+                'student_users.full_name as student_name',
+                'student_users.username as student_code',
+                'student_users.department as student_department',
+                'teacher_users.full_name as teacher_name',
+                'report_requests.id as request_id',
+                'report_requests.hod_notes',
+                'report_requests.sent_to_parent'
+            )
             ->orderBy('performance_reports.created_at', 'desc')
             ->get();
 
@@ -1547,9 +1558,20 @@ class HODWebController extends Controller
             ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
             ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
             ->join('report_requests', 'performance_reports.report_request_id', '=', 'report_requests.id')
+            ->leftJoin('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as teacher_users', 'teachers.user_id', '=', 'teacher_users.user_id')
             ->where('student_users.department', $departmentName)
             ->where('report_requests.head_id', '!=', auth()->id())
-            ->select('performance_reports.*', 'student_users.full_name as student_name', 'report_requests.sent_to_parent')
+            ->select(
+                'performance_reports.*',
+                'student_users.full_name as student_name',
+                'student_users.username as student_code',
+                'student_users.department as student_department',
+                'teacher_users.full_name as teacher_name',
+                'report_requests.id as request_id',
+                'report_requests.hod_notes',
+                'report_requests.sent_to_parent'
+            )
             ->orderBy('performance_reports.created_at', 'desc')
             ->get();
 
@@ -1627,7 +1649,18 @@ class HODWebController extends Controller
      */
     public function deleteReport($id)
     {
-        DB::table('performance_reports')->where('report_id', $id)->delete();
+        $report = DB::table('performance_reports')->where('report_id', $id)->first();
+        if ($report) {
+            if ($report->report_request_id) {
+                DB::table('report_requests')->where('id', $report->report_request_id)->delete();
+            }
+            DB::table('performance_reports')->where('report_id', $id)->delete();
+        } else {
+            // في حال تم تمرير report_request_id مباشرة
+            DB::table('performance_reports')->where('report_request_id', $id)->delete();
+            DB::table('report_requests')->where('id', $id)->delete();
+        }
+
         return redirect()->back()->with('success', 'تم حذف التقرير بنجاح.');
     }
 
@@ -1669,7 +1702,11 @@ class HODWebController extends Controller
             ->pluck('parent_id')
             ->unique();
 
-        $notificationMessage = $report->recommendations ?? 'تم إرسال تقرير أداء جديد.';
+        $reqRow = $report->report_request_id ? DB::table('report_requests')->where('id', $report->report_request_id)->first() : null;
+        $notificationMessage = "تقييم وملاحظات المدرب: " . ($report->recommendations ?: 'تم تقييم أداء الطالب.');
+        if ($reqRow && !empty($reqRow->hod_notes)) {
+            $notificationMessage .= "\nرأي وتوجيهات رئيس القسم: " . $reqRow->hod_notes;
+        }
 
         foreach ($parentIds as $parentId) {
             $parentIsUser = DB::table('users')->where('user_id', $parentId)->where('role_id', 4)->exists();
@@ -1708,59 +1745,147 @@ class HODWebController extends Controller
     }
 
     /**
-     * تنزيل التقرير بصيغة إكسل مبسطة
+     * حفظ / تحديث رأي وتوجيهات رئيس القسم الأكاديمي
+     */
+    public function updateHodNotes(Request $request, $id)
+    {
+        $request->validate([
+            'hod_notes' => 'nullable|string',
+        ]);
+
+        $perfReport = DB::table('performance_reports')->where('report_id', $id)->first();
+        $requestId = $perfReport?->report_request_id ?? $id;
+
+        $existingReq = DB::table('report_requests')->where('id', $requestId)->first();
+        if ($existingReq && !empty($existingReq->hod_notes)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'تم اعتماد وحفظ رأي رئيس القسم سابقاً ولا يمكن تعديله.'
+                ], 422);
+            }
+            return redirect()->back()->with('error', 'تم اعتماد وحفظ رأي رئيس القسم سابقاً ولا يمكن تعديله.');
+        }
+
+        if ($requestId) {
+            DB::table('report_requests')->where('id', $requestId)->update([
+                'hod_notes'  => $request->hod_notes,
+                'updated_at' => now(),
+            ]);
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم اعتماد وحفظ رأي رئيس القسم بنجاح'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'تم اعتماد وحفظ رأي رئيس القسم بنجاح.');
+    }
+
+    /**
+     * تنزيل التقرير بصيغة PDF رسمية معتمدة
      */
     public function downloadReport($id)
     {
         $report = DB::table('performance_reports')
             ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
             ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+            ->leftJoin('report_requests', 'performance_reports.report_request_id', '=', 'report_requests.id')
+            ->leftJoin('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as teacher_users', 'teachers.user_id', '=', 'teacher_users.user_id')
             ->where('performance_reports.report_id', $id)
-            ->select('performance_reports.*', 'student_users.full_name as student_name', 'student_users.username as student_code')
+            ->select(
+                'performance_reports.*',
+                'student_users.full_name as student_name',
+                'student_users.username as student_code',
+                'student_users.department as student_department',
+                'teacher_users.full_name as teacher_name',
+                'report_requests.hod_notes',
+                'report_requests.notes as request_notes'
+            )
             ->first();
+
+        // في حال كان المعرف هو id لـ report_requests مباشرة
+        if (!$report) {
+            $report = DB::table('report_requests')
+                ->join('students', 'report_requests.student_id', '=', 'students.student_id')
+                ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+                ->leftJoin('teachers', 'report_requests.teacher_id', '=', 'teachers.teacher_id')
+                ->leftJoin('users as teacher_users', 'teachers.user_id', '=', 'teacher_users.user_id')
+                ->leftJoin('performance_reports', 'report_requests.id', '=', 'performance_reports.report_request_id')
+                ->where('report_requests.id', $id)
+                ->select(
+                    'performance_reports.report_id',
+                    'performance_reports.attendance_rate',
+                    'performance_reports.average_grade',
+                    'report_requests.report_type',
+                    DB::raw("COALESCE(performance_reports.recommendations, report_requests.notes, '') as recommendations"),
+                    'report_requests.created_at',
+                    'report_requests.created_at as generated_at',
+                    'student_users.full_name as student_name',
+                    'student_users.username as student_code',
+                    'student_users.department as student_department',
+                    'teacher_users.full_name as teacher_name',
+                    'report_requests.hod_notes',
+                    'report_requests.notes as request_notes'
+                )
+                ->first();
+        }
 
         if (!$report) {
             return redirect()->back()->with('error', 'التقرير غير موجود.');
         }
 
         $isAcademic = $report->report_type === 'academic';
-        $reportTypeLabel = $isAcademic ? 'تقرير أكاديمي' : 'تقرير سلوكي';
-        $filename = "تقرير_{$report->student_name}_{$report->report_id}.xls";
+        $reportTypeLabel = $isAcademic ? 'تقرير الأداء الأكاديمي' : 'تقرير المتابعة والتقييم السلوكي';
+        $filename = "تقرير_{$report->student_name}_{$id}.pdf";
 
-        $html = "<html xmlns:o='urn:schemas-microsoft-com:office:office'
-                      xmlns:x='urn:schemas-microsoft-com:office:excel'
-                      xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
-<style>
-body{font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl}
-table{border-collapse:collapse;width:100%}
-th{background:#1e293b;color:#f2f20d;font-weight:bold;border:1px solid #ccc;padding:8px;text-align:right}
-td{border:1px solid #ddd;padding:7px;text-align:right}
-tr:nth-child(even) td{background:#f8fafc}
-.hdr td{background:#0f172a;color:#ffffff;font-size:16px;font-weight:bold;padding:12px;text-align:center}
-.inf td{background:#f1f5f9;color:#334155;font-size:11px;padding:6px}
-</style></head><body>
-<table>
-<tr class='hdr'><td colspan='2'>{$reportTypeLabel} للطالب: {$report->student_name}</td></tr>
-<tr class='inf'><td>الرقم الجامعي: {$report->student_code}</td><td>تاريخ التوليد: " . \Carbon\Carbon::parse($report->generated_at ?? $report->created_at)->format('Y-m-d H:i') . "</td></tr>
-";
+        $dtcLogoPath = public_path('images/dtc-logo.png');
+        $dtcLogoBase64 = file_exists($dtcLogoPath) ? ('data:image/png;base64,' . base64_encode(file_get_contents($dtcLogoPath))) : '';
 
-        if ($isAcademic) {
-            $html .= "
-<tr><th>نسبة الحضور</th><td>{$report->attendance_rate}%</td></tr>
-<tr><th>المعدل الدراسي</th><td>{$report->average_grade}</td></tr>
-";
+        $html = view('hod.report_pdf', compact('report', 'isAcademic', 'reportTypeLabel', 'dtcLogoBase64'))->render();
+
+        // 1. توليد عبر mPDF (الأفضل للغة العربية والـ RTL)
+        if (class_exists('\Mpdf\Mpdf')) {
+            try {
+                $mpdf = new \Mpdf\Mpdf([
+                    'mode' => 'utf-8',
+                    'format' => 'A4',
+                    'orientation' => 'P',
+                    'margin_left' => 12,
+                    'margin_right' => 12,
+                    'margin_top' => 10,
+                    'margin_bottom' => 10,
+                    'autoScriptToLang' => true,
+                    'autoLangToFont' => true,
+                    'useSubsets' => false,
+                ]);
+                $mpdf->SetDirectionality('rtl');
+                $mpdf->WriteHTML($html);
+                return response($mpdf->Output('', 'S'), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $filename . '"',
+                ]);
+            } catch (\Throwable $e) {
+                \Log::warning('HOD report mPDF error: ' . $e->getMessage());
+            }
         }
 
-        $html .= "
-<tr><th>التوصيات والملاحظات</th><td>" . nl2br($report->recommendations) . "</td></tr>
-</table></body></html>";
+        // 2. المحاولة عبر DomPDF
+        if (class_exists('\Barryvdh\DomPDF\Facade\Pdf')) {
+            try {
+                $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['defaultFont' => 'DejaVu Sans', 'isRemoteEnabled' => true])
+                    ->loadHTML($html)->setPaper('a4', 'portrait');
+                return $pdf->download($filename);
+            } catch (\Throwable $e) {
+                \Log::warning('HOD report DomPDF error: ' . $e->getMessage());
+            }
+        }
 
-        return response("\xEF\xBB\xBF" . $html)
-            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->header('Pragma', 'no-cache')
-            ->header('Cache-Control', 'must-revalidate');
+        // 3. كحل بديل معاينة مباشرة قابلة للطباعة كـ PDF
+        return response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
     }
 
     public function settings()

@@ -702,25 +702,48 @@ class ParentController extends Controller
             ->whereIn('performance_reports.student_id', $childStudentIds)
             ->join('students', 'performance_reports.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('report_requests', 'performance_reports.report_request_id', '=', 'report_requests.id')
             ->select(
                 'performance_reports.report_id as id',
+                'performance_reports.student_id',
                 'performance_reports.report_type',
                 'performance_reports.attendance_rate',
                 'performance_reports.average_grade',
                 'performance_reports.recommendations',
                 'performance_reports.created_at',
+                'report_requests.hod_notes',
+                'report_requests.notes as req_notes',
                 'users.full_name as student_name',
                 \Illuminate\Support\Facades\DB::raw("'completed' as status")
             )
             ->get()
             ->map(function ($item) {
                 $arr = (array) $item;
-                if (empty($arr['recommendations'])) {
-                    $reqNote = \Illuminate\Support\Facades\DB::table('report_requests')
+                $teacherRec = $arr['recommendations'];
+                if (empty($teacherRec)) {
+                    $teacherRec = $arr['req_notes'] ?? '';
+                    if (empty($teacherRec)) {
+                        $reqNote = \Illuminate\Support\Facades\DB::table('report_requests')
+                            ->where('student_id', $item->student_id ?? 0)
+                            ->where('report_type', $arr['report_type'])
+                            ->value('notes');
+                        if ($reqNote) $teacherRec = $reqNote;
+                    }
+                }
+                $hodNotes = $arr['hod_notes'] ?? '';
+                if (empty($hodNotes)) {
+                    $hodNotes = \Illuminate\Support\Facades\DB::table('report_requests')
                         ->where('student_id', $item->student_id ?? 0)
                         ->where('report_type', $arr['report_type'])
-                        ->value('notes');
-                    if ($reqNote) $arr['recommendations'] = $reqNote;
+                        ->value('hod_notes');
+                }
+                $arr['teacher_notes'] = $teacherRec ?: 'لا توجد ملاحظات مسجلة من قبل المدرب.';
+                $arr['hod_notes'] = $hodNotes;
+                if (!empty($hodNotes)) {
+                    $arr['recommendations'] = ($teacherRec ? ("تقييم وملاحظات المدرب:\n" . $teacherRec) : '') . 
+                                              "\n\n🎓 رأي وتوجيهات رئيس القسم:\n" . $hodNotes;
+                } else {
+                    $arr['recommendations'] = $teacherRec;
                 }
                 return $arr;
             });
@@ -732,18 +755,34 @@ class ParentController extends Controller
             ->where('report_requests.status', 'completed')
             ->join('students', 'report_requests.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('performance_reports', 'report_requests.id', '=', 'performance_reports.report_request_id')
             ->select(
                 'report_requests.id',
+                'report_requests.student_id',
                 'report_requests.report_type',
                 \Illuminate\Support\Facades\DB::raw('null as attendance_rate'),
                 \Illuminate\Support\Facades\DB::raw('null as average_grade'),
-                'report_requests.notes as recommendations',
+                \Illuminate\Support\Facades\DB::raw("COALESCE(performance_reports.recommendations, report_requests.notes) as recommendations"),
+                'report_requests.hod_notes',
                 'report_requests.created_at',
                 'users.full_name as student_name',
                 \Illuminate\Support\Facades\DB::raw("'completed' as status")
             )
             ->get()
-            ->map(fn($r) => (array) $r);
+            ->map(function ($r) {
+                $arr = (array) $r;
+                $teacherRec = $arr['recommendations'] ?? '';
+                $hodNotes = $arr['hod_notes'] ?? '';
+                $arr['teacher_notes'] = $teacherRec ?: 'لا توجد ملاحظات مسجلة من قبل المدرب.';
+                $arr['hod_notes'] = $hodNotes;
+                if (!empty($hodNotes)) {
+                    $arr['recommendations'] = ($teacherRec ? ("تقييم وملاحظات المدرب:\n" . $teacherRec) : '') . 
+                                              "\n\n🎓 رأي وتوجيهات رئيس القسم:\n" . $hodNotes;
+                } else {
+                    $arr['recommendations'] = $teacherRec;
+                }
+                return $arr;
+            });
 
         // 4. طلبات التقارير المعلقة
         $pendingReports = \Illuminate\Support\Facades\DB::table('report_requests')

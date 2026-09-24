@@ -1929,106 +1929,17 @@ class AffairsController extends Controller
      */
     public function exportStudentAcademicCardPdf(Request $request)
     {
-        $cardResponse = $this->getStudentAcademicCardForAffairs($request);
-        $content = json_decode($cardResponse->getContent(), true);
+        // دمج وتوحيد البطاقة الأكاديمية وكشف درجات الطالب على السجل الأكاديمي المعتمد الموحد
+        $webCtrl = app(\App\Http\Controllers\Web\AffairsWebController::class);
+        $request->merge(['format' => 'pdf']);
 
-        if (!$content || !($content['success'] ?? false)) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'فشل جلب بيانات كشف العلامات للتصدير'], 400);
-            }
-            return back()->with('error', 'فشل جلب بيانات كشف العلامات للتصدير');
-        }
-
-        $student = $content['student'];
-        $summary = $content['summary'];
-        $academicCard = $content['academic_card'];
-
-        // إذا كان الطلب قادم من واجهات الويب: ارجاع الواجهة الرسمية المخصصة للطباعة والتصدير بجودة عالية
+        // إذا كان الطلب من المتصفح (الويب)، إرجاع واجهة السجل الأكاديمي المعتمد المحمية للمعاينة
         if (!$request->expectsJson() && !$request->is('api/*')) {
-            return view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard'));
+            return $webCtrl->exportCourseWeightsStudent($request);
         }
 
-        $forPdf = true;
-        $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard', 'forPdf'))->render();
-
-        $fileName = 'academic_card_' . ($student['university_id'] ?? $student['student_id']) . '.pdf';
-        $pdfContent = null;
-
-        // 1. Try mPDF engine
-        if (class_exists('\Mpdf\Mpdf')) {
-            try {
-                $mpdf = new \Mpdf\Mpdf([
-                    'mode' => 'utf-8',
-                    'format' => 'A4',
-                    'orientation' => 'P',
-                    'autoScriptToLang' => true,
-                    'autoLangToFont' => true,
-                    'useSubsets' => false,
-                ]);
-                $mpdf->SetDirectionality('rtl');
-                $mpdf->WriteHTML($html);
-                $pdfContent = $mpdf->Output('', 'S');
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('mPDF error: ' . $e->getMessage());
-            }
-        }
-
-        // 2. Try Barryvdh DomPDF Facade engine
-        if (!$pdfContent && class_exists('\Barryvdh\DomPDF\Facade\Pdf')) {
-            try {
-                $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('DomPDF Facade error: ' . $e->getMessage());
-            }
-        }
-
-        // 3. Try direct Dompdf engine
-        if (!$pdfContent && class_exists('\Dompdf\Dompdf')) {
-            try {
-                $dompdf = new \Dompdf\Dompdf();
-                $dompdf->loadHtml($html);
-                $dompdf->setPaper('A4', 'portrait');
-                $dompdf->render();
-                $pdfContent = $dompdf->output();
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Dompdf direct error: ' . $e->getMessage());
-            }
-        }
-
-        // 4. Fallback: Return printable HTML if no PDF binary driver is initialized
-        if (!$pdfContent) {
-            return response($html, 200, [
-                'Content-Type' => 'text/html; charset=utf-8',
-            ]);
-        }
-
-        if (ob_get_length()) {
-            ob_end_clean();
-        }
-
-        if ($request->expectsJson() || $request->is('api/*')) {
-            $directory = public_path('exports');
-            if (!file_exists($directory)) {
-                mkdir($directory, 0755, true);
-            }
-            $filePath = $directory . '/' . $fileName;
-            file_put_contents($filePath, $pdfContent);
-
-            return response()->json([
-                'success' => true,
-                'file_url' => url('exports/' . $fileName),
-                'file_name' => $fileName,
-            ]);
-        }
-
-        return response($pdfContent, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
-            'Content-Length' => strlen($pdfContent),
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ]);
+        // إذا كان الطلب من الموبايل (API)، إرجاع ملف الـ PDF الموحد
+        return $this->exportCourseWeightsStudentPdf($request);
     }
 
     /**
