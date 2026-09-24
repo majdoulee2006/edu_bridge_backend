@@ -35,6 +35,9 @@ class User extends Authenticatable
         'telegram_id',
         'device_token',
         'last_login',
+        'active_web_session_id',
+        'web_last_active_at',
+        'web_active_device_ip',
     ];
 
     protected $appends = ['role'];

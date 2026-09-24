@@ -1400,6 +1400,10 @@ class ParentWebController extends Controller
             ->where('is_read', 0)
             ->update(['is_read' => 1, 'updated_at' => now()]);
 
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
+
         return back()->with('success', 'تم تمييز جميع الإشعارات كمقروءة.');
     }
 

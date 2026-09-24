@@ -3,7 +3,7 @@
 @section('title', 'الرسائل')
 
 @section('content')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <div class="flex h-[calc(100vh-8.5rem)] min-h-[550px] overflow-hidden rounded-3xl bg-[#141417] border border-[#27272a] shadow-2xl text-slate-100 transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS PANEL) ================= -->
@@ -274,7 +274,7 @@
 
 <!-- ================= CSS POLISHING ================= -->
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<!-- Material Symbols locally provided by layout -->
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -299,13 +299,311 @@
     .animate-ping {
         animation: flash 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
+
+    /* ========================================================
+       LIGHT MODE CHAT THEME OVERRIDES (متطابق تماماً مع الثيم النهاري)
+       ======================================================== */
+    html:not(.dark) #chat-app-container {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        color: #0f172a !important;
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025) !important;
+    }
+
+    html:not(.dark) #contacts-sidebar-pane {
+        background-color: #ffffff !important;
+        border-left-color: #e2e8f0 !important;
+    }
+
+    html:not(.dark) #contacts-sidebar-pane h2 {
+        color: #0f172a !important;
+    }
+
+    html:not(.dark) #contacts-sidebar-pane .text-slate-400 {
+        color: #64748b !important;
+    }
+
+    html:not(.dark) button[onclick="openNewChatModal()"] {
+        background-color: #f1f5f9 !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) button[onclick="openNewChatModal()"]:hover {
+        background-color: #e2e8f0 !important;
+    }
+
+    html:not(.dark) #contact-search,
+    html:not(.dark) #message-search-input,
+    html:not(.dark) #modal-contact-search {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #contact-search::placeholder,
+    html:not(.dark) #message-search-input::placeholder,
+    html:not(.dark) #modal-contact-search::placeholder {
+        color: #94a3b8 !important;
+    }
+    html:not(.dark) #contact-search:focus,
+    html:not(.dark) #message-search-input:focus,
+    html:not(.dark) #modal-contact-search:focus {
+        border-color: #facc15 !important;
+        background-color: #ffffff !important;
+    }
+
+    html:not(.dark) .contact-row {
+        color: #0f172a !important;
+        border-color: transparent !important;
+    }
+    html:not(.dark) .contact-row:hover {
+        background-color: #f8fafc !important;
+    }
+    html:not(.dark) .contact-row[class*="bg-[#1c1c22]"],
+    html:not(.dark) .contact-row.bg-\[\#1c1c22\] {
+        background-color: #fefce8 !important;
+        border-right-color: #eab308 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    }
+    html:not(.dark) .contact-row .text-white {
+        color: #0f172a !important;
+    }
+    html:not(.dark) .contact-row .text-slate-400 {
+        color: #64748b !important;
+    }
+    html:not(.dark) .contact-row .text-slate-500 {
+        color: #94a3b8 !important;
+    }
+    html:not(.dark) .contact-row img {
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) .contact-row div[class*="bg-emerald-500"] {
+        border-color: #ffffff !important;
+    }
+
+    html:not(.dark) #chat-room-pane,
+    html:not(.dark) #chat-placeholder {
+        background-color: #f8fafc !important;
+    }
+
+    html:not(.dark) #chat-placeholder div[class*="bg-[#1c1c20]"] {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #chat-placeholder h3 {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #chat-placeholder p {
+        color: #64748b !important;
+    }
+
+    html:not(.dark) #active-chat-window > div:first-child {
+        background-color: #ffffff !important;
+        border-bottom-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #active-contact-name {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #active-contact-role {
+        background-color: #f1f5f9 !important;
+        color: #475569 !important;
+    }
+    html:not(.dark) #active-contact-avatar-img {
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #disappearing-menu-btn {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        color: #334155 !important;
+    }
+    html:not(.dark) #disappearing-menu-btn:hover {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #disappearing-menu {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+    }
+    html:not(.dark) #disappearing-menu div {
+        color: #64748b !important;
+        border-bottom-color: #f1f5f9 !important;
+    }
+    html:not(.dark) #disappearing-menu button {
+        color: #334155 !important;
+    }
+    html:not(.dark) #disappearing-menu button:hover {
+        background-color: #f1f5f9 !important;
+    }
+
+    html:not(.dark) #messages-feed {
+        background-color: #f8fafc !important;
+        background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px) !important;
+        background-size: 24px 24px !important;
+    }
+
+    /* Sent Bubble (Me) */
+    html:not(.dark) .chat-bubble-sent {
+        background-color: #fef08a !important;
+        border: 1px solid #fde047 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    }
+    html:not(.dark) .chat-bubble-sent p,
+    html:not(.dark) .chat-bubble-sent span,
+    html:not(.dark) .chat-bubble-sent div {
+        color: #1a1a00 !important;
+    }
+
+    /* Received Bubble (Other) */
+    html:not(.dark) .chat-bubble-received {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    }
+    html:not(.dark) .chat-bubble-received p {
+        color: #0f172a !important;
+    }
+
+    /* Timestamps & details below bubbles */
+    html:not(.dark) #messages-feed span.text-\[9\.5px\],
+    html:not(.dark) #messages-feed span.text-slate-400 {
+        color: #64748b !important;
+    }
+
+    /* Attachments inside bubbles */
+    html:not(.dark) .chat-bubble-sent .bg-\[\#1c1c22\],
+    html:not(.dark) .chat-bubble-received .bg-\[\#1c1c22\],
+    html:not(.dark) .chat-bubble-sent .bg-white\/5,
+    html:not(.dark) .chat-bubble-received .bg-white\/5 {
+        background-color: #f1f5f9 !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) .chat-bubble-sent .text-slate-200,
+    html:not(.dark) .chat-bubble-received .text-slate-200 {
+        color: #0f172a !important;
+    }
+
+    /* Chat Bottom Input Bar */
+    html:not(.dark) #active-chat-window > div:last-child {
+        background-color: #ffffff !important;
+        border-top-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #standard-input-elements {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #standard-input-elements:focus-within {
+        border-color: #eab308 !important;
+        background-color: #ffffff !important;
+        box-shadow: 0 0 0 1px #eab308 !important;
+    }
+    html:not(.dark) #message-text {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #message-text::placeholder {
+        color: #94a3b8 !important;
+    }
+    html:not(.dark) #standard-input-elements label,
+    html:not(.dark) #standard-input-elements button {
+        color: #64748b !important;
+    }
+    html:not(.dark) #standard-input-elements label:hover,
+    html:not(.dark) #standard-input-elements button:hover {
+        background-color: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #send-btn {
+        background-color: #facc15 !important;
+        border-color: #eab308 !important;
+        color: #000000 !important;
+        box-shadow: 0 4px 14px rgba(250, 204, 21, 0.3) !important;
+    }
+    html:not(.dark) #send-btn:hover {
+        background-color: #eab308 !important;
+    }
+    html:not(.dark) #attachment-preview-container {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #preview-filename {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #voice-recording-interface {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #recording-timer {
+        color: #0f172a !important;
+    }
+
+    /* New Chat Modal */
+    html:not(.dark) #new-chat-modal-content {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #new-chat-modal-content h3 {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #new-chat-modal-content > div:first-child {
+        border-bottom-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #new-chat-modal-content button[onclick="closeNewChatModal()"] {
+        background-color: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #64748b !important;
+    }
+    html:not(.dark) .modal-contact-row:hover {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) .modal-contact-row .text-white {
+        color: #0f172a !important;
+    }
+    html:not(.dark) .modal-contact-row .text-slate-400 {
+        color: #64748b !important;
+    }
+
+    /* Role Badges in Light Mode */
+    html:not(.dark) .bg-rose-500\/20 { background-color: #ffe4e6 !important; }
+    html:not(.dark) .text-rose-400 { color: #e11d48 !important; }
+    html:not(.dark) .bg-blue-500\/20 { background-color: #dbeafe !important; }
+    html:not(.dark) .text-blue-400 { color: #2563eb !important; }
+    html:not(.dark) .bg-emerald-500\/20 { background-color: #dcfce7 !important; }
+    html:not(.dark) .text-emerald-400 { color: #16a34a !important; }
+    html:not(.dark) .bg-purple-500\/20 { background-color: #f3e8ff !important; }
+    html:not(.dark) .text-purple-400 { color: #9333ea !important; }
+    html:not(.dark) .bg-amber-500\/20 { background-color: #fef3c7 !important; }
+    html:not(.dark) .text-amber-400 { color: #d97706 !important; }
+    html:not(.dark) .bg-cyan-500\/20 { background-color: #cffafe !important; }
+    html:not(.dark) .text-cyan-400 { color: #0891b2 !important; }
+
+    /* Message Options Dropdown */
+    html:not(.dark) [id^="msg-options-"] {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+    }
+    html:not(.dark) [id^="msg-options-"] button {
+        color: #334155 !important;
+    }
+    html:not(.dark) [id^="msg-options-"] button:hover {
+        background-color: #f1f5f9 !important;
+    }
+
+    html:not(.dark) div[class*="border-[#141417]"] { border-color: #ffffff !important; }
+    html:not(.dark) button[onclick="showSidebarOnMobile()"] { background-color: #f1f5f9 !important; color: #0f172a !important; }
+    html:not(.dark) #contacts-sidebar-pane div[class*="text-slate-400"] { color: #64748b !important; }
+    html:not(.dark) #messages-feed .text-slate-400 { color: #64748b !important; }
+    html:not(.dark) #messages-feed .text-slate-600 { color: #94a3b8 !important; }
 </style>
 @endpush
 
 <!-- ================= REAL-TIME PUSHER & SCRIPTS ================= -->
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.0/dist/echo.iife.js"></script>
+<script src="{{ asset('js/pusher.min.js') }}"></script>
+<script src="{{ asset('js/echo.iife.js') }}"></script>
 
 <script>
     let currentUserId = @json(auth()->id());

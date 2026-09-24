@@ -201,25 +201,30 @@ class StudentWebController extends Controller
             ->limit(5)
             ->get();
 
-        // متوسط الدرجات (يشمل الواجبات المصححة والاختبارات)
-        $submissionGrades = DB::table('assignment_submissions')
-            ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
-            ->where('assignment_submissions.student_id', $student->student_id)
-            ->whereNotNull('assignment_submissions.grade')
-            ->select('assignment_submissions.grade', 'assignments.max_points')
-            ->get();
+        // متوسط الدرجات (المعتمد أكاديمياً والموزون بتثقيل المقررات)
+        $weightedAvg = \App\Services\StudentAcademicService::getWeightedAverage($student->student_id);
+        if ($weightedAvg > 0) {
+            $avgGrade = $weightedAvg;
+        } else {
+            $submissionGrades = DB::table('assignment_submissions')
+                ->join('assignments', 'assignment_submissions.assignment_id', '=', 'assignments.assignment_id')
+                ->where('assignment_submissions.student_id', $student->student_id)
+                ->whereNotNull('assignment_submissions.grade')
+                ->select('assignment_submissions.grade', 'assignments.max_points')
+                ->get();
 
-        $submissionPercentages = $submissionGrades->map(function($sub) {
-            $max = ($sub->max_points ?? 0) > 0 ? $sub->max_points : 100;
-            return ($sub->grade / $max) * 100;
-        });
+            $submissionPercentages = $submissionGrades->map(function($sub) {
+                $max = ($sub->max_points ?? 0) > 0 ? $sub->max_points : 100;
+                return ($sub->grade / $max) * 100;
+            });
 
-        $examGrades = DB::table('grades')
-            ->where('student_id', $student->student_id)
-            ->pluck('score');
+            $examGrades = DB::table('grades')
+                ->where('student_id', $student->student_id)
+                ->pluck('score');
 
-        $allGrades = $submissionPercentages->concat($examGrades);
-        $avgGrade = $allGrades->count() > 0 ? round($allGrades->avg(), 1) : null;
+            $allGrades = $submissionPercentages->concat($examGrades);
+            $avgGrade = $allGrades->count() > 0 ? round($allGrades->avg(), 1) : null;
+        }
 
         return view('student.dashboard', compact(
             'student', 'user', 'courses', 'assignments',
@@ -237,24 +242,99 @@ class StudentWebController extends Controller
         $student = $this->getStudent();
         $user    = Auth::user();
 
-        $enrolledCourseIds = DB::table('enrollments')
-            ->where('student_id', $student->student_id)
-            ->pluck('course_id');
+        // 🎓 تحديد السنة الدراسية للطالب (سنة أولى، سنة ثانية، إلخ)
+        $levelMap = [
+            'السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5,
+            'الأولى' => 1, 'الثانية' => 2, 'الثالثة' => 3, 'الرابعة' => 4, 'الخامسة' => 5,
+            '1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5
+        ];
+        $studentYear = $levelMap[$student->level ?? ''] ?? $levelMap[$user->academic_year ?? ''] ?? null;
 
-        $schedules = DB::table('schedules')
+        // 📅 تحديد الفصل الدراسي النشط
+        $activeSemester = DB::table('semesters')->where('is_active', 1)->first()
+            ?? DB::table('semesters')->where('start_date', '<=', now())->where('end_date', '>=', now())->first()
+            ?? DB::table('semesters')->first();
+        $activeSemesterId = $activeSemester?->semester_id ?? 1;
+
+        // 📚 تصفية مواد الطالب لتقتصر فقط على سنته الدراسية والفصل الحالي
+        $coursesQuery = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+            ->where('enrollments.student_id', $student->student_id);
+
+        if ($studentYear) {
+            $coursesQuery->where(function($q) use ($studentYear) {
+                $q->where('courses.year', $studentYear)->orWhereNull('courses.year');
+            });
+        }
+        if ($activeSemesterId) {
+            $coursesQuery->where(function($q) use ($activeSemesterId) {
+                $q->where('courses.semester_id', $activeSemesterId)->orWhereNull('courses.semester_id');
+            });
+        }
+
+        $enrolledCourseIds = $coursesQuery->pluck('courses.course_id')->toArray();
+
+        // في حال لم يتم العثور على مواد للفصل الحالي، نكتفي بسنته الدراسية
+        if (empty($enrolledCourseIds) && $studentYear) {
+            $enrolledCourseIds = DB::table('enrollments')
+                ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+                ->where('enrollments.student_id', $student->student_id)
+                ->where('courses.year', $studentYear)
+                ->pluck('courses.course_id')
+                ->toArray();
+        }
+
+        // بناء اسم الفوج / الشعبة للطالب لمطابقة جداول رئيس القسم (مثل: معلوماتية - سنة أولى)
+        $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? $student->level ?? '');
+        $branchName = DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
+        $classGroup = trim($branchName . ' - ' . $academicYearStr);
+
+        // جلب جدول المحاضرات الخاص بسنة وفصل وشعبة الطالب فقط
+        $schedulesQuery = DB::table('schedules')
             ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
             ->leftJoin('course_teachers', 'schedules.course_id', '=', 'course_teachers.course_id')
             ->leftJoin('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
             ->leftJoin('users as teacher_users', 'teachers.user_id', '=', 'teacher_users.user_id')
-            ->whereIn('schedules.course_id', $enrolledCourseIds)
+            ->whereIn('schedules.course_id', $enrolledCourseIds);
+
+        if (!empty($classGroup) || !empty($academicYearStr)) {
+            $schedulesQuery->where(function($q) use ($classGroup, $academicYearStr) {
+                if (!empty($classGroup)) {
+                    $q->where('schedules.class_group', $classGroup)
+                      ->orWhere('schedules.class_group', 'like', '%' . $academicYearStr . '%')
+                      ->orWhereNull('schedules.class_group');
+                } elseif (!empty($academicYearStr)) {
+                    $q->where('schedules.class_group', 'like', '%' . $academicYearStr . '%')
+                      ->orWhereNull('schedules.class_group');
+                }
+            });
+        }
+
+        $schedules = $schedulesQuery
             ->select('schedules.*', 'courses.title as course_title', 'teacher_users.full_name as teacher_name')
             ->orderByRaw("FIELD(schedules.day, 'Sunday','Monday','Tuesday','Wednesday','Thursday')")
             ->orderBy('schedules.start_time')
             ->get();
 
-        $exams = DB::table('exams')
+        // جلب الامتحانات الخاصة بفصل وسنة وشعبة الطالب فقط
+        $examsQuery = DB::table('exams')
             ->join('courses', 'exams.course_id', '=', 'courses.course_id')
-            ->whereIn('exams.course_id', $enrolledCourseIds)
+            ->whereIn('exams.course_id', $enrolledCourseIds);
+
+        if (!empty($classGroup) || !empty($academicYearStr)) {
+            $examsQuery->where(function($q) use ($classGroup, $academicYearStr) {
+                if (!empty($classGroup)) {
+                    $q->where('exams.class_group', $classGroup)
+                      ->orWhere('exams.class_group', 'like', '%' . $academicYearStr . '%')
+                      ->orWhereNull('exams.class_group');
+                } elseif (!empty($academicYearStr)) {
+                    $q->where('exams.class_group', 'like', '%' . $academicYearStr . '%')
+                      ->orWhereNull('exams.class_group');
+                }
+            });
+        }
+
+        $exams = $examsQuery
             ->select('exams.*', 'courses.title as course_title')
             ->orderBy('exams.exam_date')
             ->get();
@@ -262,7 +342,9 @@ class StudentWebController extends Controller
         $days = ['Sunday' => 'الأحد', 'Monday' => 'الاثنين', 'Tuesday' => 'الثلاثاء',
                  'Wednesday' => 'الأربعاء', 'Thursday' => 'الخميس'];
 
-        return view('student.schedule', compact('schedules', 'exams', 'days'));
+        $semesterName = $activeSemester?->name ?? 'الفصل الحالي';
+
+        return view('student.schedule', compact('schedules', 'exams', 'days', 'semesterName', 'classGroup'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -650,11 +732,21 @@ class StudentWebController extends Controller
             ];
         }
 
-        $avgGrade = count($allPercentages) > 0 ? round(array_sum($allPercentages) / count($allPercentages), 1) : 0;
-
         $cardReq = new \Illuminate\Http\Request(['student_id' => $student->student_id]);
         $academicCardResponse = app(\App\Http\Controllers\Api\AffairsController::class)->getStudentAcademicCardForAffairs($cardReq);
         $academicCardData = json_decode($academicCardResponse->getContent(), true);
+
+        // متوسط الدرجات المعتمد: الأكاديمي الموزون أولاً، ثم كشف العلامات، ثم تقييمات المقررات
+        $weightedAvg = \App\Services\StudentAcademicService::getWeightedAverage($student->student_id);
+        if ($weightedAvg > 0) {
+            $avgGrade = $weightedAvg;
+        } elseif (isset($academicCardData['summary']['average']) && (float)$academicCardData['summary']['average'] > 0) {
+            $avgGrade = round((float)$academicCardData['summary']['average'], 2);
+        } elseif (count($allPercentages) > 0) {
+            $avgGrade = round(array_sum($allPercentages) / count($allPercentages), 1);
+        } else {
+            $avgGrade = 0;
+        }
 
         return view('student.grades', compact('courseGradesData', 'avgGrade', 'academicCardData'));
     }
@@ -1162,6 +1254,10 @@ class StudentWebController extends Controller
         \App\Models\Notification::where('user_id', Auth::id())
             ->update(['is_read' => true]);
 
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
+
         return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 
@@ -1411,15 +1507,49 @@ class StudentWebController extends Controller
 
         $student = $this->getStudent();
 
+        $photoPath = null;
+        if ($request->type === 'face_photo') {
+            $request->validate([
+                'photo' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+            ], [
+                'photo.required' => 'يرجى اختيار ملف الصورة الجديدة.',
+                'photo.image'    => 'يجب أن يكون الملف المرفوع صورة حصراً.',
+                'photo.mimes'    => 'لواحق الصورة المسموح بها هي: jpg, jpeg, png, webp فقط.',
+                'photo.max'      => 'حجم الصورة يجب ألا يتجاوز 5 ميغابايت.',
+            ]);
+
+            $photoPath = $request->file('photo')->store('photo_requests', 'public');
+
+            // تسجيل الطلب في جدول photo_change_requests أيضاً ليظهر في شاشة طلبات الصورة لدى الشؤون
+            $studentUser = DB::table('users')->where('user_id', $student->user_id)->first();
+            $oldPhoto = $studentUser?->avatar ?? $student->reference_photo;
+            DB::table('photo_change_requests')->insert([
+                'user_id'    => $student->user_id,
+                'old_photo'  => $oldPhoto,
+                'new_photo'  => $photoPath,
+                'status'     => 'pending',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         $detailsText = trim($request->details);
         if ($request->type === 'makeup' && $request->filled('subject_name')) {
             $detailsText = "المادة المطلوبة للإكمال: " . $request->subject_name . "\nالسبب والتفاصيل: " . $detailsText;
         }
 
+        $detailsData = $detailsText;
+        if ($request->type === 'face_photo' && $photoPath) {
+            $detailsData = json_encode([
+                'reason' => $detailsText,
+                'photo'  => $photoPath,
+            ], JSON_UNESCAPED_UNICODE);
+        }
+
         $studentReq = \App\Models\StudentRequest::create([
             'student_id' => $student->student_id,
             'type'       => $request->type,
-            'details'    => $detailsText,
+            'details'    => $detailsData,
             'status'     => 'pending_affairs',
         ]);
 

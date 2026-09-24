@@ -3,7 +3,7 @@
 @section('title', 'الرسائل')
 
 @section('content')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <div class="flex h-[calc(100vh-8.5rem)] min-h-[550px] overflow-hidden rounded-3xl bg-[#141417] border border-[#27272a] shadow-2xl text-slate-100 transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS PANEL) ================= -->
@@ -274,7 +274,7 @@
 
 <!-- ================= CSS POLISHING ================= -->
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<!-- Material Symbols locally provided by layout -->
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -304,8 +304,8 @@
 
 <!-- ================= REAL-TIME PUSHER & SCRIPTS ================= -->
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.0/dist/echo.iife.js"></script>
+<script src="{{ asset('js/pusher.min.js') }}"></script>
+<script src="{{ asset('js/echo.iife.js') }}"></script>
 
 <script>
     let currentUserId = @json(auth()->id());

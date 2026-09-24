@@ -22,6 +22,7 @@ class Student extends Model
         'reference_photo',
         'device_id',
         'is_device_locked',
+        'web_device_token',
         'program_id',
     ];
 

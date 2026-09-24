@@ -2764,12 +2764,90 @@ class AffairsController extends Controller
      */
     public function exportCourseWeightsStudentPdf(Request $request)
     {
+        $user = auth()->user();
+        if ($user) {
+            // إذا كان المستخدم طالباً، نحدد معرّفه تلقائياً
+            if ($user->role_id == 3) {
+                $student = \App\Models\Student::where('user_id', $user->user_id)->first();
+                if ($student) {
+                    $request->merge(['student_id' => $student->student_id]);
+                }
+            } elseif ($user->role_id == 4) {
+                // إذا كان ولي أمر ولم يتم تمرير student_id، نأخذ أول ابن له
+                if (!$request->filled('student_id')) {
+                    $parent = \App\Models\Parents::where('user_id', $user->user_id)->first();
+                    if ($parent) {
+                        $childId = \Illuminate\Support\Facades\DB::table('parent_students')
+                            ->where('parent_id', $parent->parent_id)
+                            ->value('student_id');
+                        if ($childId) {
+                            $request->merge(['student_id' => $childId]);
+                        }
+                    }
+                }
+            }
+        }
+
         $webCtrl = app(\App\Http\Controllers\Web\AffairsWebController::class);
         $request->merge(['format' => 'pdf']);
         $response = $webCtrl->exportCourseWeightsStudent($request);
 
-        $html = ($response instanceof \Illuminate\View\View) ? $response->render() : (string) $response;
-        $pdfContent = $this->renderHtmlToBinaryPdf($html, 'A4', 'P');
+        $viewData = ($response instanceof \Illuminate\View\View) ? $response->getData() : [];
+        $pdfContent = null;
+
+        // البحث عن متصفح Chrome لإنتاج PDF مطابق تماماً للويب ببيئة Tailwind والخطوط الرسمية
+        $chromePaths = [
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        ];
+        $chromeBin = null;
+        foreach ($chromePaths as $p) {
+            if (file_exists($p)) {
+                $chromeBin = $p;
+                break;
+            }
+        }
+
+        if ($chromeBin) {
+            try {
+                $html = view('affairs.transcript_template', $viewData)->render();
+                $publicPath = str_replace('\\', '/', public_path());
+                $html = str_replace(asset('css/fonts-local.css'), "file:///{$publicPath}/css/fonts-local.css", $html);
+                $html = str_replace(asset('js/tailwind-play.js'), "file:///{$publicPath}/js/tailwind-play.js", $html);
+
+                // تحويل أي روابط صور داخلية إلى file:/// مسارات مطلقة
+                $html = preg_replace_callback('/src="([^"]+)"/', function($m) use ($publicPath) {
+                    if (strpos($m[1], 'http') === 0 && strpos($m[1], '/images/') !== false) {
+                        $path = parse_url($m[1], PHP_URL_PATH);
+                        return 'src="file:///' . $publicPath . $path . '"';
+                    }
+                    return $m[0];
+                }, $html);
+
+                $tempHtml = tempnam(sys_get_temp_dir(), 'trn_html_') . '.html';
+                $tempPdf  = tempnam(sys_get_temp_dir(), 'trn_pdf_') . '.pdf';
+                file_put_contents($tempHtml, $html);
+
+                $cmd = '"' . $chromeBin . '" --headless=new --disable-gpu --no-pdf-header-footer --disable-extensions --disable-background-networking --disable-sync --disable-default-apps --no-first-run --print-to-pdf="' . $tempPdf . '" "file:///' . str_replace('\\', '/', $tempHtml) . '"';
+                exec($cmd);
+
+                if (file_exists($tempPdf) && filesize($tempPdf) > 0) {
+                    $pdfContent = file_get_contents($tempPdf);
+                }
+
+                @unlink($tempHtml);
+                @unlink($tempPdf);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Chrome Headless PDF failed, fallback to mPDF: ' . $e->getMessage());
+            }
+        }
+
+        // في حال عدم توفر Chrome، نعتمد على mPDF كخيار احتياطي
+        if (!$pdfContent) {
+            $html = view('affairs.transcript_pdf', $viewData)->render();
+            $pdfContent = $this->renderHtmlToBinaryPdf($html, 'A4', 'P');
+        }
+
         $fileName = 'transcript_' . ($request->student_id ?? 'student') . '.pdf';
 
         return response($pdfContent, 200, [
@@ -2788,6 +2866,10 @@ class AffairsController extends Controller
         $response = $webCtrl->exportCourseWeightsCohort($request);
 
         $html = ($response instanceof \Illuminate\View\View) ? $response->render() : (string) $response;
+        // منع طلب الملفات عبر HTTP من السيرفر نفسه لتفادي الـ Deadlock
+        $html = preg_replace('/<link\b[^>]*>/i', '', $html);
+        $html = preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
+
         $pdfContent = $this->renderHtmlToBinaryPdf($html, 'A4', 'L');
         $fileName = 'cohort_report_' . ($request->program_id ?? 'all') . '.pdf';
 
@@ -2800,20 +2882,28 @@ class AffairsController extends Controller
     private function renderHtmlToBinaryPdf(string $html, string $format = 'A4', string $orientation = 'P'): string
     {
         if (class_exists('\Mpdf\Mpdf')) {
+            $prevError = error_reporting(0);
             try {
                 $mpdf = new \Mpdf\Mpdf([
                     'mode'             => 'utf-8',
                     'format'           => $format,
                     'orientation'      => $orientation,
+                    'margin_left'      => 8,
+                    'margin_right'     => 8,
+                    'margin_top'       => 10,
+                    'margin_bottom'    => 10,
                     'autoScriptToLang' => true,
                     'autoLangToFont'   => true,
-                    'useSubsets'       => false,
+                    'useSubsets'       => true,
                 ]);
+                $mpdf->curlTimeout = 3;
                 $mpdf->SetDirectionality('rtl');
                 $mpdf->WriteHTML($html);
                 return $mpdf->Output('', 'S');
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('mPDF error: ' . $e->getMessage());
+            } finally {
+                error_reporting($prevError);
             }
         }
 

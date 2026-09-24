@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تحميل كشف العلامات - {{ $student['full_name'] ?? 'الطالب' }}</title>
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Local Fonts: Cairo (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fonts-local.css') }}">
+    <!-- Local FontAwesome (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fontawesome.min.css') }}">
     
-    <!-- html2pdf.js for Direct Client-side PDF Generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- html2pdf.js for Direct Client-side PDF Generation (100% Offline) -->
+    <script src="{{ asset('js/html2pdf.bundle.min.js') }}"></script>
 
     <style>
         * {

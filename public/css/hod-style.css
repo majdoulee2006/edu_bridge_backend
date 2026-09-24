@@ -71,6 +71,7 @@ body {
     height: 100vh;
     top: 0;
     z-index: 1000;
+    overflow: hidden; /* Let nav-menu handle the scroll internally */
 }
 
 [dir="rtl"] .sidebar {
@@ -96,6 +97,9 @@ body {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    /* Prevent scroll from leaking to background page on mobile */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     /* Hide scrollbar for a cleaner look */
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
@@ -537,7 +541,6 @@ img, video, canvas, iframe, svg {
 .modal-dialog,
 .reset-modal-card,
 [class*="modal-card"] {
-    max-width: 95vw !important;
     box-sizing: border-box !important;
 }
 
@@ -695,4 +698,95 @@ input, select, textarea, button {
     }
 }
 
+/* ══════════════════════════════════════════
+   Mobile Bottom Navigation (shared across all layouts)
+   ══════════════════════════════════════════ */
+.bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.08);
+    z-index: 1000;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    padding: 0.5rem 1rem;
+    align-items: center;
+    justify-content: space-between;
+}
 
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    gap: 0.2rem;
+    position: relative;
+    padding: 0.25rem 0.5rem;
+}
+
+.bottom-nav-item i {
+    font-size: 1.2rem;
+}
+
+.bottom-nav-item.active {
+    color: var(--accent-color);
+}
+
+.center-btn {
+    width: 52px;
+    height: 52px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1a1a1a;
+    font-size: 1.35rem;
+    margin-top: -22px;
+    box-shadow: 0 4px 12px rgba(252, 227, 0, 0.45);
+    cursor: pointer;
+    border: 3px solid var(--bg-primary);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+.center-btn:active {
+    transform: scale(0.93);
+}
+
+
+@media (max-width: 768px) {
+    .bottom-nav {
+        display: flex !important;
+    }
+    /* Push main content up so it's not hidden behind the bottom bar */
+    .main-content {
+        padding-bottom: 85px !important;
+    }
+    /* Sidebar stops ABOVE the bottom nav bar, not behind it */
+    .sidebar {
+        bottom: 70px !important;
+        border-bottom-right-radius: 20px !important;
+        border-bottom-left-radius: 20px !important;
+    }
+}
+/* Lock background scroll when sidebar is open on mobile */
+body.sidebar-body-lock {
+    overflow: hidden !important;
+    touch-action: none;
+}
+/* But allow sidebar itself to scroll */
+body.sidebar-body-lock .sidebar {
+    touch-action: pan-y;
+    overflow: hidden;
+}
+body.sidebar-body-lock .nav-menu {
+    touch-action: pan-y;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}

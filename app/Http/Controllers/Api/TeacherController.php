@@ -1411,13 +1411,24 @@ class TeacherController extends Controller
         return response()->json(['success' => true, 'data' => $lessons], 200);
     }
 
+    private static function lessonTypeFromExtension(string $ext): string
+    {
+        if (in_array($ext, ['mp4', 'mov', 'avi', 'mkv'])) {
+            return 'video';
+        }
+        if (in_array($ext, ['doc', 'docx', 'ppt', 'pptx'])) {
+            return 'document';
+        }
+        return 'pdf';
+    }
+
     public function createLesson(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'title'        => 'required|string|max:255',
             'course_id'    => 'required|exists:courses,course_id',
             'description'  => 'nullable|string',
-            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv|max:204800',
+            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv,doc,docx,ppt,pptx|max:204800',
             'video_url'    => 'nullable|string|max:500',
         ]);
 
@@ -1441,7 +1452,7 @@ class TeacherController extends Controller
             $file     = $request->file('content_file');
             $filePath = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
             $ext      = strtolower($file->getClientOriginalExtension());
-            $type     = in_array($ext, ['mp4', 'mov', 'avi', 'mkv']) ? 'video' : 'pdf';
+            $type     = self::lessonTypeFromExtension($ext);
             $contentUrl = $filePath;
         } else {
             $type       = 'link';
@@ -1505,7 +1516,7 @@ class TeacherController extends Controller
             'title'        => 'required|string|max:255',
             'course_id'    => 'required|exists:courses,course_id',
             'description'  => 'nullable|string',
-            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv|max:204800',
+            'content_file' => 'nullable|file|mimes:pdf,mp4,mov,avi,mkv,doc,docx,ppt,pptx|max:204800',
             'video_url'    => 'nullable|string|max:500',
         ]);
 
@@ -1524,7 +1535,7 @@ class TeacherController extends Controller
             $file = $request->file('content_file');
             $ext  = strtolower($file->getClientOriginalExtension());
             $lesson->content_url = $file->storeAs('lectures', time() . '_' . $file->getClientOriginalName(), 'public');
-            $lesson->type        = in_array($ext, ['mp4', 'mov', 'avi', 'mkv']) ? 'video' : 'pdf';
+            $lesson->type        = self::lessonTypeFromExtension($ext);
         } elseif ($request->filled('video_url')) {
             $lesson->content_url = $request->video_url;
             $lesson->type        = 'link';

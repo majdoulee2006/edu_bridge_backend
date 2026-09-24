@@ -84,6 +84,11 @@ Route::post('/password/forgot/send-otp', [UnifiedAuthController::class, 'sendRes
 Route::post('/password/forgot/verify-otp', [UnifiedAuthController::class, 'verifyResetOtp'])->name('password.forgot.verify_otp');
 Route::post('/password/forgot/reset', [UnifiedAuthController::class, 'resetPassword'])->name('password.forgot.reset');
 
+// ===== مسارات التحقق بالوجه للطالب عند تسجيل الدخول من أجهزة متعددة على الويب =====
+Route::get('/student/face-verification', [UnifiedAuthController::class, 'showFaceAuth'])->name('student.face_auth.show');
+Route::post('/student/face-verification/verify', [UnifiedAuthController::class, 'verifyFaceAuth'])->name('student.face_auth.verify');
+Route::post('/student/face-verification/cancel', [UnifiedAuthController::class, 'cancelFaceAuth'])->name('student.face_auth.cancel');
+
 // Default Redirect
 Route::get('/', function () {
     return redirect()->route('login');
@@ -284,9 +289,12 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::get('/course-weights/export-course', [AffairsWebController::class, 'exportCourseWeightsCourse'])->name('affairs.course_weights.export_course');
     Route::get('/course-weights/export-student', [AffairsWebController::class, 'exportCourseWeightsStudent'])->name('affairs.course_weights.export_student');
     Route::get('/course-weights/export-cohort', [AffairsWebController::class, 'exportCourseWeightsCohort'])->name('affairs.course_weights.export_cohort');
+    Route::post('/course-weights/share-transcript', [AffairsWebController::class, 'shareStudentTranscript'])->name('affairs.course_weights.share_transcript');
+    Route::post('/course-weights/share-cohort', [AffairsWebController::class, 'shareCohortResults'])->name('affairs.course_weights.share_cohort');
     // الخدمات الطلابية
     Route::get('/student-services', [AffairsWebController::class, 'studentServices'])->name('affairs.student_services');
     Route::post('/student-services/{id}/process', [AffairsWebController::class, 'processStudentService'])->name('affairs.student_services.process');
+    Route::post('/student-services/{id}/direct-reset-device', [AffairsWebController::class, 'directResetDeviceFromRequest'])->name('affairs.student_services.direct_reset_device');
 
     // المواعيد واللقاءات للشؤون
     Route::get('/appointments', [App\Http\Controllers\Web\AppointmentWebController::class, 'index'])->name('affairs.appointments');
@@ -532,6 +540,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 
     // الخدمات والطلبات الطلابية
     Route::get('/student-services', [StudentWebController::class, 'studentServices'])->name('student.services');
+    Route::get('/student_services', fn() => redirect()->route('student.services'));
     Route::post('/student-services', [StudentWebController::class, 'storeStudentService'])->name('student.services.store');
 
     // طلبات الإذن
@@ -639,6 +648,10 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
 // ===== Live Web Notifications Polling Route =====
 Route::middleware(['web'])->get('/web-notifications/latest', function () {
     $userId = Auth::id();
+    // Release session lock immediately so polling does not block other requests on single-threaded server
+    if (session()->isStarted()) {
+        session()->save();
+    }
     if (!$userId) {
         return response()->json(['unread_count' => 0, 'latest' => []]);
     }

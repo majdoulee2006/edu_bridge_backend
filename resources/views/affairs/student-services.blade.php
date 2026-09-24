@@ -30,6 +30,11 @@
         border-bottom: 2px solid var(--border-color);
         padding-bottom: 0.5rem;
         overflow-x: auto;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+    }
+    .custom-tabs::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
     }
     .tab-btn {
         background: transparent;
@@ -71,190 +76,352 @@
         display: block;
     }
 
-    /* Tables */
+    /* Tables - Fixed Height & Strictly Single-Line */
     .table-container {
         background: var(--bg-secondary);
         border-radius: 1.25rem;
-        padding: 1.5rem;
+        padding: 1.2rem;
         box-shadow: var(--shadow);
         overflow-x: auto;
     }
     .custom-table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 900px;
+        white-space: nowrap !important;
     }
     .custom-table th {
         text-align: right;
-        padding: 1.2rem 1rem;
+        padding: 0.9rem 1rem !important;
         color: var(--text-secondary);
         font-weight: 800;
         border-bottom: 2px solid var(--border-color);
-        white-space: nowrap;
+        white-space: nowrap !important;
+        font-size: 0.88rem;
     }
     .custom-table td {
-        padding: 1rem;
+        padding: 0.65rem 1rem !important;
         color: var(--text-primary);
         font-weight: 600;
         border-bottom: 1px solid var(--border-color);
-        vertical-align: middle;
+        vertical-align: middle !important;
+        white-space: nowrap !important;
+        height: 54px;
+        line-height: 1.2;
     }
     .custom-table tr:hover td {
         background: rgba(0, 0, 0, 0.02);
     }
+    .table-cell-nowrap {
+        white-space: nowrap !important;
+    }
+    .table-student-cell {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        white-space: nowrap !important;
+        vertical-align: middle;
+    }
+    .table-avatar {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        background: var(--accent-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #1a1a1a;
+        font-weight: bold;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    .table-student-name {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap !important;
+        display: inline-block;
+        vertical-align: middle;
+        font-weight: 700;
+    }
+    .table-text-truncate {
+        display: inline-block;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap !important;
+        vertical-align: middle;
+        font-size: 0.86rem;
+    }
 
     /* Status Badges */
     .badge {
-        padding: 0.4rem 0.8rem;
+        padding: 0.35rem 0.75rem;
         border-radius: 2rem;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         font-weight: 700;
         display: inline-block;
+        white-space: nowrap !important;
     }
     .badge-pending { background: #fef08a; color: #854d0e; }
     .badge-approved { background: #bbf7d0; color: #166534; }
     .badge-rejected { background: #fecaca; color: #991b1b; }
 
-    /* Action Buttons */
+    /* Square Action Buttons Side-by-Side */
     .action-btns {
-        display: flex;
-        gap: 0.5rem;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.45rem !important;
+        white-space: nowrap !important;
     }
-    .btn-action {
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        border: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        color: white;
-        font-size: 0.85rem;
-        font-weight: 700;
-        white-space: nowrap;
-        font-family: 'Cairo', sans-serif;
+    .btn-action-square {
+        width: 35px !important;
+        height: 35px !important;
+        min-width: 35px !important;
+        min-height: 35px !important;
+        max-width: 35px !important;
+        max-height: 35px !important;
+        border-radius: 9px !important;
+        border: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        font-size: 0.95rem !important;
+        text-decoration: none !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+        flex-shrink: 0 !important;
     }
-    .btn-action:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    .btn-action-square:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18) !important;
     }
-    .btn-view { background: #3b82f6; }
+    .btn-action-square.btn-reset {
+        background: #f59e0b !important;
+    }
+    .btn-action-square.btn-view {
+        background: #3b82f6 !important;
+    }
+    .btn-action-square.btn-pathway {
+        background: #10b981 !important;
+    }
+    .btn-action-square.btn-disabled {
+        background: #9ca3af !important;
+        cursor: default !important;
+    }
 
-    /* Modal Styling */
+    /* Modal Styling - Compact Portrait Card */
     .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 9999;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(4px);
+        z-index: 99999;
         display: none;
         align-items: center;
         justify-content: center;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.25s ease;
+        padding: 1rem;
     }
     .modal-overlay.active {
         display: flex;
         opacity: 1;
     }
-    .modal-content {
-        background: var(--bg-primary);
-        border-radius: 1.25rem;
-        width: 90%;
-        max-width: 550px;
-        padding: 2rem;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-        transform: scale(0.9);
-        transition: transform 0.3s ease;
-        position: relative;
+    #requestModal .modal-content {
+        background: var(--bg-primary, #ffffff) !important;
+        border-radius: 1.5rem !important;
+        width: 100% !important;
+        max-width: 440px !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        padding: 1.35rem 1.4rem !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        border: 1px solid var(--border-color, #e5e7eb) !important;
+        transform: scale(0.92);
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.85rem !important;
+        margin: auto;
     }
-    .modal-overlay.active .modal-content {
-        transform: scale(1);
+    .modal-overlay.active #requestModal .modal-content,
+    #requestModal.active .modal-content {
+        transform: scale(1) !important;
     }
-    .modal-header {
+
+    /* Modal Card Header */
+    .modal-card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
     }
-    .modal-header h3 {
-        font-size: 1.4rem;
+    .modal-card-title {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .modal-card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+    .modal-card-title h3 {
+        font-size: 1.1rem;
         font-weight: 800;
-        color: var(--text-primary);
         margin: 0;
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+    .modal-card-title span {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--accent-color, #f59e0b);
     }
     .btn-close-modal {
-        background: transparent;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--bg-secondary, #f3f4f6);
         border: none;
-        font-size: 1.5rem;
         color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.2s ease;
     }
-    .modal-body .detail-row {
-        margin-bottom: 1rem;
+    .btn-close-modal:hover {
+        background: #fee2e2;
+        color: #ef4444;
     }
-    .detail-row label {
-        display: block;
-        font-size: 0.9rem;
+
+    /* Student Info Mini-Card */
+    .student-mini-card {
+        background: var(--bg-secondary, #f9fafb);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 0.75rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    .student-mini-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+    .student-mini-label {
         color: var(--text-secondary);
-        font-weight: 700;
-        margin-bottom: 0.3rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
     }
-    .detail-row .detail-value {
-        font-size: 1.05rem;
+    .student-mini-value {
+        color: var(--text-primary);
+        font-weight: 700;
+        text-align: left;
+    }
+
+    /* Details Box */
+    .modal-detail-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .modal-detail-box label {
+        font-size: 0.83rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .modal-detail-content {
+        background: var(--bg-secondary, #f9fafb);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 0.7rem 0.85rem;
+        font-size: 0.86rem;
         color: var(--text-primary);
         font-weight: 600;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 90px;
+        overflow-y: auto;
     }
-    .modal-grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-    .notes-area {
+
+    /* Notes Area Compact */
+    .notes-area-compact {
         width: 100%;
-        min-height: 100px;
-        border: 2px solid var(--border-color);
-        border-radius: 10px;
-        padding: 0.8rem;
-        background: var(--bg-secondary);
+        min-height: 65px;
+        max-height: 95px;
+        border: 1.5px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 0.6rem 0.75rem;
+        background: var(--bg-primary, #ffffff);
         color: var(--text-primary);
         font-family: 'Cairo', sans-serif;
+        font-size: 0.86rem;
         resize: vertical;
-        margin-top: 0.5rem;
-        transition: border-color 0.3s;
+        transition: border-color 0.2s;
     }
-    .notes-area:focus {
+    .notes-area-compact:focus {
         outline: none;
-        border-color: var(--accent-color);
+        border-color: var(--accent-color, #f59e0b);
     }
-    .modal-footer {
+
+    /* Modal Footer Buttons */
+    .modal-card-footer {
         display: flex;
-        gap: 1rem;
-        margin-top: 2rem;
+        gap: 0.6rem;
+        margin-top: 0.2rem;
     }
-    .modal-footer button {
+    .modal-card-footer button {
         flex: 1;
-        padding: 0.8rem;
-        border-radius: 10px;
+        padding: 0.7rem 0.8rem;
+        border-radius: 12px;
         border: none;
-        font-weight: 800;
-        font-size: 1rem;
+        font-weight: 700;
+        font-size: 0.88rem;
         cursor: pointer;
         font-family: 'Cairo', sans-serif;
-        transition: opacity 0.2s;
-    }
-    .modal-footer button:hover {
-        opacity: 0.9;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        transition: all 0.2s ease;
     }
     .btn-modal-approve {
-        background: #10b981;
-        color: white;
+        background: #10b981 !important;
+        color: white !important;
+    }
+    .btn-modal-approve:hover {
+        background: #059669 !important;
     }
     .btn-modal-reject {
-        background: #ef4444;
-        color: white;
+        background: #ef4444 !important;
+        color: white !important;
+    }
+    .btn-modal-reject:hover {
+        background: #dc2626 !important;
     }
 </style>
 @endpush
@@ -279,8 +446,8 @@
         <button class="tab-btn" onclick="switchTab(this, 'device-reset')">
             <i class="fa-solid fa-mobile-screen-button"></i> فك قفل الجهاز
         </button>
-        <button class="tab-btn" onclick="switchTab(this, 'academic-card')">
-            <i class="fa-solid fa-graduation-cap"></i> كشف علامات الطلاب
+        <button class="tab-btn" onclick="switchTab(this, 'face-photo')">
+            <i class="fa-solid fa-user-gear"></i> طلبات صورة الوجه / البصمة
         </button>
     </div>
 
@@ -296,34 +463,38 @@
                         <th>موضوع الاسترحام</th>
                         <th>تاريخ الطلب</th>
                         <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th style="text-align: center;">الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($requests->where('type', 'mercy') as $req)
                     <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                        <td class="table-cell-nowrap">
+                            <div class="table-student-cell">
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
-                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
                         <td>
+                            <span class="table-text-truncate" title="{{ $req->formatted_details }}">{{ $req->formatted_details }}</span>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
                             @else
                                 <span class="badge badge-approved">تم تحويله لرئيس القسم</span>
-                            @endif</td>
-                        <td>
+                            @endif
+                        </td>
+                        <td class="table-cell-nowrap" style="text-align: center;">
                             @php $canRespond = ($req->status == 'pending_affairs'); @endphp
                             <div class="action-btns">
-                                <button class="btn-action {{ $canRespond ? 'btn-view' : '' }}" style="{{ $canRespond ? '' : 'background:#6b7280;' }}"
+                                <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
                                     title="{{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}"
                                     data-type="استرحام"
+                                    data-type-key="{{ $req->type }}"
                                     data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
@@ -334,7 +505,7 @@
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
-                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i> {{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}
+                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i>
                                 </button>
                             </div>
                         </td>
@@ -360,34 +531,49 @@
                         <th>نوع الوثيقة</th>
                         <th>تاريخ الطلب</th>
                         <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th style="text-align: center;">الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($requests->where('type', 'document') as $req)
                     <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                        <td class="table-cell-nowrap">
+                            <div class="table-student-cell">
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
-                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
                         <td>
+                            <span class="table-text-truncate" title="{{ $req->formatted_details }}">{{ $req->formatted_details }}</span>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
+                            @elseif($req->status == 'pending_hod')
+                                <span class="badge badge-pending" style="background:#3b82f6; color:#fff;">عند رئيس القسم</span>
+                            @elseif($req->status == 'pending_admin')
+                                <span class="badge badge-pending" style="background:#8b5cf6; color:#fff;">عند إدارة المعهد</span>
+                            @elseif($req->status == 'completed' && $req->admin_decision == 'approved')
+                                <span class="badge badge-approved">معتمد ومكتمل ✅</span>
+                            @elseif($req->status == 'completed' && $req->admin_decision == 'rejected')
+                                <span class="badge badge-rejected">مرفوض ❌</span>
                             @else
-                                <span class="badge badge-approved">تم تحويله لرئيس القسم</span>
-                            @endif</td>
-                        <td>
-                            @php $canRespond = ($req->status == 'pending_affairs'); @endphp
+                                <span class="badge badge-approved">تم تحويله للمتابعة</span>
+                            @endif
+                        </td>
+                        <td class="table-cell-nowrap" style="text-align: center;">
+                            @php 
+                                $canRespond = ($req->status == 'pending_affairs');
+                                $isFullyApproved = ($req->status == 'completed' && $req->admin_decision == 'approved');
+                            @endphp
                             <div class="action-btns">
-                                <button class="btn-action {{ $canRespond ? 'btn-view' : '' }}" style="{{ $canRespond ? '' : 'background:#6b7280;' }}"
+                                <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
                                     title="{{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}"
                                     data-type="وثيقة"
+                                    data-type-key="{{ $req->type }}"
                                     data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
@@ -398,8 +584,17 @@
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
-                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i> {{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}
+                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i>
                                 </button>
+
+                                @if($isFullyApproved)
+                                    <a href="{{ route('affairs.course_weights', ['student_id' => $req->student_id, 'search' => $req->student?->student_code ?? $req->student?->user?->full_name]) }}"
+                                       target="_blank"
+                                       class="btn-action-square btn-pathway"
+                                       title="المسار الأكاديمي للطالب">
+                                        <i class="fa-solid fa-graduation-cap"></i>
+                                    </a>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -424,34 +619,38 @@
                         <th>المواد المطلوبة للإكمال</th>
                         <th>تاريخ الطلب</th>
                         <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th style="text-align: center;">الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($requests->where('type', 'makeup') as $req)
                     <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                        <td class="table-cell-nowrap">
+                            <div class="table-student-cell">
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
-                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
                         <td>
+                            <span class="table-text-truncate" title="{{ $req->formatted_details }}">{{ $req->formatted_details }}</span>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
                             @else
                                 <span class="badge badge-approved">تم تحويله لرئيس القسم</span>
-                            @endif</td>
-                        <td>
+                            @endif
+                        </td>
+                        <td class="table-cell-nowrap" style="text-align: center;">
                             @php $canRespond = ($req->status == 'pending_affairs'); @endphp
                             <div class="action-btns">
-                                <button class="btn-action {{ $canRespond ? 'btn-view' : '' }}" style="{{ $canRespond ? '' : 'background:#6b7280;' }}"
+                                <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
                                     title="{{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}"
                                     data-type="إكمال"
+                                    data-type-key="{{ $req->type }}"
                                     data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
@@ -462,7 +661,7 @@
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
-                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i> {{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}
+                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i>
                                 </button>
                             </div>
                         </td>
@@ -476,7 +675,7 @@
         </div>
     </div>
 
-    <!-- Device Reset Tab -->
+    <!-- 4. Device Reset Tab -->
     <div id="tab-device-reset" class="tab-content">
         <div class="table-container">
             <table class="custom-table">
@@ -488,37 +687,48 @@
                         <th>السبب / التفاصيل</th>
                         <th>تاريخ الطلب</th>
                         <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th style="text-align: center;">الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($requests->where('type', 'device_reset') as $req)
                     <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                        <td class="table-cell-nowrap">
+                            <div class="table-student-cell">
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
-                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
                         <td>
+                            <span class="table-text-truncate" title="{{ $req->formatted_details }}">{{ $req->formatted_details }}</span>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs' || $req->status == 'pending')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
                             @elseif($req->status == 'approved')
-                                <span class="badge badge-approved">تمت الموافقة وفك القفل</span>
+                                <span class="badge badge-approved">تم فك القفل</span>
                             @else
                                 <span class="badge badge-rejected">مرفوض</span>
                             @endif
                         </td>
-                        <td>
+                        <td class="table-cell-nowrap" style="text-align: center;">
                             @php $canRespond = ($req->status == 'pending_affairs' || $req->status == 'pending'); @endphp
                             <div class="action-btns">
-                                <button class="btn-action {{ $canRespond ? 'btn-view' : '' }}" style="{{ $canRespond ? '' : 'background:#6b7280;' }}"
-                                    title="{{ $canRespond ? 'معالجة فك القفل' : 'معاينة (قراءة فقط)' }}"
+                                @if($canRespond)
+                                <form method="POST" action="{{ route('affairs.student_services.direct_reset_device', $req->id) }}" style="display:inline; margin:0;" onsubmit="return confirm('هل أنت متأكد من فك قفل الجهاز وتصفير بيانات جهازه فوراً للطالب ({{ $req->student?->user?->full_name }})؟')">
+                                    @csrf
+                                    <button type="submit" class="btn-action-square btn-reset" title="فك قفل الجهاز فوراً">
+                                        <i class="fa-solid fa-mobile-screen-button"></i>
+                                    </button>
+                                </form>
+                                @endif
+                                <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
+                                    title="{{ $canRespond ? 'معالجة وتفاصيل الطلب' : 'معاينة (قراءة فقط)' }}"
                                     data-type="فك قفل الجهاز"
+                                    data-type-key="{{ $req->type }}"
                                     data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
@@ -529,7 +739,7 @@
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
-                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i> {{ $canRespond ? 'معالجة طلب فك القفل' : 'معاينة (قراءة فقط)' }}
+                                    <i class="fa-solid {{ $canRespond ? 'fa-pen-to-square' : 'fa-eye' }}"></i>
                                 </button>
                             </div>
                         </td>
@@ -543,170 +753,194 @@
         </div>
     </div>
 
-    <!-- 4. Academic Student Card Tab -->
-    <div id="tab-academic-card" class="tab-content">
-        <div style="background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); box-shadow: var(--shadow);">
-            <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fa-solid fa-filter" style="color: var(--accent-color);"></i> تصفية واستعلام كشف العلامات للأداء الأكاديمي
-            </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: end;">
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-secondary);">1. القسم:</label>
-                    <select id="affairs-filter-department" onchange="loadFilteredStudents()" style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
-                        <option value="">جميع الأقسام</option>
-                        @foreach(DB::table('departments')->get() as $dept)
-                            <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-secondary);">2. الدورة / الفصل الدراسي:</label>
-                    <select id="affairs-filter-semester" onchange="loadFilteredStudents()" style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
-                        <option value="الكل">جميع الدورات / الفصول</option>
-                        @foreach(DB::table('semesters')->get() as $sem)
-                            <option value="{{ $sem->semester_id }}">{{ $sem->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-secondary);">3. السنة الدراسية:</label>
-                    <select id="affairs-filter-year" onchange="loadFilteredStudents()" style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
-                        <option value="الكل">جميع السنوات (السنة الأولى والسنة الثانية)</option>
-                        <option value="السنة الأولى">السنة الأولى</option>
-                        <option value="السنة الثانية">السنة الثانية</option>
-                    </select>
-                </div>
-                <div style="grid-column: span 3;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-secondary);">اختر الطالب (مرتب أبجدياً):</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="text" id="affairs-student-search" placeholder="بحث باسم الطالب أو الرقم الجامعي..." onkeyup="filterStudentDropdownList()" style="flex: 1; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 600;">
-                        <select id="affairs-student-select" onchange="fetchAcademicCardForSelectedStudent()" style="flex: 2; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
-                            <option value="">-- اختر طالباً من القائمة --</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="academic-card-display" style="display: none;">
-            <div style="background: linear-gradient(135deg, #181818, #0a0a0a); border-radius: 1.25rem; padding: 1.5rem 2rem; color: white; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <h3 id="card-student-name" style="font-size: 1.4rem; font-weight: 800; color: #facc15; margin: 0 0 0.5rem 0;">--</h3>
-                    <p style="margin: 0; font-size: 0.95rem; opacity: 0.85;">
-                        الرقم الجامعي: <span id="card-student-code" style="font-weight: 800; color: white;">--</span> &nbsp;|&nbsp;
-                        التخصص: <span id="card-student-dept" style="font-weight: 800; color: white;">--</span> &nbsp;|&nbsp;
-                        السنة: <span id="card-student-level" style="font-weight: 800; color: white;">--</span>
-                    </p>
-                </div>
-                <div style="display: flex; gap: 0.75rem;">
-                    <button type="button" onclick="exportCard('pdf')" style="background: #ef4444; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 10px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fa-solid fa-file-pdf"></i> تصدير PDF
-                    </button>
-                    <button type="button" onclick="exportCard('excel')" style="background: #10b981; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 10px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fa-solid fa-file-excel"></i> تصدير Excel
-                    </button>
-                </div>
-            </div>
-
-            <!-- Summary Stats -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.2rem; border: 1px solid var(--border-color); text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">المعدل التراكمي</div>
-                    <div id="card-stat-gpa" style="font-size: 1.8rem; font-weight: 900; color: var(--accent-color); margin-top: 0.25rem;">0%</div>
-                </div>
-                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.2rem; border: 1px solid var(--border-color); text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">المواد المجتازة</div>
-                    <div id="card-stat-passed" style="font-size: 1.8rem; font-weight: 900; color: #10b981; margin-top: 0.25rem;">0</div>
-                </div>
-                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.2rem; border: 1px solid var(--border-color); text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">المواد المتبقية / راسب</div>
-                    <div id="card-stat-failed" style="font-size: 1.8rem; font-weight: 900; color: #ef4444; margin-top: 0.25rem;">0</div>
-                </div>
-                <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.2rem; border: 1px solid var(--border-color); text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;">لم يتم التقدم لها</div>
-                    <div id="card-stat-notattended" style="font-size: 1.8rem; font-weight: 900; color: #6b7280; margin-top: 0.25rem;">0</div>
-                </div>
-            </div>
-
-            <!-- Academic Card Table -->
-            <div class="table-container">
-                <table class="custom-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>اسم المادة الدراسية</th>
-                            <th>السنة/الفصل</th>
-                            <th style="text-align: center;">علامة المذاكرة (25)</th>
-                            <th style="text-align: center;">علامة الشفهي/العملي (25)</th>
-                            <th style="text-align: center;">علامة الامتحان (50)</th>
-                            <th style="text-align: center;">المجموع الكلي (100)</th>
-                            <th style="text-align: center;">الحالة</th>
-                        </tr>
-                    </thead>
-                    <tbody id="academic-card-table-body">
-                    </tbody>
-                </table>
-            </div>
+    <!-- 5. Face / Biometric Photo Tab -->
+    <div id="tab-face-photo" class="tab-content">
+        <div class="table-container">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>الطالب</th>
+                        <th>الرقم الجامعي</th>
+                        <th>العام الدراسي</th>
+                        <th style="text-align: center;">الصورة</th>
+                        <th>السبب / التفاصيل</th>
+                        <th>تاريخ الطلب</th>
+                        <th>الحالة</th>
+                        <th style="text-align: center;">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($requests->where('type', 'face_photo') as $req)
+                    @php
+                        $photoUrl = null;
+                        if (!empty($req->details)) {
+                            $decoded = json_decode($req->details, true);
+                            if (is_array($decoded) && !empty($decoded['photo'])) {
+                                $photoUrl = asset('storage/' . $decoded['photo']);
+                            }
+                        }
+                        if (!$photoUrl && $req->student?->user?->avatar) {
+                            $photoUrl = asset('storage/' . $req->student->user->avatar);
+                        }
+                    @endphp
+                    <tr>
+                        <td class="table-cell-nowrap">
+                            <div class="table-student-cell">
+                                @if($req->student?->user?->avatar)
+                                    <img src="{{ asset('storage/' . $req->student->user->avatar) }}" alt="Avatar" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--accent-color); flex-shrink:0;">
+                                @else
+                                    <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                @endif
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                            </div>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap" style="text-align: center;">
+                            @if($photoUrl)
+                                <a href="{{ $photoUrl }}" target="_blank" title="عرض الصورة">
+                                    <img src="{{ $photoUrl }}" alt="صورة الطالب" style="width: 34px; height: 34px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color); vertical-align: middle;">
+                                </a>
+                            @else
+                                <span style="color: var(--text-secondary); font-size: 0.8rem;">-</span>
+                            @endif
+                        </td>
+                        <td>
+                            <span class="table-text-truncate" title="{{ $req->formatted_details }}">{{ $req->formatted_details }}</span>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">
+                            @if($req->status == 'pending_affairs' || $req->status == 'pending')
+                                <span class="badge badge-pending">بانتظار قرارك</span>
+                            @elseif($req->status == 'approved')
+                                <span class="badge badge-approved">تم اعتماد الصورة</span>
+                            @else
+                                <span class="badge badge-rejected">مرفوض</span>
+                            @endif
+                        </td>
+                        <td class="table-cell-nowrap" style="text-align: center;">
+                            @php $canRespond = ($req->status == 'pending_affairs' || $req->status == 'pending'); @endphp
+                            <div class="action-btns">
+                                <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
+                                    title="{{ $canRespond ? 'معالجة وتحديث الصورة' : 'معاينة (قراءة فقط)' }}"
+                                    data-type="تحديث صورة بصمة الوجه"
+                                    data-type-key="face_photo"
+                                    data-photo-url="{{ $photoUrl ?? '' }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-id="{{ $req->student?->student_code ?? 'N/A' }}"
+                                    data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-details="{{ $req->formatted_details }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إتخاذ القرار مسبقاً') }}"
+                                    data-req-id="{{ $req->id }}"
+                                    data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
+                                    onclick="openRequestModalFromBtn(this)">
+                                    <i class="fa-solid {{ $canRespond ? 'fa-user-pen' : 'fa-eye' }}"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                    @if($requests->where('type', 'face_photo')->isEmpty())
+                    <tr><td colspan="8" style="text-align: center;">لا توجد طلبات تحديث صورة شخصية أو بصمة وجه</td></tr>
+                    @endif
+                </tbody>
+            </table>
         </div>
     </div>
 
 </div>
 
-<!-- Request Details Modal -->
+<!-- Request Details Modal - Compact Portrait Card -->
 <div id="requestModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
-    <form class="modal-content" id="decisionForm" method="POST" action="">
+    <form class="modal-content" id="decisionForm" method="POST" action="" enctype="multipart/form-data">
         @csrf
-        <div class="modal-header">
-            <h3>تفاصيل الطلب (<span id="modal-request-type"></span>)</h3>
-            <button type="button" class="btn-close-modal" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+        
+        <!-- Header -->
+        <div class="modal-card-header">
+            <div class="modal-card-title">
+                <div class="modal-card-icon">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </div>
+                <div>
+                    <h3>تفاصيل ومعالجة الطلب</h3>
+                    <span id="modal-request-type"></span>
+                </div>
+            </div>
+            <button type="button" class="btn-close-modal" onclick="closeModal()" title="إغلاق">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
-        <div class="modal-body">
-            <div class="modal-grid-2">
-                <div class="detail-row">
-                    <label>اسم الطالب:</label>
-                    <div class="detail-value" id="modal-student-name"></div>
-                </div>
-                <div class="detail-row">
-                    <label>الرقم الجامعي:</label>
-                    <div class="detail-value" id="modal-student-id"></div>
-                </div>
+
+        <!-- Student Mini Card -->
+        <div class="student-mini-card">
+            <div class="student-mini-row">
+                <span class="student-mini-label"><i class="fa-solid fa-user"></i> الطالب:</span>
+                <span class="student-mini-value" id="modal-student-name"></span>
             </div>
-            
-            <div class="modal-grid-2">
-                <div class="detail-row">
-                    <label>القسم:</label>
-                    <div class="detail-value" id="modal-student-department"></div>
-                </div>
-                <div class="detail-row">
-                    <label>التخصص:</label>
-                    <div class="detail-value" id="modal-student-specialization"></div>
-                </div>
+            <div class="student-mini-row">
+                <span class="student-mini-label"><i class="fa-solid fa-id-card"></i> الرقم الجامعي:</span>
+                <span class="student-mini-value" id="modal-student-id"></span>
             </div>
-            
-            <div class="detail-row">
-                <label>العام الدراسي:</label>
-                <div class="detail-value" id="modal-student-year" style="color: var(--accent-color);"></div>
+            <div class="student-mini-row">
+                <span class="student-mini-label"><i class="fa-solid fa-building-columns"></i> القسم والتخصص:</span>
+                <span class="student-mini-value">
+                    <span id="modal-student-department"></span> - <span id="modal-student-specialization"></span>
+                </span>
+            </div>
+            <div class="student-mini-row">
+                <span class="student-mini-label"><i class="fa-solid fa-calendar"></i> السنة الدراسية:</span>
+                <span class="student-mini-value" id="modal-student-year" style="color: var(--accent-color, #f59e0b);"></span>
+            </div>
+        </div>
+
+        <!-- Request Details -->
+        <div class="modal-detail-box">
+            <label><i class="fa-solid fa-comment-dots"></i> تفاصيل الطلب / السبب:</label>
+            <div class="modal-detail-content" id="modal-request-details"></div>
+        </div>
+
+        <!-- Face Photo Preview & Upload Section -->
+        <div id="modal-photo-section" style="display: none; padding: 0.75rem 0.85rem; border: 1.5px dashed var(--accent-color, #f59e0b); border-radius: 12px; background: rgba(245, 158, 11, 0.04);">
+            <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.6rem;">
+                <div id="modal-photo-preview-wrap" style="display: none;">
+                    <img id="modal-photo-preview" src="" alt="صورة الطالب" style="width: 55px; height: 55px; object-fit: cover; border-radius: 8px; border: 2px solid var(--accent-color, #f59e0b); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                </div>
+                <div>
+                    <strong style="display: block; font-size: 0.86rem; color: var(--text-primary); margin-bottom: 0.2rem;">
+                        <i class="fa-solid fa-camera"></i> صورة الطالب المرفقة
+                    </strong>
+                    <span id="modal-photo-status" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.3; display: block;"></span>
+                </div>
             </div>
 
-            <div class="detail-row">
-                <label>تفاصيل الطلب:</label>
-                <div class="detail-value" id="modal-request-details" style="word-break: break-all; overflow-wrap: anywhere; white-space: pre-wrap; background: var(--bg-secondary); padding: 0.75rem 1rem; border-radius: 0.6rem; border: 1px solid var(--border-color); font-size: 0.88rem; max-width: 100%;"></div>
-            </div>
-            
-            <div class="detail-row">
-                <label>رأي وملاحظات الشؤون:</label>
-                <textarea class="notes-area" name="notes" id="modal-notes" placeholder="اكتب ملاحظات الشؤون هنا..."></textarea>
-                <input type="hidden" name="decision" id="decisionInput" value="approved">
+            <div class="modal-detail-box" id="modal-photo-input-container" style="margin-bottom: 0;">
+                <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); display: block;">
+                    <i class="fa-solid fa-image"></i> اختيار صورة بديلة (JPG, PNG, WEBP):
+                </label>
+                <input type="file" name="photo" id="modal-photo-input" style="padding: 0.45rem; cursor: pointer; width: 100%; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary); font-size: 0.82rem;" accept="image/jpeg,image/png,image/jpg,image/webp">
             </div>
         </div>
-        <div class="modal-footer">
-            <div id="modal-readonly-badge" style="display: none; color: #6b7280; font-weight: bold; align-self: center;">
-                <i class="fa-solid fa-lock"></i> تم تحويل الطلب ورأيك مسجل مسبقاً
-            </div>
-            <div id="modal-footer-actions" style="display: flex; gap: 1rem; width: 100%;">
-                <button type="button" class="btn-modal-approve" onclick="submitDecision('approved')"><i class="fa-solid fa-check"></i> موافقة وتحويل لرئيس القسم</button>
-                <button type="button" class="btn-modal-reject" onclick="submitDecision('rejected')"><i class="fa-solid fa-xmark"></i> عدم موافقة وتحويل لرئيس القسم</button>
-            </div>
+        
+        <!-- Affairs Notes -->
+        <div class="modal-detail-box">
+            <label><i class="fa-solid fa-pen"></i> رأي وملاحظات الشؤون:</label>
+            <textarea class="notes-area-compact" name="notes" id="modal-notes" placeholder="اكتب ملاحظات الشؤون هنا..."></textarea>
+            <input type="hidden" name="decision" id="decisionInput" value="approved">
+        </div>
+
+        <!-- Footer -->
+        <div id="modal-readonly-badge" style="display: none; color: #6b7280; font-size: 0.85rem; font-weight: bold; text-align: center; padding: 0.5rem 0;">
+            <i class="fa-solid fa-lock"></i> تم اتخاذ القرار وتسجيله مسبقاً
+        </div>
+        <div class="modal-card-footer" id="modal-footer-actions">
+            <button type="button" class="btn-modal-reject" id="modal-btn-reject" onclick="submitDecision('rejected')">
+                <i class="fa-solid fa-xmark"></i> <span id="modal-reject-text">عدم موافقة</span>
+            </button>
+            <button type="button" class="btn-modal-approve" id="modal-btn-approve" onclick="submitDecision('approved')">
+                <i class="fa-solid fa-check"></i> <span id="modal-approve-text">موافقة</span>
+            </button>
         </div>
     </form>
 </div>
@@ -746,6 +980,8 @@
 
     function openRequestModalFromBtn(btn) {
         const type = btn.getAttribute('data-type') || '';
+        const typeKey = btn.getAttribute('data-type-key') || '';
+        const photoUrl = btn.getAttribute('data-photo-url') || '';
         const name = btn.getAttribute('data-name') || '';
         const id = btn.getAttribute('data-id') || '';
         const year = btn.getAttribute('data-year') || '';
@@ -756,10 +992,10 @@
         const reqId = btn.getAttribute('data-req-id') || '';
         const canRespond = btn.getAttribute('data-can-respond') === 'true';
 
-        openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, reqId, canRespond);
+        openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, reqId, canRespond, typeKey, photoUrl);
     }
 
-    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, reqId, canRespond) {
+    function openRequestModal(type, name, id, year, department, specialization, details, affairsNotes, reqId, canRespond, typeKey, photoUrl) {
         document.getElementById('modal-request-type').innerText = type;
         document.getElementById('modal-student-name').innerText = name;
         document.getElementById('modal-student-id').innerText = id;
@@ -780,6 +1016,49 @@
         document.getElementById('modal-request-details').innerText = displayDetails;
         document.getElementById('decisionForm').action = '/affairs/student-services/' + reqId + '/process';
         
+        // Handle Photo Section for face_photo
+        const photoSection = document.getElementById('modal-photo-section');
+        const photoPreviewWrap = document.getElementById('modal-photo-preview-wrap');
+        const photoPreview = document.getElementById('modal-photo-preview');
+        const photoStatus = document.getElementById('modal-photo-status');
+        const photoInput = document.getElementById('modal-photo-input');
+        const photoInputContainer = document.getElementById('modal-photo-input-container');
+
+        if (photoInput) {
+            photoInput.value = '';
+        }
+
+        if (typeKey === 'face_photo' || type.includes('صورة') || type.includes('بصمة')) {
+            photoSection.style.display = 'block';
+            if (photoUrl) {
+                photoPreview.src = photoUrl;
+                photoPreviewWrap.style.display = 'block';
+                photoStatus.innerText = 'هذه هي الصورة المرفقة بالطلب حالياً، يمكنك اعتمادها أو رفع بديل عنها أدناه.';
+            } else {
+                photoPreviewWrap.style.display = 'none';
+                photoStatus.innerText = 'لم يقم الطالب بإرفاق ملف صورة بالطلب، يمكنك اختيار صورة جديدة له أدناه.';
+            }
+
+            if (canRespond) {
+                photoInputContainer.style.display = 'block';
+                photoInput.disabled = false;
+            } else {
+                photoInputContainer.style.display = 'none';
+                photoInput.disabled = true;
+            }
+
+            document.getElementById('modal-approve-text').innerText = 'موافقة واعتماد الصورة الجديدة';
+            document.getElementById('modal-reject-text').innerText = 'رفض الطلب';
+        } else if (typeKey === 'device_reset' || type.includes('قفل')) {
+            photoSection.style.display = 'none';
+            document.getElementById('modal-approve-text').innerText = 'موافقة وفك قفل الجهاز';
+            document.getElementById('modal-reject-text').innerText = 'رفض الطلب';
+        } else {
+            photoSection.style.display = 'none';
+            document.getElementById('modal-approve-text').innerText = 'موافقة وتحويل لرئيس القسم';
+            document.getElementById('modal-reject-text').innerText = 'عدم موافقة وتحويل لرئيس القسم';
+        }
+
         const notesElement = document.getElementById('modal-notes');
         const footerActions = document.getElementById('modal-footer-actions');
         const readonlyBadge = document.getElementById('modal-readonly-badge');
@@ -833,133 +1112,5 @@
         document.getElementById('decisionForm').submit();
     }
 
-    // ─────────────────────────── Academic Card JS ───────────────────────────
-    let allLoadedStudents = [];
-    let currentSelectedStudentId = null;
-
-    document.addEventListener("DOMContentLoaded", function() {
-        if (document.getElementById('tab-academic-card')) {
-            loadFilteredStudents();
-        }
-    });
-
-    function loadFilteredStudents() {
-        const departmentId = document.getElementById('affairs-filter-department')?.value || '';
-        const semesterId = document.getElementById('affairs-filter-semester')?.value || '';
-        const level = document.getElementById('affairs-filter-year')?.value || '';
-        const search = document.getElementById('affairs-student-search')?.value || '';
-
-        fetch(`/affairs/academic-card/students?department_id=${departmentId}&semester_id=${semesterId}&level=${encodeURIComponent(level)}&search=${encodeURIComponent(search)}`)
-            .then(res => res.json())
-            .then(data => {
-                const studentsList = data.data || data.students || [];
-                if (data.success && studentsList) {
-                    allLoadedStudents = studentsList;
-                    renderStudentDropdownOptions(allLoadedStudents);
-                }
-            })
-            .catch(err => console.error(err));
-    }
-
-    function filterStudentDropdownList() {
-        const search = document.getElementById('affairs-student-search').value.toLowerCase();
-        const filtered = allLoadedStudents.filter(st => 
-            (st.full_name && st.full_name.toLowerCase().includes(search)) ||
-            (st.university_id && st.university_id.toLowerCase().includes(search)) ||
-            (st.student_code && st.student_code.toLowerCase().includes(search))
-        );
-        renderStudentDropdownOptions(filtered);
-    }
-
-    function renderStudentDropdownOptions(students) {
-        const select = document.getElementById('affairs-student-select');
-        if (!select) return;
-        select.innerHTML = '<option value="">-- اختر طالباً من القائمة (إجمالي ' + students.length + ') --</option>';
-        students.forEach(st => {
-            const code = st.university_id || st.student_code || '';
-            const yearStr = st.level || '';
-            select.innerHTML += `<option value="${st.student_id}">${st.full_name} (${code}) - ${yearStr}</option>`;
-        });
-    }
-
-    function fetchAcademicCardForSelectedStudent() {
-        const select = document.getElementById('affairs-student-select');
-        const studentId = select.value;
-        if (!studentId) {
-            document.getElementById('academic-card-display').style.display = 'none';
-            return;
-        }
-        currentSelectedStudentId = studentId;
-
-        const level = document.getElementById('affairs-filter-year')?.value || '';
-
-        fetch(`/affairs/academic-card/data?student_id=${studentId}&level=${encodeURIComponent(level)}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    renderAcademicCard(data);
-                } else {
-                    alert(data.message || 'تعذر جلب بيانات كشف العلامات');
-                }
-            })
-            .catch(err => alert('حدث خطأ أثناء تحميل الكشف: ' + err));
-    }
-
-    function renderAcademicCard(data) {
-        const st = data.student;
-        const summary = data.summary;
-        const card = data.academic_card;
-
-        document.getElementById('card-student-name').innerText = st.full_name || '';
-        document.getElementById('card-student-code').innerText = st.university_id || st.student_code || '';
-        document.getElementById('card-student-dept').innerText = st.department || st.branch || '';
-        document.getElementById('card-student-level').innerText = st.level || '';
-
-        document.getElementById('card-stat-gpa').innerText = summary.average + '%';
-        document.getElementById('card-stat-passed').innerText = summary.passed_courses;
-        document.getElementById('card-stat-failed').innerText = summary.failed_courses;
-        document.getElementById('card-stat-notattended').innerText = summary.not_attended;
-
-        const tbody = document.getElementById('academic-card-table-body');
-        tbody.innerHTML = '';
-
-        if (!card || card.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-secondary);">لا توجد مواد مسجلة لهذا الطالب</td></tr>';
-        } else {
-            card.forEach((row, idx) => {
-                let statusBadge = '<span class="badge badge-pending">لم يتم التقدم</span>';
-                if (row.status === 'ناجح') {
-                    statusBadge = '<span class="badge badge-approved">ناجح</span>';
-                } else if (row.status === 'راسب') {
-                    statusBadge = '<span class="badge badge-rejected">راسب</span>';
-                }
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td style="font-weight:700;">${row.title}</td>
-                        <td style="color:var(--text-secondary); font-size:0.85rem;">سنة ${row.year || 1} - فصل ${row.semester || 1}</td>
-                        <td style="text-align:center;">${row.quiz_score !== null ? row.quiz_score : '-'}</td>
-                        <td style="text-align:center;">${row.oral_score !== null ? row.oral_score : '-'}</td>
-                        <td style="text-align:center;">${row.final_score !== null ? row.final_score : '-'}</td>
-                        <td style="text-align:center; font-weight:800; font-size:1.05rem;">${row.total_score !== null ? row.total_score : '-'}</td>
-                        <td style="text-align:center;">${statusBadge}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        document.getElementById('academic-card-display').style.display = 'block';
-    }
-
-    function exportCard(type) {
-        if (!currentSelectedStudentId) {
-            alert('يرجى اختيار طالب أولاً');
-            return;
-        }
-        const level = document.getElementById('affairs-filter-year')?.value || '';
-        const url = `/affairs/academic-card/export-${type}?student_id=${currentSelectedStudentId}&level=${encodeURIComponent(level)}`;
-        window.location.href = url;
-    }
 </script>
 @endpush

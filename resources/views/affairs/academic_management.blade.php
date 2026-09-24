@@ -110,6 +110,7 @@
         border-collapse: separate;
         border-spacing: 0;
         margin-top: 1rem;
+        white-space: nowrap !important;
     }
     .custom-table th {
         background: var(--bg-primary);
@@ -119,13 +120,17 @@
         padding: 0.9rem 1rem;
         text-align: right;
         border-bottom: 1px solid rgba(255,255,255,0.08);
+        white-space: nowrap !important;
     }
     .custom-table td {
-        padding: 1rem;
+        padding: 0.65rem 1rem !important;
         font-size: 0.9rem;
         border-bottom: 1px solid rgba(255,255,255,0.05);
         color: var(--text-primary);
         font-weight: 600;
+        vertical-align: middle !important;
+        white-space: nowrap !important;
+        height: 54px;
     }
     .custom-table tr:last-child td {
         border-bottom: none;
