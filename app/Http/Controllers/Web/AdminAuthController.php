@@ -10,14 +10,8 @@ class AdminAuthController extends Controller
 {
     public function logout(Request $request)
     {
+        // مسح current_session_id بيصير مركزياً عبر حدث Logout (AppServiceProvider)
         if (Auth::check()) {
-            $user = Auth::user();
-            $user->update([
-                'active_web_session_id' => null,
-                'web_last_active_at'    => null,
-                'web_active_device_ip'  => null,
-            ]);
-
             if ($request->has('is_inactivity_logout')) {
                 \App\Models\UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
             } else {

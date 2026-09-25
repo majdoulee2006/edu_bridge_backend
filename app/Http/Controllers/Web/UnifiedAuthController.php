@@ -13,6 +13,7 @@ use App\Models\UserActivity;
 use App\Traits\FaceRecognitionTrait;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Support\SingleSessionGuard;
 
 class UnifiedAuthController extends Controller
 {
@@ -123,37 +124,27 @@ class UnifiedAuthController extends Controller
                 }
             }
 
-            // 5. حصر الجلسة النشطة في جهاز واحد فقط في نفس الوقت على الويب لجميع المستخدمين
+            // 5. منع تسجيل الدخول المتزامن على الويب: "القديم بيضل، الجديد بينرفض"
+            //    - إلا لو فاتت 20 دقيقة بدون نشاط عالجلسة القديمة (تعتبر منتهية).
+            //    - الطالب بس عنده استثناء: بدل الرفض، تحقق بالوجه (خطوة 6).
             $isStudent = ($user->role_id == 3 || strtolower($user->role ?? '') === 'student' || Student::where('user_id', $user->user_id)->exists());
+            $currentSessionId = $request->session()->getId();
 
-            if (!empty($user->active_web_session_id)) {
-                $sessionFilePath = storage_path('framework/sessions/' . $user->active_web_session_id);
-                $sessionFileExists = file_exists($sessionFilePath);
-
-                // فحص ما إذا كان آخر نشاط للجلسة الحالية تم خلال نافذة الـ 20 دقيقة
-                $lastActive = $user->web_last_active_at ? \Carbon\Carbon::parse($user->web_last_active_at) : null;
-                $isRecentlyActive = $lastActive && $lastActive->diffInMinutes(now()) < 20;
-
-                $currentSessionId = $request->session()->getId();
-
-                if ($sessionFileExists && $isRecentlyActive && $currentSessionId !== $user->active_web_session_id) {
-                    // لباقي المستخدمين عدا الطالب: منع تسجيل الدخول المتزامن من جهاز آخر قطعياً
-                    if (!$isStudent) {
-                        UserActivity::log('دخول مرفوض (جلسة مسبقة)', 'محاولة تسجيل دخول بينما توجد جلسة نشطة بالفعل على جهاز آخر', $user);
-                        return back()->withErrors([
-                            'login' => '⚠️ تنبيه أمني: هذا الحساب مسجل دخول حالياً على جهاز آخر. وفقاً لسياسة الأمان، يُسمح بجلسة واحدة نشطة فقط. يجب تسجيل الخروج من الجهاز الأول أولاً لتتمكن من تسجيل الدخول هنا.'
-                        ])->withInput($request->only('login'));
-                    }
+            if (SingleSessionGuard::isWebOccupied($user, $currentSessionId)) {
+                if (!$isStudent) {
+                    UserActivity::log('دخول مرفوض (جلسة مسبقة)', 'محاولة تسجيل دخول بينما توجد جلسة نشطة بالفعل على جهاز آخر', $user);
+                    SingleSessionGuard::notifyIntrusionAttempt($user, 'web');
+                    return back()->withErrors([
+                        'login' => '⚠️ تنبيه أمني: هذا الحساب مسجل دخول حالياً على جهاز آخر. وفقاً لسياسة الأمان، يُسمح بجلسة واحدة نشطة فقط. يجب تسجيل الخروج من الجهاز الأول أولاً لتتمكن من تسجيل الدخول هنا.'
+                    ])->withInput($request->only('login'));
                 }
-            }
 
-            // 6. التحقق من أجهزة الطالب (إلزام التحقق بالوجه عند التبديل أو الدخول من جهاز جديد)
-            if ($isStudent) {
+                // 6. الطالب: تحقق من الجهاز بدل الرفض المباشر - إلزام التحقق بالوجه
+                // عند الدخول من متصفح/جهاز غير معروف.
                 $student = Student::where('user_id', $user->user_id)->first();
                 if ($student) {
                     $deviceCookie = $request->cookie('edubridge_student_web_device');
 
-                    // إذا كان الكوكيز غير موجود، أو مختلف عن توكن الجهاز المسجل للطالب، يتوجب مطابقة الوجه
                     if (empty($deviceCookie) || empty($student->web_device_token) || $deviceCookie !== $student->web_device_token) {
                         $request->session()->put('pending_face_auth', [
                             'user_id'    => $user->user_id,
@@ -162,10 +153,12 @@ class UnifiedAuthController extends Controller
                             'time'       => now()->timestamp,
                         ]);
 
+                        SingleSessionGuard::notifyIntrusionAttempt($user, 'web');
                         UserActivity::log('طلب تحقق بالوجه', 'محاولة دخول طالب من جهاز ويب جديد تتطلب التحقق بالوجه', $user);
 
                         return redirect()->route('student.face_auth.show');
                     }
+                    // نفس الجهاز المعروف مسبقاً (مثلاً تبويب/تحديث جديد) - يكمل الدخول عادي.
                 }
             }
 
@@ -173,12 +166,7 @@ class UnifiedAuthController extends Controller
             Auth::login($user, $remember);
             $request->session()->regenerate();
 
-            // حفظ معرف الجلسة النشطة وتحديث النشاط لكافة المستخدمين
-            $user->update([
-                'active_web_session_id' => $request->session()->getId(),
-                'web_last_active_at'    => now(),
-                'web_active_device_ip'  => $request->ip(),
-            ]);
+            SingleSessionGuard::stampWebSession($user, $request->session()->getId());
 
             UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح', $user);
 
@@ -264,8 +252,8 @@ class UnifiedAuthController extends Controller
             if (!empty($refVector) && !empty($capVector)) {
                 $faceScore = $this->calculateFaceSimilarity($refVector, $capVector);
 
-                // حد القبول 70% مطابق تماماً لما هو معتمد في نظام الحضور
-                if ($faceScore < 70.0) {
+                // حد القبول 80% (تم رفعه من 70% لتقليل احتمال قبول وجه غير مطابق)
+                if ($faceScore < 80.0) {
                     UserActivity::log('فشل التحقق بالوجه', "محاولة دخول غير مطابقة لبصمة وجه الطالب (نسبة التطابق: {$faceScore}%)", $user);
 
                     return response()->json([
@@ -283,16 +271,10 @@ class UnifiedAuthController extends Controller
             $isFirstTimePhoto = true;
         }
 
-        // نجاح التحقق بالوجه!
-        // إبطال أي جلسة نشطة سابقة للمستخدم لضمان جلسة واحدة نشطة فقط
-        if (!empty($user->active_web_session_id)) {
-            $prevSessionFile = storage_path('framework/sessions/' . $user->active_web_session_id);
-            if (file_exists($prevSessionFile)) {
-                @unlink($prevSessionFile);
-            }
-        }
-
-        // تسجيل الدخول الرسمي
+        // نجاح التحقق بالوجه! تسجيل الدخول الرسمي - الجلسة القديمة (لو
+        // موجودة) بتنطرد تلقائياً لما تُستخدم لاحقاً عبر EnsureSingleWebSession
+        // (بمجرد ما current_session_id يتحدث تحت، ما بيصير لازم نلمس ملف
+        // الجلسة القديمة يدوياً - أيّاً كان session driver المستخدم).
         Auth::login($user, $pending['remember'] ?? false);
         $request->session()->regenerate();
         $request->session()->forget('pending_face_auth');
@@ -303,15 +285,12 @@ class UnifiedAuthController extends Controller
             'web_device_token' => $newDeviceToken,
         ]);
 
-        $user->update([
-            'active_web_session_id' => $request->session()->getId(),
-            'web_last_active_at'    => now(),
-            'web_active_device_ip'  => $request->ip(),
-        ]);
+        SingleSessionGuard::stampWebSession($user, $request->session()->getId());
 
         UserActivity::log('تسجيل دخول بالوجه', "تم التحقق من بصمة الوجه بنجاح وتسجيل الدخول من جهاز ويب جديد (نسبة التطابق: {$faceScore}%)", $user);
 
-        $cookie = cookie()->forever('edubridge_student_web_device', $newDeviceToken);
+        // كوكيز لمدة سنة بدل forever() - جهاز عام/مشترك ما لازم يضل "موثوق" للأبد
+        $cookie = cookie('edubridge_student_web_device', $newDeviceToken, 60 * 24 * 365);
 
         return response()->json([
             'success'      => true,
@@ -339,22 +318,13 @@ class UnifiedAuthController extends Controller
     {
         $isInactivity = $request->has('is_inactivity_logout');
         if (Auth::check()) {
-            $user = Auth::user();
-            $user->update([
-                'active_web_session_id' => null,
-                'web_last_active_at'    => null,
-                'web_active_device_ip'  => null,
-            ]);
-
             if ($isInactivity) {
                 UserActivity::log('خروج تلقائي (خمول)', 'تم تسجيل الخروج تلقائياً بعد 20 دقيقة من الخمول');
             } else {
                 UserActivity::log('تسجيل خروج', 'قام المستخدم بتسجيل الخروج يدوياً');
             }
         }
-        if (Auth::check()) {
-            Auth::user()->update(['current_session_id' => null]);
-        }
+        // مسح current_session_id بيصير مركزياً عبر حدث Logout (AppServiceProvider)
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

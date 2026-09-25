@@ -11,6 +11,7 @@ use App\Models\Role;
 use App\Models\Student;
 use App\Models\StudentParent;
 use App\Models\User;
+use App\Support\SingleSessionGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -87,6 +88,17 @@ class AuthController extends Controller
         if ($user->status === 'inactive') {
             \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب غير مفعل عبر التطبيق', $user);
             return response()->json(['success' => false, 'message' => 'الحساب غير مفعّل. يرجى التواصل مع إدارة المعهد لإنشائه/تفعيله.'], 403);
+        }
+
+        // منع تسجيل الدخول المتزامن عبر التطبيق: "القديم بيضل، الجديد بينرفض"
+        // بدون نافذة سماح خمول (بعكس الويب) - لازم تسجيل خروج صريح أو device reset.
+        if (SingleSessionGuard::isApiOccupied($user)) {
+            \App\Models\UserActivity::log('دخول مرفوض (جلسة مسبقة)', 'محاولة تسجيل دخول من جهاز آخر بينما التطبيق مسجل دخول بالفعل', $user);
+            SingleSessionGuard::notifyIntrusionAttempt($user, 'mobile');
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ هذا الحساب مسجل دخول حالياً من جهاز آخر عبر التطبيق. يجب تسجيل الخروج من الجهاز الأول أولاً.',
+            ], 423);
         }
 
         $user->update(['last_login' => now()]);
@@ -875,6 +887,15 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->where('status', 'active')->first();
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'الحساب غير موجود أو غير مفعّل'], 404);
+        }
+
+        if (SingleSessionGuard::isApiOccupied($user)) {
+            \App\Models\UserActivity::log('دخول مرفوض (جلسة مسبقة)', 'محاولة تسجيل دخول من جهاز آخر بينما التطبيق مسجل دخول بالفعل', $user);
+            SingleSessionGuard::notifyIntrusionAttempt($user, 'mobile');
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ هذا الحساب مسجل دخول حالياً من جهاز آخر عبر التطبيق. يجب تسجيل الخروج من الجهاز الأول أولاً.',
+            ], 423);
         }
 
         $record->update(['used' => true]);

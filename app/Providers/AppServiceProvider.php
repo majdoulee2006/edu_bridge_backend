@@ -55,21 +55,14 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Grade::observe(\App\Observers\GradeObserver::class);
         \App\Models\Attendance::observe(\App\Observers\AttendanceObserver::class);
 
-        // منع تسجيل الدخول المتزامن على الويب: كل تسجيل دخول ناجح (عبر
-        // Auth::login أو Auth::attempt من أي controller) يسجّل جلسته كـ
-        // "الجلسة الحالية" الوحيدة الصالحة للحساب (راجع EnsureSingleWebSession
-        // و SingleSessionGuard::isOccupied لمنطق الرفض عند تسجيل الدخول).
-        \Illuminate\Support\Facades\Event::listen(
-            \Illuminate\Auth\Events\Login::class,
-            function (\Illuminate\Auth\Events\Login $event) {
-                if ($event->guard === 'web') {
-                    $event->user->forceFill([
-                        'current_session_id'     => request()->session()->getId(),
-                        'session_last_active_at' => now(),
-                    ])->save();
-                }
-            }
-        );
+        // ملاحظة: تسجيل current_session_id للويب ما بيصير هون عبر حدث Login،
+        // لأن Illuminate\Auth\SessionGuard::login() بينادي session()->regenerate()
+        // داخلياً *قبل* ما يطلق حدث Login، وبعدين UnifiedAuthController::login()
+        // بينادي session()->regenerate() مرة تانية بشكل صريح - فلو خزّنا الـ
+        // session id وقت الحدث كان رح نخزّن id قديم رح يتغيّر بعده مباشرة،
+        // وكل يوزر كان رح ينطرد من حسابه فور ما يسجل دخول. التسجيل الصحيح
+        // بيصير صراحة بعد آخر استدعاء لـ regenerate() - راجع
+        // SingleSessionGuard::stampWebSession() و UnifiedAuthController.
 
         // مسح بيانات الجلسة النشطة على الويب عند تسجيل الخروج
         \Illuminate\Support\Facades\Event::listen(
