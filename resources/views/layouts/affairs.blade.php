@@ -494,8 +494,17 @@
                 <a href="{{ url('/affairs/activities') }}" class="nav-item {{ Request::is('affairs/activities') ? 'active' : '' }}">
                     <i class="fa-solid fa-clipboard-list"></i> الأنشطة
                 </a>
+                <a href="{{ route('affairs.announcements') }}" class="nav-item {{ Request::is('affairs/announcements') ? 'active' : '' }}">
+                    <i class="fa-solid fa-bullhorn"></i> الإعلانات
+                </a>
+                <a href="{{ route('affairs.reports') }}" class="nav-item {{ Request::is('affairs/reports') ? 'active' : '' }}">
+                    <i class="fa-solid fa-chart-column"></i> التقارير
+                </a>
                 <a href="{{ url('/affairs/accounts') }}" class="nav-item {{ Request::is('affairs/accounts') ? 'active' : '' }}">
                     <i class="fa-solid fa-users-gear"></i> الحسابات
+                </a>
+                <a href="{{ route('affairs.university_ids') }}" class="nav-item {{ Request::is('affairs/university-ids') ? 'active' : '' }}">
+                    <i class="fa-solid fa-id-card"></i> الأرقام الجامعية
                 </a>
                 <a href="{{ url('/affairs/pending-accounts') }}" class="nav-item {{ Request::is('affairs/pending-accounts') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
                     <span><i class="fa-solid fa-clock"></i> طلبات التسجيل</span>

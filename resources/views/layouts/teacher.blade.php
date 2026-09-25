@@ -115,27 +115,30 @@
             color: var(--text-primary, #1e293b) !important;
         }
 
-        /* Dark Mode Specific Overrides */
-        html.dark input[type="text"],
-        html.dark input[type="password"],
-        html.dark input[type="email"],
-        html.dark input[type="number"],
-        html.dark select,
-        html.dark textarea,
-        html.dark .form-input {
-            background-color: #0a0a0a !important;
+        /* Dark Mode: inputs need a background clearly lighter than the pitch-black
+           page/card behind them, otherwise the field border disappears and the
+           form looks empty/broken (this was the single source of truth issue —
+           a second duplicate override used to live here and fight with it) */
+        [data-theme="dark"] input[type="text"],
+        [data-theme="dark"] input[type="password"],
+        [data-theme="dark"] input[type="email"],
+        [data-theme="dark"] input[type="number"],
+        [data-theme="dark"] select,
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] .form-input {
+            background-color: #1c1c1e !important;
             color: #ffffff !important;
-            border-color: #2e2e2e !important;
+            border-color: #3a3a3a !important;
         }
-        html.dark input::placeholder,
-        html.dark textarea::placeholder,
-        html.dark .form-input::placeholder {
-            color: #888888 !important;
+        [data-theme="dark"] input::placeholder,
+        [data-theme="dark"] textarea::placeholder,
+        [data-theme="dark"] .form-input::placeholder {
+            color: #9a9a9a !important;
             opacity: 0.9;
         }
-        html.dark select option,
-        html.dark .form-input option {
-            background-color: #121212 !important;
+        [data-theme="dark"] select option,
+        [data-theme="dark"] .form-input option {
+            background-color: #1c1c1e !important;
             color: #ffffff !important;
         }
 

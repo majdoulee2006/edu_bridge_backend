@@ -535,7 +535,11 @@ img, video, canvas, iframe, svg {
     display: block;
 }
 
-/* Responsive Modals Globally */
+/* Responsive Modals Globally (the actual 95vw width cap for small screens
+   lives in the @media(max-width:768px) block below — this base rule used
+   to also force max-width:95vw at ALL screen sizes, which overrode every
+   page's own intended desktop modal width, e.g. 520px, with ~full-screen
+   width on normal monitors) */
 .modal-card,
 .modal-content,
 .modal-dialog,

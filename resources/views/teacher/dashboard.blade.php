@@ -326,10 +326,16 @@
 
 {{-- ===== Announcements ===== --}}
 <div style="margin-bottom: 2rem;">
-    <p class="section-title">
-        <i class="fa-solid fa-bullhorn" style="color: var(--accent-color);"></i>
-        آخر الأخبار والإعلانات
-    </p>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 1rem;">
+        <p class="section-title" style="margin-bottom: 0;">
+            <i class="fa-solid fa-bullhorn" style="color: var(--accent-color);"></i>
+            آخر الأخبار والإعلانات
+        </p>
+        <a href="{{ route('teacher.announcements.create') }}"
+           style="display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.9rem; border-radius: 0.6rem; background: var(--accent-color); color: #1a1a1a; font-size: 0.82rem; font-weight: 800; text-decoration: none; white-space: nowrap;">
+            <i class="fa-solid fa-plus"></i> إضافة إعلان
+        </a>
+    </div>
 
     @forelse($announcements as $ann)
         @php

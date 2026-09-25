@@ -388,6 +388,10 @@
                     <i class="fa-solid fa-house"></i>
                     الرئيسية
                 </a>
+                <a href="{{ route('parent.children') }}" class="nav-item {{ Request::is('parent/children') ? 'active' : '' }}">
+                    <i class="fa-solid fa-children"></i>
+                    أبنائي
+                </a>
                 <a href="{{ url('/parent/schedule') }}" class="nav-item {{ Request::is('parent/schedule') ? 'active' : '' }}">
                     <i class="fa-solid fa-calendar-days"></i>
                     الجدول الدراسي
