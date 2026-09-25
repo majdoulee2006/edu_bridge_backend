@@ -514,6 +514,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 
     // الجدول
     Route::get('/schedule', [StudentWebController::class, 'schedule'])->name('student.schedule');
+    Route::get('/schedule/export-image', [StudentWebController::class, 'exportScheduleImage'])->name('student.schedule.export_image');
 
     // المواد والمحاضرات
     Route::get('/courses', [StudentWebController::class, 'courses'])->name('student.courses');

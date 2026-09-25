@@ -1156,7 +1156,18 @@ class StudentController extends Controller
     {
         $user = $request->user();
         $student = $user->student;
-        
+
+        $imagePath = \App\Services\ScheduleImageService::generateOfficialScheduleImage($student);
+        if ($imagePath && file_exists($imagePath)) {
+            $fileName = basename($imagePath);
+            $url = url('exports/' . $fileName);
+            return response()->json([
+                'success'   => true,
+                'pdf_url'   => $url,
+                'image_url' => $url,
+            ], 200);
+        }
+
         $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? $student->level ?? '');
         $branchName = \Illuminate\Support\Facades\DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
         $classGroup = $branchName . ' - ' . $academicYearStr;
