@@ -43,7 +43,7 @@ class ParentController extends Controller
                     ->leftJoin('heads', 'departments.department_id', '=', 'heads.department_id')
                     ->leftJoin('users as hod_user', 'heads.user_id', '=', 'hod_user.user_id')
                     ->where('students.student_id', $student->student_id)
-                    ->select('departments.name as department_name', 'hod_user.full_name as hod_name')
+                    ->select('departments.name as department_name', 'programs.name as program_name', 'hod_user.full_name as hod_name')
                     ->first();
 
                 return [
@@ -57,6 +57,9 @@ class ParentController extends Controller
                     'attendance_rate' => $performance['attendance_rate'] ?? 100,
                     'average_grade'   => $performance['gpa'] ?? 0,
                     'department_name' => $deptInfo->department_name ?? 'عام',
+                    'program_name'    => $deptInfo->program_name ?? 'غير محدد',
+                    'branch'          => $deptInfo->program_name ?? 'غير محدد',
+                    'major'           => $deptInfo->program_name ?? 'غير محدد',
                     'hod_name'        => $deptInfo->hod_name ?? 'رئيس القسم المعني',
                 ];
             });

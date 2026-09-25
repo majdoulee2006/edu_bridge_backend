@@ -512,8 +512,21 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
     Route::get('/student/info/{id}', function ($id) {
         return DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->where('students.student_id', $id)
-            ->select('users.full_name', 'users.department', 'students.level', 'students.student_code')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
+            ->where(function ($q) use ($id) {
+                $q->where('students.student_id', $id)
+                  ->orWhere('students.user_id', $id);
+            })
+            ->select(
+                'users.full_name',
+                DB::raw("COALESCE(departments.name, users.department, 'غير محدد') as department"),
+                'students.level',
+                'students.student_code',
+                DB::raw("COALESCE(programs.name, 'غير محدد') as program_name"),
+                DB::raw("COALESCE(programs.name, 'غير محدد') as branch"),
+                DB::raw("COALESCE(programs.name, 'غير محدد') as major")
+            )
             ->first();
     })->middleware('role:student,parent');
 

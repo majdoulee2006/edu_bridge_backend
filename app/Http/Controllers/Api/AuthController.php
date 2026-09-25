@@ -148,9 +148,6 @@ class AuthController extends Controller
         if ($user->role_id == 4) {
             $parent   = DB::table('parents')->where('user_id', $user->user_id)->first();
             $parentId = $parent?->parent_id;
-            if ($parentId) {
-                \App\Models\Parents::autoLinkStudentByPhoneOrId($parentId, $user->phone, $user->email);
-            }
         }
 
         $isAdvisor = false;
