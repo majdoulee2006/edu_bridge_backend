@@ -1198,6 +1198,14 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
+        // منع التعديل إذا تم تقديم التقييم مسبقاً
+        if ($reportRequest->status === 'completed' || !empty($reportRequest->notes)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تم إرسال التقرير واعتماده مسبقاً ولا يمكن تعديله.'
+            ], 422);
+        }
+
         DB::table('report_requests')->where('id', $id)->update([
             'notes'      => $request->notes,
             'status'     => 'completed',
@@ -1225,7 +1233,8 @@ class TeacherController extends Controller
         // ح�ظ ا�ت�ر�`ر �ي performance_reports + إشعار ����` ا�أ�&ر (ثا� ���` � �ا �`ْسر ا�ع�&��`ة)
         try {
             DB::table('performance_reports')->insert([
-                'student_id'      => $reportRequest->student_id,
+                'report_request_id' => $id,
+                'student_id'        => $reportRequest->student_id,
                 'report_type'     => $reportRequest->report_type ?? 'behavioral',
                 'attendance_rate' => 0,
                 'average_grade'   => 0,

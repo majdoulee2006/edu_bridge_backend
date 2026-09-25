@@ -51,6 +51,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureSingleWebSession::class,
         ]);
 
+        $middleware->web(append: [
+            \App\Http\Middleware\EnforceSingleWebSession::class,
+        ]);
+
         $middleware->validateCsrfTokens(except: [
             'affairs/accounts',
             'affairs/accounts/*',

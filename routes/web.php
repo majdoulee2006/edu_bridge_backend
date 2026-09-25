@@ -84,6 +84,11 @@ Route::post('/password/forgot/send-otp', [UnifiedAuthController::class, 'sendRes
 Route::post('/password/forgot/verify-otp', [UnifiedAuthController::class, 'verifyResetOtp'])->name('password.forgot.verify_otp');
 Route::post('/password/forgot/reset', [UnifiedAuthController::class, 'resetPassword'])->name('password.forgot.reset');
 
+// ===== مسارات التحقق بالوجه للطالب عند تسجيل الدخول من أجهزة متعددة على الويب =====
+Route::get('/student/face-verification', [UnifiedAuthController::class, 'showFaceAuth'])->name('student.face_auth.show');
+Route::post('/student/face-verification/verify', [UnifiedAuthController::class, 'verifyFaceAuth'])->name('student.face_auth.verify');
+Route::post('/student/face-verification/cancel', [UnifiedAuthController::class, 'cancelFaceAuth'])->name('student.face_auth.cancel');
+
 // Default Redirect
 Route::get('/', function () {
     return redirect()->route('login');
@@ -171,7 +176,8 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::get('/advisor', [TeacherWebController::class, 'advisorTools'])->name('teacher.advisor');
     Route::post('/advisor/attendance', [TeacherWebController::class, 'storeAdvisorAttendance'])->name('teacher.advisor.attendance');
     Route::post('/advisor/report', [TeacherWebController::class, 'storeAdvisorReport'])->name('teacher.advisor.report');
-    Route::post('/profile/password', [TeacherWebController::class, 'updatePassword'])->name('teacher.profile.password');
+    // الإعدادات
+    Route::get('/settings', [TeacherWebController::class, 'settings'])->name('teacher.settings');
 });
 
 // ===== Utility Routes =====
@@ -233,6 +239,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::post('/reports', [HODWebController::class, 'storeReport'])->name('hod.reports.store');
     Route::post('/reports/delete/{id}', [HODWebController::class, 'deleteReport'])->name('hod.reports.delete');
     Route::post('/reports/{id}/send-to-parent', [HODWebController::class, 'sendReportToParent'])->name('hod.reports.send_to_parent');
+    Route::post('/reports/{id}/hod-notes', [HODWebController::class, 'updateHodNotes'])->name('hod.reports.hod_notes');
     Route::get('/reports/{id}/download', [HODWebController::class, 'downloadReport'])->name('hod.reports.download');
     
     // الخدمات الطلابية
@@ -283,9 +290,12 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::get('/course-weights/export-course', [AffairsWebController::class, 'exportCourseWeightsCourse'])->name('affairs.course_weights.export_course');
     Route::get('/course-weights/export-student', [AffairsWebController::class, 'exportCourseWeightsStudent'])->name('affairs.course_weights.export_student');
     Route::get('/course-weights/export-cohort', [AffairsWebController::class, 'exportCourseWeightsCohort'])->name('affairs.course_weights.export_cohort');
+    Route::post('/course-weights/share-transcript', [AffairsWebController::class, 'shareStudentTranscript'])->name('affairs.course_weights.share_transcript');
+    Route::post('/course-weights/share-cohort', [AffairsWebController::class, 'shareCohortResults'])->name('affairs.course_weights.share_cohort');
     // الخدمات الطلابية
     Route::get('/student-services', [AffairsWebController::class, 'studentServices'])->name('affairs.student_services');
     Route::post('/student-services/{id}/process', [AffairsWebController::class, 'processStudentService'])->name('affairs.student_services.process');
+    Route::post('/student-services/{id}/direct-reset-device', [AffairsWebController::class, 'directResetDeviceFromRequest'])->name('affairs.student_services.direct_reset_device');
 
     // المواعيد واللقاءات للشؤون
     Route::get('/appointments', [App\Http\Controllers\Web\AppointmentWebController::class, 'index'])->name('affairs.appointments');
@@ -297,6 +307,7 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/accounts', [AffairsWebController::class, 'storeAccount'])->name('affairs.accounts.store');
     Route::post('/accounts/update/{id}', [AffairsWebController::class, 'updateAccount'])->name('affairs.accounts.update');
     Route::post('/accounts/{id}/toggle', [AffairsWebController::class, 'toggleAccountStatus'])->name('affairs.accounts.toggle');
+    Route::post('/accounts/{id}/unlink', [AffairsWebController::class, 'unlinkAccount'])->name('affairs.accounts.unlink');
     Route::post('/accounts/{id}/delete', [AffairsWebController::class, 'deleteAccount'])->name('affairs.accounts.delete');
     Route::post('/students/{id}/reset-device', [AffairsWebController::class, 'resetStudentDevice'])->name('affairs.students.reset-device');
 
@@ -530,6 +541,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
 
     // الخدمات والطلبات الطلابية
     Route::get('/student-services', [StudentWebController::class, 'studentServices'])->name('student.services');
+    Route::get('/student_services', fn() => redirect()->route('student.services'));
     Route::post('/student-services', [StudentWebController::class, 'storeStudentService'])->name('student.services.store');
 
     // طلبات الإذن
@@ -559,6 +571,8 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::delete('/messages/{id}', [StudentWebController::class, 'deleteMessage'])->name('student.messages.delete');
     Route::get('/messages/{id}/download', [StudentWebController::class, 'downloadAttachment'])->name('student.messages.download');
     Route::post('/messages/forward', [StudentWebController::class, 'forwardMessage'])->name('student.messages.forward');
+    // الإعدادات
+    Route::get('/settings', [StudentWebController::class, 'settings'])->name('student.settings');
 });
 
 // ==========================================
@@ -628,11 +642,17 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::delete('/messages/{id}', [ParentWebController::class, 'deleteMessage'])->name('parent.messages.delete');
     Route::get('/messages/{id}/download', [ParentWebController::class, 'downloadAttachment'])->name('parent.messages.download');
     Route::post('/messages/forward', [ParentWebController::class, 'forwardMessage'])->name('parent.messages.forward');
+    // الإعدادات
+    Route::get('/settings', [ParentWebController::class, 'settings'])->name('parent.settings');
 });
 
 // ===== Live Web Notifications Polling Route =====
 Route::middleware(['web'])->get('/web-notifications/latest', function () {
     $userId = Auth::id();
+    // Release session lock immediately so polling does not block other requests on single-threaded server
+    if (session()->isStarted()) {
+        session()->save();
+    }
     if (!$userId) {
         return response()->json(['unread_count' => 0, 'latest' => []]);
     }
@@ -654,3 +674,29 @@ Route::middleware(['web'])->get('/web-notifications/latest', function () {
         'latest'       => $latest,
     ]);
 })->name('web.notifications.latest');
+
+Route::middleware(['web'])->match(['delete', 'post'], '/web-notifications/{id}/delete', function ($id) {
+    $userId = Auth::id();
+    if ($userId) {
+        \Illuminate\Support\Facades\DB::table('notifications')
+            ->where('id', $id)
+            ->where('user_id', $userId)
+            ->delete();
+    }
+    return response()->json(['success' => true]);
+})->name('web.notifications.delete');
+
+Route::middleware(['web'])->match(['delete', 'post'], '/web-notifications/chat/{senderId}/delete', function ($senderId) {
+    $userId = Auth::id();
+    if ($userId) {
+        \Illuminate\Support\Facades\DB::table('notifications')
+            ->where('user_id', $userId)
+            ->where('type', 'message')
+            ->where(function ($q) use ($senderId) {
+                $q->where('sender_id', $senderId)
+                  ->orWhere('related_id', $senderId);
+            })
+            ->delete();
+    }
+    return response()->json(['success' => true]);
+})->name('web.notifications.delete_chat');

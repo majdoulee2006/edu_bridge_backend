@@ -647,12 +647,15 @@ class DepartmentHeadController extends Controller
                 'report_requests.id',
                 'report_requests.report_type',
                 DB::raw("CASE WHEN report_requests.status = 'completed' AND report_requests.report_type = 'academic' THEN COALESCE(performance_reports.recommendations, report_requests.notes, '') ELSE COALESCE(report_requests.notes, '') END as notes"),
+                'report_requests.hod_notes',
                 'report_requests.status',
                 'report_requests.sent_to_parent',
                 'report_requests.year',
                 'report_requests.created_at',
                 'tu.full_name as teacher_name',
                 'su.full_name as student_name',
+                'students.student_code',
+                'su.department as student_department',
                 'courses.title as course_name',
             ]);
 
@@ -806,7 +809,12 @@ class DepartmentHeadController extends Controller
             ->unique();
 
         $performanceReport = DB::table('performance_reports')->where('report_request_id', $id)->first();
-        $notificationMessage = $performanceReport ? $performanceReport->recommendations : $requestRow->notes;
+        $teacherNotes = $performanceReport ? $performanceReport->recommendations : $requestRow->notes;
+
+        $notificationMessage = "التقييم: " . ($teacherNotes ?: 'تم تقييم أداء الطالب.');
+        if (!empty($requestRow->hod_notes)) {
+            $notificationMessage .= "\nرأي وتوجيهات رئيس القسم: " . $requestRow->hod_notes;
+        }
 
         foreach ($parentIds as $parentId) {
             $parentIsUser = DB::table('users')->where('user_id', $parentId)->where('role_id', 4)->exists();
@@ -834,8 +842,40 @@ class DepartmentHeadController extends Controller
         return response()->json(['success' => true, 'message' => 'تم إرسال التقرير للأهل بنجاح']);
     }
 
+    public function updateHodNotes(Request $request, $id)
+    {
+        $request->validate([
+            'hod_notes' => 'nullable|string',
+        ]);
+
+        $report = DB::table('report_requests')->where('id', $id)->first();
+        if (!$report) {
+            return response()->json(['success' => false, 'message' => 'التقرير غير موجود'], 404);
+        }
+
+        // منع التعديل إذا تم حفظ رأي رئيس القسم مسبقاً
+        if (!empty($report->hod_notes)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'تم حفظ واعتماد رأي رئيس القسم مسبقاً ولا يمكن تعديله.'
+            ], 422);
+        }
+
+        DB::table('report_requests')->where('id', $id)->update([
+            'hod_notes'  => $request->hod_notes,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حفظ رأي رئيس القسم بالتقرير بنجاح',
+            'data'    => ['hod_notes' => $request->hod_notes]
+        ]);
+    }
+
     public function deleteReportRequest(Request $request, $id)
     {
+        DB::table('performance_reports')->where('report_request_id', $id)->delete();
         $deleted = DB::table('report_requests')->where('id', $id)->delete();
         if ($deleted) {
             return response()->json(['success' => true, 'message' => 'تم حذف طلب التقرير بنجاح']);

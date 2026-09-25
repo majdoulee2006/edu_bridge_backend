@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $role['title'] ?? 'EduBridge - تسجيل الدخول' }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Local Fonts: Cairo (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fonts-local.css') }}">
+    <!-- Local FontAwesome (100% Offline) -->
+    <link rel="stylesheet" href="{{ asset('css/fontawesome.min.css') }}">
     
     <style>
         :root {

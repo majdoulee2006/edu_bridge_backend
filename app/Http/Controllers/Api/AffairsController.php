@@ -1929,106 +1929,17 @@ class AffairsController extends Controller
      */
     public function exportStudentAcademicCardPdf(Request $request)
     {
-        $cardResponse = $this->getStudentAcademicCardForAffairs($request);
-        $content = json_decode($cardResponse->getContent(), true);
+        // دمج وتوحيد البطاقة الأكاديمية وكشف درجات الطالب على السجل الأكاديمي المعتمد الموحد
+        $webCtrl = app(\App\Http\Controllers\Web\AffairsWebController::class);
+        $request->merge(['format' => 'pdf']);
 
-        if (!$content || !($content['success'] ?? false)) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'فشل جلب بيانات كشف العلامات للتصدير'], 400);
-            }
-            return back()->with('error', 'فشل جلب بيانات كشف العلامات للتصدير');
-        }
-
-        $student = $content['student'];
-        $summary = $content['summary'];
-        $academicCard = $content['academic_card'];
-
-        // إذا كان الطلب قادم من واجهات الويب: ارجاع الواجهة الرسمية المخصصة للطباعة والتصدير بجودة عالية
+        // إذا كان الطلب من المتصفح (الويب)، إرجاع واجهة السجل الأكاديمي المعتمد المحمية للمعاينة
         if (!$request->expectsJson() && !$request->is('api/*')) {
-            return view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard'));
+            return $webCtrl->exportCourseWeightsStudent($request);
         }
 
-        $forPdf = true;
-        $html = view('exports.academic_card_pdf', compact('student', 'summary', 'academicCard', 'forPdf'))->render();
-
-        $fileName = 'academic_card_' . ($student['university_id'] ?? $student['student_id']) . '.pdf';
-        $pdfContent = null;
-
-        // 1. Try mPDF engine
-        if (class_exists('\Mpdf\Mpdf')) {
-            try {
-                $mpdf = new \Mpdf\Mpdf([
-                    'mode' => 'utf-8',
-                    'format' => 'A4',
-                    'orientation' => 'P',
-                    'autoScriptToLang' => true,
-                    'autoLangToFont' => true,
-                    'useSubsets' => false,
-                ]);
-                $mpdf->SetDirectionality('rtl');
-                $mpdf->WriteHTML($html);
-                $pdfContent = $mpdf->Output('', 'S');
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('mPDF error: ' . $e->getMessage());
-            }
-        }
-
-        // 2. Try Barryvdh DomPDF Facade engine
-        if (!$pdfContent && class_exists('\Barryvdh\DomPDF\Facade\Pdf')) {
-            try {
-                $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('DomPDF Facade error: ' . $e->getMessage());
-            }
-        }
-
-        // 3. Try direct Dompdf engine
-        if (!$pdfContent && class_exists('\Dompdf\Dompdf')) {
-            try {
-                $dompdf = new \Dompdf\Dompdf();
-                $dompdf->loadHtml($html);
-                $dompdf->setPaper('A4', 'portrait');
-                $dompdf->render();
-                $pdfContent = $dompdf->output();
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Dompdf direct error: ' . $e->getMessage());
-            }
-        }
-
-        // 4. Fallback: Return printable HTML if no PDF binary driver is initialized
-        if (!$pdfContent) {
-            return response($html, 200, [
-                'Content-Type' => 'text/html; charset=utf-8',
-            ]);
-        }
-
-        if (ob_get_length()) {
-            ob_end_clean();
-        }
-
-        if ($request->expectsJson() || $request->is('api/*')) {
-            $directory = public_path('exports');
-            if (!file_exists($directory)) {
-                mkdir($directory, 0755, true);
-            }
-            $filePath = $directory . '/' . $fileName;
-            file_put_contents($filePath, $pdfContent);
-
-            return response()->json([
-                'success' => true,
-                'file_url' => url('exports/' . $fileName),
-                'file_name' => $fileName,
-            ]);
-        }
-
-        return response($pdfContent, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
-            'Content-Length' => strlen($pdfContent),
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ]);
+        // إذا كان الطلب من الموبايل (API)، إرجاع ملف الـ PDF الموحد
+        return $this->exportCourseWeightsStudentPdf($request);
     }
 
     /**
@@ -2764,12 +2675,90 @@ class AffairsController extends Controller
      */
     public function exportCourseWeightsStudentPdf(Request $request)
     {
+        $user = auth()->user();
+        if ($user) {
+            // إذا كان المستخدم طالباً، نحدد معرّفه تلقائياً
+            if ($user->role_id == 3) {
+                $student = \App\Models\Student::where('user_id', $user->user_id)->first();
+                if ($student) {
+                    $request->merge(['student_id' => $student->student_id]);
+                }
+            } elseif ($user->role_id == 4) {
+                // إذا كان ولي أمر ولم يتم تمرير student_id، نأخذ أول ابن له
+                if (!$request->filled('student_id')) {
+                    $parent = \App\Models\Parents::where('user_id', $user->user_id)->first();
+                    if ($parent) {
+                        $childId = \Illuminate\Support\Facades\DB::table('parent_students')
+                            ->where('parent_id', $parent->parent_id)
+                            ->value('student_id');
+                        if ($childId) {
+                            $request->merge(['student_id' => $childId]);
+                        }
+                    }
+                }
+            }
+        }
+
         $webCtrl = app(\App\Http\Controllers\Web\AffairsWebController::class);
         $request->merge(['format' => 'pdf']);
         $response = $webCtrl->exportCourseWeightsStudent($request);
 
-        $html = ($response instanceof \Illuminate\View\View) ? $response->render() : (string) $response;
-        $pdfContent = $this->renderHtmlToBinaryPdf($html, 'A4', 'P');
+        $viewData = ($response instanceof \Illuminate\View\View) ? $response->getData() : [];
+        $pdfContent = null;
+
+        // البحث عن متصفح Chrome لإنتاج PDF مطابق تماماً للويب ببيئة Tailwind والخطوط الرسمية
+        $chromePaths = [
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        ];
+        $chromeBin = null;
+        foreach ($chromePaths as $p) {
+            if (file_exists($p)) {
+                $chromeBin = $p;
+                break;
+            }
+        }
+
+        if ($chromeBin) {
+            try {
+                $html = view('affairs.transcript_template', $viewData)->render();
+                $publicPath = str_replace('\\', '/', public_path());
+                $html = str_replace(asset('css/fonts-local.css'), "file:///{$publicPath}/css/fonts-local.css", $html);
+                $html = str_replace(asset('js/tailwind-play.js'), "file:///{$publicPath}/js/tailwind-play.js", $html);
+
+                // تحويل أي روابط صور داخلية إلى file:/// مسارات مطلقة
+                $html = preg_replace_callback('/src="([^"]+)"/', function($m) use ($publicPath) {
+                    if (strpos($m[1], 'http') === 0 && strpos($m[1], '/images/') !== false) {
+                        $path = parse_url($m[1], PHP_URL_PATH);
+                        return 'src="file:///' . $publicPath . $path . '"';
+                    }
+                    return $m[0];
+                }, $html);
+
+                $tempHtml = tempnam(sys_get_temp_dir(), 'trn_html_') . '.html';
+                $tempPdf  = tempnam(sys_get_temp_dir(), 'trn_pdf_') . '.pdf';
+                file_put_contents($tempHtml, $html);
+
+                $cmd = '"' . $chromeBin . '" --headless=new --disable-gpu --no-pdf-header-footer --disable-extensions --disable-background-networking --disable-sync --disable-default-apps --no-first-run --print-to-pdf="' . $tempPdf . '" "file:///' . str_replace('\\', '/', $tempHtml) . '"';
+                exec($cmd);
+
+                if (file_exists($tempPdf) && filesize($tempPdf) > 0) {
+                    $pdfContent = file_get_contents($tempPdf);
+                }
+
+                @unlink($tempHtml);
+                @unlink($tempPdf);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Chrome Headless PDF failed, fallback to mPDF: ' . $e->getMessage());
+            }
+        }
+
+        // في حال عدم توفر Chrome، نعتمد على mPDF كخيار احتياطي
+        if (!$pdfContent) {
+            $html = view('affairs.transcript_pdf', $viewData)->render();
+            $pdfContent = $this->renderHtmlToBinaryPdf($html, 'A4', 'P');
+        }
+
         $fileName = 'transcript_' . ($request->student_id ?? 'student') . '.pdf';
 
         return response($pdfContent, 200, [
@@ -2788,6 +2777,10 @@ class AffairsController extends Controller
         $response = $webCtrl->exportCourseWeightsCohort($request);
 
         $html = ($response instanceof \Illuminate\View\View) ? $response->render() : (string) $response;
+        // منع طلب الملفات عبر HTTP من السيرفر نفسه لتفادي الـ Deadlock
+        $html = preg_replace('/<link\b[^>]*>/i', '', $html);
+        $html = preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
+
         $pdfContent = $this->renderHtmlToBinaryPdf($html, 'A4', 'L');
         $fileName = 'cohort_report_' . ($request->program_id ?? 'all') . '.pdf';
 
@@ -2800,20 +2793,28 @@ class AffairsController extends Controller
     private function renderHtmlToBinaryPdf(string $html, string $format = 'A4', string $orientation = 'P'): string
     {
         if (class_exists('\Mpdf\Mpdf')) {
+            $prevError = error_reporting(0);
             try {
                 $mpdf = new \Mpdf\Mpdf([
                     'mode'             => 'utf-8',
                     'format'           => $format,
                     'orientation'      => $orientation,
+                    'margin_left'      => 8,
+                    'margin_right'     => 8,
+                    'margin_top'       => 10,
+                    'margin_bottom'    => 10,
                     'autoScriptToLang' => true,
                     'autoLangToFont'   => true,
-                    'useSubsets'       => false,
+                    'useSubsets'       => true,
                 ]);
+                $mpdf->curlTimeout = 3;
                 $mpdf->SetDirectionality('rtl');
                 $mpdf->WriteHTML($html);
                 return $mpdf->Output('', 'S');
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('mPDF error: ' . $e->getMessage());
+            } finally {
+                error_reporting($prevError);
             }
         }
 

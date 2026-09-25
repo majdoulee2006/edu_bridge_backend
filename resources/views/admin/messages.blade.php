@@ -3,7 +3,7 @@
 @section('title', 'الرسائل')
 
 @section('content')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <div class="flex h-[calc(100vh-8.5rem)] min-h-[550px] overflow-hidden rounded-3xl bg-[#141417] border border-[#27272a] shadow-2xl text-slate-100 transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS PANEL) ================= -->
@@ -274,7 +274,7 @@
 
 <!-- ================= CSS POLISHING ================= -->
 @push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<!-- Material Symbols locally provided by layout -->
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -299,13 +299,463 @@
     .animate-ping {
         animation: flash 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
+
+    /* ========================================================
+       LIGHT MODE CHAT THEME OVERRIDES (الوضع النهاري للإدارة)
+       ======================================================== */
+    html:not(.dark) #chat-app-container,
+    html[data-theme="light"] #chat-app-container,
+    [data-theme="light"] #chat-app-container {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        color: #0f172a !important;
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025) !important;
+    }
+
+    html:not(.dark) #contacts-sidebar-pane,
+    html[data-theme="light"] #contacts-sidebar-pane,
+    [data-theme="light"] #contacts-sidebar-pane {
+        background-color: #ffffff !important;
+        border-left-color: #e2e8f0 !important;
+    }
+
+    html:not(.dark) #contacts-sidebar-pane h2,
+    html[data-theme="light"] #contacts-sidebar-pane h2,
+    [data-theme="light"] #contacts-sidebar-pane h2 {
+        color: #0f172a !important;
+    }
+
+    html:not(.dark) #contacts-sidebar-pane .text-slate-400,
+    html[data-theme="light"] #contacts-sidebar-pane .text-slate-400,
+    [data-theme="light"] #contacts-sidebar-pane .text-slate-400 {
+        color: #64748b !important;
+    }
+
+    html:not(.dark) button[onclick="openNewChatModal()"],
+    html[data-theme="light"] button[onclick="openNewChatModal()"],
+    [data-theme="light"] button[onclick="openNewChatModal()"] {
+        background-color: #f1f5f9 !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) button[onclick="openNewChatModal()"]:hover,
+    html[data-theme="light"] button[onclick="openNewChatModal()"]:hover,
+    [data-theme="light"] button[onclick="openNewChatModal()"]:hover {
+        background-color: #e2e8f0 !important;
+    }
+
+    html:not(.dark) #contact-search,
+    html:not(.dark) #message-search-input,
+    html:not(.dark) #modal-contact-search,
+    html[data-theme="light"] #contact-search,
+    html[data-theme="light"] #message-search-input,
+    html[data-theme="light"] #modal-contact-search,
+    [data-theme="light"] #contact-search,
+    [data-theme="light"] #message-search-input,
+    [data-theme="light"] #modal-contact-search {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #contact-search::placeholder,
+    html:not(.dark) #message-search-input::placeholder,
+    html:not(.dark) #modal-contact-search::placeholder,
+    html[data-theme="light"] #contact-search::placeholder,
+    html[data-theme="light"] #message-search-input::placeholder,
+    html[data-theme="light"] #modal-contact-search::placeholder,
+    [data-theme="light"] #contact-search::placeholder,
+    [data-theme="light"] #message-search-input::placeholder,
+    [data-theme="light"] #modal-contact-search::placeholder {
+        color: #94a3b8 !important;
+    }
+    html:not(.dark) #contact-search:focus,
+    html:not(.dark) #message-search-input:focus,
+    html:not(.dark) #modal-contact-search:focus,
+    html[data-theme="light"] #contact-search:focus,
+    html[data-theme="light"] #message-search-input:focus,
+    html[data-theme="light"] #modal-contact-search:focus,
+    [data-theme="light"] #contact-search:focus,
+    [data-theme="light"] #message-search-input:focus,
+    [data-theme="light"] #modal-contact-search:focus {
+        border-color: #facc15 !important;
+        background-color: #ffffff !important;
+    }
+
+    html:not(.dark) .contact-row,
+    html[data-theme="light"] .contact-row,
+    [data-theme="light"] .contact-row {
+        color: #0f172a !important;
+        border-color: transparent !important;
+    }
+    html:not(.dark) .contact-row:hover,
+    html[data-theme="light"] .contact-row:hover,
+    [data-theme="light"] .contact-row:hover {
+        background-color: #f8fafc !important;
+    }
+    html:not(.dark) .contact-row[class*="bg-[#1c1c22]"],
+    html:not(.dark) .contact-row.bg-\[\#1c1c22\],
+    html[data-theme="light"] .contact-row[class*="bg-[#1c1c22]"],
+    html[data-theme="light"] .contact-row.bg-\[\#1c1c22\],
+    [data-theme="light"] .contact-row[class*="bg-[#1c1c22]"],
+    [data-theme="light"] .contact-row.bg-\[\#1c1c22\] {
+        background-color: #fefce8 !important;
+        border-right-color: #eab308 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    }
+    html:not(.dark) .contact-row .text-white,
+    html[data-theme="light"] .contact-row .text-white,
+    [data-theme="light"] .contact-row .text-white {
+        color: #0f172a !important;
+    }
+    html:not(.dark) .contact-row .text-slate-400,
+    html[data-theme="light"] .contact-row .text-slate-400,
+    [data-theme="light"] .contact-row .text-slate-400 {
+        color: #64748b !important;
+    }
+    html:not(.dark) .contact-row .text-slate-500,
+    html[data-theme="light"] .contact-row .text-slate-500,
+    [data-theme="light"] .contact-row .text-slate-500 {
+        color: #94a3b8 !important;
+    }
+    html:not(.dark) .contact-row img,
+    html[data-theme="light"] .contact-row img,
+    [data-theme="light"] .contact-row img {
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) .contact-row div[class*="bg-emerald-500"],
+    html[data-theme="light"] .contact-row div[class*="bg-emerald-500"],
+    [data-theme="light"] .contact-row div[class*="bg-emerald-500"] {
+        border-color: #ffffff !important;
+    }
+
+    html:not(.dark) #chat-room-pane,
+    html:not(.dark) #chat-placeholder,
+    html[data-theme="light"] #chat-room-pane,
+    html[data-theme="light"] #chat-placeholder,
+    [data-theme="light"] #chat-room-pane,
+    [data-theme="light"] #chat-placeholder {
+        background-color: #f8fafc !important;
+    }
+
+    html:not(.dark) #chat-placeholder div[class*="bg-[#1c1c20]"],
+    html[data-theme="light"] #chat-placeholder div[class*="bg-[#1c1c20]"],
+    [data-theme="light"] #chat-placeholder div[class*="bg-[#1c1c20]"] {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #chat-placeholder h3,
+    html[data-theme="light"] #chat-placeholder h3,
+    [data-theme="light"] #chat-placeholder h3 {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #chat-placeholder p,
+    html[data-theme="light"] #chat-placeholder p,
+    [data-theme="light"] #chat-placeholder p {
+        color: #64748b !important;
+    }
+
+    html:not(.dark) #active-chat-window > div:first-child,
+    html[data-theme="light"] #active-chat-window > div:first-child,
+    [data-theme="light"] #active-chat-window > div:first-child {
+        background-color: #ffffff !important;
+        border-bottom-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #active-contact-name,
+    html[data-theme="light"] #active-contact-name,
+    [data-theme="light"] #active-contact-name {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #active-contact-role,
+    html[data-theme="light"] #active-contact-role,
+    [data-theme="light"] #active-contact-role {
+        background-color: #f1f5f9 !important;
+        color: #475569 !important;
+    }
+    html:not(.dark) #active-contact-avatar-img,
+    html[data-theme="light"] #active-contact-avatar-img,
+    [data-theme="light"] #active-contact-avatar-img {
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #disappearing-menu-btn,
+    html[data-theme="light"] #disappearing-menu-btn,
+    [data-theme="light"] #disappearing-menu-btn {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        color: #334155 !important;
+    }
+    html:not(.dark) #disappearing-menu-btn:hover,
+    html[data-theme="light"] #disappearing-menu-btn:hover,
+    [data-theme="light"] #disappearing-menu-btn:hover {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #disappearing-menu,
+    html[data-theme="light"] #disappearing-menu,
+    [data-theme="light"] #disappearing-menu {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+    }
+    html:not(.dark) #disappearing-menu div,
+    html[data-theme="light"] #disappearing-menu div,
+    [data-theme="light"] #disappearing-menu div {
+        color: #64748b !important;
+        border-bottom-color: #f1f5f9 !important;
+    }
+    html:not(.dark) #disappearing-menu button,
+    html[data-theme="light"] #disappearing-menu button,
+    [data-theme="light"] #disappearing-menu button {
+        color: #334155 !important;
+    }
+    html:not(.dark) #disappearing-menu button:hover,
+    html[data-theme="light"] #disappearing-menu button:hover,
+    [data-theme="light"] #disappearing-menu button:hover {
+        background-color: #f1f5f9 !important;
+    }
+
+    html:not(.dark) #messages-feed,
+    html[data-theme="light"] #messages-feed,
+    [data-theme="light"] #messages-feed {
+        background-color: #f8fafc !important;
+        background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px) !important;
+        background-size: 24px 24px !important;
+    }
+
+    /* Sent Bubble (Me) */
+    html:not(.dark) .chat-bubble-sent,
+    html[data-theme="light"] .chat-bubble-sent,
+    [data-theme="light"] .chat-bubble-sent {
+        background-color: #fef08a !important;
+        border: 1px solid #fde047 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    }
+    html:not(.dark) .chat-bubble-sent p,
+    html:not(.dark) .chat-bubble-sent span,
+    html:not(.dark) .chat-bubble-sent div,
+    html[data-theme="light"] .chat-bubble-sent p,
+    html[data-theme="light"] .chat-bubble-sent span,
+    html[data-theme="light"] .chat-bubble-sent div,
+    [data-theme="light"] .chat-bubble-sent p,
+    [data-theme="light"] .chat-bubble-sent span,
+    [data-theme="light"] .chat-bubble-sent div {
+        color: #1a1a00 !important;
+    }
+
+    /* Received Bubble (Other) */
+    html:not(.dark) .chat-bubble-received,
+    html[data-theme="light"] .chat-bubble-received,
+    [data-theme="light"] .chat-bubble-received {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    }
+    html:not(.dark) .chat-bubble-received p,
+    html[data-theme="light"] .chat-bubble-received p,
+    [data-theme="light"] .chat-bubble-received p {
+        color: #0f172a !important;
+    }
+
+    /* Timestamps & details below bubbles */
+    html:not(.dark) #messages-feed span.text-\[9\.5px\],
+    html:not(.dark) #messages-feed span.text-slate-400,
+    html[data-theme="light"] #messages-feed span.text-\[9\.5px\],
+    html[data-theme="light"] #messages-feed span.text-slate-400,
+    [data-theme="light"] #messages-feed span.text-\[9\.5px\],
+    [data-theme="light"] #messages-feed span.text-slate-400 {
+        color: #64748b !important;
+    }
+
+    /* Attachments inside bubbles */
+    html:not(.dark) .chat-bubble-sent .bg-\[\#1c1c22\],
+    html:not(.dark) .chat-bubble-received .bg-\[\#1c1c22\],
+    html:not(.dark) .chat-bubble-sent .bg-white\/5,
+    html:not(.dark) .chat-bubble-received .bg-white\/5,
+    html[data-theme="light"] .chat-bubble-sent .bg-\[\#1c1c22\],
+    html[data-theme="light"] .chat-bubble-received .bg-\[\#1c1c22\],
+    html[data-theme="light"] .chat-bubble-sent .bg-white\/5,
+    html[data-theme="light"] .chat-bubble-received .bg-white\/5,
+    [data-theme="light"] .chat-bubble-sent .bg-\[\#1c1c22\],
+    [data-theme="light"] .chat-bubble-received .bg-\[\#1c1c22\],
+    [data-theme="light"] .chat-bubble-sent .bg-white\/5,
+    [data-theme="light"] .chat-bubble-received .bg-white\/5 {
+        background-color: #f1f5f9 !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) .chat-bubble-sent .text-slate-200,
+    html:not(.dark) .chat-bubble-received .text-slate-200,
+    html[data-theme="light"] .chat-bubble-sent .text-slate-200,
+    html[data-theme="light"] .chat-bubble-received .text-slate-200,
+    [data-theme="light"] .chat-bubble-sent .text-slate-200,
+    [data-theme="light"] .chat-bubble-received .text-slate-200 {
+        color: #0f172a !important;
+    }
+
+    /* Chat Bottom Input Bar */
+    html:not(.dark) #active-chat-window > div:last-child,
+    html[data-theme="light"] #active-chat-window > div:last-child,
+    [data-theme="light"] #active-chat-window > div:last-child {
+        background-color: #ffffff !important;
+        border-top-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #standard-input-elements,
+    html[data-theme="light"] #standard-input-elements,
+    [data-theme="light"] #standard-input-elements {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #standard-input-elements:focus-within,
+    html[data-theme="light"] #standard-input-elements:focus-within,
+    [data-theme="light"] #standard-input-elements:focus-within {
+        border-color: #eab308 !important;
+        background-color: #ffffff !important;
+        box-shadow: 0 0 0 1px #eab308 !important;
+    }
+    html:not(.dark) #message-text,
+    html[data-theme="light"] #message-text,
+    [data-theme="light"] #message-text {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #message-text::placeholder,
+    html[data-theme="light"] #message-text::placeholder,
+    [data-theme="light"] #message-text::placeholder {
+        color: #94a3b8 !important;
+    }
+    html:not(.dark) #standard-input-elements label,
+    html:not(.dark) #standard-input-elements button,
+    html[data-theme="light"] #standard-input-elements label,
+    html[data-theme="light"] #standard-input-elements button,
+    [data-theme="light"] #standard-input-elements label,
+    [data-theme="light"] #standard-input-elements button {
+        color: #64748b !important;
+    }
+    html:not(.dark) #standard-input-elements label:hover,
+    html:not(.dark) #standard-input-elements button:hover,
+    html[data-theme="light"] #standard-input-elements label:hover,
+    html[data-theme="light"] #standard-input-elements button:hover,
+    [data-theme="light"] #standard-input-elements label:hover,
+    [data-theme="light"] #standard-input-elements button:hover {
+        background-color: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #send-btn,
+    html[data-theme="light"] #send-btn,
+    [data-theme="light"] #send-btn {
+        background-color: #facc15 !important;
+        border-color: #eab308 !important;
+        color: #000000 !important;
+        box-shadow: 0 4px 14px rgba(250, 204, 21, 0.3) !important;
+    }
+    html:not(.dark) #send-btn:hover,
+    html[data-theme="light"] #send-btn:hover,
+    [data-theme="light"] #send-btn:hover {
+        background-color: #eab308 !important;
+    }
+    html:not(.dark) #attachment-preview-container,
+    html[data-theme="light"] #attachment-preview-container,
+    [data-theme="light"] #attachment-preview-container {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #preview-filename,
+    html[data-theme="light"] #preview-filename,
+    [data-theme="light"] #preview-filename {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #voice-recording-interface,
+    html[data-theme="light"] #voice-recording-interface,
+    [data-theme="light"] #voice-recording-interface {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #recording-timer,
+    html[data-theme="light"] #recording-timer,
+    [data-theme="light"] #recording-timer {
+        color: #0f172a !important;
+    }
+
+    /* New Chat Modal */
+    html:not(.dark) #new-chat-modal-content,
+    html[data-theme="light"] #new-chat-modal-content,
+    [data-theme="light"] #new-chat-modal-content {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    html:not(.dark) #new-chat-modal-content h3,
+    html[data-theme="light"] #new-chat-modal-content h3,
+    [data-theme="light"] #new-chat-modal-content h3 {
+        color: #0f172a !important;
+    }
+    html:not(.dark) #new-chat-modal-content > div:first-child,
+    html[data-theme="light"] #new-chat-modal-content > div:first-child,
+    [data-theme="light"] #new-chat-modal-content > div:first-child {
+        border-bottom-color: #e2e8f0 !important;
+    }
+    html:not(.dark) #new-chat-modal-content button[onclick="closeNewChatModal()"],
+    html[data-theme="light"] #new-chat-modal-content button[onclick="closeNewChatModal()"],
+    [data-theme="light"] #new-chat-modal-content button[onclick="closeNewChatModal()"] {
+        background-color: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #64748b !important;
+    }
+    html:not(.dark) .modal-contact-row:hover,
+    html[data-theme="light"] .modal-contact-row:hover,
+    [data-theme="light"] .modal-contact-row:hover {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+    }
+    html:not(.dark) .modal-contact-row .text-white,
+    html[data-theme="light"] .modal-contact-row .text-white,
+    [data-theme="light"] .modal-contact-row .text-white {
+        color: #0f172a !important;
+    }
+    html:not(.dark) .modal-contact-row .text-slate-400,
+    html[data-theme="light"] .modal-contact-row .text-slate-400,
+    [data-theme="light"] .modal-contact-row .text-slate-400 {
+        color: #64748b !important;
+    }
+
+    /* Role Badges in Light Mode */
+    html:not(.dark) .bg-rose-500\/20, html[data-theme="light"] .bg-rose-500\/20, [data-theme="light"] .bg-rose-500\/20 { background-color: #ffe4e6 !important; }
+    html:not(.dark) .text-rose-400, html[data-theme="light"] .text-rose-400, [data-theme="light"] .text-rose-400 { color: #e11d48 !important; }
+    html:not(.dark) .bg-blue-500\/20, html[data-theme="light"] .bg-blue-500\/20, [data-theme="light"] .bg-blue-500\/20 { background-color: #dbeafe !important; }
+    html:not(.dark) .text-blue-400, html[data-theme="light"] .text-blue-400, [data-theme="light"] .text-blue-400 { color: #2563eb !important; }
+    html:not(.dark) .bg-emerald-500\/20, html[data-theme="light"] .bg-emerald-500\/20, [data-theme="light"] .bg-emerald-500\/20 { background-color: #dcfce7 !important; }
+    html:not(.dark) .text-emerald-400, html[data-theme="light"] .text-emerald-400, [data-theme="light"] .text-emerald-400 { color: #16a34a !important; }
+    html:not(.dark) .bg-purple-500\/20, html[data-theme="light"] .bg-purple-500\/20, [data-theme="light"] .bg-purple-500\/20 { background-color: #f3e8ff !important; }
+    html:not(.dark) .text-purple-400, html[data-theme="light"] .text-purple-400, [data-theme="light"] .text-purple-400 { color: #9333ea !important; }
+    html:not(.dark) .bg-amber-500\/20, html[data-theme="light"] .bg-amber-500\/20, [data-theme="light"] .bg-amber-500\/20 { background-color: #fef3c7 !important; }
+    html:not(.dark) .text-amber-400, html[data-theme="light"] .text-amber-400, [data-theme="light"] .text-amber-400 { color: #d97706 !important; }
+    html:not(.dark) .bg-cyan-500\/20, html[data-theme="light"] .bg-cyan-500\/20, [data-theme="light"] .bg-cyan-500\/20 { background-color: #cffafe !important; }
+    html:not(.dark) .text-cyan-400, html[data-theme="light"] .text-cyan-400, [data-theme="light"] .text-cyan-400 { color: #0891b2 !important; }
+
+    /* Message Options Dropdown */
+    html:not(.dark) [id^="msg-options-"], html[data-theme="light"] [id^="msg-options-"], [data-theme="light"] [id^="msg-options-"] {
+        background-color: #ffffff !important;
+        border-color: #e2e8f0 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+    }
+    html:not(.dark) [id^="msg-options-"] button, html[data-theme="light"] [id^="msg-options-"] button, [data-theme="light"] [id^="msg-options-"] button {
+        color: #334155 !important;
+    }
+    html:not(.dark) [id^="msg-options-"] button:hover, html[data-theme="light"] [id^="msg-options-"] button:hover, [data-theme="light"] [id^="msg-options-"] button:hover {
+        background-color: #f1f5f9 !important;
+    }
+
+    html:not(.dark) div[class*="border-[#141417]"], html[data-theme="light"] div[class*="border-[#141417]"], [data-theme="light"] div[class*="border-[#141417]"] { border-color: #ffffff !important; }
+    html:not(.dark) button[onclick="showSidebarOnMobile()"], html[data-theme="light"] button[onclick="showSidebarOnMobile()"], [data-theme="light"] button[onclick="showSidebarOnMobile()"] { background-color: #f1f5f9 !important; color: #0f172a !important; }
+    html:not(.dark) #contacts-sidebar-pane div[class*="text-slate-400"], html[data-theme="light"] #contacts-sidebar-pane div[class*="text-slate-400"], [data-theme="light"] #contacts-sidebar-pane div[class*="text-slate-400"] { color: #64748b !important; }
+    html:not(.dark) #messages-feed .text-slate-400, html[data-theme="light"] #messages-feed .text-slate-400, [data-theme="light"] #messages-feed .text-slate-400 { color: #64748b !important; }
+    html:not(.dark) #messages-feed .text-slate-600, html[data-theme="light"] #messages-feed .text-slate-600, [data-theme="light"] #messages-feed .text-slate-600 { color: #94a3b8 !important; }
 </style>
 @endpush
 
 <!-- ================= REAL-TIME PUSHER & SCRIPTS ================= -->
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.0/dist/echo.iife.js"></script>
+<script src="{{ asset('js/pusher.min.js') }}"></script>
+<script src="{{ asset('js/echo.iife.js') }}"></script>
 
 <script>
     let currentUserId = @json(auth()->id());
@@ -404,7 +854,22 @@
                 if (data.status === 'success' && data.data && data.data.length > 0) {
                     renderContactsList(data.data);
                     wrapperDiv.classList.remove('hidden');
-                    if (!activeContactId && data.data.length > 0 && window.innerWidth >= 768) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const targetContactId = urlParams.get('contact');
+                    let targetContact = null;
+                    if (targetContactId) {
+                        targetContact = data.data.find(c => String(c.id) === String(targetContactId));
+                    }
+                    if (targetContact) {
+                        let roleAr = targetContact.role;
+                        if (targetContact.role === 'admin') roleAr = 'الإدارة';
+                        else if (targetContact.role === 'teacher') roleAr = 'المدرب';
+                        else if (targetContact.role === 'student') roleAr = 'الطالب';
+                        else if (targetContact.role === 'parent') roleAr = 'الأهل';
+                        else if (targetContact.role === 'head') roleAr = 'رئيس القسم';
+                        else if (targetContact.role === 'affairs') roleAr = 'الشؤون';
+                        selectContact(targetContact.id, targetContact.name, roleAr, targetContact.image || '');
+                    } else if (!activeContactId && data.data.length > 0 && window.innerWidth >= 768) {
                         const first = data.data[0];
                         let roleAr = first.role;
                         if (first.role === 'admin') roleAr = 'الإدارة';

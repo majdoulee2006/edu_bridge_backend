@@ -13,6 +13,11 @@
         border-bottom: 2px solid var(--border-color, #e2e8f0);
         padding-bottom: 0.5rem;
         overflow-x: auto;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+    }
+    .custom-tabs::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
     }
     .tab-btn {
         background: transparent;
@@ -24,7 +29,7 @@
         cursor: pointer;
         position: relative;
         transition: color 0.3s;
-        white-space: nowrap;
+        white-space: nowrap !important;
         border-radius: 8px 8px 0 0;
     }
     .dark .tab-btn { color: #94a3b8; }
@@ -63,11 +68,11 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Tables */
+    /* Tables - Fixed Height & Strictly Single-Line */
     .table-container {
         background: var(--surface-light, #ffffff);
         border-radius: 1.25rem;
-        padding: 1.5rem;
+        padding: 1.2rem;
         box-shadow: 0 4px 20px -2px rgba(0,0,0,0.06);
         overflow-x: auto;
     }
@@ -79,25 +84,30 @@
         width: 100%;
         border-collapse: collapse;
         min-width: 900px;
+        white-space: nowrap !important;
     }
     .custom-table th {
         text-align: right;
-        padding: 1.2rem 1rem;
+        padding: 0.9rem 1rem !important;
         color: var(--text-secondary, #64748b);
         font-weight: 800;
         border-bottom: 2px solid var(--border-color, #e2e8f0);
-        white-space: nowrap;
+        white-space: nowrap !important;
+        font-size: 0.9rem;
     }
     .dark .custom-table th {
         color: #94a3b8;
         border-bottom-color: #334155;
     }
     .custom-table td {
-        padding: 1rem;
+        padding: 0.65rem 1rem !important;
         color: var(--text-primary, #0f172a);
         font-weight: 600;
         border-bottom: 1px solid var(--border-color, #e2e8f0);
-        vertical-align: middle;
+        vertical-align: middle !important;
+        white-space: nowrap !important;
+        height: 56px;
+        line-height: 1.2;
     }
     .dark .custom-table td {
         color: #f8fafc;
@@ -110,13 +120,57 @@
         background: rgba(255, 255, 255, 0.02);
     }
 
+    .table-cell-nowrap {
+        white-space: nowrap !important;
+    }
+    .table-student-cell {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        white-space: nowrap !important;
+        vertical-align: middle;
+    }
+    .table-avatar {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        background: var(--accent-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #1a1a1a;
+        font-weight: bold;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    .table-student-name {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap !important;
+        display: inline-block;
+        vertical-align: middle;
+        font-weight: 700;
+    }
+    .table-text-truncate {
+        display: inline-block;
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap !important;
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+
     /* Status Badges */
     .badge {
-        padding: 0.4rem 0.8rem;
+        padding: 0.35rem 0.75rem;
         border-radius: 2rem;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         font-weight: 700;
         display: inline-block;
+        white-space: nowrap !important;
     }
     .badge-pending { background: #fef08a; color: #854d0e; }
     .badge-approved { background: #bbf7d0; color: #166534; }
@@ -128,6 +182,7 @@
     .action-btns {
         display: flex;
         gap: 0.5rem;
+        align-items: center;
     }
     .btn-action {
         width: 35px;
@@ -140,130 +195,230 @@
         cursor: pointer;
         transition: transform 0.2s;
         color: white;
+        flex-shrink: 0;
     }
     .btn-action:hover {
         transform: scale(1.1);
     }
     .btn-view { background: #3b82f6; }
 
-    /* Modal Styling */
+    /* Modal Styling - Compact Portrait Card (like affairs) */
     .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(4px);
         z-index: 9999;
         display: none;
         align-items: center;
         justify-content: center;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.25s ease;
+        padding: 1rem;
     }
     .modal-overlay.active {
         display: flex;
         opacity: 1;
     }
     .modal-content {
-        background: var(--surface-light, #ffffff);
-        border-radius: 1.25rem;
-        width: 90%;
-        max-width: 600px;
-        padding: 2rem;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-        transform: scale(0.9);
-        transition: transform 0.3s ease;
-        position: relative;
-        max-height: 90vh;
-        overflow-y: auto;
+        background: var(--surface-light, #ffffff) !important;
+        border-radius: 1.25rem !important;
+        width: 100% !important;
+        max-width: 440px !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        padding: 1.35rem 1.4rem !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        border: 1px solid var(--border-color, #e5e7eb) !important;
+        transform: scale(0.92);
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.85rem !important;
+        margin: auto;
     }
     .dark .modal-content {
-        background: var(--surface-dark, #1a2633);
+        background: var(--surface-dark, #121212) !important;
+        border-color: #262626 !important;
         color: white;
     }
     .modal-overlay.active .modal-content {
-        transform: scale(1);
+        transform: scale(1) !important;
     }
-    .modal-header {
+
+    /* Modal Card Header */
+    .modal-card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
-        border-bottom: 1px solid var(--border-color, #e2e8f0);
-        padding-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
     }
-    .dark .modal-header { border-bottom-color: #334155; }
-    .modal-header h3 {
-        font-size: 1.4rem;
+    .modal-card-title {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .modal-card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+    .modal-card-title h3 {
+        font-size: 1.1rem;
         font-weight: 800;
         margin: 0;
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+    .modal-card-title span {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--accent-color, #f59e0b);
     }
     .btn-close-modal {
-        background: transparent;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--bg-secondary, #f3f4f6);
         border: none;
-        font-size: 1.5rem;
-        color: var(--text-secondary, #64748b);
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.2s ease;
     }
-    .modal-body .detail-row {
-        margin-bottom: 1rem;
+    .btn-close-modal:hover {
+        background: #fee2e2;
+        color: #ef4444;
     }
-    .detail-row label {
-        display: block;
-        font-size: 0.9rem;
-        color: var(--text-secondary, #64748b);
-        font-weight: 700;
-        margin-bottom: 0.3rem;
+
+    /* Student Info Mini-Card */
+    .student-mini-card {
+        background: var(--bg-secondary, #f9fafb);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 0.75rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
     }
-    .dark .detail-row label { color: #94a3b8; }
-    .detail-row .detail-value {
-        font-size: 1.05rem;
+    .student-mini-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+    .student-mini-label {
+        color: var(--text-secondary);
         font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
     }
-    .modal-grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
+    .student-mini-value {
+        color: var(--text-primary);
+        font-weight: 700;
+        text-align: left;
     }
-    .notes-area {
+
+    /* Details Box */
+    .modal-detail-box {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .modal-detail-box label {
+        font-size: 0.83rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .modal-detail-content {
+        background: var(--bg-secondary, #f9fafb);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 0.7rem 0.85rem;
+        font-size: 0.86rem;
+        color: var(--text-primary);
+        font-weight: 600;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 90px;
+        overflow-y: auto;
+    }
+
+    /* Notes Area Compact */
+    .notes-area-compact {
         width: 100%;
-        min-height: 100px;
-        border: 2px solid var(--border-color, #e2e8f0);
-        border-radius: 10px;
-        padding: 0.8rem;
-        background: var(--bg-secondary, #f8fafc);
-        color: var(--text-primary, #0f172a);
+        min-height: 65px;
+        max-height: 95px;
+        border: 1.5px solid var(--border-color, #e5e7eb);
+        border-radius: 12px;
+        padding: 0.6rem 0.75rem;
+        background: var(--surface-light, #ffffff);
+        color: var(--text-primary);
         font-family: 'Cairo', sans-serif;
+        font-size: 0.86rem;
         resize: vertical;
-        margin-top: 0.5rem;
-        transition: border-color 0.3s;
+        transition: border-color 0.2s;
     }
-    .dark .notes-area {
+    .dark .notes-area-compact {
         background: #0f172a;
         border-color: #334155;
         color: white;
     }
-    .notes-area:focus {
+    .notes-area-compact:focus {
         outline: none;
-        border-color: #f2f20d;
+        border-color: var(--accent-color, #f2f20d);
     }
-    .modal-footer {
+
+    /* Modal Footer Buttons */
+    .modal-card-footer {
         display: flex;
-        gap: 1rem;
-        margin-top: 2rem;
+        gap: 0.6rem;
+        margin-top: 0.2rem;
     }
-    .modal-footer button {
+    .modal-card-footer button {
         flex: 1;
-        padding: 0.8rem;
-        border-radius: 10px;
+        padding: 0.7rem 0.8rem;
+        border-radius: 12px;
         border: none;
-        font-weight: 800;
-        font-size: 1rem;
+        font-weight: 700;
+        font-size: 0.88rem;
         cursor: pointer;
         font-family: 'Cairo', sans-serif;
-        transition: opacity 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        transition: all 0.2s ease;
     }
-    .modal-footer button:hover { opacity: 0.9; }
-    .btn-modal-approve { background: #10b981; color: white; }
-    .btn-modal-reject { background: #ef4444; color: white; }
+    .btn-modal-approve {
+        background: #10b981 !important;
+        color: white !important;
+    }
+    .btn-modal-approve:hover {
+        background: #059669 !important;
+    }
+    .btn-modal-reject {
+        background: #ef4444 !important;
+        color: white !important;
+    }
+    .btn-modal-reject:hover {
+        background: #dc2626 !important;
+    }
 </style>
 @endpush
 
@@ -314,23 +469,26 @@
                     @php $filtered = $requests->where('type', 'mercy')->filter(function($r) use ($statusGrp) { return $statusGrp == 'pending' ? ($r->status == 'pending_admin') : ($r->status != 'pending_admin'); }); @endphp
                     @foreach($filtered as $req)
                     <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                        <td class="table-cell-nowrap">
+                            <div class="table-student-cell">
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
-                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
-                        <td>
+                        <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">
+                            <span class="table-text-truncate" title="{{ $req->formatted_details }}">{{ $req->formatted_details }}</span>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">
                             @if($req->status == 'pending_admin')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
                             @else
                                 <span class="badge badge-approved">منتهي</span>
-                            @endif</td>
-                        <td>
+                            @endif
+                        </td>
+                        <td class="table-cell-nowrap">
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_admin'); @endphp
                                 <button class="btn-action btn-view" title="عرض التفاصيل"
@@ -377,23 +535,26 @@
                     @php $filtered = $requests->where('type', 'document')->filter(function($r) use ($statusGrp) { return $statusGrp == 'pending' ? ($r->status == 'pending_admin') : ($r->status != 'pending_admin'); }); @endphp
                     @foreach($filtered as $req)
                     <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                        <td class="table-cell-nowrap">
+                            <div class="table-student-cell">
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
-                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
-                        <td>
+                        <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">
+                            <span class="table-text-truncate" title="{{ $req->formatted_details }}">{{ $req->formatted_details }}</span>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">
                             @if($req->status == 'pending_admin')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
                             @else
                                 <span class="badge badge-approved">منتهي</span>
-                            @endif</td>
-                        <td>
+                            @endif
+                        </td>
+                        <td class="table-cell-nowrap">
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_admin'); @endphp
                                 <button class="btn-action btn-view" title="عرض التفاصيل"
@@ -440,23 +601,26 @@
                     @php $filtered = $requests->where('type', 'makeup')->filter(function($r) use ($statusGrp) { return $statusGrp == 'pending' ? ($r->status == 'pending_admin') : ($r->status != 'pending_admin'); }); @endphp
                     @foreach($filtered as $req)
                     <tr>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:0.8rem;">
-                                <div style="width:35px; height:35px; background:var(--accent-color); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#1a1a1a; font-weight:bold;">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span>{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                        <td class="table-cell-nowrap">
+                            <div class="table-student-cell">
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
                             </div>
                         </td>
-                        <td>{{ $req->student?->student_code ?? 'N/A' }}</td>
-                        <td>{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($req->formatted_details, 40) }}</td>
-                        <td>{{ $req->created_at?->format('Y-m-d') }}</td>
-                        <td>
+                        <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
+                        <td class="table-cell-nowrap">
+                            <span class="table-text-truncate" title="{{ $req->formatted_details }}">{{ $req->formatted_details }}</span>
+                        </td>
+                        <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
+                        <td class="table-cell-nowrap">
                             @if($req->status == 'pending_admin')
                                 <span class="badge badge-pending">بانتظار قرارك</span>
                             @else
                                 <span class="badge badge-approved">منتهي</span>
-                            @endif</td>
-                        <td>
+                            @endif
+                        </td>
+                        <td class="table-cell-nowrap">
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_admin'); @endphp
                                 <button class="btn-action btn-view" title="عرض التفاصيل"
@@ -486,71 +650,85 @@
 
     </div>
     @endforeach
-<!-- Request Details Modal -->
+<!-- Request Details Modal - Compact Portrait Card -->
 <div id="requestModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
     <form class="modal-content" id="decisionForm" method="POST" action="">
         @csrf
-        <div class="modal-header">
-            <h3>تفاصيل الطلب (<span id="modal-request-type"></span>)</h3>
-            <button class="btn-close-modal" type="button" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+        
+        <!-- Header -->
+        <div class="modal-card-header">
+            <div class="modal-card-title">
+                <div class="modal-card-icon">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </div>
+                <div>
+                    <h3>تفاصيل ومعالجة الطلب</h3>
+                    <span id="modal-request-type"></span>
+                </div>
+            </div>
+            <button type="button" class="btn-close-modal" onclick="closeModal()" title="إغلاق">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
-        <div class="modal-body">
-            <div class="modal-grid-2">
-                <div class="detail-row">
-                    <label>اسم الطالب:</label>
-                    <div class="detail-value" id="modal-student-name"></div>
-                </div>
-                <div class="detail-row">
-                    <label>الرقم الجامعي:</label>
-                    <div class="detail-value" id="modal-student-id"></div>
-                </div>
-            </div>
-            
-            <div class="modal-grid-2">
-                <div class="detail-row">
-                    <label>القسم:</label>
-                    <div class="detail-value" id="modal-student-department"></div>
-                </div>
-                <div class="detail-row">
-                    <label>التخصص:</label>
-                    <div class="detail-value" id="modal-student-specialization"></div>
-                </div>
-            </div>
-            
-            <div class="detail-row">
-                <label>العام الدراسي:</label>
-                <div class="detail-value" id="modal-student-year" style="color: #f2f20d;"></div>
-            </div>
 
-            <div class="detail-row">
-                <label>تفاصيل الطلب:</label>
-                <div class="detail-value" id="modal-request-details" style="word-break: break-all; overflow-wrap: anywhere; white-space: pre-wrap; background: var(--bg-secondary, rgba(0,0,0,0.03)); padding: 0.75rem 1rem; border-radius: 0.6rem; border: 1px solid var(--border-color, #334155); font-size: 0.88rem; max-width: 100%;"></div>
+        <!-- Student Mini Card -->
+        <div class="student-mini-card">
+            <div class="student-mini-row">
+                <span class="student-mini-label"><i class="fa-solid fa-user"></i> الطالب:</span>
+                <span class="student-mini-value" id="modal-student-name"></span>
             </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
-                <!-- ملاحظات الشؤون (Read-only) -->
-                <div class="detail-row" style="background: #fef08a; padding: 1rem; border-radius: 8px; border-right: 4px solid #ca8a04;">
-                    <label style="color: #854d0e; font-size: 1rem;"><i class="fa-solid fa-clipboard-check"></i> رأي الشؤون:</label>
-                    <div class="detail-value" id="modal-affairs-notes" style="color: #422006; font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.6;"></div>
-                </div>
-
-                <!-- ملاحظات رئيس القسم (Read-only) -->
-                <div class="detail-row" style="background: #e0e7ff; padding: 1rem; border-radius: 8px; border-right: 4px solid #4f46e5;">
-                    <label style="color: #3730a3; font-size: 1rem;"><i class="fa-solid fa-user-tie"></i> رأي رئيس القسم:</label>
-                    <div class="detail-value" id="modal-hod-notes-readonly" style="color: #1e1b4b; font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.6;"></div>
-                </div>
+            <div class="student-mini-row">
+                <span class="student-mini-label"><i class="fa-solid fa-id-card"></i> الرقم الجامعي:</span>
+                <span class="student-mini-value" id="modal-student-id"></span>
             </div>
-            
-            <!-- ملاحظات الإدارة (Mandatory) -->
-            <div class="detail-row" style="margin-top: 1.5rem;">
-                <label><i class="fa-solid fa-pen-nib"></i> قرار وملاحظات الإدارة <span style="color: #ef4444;">(مطلوب إجبارياً)</span>:</label>
-                <textarea class="notes-area" name="notes" id="modal-admin-notes" placeholder="اكتب قرار الإدارة النهائي أو أسباب الرفض/القبول ليتم اعتماده رسمياً وإشعار الطالب به..."></textarea>
-                <input type="hidden" name="decision" id="modal-decision" value="approved">
+            <div class="student-mini-row">
+                <span class="student-mini-label"><i class="fa-solid fa-building-columns"></i> القسم والتخصص:</span>
+                <span class="student-mini-value">
+                    <span id="modal-student-department"></span> - <span id="modal-student-specialization"></span>
+                </span>
+            </div>
+            <div class="student-mini-row">
+                <span class="student-mini-label"><i class="fa-solid fa-calendar"></i> السنة الدراسية:</span>
+                <span class="student-mini-value" id="modal-student-year" style="color: var(--accent-color, #f59e0b);"></span>
             </div>
         </div>
-        <div class="modal-footer">
-            <button type="button" class="btn-modal-approve" onclick="submitDecision('approve')"><i class="fa-solid fa-check-double"></i> اعتماد نهائي (موافقة)</button>
-            <button type="button" class="btn-modal-reject" onclick="submitDecision('reject')"><i class="fa-solid fa-xmark"></i> رفض الطلب</button>
+
+        <!-- Request Details -->
+        <div class="modal-detail-box">
+            <label><i class="fa-solid fa-comment-dots"></i> تفاصيل الطلب / السبب:</label>
+            <div class="modal-detail-content" id="modal-request-details"></div>
+        </div>
+
+        <!-- Previous Decisions / Notes -->
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <!-- ملاحظات الشؤون (Read-only) -->
+            <div class="modal-detail-box" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 12px; padding: 0.6rem 0.8rem;">
+                <label style="color: #b45309; font-size: 0.82rem;"><i class="fa-solid fa-clipboard-check"></i> رأي الشؤون:</label>
+                <div id="modal-affairs-notes" style="font-size: 0.85rem; font-weight: 600; line-height: 1.4; margin-top: 0.2rem;"></div>
+            </div>
+
+            <!-- ملاحظات رئيس القسم (Read-only) -->
+            <div class="modal-detail-box" style="background: rgba(79, 70, 229, 0.08); border: 1px solid rgba(79, 70, 229, 0.25); border-radius: 12px; padding: 0.6rem 0.8rem;">
+                <label style="color: #4338ca; font-size: 0.82rem;"><i class="fa-solid fa-user-tie"></i> رأي رئيس القسم:</label>
+                <div id="modal-hod-notes-readonly" style="font-size: 0.85rem; font-weight: 600; line-height: 1.4; margin-top: 0.2rem;"></div>
+            </div>
+        </div>
+        
+        <!-- Admin Notes (Mandatory) -->
+        <div class="modal-detail-box">
+            <label><i class="fa-solid fa-pen-nib"></i> قرار وملاحظات الإدارة <span style="color: #ef4444;">(مطلوب إجبارياً)</span>:</label>
+            <textarea class="notes-area-compact" name="notes" id="modal-admin-notes" placeholder="اكتب قرار الإدارة النهائي أو أسباب الرفض/القبول ليتم اعتماده وإشعار الطالب به..."></textarea>
+            <input type="hidden" name="decision" id="modal-decision" value="approved">
+        </div>
+
+        <!-- Footer -->
+        <div class="modal-card-footer">
+            <button type="button" class="btn-modal-reject" onclick="submitDecision('reject')">
+                <i class="fa-solid fa-xmark"></i> رفض الطلب
+            </button>
+            <button type="button" class="btn-modal-approve" onclick="submitDecision('approve')">
+                <i class="fa-solid fa-check-double"></i> اعتماد نهائي (موافقة)
+            </button>
         </div>
     </form>
 </div>
@@ -645,7 +823,7 @@
         const notesElement = document.getElementById('modal-admin-notes');
         notesElement.style.borderColor = '';
         
-        const footer = document.querySelector('.modal-footer');
+        const footer = document.querySelector('.modal-card-footer');
         if (canRespond) {
             notesElement.value = '';
             notesElement.readOnly = false;

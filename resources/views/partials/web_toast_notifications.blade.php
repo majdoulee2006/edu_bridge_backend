@@ -91,6 +91,9 @@
     const seenNotifIds = new Set(JSON.parse(sessionStorage.getItem('seen_web_notif_ids') || '[]'));
 
     function getLinkForType(notif) {
+        if (notif.link_url) return notif.link_url;
+        if (notif.link && notif.link !== '#' && !notif.link.includes('notifications')) return notif.link;
+
         const path = window.location.pathname;
         let prefix = '/student';
         if (path.startsWith('/hod')) prefix = '/hod';
@@ -101,6 +104,14 @@
 
         const type = notif.type || '';
         const titleText = ((notif.title || '') + ' ' + (notif.message || notif.body || '')).toLowerCase();
+
+        // كشف علامات للشؤون -> توجيه فوري للمسار الأكاديمي مع فلترة الطالب
+        if (prefix === '/affairs' && (type === 'transcript_approved' || titleText.includes('كشف علامات') || titleText.includes('كشف درجات'))) {
+            if (notif.related_id) {
+                return `/affairs/course-weights?student_id=${notif.related_id}`;
+            }
+            return '/affairs/course-weights';
+        }
 
         const isLecture = titleText.includes('محاضرة') || titleText.includes('درس') || titleText.includes('مادة') || titleText.includes('ملف') || type === 'lecture' || type === 'lesson';
         const isAssignment = titleText.includes('واجب') || titleText.includes('تكليف') || titleText.includes('تسليم') || type === 'assignment';
@@ -152,7 +163,8 @@
         }
 
         if (isMessage) {
-            return prefix + '/messages';
+            const senderId = notif.sender_id || notif.related_id || '';
+            return prefix + '/messages' + (senderId ? ('?contact=' + encodeURIComponent(senderId)) : '');
         }
 
         return prefix + '/notifications';
@@ -183,6 +195,15 @@
         `;
 
         toast.addEventListener('click', function() {
+            if (notif.id) {
+                fetch('/web-notifications/' + notif.id + '/delete', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        'Accept': 'application/json'
+                    }
+                }).catch(() => {});
+            }
             window.location.href = targetUrl;
         });
 

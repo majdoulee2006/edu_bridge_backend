@@ -134,21 +134,42 @@
         </div>
     </div>
 
-    <!-- Application Version Widget -->
-    <div class="bg-white dark:bg-card-dark rounded-3xl p-6 shadow-soft border border-slate-100 dark:border-slate-800/50 flex flex-col items-center text-center space-y-4 transition-colors">
-        <div class="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-glow">
-            <span class="material-symbols-outlined text-primary-content text-[32px]">school</span>
+    <!-- Ultra-Premium About App & Privacy Showcase Cards -->
+    <div class="bg-white dark:bg-card-dark rounded-3xl p-6 shadow-soft border border-slate-100 dark:border-slate-800/50 space-y-4 transition-colors">
+        <div class="flex items-center justify-between mb-2">
+            <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">الدعم والمعلومات والأمان</h4>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/10 text-amber-500 border border-amber-400/20">منظومة معتمدة</span>
         </div>
-        <div class="space-y-1">
-            <h3 class="font-bold text-lg text-slate-900 dark:text-white">Edu-Bridge</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 max-w-[200px] mx-auto leading-relaxed">
-                التطبيق الرسمي لإدارة الشؤون التعليمية والإدارية.
-            </p>
-            <span class="inline-block mt-2 px-3 py-1 bg-slate-100 dark:bg-white/5 rounded-full text-[10px] font-mono text-slate-500">النسخة 2.0.1</span>
+
+        <div>
+            <!-- About Card -->
+            <div onclick="openEduBridgeModal('tab-about')" class="group relative overflow-hidden rounded-2xl p-5 border border-slate-100 dark:border-slate-800 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/40 dark:to-slate-800/20 hover:border-amber-400/50 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                <div class="flex items-start justify-between">
+                    <div class="w-12 h-12 rounded-xl bg-amber-400/20 text-amber-500 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <span class="text-xs font-bold text-amber-500 flex items-center gap-1 group-hover:translate-x-[-4px] transition-transform">
+                        استعراض <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                    </span>
+                </div>
+                <div class="mt-4">
+                    <h5 class="font-bold text-base text-slate-900 dark:text-white">حول المنصة وفريق التطوير</h5>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        معلومات نظام Edu-Bridge الأكاديمي، كادر الهندسة والبرمجة، سياسة الخصوصية، والتقنيات المعتمدة.
+                    </p>
+                </div>
+                <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>5 مهندسين معتمدين</span>
+                    <span class="text-amber-500 font-semibold">منظومة معتمدة</span>
+                </div>
+            </div>
         </div>
     </div>
 
+    @include('partials.about_privacy_modal')
+
     <div class="h-4"></div>
+
 
 @endsection
 

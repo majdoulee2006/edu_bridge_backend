@@ -643,7 +643,41 @@
     let courseSubFilter = 'all';
 
     document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramStudentId = urlParams.get('student_id');
+        const paramSearch = urlParams.get('search') || urlParams.get('student_code');
+
+        if (paramStudentId) {
+            const targetStudent = (appData.studentsList || []).find(s => String(s.student_id) === String(paramStudentId));
+            if (targetStudent) {
+                if (targetStudent.department_id) {
+                    const deptSelect = document.getElementById('filterDepartment');
+                    if (deptSelect) {
+                        deptSelect.value = targetStudent.department_id;
+                        onDepartmentChanged();
+                    }
+                }
+                if (targetStudent.program_id) {
+                    const progSelect = document.getElementById('filterProgram');
+                    if (progSelect) progSelect.value = targetStudent.program_id;
+                }
+            }
+        }
+
+        if (paramSearch) {
+            const searchInput = document.getElementById('studentSearchInput');
+            if (searchInput) searchInput.value = paramSearch;
+        }
+
         applyFilters();
+
+        if (paramStudentId) {
+            const targetIdx = filteredStudents.findIndex(s => String(s.student_id) === String(paramStudentId));
+            if (targetIdx !== -1) {
+                currentStudentIndex = targetIdx;
+                renderStudentWorkstation();
+            }
+        }
     });
 
     // ─────────────────────────── View Mode Switcher ───────────────────────────

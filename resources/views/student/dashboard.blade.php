@@ -35,7 +35,19 @@
     }
     .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
     .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem; }
-    .stat-hint  { font-size: 0.75rem; color: var(--accent-color); margin-top: 0.3rem; font-weight: 600; }
+    .stat-hint  {
+        font-size: 0.75rem;
+        color: #92400e;
+        margin-top: 0.35rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    html.dark .stat-hint,
+    [data-theme="dark"] .stat-hint {
+        color: var(--accent-color);
+    }
 
     .section-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; }
 
@@ -67,18 +79,60 @@
 
     /* Mobile notice card */
     .mobile-notice {
-        background: linear-gradient(135deg, #1a2633, #243447);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
         border-radius: 1.25rem;
         padding: 1.25rem 1.5rem;
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 1.25rem;
         margin-bottom: 2rem;
-        color: white;
+        color: var(--text-primary);
+        box-shadow: var(--shadow);
+        text-decoration: none;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
-    .mobile-notice i { color: var(--accent-color); font-size: 1.5rem; flex-shrink: 0; }
-    .mobile-notice-text { font-size: 0.85rem; line-height: 1.6; }
-    .mobile-notice-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 0.2rem; color: var(--accent-color); }
+    .mobile-notice:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    html.dark .mobile-notice,
+    [data-theme="dark"] .mobile-notice {
+        background: linear-gradient(135deg, #18181b, #27272a);
+        border-color: #3f3f46;
+        color: #ffffff;
+    }
+    .mobile-notice-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 1rem;
+        background: var(--accent-color);
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+    }
+    .mobile-notice-text {
+        font-size: 0.88rem;
+        line-height: 1.6;
+        color: var(--text-secondary);
+    }
+    html.dark .mobile-notice-text,
+    [data-theme="dark"] .mobile-notice-text {
+        color: #d4d4d8;
+    }
+    .mobile-notice-title {
+        font-weight: 800;
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary);
+    }
+    html.dark .mobile-notice-title,
+    [data-theme="dark"] .mobile-notice-title {
+        color: var(--accent-color);
+    }
 
     /* Attendance bar */
     .att-bar-wrap { background: var(--bg-primary); border-radius: 2rem; height: 10px; overflow: hidden; margin-top: 0.5rem; }
@@ -115,14 +169,18 @@
 @section('content')
 
 {{-- Web Attendance Quick Banner --}}
-<a href="{{ route('student.attendance') }}" class="mobile-notice hover:scale-[1.01] transition-transform cursor-pointer">
-    <i class="fa-solid fa-qrcode text-yellow-400 text-2xl"></i>
-    <div class="mobile-notice-text flex-1">
+<a href="{{ route('student.attendance') }}" class="mobile-notice">
+    <div class="mobile-notice-icon">
+        <i class="fa-solid fa-qrcode"></i>
+    </div>
+    <div class="flex-1">
         <div class="mobile-notice-title flex items-center justify-between">
             <span>تسجيل الحضور الفوري (QR والوجه)</span>
-            <span class="bg-yellow-400 text-black text-xs font-extrabold px-3 py-1 rounded-full">متاح الآن بالويب</span>
+            <span class="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-full shadow-sm">متاح الآن بالويب</span>
         </div>
-        افتح كاميرا الجوال أو اللابتوب مباشرة وقم بمسح رمز QR والتحقق من وجهك دون الحاجة لانتظار بناء APK.
+        <p class="mobile-notice-text m-0">
+            افتح كاميرا الجوال أو اللابتوب مباشرة وقم بمسح رمز QR والتحقق من وجهك دون الحاجة لانتظار بناء APK.
+        </p>
     </div>
 </a>
 
@@ -243,7 +301,7 @@
                 $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
             }
             $gradients = [
-                'linear-gradient(135deg,#1a2633,#f2f20d33)',
+                'linear-gradient(135deg,#18181b,#f2f20d33)',
                 'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
                 'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
                 'linear-gradient(135deg,#2d1b69,#11998e)',

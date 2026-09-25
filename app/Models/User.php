@@ -37,6 +37,7 @@ class User extends Authenticatable
         'last_login',
         'current_session_id',
         'current_token_id',
+        'session_last_active_at',
     ];
 
     protected $appends = ['role'];

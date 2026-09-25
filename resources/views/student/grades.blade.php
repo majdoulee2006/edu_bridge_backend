@@ -77,6 +77,64 @@
         gap: 1rem;
     }
     .grade-item-row:last-child { margin-bottom: 0; }
+    .grades-overview-banner {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 1.5rem;
+        padding: 1.75rem 2rem;
+        margin-bottom: 2rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+    html.dark .grades-overview-banner,
+    [data-theme="dark"] .grades-overview-banner {
+        background: linear-gradient(135deg, #18181b, #27272a);
+        border-color: #3f3f46;
+        color: #ffffff;
+    }
+    .grades-avg-badge {
+        width: 76px; height: 76px;
+        border-radius: 50%;
+        background: var(--accent-color);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; font-weight: 900;
+        color: #1a1a1a;
+        flex-shrink: 0;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+    .grades-overview-title {
+        font-size: 1.25rem; font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    html.dark .grades-overview-title,
+    [data-theme="dark"] .grades-overview-title {
+        color: var(--accent-color);
+    }
+    .grades-overview-subtitle {
+        font-size: 0.88rem;
+        color: var(--text-secondary);
+        margin-top: 0.35rem;
+    }
+    html.dark .grades-overview-subtitle,
+    [data-theme="dark"] .grades-overview-subtitle {
+        color: #a1a1aa;
+    }
+
+    .stat-highlight-val {
+        font-size: 1.6rem;
+        font-weight: 900;
+        color: #92400e;
+        margin-top: 0.2rem;
+    }
+    html.dark .stat-highlight-val,
+    [data-theme="dark"] .stat-highlight-val {
+        color: var(--accent-color);
+    }
+
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(-5px); }
         to   { opacity: 1; transform: translateY(0); }
@@ -97,11 +155,8 @@
             <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">عرض شامل لكافة المقررات والعلامات والحالة الأكاديمية</p>
         </div>
         <div style="display: flex; gap: 0.75rem;">
-            <a href="{{ route('student.academic_card.pdf') }}" target="_blank" style="background: #ef4444; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 10px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
-                <i class="fa-solid fa-file-pdf"></i> تصدير PDF
-            </a>
-            <a href="{{ route('student.academic_card.excel') }}" target="_blank" style="background: #10b981; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 10px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
-                <i class="fa-solid fa-file-excel"></i> تصدير Excel
+            <a href="{{ route('student.academic_card.pdf') }}" target="_blank" style="background: var(--accent-color, #eab308); color: #000; border: none; padding: 0.65rem 1.15rem; border-radius: 12px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(234, 179, 8, 0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                <i class="fa-solid fa-eye"></i> معاينة كشف الدرجات والسجل المعتمد
             </a>
         </div>
     </div>
@@ -110,7 +165,7 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
         <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
             <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">المعدل التراكمي</div>
-            <div style="font-size: 1.6rem; font-weight: 900; color: var(--accent-color); margin-top: 0.2rem;">{{ $academicCardData['summary']['average'] ?? 0 }}%</div>
+            <div class="stat-highlight-val">{{ $academicCardData['summary']['average'] ?? 0 }}%</div>
         </div>
         <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
             <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">المواد المجتازة</div>
@@ -169,13 +224,13 @@
 @endif
 
 {{-- Overview Card --}}
-<div style="background: linear-gradient(135deg, #1a2633, #243447); border-radius: 1.5rem; padding: 1.75rem 2rem; margin-bottom: 2rem; color: white; display: flex; align-items: center; gap: 1.5rem; box-shadow: var(--shadow);">
-    <div style="width: 76px; height: 76px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; font-weight: 900; color: #1a1a1a; flex-shrink: 0;">
+<div class="grades-overview-banner">
+    <div class="grades-avg-badge">
         {{ $avgGrade > 0 ? $avgGrade . '%' : '--' }}
     </div>
     <div>
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--accent-color); margin: 0;">متوسط الدرجات الكلي</h3>
-        <p style="font-size: 0.88rem; opacity: 0.8; margin-top: 0.35rem;">موزع على {{ count($courseGradesData) }} مواد دراسية مسجلة</p>
+        <h3 class="grades-overview-title">متوسط الدرجات الكلي</h3>
+        <p class="grades-overview-subtitle">موزع على {{ count($courseGradesData) }} مواد دراسية مسجلة</p>
     </div>
 </div>
 

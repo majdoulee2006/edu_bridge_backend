@@ -1,113 +1,441 @@
 @extends('layouts.student')
 @section('title', 'جدولي الدراسي')
-@section('subtitle', 'جدول المحاضرات الأسبوعي')
+@section('subtitle', 'جدول المحاضرات والامتحانات')
 
 @push('styles')
 <style>
-    /* ===== Timetable Grid ===== */
-    .timetable-wrapper {
-        overflow-x: auto;
-        border-radius: 1.25rem;
-        box-shadow: var(--shadow);
-        margin-bottom: 2rem;
-    }
-
-    .timetable {
-        width: 100%;
-        min-width: 650px;
-        border-collapse: separate;
-        border-spacing: 0;
+    /* ===== Custom Tab Bar (مثل تطبيق الموبايل) ===== */
+    .schedule-tab-bar {
+        display: flex;
         background: var(--bg-secondary);
-        border-radius: 1.25rem;
-        overflow: hidden;
+        border: 1px solid var(--border-color);
+        padding: 5px;
+        border-radius: 9999px;
+        margin-bottom: 1.75rem;
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
     }
 
-    /* Header row — days */
-    .timetable thead th {
-        background: #1a2633;
-        color: var(--accent-color);
-        font-weight: 800;
-        font-size: 0.9rem;
-        padding: 1rem 0.75rem;
-        text-align: center;
-        border-bottom: 2px solid var(--accent-color);
-    }
-    .timetable thead th:first-child {
-        background: #111b26;
+    .tab-pill-btn {
+        flex: 1;
+        padding: 10px 18px;
+        border-radius: 9999px;
+        border: none;
+        background: transparent;
         color: var(--text-secondary);
-        font-size: 0.82rem;
+        font-family: inherit;
+        font-size: 0.92rem;
         font-weight: 700;
-        width: 90px;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
 
-    /* Time column */
-    .timetable tbody td.time-col {
-        background: var(--bg-primary);
-        color: var(--accent-color);
-        font-weight: 800;
-        font-size: 0.82rem;
-        text-align: center;
-        padding: 0.6rem 0.5rem;
-        border-bottom: 1px solid var(--border-color);
-        white-space: nowrap;
-        vertical-align: middle;
-        min-width: 80px;
-    }
-
-    /* Regular cells */
-    .timetable tbody td.day-cell {
-        padding: 0.4rem;
-        border-bottom: 1px solid var(--border-color);
-        border-right: 1px solid var(--border-color);
-        vertical-align: middle;
-        min-width: 120px;
-        position: relative;
-    }
-    .timetable tbody tr:last-child td { border-bottom: none; }
-
-    /* Course block inside cell */
-    .course-block {
+    .tab-pill-btn.active {
         background: var(--accent-color);
-        color: #1a1a1a;
-        border-radius: 0.65rem;
-        padding: 0.5rem 0.65rem;
-        font-size: 0.78rem;
-        font-weight: 700;
-        line-height: 1.4;
+        color: #101924;
+        font-weight: 800;
+        box-shadow: var(--glow-shadow);
+    }
+
+    /* ===== Days Circles Row (شريط الأيام الدائري) ===== */
+    .day-circles-container {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        overflow-x: auto;
+        padding: 6px 4px 16px;
+        margin-bottom: 1.5rem;
+        scrollbar-width: none;
+    }
+    .day-circles-container::-webkit-scrollbar { display: none; }
+
+    .day-circle-btn {
+        width: 72px;
+        height: 72px;
+        min-width: 72px;
+        border-radius: 50%;
         display: flex;
         flex-direction: column;
-        gap: 0.15rem;
-    }
-    .course-block .cb-name { font-size: 0.82rem; font-weight: 800; }
-    .course-block .cb-info { font-size: 0.72rem; opacity: 0.75; }
-
-    /* Color variants */
-    .cb-blue  { background: hsl(210,80%,92%); color: hsl(210,60%,25%); }
-    .cb-green { background: hsl(150,70%,88%); color: hsl(150,50%,22%); }
-    .cb-purple{ background: hsl(270,70%,92%); color: hsl(270,50%,28%); }
-    .cb-orange{ background: hsl(30,80%,90%);  color: hsl(30,55%,28%);  }
-    .cb-red   { background: hsl(0,70%,90%);   color: hsl(0,50%,30%);   }
-    .cb-teal  { background: hsl(180,60%,88%); color: hsl(180,45%,22%); }
-    .cb-yellow{ background: var(--accent-color); color: #1a1a1a; }
-
-    /* Empty cell */
-    .empty-cell { color: var(--border-color); text-align: center; font-size: 1rem; }
-
-    /* ===== Exams ===== */
-    .exam-card {
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 1.5px solid var(--border-color);
         background: var(--bg-secondary);
-        border-radius: 1rem;
-        padding: 1rem 1.25rem;
-        margin-bottom: 0.6rem;
-        display: flex; align-items: center; gap: 1rem;
-        box-shadow: var(--shadow);
-        border-right: 4px solid #ef4444;
+        color: var(--text-secondary);
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 0.88rem;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
     }
-    .exam-icon {
-        background: #fee2e2; color: #ef4444;
-        width: 44px; height: 44px; border-radius: 0.75rem;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1rem; flex-shrink: 0;
+
+    .day-circle-btn:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent-color);
+    }
+
+    .day-circle-btn.active {
+        background: var(--accent-color);
+        color: #101924;
+        font-weight: 800;
+        border-color: var(--accent-color);
+        box-shadow: var(--glow-shadow);
+        transform: translateY(-2px);
+    }
+
+    .day-circle-btn .day-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        margin-top: 3px;
+        opacity: 0.8;
+    }
+
+    /* ===== Day Subheader ===== */
+    .day-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .day-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .day-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .btn-dark-export {
+        background: #1e1e1e;
+        color: #ffffff;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s;
+    }
+    .btn-dark-export:hover {
+        background: #2a2a2a;
+        transform: translateY(-1px);
+    }
+
+    .day-count-badge {
+        padding: 6px 14px;
+        border-radius: 9999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    /* ===== Timeline & Class Cards (نظام التايم لاين والكروت الفاخرة) ===== */
+    .day-timeline-wrapper {
+        display: none;
+    }
+    .day-timeline-wrapper.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .timeline-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-width: 820px;
+    }
+
+    .timeline-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.25rem;
+        cursor: pointer;
+    }
+
+    .timeline-time-col {
+        width: 100px;
+        min-width: 100px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .time-badge {
+        font-weight: 800;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        padding: 4px 8px;
+        border-radius: 10px;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .timeline-item.is-selected .time-badge {
+        background: var(--accent-color);
+        color: #101924;
+    }
+
+    .time-period {
+        font-size: 0.74rem;
+        color: var(--text-secondary);
+        margin-top: 2px;
+    }
+
+    .timeline-connector {
+        width: 2px;
+        height: 70px;
+        background: var(--border-color);
+        margin-top: 8px;
+    }
+
+    .timeline-card-col {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .class-card {
+        background: var(--bg-secondary);
+        border-radius: 22px;
+        padding: 1.25rem 1.4rem;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+        border: 2px solid transparent;
+        transition: all 0.25s ease;
+    }
+
+    html:not(.dark) .class-card {
+        background: #ffffff;
+        border-color: #f1f5f9;
+    }
+
+    .timeline-item:hover .class-card,
+    .timeline-item.is-selected .class-card {
+        border-color: var(--accent-color);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        transform: translateY(-1px);
+    }
+
+    .card-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .card-duration-tag {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 10px;
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .card-icon-bubble {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: rgba(59, 130, 246, 0.12);
+        color: #3b82f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+
+    .card-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 0.85rem;
+    }
+
+    .card-bottom-row {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+    }
+
+    .card-info-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .empty-day-state {
+        text-align: center;
+        padding: 3.5rem 1rem;
+        background: var(--bg-secondary);
+        border-radius: 1.5rem;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+    }
+    .empty-day-state i {
+        font-size: 2.75rem;
+        opacity: 0.35;
+        margin-bottom: 0.85rem;
+        display: block;
+    }
+    .empty-day-state p {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    /* ===== Exams View (كروت الامتحانات مثل الموبايل) ===== */
+    .exam-cards-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-width: 820px;
+    }
+
+    .exam-mobile-card {
+        background: var(--bg-secondary);
+        border-radius: 20px;
+        padding: 1.25rem 1.4rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--border-color);
+        transition: all 0.2s;
+    }
+
+    html:not(.dark) .exam-mobile-card {
+        background: #ffffff;
+    }
+
+    .exam-mobile-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .exam-time-tag {
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: var(--text-secondary);
+        min-width: 65px;
+    }
+
+    .exam-info-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .exam-type-pill {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.12);
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-bottom: 4px;
+    }
+
+    .exam-subject-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+    }
+
+    .exam-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+
+    .exam-meta-row span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .exam-date-box {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 8px 16px;
+        text-align: center;
+        min-width: 78px;
+    }
+
+    .exam-month {
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+    }
+
+    .exam-day-num {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+
+    .exam-day-name {
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+    }
+
+    .exam-notice-box {
+        margin-top: 1.5rem;
+        padding: 1rem 1.25rem;
+        border-radius: 16px;
+        background: rgba(245, 158, 11, 0.08);
+        border: 1.5px solid rgba(245, 158, 11, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        color: #b45309;
+        font-size: 0.85rem;
+        font-weight: 700;
+        max-width: 820px;
+    }
+
+    html.dark .exam-notice-box {
+        color: #fde047;
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.25);
     }
 </style>
 @endpush
@@ -115,239 +443,287 @@
 @section('content')
 
 @php
-    // Define time slots (generate from schedule data)
-    $allTimes = $schedules->map(function($s) {
-        return \Carbon\Carbon::parse($s->start_time)->format('H:i')
-               . ' - '
-               . \Carbon\Carbon::parse($s->end_time)->format('H:i');
-    })->unique()->sort()->values();
+    $weekDaysMap = [
+        'Sunday'    => 'الأحد',
+        'Monday'    => 'الاثنين',
+        'Tuesday'   => 'الثلاثاء',
+        'Wednesday' => 'الأربعاء',
+        'Thursday'  => 'الخميس',
+    ];
 
-    $grouped = $schedules->groupBy('day');
-
-    $colors = ['cb-yellow','cb-blue','cb-green','cb-purple','cb-orange','cb-red','cb-teal'];
-    // Assign consistent color per course
-    $courseColors = [];
-    $ci = 0;
-    foreach($schedules as $s){
-        if(!isset($courseColors[$s->course_id])){
-            $courseColors[$s->course_id] = $colors[$ci % count($colors)];
-            $ci++;
-        }
+    $groupedSchedules = [];
+    foreach ($weekDaysMap as $enDay => $arDay) {
+        $groupedSchedules[$enDay] = $schedules->filter(function($s) use ($enDay, $arDay) {
+            $d = trim($s->day);
+            return strcasecmp($d, $enDay) === 0 || $d === $arDay;
+        })->sortBy('start_time')->values();
     }
+
+    // تحديد اليوم الحالي تلقائياً
+    $currentDayName = now()->format('l'); // Sunday, Monday...
+    $dayKeys = array_keys($weekDaysMap);
+    $defaultDayKey = in_array($currentDayName, $dayKeys) ? $currentDayName : 'Sunday';
 @endphp
 
-{{-- ===== Header & Download Actions ===== --}}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-    <div>
-        <h3 style="font-weight: 800; font-size: 1.2rem; margin: 0; color: var(--text-primary);">
-            <i class="fa-solid fa-calendar-days" style="color: var(--accent-color);"></i> الجدول الدراسي الأسبوعي
-        </h3>
-    </div>
-    @if($schedules->isNotEmpty())
-    <div style="display: flex; gap: 0.75rem;">
-        <button onclick="downloadScheduleAsImage()" 
-                style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.6rem 1.1rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
-            <i class="fa-solid fa-image" style="color: #3b82f6;"></i> تنزيل كـ صورة
-        </button>
-        <button onclick="downloadScheduleAsPDF()" 
-                style="background: var(--accent-color); color: #1a1a1a; border: none; padding: 0.6rem 1.1rem; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
-            <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> تنزيل كـ PDF
-        </button>
-    </div>
-    @endif
+{{-- ===== التاب العلوي مثل تطبيق الموبايل ===== --}}
+<div class="schedule-tab-bar">
+    <button type="button" class="tab-pill-btn active" id="tab-classes-btn" onclick="switchScheduleTab('classes')">
+        <i class="fa-solid fa-graduation-cap"></i> جدول الحصص
+    </button>
+    <button type="button" class="tab-pill-btn" id="tab-exams-btn" onclick="switchScheduleTab('exams')">
+        <i class="fa-solid fa-file-pen"></i> جدول الامتحانات
+    </button>
 </div>
 
-{{-- ===== Timetable Grid ===== --}}
-@if($schedules->isNotEmpty())
-<div class="timetable-wrapper" id="schedule-export-area" style="background: var(--bg-secondary); padding: 0.5rem; border-radius: 1.25rem;">
-    <table class="timetable">
-        <thead>
-            <tr>
-                <th>الوقت</th>
-                @foreach($days as $dayEn => $dayAr)
-                    @if($dayEn !== 'Friday' && $dayEn !== 'Saturday')
-                        <th>{{ $dayAr }}</th>
-                    @endif
-                @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($allTimes as $slot)
+{{-- ============================================================== --}}
+{{-- 1. واجهة جدول الحصص (نفس تصميم الموبايل تماماً) --}}
+{{-- ============================================================== --}}
+<div id="classes-schedule-section">
+    {{-- شريط الأيام الدائرية --}}
+    <div class="day-circles-container">
+        @foreach($weekDaysMap as $enDay => $arDay)
             @php
-                list($slotStart, $slotEnd) = array_map('trim', explode('-', $slot));
+                $count = count($groupedSchedules[$enDay] ?? []);
             @endphp
-            <tr>
-                <td class="time-col">
-                    <div>{{ $slotStart }}</div>
-                    <div style="font-weight:400; font-size:0.72rem; opacity:0.7;">{{ $slotEnd }}</div>
-                </td>
-                @foreach($days as $dayEn => $dayAr)
-                    @if($dayEn !== 'Friday' && $dayEn !== 'Saturday')
-                    <td class="day-cell">
-                        @php
-                            $daySchedules = $grouped->get($dayEn) ?? $grouped->get($dayAr) ?? collect();
-                            $match = $daySchedules->first(function($s) use($slotStart){
-                                return \Carbon\Carbon::parse($s->start_time)->format('H:i') === $slotStart;
-                            });
-                        @endphp
-                        @if($match)
-                            <div class="course-block {{ $courseColors[$match->course_id] ?? 'cb-yellow' }}">
-                                <span class="cb-name">{{ $match->course_title }}</span>
-                                @if($match->teacher_name ?? false)
-                                    <span class="cb-info"><i class="fa-solid fa-user" style="font-size:0.65rem;"></i> {{ $match->teacher_name }}</span>
-                                @endif
-                                @if($match->room ?? false)
-                                    <span class="cb-info"><i class="fa-solid fa-door-open" style="font-size:0.65rem;"></i> {{ $match->room }}</span>
-                                @endif
-                            </div>
-                        @else
-                            <span class="empty-cell">—</span>
-                        @endif
-                    </td>
-                    @endif
-                @endforeach
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-</div>
-@else
-<div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary); margin-bottom: 2rem;">
-    <i class="fa-solid fa-calendar-xmark" style="font-size: 2.5rem; opacity: 0.4; display: block; margin-bottom: 0.75rem;"></i>
-    لا يوجد جدول دراسي محدد حالياً
-</div>
-@endif
-
-{{-- ===== Exams Grid & Download Actions ===== --}}
-<div id="exams-section" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; scroll-margin-top: 2rem;">
-    <div>
-        <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: var(--text-primary);">
-            <i class="fa-solid fa-pencil" style="color: #ef4444;"></i> مواعيد الامتحانات
-        </h3>
+            <button type="button" 
+                    class="day-circle-btn {{ $enDay === $defaultDayKey ? 'active' : '' }}" 
+                    id="day-btn-{{ $enDay }}" 
+                    onclick="selectDay('{{ $enDay }}', '{{ $arDay }}', {{ $count }})">
+                <span class="day-name">{{ $arDay }}</span>
+                @if($count > 0)
+                    <span class="day-dot"></span>
+                @endif
+            </button>
+        @endforeach
     </div>
-    @if($exams->isNotEmpty())
-    <div style="display: flex; gap: 0.75rem;">
-        <button onclick="downloadExamsAsImage()" 
-                style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
-            <i class="fa-solid fa-image" style="color: #3b82f6;"></i> تنزيل كـ صورة
-        </button>
-        <button onclick="downloadExamsAsPDF()" 
-                style="background: var(--accent-color); color: #1a1a1a; border: none; padding: 0.5rem 1rem; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
-            <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> تنزيل كـ PDF
-        </button>
-    </div>
-    @endif
-</div>
 
-@if($exams->isNotEmpty())
-<div class="timetable-wrapper" id="exams-export-area" style="background: var(--bg-secondary); padding: 0.5rem; border-radius: 1.25rem;">
-    <table class="timetable">
-        <thead>
-            <tr>
-                <th style="text-align:right; padding-right:1.25rem;">المادة</th>
-                <th>التاريخ</th>
-                <th>الوقت</th>
-                <th>القاعة</th>
-                <th>الحالة</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($exams as $exam)
-            @php
-                $daysLeft = now()->diffInDays(\Carbon\Carbon::parse($exam->exam_date), false);
-                if ($daysLeft < 0) {
-                    $statusText = 'انتهى';
-                    $statusClass = 'background:#f3f4f6; color:var(--text-secondary)';
-                } elseif ($daysLeft == 0) {
-                    $statusText = 'اليوم';
-                    $statusClass = 'background:#fee2e2; color:#ef4444';
-                } elseif ($daysLeft <= 3) {
-                    $statusText = 'بعد ' . $daysLeft . ' يوم';
-                    $statusClass = 'background:#fee2e2; color:#ef4444';
-                } else {
-                    $statusText = 'بعد ' . $daysLeft . ' يوم';
-                    $statusClass = 'background:var(--accent-color); color:#1a1a1a';
-                }
-            @endphp
-            <tr>
-                <td class="day-cell" style="padding: 0.875rem 1.25rem; text-align:right;">
-                    <div style="display:flex; align-items:center; gap:0.6rem;">
-                        <div style="width:10px; height:10px; border-radius:50%; background:#ef4444; flex-shrink:0;"></div>
-                        <span style="font-weight:700; font-size:0.9rem;">{{ $exam->course_title }}</span>
+    {{-- الترويسة وأزرار التصدير --}}
+    <div class="day-header-row">
+        <div class="day-title-wrap">
+            <h4 class="day-title" id="current-day-title">
+                {{ $defaultDayKey === $currentDayName ? 'برنامج اليوم (' . $weekDaysMap[$defaultDayKey] . ')' : 'برنامج ' . $weekDaysMap[$defaultDayKey] }}
+            </h4>
+            <div class="export-actions">
+                <button type="button" onclick="downloadScheduleAsPDF()" class="btn-dark-export">
+                    <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> PDF
+                </button>
+                <button type="button" onclick="downloadScheduleAsImage()" class="btn-dark-export">
+                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> صورة
+                </button>
+            </div>
+        </div>
+        <div class="day-count-badge" id="current-day-count">
+            {{ count($groupedSchedules[$defaultDayKey] ?? []) }} حصص
+        </div>
+    </div>
+
+    {{-- خط المحاضرات الزمني والبطاقات (Timelines) --}}
+    <div id="schedule-export-area" style="padding: 4px; border-radius: 20px;">
+        @foreach($weekDaysMap as $enDay => $arDay)
+            <div class="day-timeline-wrapper {{ $enDay === $defaultDayKey ? 'active' : '' }}" id="timeline-{{ $enDay }}">
+                @if($groupedSchedules[$enDay]->isEmpty())
+                    <div class="empty-day-state">
+                        <i class="fa-regular fa-calendar-xmark"></i>
+                        <p>لا توجد حصص مجدولة ليوم {{ $arDay }}</p>
                     </div>
-                </td>
-                <td class="day-cell" style="text-align:center;">
-                    <div style="font-weight:700; font-size:0.85rem;">{{ \Carbon\Carbon::parse($exam->exam_date)->format('d/m/Y') }}</div>
-                    <div style="color:var(--text-secondary); font-size:0.75rem;">{{ \Carbon\Carbon::parse($exam->exam_date)->translatedFormat('l') ?: \Carbon\Carbon::parse($exam->exam_date)->format('D') }}</div>
-                </td>
-                <td class="day-cell" style="text-align:center;">
-                    @if($exam->start_time ?? false)
-                        <div style="font-weight:700; font-size:0.85rem;">{{ \Carbon\Carbon::parse($exam->start_time)->format('H:i') }}</div>
-                    @else
-                        <span style="color:var(--text-secondary);">—</span>
-                    @endif
-                </td>
-                <td class="day-cell" style="text-align:center;">
-                    @if($exam->room ?? false)
-                        <div style="font-weight:700; font-size:0.85rem;">
-                            <i class="fa-solid fa-door-open" style="color:var(--accent-color);"></i>
-                            {{ $exam->room }}
+                @else
+                    <div class="timeline-list">
+                        @foreach($groupedSchedules[$enDay] as $index => $lec)
+                            @php
+                                $start = !empty($lec->start_time) ? \Carbon\Carbon::parse($lec->start_time)->format('h:i') : '';
+                                $startPeriod = !empty($lec->start_time) ? (\Carbon\Carbon::parse($lec->start_time)->format('A') === 'AM' ? 'ص' : 'م') : '';
+                                $end = !empty($lec->end_time) ? \Carbon\Carbon::parse($lec->end_time)->format('h:i') : '';
+                                $endPeriod = !empty($lec->end_time) ? (\Carbon\Carbon::parse($lec->end_time)->format('A') === 'AM' ? 'ص' : 'م') : '';
+                                $duration = (!empty($lec->start_time) && !empty($lec->end_time)) ? round((strtotime($lec->end_time) - strtotime($lec->start_time)) / 60) . ' دقيقة' : 'محاضرة';
+                                $isLast = $index === count($groupedSchedules[$enDay]) - 1;
+                            @endphp
+                            <div class="timeline-item {{ $index === 0 ? 'is-selected' : '' }}" onclick="highlightLecture(this)">
+                                <div class="timeline-time-col">
+                                    <div class="time-badge">{{ $start }} - {{ $end }}</div>
+                                    <div class="time-period">{{ $startPeriod }} - {{ $endPeriod }}</div>
+                                    @if(!$isLast)
+                                        <div class="timeline-connector"></div>
+                                    @endif
+                                </div>
+                                <div class="timeline-card-col">
+                                    <div class="class-card">
+                                        <div class="card-top-row">
+                                            <span class="card-duration-tag"><i class="fa-regular fa-clock"></i> {{ $duration }}</span>
+                                            <div class="card-icon-bubble">
+                                                <i class="fa-solid fa-book-open"></i>
+                                            </div>
+                                        </div>
+                                        <div class="card-title">{{ $lec->course_title }}</div>
+                                        <div class="card-bottom-row">
+                                            @if(!empty($lec->teacher_name))
+                                                <span class="card-info-item">
+                                                    <i class="fa-regular fa-user"></i> {{ $lec->teacher_name }}
+                                                </span>
+                                            @endif
+                                            @if(!empty($lec->room))
+                                                <span class="card-info-item">
+                                                    <i class="fa-solid fa-location-dot"></i> {{ $lec->room }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @endforeach
+    </div>
+</div>
+
+{{-- ============================================================== --}}
+{{-- 2. واجهة جدول الامتحانات (نفس تصميم الموبايل تماماً) --}}
+{{-- ============================================================== --}}
+<div id="exams-schedule-section" style="display: none;">
+    <div class="day-header-row">
+        <div class="day-title-wrap">
+            <h4 class="day-title">الامتحانات النهائية</h4>
+            <div class="export-actions">
+                <button type="button" onclick="downloadExamsAsPDF()" class="btn-dark-export">
+                    <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> PDF
+                </button>
+                <button type="button" onclick="downloadExamsAsImage()" class="btn-dark-export">
+                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> صورة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="exams-export-area" style="padding: 4px; border-radius: 20px;">
+        @if($exams->isEmpty())
+            <div class="empty-day-state">
+                <i class="fa-solid fa-file-circle-xmark"></i>
+                <p>لا يوجد برنامج امتحانات متاح حالياً</p>
+            </div>
+        @else
+            <div class="exam-cards-list">
+                @foreach($exams as $exam)
+                    @php
+                        $cDate = \Carbon\Carbon::parse($exam->exam_date);
+                        $dayNum = $cDate->format('d');
+                        $dayName = $cDate->translatedFormat('l') ?: $cDate->format('D');
+                        $monthName = $cDate->translatedFormat('F') ?: $cDate->format('M');
+                        $timeStr = !empty($exam->start_time ?? null) ? \Carbon\Carbon::parse($exam->start_time)->format('H:i') : $cDate->format('h:i A');
+                        $duration = '120 دقيقة';
+                    @endphp
+                    <div class="exam-mobile-card">
+                        <div class="exam-time-tag">{{ $timeStr }}</div>
+                        <div class="exam-info-body">
+                            <span class="exam-type-pill">نهائي</span>
+                            <div class="exam-subject-title">{{ $exam->course_title }}</div>
+                            <div class="exam-meta-row">
+                                <span><i class="fa-regular fa-clock"></i> {{ $duration }}</span>
+                                <span><i class="fa-solid fa-location-dot"></i> {{ $exam->room ?? 'القاعة الامتحانية' }}</span>
+                            </div>
                         </div>
-                    @else
-                        <span style="color:var(--text-secondary);">—</span>
-                    @endif
-                </td>
-                <td class="day-cell" style="text-align:center;">
-                    <span style="font-size:0.78rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:2rem; white-space:nowrap; {{ $statusClass }}">
-                        {{ $statusText }}
-                    </span>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+                        <div class="exam-date-box">
+                            <div class="exam-month">{{ $monthName }}</div>
+                            <div class="exam-day-num">{{ $dayNum }}</div>
+                            <div class="exam-day-name">{{ $dayName }}</div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="exam-notice-box">
+                <i class="fa-solid fa-circle-info" style="font-size: 1.1rem; flex-shrink: 0;"></i>
+                <div>يرجى الحضور قبل موعد الامتحان بـ 15 دقيقة على الأقل وإحضار البطاقة الجامعية.</div>
+            </div>
+        @endif
+    </div>
 </div>
-@else
-<div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
-    <i class="fa-solid fa-pencil" style="font-size: 2rem; opacity: 0.4; display: block; margin-bottom: 0.5rem;"></i>
-    لا توجد امتحانات مجدولة حالياً
-</div>
-@endif
 
 @endsection
 
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="{{ asset('js/html2canvas.min.js') }}"></script>
+<script src="{{ asset('js/html2pdf.bundle.min.js') }}"></script>
 <script>
+// تبديل التاب بين الحصص والامتحانات
+function switchScheduleTab(tab) {
+    const classesBtn = document.getElementById('tab-classes-btn');
+    const examsBtn = document.getElementById('tab-exams-btn');
+    const classesSec = document.getElementById('classes-schedule-section');
+    const examsSec = document.getElementById('exams-schedule-section');
+
+    if (tab === 'classes') {
+        classesBtn.classList.add('active');
+        examsBtn.classList.remove('active');
+        classesSec.style.display = 'block';
+        examsSec.style.display = 'none';
+    } else {
+        examsBtn.classList.add('active');
+        classesBtn.classList.remove('active');
+        classesSec.style.display = 'none';
+        examsSec.style.display = 'block';
+    }
+}
+
+// اختيار اليوم من الشريط الدائري
+function selectDay(enDay, arDay, count) {
+    // تحديث الأزرار الدائرية
+    document.querySelectorAll('.day-circle-btn').forEach(btn => btn.classList.remove('active'));
+    const targetBtn = document.getElementById('day-btn-' + enDay);
+    if (targetBtn) targetBtn.classList.add('active');
+
+    // إظهار تايم لاين اليوم المحدد وإخفاء الباقي
+    document.querySelectorAll('.day-timeline-wrapper').forEach(wrap => wrap.classList.remove('active'));
+    const targetTimeline = document.getElementById('timeline-' + enDay);
+    if (targetTimeline) targetTimeline.classList.add('active');
+
+    // تحديث الترويسة
+    const nowDayEn = '{{ $currentDayName }}';
+    const titleEl = document.getElementById('current-day-title');
+    const countEl = document.getElementById('current-day-count');
+
+    if (titleEl) {
+        titleEl.textContent = (enDay === nowDayEn) ? `برنامج اليوم (${arDay})` : `برنامج ${arDay}`;
+    }
+    if (countEl) {
+        countEl.textContent = `${count} حصص`;
+    }
+}
+
+// تمييز الكرت المختار عند الضغط
+function highlightLecture(element) {
+    document.querySelectorAll('.timeline-item').forEach(el => el.classList.remove('is-selected'));
+    element.classList.add('is-selected');
+}
+
+// تحميل بصيغة صورة أو PDF
+function getExportBgColor() {
+    return document.documentElement.classList.contains('dark') ? '#121214' : '#ffffff';
+}
+
 function downloadScheduleAsImage() {
-    const target = document.getElementById('schedule-export-area');
+    const target = document.querySelector('.day-timeline-wrapper.active') || document.getElementById('schedule-export-area');
     if (!target) return;
 
-    html2canvas(target, { 
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: '#111b26'
-    }).then(canvas => {
+    html2canvas(target, { scale: 2, useCORS: true, backgroundColor: getExportBgColor() }).then(canvas => {
         const link = document.createElement('a');
-        link.download = 'الجدول_الدراسي.png';
+        link.download = 'جدول_الحصص.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
     });
 }
 
 function downloadScheduleAsPDF() {
-    const target = document.getElementById('schedule-export-area');
+    const target = document.querySelector('.day-timeline-wrapper.active') || document.getElementById('schedule-export-area');
     if (!target) return;
 
     const opt = {
-        margin:       0.4,
-        filename:     'الجدول_الدراسي.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#111b26' },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        margin: 0.4,
+        filename: 'جدول_الحصص.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: getExportBgColor() },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
-
     html2pdf().set(opt).from(target).save();
 }
 
@@ -355,11 +731,7 @@ function downloadExamsAsImage() {
     const target = document.getElementById('exams-export-area');
     if (!target) return;
 
-    html2canvas(target, { 
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: '#111b26'
-    }).then(canvas => {
+    html2canvas(target, { scale: 2, useCORS: true, backgroundColor: getExportBgColor() }).then(canvas => {
         const link = document.createElement('a');
         link.download = 'جدول_الامتحانات.png';
         link.href = canvas.toDataURL('image/png');
@@ -372,35 +744,13 @@ function downloadExamsAsPDF() {
     if (!target) return;
 
     const opt = {
-        margin:       0.4,
-        filename:     'جدول_الامتحانات.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#111b26' },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        margin: 0.4,
+        filename: 'جدول_الامتحانات.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: getExportBgColor() },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
-
     html2pdf().set(opt).from(target).save();
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.location.hash === '#exams-section' || window.location.search.includes('tab=exams')) {
-        const target = document.getElementById('exams-section');
-        if (target) {
-            setTimeout(() => {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                const exportArea = document.getElementById('exams-export-area');
-                if (exportArea) {
-                    exportArea.style.transition = 'box-shadow 0.4s ease, border 0.4s ease';
-                    exportArea.style.boxShadow = '0 0 25px rgba(239, 68, 68, 0.4)';
-                    exportArea.style.border = '2px solid #ef4444';
-                    setTimeout(() => {
-                        exportArea.style.boxShadow = 'none';
-                        exportArea.style.border = 'none';
-                    }, 2500);
-                }
-            }, 300);
-        }
-    }
-});
 </script>
 @endpush

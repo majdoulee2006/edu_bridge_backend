@@ -35,7 +35,9 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        \Illuminate\Support\Facades\DB::statement("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'mysql') {
+            \Illuminate\Support\Facades\DB::statement("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+        }
         
         \Illuminate\Support\Facades\RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
             // 🐛 كانت هون ->id بينما مفتاح المستخدم الحقيقي هو user_id (primary
@@ -55,14 +57,28 @@ class AppServiceProvider extends ServiceProvider
 
         // منع تسجيل الدخول المتزامن على الويب: كل تسجيل دخول ناجح (عبر
         // Auth::login أو Auth::attempt من أي controller) يسجّل جلسته كـ
-        // "الجلسة الحالية" الوحيدة الصالحة للحساب، فتُطرد أي جلسة ويب سابقة
-        // (راجع EnsureSingleWebSession).
+        // "الجلسة الحالية" الوحيدة الصالحة للحساب (راجع EnsureSingleWebSession
+        // و SingleSessionGuard::isOccupied لمنطق الرفض عند تسجيل الدخول).
         \Illuminate\Support\Facades\Event::listen(
             \Illuminate\Auth\Events\Login::class,
             function (\Illuminate\Auth\Events\Login $event) {
                 if ($event->guard === 'web') {
                     $event->user->forceFill([
-                        'current_session_id' => request()->session()->getId(),
+                        'current_session_id'     => request()->session()->getId(),
+                        'session_last_active_at' => now(),
+                    ])->save();
+                }
+            }
+        );
+
+        // مسح بيانات الجلسة النشطة على الويب عند تسجيل الخروج
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Auth\Events\Logout::class,
+            function (\Illuminate\Auth\Events\Logout $event) {
+                if ($event->guard === 'web' && $event->user instanceof \App\Models\User) {
+                    $event->user->forceFill([
+                        'current_session_id'     => null,
+                        'session_last_active_at' => null,
                     ])->save();
                 }
             }

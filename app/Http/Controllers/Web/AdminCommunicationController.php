@@ -177,6 +177,10 @@ class AdminCommunicationController extends Controller
             ->where('user_id', Auth::id())
             ->update(['is_read' => true]);
 
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
+
         return redirect()->back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 

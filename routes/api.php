@@ -134,6 +134,9 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
     Route::post('/profile/send-otp', [AuthController::class, 'sendProfileOtp']);
     Route::post('/profile/verify-otp', [AuthController::class, 'verifyProfileOtp']);
 
+    // تصدير كشف علامات الطالب المعتمد (متاح للطلاب وأولياء الأمور والشؤون)
+    Route::get('/transcript/export-pdf', [\App\Http\Controllers\Api\AffairsController::class, 'exportCourseWeightsStudentPdf']);
+
     // مسار البروفايل
     Route::get('/user/profile', function (Request $request) {
         $user = $request->user();
@@ -349,6 +352,7 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/teachers',        [DepartmentHeadController::class, 'getTeachers']);
         Route::get('/report-requests',  [DepartmentHeadController::class, 'getReportRequests']);
         Route::post('/report-requests', [DepartmentHeadController::class, 'createReportRequest']);
+        Route::post('/report-requests/{id}/hod-notes',      [DepartmentHeadController::class, 'updateHodNotes']);
         Route::post('/report-requests/{id}/send-to-parent', [DepartmentHeadController::class, 'sendReportToParent']);
         Route::delete('/report-requests/{id}', [DepartmentHeadController::class, 'deleteReportRequest']);
 
@@ -495,6 +499,12 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/notifications', [NotificationController::class, 'getNotifications']);
         Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::delete('/notifications/{id}', [NotificationController::class, 'deleteNotification']);
+        Route::delete('/notifications/chat/{senderId}', [NotificationController::class, 'deleteChatNotifications']);
+        Route::delete('/teacher/notifications/{id}', [NotificationController::class, 'deleteNotification']);
+        Route::delete('/student/notifications/{id}', [NotificationController::class, 'deleteNotification']);
+        Route::delete('/hod/notifications/{id}', [NotificationController::class, 'deleteNotification']);
+        Route::delete('/affairs/notifications/{id}', [NotificationController::class, 'deleteNotification']);
         Route::put('/notifications/read-by-type', [NotificationController::class, 'markByTypeAndRelatedId']);
         Route::post('/notifications/toggle-mute', [NotificationController::class, 'toggleMute']);
     });

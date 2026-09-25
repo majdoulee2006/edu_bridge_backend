@@ -306,10 +306,11 @@ class ChatController extends Controller
         \DB::table('notifications')->insert([
             'user_id'    => $receiverId,
             'sender_id'  => $senderId,
+            'related_id' => $senderId,
             'title'      => $sender->full_name ?? 'رسالة جديدة',
             'message'    => $msgBody,
             'type'       => 'message',
-            'category'   => 'chat',
+            'category'   => 'administrative',
             'is_read'    => 0,
             'created_at' => now(),
             'updated_at' => now(),
@@ -317,6 +318,7 @@ class ChatController extends Controller
         \App\Services\FcmService::sendToUser($receiverId, $sender->full_name ?? 'رسالة جديدة', $msgBody, [
             'type' => 'message',
             'sender_id' => (string) $senderId,
+            'related_id' => (string) $senderId,
         ]);
 
         return response()->json(['status' => 'success', 'data' => $message], 201);
@@ -349,6 +351,21 @@ class ChatController extends Controller
             ->orderBy('created_at', 'desc')
             ->limit(200)
             ->get();
+
+        // تحديث حالة الرسائل الواردة إلى مقروءة وحذف إشعاراتها فور فتح المحادثة
+        \App\Models\Message::where('sender_id', $otherUserId)
+            ->where('receiver_id', $myId)
+            ->where('is_read', 0)
+            ->update(['is_read' => 1]);
+
+        \DB::table('notifications')
+            ->where('user_id', $myId)
+            ->where('type', 'message')
+            ->where(function ($q) use ($otherUserId) {
+                $q->where('sender_id', $otherUserId)
+                  ->orWhere('related_id', $otherUserId);
+            })
+            ->delete();
 
         return response()->json([
             'status' => 'success',
@@ -461,6 +478,16 @@ class ChatController extends Controller
             ->where('receiver_id', $myId)
             ->where('is_read', 0)
             ->update(['is_read' => 1]);
+
+        // 🧹 حذف كافة إشعارات الرسائل الواردة من هذا المرسل لهذا المستخدم فور قراءتها
+        \DB::table('notifications')
+            ->where('user_id', $myId)
+            ->where('type', 'message')
+            ->where(function ($q) use ($otherUserId) {
+                $q->where('sender_id', $otherUserId)
+                  ->orWhere('related_id', $otherUserId);
+            })
+            ->delete();
 
         broadcast(new \App\Events\MessagesMarkedAsRead($myId, $otherUserId))->toOthers();
 

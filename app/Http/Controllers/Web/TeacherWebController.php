@@ -1867,6 +1867,10 @@ class TeacherWebController extends Controller
             ->where('user_id', Auth::id())
             ->update(['is_read' => true]);
 
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json(['status' => 'success']);
+        }
+
         return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
     }
 
@@ -2843,5 +2847,11 @@ class TeacherWebController extends Controller
 
         $quiz->delete();
         return redirect()->route('teacher.quizzes')->with('success', 'تم حذف الاختبار');
+    }
+
+    public function settings()
+    {
+        $teacher = $this->getTeacher();
+        return view('teacher.settings', compact('teacher'));
     }
 }
