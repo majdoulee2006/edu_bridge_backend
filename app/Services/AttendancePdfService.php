@@ -51,22 +51,7 @@ class AttendancePdfService
         $activeSemester = DB::table('semesters')->where('is_active', true)->first();
         $semesterName = $activeSemester->name ?? 'الفصل الدراسي الأول (دورة الخريف)';
 
-        // 2. تصفية الجلسات والمقررات حسب النطاق (موادي أو دورتي الإشرافية)
-        $sessionQuery = DB::table('attendance_sessions')
-            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
-            ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
-            ->select(
-                'attendance_sessions.*',
-                'courses.course_id',
-                'courses.title as course_title',
-                'courses.year as course_year',
-                'lessons.lesson_id'
-            );
-
-        if ($startDate && $endDate) {
-            $sessionQuery->whereBetween('attendance_sessions.created_at', [$startDate, $endDate]);
-        }
-
+        // 2. تصفية المقررات المعنية حسب النطاق (موادي أو دورتي الإشرافية)
         $departmentName = 'هندسة وتكنولوجيا المعلومات';
         $advisorBranch = $teacher->advisor_branch;
         $advisorYear = $teacher->advisor_year;
@@ -84,7 +69,6 @@ class AttendancePdfService
             $courseYearNum = $yearMapRev[$advisorYear] ?? 1;
 
             if ($courseId) {
-                $sessionQuery->where('courses.course_id', $courseId);
                 $coursesList = DB::table('courses')->where('course_id', $courseId)->get();
             } else {
                 $validCourses = DB::table('courses')
@@ -93,7 +77,6 @@ class AttendancePdfService
                     ->where('courses.year', $courseYearNum)
                     ->pluck('courses.course_id')->toArray();
 
-                $sessionQuery->whereIn('courses.course_id', $validCourses);
                 $coursesList = DB::table('courses')->whereIn('course_id', $validCourses)->get();
             }
             if ($advisorBranch) $departmentName = $advisorBranch;
@@ -101,17 +84,15 @@ class AttendancePdfService
             // المواد الخاصة بالمعلم
             $myCourseIds = DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id')->toArray();
             if ($courseId) {
-                $sessionQuery->where('courses.course_id', $courseId);
                 $coursesList = DB::table('courses')->where('course_id', $courseId)->get();
             } else {
-                $sessionQuery->whereIn('courses.course_id', $myCourseIds);
                 $coursesList = DB::table('courses')->whereIn('course_id', $myCourseIds)->get();
             }
         }
 
-        $sessions = $sessionQuery->orderBy('attendance_sessions.created_at')->get();
+        $relevantCourseIds = $coursesList->pluck('course_id')->toArray();
 
-        // 3. تحديد نص بطاقات الفلترة
+        // 3. تحديد نص بطاقات الفلترة بدقة وبدون أي اختصار
         $filterScopeText = ($scope === 'advisor_class')
             ? 'مواد دورتي الإشرافية (مربي الدورة)'
             : 'المواد الخاصة بالمعلم';
@@ -193,10 +174,12 @@ class AttendancePdfService
                     })
                     ->where(function($query) use ($coursePrograms, $courseYearStr) {
                         $query->whereNotNull('enrollments.enrollment_id');
-                        if (!empty($coursePrograms) && $courseYearStr) {
+                        if (!empty($coursePrograms)) {
                             $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
-                                $q->whereIn('students.program_id', $coursePrograms)
-                                  ->where('users.academic_year', $courseYearStr);
+                                $q->whereIn('students.program_id', $coursePrograms);
+                                if ($courseYearStr) {
+                                    $q->where('users.academic_year', $courseYearStr);
+                                }
                             });
                         }
                     })
@@ -260,12 +243,35 @@ class AttendancePdfService
             }
         }
 
-        // 5. استخراج الأيام المنعقدة وسجلات الحضور
-        $lessonIds = $sessions->pluck('lesson_id')->toArray();
-        $attendances = DB::table('attendance')
-            ->whereIn('lesson_id', $lessonIds)
-            ->get();
+        // 5. استخراج الجلسات الفعلية وسجلات الحضور الحقيقية من قاعدة البيانات
+        $sessionsQuery = DB::table('attendance_sessions')
+            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
+            ->whereIn('lessons.course_id', $relevantCourseIds)
+            ->select('attendance_sessions.*', 'lessons.course_id', 'lessons.lesson_id');
 
+        if ($startDate && $endDate) {
+            $sessionsQuery->whereBetween('attendance_sessions.created_at', [$startDate, $endDate]);
+        }
+
+        $sessions = $sessionsQuery->get();
+        $sessionLessonIds = $sessions->pluck('lesson_id')->unique()->toArray();
+
+        // سجلات الحضور الحقيقية
+        $attQuery = DB::table('attendance')
+            ->join('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
+            ->whereIn('lessons.course_id', $relevantCourseIds)
+            ->select('attendance.*');
+
+        if ($startDate && $endDate) {
+            $attQuery->where(function($q) use ($startDate, $endDate) {
+                $q->whereBetween('attendance.attendance_date', [$startDate->toDateString(), $endDate->toDateString()])
+                  ->orWhereBetween('attendance.created_at', [$startDate, $endDate]);
+            });
+        }
+
+        $attendances = $attQuery->get();
+
+        // تجميع تواريخ الجلسات المنعقدة بدقة
         $datesConducted = [];
         $sessionDateMap = [];
         foreach ($sessions as $s) {
@@ -273,13 +279,21 @@ class AttendancePdfService
             $datesConducted[$d] = true;
             $sessionDateMap[$s->lesson_id] = $d;
         }
+        foreach ($attendances as $att) {
+            $d = $att->attendance_date ?: Carbon::parse($att->created_at)->toDateString();
+            if ($d) {
+                $datesConducted[$d] = true;
+            }
+        }
 
         $totalDays = count($datesConducted);
         if ($totalDays === 0) {
-            $totalDays = ($period === 'today' ? 1 : ($period === 'week' ? 5 : 20));
+            // إذا لم تنعقد أي جلسة في هذا اليوم أو الفترة
+            $totalDays = 1;
         }
 
-        // بناء مصفوفة الحضور اليومي لكل طالب: جلسة واحدة فأكثر = حاضر اليوم كاملاً
+        // بناء مصفوفة الحضور الفعلي للطلاب
+        // dailyPresence[student_id][YYYY-MM-DD] = true فقط إذا كان الطالب حاضراً أو متأخراً فعلاً
         $dailyPresence = [];
         foreach ($attendances as $att) {
             $d = $att->attendance_date ?: ($sessionDateMap[$att->lesson_id] ?? null);
@@ -291,7 +305,7 @@ class AttendancePdfService
             }
         }
 
-        // 6. حساب معدلات الحضور والإنذارات
+        // 6. حساب معدلات الحضور والإنذارات استناداً للواقع (الحاضر حاضر والغايب غايب)
         $studentsList = [];
         $sumAttended = 0;
         $sumAbsent = 0;
@@ -307,17 +321,19 @@ class AttendancePdfService
                     }
                 }
             } else {
-                $studentAttendedDays = $totalDays;
+                // إذا لم توجد جلسة إطلاقاً أو لم يسجل حضور، الغياب هو الأصل حتى يثبت الحضور
+                $studentAttendedDays = 0;
             }
 
             $studentAbsentDays = max(0, $totalDays - $studentAttendedDays);
-            $rate = $totalDays > 0 ? round(($studentAttendedDays / $totalDays) * 100, 1) : 100;
+            $rate = $totalDays > 0 ? round(($studentAttendedDays / $totalDays) * 100, 1) : 0;
 
             if ($rate < 85) {
                 $warningsCount++;
             }
 
             $studentsList[] = [
+                'student_id'    => $stId,
                 'academic_id'   => $info['academic_id'],
                 'name'          => $info['name'],
                 'batch_name'    => $info['batch_name'] ?: ($info['branch'] . ' - ' . $info['year']),
@@ -336,7 +352,7 @@ class AttendancePdfService
         usort($studentsList, fn($a, $b) => strcmp($a['name'], $b['name']));
 
         $totalCount = count($studentsList);
-        $avgRate = $totalCount > 0 ? round($sumRate / $totalCount, 1) . '%' : '100%';
+        $avgRate = $totalCount > 0 ? round($sumRate / $totalCount, 1) . '%' : '0%';
 
         $summaryTotals = [
             'days'           => $totalDays * $totalCount,
@@ -346,7 +362,23 @@ class AttendancePdfService
             'warnings_count' => $warningsCount,
         ];
 
-        // 7. تجهيز المتغيرات للـ Blade View
+        // 7. تقسيم الطلاب على الصفحات (Multi-page Pagination):
+        // كل صفحة تحتوي على الهيدر المؤسسي وشريط الفلترة كاملاً
+        // الصفحة الأخيرة فقط تحتوي على ملخص الإجماليات، الضوابط والإنذارات، والفوتر والتواقيع
+        $pages = [];
+        if ($totalCount <= 8) {
+            $pages[] = $studentsList;
+        } else {
+            $remaining = $studentsList;
+            while (count($remaining) > 8) {
+                $pages[] = array_splice($remaining, 0, 10);
+            }
+            if (!empty($remaining)) {
+                $pages[] = $remaining;
+            }
+        }
+
+        // 8. تجهيز المتغيرات للـ Blade View
         $teacherName = $teacher->user->full_name ?? $teacher->user->name ?? 'م. وسيم يوسف';
         $reportDateStr = Carbon::now()->format('d/m/Y - h:i') . ' ' . (Carbon::now()->format('A') == 'AM' ? 'ص' : 'م');
         $refCode = 'DTC-ATT-' . date('Y') . '-' . ($scope === 'advisor_class' ? 'ADV' : 'CRS') . '-' . ($courseId ?: 'ALL');
@@ -364,10 +396,11 @@ class AttendancePdfService
             'filterClassText',
             'advisorCohortName',
             'studentsList',
-            'summaryTotals'
+            'summaryTotals',
+            'pages'
         ))->render();
 
-        // 8. تحويل الـ HTML إلى PDF عبر Puppeteer و Edge Headless
+        // 9. تحويل الـ HTML إلى PDF عبر Puppeteer و Edge Headless
         $exportsDir = public_path('exports');
         if (!file_exists($exportsDir)) {
             mkdir($exportsDir, 0755, true);
@@ -388,7 +421,7 @@ class AttendancePdfService
             return $outPdfPath;
         }
 
-        // Fallback إلى mPDF في حال تعذر تشغيل المتصفح
+        // Fallback إلى mPDF
         $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4-L',
