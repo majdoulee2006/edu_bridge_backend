@@ -113,7 +113,7 @@
                             <i class="fa-solid fa-users"></i> كشف الطلاب (الكل / الحاضرين / الغائبين)
                         </button>
 
-                        <a href="{{ route('teacher.attendance.export', $session->id) }}" class="action-btn btn-export">
+                        <a href="{{ route('teacher.attendance.export', $session->id) }}" target="_blank" class="action-btn btn-export">
                             <i class="fa-solid fa-file-excel"></i> تصدير إكسيل
                         </a>
                     </div>
@@ -159,7 +159,7 @@
                     <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">الفترة الزمنية</label>
                     <select name="period" class="select-field">
                         <option value="today">اليوم</option>
-                        <option value="week">هذا الأسبوع</option>
+                        <option value="week" selected>هذا الأسبوع</option>
                         <option value="semester">منذ بداية الفصل</option>
                     </select>
                 </div>
@@ -167,10 +167,10 @@
                 <input type="hidden" name="export_type" id="export_type_input" value="excel">
 
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" onclick="document.getElementById('export_type_input').value='excel'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                    <button type="submit" onclick="document.getElementById('export_type_input').value='excel'; document.getElementById('export-form').target='_blank';" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
                         <i class="fa-solid fa-file-excel"></i> إكسيل
                     </button>
-                    <button type="submit" onclick="document.getElementById('export_type_input').value='pdf'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                    <button type="submit" onclick="document.getElementById('export_type_input').value='pdf'; document.getElementById('export-form').target='_blank';" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
                         <i class="fa-solid fa-file-pdf"></i> PDF
                     </button>
                 </div>
