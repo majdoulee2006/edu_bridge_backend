@@ -167,10 +167,10 @@
                 <input type="hidden" name="export_type" id="export_type_input" value="excel">
 
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit" onclick="document.getElementById('export_type_input').value='excel'; document.getElementById('export-form').target='_blank';" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                    <button type="submit" onclick="document.getElementById('export_type_input').value='excel'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
                         <i class="fa-solid fa-file-excel"></i> إكسيل
                     </button>
-                    <button type="submit" onclick="document.getElementById('export_type_input').value='pdf'; document.getElementById('export-form').target='_blank';" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                    <button type="submit" onclick="document.getElementById('export_type_input').value='pdf'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
                         <i class="fa-solid fa-file-pdf"></i> PDF
                     </button>
                 </div>

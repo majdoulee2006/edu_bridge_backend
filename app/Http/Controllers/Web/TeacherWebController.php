@@ -478,13 +478,16 @@ class TeacherWebController extends Controller
 
         $teacher = $this->getTeacher();
         
-        $workbookData = \App\Services\AttendanceExcelService::buildWorkbookData($teacher, [
+        $filePath = \App\Services\AttendanceExcelService::generateAttendanceWorkbookXlsx($teacher, [
             'scope' => 'my_courses',
             'course_id' => $session->course_id,
             'period' => 'today',
         ]);
 
-        return view('exports.teacher_attendance_excel', $workbookData);
+        $fileName = 'سجل_حضور_جلسة_' . $sessionId . '_' . now()->format('Y-m-d') . '.xlsx';
+        return response()->download($filePath, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     public function exportFilteredAttendance(Request $request)
@@ -509,14 +512,17 @@ class TeacherWebController extends Controller
             ]);
         }
 
-        // بناء مصنف الإكسل الأكاديمي التفاعلي المعتمد (Excel Online Engine)
-        $workbookData = \App\Services\AttendanceExcelService::buildWorkbookData($teacher, [
+        // توليد ملف الإكسل المعتمد (.xlsx) وتنزيله مباشرة
+        $filePath = \App\Services\AttendanceExcelService::generateAttendanceWorkbookXlsx($teacher, [
             'scope' => $scope,
             'course_id' => $courseId,
             'period' => $period,
         ]);
 
-        return view('exports.teacher_attendance_excel', $workbookData);
+        $fileName = 'سجل_الحضور_والغياب_المعتمد_' . now()->format('Y-m-d') . '.xlsx';
+        return response()->download($filePath, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     public function getAbsentees($sessionId)

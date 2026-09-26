@@ -90,24 +90,24 @@
             theme: {
                 extend: {
                     colors: {
-                        "surface": "#111319",
-                        "surface-dim": "#111319",
-                        "surface-bright": "#373940",
-                        "surface-variant": "#33343b",
-                        "surface-container-lowest": "#0c0e14",
-                        "surface-container-low": "#191b22",
-                        "surface-container": "#1e1f26",
-                        "surface-container-high": "#282a30",
-                        "surface-container-highest": "#33343b",
-                        "on-surface": "#e2e2eb",
-                        "on-surface-variant": "#d4c4b0",
-                        "primary": "#ffc665",
-                        "primary-container": "#e5a93c",
-                        "secondary": "#e9c349",
-                        "secondary-container": "#af8d11",
-                        "error": "#ffb4ab",
-                        "outline": "#9d8f7c",
-                        "outline-variant": "#504535",
+                        "surface": "#ffffff",
+                        "surface-dim": "#f8fafc",
+                        "surface-bright": "#ffffff",
+                        "surface-variant": "#f1f5f9",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f8fafc",
+                        "surface-container": "#f1f5f9",
+                        "surface-container-high": "#e2e8f0",
+                        "surface-container-highest": "#cbd5e1",
+                        "on-surface": "#0f172a",
+                        "on-surface-variant": "#475569",
+                        "primary": "#1e3a8a",
+                        "primary-container": "#dbeafe",
+                        "secondary": "#b45309",
+                        "secondary-container": "#fef3c7",
+                        "error": "#b91c1c",
+                        "outline": "#cbd5e1",
+                        "outline-variant": "#e2e8f0",
                     },
                     fontFamily: {
                         "body-sm": ["Cairo", "Plus Jakarta Sans"],
@@ -343,22 +343,23 @@
                                 <th class="w-12 px-2 py-1 text-center border-l border-surface-container-highest freeze-col-num">A</th>
                                 <th class="w-28 px-2 py-1 text-center border-l border-surface-container-highest freeze-col-acad">B</th>
                                 <th class="w-56 px-2 py-1 text-center border-l border-surface-container-highest freeze-col-name">C</th>
+                                <th class="w-36 px-2 py-1 text-center border-l border-surface-container-highest">D</th>
 
                                 @php
-                                    $colLetterCode = 68; // ASCII 'D'
+                                    $colLetterCode = 69; // ASCII 'E'
                                 @endphp
 
                                 @foreach($sheet['days_grouped'] as $dayKey => $dayData)
-                                    <!-- Day attendance calculated column letter -->
-                                    <th class="w-20 px-2 py-1 text-center border-l border-surface-container-highest bg-primary/5 text-primary">
-                                        {{ chr($colLetterCode++) }}
-                                    </th>
                                     <!-- Sessions letters -->
                                     @foreach($dayData['sessions'] as $sItem)
                                         <th class="w-20 px-2 py-1 text-center border-l border-surface-container-highest">
                                             {{ chr($colLetterCode <= 90 ? $colLetterCode++ : 65) }}
                                         </th>
                                     @endforeach
+                                    <!-- Day attendance calculated column letter -->
+                                    <th class="w-20 px-2 py-1 text-center border-l border-surface-container-highest bg-primary/5 text-primary">
+                                        {{ chr($colLetterCode <= 90 ? $colLetterCode++ : 65) }}
+                                    </th>
                                 @endforeach
 
                                 <!-- Metrics formula columns letters -->
@@ -391,52 +392,59 @@
                             <!-- Row 2: Institutional Hierarchical Table Header (Day bands) -->
                             <tr class="bg-surface-container-low text-on-surface font-label-md text-label-md border-b border-surface-container-highest">
                                 <th class="p-2 text-center bg-surface-container-high border-l border-surface-container-highest font-mono text-[11px] text-on-surface-variant freeze-col-num">1</th>
-                                <th class="p-2.5 text-center border-l border-surface-container-highest font-bold text-primary freeze-col-acad" colspan="3">
+                                <th class="p-2.5 text-center border-l border-surface-container-highest font-bold text-primary bg-primary-container/40 freeze-col-acad" colspan="4">
                                     بيانات الطالب الأكاديمية
                                 </th>
 
                                 @foreach($sheet['days_grouped'] as $dayKey => $dayData)
                                     @php
-                                        $dayColspan = 1 + count($dayData['sessions']);
+                                        $dayColspan = 1 + max(1, count($dayData['sessions']));
                                         $isEven = $loop->even;
                                     @endphp
-                                    <th class="p-2 text-center border-l border-surface-container-highest font-bold {{ $isEven ? 'bg-surface-container/30' : 'bg-surface-container/60' }}" colspan="{{ $dayColspan }}">
+                                    <th class="p-2 text-center border-l border-surface-container-highest font-bold {{ $isEven ? 'bg-surface-container/40 text-on-surface' : 'bg-surface-container text-on-surface' }}" colspan="{{ $dayColspan }}">
                                         {{ $dayData['label'] }}
                                     </th>
                                 @endforeach
 
-                                <th class="p-2 text-center border-l border-surface-container-highest text-secondary bg-surface-container/80 font-bold" colspan="4">
+                                <th class="p-2 text-center border-l border-surface-container-highest text-secondary bg-secondary-container/50 font-bold" colspan="4">
                                     إحصاء الجلسات (Sessions)
                                 </th>
-                                <th class="p-2 text-center border-l border-surface-container-highest text-primary bg-surface-container/80 font-bold" colspan="3">
+                                <th class="p-2 text-center border-l border-surface-container-highest text-sky-800 bg-sky-100 font-bold" colspan="3">
                                     إحصاء الأيام (Daily Basis)
                                 </th>
-                                <th class="p-2 text-center text-rose-300 bg-rose-950/20 font-bold">
+                                <th class="p-2 text-center text-rose-800 bg-rose-100 font-bold">
                                     الإنذار الأكاديمي
                                 </th>
                             </tr>
 
                             <!-- Row 3: Sub-Headers (Individual Sessions & Metrics) -->
-                            <tr class="bg-surface text-on-surface-variant font-label-sm text-label-sm border-b border-surface-container-highest">
+                            <tr class="bg-surface text-on-surface font-label-sm text-label-sm border-b border-surface-container-highest">
                                 <th class="p-2 text-center bg-surface-container-high border-l border-surface-container-highest font-mono text-[11px] freeze-col-num">2</th>
                                 <th class="px-2 py-2 text-center border-l border-surface-container-highest freeze-col-num">م</th>
                                 <th class="px-3 py-2 text-right border-l border-surface-container-highest freeze-col-acad">الرقم الأكاديمي</th>
                                 <th class="px-4 py-2 text-right border-l border-surface-container-highest freeze-col-name">اسم الطالب الرباعي</th>
+                                <th class="px-3 py-2 text-center border-l border-surface-container-highest">الدورة والسنة</th>
 
                                 @foreach($sheet['days_grouped'] as $dayKey => $dayData)
-                                    <!-- دوام اليوم -->
-                                    <th class="px-2 py-2 text-center border-l border-surface-container-highest text-primary bg-primary/5 font-bold" title="قاعدة احتساب دوام اليوم الأكاديمي: جلسة واحدة فما فوق">
-                                        دوام اليوم
-                                    </th>
-                                    <!-- الجلسات -->
-                                    @foreach($dayData['sessions'] as $sIndex => $sessItem)
-                                        @php
-                                            $shortCourseTitle = mb_substr($sessItem->course_title, 0, 14);
-                                        @endphp
-                                        <th class="px-2 py-2 text-center border-l border-surface-container-highest" title="{{ $sessItem->course_title }}">
-                                            ج{{ $sIndex + 1 }}: {{ $shortCourseTitle }}
+                                    @if(empty($dayData['sessions']) || count($dayData['sessions']) === 0)
+                                        <th class="px-2 py-2 text-center border-l border-surface-container-highest text-slate-400 italic font-normal bg-surface-container-low">
+                                            لا توجد جلسات
                                         </th>
-                                    @endforeach
+                                    @else
+                                        <!-- الجلسات -->
+                                        @foreach($dayData['sessions'] as $sIndex => $sessItem)
+                                            @php
+                                                $shortCourseTitle = mb_substr($sessItem->course_title ?? '', 0, 14);
+                                            @endphp
+                                            <th class="px-2 py-2 text-center border-l border-surface-container-highest font-semibold bg-surface-container/30" title="{{ $sessItem->course_title ?? '' }}">
+                                                ج{{ $sIndex + 1 }}: {{ $shortCourseTitle }}
+                                            </th>
+                                        @endforeach
+                                    @endif
+                                    <!-- حضور اليوم (ذهبي ناعم) -->
+                                    <th class="px-2 py-2 text-center border-l border-surface-container-highest text-secondary bg-secondary-container/70 font-bold" title="قاعدة احتساب دوام اليوم الأكاديمي: جلسة واحدة فما فوق">
+                                        حضور اليوم
+                                    </th>
                                 @endforeach
 
                                 <!-- Totals Formula Headers -->
@@ -480,19 +488,14 @@
                                     <td class="p-2 text-right border-l border-surface-container-highest font-body-sm font-semibold text-on-surface freeze-col-name">
                                         {{ $stRow['name'] }}
                                     </td>
+                                    <td class="p-2 text-center border-l border-surface-container-highest font-body-sm text-on-surface-variant font-medium">
+                                        {{ $stRow['batch_name'] ?? ($stRow['branch'] . ' - ' . $stRow['year']) }}
+                                    </td>
 
                                     @foreach($sheet['days_grouped'] as $dayKey => $dayData)
                                         @php
                                             $dayCell = $stRow['day_cells'][$dayKey] ?? ['status' => 'absent', 'label' => 'غائب', 'bg' => 'bg-rose-900/60 text-rose-300 font-bold'];
                                         @endphp
-                                        <!-- دوام اليوم -->
-                                        <td class="p-1.5 text-center border-l border-surface-container-highest {{ $dayCell['status'] === 'present' ? 'bg-emerald-950/20' : 'bg-rose-950/20' }}" 
-                                            onclick="selectCell(this, 'دوام اليوم: {{ $dayCell['label'] }}')">
-                                            <span class="inline-block px-2 py-0.5 rounded {{ $dayCell['bg'] }} font-bold font-body-sm">
-                                                {{ $dayCell['label'] }}
-                                            </span>
-                                        </td>
-
                                         <!-- الجلسات -->
                                         @foreach($dayData['sessions'] as $sessItem)
                                             @php
@@ -505,6 +508,14 @@
                                                 </span>
                                             </td>
                                         @endforeach
+
+                                        <!-- حضور اليوم -->
+                                        <td class="p-1.5 text-center border-l border-surface-container-highest {{ $dayCell['status'] === 'present' ? 'bg-emerald-950/20' : 'bg-rose-950/20' }}" 
+                                            onclick="selectCell(this, 'حضور اليوم: {{ $dayCell['label'] }}')">
+                                            <span class="inline-block px-2 py-0.5 rounded {{ $dayCell['bg'] }} font-bold font-body-sm">
+                                                {{ $dayCell['label'] }}
+                                            </span>
+                                        </td>
                                     @endforeach
 
                                     <!-- Formula Totals for this Student -->

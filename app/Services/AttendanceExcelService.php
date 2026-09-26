@@ -5,17 +5,23 @@ namespace App\Services;
 use App\Models\Teacher;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class AttendanceExcelService
 {
     /**
-     * بناء بيانات مصنف الإكسل الأكاديمي التفاعلي المعتمد (Excel Online Engine)
+     * توليد مصنف Excel (.xlsx) معتمد ومتكامل بجميع أوراق العمل والتنسيقات والفلاتر
      *
      * @param Teacher $teacher
      * @param array $filters ['scope' => 'my_courses'|'advisor_class', 'course_id' => ..., 'period' => 'today'|'week'|'semester']
-     * @return array
+     * @return string مسار الملف الناتج للتنزيل المباشر
      */
-    public static function buildWorkbookData(Teacher $teacher, array $filters = []): array
+    public static function generateAttendanceWorkbookXlsx(Teacher $teacher, array $filters = []): string
     {
         $scope = $filters['scope'] ?? 'my_courses';
         $courseId = !empty($filters['course_id']) ? $filters['course_id'] : null;
@@ -33,11 +39,10 @@ class AttendanceExcelService
             $periodLabel = 'اليوم: ' . Carbon::today()->locale('ar')->isoFormat('dddd D MMMM YYYY');
             $daysList[] = Carbon::today();
         } elseif ($period === 'week') {
-            // أسبوع الدوام الرسمي الأكاديمي: الأحد إلى الخميس (5 أيام دوام)
             $startOfWeek = Carbon::now()->startOfWeek(Carbon::SUNDAY);
             $startDate = $startOfWeek->copy()->startOfDay();
             $endDate = $startOfWeek->copy()->addDays(4)->endOfDay();
-            $periodLabel = 'الأسبوع الحالي (' . $startDate->format('d/m/Y') . ' – ' . $startOfWeek->copy()->addDays(4)->format('d/m/Y') . ')';
+            $periodLabel = 'الأسبوع الحالي (5 أيام دوام): ' . $startDate->format('d/m/Y') . ' – ' . $startOfWeek->copy()->addDays(4)->format('d/m/Y');
 
             for ($i = 0; $i < 5; $i++) {
                 $daysList[] = $startOfWeek->copy()->addDays($i);
@@ -53,10 +58,9 @@ class AttendanceExcelService
                 $endDate = Carbon::now()->endOfDay();
                 $periodLabel = 'الفصل الدراسي الأول 2025 / 2026';
             }
-            // For semester, we'll collect the unique days with sessions
         }
 
-        // 2. تصفية المقررات المعنية حسب النطاق (موادي أو دورتي الإشرافية)
+        // 2. تصفية المقررات والمعلم
         $advisorBranch = $teacher->advisor_branch;
         $advisorYear = $teacher->advisor_year;
         $advisorCohortName = (!empty($advisorBranch) && !empty($advisorYear))
@@ -68,40 +72,91 @@ class AttendanceExcelService
 
         $coursesList = collect();
 
+        $branch = trim($advisorBranch ?? '');
+        $year = trim($advisorYear ?? '');
+        $programIds = DB::table('programs')->where('name', $branch)->pluck('id')->toArray();
+        $courseYearNum = $yearMapRev[$year] ?? 1;
+
         if ($scope === 'advisor_class') {
-            $programIds = DB::table('programs')->where('name', $advisorBranch)->pluck('id')->toArray();
-            $courseYearNum = $yearMapRev[$advisorYear] ?? 1;
+            // استخراج المقررات الخاصة بالدفعة الإشرافية من جدول الدوام الأسبوعي
+            $cohortSchedQuery = DB::table('schedules')
+                ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
+                ->where(function($q) use ($branch, $year) {
+                    if (!empty($branch)) {
+                        $q->where('schedules.class_group', 'like', "%{$branch}%");
+                        if (str_contains($year, 'أولى') || str_contains($year, '1')) {
+                            $q->where(function($sub) {
+                                $sub->where('schedules.class_group', 'like', '%أولى%')
+                                    ->orWhere('schedules.class_group', 'like', '%1%');
+                            });
+                        } elseif (str_contains($year, 'ثانية') || str_contains($year, '2')) {
+                            $q->where(function($sub) {
+                                $sub->where('schedules.class_group', 'like', '%ثانية%')
+                                    ->orWhere('schedules.class_group', 'like', '%2%');
+                            });
+                        } elseif (str_contains($year, 'ثالثة') || str_contains($year, '3')) {
+                            $q->where(function($sub) {
+                                $sub->where('schedules.class_group', 'like', '%ثالثة%')
+                                    ->orWhere('schedules.class_group', 'like', '%3%');
+                            });
+                        }
+                    }
+                })
+                ->select('schedules.*', 'courses.title as course_title')
+                ->orderByRaw("FIELD(schedules.day, 'Sunday','Monday','Tuesday','Wednesday','Thursday')")
+                ->orderBy('schedules.start_time')
+                ->get();
+
+            if ($cohortSchedQuery->isEmpty() && !empty($programIds)) {
+                $cohortSchedQuery = DB::table('schedules')
+                    ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
+                    ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                    ->whereIn('course_program.program_id', $programIds)
+                    ->where('courses.year', $courseYearNum)
+                    ->select('schedules.*', 'courses.title as course_title')
+                    ->orderByRaw("FIELD(schedules.day, 'Sunday','Monday','Tuesday','Wednesday','Thursday')")
+                    ->orderBy('schedules.start_time')
+                    ->get();
+            }
 
             if ($courseId) {
                 $coursesList = DB::table('courses')->where('course_id', $courseId)->get();
             } else {
-                $validCourses = DB::table('courses')
-                    ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
-                    ->whereIn('course_program.program_id', $programIds)
-                    ->where('courses.year', $courseYearNum)
-                    ->pluck('courses.course_id')->toArray();
-
-                $coursesList = DB::table('courses')->whereIn('course_id', $validCourses)->get();
+                $cohortCourseIds = $cohortSchedQuery->pluck('course_id')->unique()->toArray();
+                if (empty($cohortCourseIds)) {
+                    $cohortCourseIds = DB::table('courses')
+                        ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                        ->whereIn('course_program.program_id', $programIds)
+                        ->where('courses.year', $courseYearNum)
+                        ->pluck('courses.course_id')->toArray();
+                }
+                $coursesList = DB::table('courses')->whereIn('course_id', $cohortCourseIds)->get();
             }
+
+            $schedulesToUse = $cohortSchedQuery;
         } else {
-            // المواد الخاصة بالمعلم
             $myCourseIds = DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id')->toArray();
             if ($courseId) {
                 $coursesList = DB::table('courses')->where('course_id', $courseId)->get();
             } else {
                 $coursesList = DB::table('courses')->whereIn('course_id', $myCourseIds)->get();
             }
+
+            $mySchedQuery = DB::table('schedules')
+                ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
+                ->whereIn('schedules.course_id', $coursesList->pluck('course_id')->toArray())
+                ->select('schedules.*', 'courses.title as course_title')
+                ->orderByRaw("FIELD(schedules.day, 'Sunday','Monday','Tuesday','Wednesday','Thursday')")
+                ->orderBy('schedules.start_time')
+                ->get();
+
+            $schedulesToUse = $mySchedQuery;
         }
 
         $relevantCourseIds = $coursesList->pluck('course_id')->toArray();
 
-        // 3. تحديد نصوص الترويسة والفلاتر
-        $filterScopeText = ($scope === 'advisor_class')
-            ? 'مواد دورتي الإشرافية (مربي الدورة)'
-            : 'المواد الخاصة بالمعلم';
-
         $teacherUser = DB::table('users')->where('user_id', $teacher->user_id)->first();
-        $supervisorName = $teacherUser ? $teacherUser->full_name : 'المشرف الأكاديمي';
+        $supervisorName = $teacherUser ? $teacherUser->full_name : 'أ. خالد اسماعيل';
 
         if ($scope === 'advisor_class') {
             $filterClassText = $advisorCohortName;
@@ -119,9 +174,9 @@ class AttendanceExcelService
             }
         }
 
-        // 4. استخراج جميع الطلاب المسجلين بالمقررات المختارة وفق معايير الاختصاص والسنة
+        // 3. جلب الطلاب المسجلين بالمواد
         $allStudents = [];
-        $courseStudentsMap = []; // course_id => [student_id => info]
+        $courseStudentsMap = [];
 
         foreach ($coursesList as $c) {
             $coursePrograms = DB::table('course_program')->where('course_id', $c->course_id)->pluck('program_id')->toArray();
@@ -136,11 +191,20 @@ class AttendanceExcelService
                          ->where('enrollments.status', '!=', 'dropped');
                 });
 
-            if (!empty($coursePrograms)) {
-                $stQuery->whereIn('students.program_id', $coursePrograms);
-            }
-            if ($courseYearStr) {
-                $stQuery->where('users.academic_year', $courseYearStr);
+            if ($scope === 'advisor_class') {
+                if (!empty($programIds)) {
+                    $stQuery->whereIn('students.program_id', $programIds);
+                }
+                if (!empty($advisorYear)) {
+                    $stQuery->where('users.academic_year', $advisorYear);
+                }
+            } else {
+                if (!empty($coursePrograms)) {
+                    $stQuery->whereIn('students.program_id', $coursePrograms);
+                }
+                if ($courseYearStr) {
+                    $stQuery->where('users.academic_year', $courseYearStr);
+                }
             }
 
             $students = $stQuery->select(
@@ -168,37 +232,14 @@ class AttendanceExcelService
             }
         }
 
-        // Fallback إذا كانت القائمة فارغة
-        if (empty($allStudents)) {
-            $sampleStudents = DB::table('students')
-                ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-                ->select('students.student_id', 'users.full_name', 'users.university_id', 'users.academic_year', 'programs.name as branch_name')
-                ->limit(10)->get();
-
-            foreach ($sampleStudents as $st) {
-                $bName = $st->branch_name ?? 'معلوماتية';
-                $yName = $st->academic_year ?? 'السنة الأولى';
-                $allStudents[$st->student_id] = [
-                    'student_id'   => $st->student_id,
-                    'academic_id'  => $st->university_id ?: (2026000 + $st->student_id),
-                    'name'         => $st->full_name,
-                    'branch'       => $bName,
-                    'year'         => $yName,
-                    'batch_name'   => $bName . ' - ' . $yName,
-                ];
-            }
-        }
-
-        // ترتيب الطلاب أبجدياً
         uasort($allStudents, fn($a, $b) => strcmp($a['name'], $b['name']));
 
-        // 5. استخراج الجلسات وسجلات الحضور
+        // 4. استخراج الجلسات وسجلات الحضور
         $sessionsQuery = DB::table('attendance_sessions')
             ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
             ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
             ->whereIn('lessons.course_id', $relevantCourseIds)
-            ->select('attendance_sessions.*', 'lessons.course_id', 'lessons.lesson_id', 'courses.title as course_title', 'courses.code as course_code');
+            ->select('attendance_sessions.*', 'lessons.course_id', 'lessons.lesson_id', 'courses.title as course_title');
 
         if ($startDate && $endDate) {
             $sessionsQuery->whereBetween('attendance_sessions.created_at', [$startDate, $endDate]);
@@ -206,11 +247,10 @@ class AttendanceExcelService
 
         $sessions = $sessionsQuery->orderBy('attendance_sessions.created_at')->get();
 
-        // سجلات الحضور
         $attQuery = DB::table('attendance')
             ->join('lessons', 'attendance.lesson_id', '=', 'lessons.lesson_id')
             ->whereIn('lessons.course_id', $relevantCourseIds)
-            ->select('attendance.*');
+            ->select('attendance.*', 'lessons.course_id');
 
         if ($startDate && $endDate) {
             $attQuery->where(function($q) use ($startDate, $endDate) {
@@ -221,288 +261,676 @@ class AttendanceExcelService
 
         $attendances = $attQuery->get();
 
-        // تجميع الحضور لكل طالب ولكل جلسة
-        // matrix[student_id][lesson_id] = 'present'|'absent'|'late'|'excused'
         $matrix = [];
-        $attKeyed = $attendances->groupBy('student_id');
-
+        $matrixByCourseDate = [];
         foreach ($attendances as $att) {
             $matrix[$att->student_id][$att->lesson_id] = $att->status;
-        }
-
-        // إذا كانت الفترة semester وكانت أيام الدوام فارغة، نجمع الأيام من الجلسات الفعلية
-        if (empty($daysList)) {
-            $uniqueDates = $sessions->map(fn($s) => Carbon::parse($s->created_at)->toDateString())->unique()->sort();
-            foreach ($uniqueDates as $dStr) {
-                $daysList[] = Carbon::parse($dStr);
-            }
-            if (empty($daysList)) {
-                $startOfWeek = Carbon::now()->startOfWeek(Carbon::SUNDAY);
-                for ($i = 0; $i < 5; $i++) {
-                    $daysList[] = $startOfWeek->copy()->addDays($i);
+            $dStr = $att->attendance_date ? Carbon::parse($att->attendance_date)->toDateString() : null;
+            if ($dStr) {
+                if (!isset($matrixByCourseDate[$att->student_id][$att->course_id][$dStr]) || in_array($att->status, ['present', 'late'])) {
+                    $matrixByCourseDate[$att->student_id][$att->course_id][$dStr] = $att->status;
                 }
             }
         }
 
-        // 6. بناء أوراق العمل (Sheets):
-        // أ) ورقة لكل مادة على حدة أولاً (مثل القالب المرفق)
-        $sheets = [];
-        $firstTab = true;
-
-        foreach ($coursesList as $c) {
-            $cStudents = $courseStudentsMap[$c->course_id] ?? [];
-            if (empty($cStudents)) {
-                $cStudents = $allStudents;
+        // إعداد أيام الدوام الرسمية (الأحد إلى الخميس)
+        if (empty($daysList)) {
+            $refDate = $startDate ? Carbon::parse($startDate) : Carbon::now();
+            $startOfWeek = $refDate->copy()->startOfWeek(Carbon::SUNDAY);
+            for ($i = 0; $i < 5; $i++) {
+                $daysList[] = $startOfWeek->copy()->addDays($i);
             }
-            uasort($cStudents, fn($a, $b) => strcmp($a['name'], $b['name']));
-
-            $cSessions = $sessions->where('course_id', $c->course_id);
-
-            $sheets[] = self::buildSheet(
-                'sheet-course-' . $c->course_id,
-                'مقرر ' . $c->title,
-                $c->code ?: 'تخصصي',
-                $firstTab,
-                $cStudents,
-                $daysList,
-                $cSessions,
-                $matrix,
-                $courseStudentsMap,
-                false,
-                $c
-            );
-            $firstTab = false;
         }
 
-        // ب) ورقة السجل اليومي الموحد (Daily Master) إذا كان هناك أكثر من مادة
-        if (count($coursesList) > 1 && !$courseId) {
-            $sheets[] = self::buildSheet(
-                'sheet-master',
-                'السجل اليومي الموحد (Daily Master)',
-                'شامل لكافة المواد',
-                false,
-                $allStudents,
-                $daysList,
-                $sessions,
-                $matrix,
-                $courseStudentsMap,
-                true // isMaster
-            );
-        }
+        // 5. بناء هيكل الجلسات لكل يوم وفق جدول الدوام الأسبوعي الفعلي للدفعة
+        $dayColumnsMaster = [];
+        $dayColumnsByCourse = [];
 
-        // ج) ورقة ملخص الإنذارات والحرمان الأكاديمي
-        $alertsSheet = self::buildAlertsSheet($allStudents, $coursesList, $sessions, $matrix, $courseStudentsMap);
-        $sheets[] = $alertsSheet;
+        foreach ($daysList as $dCarbon) {
+            $dStr = $dCarbon->toDateString();
+            $dName = $dCarbon->locale('ar')->isoFormat('dddd');
+            $dLabel = $dName . ' ' . $dCarbon->format('d/m/Y');
+            $dayNameEn = $dCarbon->format('l');
 
-        return [
-            'teacher'        => $teacher,
-            'supervisorName' => $supervisorName,
-            'filterClass'    => $filterClassText,
-            'filterScope'    => $filterScopeText,
-            'periodLabel'    => $periodLabel,
-            'sheets'         => $sheets,
-            'totalStudents'  => count($allStudents),
-            'totalSessions'  => $sessions->count(),
-            'activeSheetId'  => $sheets[0]['id'] ?? 'sheet-master',
-        ];
-    }
+            // الجلسات المجدولة في جدول الدوام الأسبوعي لهذا اليوم
+            $dayScheds = $schedulesToUse->filter(fn($s) => strcasecmp($s->day, $dayNameEn) === 0)->values();
 
-    /**
-     * بناء ورقة عمل واحدة (Sheet)
-     */
-    protected static function buildSheet(
-        string $sheetId,
-        string $title,
-        string $badge,
-        bool $isActive,
-        array $students,
-        array $daysList,
-        $sessions,
-        array $matrix,
-        array $courseStudentsMap,
-        bool $isMaster = false,
-        $course = null
-    ): array {
-        $totalDays = count($daysList);
-        $sessionsGroupedByDay = [];
+            $masterSessList = [];
+            if ($dayScheds->isEmpty()) {
+                $masterSessList[] = [
+                    'name'      => 'لا توجد جلسات',
+                    'course_id' => null,
+                    'lesson_id' => null,
+                    'is_empty'  => true,
+                ];
+                $hasMasterSessions = false;
+            } else {
+                $hasMasterSessions = true;
+                foreach ($dayScheds as $sch) {
+                    $masterSessList[] = [
+                        'name'      => mb_substr($sch->course_title, 0, 16),
+                        'course_id' => $sch->course_id,
+                        'lesson_id' => $sch->schedule_id ?? null,
+                        'is_empty'  => false,
+                    ];
+                }
+            }
 
-        foreach ($daysList as $dayCarbon) {
-            $dayStr = $dayCarbon->toDateString();
-            $dayName = $dayCarbon->locale('ar')->isoFormat('dddd');
-            $daySessions = $sessions->filter(function($s) use ($dayStr) {
-                return Carbon::parse($s->created_at)->toDateString() === $dayStr;
-            })->values();
-
-            $sessionsGroupedByDay[$dayStr] = [
-                'date'     => $dayStr,
-                'day_name' => $dayName,
-                'label'    => $dayName . ' ' . $dayCarbon->format('d/m/Y'),
-                'sessions' => $daySessions,
-            ];
-        }
-
-        $allDaySessionsCount = $sessions->count();
-        $studentRows = [];
-        $totalAttendedAll = 0;
-        $totalAbsentAll = 0;
-        $totalDaysAttendedAll = 0;
-
-        $colPresentCounts = []; // lesson_id => count
-        $colDayPresentCounts = []; // date => count
-
-        $num = 0;
-        foreach ($students as $stId => $info) {
-            $num++;
-            $stRow = [
-                'num'             => str_pad($num, 2, '0', STR_PAD_LEFT),
-                'student_id'      => $stId,
-                'academic_id'     => $info['academic_id'],
-                'name'            => $info['name'],
-                'branch'          => $info['branch'],
-                'year'            => $info['year'],
-                'day_cells'       => [],
-                'session_cells'   => [],
-                'attended_sessions' => 0,
-                'absent_sessions'   => 0,
-                'total_sessions'    => 0,
-                'attended_days'     => 0,
-                'total_days'        => $totalDays,
+            $dayColumnsMaster[$dStr] = [
+                'date'         => $dStr,
+                'label'        => $dLabel,
+                'has_sessions' => $hasMasterSessions,
+                'sessions'     => $masterSessList,
             ];
 
-            foreach ($sessionsGroupedByDay as $dayStr => $dayData) {
-                $dayAttendedAny = false;
-                $dayHasEnrolledSession = false;
-
-                foreach ($dayData['sessions'] as $sess) {
-                    $lId = $sess->lesson_id;
-                    $cId = $sess->course_id;
-
-                    // التحقق مما إذا كان الطالب مسجلاً بهذه المادة
-                    $isEnrolled = isset($courseStudentsMap[$cId][$stId]);
-                    if (!$isMaster) {
-                        $isEnrolled = true;
-                    }
-
-                    if ($isEnrolled) {
-                        $dayHasEnrolledSession = true;
-                        $stRow['total_sessions']++;
-                        $statusRaw = $matrix[$stId][$lId] ?? 'absent';
-
-                        if (in_array($statusRaw, ['present', 'late'])) {
-                            $stRow['attended_sessions']++;
-                            $dayAttendedAny = true;
-                            $stRow['session_cells'][$lId] = [
-                                'status' => 'present',
-                                'label'  => 'حاضر',
-                                'bg'     => 'bg-emerald-900/40 text-emerald-300',
-                            ];
-                            $colPresentCounts[$lId] = ($colPresentCounts[$lId] ?? 0) + 1;
-                        } else {
-                            $stRow['absent_sessions']++;
-                            $stRow['session_cells'][$lId] = [
-                                'status' => 'absent',
-                                'label'  => 'غائب',
-                                'bg'     => 'bg-rose-900/40 text-rose-300 font-bold',
-                            ];
-                        }
-                    } else {
-                        // غير مسجل بهذه المادة
-                        $stRow['session_cells'][$lId] = [
-                            'status' => 'exempt',
-                            'label'  => '-',
-                            'bg'     => 'text-on-surface-variant/40',
+            // لكل مقرر دراسي على حدة
+            foreach ($coursesList as $c) {
+                $courseDayScheds = $dayScheds->filter(fn($s) => $s->course_id == $c->course_id)->values();
+                $cList = [];
+                if ($courseDayScheds->isEmpty()) {
+                    $cList[] = [
+                        'name'      => 'لا توجد جلسات',
+                        'course_id' => $c->course_id,
+                        'lesson_id' => null,
+                        'is_empty'  => true,
+                    ];
+                    $hasCourseSessions = false;
+                } else {
+                    $hasCourseSessions = true;
+                    foreach ($courseDayScheds as $sch) {
+                        $cList[] = [
+                            'name'      => mb_substr($c->title, 0, 16),
+                            'course_id' => $c->course_id,
+                            'lesson_id' => $sch->schedule_id ?? null,
+                            'is_empty'  => false,
                         ];
                     }
                 }
 
-                // حساب دوام اليوم لهذا الطالب
-                if ($dayAttendedAny) {
-                    $stRow['attended_days']++;
-                    $stRow['day_cells'][$dayStr] = [
-                        'status' => 'present',
-                        'label'  => 'حاضر',
-                        'bg'     => 'bg-emerald-900/60 text-emerald-300 font-bold',
-                    ];
-                    $colDayPresentCounts[$dayStr] = ($colDayPresentCounts[$dayStr] ?? 0) + 1;
-                } else {
-                    $stRow['day_cells'][$dayStr] = [
-                        'status' => 'absent',
-                        'label'  => 'غائب',
-                        'bg'     => 'bg-rose-900/60 text-rose-300 font-bold',
-                    ];
-                }
+                $dayColumnsByCourse[$c->course_id][$dStr] = [
+                    'date'         => $dStr,
+                    'label'        => $dLabel,
+                    'has_sessions' => $hasCourseSessions,
+                    'sessions'     => $cList,
+                ];
             }
-
-            // النسب المئوية
-            $stRow['session_rate'] = $stRow['total_sessions'] > 0
-                ? round(($stRow['attended_sessions'] / $stRow['total_sessions']) * 100, 1)
-                : 0;
-
-            $stRow['day_rate'] = $stRow['total_days'] > 0
-                ? round(($stRow['attended_days'] / $stRow['total_days']) * 100, 1)
-                : 0;
-
-            // الحالة الأكاديمية
-            $absenceRate = 100 - $stRow['session_rate'];
-            if ($absenceRate < 15) {
-                $stRow['academic_status'] = 'healthy';
-                $stRow['status_label'] = 'سليم أكاديمياً';
-                $stRow['badge_class'] = 'bg-emerald-950/50 text-emerald-400 border-emerald-800/40';
-                $stRow['dot_class'] = 'bg-emerald-400';
-            } elseif ($absenceRate < 20) {
-                $stRow['academic_status'] = 'warning';
-                $stRow['status_label'] = 'تنبيه متابعة إدارية';
-                $stRow['badge_class'] = 'bg-amber-950/50 text-amber-400 border-amber-800/40';
-                $stRow['dot_class'] = 'bg-amber-400';
-            } else {
-                $stRow['academic_status'] = 'deprived';
-                $stRow['status_label'] = 'إنذار وحرمان';
-                $stRow['badge_class'] = 'bg-rose-950/50 text-rose-400 border-rose-800/40';
-                $stRow['dot_class'] = 'bg-rose-400';
-            }
-
-            $totalAttendedAll += $stRow['attended_sessions'];
-            $totalAbsentAll += $stRow['absent_sessions'];
-            $totalDaysAttendedAll += $stRow['attended_days'];
-
-            $studentRows[] = $stRow;
         }
 
-        // المجاميع لسطر tfoot
-        $totalStudents = count($students);
-        $totalSessionsCount = count($studentRows) > 0 ? array_sum(array_column($studentRows, 'total_sessions')) : 0;
-        $overallSessionRate = $totalSessionsCount > 0 ? round(($totalAttendedAll / $totalSessionsCount) * 100, 1) : 0;
-        $totalDaysAll = $totalStudents * $totalDays;
-        $overallDayRate = $totalDaysAll > 0 ? round(($totalDaysAttendedAll / $totalDaysAll) * 100, 1) : 0;
+        // 6. إنشاء مصنف PhpSpreadsheet
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->removeSheetByIndex(0); // حذف الورقة الافتراضية الفارغة
 
-        return [
-            'id'                   => $sheetId,
-            'title'                => $title,
-            'badge'                => $badge,
-            'is_active'            => $isActive,
-            'is_alerts'            => false,
-            'is_master'            => $isMaster,
-            'days_grouped'         => $sessionsGroupedByDay,
-            'students'             => $studentRows,
-            'total_students'       => $totalStudents,
-            'total_sessions_count' => $sessions->count(),
-            'total_attended_all'   => $totalAttendedAll,
-            'total_absent_all'     => $totalAbsentAll,
-            'overall_session_rate' => $overallSessionRate,
-            'total_days_all'       => $totalDaysAll,
-            'total_days_attended'  => $totalDaysAttendedAll,
-            'overall_day_rate'     => $overallDayRate,
-            'col_present_counts'   => $colPresentCounts,
-            'col_day_present_counts' => $colDayPresentCounts,
-        ];
+        // أ) ورقة السجل اليومي الموحد (Master)
+        if (count($coursesList) > 1 && !$courseId) {
+            self::renderSpreadsheetWorksheet(
+                $spreadsheet,
+                'السجل اليومي الموحد (Master)',
+                $filterClassText,
+                $supervisorName,
+                $periodLabel,
+                $dayColumnsMaster,
+                $allStudents,
+                $matrix,
+                $courseStudentsMap,
+                true, // isMaster
+                null,
+                $matrixByCourseDate
+            );
+        }
+
+        // ب) ورقة لكل مقرر دراسي على حدة
+        foreach ($coursesList as $c) {
+            $cStudents = $courseStudentsMap[$c->course_id] ?? $allStudents;
+            uasort($cStudents, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+            $cDays = $dayColumnsByCourse[$c->course_id] ?? $dayColumnsMaster;
+
+            self::renderSpreadsheetWorksheet(
+                $spreadsheet,
+                'مقرر ' . $c->title,
+                $c->title . ' (' . ($yearMap[$c->year] ?? 'سنة اولى') . ')',
+                $supervisorName,
+                $periodLabel,
+                $cDays,
+                $cStudents,
+                $matrix,
+                $courseStudentsMap,
+                false,
+                $c,
+                $matrixByCourseDate
+            );
+        }
+
+        // ج) ورقة ملخص الإنذارات والحرمان الأكاديمي
+        self::renderAlertsWorksheet(
+            $spreadsheet,
+            'ملخص الإنذارات والحرمان',
+            $filterClassText,
+            $supervisorName,
+            $periodLabel,
+            $allStudents,
+            $coursesList,
+            $sessions,
+            $matrix,
+            $courseStudentsMap
+        );
+
+        // تعيين الورقة الأولى كنشطة
+        $spreadsheet->setActiveSheetIndex(0);
+
+        // حفظ المصنف كملف .xlsx
+        $exportDir = storage_path('app/exports');
+        if (!file_exists($exportDir)) {
+            mkdir($exportDir, 0755, true);
+        }
+
+        $fileName = 'attendance_report_' . $teacher->teacher_id . '_' . time() . '.xlsx';
+        $fullPath = $exportDir . DIRECTORY_SEPARATOR . $fileName;
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($fullPath);
+
+        return $fullPath;
     }
 
     /**
-     * بناء ورقة عمل الإنذارات والحرمان الأكاديمي
+     * بناء ورقة عمل واحدة في مصنف Excel مع التنسيقات والألوان والأوتوفلتر
      */
-    protected static function buildAlertsSheet(array $allStudents, $coursesList, $sessions, array $matrix, array $courseStudentsMap): array
-    {
-        $alertRows = [];
+    protected static function renderSpreadsheetWorksheet(
+        Spreadsheet $spreadsheet,
+        string $sheetTitle,
+        string $cohortName,
+        string $supervisorName,
+        string $periodStr,
+        array $dayColumns,
+        array $students,
+        array $matrix,
+        array $courseStudentsMap,
+        bool $isMaster = false,
+        $course = null,
+        array $matrixByCourseDate = []
+    ): void {
+        // حماية الاسم ألا يتجاوز 31 حرفاً
+        $safeTitle = mb_substr(str_replace(['*', ':', '?', '/', '\\', '[', ']'], '', $sheetTitle), 0, 30);
+        $sheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $safeTitle);
+        $spreadsheet->addSheet($sheet);
+        $sheet->setRightToLeft(true);
+
+        // ── السطر 1: شريط المعلومات الرسمي (Metadata Banner) ──
+        $sheet->mergeCells('A1:D1');
+        $sheet->setCellValue('A1', 'الشعبة: ' . $cohortName);
+
+        $sheet->mergeCells('E1:G1');
+        $sheet->setCellValue('E1', 'المشرف: ' . $supervisorName);
+
+        $sheet->mergeCells('H1:N1');
+        $sheet->setCellValue('H1', 'الفترة: ' . $periodStr);
+
+        $sheet->getStyle('A1:N1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A8A']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(30);
+
+        // ── السطر 2: تصنيفات الأيام وحزم الأعمدة (Day Bands) ──
+        $sheet->mergeCells('A2:D2');
+        $sheet->setCellValue('A2', 'بيانات الطالب الأكاديمية');
+        $sheet->getStyle('A2:D2')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '1E3A8A'], 'size' => 10, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DBEAFE']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+
+        $colIndex = 5; // Col E (Day 1 starts after Col D: الدورة والسنة)
+        $dayLoop = 0;
+        foreach ($dayColumns as $dayKey => $dayInfo) {
+            $sessCount = count($dayInfo['sessions']);
+            $totalDayCols = $sessCount + 1; // الجلسات + حضور اليوم
+            $startCol = Coordinate::stringFromColumnIndex($colIndex);
+            $endCol = Coordinate::stringFromColumnIndex($colIndex + $totalDayCols - 1);
+            $colIndex += $totalDayCols;
+
+            $sheet->mergeCells("{$startCol}2:{$endCol}2");
+            $sheet->setCellValue("{$startCol}2", $dayInfo['label']);
+            $dayBg = ($dayLoop++ % 2 === 0) ? 'F1F5F9' : 'E2E8F0';
+            $sheet->getStyle("{$startCol}2:{$endCol}2")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => '0F172A'], 'size' => 10, 'name' => 'Segoe UI'],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $dayBg]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+        }
+
+        // إحصاء الجلسات
+        $sStart = Coordinate::stringFromColumnIndex($colIndex);
+        $sEnd = Coordinate::stringFromColumnIndex($colIndex + 3);
+        $colIndex += 4;
+        $sheet->mergeCells("{$sStart}2:{$sEnd}2");
+        $sheet->setCellValue("{$sStart}2", 'إحصاء الجلسات (Sessions)');
+        $sheet->getStyle("{$sStart}2:{$sEnd}2")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '92400E'], 'size' => 10, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEF3C7']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+
+        // إحصاء الأيام
+        $dStart = Coordinate::stringFromColumnIndex($colIndex);
+        $dEnd = Coordinate::stringFromColumnIndex($colIndex + 2);
+        $colIndex += 3;
+        $sheet->mergeCells("{$dStart}2:{$dEnd}2");
+        $sheet->setCellValue("{$dStart}2", 'إحصاء الأيام (Daily Basis)');
+        $sheet->getStyle("{$dStart}2:{$dEnd}2")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '0369A1'], 'size' => 10, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E0F2FE']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+
+        // الإنذار الأكاديمي
+        $aCol = Coordinate::stringFromColumnIndex($colIndex);
+        $sheet->setCellValue("{$aCol}2", 'الإنذار الأكاديمي');
+        $sheet->getStyle("{$aCol}2")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '991B1B'], 'size' => 10, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEE2E2']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $sheet->getRowDimension(2)->setRowHeight(24);
+
+        // ── السطر 3: الترويسات الفرعية (Sub-Headers) ──
+        $sheet->setCellValue('A3', 'م');
+        $sheet->setCellValue('B3', 'الرقم الأكاديمي');
+        $sheet->setCellValue('C3', 'اسم الطالب الرباعي');
+        $sheet->setCellValue('D3', 'الدورة والسنة');
+
+        $colIndex = 5;
+        $sessionColMap = []; // يحفظ الحرف المقابل لكل جلسة
+
+        foreach ($dayColumns as $dayKey => $dayInfo) {
+            foreach ($dayInfo['sessions'] as $sIdx => $sessItem) {
+                $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+                if (!empty($sessItem['is_empty'])) {
+                    $sheet->setCellValue("{$cLet}3", 'لا توجد جلسات');
+                    $sheet->getStyle("{$cLet}3")->applyFromArray([
+                        'font' => ['italic' => true, 'color' => ['rgb' => '94A3B8'], 'size' => 9, 'name' => 'Segoe UI'],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8FAFC']],
+                    ]);
+                } else {
+                    $sheet->setCellValue("{$cLet}3", 'ج' . ($sIdx + 1) . ': ' . $sessItem['name']);
+                    $sheet->getStyle("{$cLet}3")->applyFromArray([
+                        'font' => ['bold' => true, 'color' => ['rgb' => '0F172A'], 'size' => 9, 'name' => 'Segoe UI'],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F1F5F9']],
+                    ]);
+                }
+                $sessionColMap[] = [
+                    'col'        => $cLet,
+                    'day'        => $dayKey,
+                    'lesson_id'  => $sessItem['lesson_id'] ?? null,
+                    'course_id'  => $sessItem['course_id'] ?? null,
+                    'is_empty'   => !empty($sessItem['is_empty']),
+                    'is_virtual' => !empty($sessItem['is_virtual']),
+                ];
+            }
+            // العمود الأخير في اليوم: حضور اليوم (ذهبي ناعم مريح للعين)
+            $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+            $sheet->setCellValue("{$cLet}3", 'حضور اليوم');
+            $sheet->getStyle("{$cLet}3")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'B45309'], 'size' => 9, 'name' => 'Segoe UI'],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEF3C7']],
+            ]);
+        }
+
+        // إحصائيات
+        $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+        $sheet->setCellValue("{$cLet}3", 'المنعقدة');
+
+        $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+        $sheet->setCellValue("{$cLet}3", 'حضور');
+        $sheet->getStyle("{$cLet}3")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('15803D'));
+
+        $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+        $sheet->setCellValue("{$cLet}3", 'غياب');
+        $sheet->getStyle("{$cLet}3")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('B91C1C'));
+
+        $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+        $sheet->setCellValue("{$cLet}3", 'نسبة الجلسات');
+        $sheet->getStyle("{$cLet}3")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('B45309'));
+
+        $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+        $sheet->setCellValue("{$cLet}3", 'الكلية');
+
+        $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+        $sheet->setCellValue("{$cLet}3", 'المحضورة');
+        $sheet->getStyle("{$cLet}3")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('15803D'));
+
+        $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+        $sheet->setCellValue("{$cLet}3", 'التزام الأيام');
+        $sheet->getStyle("{$cLet}3")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('B45309'));
+
+        $cLet = Coordinate::stringFromColumnIndex($colIndex++);
+        $sheet->setCellValue("{$cLet}3", 'الحالة الأكاديمية');
+        $sheet->getStyle("{$cLet}3")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('991B1B'));
+
+        $lastCol = Coordinate::stringFromColumnIndex($colIndex - 1);
+        $sheet->getStyle("A3:{$lastCol}3")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '334155'], 'size' => 9, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8FAFC']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $sheet->getRowDimension(3)->setRowHeight(26);
+
+        // ضبط السطر 1 ليمتد عبر كامل الجدول
+        $sheet->mergeCells("H1:{$lastCol}1");
+        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A8A']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+
+        // تجميد الأعمدة الأساسية عند E4
+        $sheet->freezePane('E4');
+
+        // ── سطور بيانات الطلاب (Rows 4+) ──
+        $rowNum = 4;
+        $totalDays = count($dayColumns);
+        $stCounter = 1;
+
+        foreach ($students as $stIdKey => $st) {
+            $stId = $st['student_id'];
+            $sheet->setCellValue("A{$rowNum}", str_pad($stCounter++, 2, '0', STR_PAD_LEFT));
+            $sheet->setCellValue("B{$rowNum}", $st['academic_id']);
+            $sheet->setCellValue("C{$rowNum}", $st['name']);
+            $sheet->setCellValue("D{$rowNum}", $st['batch_name']);
+
+            $isEvenRow = ($rowNum % 2 === 0);
+            $rowBg = $isEvenRow ? 'F8FAFC' : 'FFFFFF';
+            $sheet->getStyle("A{$rowNum}:D{$rowNum}")->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $rowBg]],
+            ]);
+
+            $sheet->getStyle("A{$rowNum}")->applyFromArray([
+                'font' => ['color' => ['rgb' => '475569'], 'name' => 'Segoe UI'],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+            $sheet->getStyle("B{$rowNum}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => '1D4ED8'], 'name' => 'Segoe UI'],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+            $sheet->getStyle("C{$rowNum}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => '0F172A'], 'name' => 'Segoe UI'],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT],
+            ]);
+            $sheet->getStyle("D{$rowNum}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => '475569'], 'name' => 'Segoe UI', 'size' => 9],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+
+            $colIdx = 5;
+            $stAttendedSessions = 0;
+            $stTotalSessions = 0;
+            $stAttendedDays = 0;
+
+            foreach ($dayColumns as $dayKey => $dayInfo) {
+                $hasSessionsInDay = !empty($dayInfo['has_sessions']);
+                $dayAttendedAny = false;
+
+                foreach ($dayInfo['sessions'] as $sItem) {
+                    $cellLet = Coordinate::stringFromColumnIndex($colIdx++);
+
+                    if (!empty($sItem['is_empty']) || !$hasSessionsInDay) {
+                        $sheet->setCellValue("{$cellLet}{$rowNum}", '-');
+                        $sheet->getStyle("{$cellLet}{$rowNum}")->applyFromArray([
+                            'font' => ['color' => ['rgb' => '9CA3AF'], 'name' => 'Segoe UI'],
+                            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                        ]);
+                        continue;
+                    }
+
+                    $cId = $sItem['course_id'];
+                    $lId = $sItem['lesson_id'] ?? null;
+
+                    // فحص التسجيل
+                    $isEnrolled = isset($courseStudentsMap[$cId][$stId]);
+                    if (!$isMaster) $isEnrolled = true;
+
+                    if ($isEnrolled) {
+                        $stTotalSessions++;
+                        $statusRaw = $matrixByCourseDate[$stId][$cId][$dayKey] ?? null;
+                        if (!$statusRaw && !empty($lId)) {
+                            $baseLessonId = explode('_', $lId)[0];
+                            $statusRaw = $matrix[$stId][$baseLessonId] ?? null;
+                        }
+                        if (!$statusRaw) {
+                            $statusRaw = 'absent';
+                        }
+
+                        if (in_array($statusRaw, ['present', 'late'])) {
+                            $stAttendedSessions++;
+                            $dayAttendedAny = true;
+                            $sheet->setCellValue("{$cellLet}{$rowNum}", 'حاضر');
+                            $sheet->getStyle("{$cellLet}{$rowNum}")->applyFromArray([
+                                'font' => ['bold' => true, 'color' => ['rgb' => '166534'], 'name' => 'Segoe UI'],
+                                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DCFCE7']],
+                                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                            ]);
+                        } else {
+                            $sheet->setCellValue("{$cellLet}{$rowNum}", 'غائب');
+                            $sheet->getStyle("{$cellLet}{$rowNum}")->applyFromArray([
+                                'font' => ['bold' => true, 'color' => ['rgb' => '991B1B'], 'name' => 'Segoe UI'],
+                                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEE2E2']],
+                                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                            ]);
+                        }
+                    } else {
+                        $sheet->setCellValue("{$cellLet}{$rowNum}", '-');
+                        $sheet->getStyle("{$cellLet}{$rowNum}")->applyFromArray([
+                            'font' => ['color' => ['rgb' => '9CA3AF']],
+                            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                        ]);
+                    }
+                }
+
+                // عمود حضور اليوم (في نهاية اليوم)
+                $dayCellLet = Coordinate::stringFromColumnIndex($colIdx++);
+                if (!$hasSessionsInDay) {
+                    $sheet->setCellValue("{$dayCellLet}{$rowNum}", '-');
+                    $sheet->getStyle("{$dayCellLet}{$rowNum}")->applyFromArray([
+                        'font' => ['color' => ['rgb' => '9CA3AF'], 'name' => 'Segoe UI'],
+                        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                    ]);
+                } else {
+                    if ($dayAttendedAny) {
+                        $stAttendedDays++;
+                        $sheet->setCellValue("{$dayCellLet}{$rowNum}", 'حاضر');
+                        $sheet->getStyle("{$dayCellLet}{$rowNum}")->applyFromArray([
+                            'font' => ['bold' => true, 'color' => ['rgb' => '065F46'], 'name' => 'Segoe UI'],
+                            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D1FAE5']],
+                            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                        ]);
+                    } else {
+                        $sheet->setCellValue("{$dayCellLet}{$rowNum}", 'غائب');
+                        $sheet->getStyle("{$dayCellLet}{$rowNum}")->applyFromArray([
+                            'font' => ['bold' => true, 'color' => ['rgb' => '9F1239'], 'name' => 'Segoe UI'],
+                            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFE4E6']],
+                            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                        ]);
+                    }
+                }
+            }
+
+            // أعمدة الإحصائيات
+            $activeDaysCount = count(array_filter($dayColumns, fn($d) => !empty($d['has_sessions'])));
+            $rate = $stTotalSessions > 0 ? round(($stAttendedSessions / $stTotalSessions) * 100, 1) : 0;
+            $dayRate = $activeDaysCount > 0 ? round(($stAttendedDays / $activeDaysCount) * 100, 1) : 0;
+
+            $cLet = Coordinate::stringFromColumnIndex($colIdx++);
+            $sheet->setCellValue("{$cLet}{$rowNum}", $stTotalSessions);
+            $sheet->getStyle("{$cLet}{$rowNum}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            $cLet = Coordinate::stringFromColumnIndex($colIdx++);
+            $sheet->setCellValue("{$cLet}{$rowNum}", $stAttendedSessions);
+            $sheet->getStyle("{$cLet}{$rowNum}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => '166534']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+
+            $cLet = Coordinate::stringFromColumnIndex($colIdx++);
+            $abs = $stTotalSessions - $stAttendedSessions;
+            $sheet->setCellValue("{$cLet}{$rowNum}", $abs);
+            $sheet->getStyle("{$cLet}{$rowNum}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => $abs > 0 ? '991B1B' : '6B7280']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+
+            $cLet = Coordinate::stringFromColumnIndex($colIdx++);
+            $sheet->setCellValue("{$cLet}{$rowNum}", $rate . '%');
+            $sheet->getStyle("{$cLet}{$rowNum}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'D97706']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+
+            $cLet = Coordinate::stringFromColumnIndex($colIdx++);
+            $sheet->setCellValue("{$cLet}{$rowNum}", $activeDaysCount);
+            $sheet->getStyle("{$cLet}{$rowNum}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            $cLet = Coordinate::stringFromColumnIndex($colIdx++);
+            $sheet->setCellValue("{$cLet}{$rowNum}", $stAttendedDays);
+            $sheet->getStyle("{$cLet}{$rowNum}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => '166534']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+
+            $cLet = Coordinate::stringFromColumnIndex($colIdx++);
+            $sheet->setCellValue("{$cLet}{$rowNum}", $dayRate . '%');
+            $sheet->getStyle("{$cLet}{$rowNum}")->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'D97706']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+
+            // الحالة الأكاديمية
+            $cLet = Coordinate::stringFromColumnIndex($colIdx++);
+            if ($rate >= 85) {
+                $sheet->setCellValue("{$cLet}{$rowNum}", 'سليم أكاديمياً');
+                $sheet->getStyle("{$cLet}{$rowNum}")->applyFromArray([
+                    'font' => ['bold' => true, 'color' => ['rgb' => '166534']],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DCFCE7']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                ]);
+            } elseif ($rate >= 80) {
+                $sheet->setCellValue("{$cLet}{$rowNum}", 'تنبيه متابعة إدارية');
+                $sheet->getStyle("{$cLet}{$rowNum}")->applyFromArray([
+                    'font' => ['bold' => true, 'color' => ['rgb' => '92400E']],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEF3C7']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                ]);
+            } else {
+                $sheet->setCellValue("{$cLet}{$rowNum}", 'إنذار وحرمان');
+                $sheet->getStyle("{$cLet}{$rowNum}")->applyFromArray([
+                    'font' => ['bold' => true, 'color' => ['rgb' => '991B1B']],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEE2E2']],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                ]);
+            }
+
+            $sheet->getRowDimension($rowNum)->setRowHeight(21);
+            $rowNum++;
+        }
+
+        // ── تفعيل الأوتوفلتر التفاعلي (Excel Native AutoFilter) ──
+        $sheet->setAutoFilter("A3:{$lastCol}" . ($rowNum - 1));
+
+        // ── السطر الختامي: الإجماليات (SUM & AVERAGE) ──
+        $sheet->mergeCells("A{$rowNum}:D{$rowNum}");
+        $sheet->setCellValue("A{$rowNum}", 'متوسط ونسب حضور الدفعة الإجمالية (SUM & AVERAGE)');
+        $sheet->getStyle("A{$rowNum}:{$lastCol}{$rowNum}")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '1E3A8A'], 'size' => 10, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F1F5F9']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $sheet->setCellValue("{$lastCol}{$rowNum}", 'جاهز للاعتماد');
+        $sheet->getStyle("{$lastCol}{$rowNum}")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '15803D'], 'size' => 10, 'name' => 'Segoe UI'],
+        ]);
+        $sheet->getRowDimension($rowNum)->setRowHeight(26);
+
+        // حدود واضحة لكافة الخلايا
+        $sheet->getStyle("A2:{$lastCol}{$rowNum}")->applyFromArray([
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => 'CBD5E1'],
+                ],
+            ],
+        ]);
+
+        // ضبط أحجام الأعمدة تلقائياً
+        for ($i = 1; $i <= $colIndex - 1; $i++) {
+            $c = Coordinate::stringFromColumnIndex($i);
+            $sheet->getColumnDimension($c)->setAutoSize(true);
+        }
+    }
+
+    /**
+     * بناء ورقة الإنذارات والحرمان الأكاديمي
+     */
+    protected static function renderAlertsWorksheet(
+        Spreadsheet $spreadsheet,
+        string $sheetTitle,
+        string $cohortName,
+        string $supervisorName,
+        string $periodStr,
+        array $allStudents,
+        $coursesList,
+        $sessions,
+        array $matrix,
+        array $courseStudentsMap
+    ): void {
+        $safeTitle = mb_substr($sheetTitle, 0, 30);
+        $sheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $safeTitle);
+        $spreadsheet->addSheet($sheet);
+        $sheet->setRightToLeft(true);
+
+        // الترويسة
+        $sheet->mergeCells('A1:C1');
+        $sheet->setCellValue('A1', 'الشعبة: ' . $cohortName);
+        $sheet->mergeCells('D1:G1');
+        $sheet->setCellValue('D1', 'المشرف: ' . $supervisorName);
+        $sheet->mergeCells('H1:K1');
+        $sheet->setCellValue('H1', 'الفترة: ' . $periodStr);
+
+        $sheet->getStyle('A1:K1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A8A']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(30);
+
+        // عناوين الأعمدة
+        $headers = [
+            'A2' => 'م',
+            'B2' => 'الرقم الأكاديمي',
+            'C2' => 'اسم الطالب الرباعي',
+            'D2' => 'الدورة / الاختصاص',
+            'E2' => 'المقررات المعنية',
+            'F2' => 'الجلسات الكلية',
+            'G2' => 'حضور',
+            'H2' => 'غياب',
+            'I2' => 'نسبة الغياب',
+            'J2' => 'درجة الإنذار',
+            'K2' => 'الإجراء الإداري المطلوب',
+        ];
+
+        foreach ($headers as $cell => $txt) {
+            $sheet->setCellValue($cell, $txt);
+        }
+
+        $sheet->getStyle('A2:K2')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '991B1B'], 'size' => 10, 'name' => 'Segoe UI'],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEE2E2']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+        $sheet->getRowDimension(2)->setRowHeight(26);
+
+        // استخراج الطلاب المتجاوزين
+        $rowNum = 3;
         $num = 0;
 
         foreach ($allStudents as $stId => $info) {
@@ -533,33 +961,51 @@ class AttendanceExcelService
                 if ($absenceRate >= 15) {
                     $num++;
                     $isBanned = $absenceRate >= 20;
-                    $alertRows[] = [
-                        'num'          => str_pad($num, 2, '0', STR_PAD_LEFT),
-                        'student_id'   => $stId,
-                        'academic_id'  => $info['academic_id'],
-                        'name'         => $info['name'],
-                        'branch_year'  => $info['batch_name'],
-                        'courses'      => implode('، ', $studentCourses),
-                        'total_sess'   => $totalSess,
-                        'attended'     => $attendedSess,
-                        'absent'       => $absentSess,
-                        'absence_rate' => $absenceRate . '%',
-                        'level'        => $isBanned ? 'حرمان نهائي (20% فما فوق)' : 'إنذار وتنبيه غياب (15%)',
-                        'level_badge'  => $isBanned ? 'bg-rose-950/60 text-rose-300 border-rose-800' : 'bg-amber-950/60 text-amber-300 border-amber-800',
-                        'action'       => $isBanned ? 'إشعار خطي + حرمان رسمي من الامتحان' : 'توجيه إنذار خطي + استدعاء ولي أمر',
-                    ];
+
+                    $sheet->setCellValue("A{$rowNum}", str_pad($num, 2, '0', STR_PAD_LEFT));
+                    $sheet->setCellValue("B{$rowNum}", $info['academic_id']);
+                    $sheet->setCellValue("C{$rowNum}", $info['name']);
+                    $sheet->setCellValue("D{$rowNum}", $info['batch_name']);
+                    $sheet->setCellValue("E{$rowNum}", implode('، ', $studentCourses));
+                    $sheet->setCellValue("F{$rowNum}", $totalSess);
+                    $sheet->setCellValue("G{$rowNum}", $attendedSess);
+                    $sheet->setCellValue("H{$rowNum}", $absentSess);
+                    $sheet->setCellValue("I{$rowNum}", $absenceRate . '%');
+                    $sheet->setCellValue("J{$rowNum}", $isBanned ? 'حرمان نهائي (20% فما فوق)' : 'إنذار وتنبيه غياب (15%)');
+                    $sheet->setCellValue("K{$rowNum}", $isBanned ? 'إشعار خطي + حرمان رسمي من الامتحان' : 'توجيه إنذار خطي + استدعاء ولي أمر');
+
+                    $sheet->getStyle("A{$rowNum}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle("B{$rowNum}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle("C{$rowNum}")->getFont()->setBold(true);
+                    $sheet->getStyle("F{$rowNum}:I{$rowNum}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    
+                    $sheet->getStyle("I{$rowNum}")->applyFromArray([
+                        'font' => ['bold' => true, 'color' => ['rgb' => '991B1B']],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEE2E2']],
+                    ]);
+
+                    $sheet->getStyle("J{$rowNum}")->applyFromArray([
+                        'font' => ['bold' => true, 'color' => ['rgb' => $isBanned ? '991B1B' : '92400E']],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $isBanned ? 'FEE2E2' : 'FEF3C7']],
+                        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                    ]);
+
+                    $sheet->getRowDimension($rowNum)->setRowHeight(22);
+                    $rowNum++;
                 }
             }
         }
 
-        return [
-            'id'             => 'sheet-alerts',
-            'title'          => 'ملخص الإنذارات والحرمان الأكاديمي',
-            'badge'          => (string)count($alertRows),
-            'is_active'      => false,
-            'is_alerts'      => true,
-            'alert_students' => $alertRows,
-            'total_students' => count($alertRows),
-        ];
+        // أوتوفلتر
+        if ($rowNum > 3) {
+            $sheet->setAutoFilter("A2:K" . ($rowNum - 1));
+            $sheet->getStyle("A2:K" . ($rowNum - 1))->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']]],
+            ]);
+        }
+
+        for ($i = 1; $i <= 11; $i++) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i))->setAutoSize(true);
+        }
     }
 }
