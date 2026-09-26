@@ -373,13 +373,16 @@ class AttendancePdfService
         // 7. تقسيم الطلاب على الصفحات (Multi-page Pagination):
         // كل صفحة تحتوي على الهيدر المؤسسي وشريط الفلترة كاملاً
         // الصفحة الأخيرة فقط تحتوي على ملخص الإجماليات، الضوابط والإنذارات، والفوتر والتواقيع
+        // 7. تقسيم الطلاب على الصفحات (Multi-page Pagination):
+        // حتى 11 طالباً يتسع التقرير كاملاً في صفحة واحدة مدمجة مع الفوتر والضوابط
+        // وإذا زاد عن ذلك، يتوزع بدقة بحيث يكون لكل صفحة هيدر وجدول متناسق
         $pages = [];
-        if ($totalCount <= 8) {
+        if ($totalCount <= 11) {
             $pages[] = $studentsList;
         } else {
             $remaining = $studentsList;
-            while (count($remaining) > 8) {
-                $pages[] = array_splice($remaining, 0, 10);
+            while (count($remaining) > 10) {
+                $pages[] = array_splice($remaining, 0, 12);
             }
             if (!empty($remaining)) {
                 $pages[] = $remaining;
