@@ -43,11 +43,15 @@ class AttendancePdfService
             } else {
                 $startDate = Carbon::now()->subMonths(4)->startOfDay();
                 $endDate = Carbon::now()->endOfDay();
-                $periodLabel = 'الفصل الدراسي الحالي 2024 / 2025';
+                $periodLabel = 'الفصل الدراسي الأول 2025 / 2026';
             }
         }
 
-        // 2. تصفية الجلسات المنعقدة خلال هذه الفترة
+        // اسم الفصل النشط
+        $activeSemester = DB::table('semesters')->where('is_active', true)->first();
+        $semesterName = $activeSemester->name ?? 'الفصل الدراسي الأول (دورة الخريف)';
+
+        // 2. تصفية الجلسات والمقررات حسب النطاق (موادي أو دورتي الإشرافية)
         $sessionQuery = DB::table('attendance_sessions')
             ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
             ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
@@ -64,142 +68,206 @@ class AttendancePdfService
         }
 
         $departmentName = 'هندسة وتكنولوجيا المعلومات';
-        $levelName = 'السنة الأولى - شعبة (A)';
+        $advisorBranch = $teacher->advisor_branch;
+        $advisorYear = $teacher->advisor_year;
+        $advisorCohortName = (!empty($advisorBranch) && !empty($advisorYear))
+            ? ($advisorBranch . ' - ' . $advisorYear)
+            : 'غير محدد كمربي دورة';
+
+        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
+        $yearMapRev = ['السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5];
+
+        $coursesList = collect();
 
         if ($scope === 'advisor_class') {
-            $advisorBranch = $teacher->advisor_branch;
-            $advisorYear = $teacher->advisor_year;
             $programIds = DB::table('programs')->where('name', $advisorBranch)->pluck('id')->toArray();
-            $yearMapRev = ['السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5];
             $courseYearNum = $yearMapRev[$advisorYear] ?? 1;
 
             if ($courseId) {
                 $sessionQuery->where('courses.course_id', $courseId);
+                $coursesList = DB::table('courses')->where('course_id', $courseId)->get();
             } else {
                 $validCourses = DB::table('courses')
                     ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
                     ->whereIn('course_program.program_id', $programIds)
                     ->where('courses.year', $courseYearNum)
                     ->pluck('courses.course_id')->toArray();
+
                 $sessionQuery->whereIn('courses.course_id', $validCourses);
+                $coursesList = DB::table('courses')->whereIn('course_id', $validCourses)->get();
             }
             if ($advisorBranch) $departmentName = $advisorBranch;
-            if ($advisorYear) $levelName = $advisorYear . ' - شعبة (A)';
         } else {
+            // المواد الخاصة بالمعلم
             $myCourseIds = DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id')->toArray();
             if ($courseId) {
                 $sessionQuery->where('courses.course_id', $courseId);
+                $coursesList = DB::table('courses')->where('course_id', $courseId)->get();
             } else {
                 $sessionQuery->whereIn('courses.course_id', $myCourseIds);
+                $coursesList = DB::table('courses')->whereIn('course_id', $myCourseIds)->get();
             }
         }
 
         $sessions = $sessionQuery->orderBy('attendance_sessions.created_at')->get();
 
-        // 3. جمع المواد والطلاب المستهدفين
-        $courseQuery = DB::table('courses');
-        if ($scope === 'advisor_class') {
-            $programIds = DB::table('programs')->where('name', $teacher->advisor_branch)->pluck('id')->toArray();
-            $yearMapRev = ['السنة الأولى' => 1, 'السنة الثانية' => 2, 'السنة الثالثة' => 3, 'السنة الرابعة' => 4, 'السنة الخامسة' => 5];
-            $courseYearNum = $yearMapRev[$teacher->advisor_year] ?? 1;
-            if ($courseId) {
-                $courseQuery->where('course_id', $courseId);
-            } else {
-                $courseQuery->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
-                    ->whereIn('course_program.program_id', $programIds)
-                    ->where('courses.year', $courseYearNum)
-                    ->select('courses.*')->distinct();
-            }
+        // 3. تحديد نص بطاقات الفلترة
+        $filterScopeText = ($scope === 'advisor_class')
+            ? 'مواد دورتي الإشرافية (مربي الدورة)'
+            : 'المواد الخاصة بالمعلم';
+
+        $selectedCourseTitle = null;
+        if ($courseId) {
+            $cRow = DB::table('courses')->where('course_id', $courseId)->first();
+            $selectedCourseTitle = $cRow->title ?? null;
+        }
+
+        if ($selectedCourseTitle) {
+            $filterCourseText = $selectedCourseTitle;
         } else {
-            $myCourseIds = DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id')->toArray();
-            if ($courseId) {
-                $courseQuery->where('course_id', $courseId);
+            $filterCourseText = ($scope === 'advisor_class')
+                ? 'كافة مقررات الدورة الإشرافية'
+                : 'جميع المقررات المسندة للمعلم';
+        }
+
+        if ($scope === 'advisor_class') {
+            $filterClassText = $advisorCohortName;
+        } else {
+            if ($courseId && $coursesList->isNotEmpty()) {
+                $firstC = $coursesList->first();
+                $progs = DB::table('course_program')
+                    ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                    ->where('course_program.course_id', $firstC->course_id)
+                    ->pluck('programs.name')
+                    ->toArray();
+                $filterClassText = (!empty($progs) ? implode(' / ', $progs) : 'عام') . ' - ' . ($yearMap[$firstC->year] ?? 'السنة الأولى');
             } else {
-                $courseQuery->whereIn('course_id', $myCourseIds);
+                $filterClassText = 'متعدد الشعب والاختصاصات';
             }
         }
 
-        $coursesList = $courseQuery->get();
-        if ($coursesList->isNotEmpty()) {
-            $firstC = $coursesList->first();
-            if ($courseId) {
-                $levelName = 'مقرر: ' . ($firstC->title ?? '') . ' - سنة ' . ($firstC->year ?? 1);
-            }
-        }
-
+        // 4. جمع قائمة الطلاب حسب النطاق المطلوب
         $allStudents = [];
-        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
 
-        foreach ($coursesList as $c) {
-            $coursePrograms = DB::table('course_program')->where('course_id', $c->course_id)->pluck('program_id')->toArray();
-            $courseYearStr = $yearMap[$c->year] ?? null;
-
-            $students = DB::table('students')
+        if ($scope === 'advisor_class') {
+            // دورته الإشرافية: طلاب هذه الدورة حصراً
+            $programIds = DB::table('programs')->where('name', $advisorBranch)->pluck('id')->toArray();
+            $studentsQuery = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
                 ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-                ->leftJoin('enrollments', function($join) use ($c) {
-                    $join->on('students.student_id', '=', 'enrollments.student_id')
-                         ->where('enrollments.course_id', '=', $c->course_id);
-                })
-                ->where(function($query) use ($coursePrograms, $courseYearStr) {
-                    $query->whereNotNull('enrollments.enrollment_id');
-                    if (!empty($coursePrograms) && $courseYearStr) {
-                        $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
-                            $q->whereIn('students.program_id', $coursePrograms)
-                              ->where('users.academic_year', $courseYearStr);
-                        });
-                    }
-                })
+                ->whereIn('students.program_id', $programIds)
+                ->where('users.academic_year', $advisorYear)
                 ->select(
                     'students.student_id',
                     'users.full_name',
                     'users.academic_year',
                     'users.university_id',
                     'programs.name as branch_name'
-                )
-                ->distinct()
-                ->get();
+                );
 
+            $students = $studentsQuery->get();
             foreach ($students as $st) {
-                if (!isset($allStudents[$st->student_id])) {
-                    $allStudents[$st->student_id] = [
-                        'student_id'   => $st->student_id,
-                        'academic_id'  => $st->university_id ?: (2026000 + $st->student_id),
-                        'name'         => $st->full_name,
-                        'branch'       => $st->branch_name ?? 'عام',
-                        'year'         => $st->academic_year ?? 'السنة الأولى',
-                    ];
-                }
-            }
-        }
-
-        // لو ما طلع طلاب مسجلين، نجلب عينة من جدول الطلاب للتأكد من عدم فراغ التقرير
-        if (empty($allStudents)) {
-            $sampleStudents = DB::table('students')
-                ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->select('students.student_id', 'users.full_name', 'users.university_id', 'users.academic_year')
-                ->limit(15)
-                ->get();
-            foreach ($sampleStudents as $st) {
+                $bName = $st->branch_name ?? $advisorBranch;
+                $yName = $st->academic_year ?? $advisorYear;
                 $allStudents[$st->student_id] = [
                     'student_id'   => $st->student_id,
                     'academic_id'  => $st->university_id ?: (2026000 + $st->student_id),
                     'name'         => $st->full_name,
-                    'branch'       => 'هندسة وتكنولوجيا المعلومات',
-                    'year'         => $st->academic_year ?? 'السنة الأولى',
+                    'branch'       => $bName,
+                    'year'         => $yName,
+                    'batch_name'   => $bName . ' - ' . $yName,
+                ];
+            }
+        } else {
+            // المواد الخاصة بالمعلم: الطلاب المسجلون بمواده مع ذكر اختصاص ودورة كل طالب
+            foreach ($coursesList as $c) {
+                $coursePrograms = DB::table('course_program')->where('course_id', $c->course_id)->pluck('program_id')->toArray();
+                $courseYearStr = $yearMap[$c->year] ?? null;
+
+                $students = DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                    ->leftJoin('enrollments', function($join) use ($c) {
+                        $join->on('students.student_id', '=', 'enrollments.student_id')
+                             ->where('enrollments.course_id', '=', $c->course_id);
+                    })
+                    ->where(function($query) use ($coursePrograms, $courseYearStr) {
+                        $query->whereNotNull('enrollments.enrollment_id');
+                        if (!empty($coursePrograms) && $courseYearStr) {
+                            $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
+                                $q->whereIn('students.program_id', $coursePrograms)
+                                  ->where('users.academic_year', $courseYearStr);
+                            });
+                        }
+                    })
+                    ->select(
+                        'students.student_id',
+                        'users.full_name',
+                        'users.academic_year',
+                        'users.university_id',
+                        'programs.name as branch_name'
+                    )
+                    ->distinct()
+                    ->get();
+
+                foreach ($students as $st) {
+                    if (!isset($allStudents[$st->student_id])) {
+                        $bName = $st->branch_name ?? 'عام';
+                        $yName = $st->academic_year ?? 'السنة الأولى';
+                        $allStudents[$st->student_id] = [
+                            'student_id'   => $st->student_id,
+                            'academic_id'  => $st->university_id ?: (2026000 + $st->student_id),
+                            'name'         => $st->full_name,
+                            'branch'       => $bName,
+                            'year'         => $yName,
+                            'batch_name'   => $bName . ' - ' . $yName,
+                        ];
+                    }
+                }
+            }
+        }
+
+        // إذا كانت القائمة فارغة، نأخذ عينة من الطلاب لضمان صدور التقرير بشكل مكتمل
+        if (empty($allStudents)) {
+            $sampleQuery = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->select(
+                    'students.student_id',
+                    'users.full_name',
+                    'users.university_id',
+                    'users.academic_year',
+                    'programs.name as branch_name'
+                );
+
+            if ($scope === 'advisor_class' && !empty($advisorBranch)) {
+                $programIds = DB::table('programs')->where('name', $advisorBranch)->pluck('id')->toArray();
+                $sampleQuery->whereIn('students.program_id', $programIds);
+            }
+
+            $sampleStudents = $sampleQuery->limit(15)->get();
+            foreach ($sampleStudents as $st) {
+                $bName = $st->branch_name ?? ($advisorBranch ?: 'معلوماتية');
+                $yName = $st->academic_year ?? ($advisorYear ?: 'السنة الأولى');
+                $allStudents[$st->student_id] = [
+                    'student_id'   => $st->student_id,
+                    'academic_id'  => $st->university_id ?: (2026000 + $st->student_id),
+                    'name'         => $st->full_name,
+                    'branch'       => $bName,
+                    'year'         => $yName,
+                    'batch_name'   => $bName . ' - ' . $yName,
                 ];
             }
         }
 
-        // 4. استخراج الأيام المنعقدة وسجلات الحضور
+        // 5. استخراج الأيام المنعقدة وسجلات الحضور
         $lessonIds = $sessions->pluck('lesson_id')->toArray();
         $attendances = DB::table('attendance')
             ->whereIn('lesson_id', $lessonIds)
             ->get();
 
-        // تجميع الأيام التي انعقدت فيها الجلسات
         $datesConducted = [];
-        $sessionDateMap = []; // lesson_id => YYYY-MM-DD
+        $sessionDateMap = [];
         foreach ($sessions as $s) {
             $d = Carbon::parse($s->created_at)->toDateString();
             $datesConducted[$d] = true;
@@ -207,13 +275,11 @@ class AttendancePdfService
         }
 
         $totalDays = count($datesConducted);
-        // إذا لم تنعقد جلسات بعد في النطاق المحدد (مثل اليوم ولم يبدأ بعد)، نعتبر عدد الأيام 1 افتراضياً
         if ($totalDays === 0) {
             $totalDays = ($period === 'today' ? 1 : ($period === 'week' ? 5 : 20));
         }
 
-        // بناء مصفوفة الحضور اليومي لكل طالب:
-        // $dailyAttendance[student_id][YYYY-MM-DD] = bool (حاضر على الأقل في جلسة واحدة)
+        // بناء مصفوفة الحضور اليومي لكل طالب: جلسة واحدة فأكثر = حاضر اليوم كاملاً
         $dailyPresence = [];
         foreach ($attendances as $att) {
             $d = $att->attendance_date ?: ($sessionDateMap[$att->lesson_id] ?? null);
@@ -225,7 +291,7 @@ class AttendancePdfService
             }
         }
 
-        // 5. تطبيق القاعدة الأكاديمية: جلسة واحدة فأكثر = حاضر باليوم كاملاً
+        // 6. حساب معدلات الحضور والإنذارات
         $studentsList = [];
         $sumAttended = 0;
         $sumAbsent = 0;
@@ -241,7 +307,6 @@ class AttendancePdfService
                     }
                 }
             } else {
-                // إذا لم توجد جلسات مسجلة بعد، نضع نسبة حضور طبيعية مبدئية
                 $studentAttendedDays = $totalDays;
             }
 
@@ -255,6 +320,7 @@ class AttendancePdfService
             $studentsList[] = [
                 'academic_id'   => $info['academic_id'],
                 'name'          => $info['name'],
+                'batch_name'    => $info['batch_name'] ?: ($info['branch'] . ' - ' . $info['year']),
                 'total_days'    => $totalDays,
                 'attended_days' => $studentAttendedDays,
                 'absent_days'   => $studentAbsentDays,
@@ -280,23 +346,28 @@ class AttendancePdfService
             'warnings_count' => $warningsCount,
         ];
 
-        // 6. تجهيز المتغيرات للفيو
+        // 7. تجهيز المتغيرات للـ Blade View
         $teacherName = $teacher->user->full_name ?? $teacher->user->name ?? 'م. وسيم يوسف';
-        $reportDateStr = Carbon::now()->locale('ar')->isoFormat('D MMMM YYYY') . ' (نهاية الدوام)';
-        $refCode = 'CIS-' . ($scope === 'advisor_class' ? 'ADV' : 'ATT');
+        $reportDateStr = Carbon::now()->format('d/m/Y - h:i') . ' ' . (Carbon::now()->format('A') == 'AM' ? 'ص' : 'م');
+        $refCode = 'DTC-ATT-' . date('Y') . '-' . ($scope === 'advisor_class' ? 'ADV' : 'CRS') . '-' . ($courseId ?: 'ALL');
 
         $html = view('exports.teacher_attendance_pdf', compact(
             'periodLabel',
+            'semesterName',
             'departmentName',
-            'levelName',
             'teacherName',
             'reportDateStr',
             'refCode',
+            'scope',
+            'filterScopeText',
+            'filterCourseText',
+            'filterClassText',
+            'advisorCohortName',
             'studentsList',
             'summaryTotals'
         ))->render();
 
-        // 7. تحويل الـ HTML إلى PDF عبر Puppeteer و Edge Headless
+        // 8. تحويل الـ HTML إلى PDF عبر Puppeteer و Edge Headless
         $exportsDir = public_path('exports');
         if (!file_exists($exportsDir)) {
             mkdir($exportsDir, 0755, true);
@@ -317,7 +388,7 @@ class AttendancePdfService
             return $outPdfPath;
         }
 
-        // Fallback إلى mPDF في حال عدم توفر المتصفح
+        // Fallback إلى mPDF في حال تعذر تشغيل المتصفح
         $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4-L',
