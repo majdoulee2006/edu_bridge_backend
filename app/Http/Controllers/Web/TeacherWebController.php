@@ -386,24 +386,23 @@ class TeacherWebController extends Controller
             $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
             $courseYearStr = $yearMap[$course->year] ?? null;
 
-            // جلب كل الطلاب المطابقين للمادة
-            $students = DB::table('students')
+            // جلب كل الطلاب المطابقين للمادة (حصراً نفس الاختصاص ونفس السنة ومسجلين)
+            $stQuery = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->leftJoin('enrollments', function($join) use ($sessionData) {
+                ->join('enrollments', function($join) use ($sessionData) {
                     $join->on('students.student_id', '=', 'enrollments.student_id')
-                         ->where('enrollments.course_id', '=', $sessionData->course_id);
-                })
-                ->where(function($query) use ($coursePrograms, $courseYearStr) {
-                    $query->whereNotNull('enrollments.enrollment_id');
-                    if (!empty($coursePrograms) && $courseYearStr) {
-                        $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
-                            $q->whereIn('students.program_id', $coursePrograms)
-                              ->where('users.academic_year', $courseYearStr);
-                        });
-                    }
-                })
-                ->pluck('students.student_id')
-                ->toArray();
+                         ->where('enrollments.course_id', '=', $sessionData->course_id)
+                         ->where('enrollments.status', '!=', 'dropped');
+                });
+
+            if (!empty($coursePrograms)) {
+                $stQuery->whereIn('students.program_id', $coursePrograms);
+            }
+            if ($courseYearStr) {
+                $stQuery->where('users.academic_year', $courseYearStr);
+            }
+
+            $students = $stQuery->pluck('students.student_id')->toArray();
 
             // جلب الطلاب اللي حضروا فعلاً
             $attendedStudents = DB::table('attendance')
@@ -453,22 +452,22 @@ class TeacherWebController extends Controller
         $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
         $courseYearStr = $yearMap[$course->year] ?? null;
 
-        $students = DB::table('students')
+        $stQuery = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('enrollments', function($join) use ($session) {
+            ->join('enrollments', function($join) use ($session) {
                 $join->on('students.student_id', '=', 'enrollments.student_id')
-                     ->where('enrollments.course_id', '=', $session->course_id);
-            })
-            ->where(function($query) use ($coursePrograms, $courseYearStr) {
-                $query->whereNotNull('enrollments.enrollment_id');
-                if (!empty($coursePrograms) && $courseYearStr) {
-                    $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
-                        $q->whereIn('students.program_id', $coursePrograms)
-                          ->where('users.academic_year', $courseYearStr);
-                    });
-                }
-            })
-            ->select('students.student_id', 'users.full_name', 'users.academic_year as level')
+                     ->where('enrollments.course_id', '=', $session->course_id)
+                     ->where('enrollments.status', '!=', 'dropped');
+            });
+
+        if (!empty($coursePrograms)) {
+            $stQuery->whereIn('students.program_id', $coursePrograms);
+        }
+        if ($courseYearStr) {
+            $stQuery->where('users.academic_year', $courseYearStr);
+        }
+
+        $students = $stQuery->select('students.student_id', 'users.full_name', 'users.academic_year as level')
             ->distinct()
             ->get();
 
@@ -656,23 +655,23 @@ class TeacherWebController extends Controller
             $coursePrograms = DB::table('course_program')->where('course_id', $c->course_id)->pluck('program_id')->toArray();
             $courseYearStr = $yearMap[$c->year] ?? null;
 
-            $students = DB::table('students')
+            $stQuery = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
                 ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-                ->leftJoin('enrollments', function($join) use ($c) {
+                ->join('enrollments', function($join) use ($c) {
                     $join->on('students.student_id', '=', 'enrollments.student_id')
-                         ->where('enrollments.course_id', '=', $c->course_id);
-                })
-                ->where(function($query) use ($coursePrograms, $courseYearStr) {
-                    $query->whereNotNull('enrollments.enrollment_id');
-                    if (!empty($coursePrograms) && $courseYearStr) {
-                        $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
-                            $q->whereIn('students.program_id', $coursePrograms)
-                              ->where('users.academic_year', $courseYearStr);
-                        });
-                    }
-                })
-                ->select('students.student_id', 'users.full_name', 'users.academic_year', 'programs.name as branch_name')
+                         ->where('enrollments.course_id', '=', $c->course_id)
+                         ->where('enrollments.status', '!=', 'dropped');
+                });
+
+            if (!empty($coursePrograms)) {
+                $stQuery->whereIn('students.program_id', $coursePrograms);
+            }
+            if ($courseYearStr) {
+                $stQuery->where('users.academic_year', $courseYearStr);
+            }
+
+            $students = $stQuery->select('students.student_id', 'users.full_name', 'users.academic_year', 'programs.name as branch_name')
                 ->distinct()
                 ->get();
 

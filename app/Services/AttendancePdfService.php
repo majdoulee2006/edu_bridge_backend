@@ -168,33 +168,33 @@ class AttendancePdfService
                 $coursePrograms = DB::table('course_program')->where('course_id', $c->course_id)->pluck('program_id')->toArray();
                 $courseYearStr = $yearMap[$c->year] ?? null;
 
-                $students = DB::table('students')
+                $stQuery = DB::table('students')
                     ->join('users', 'students.user_id', '=', 'users.user_id')
                     ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-                    ->leftJoin('enrollments', function($join) use ($c) {
+                    ->join('enrollments', function($join) use ($c) {
                         $join->on('students.student_id', '=', 'enrollments.student_id')
-                             ->where('enrollments.course_id', '=', $c->course_id);
-                    })
-                    ->where(function($query) use ($coursePrograms, $courseYearStr) {
-                        $query->whereNotNull('enrollments.enrollment_id');
-                        if (!empty($coursePrograms)) {
-                            $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
-                                $q->whereIn('students.program_id', $coursePrograms);
-                                if ($courseYearStr) {
-                                    $q->where('users.academic_year', $courseYearStr);
-                                }
-                            });
-                        }
-                    })
-                    ->select(
-                        'students.student_id',
-                        'users.full_name',
-                        'users.academic_year',
-                        'users.university_id',
-                        'programs.name as branch_name'
-                    )
-                    ->distinct()
-                    ->get();
+                             ->where('enrollments.course_id', '=', $c->course_id)
+                             ->where('enrollments.status', '!=', 'dropped');
+                    });
+
+                // مطابقة الاختصاص حصراً
+                if (!empty($coursePrograms)) {
+                    $stQuery->whereIn('students.program_id', $coursePrograms);
+                }
+                // مطابقة السنة الدراسية حصراً
+                if ($courseYearStr) {
+                    $stQuery->where('users.academic_year', $courseYearStr);
+                }
+
+                $students = $stQuery->select(
+                    'students.student_id',
+                    'users.full_name',
+                    'users.academic_year',
+                    'users.university_id',
+                    'programs.name as branch_name'
+                )
+                ->distinct()
+                ->get();
 
                 foreach ($students as $st) {
                     if (!isset($allStudents[$st->student_id])) {
