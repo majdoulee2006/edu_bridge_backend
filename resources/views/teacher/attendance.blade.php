@@ -133,47 +133,53 @@
             <i class="fa-solid fa-filter" style="color: var(--accent-color);"></i>
             فلترة متقدمة وتصدير شامل
         </h3>
-        <form id="export-form" action="{{ route('teacher.attendance.filtered_export') }}" method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end;">
-            
-            <div>
-                <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">نطاق التقرير</label>
-                <select name="scope" class="select-field" id="report_scope" onchange="toggleCourseOptions()">
-                    <option value="my_courses">المواد الخاصة بي</option>
-                    @if($isAdvisor)
-                        <option value="advisor_class">كافة مواد دورتي الإشرافية (مربي الدورة)</option>
-                    @endif
-                </select>
+        <form id="export-form" action="{{ route('teacher.attendance.filtered_export') }}" method="GET">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end;">
+                <div>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">نطاق التقرير</label>
+                    <select name="scope" class="select-field" id="report_scope" onchange="toggleCourseOptions()">
+                        <option value="my_courses">المواد الخاصة بي</option>
+                        @if($isAdvisor)
+                            <option value="advisor_class">كافة مواد دورتي الإشرافية (مربي الدورة)</option>
+                        @endif
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة (اختياري)</label>
+                    <select name="course_id" class="select-field" id="report_course">
+                        <option value="">جميع المواد</option>
+                        @foreach($courses as $c)
+                            <option value="{{ $c->course_id }}" class="my-course-option">{{ $c->title }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">الفترة الزمنية</label>
+                    <select name="period" class="select-field">
+                        <option value="today">اليوم</option>
+                        <option value="week">هذا الأسبوع</option>
+                        <option value="semester">منذ بداية الفصل</option>
+                    </select>
+                </div>
+
+                <input type="hidden" name="export_type" id="export_type_input" value="excel">
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" onclick="document.getElementById('export_type_input').value='excel'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                        <i class="fa-solid fa-file-excel"></i> إكسيل
+                    </button>
+                    <button type="submit" onclick="document.getElementById('export_type_input').value='pdf'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
+                        <i class="fa-solid fa-file-pdf"></i> PDF
+                    </button>
+                </div>
             </div>
 
-            <div>
-                <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة (اختياري)</label>
-                <select name="course_id" class="select-field" id="report_course">
-                    <option value="">جميع المواد</option>
-                    @foreach($courses as $c)
-                        <option value="{{ $c->course_id }}" class="my-course-option">{{ $c->title }}</option>
-                    @endforeach
-                </select>
-                <small id="advisor_hint" style="display:none; color: var(--text-secondary); margin-top: 5px;">في حال بقاء (جميع المواد)، سيتم تصدير الحضور لكافة مواد الفرع والسنة الخاصة بك كمربي.</small>
-            </div>
-
-            <div>
-                <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">الفترة الزمنية</label>
-                <select name="period" class="select-field">
-                    <option value="today">اليوم</option>
-                    <option value="week">هذا الأسبوع</option>
-                    <option value="semester">منذ بداية الفصل</option>
-                </select>
-            </div>
-
-            <input type="hidden" name="export_type" id="export_type_input" value="excel">
-
-            <div style="display: flex; gap: 10px;">
-                <button type="submit" onclick="document.getElementById('export_type_input').value='excel'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
-                    <i class="fa-solid fa-file-excel"></i> إكسيل
-                </button>
-                <button type="submit" onclick="document.getElementById('export_type_input').value='pdf'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
-                    <i class="fa-solid fa-file-pdf"></i> PDF
-                </button>
+            <!-- Advisor Hint Banner (Full width, does not disrupt horizontal alignment) -->
+            <div id="advisor_hint" style="display:none; margin-top: 1rem; padding: 0.75rem 1.25rem; background: rgba(0, 90, 156, 0.07); border: 1px solid rgba(0, 90, 156, 0.2); border-radius: 0.85rem; color: #005a9c; font-size: 0.88rem; font-weight: 600; align-items: center; gap: 0.6rem;">
+                <i class="fa-solid fa-circle-info" style="font-size: 1.1rem; shrink: 0;"></i>
+                <span>في حال بقاء خيار (جميع المواد)، سيتم تصدير سجل الحضور الأكاديمي لكافة مواد الفرع والسنة الخاصة بك كمربي دورة.</span>
             </div>
         </form>
     </div>
@@ -316,7 +322,7 @@
         const courseSelect = document.getElementById('report_course');
         
         if (scope === 'advisor_class') {
-            hint.style.display = 'block';
+            hint.style.display = 'flex';
             courseSelect.querySelectorAll('.my-course-option').forEach(el => el.style.display = 'none');
             courseSelect.value = "";
         } else {
