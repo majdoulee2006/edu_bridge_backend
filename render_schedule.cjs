@@ -23,12 +23,12 @@ if (!inputHtml || !outputPath) {
         const fileUrl = 'file:///' + inputHtml.replace(/\\/g, '/');
         await page.goto(fileUrl, { waitUntil: 'networkidle0', timeout: 15000 });
         
-        const element = await page.$('#officialScheduleSheet');
+        const element = (await page.$('#officialExamSheet')) || (await page.$('#officialScheduleSheet')) || (await page.$('article'));
         if (element) {
             await element.screenshot({ path: outputPath, type: 'png' });
             console.log('SUCCESS:' + outputPath);
         } else {
-            console.error('Element #officialScheduleSheet not found');
+            console.error('Element sheet not found');
             process.exit(2);
         }
         await browser.close();

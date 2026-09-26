@@ -362,6 +362,21 @@ class StudentWebController extends Controller
         return back()->with('error', 'تعذر توليد صورة الجدول الرسمي');
     }
 
+    /**
+     * تصدير صورة برنامج الامتحانات الرسمي (PNG)
+     */
+    public function exportExamScheduleImage(Request $request)
+    {
+        $student = $this->getStudent();
+        $imagePath = \App\Services\ScheduleImageService::generateOfficialExamImage($student);
+        if ($imagePath && file_exists($imagePath)) {
+            return response()->download($imagePath, 'برنامج_الامتحانات_الرسمي_' . ($student->user->full_name ?? 'طالب') . '.png', [
+                'Content-Type' => 'image/png',
+            ]);
+        }
+        return back()->with('error', 'تعذر توليد صورة برنامج الامتحانات');
+    }
+
     // ────────────────────────────────────────────────────────────
     //  COURSES & MATERIALS
     // ────────────────────────────────────────────────────────────

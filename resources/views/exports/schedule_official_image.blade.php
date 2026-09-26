@@ -430,54 +430,14 @@
 
     <!-- 5. INSTITUTIONAL SEALS & DEPARTMENT SIGN-OFF BLOCK -->
     <footer class="w-full pt-4 border-t border-[#e2e8f0]">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end text-center">
-            
-            <!-- Approval: Head of Department -->
-            <div class="flex flex-col items-center">
-                <span class="text-[11px] text-[#64748b]">رئيس قسم هندسة وتكنولوجيا المعلومات</span>
-                <span class="text-[13px] font-bold text-[#0f172a] mt-1">د. أحمد ديب</span>
-                <!-- Stylized Signature Glyphs -->
-                <div class="h-10 w-32 flex items-center justify-center text-[#1e293b] my-1 opacity-70">
-                    <svg class="h-8 w-28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 120 40">
-                        <path d="M10 28 C 30 10, 45 40, 60 18 S 90 2, 105 25" stroke-linecap="round"></path>
-                        <path d="M40 22 Q 55 12 75 32" stroke-linecap="round"></path>
-                    </svg>
-                </div>
-                <span class="font-mono text-[9px] text-[#94a3b8]">اعتماد رقم: DEP-CIS-992</span>
-            </div>
-
-            <!-- Official Seal Stamp (DTC Circle Stamp) -->
-            <div class="flex flex-col items-center justify-center">
-                <div class="relative w-28 h-28 rounded-full border-[2.5px] border-dashed border-[#005a9c] flex flex-col items-center justify-center p-2 text-[#005a9c] bg-[#f0f9ff]/40 shadow-xs">
-                    <div class="absolute inset-1 rounded-full border border-[#005a9c]/30 pointer-events-none"></div>
-                    <span class="material-symbols-outlined text-[20px] text-[#005a9c]">verified</span>
-                    <span class="text-[9px] font-bold text-center leading-tight mt-0.5">معهد دمشق المتوسط</span>
-                    <span class="font-mono text-[8px] tracking-wider text-[#0284c7]">DAMASCUS TRAINING CENTRE</span>
-                    <span class="text-[8px] font-semibold mt-0.5 text-center">شؤون الطلاب والامتحانات</span>
-                    <span class="font-mono text-[8px] text-[#005a9c] mt-0.5 font-bold">★ 2025 - 2026 ★</span>
-                </div>
-                <span class="text-[10px] text-[#047857] font-semibold mt-1 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[13px]">check_circle</span> مصدق أصولاً
-                </span>
-            </div>
-
-            <!-- Approval: Student Affairs Director -->
-            <div class="flex flex-col items-center">
-                <span class="text-[11px] text-[#64748b]">مدير شؤون الطلاب والامتحانات</span>
-                <span class="text-[13px] font-bold text-[#0f172a] mt-1">أ. نضال منصور</span>
-                <div class="h-10 w-32 flex items-center justify-center text-[#1e293b] my-1 opacity-70">
-                    <svg class="h-8 w-28" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 120 40">
-                        <path d="M15 25 C 25 5, 50 35, 75 15 S 100 28, 110 12" stroke-linecap="round"></path>
-                        <path d="M60 28 L 85 28" stroke-linecap="round"></path>
-                    </svg>
-                </div>
-                <span class="font-mono text-[9px] text-[#94a3b8]">اعتماد رقم: REG-STU-4011</span>
-            </div>
-
+        <div class="flex flex-col items-center justify-center text-center py-2">
+            <span class="text-[11px] text-[#64748b]">رئيس قسم هندسة وتكنولوجيا المعلومات</span>
+            <span class="text-[14px] font-bold text-[#0f172a] mt-0.5">د. أحمد ديب</span>
+            <span class="font-mono text-[9px] text-[#94a3b8] mt-0.5">اعتماد رقم: DEP-CIS-992</span>
         </div>
 
         <!-- Bottom Footer Reference Strip -->
-        <div class="mt-4 pt-3 border-t border-[#f1f5f9] flex flex-wrap items-center justify-between text-[10px] text-[#64748b]">
+        <div class="mt-3 pt-3 border-t border-[#f1f5f9] flex flex-wrap items-center justify-between text-[10px] text-[#64748b]">
             <div class="flex items-center gap-2">
                 <span class="font-bold text-[#005a9c]">منظومة جسر التعليم Edu-Bridge • DTC</span>
                 <span>تم استخراج الوثيقة إلكترونياً وتعتبر نافذة دون الحاجة لتوقيع يدوي إضافي عند التحقق الرقمي.</span>

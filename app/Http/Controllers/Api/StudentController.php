@@ -1077,6 +1077,17 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
+        $imagePath = \App\Services\ScheduleImageService::generateOfficialExamImage($student);
+        if ($imagePath && file_exists($imagePath)) {
+            $fileName = basename($imagePath);
+            $url = url('exports/' . $fileName);
+            return response()->json([
+                'success'   => true,
+                'pdf_url'   => $url,
+                'image_url' => $url,
+            ], 200);
+        }
+
         // جلب معرفات المواد التي سجل فيها الطالب
         $myCourseIds = DB::table('enrollments')
             ->where('student_id', $student->student_id)
