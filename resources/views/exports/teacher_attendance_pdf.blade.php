@@ -21,7 +21,7 @@
         }
         @page {
             size: A4 landscape;
-            margin: 7mm;
+            margin: 5mm 6mm;
         }
         .material-symbols-outlined {
             font-family: 'Material Symbols Outlined' !important;
@@ -43,7 +43,7 @@
             width: 100%;
             border-radius: 0.75rem;
             border: 1px solid #e2e8f0;
-            padding: 1.25rem 1.5rem;
+            padding: 0.9rem 1.2rem;
             position: relative;
         }
         .page-container:last-child {
@@ -60,7 +60,7 @@
         }
     </style>
 </head>
-<body class="bg-[#f8fafc] text-[#0f172a] p-2 text-[11px] leading-normal">
+<body class="bg-[#f8fafc] text-[#0f172a] text-[11px] leading-normal">
 
 @foreach($pages as $pageIndex => $pageStudents)
     @php

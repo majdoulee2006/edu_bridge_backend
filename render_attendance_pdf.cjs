@@ -29,7 +29,8 @@ if (!inputHtml || !outputPath) {
             format: 'A4',
             landscape: true,
             printBackground: true,
-            margin: { top: '6mm', bottom: '6mm', left: '6mm', right: '6mm' }
+            preferCSSPageSize: true,
+            margin: { top: '0', bottom: '0', left: '0', right: '0' }
         });
         
         await browser.close();

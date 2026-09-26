@@ -31,9 +31,12 @@ class AttendancePdfService
             $endDate = Carbon::today()->endOfDay();
             $periodLabel = 'اليوم: ' . Carbon::today()->locale('ar')->isoFormat('dddd D MMMM YYYY');
         } elseif ($period === 'week') {
-            $startDate = Carbon::now()->startOfWeek();
-            $endDate = Carbon::now()->endOfWeek();
-            $periodLabel = 'الأسبوع الحالي: ' . $startDate->format('d/m/Y') . ' – ' . $endDate->format('d/m/Y');
+            // أسبوع الدوام الرسمي الأكاديمي (معهد دمشق المتوسط): من الأحد إلى الخميس (5 أيام دوام)
+            $startOfWeek = Carbon::now()->startOfWeek(Carbon::SUNDAY);
+            $endOfWeek = $startOfWeek->copy()->addDays(4)->endOfDay();
+            $startDate = $startOfWeek->copy()->startOfDay();
+            $endDate = $endOfWeek;
+            $periodLabel = 'الأسبوع الحالي (5 أيام دوام): ' . $startDate->format('d/m/Y') . ' – ' . $startOfWeek->copy()->addDays(4)->format('d/m/Y');
         } elseif ($period === 'semester') {
             $activeSemester = DB::table('semesters')->where('is_active', true)->first();
             if ($activeSemester && $activeSemester->start_date && $activeSemester->end_date) {
@@ -286,10 +289,13 @@ class AttendancePdfService
             }
         }
 
-        $totalDays = count($datesConducted);
-        if ($totalDays === 0) {
-            // إذا لم تنعقد أي جلسة في هذا اليوم أو الفترة
+        if ($period === 'week') {
+            // أسبوع الدوام الرسمي الأكاديمي ثابت 5 أيام دوام (الأحد إلى الخميس)
+            $totalDays = 5;
+        } elseif ($period === 'today') {
             $totalDays = 1;
+        } else {
+            $totalDays = max(count($datesConducted), 20);
         }
 
         // بناء مصفوفة الحضور الفعلي للطلاب
@@ -301,6 +307,12 @@ class AttendancePdfService
                 $d = Carbon::parse($att->created_at)->toDateString();
             }
             if ($d && in_array($att->status, ['present', 'late'])) {
+                if ($startDate && $endDate) {
+                    $dt = Carbon::parse($d);
+                    if ($dt->lt($startDate) || $dt->gt($endDate)) {
+                        continue;
+                    }
+                }
                 $dailyPresence[$att->student_id][$d] = true;
             }
         }
@@ -314,15 +326,11 @@ class AttendancePdfService
 
         foreach ($allStudents as $stId => $info) {
             $studentAttendedDays = 0;
-            if (!empty($datesConducted)) {
-                foreach (array_keys($datesConducted) as $d) {
-                    if (!empty($dailyPresence[$stId][$d])) {
-                        $studentAttendedDays++;
-                    }
-                }
-            } else {
-                // إذا لم توجد جلسة إطلاقاً أو لم يسجل حضور، الغياب هو الأصل حتى يثبت الحضور
-                $studentAttendedDays = 0;
+            if (!empty($dailyPresence[$stId])) {
+                $studentAttendedDays = count($dailyPresence[$stId]);
+            }
+            if ($studentAttendedDays > $totalDays) {
+                $studentAttendedDays = $totalDays;
             }
 
             $studentAbsentDays = max(0, $totalDays - $studentAttendedDays);
