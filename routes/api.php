@@ -22,6 +22,7 @@ use App\Http\Controllers\StudentParentController;
 use App\Http\Controllers\Api\ParentMeetingController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Api\AffairsController;
+use App\Http\Controllers\Api\AiAssistantController;
 
 // خدمة ملفات التخزين (بديل الـ symlink على Windows)
 Route::get('/file/{path}', function (string $path) {
@@ -45,6 +46,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
 Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
 Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset']);
+Route::post('/ai/chat', [AiAssistantController::class, 'chat']);
 
 // Telegram Webhook
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
