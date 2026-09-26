@@ -537,6 +537,20 @@ class TeacherWebController extends Controller
         $scope = $request->input('scope', 'my_courses');
         $courseId = $request->input('course_id');
         $period = $request->input('period', 'today');
+        $exportType = $request->input('export_type', 'excel');
+
+        if ($exportType === 'pdf') {
+            $pdfPath = \App\Services\AttendancePdfService::generateTeacherAttendancePdf($teacher, [
+                'scope' => $scope,
+                'course_id' => $courseId,
+                'period' => $period,
+            ]);
+
+            $fileName = 'الملخص_الإحصائي_للحضور_' . now()->format('Y-m-d') . '.pdf';
+            return response()->download($pdfPath, $fileName, [
+                'Content-Type' => 'application/pdf',
+            ]);
+        }
 
         $startDate = null;
         $endDate = null;
