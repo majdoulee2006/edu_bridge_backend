@@ -76,7 +76,7 @@ Route::get('/Parents/login', fn() => redirect()->route('parent.login'));
 Route::get('/parents', fn() => redirect()->route('parent.login'));
 Route::get('/Parents', fn() => redirect()->route('parent.login'));
 
-Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.submit');
+Route::post('/login', [UnifiedAuthController::class, 'login'])->middleware('throttle:login')->name('login.submit');
 Route::match(['get', 'post'], '/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
 // ===== مسارات إعادة تعيين كلمة السر عبر تلغرام OTP =====
@@ -99,7 +99,7 @@ Route::get('/telegram/scanner', [\App\Http\Controllers\Api\TelegramWebhookContro
 Route::post('/telegram/record-attendance', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'recordAttendanceFromScanner'])->name('telegram.record_attendance');
 
 // ===== مسارات المعلم (Teacher) =====
-Route::post('/teacher/login', [UnifiedAuthController::class, 'login'])->name('teacher.login.post');
+Route::post('/teacher/login', [UnifiedAuthController::class, 'login'])->middleware('throttle:login')->name('teacher.login.post');
 Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('teacher.logout');
 
 // الصفحات المحمية بـ Middleware
@@ -199,7 +199,7 @@ Route::get('/create-student', function () {
 
 
 // مسارات تسجيل الدخول لرئيس القسم
-Route::post('/hod/login', [UnifiedAuthController::class, 'login'])->name('hod.login.submit');
+Route::post('/hod/login', [UnifiedAuthController::class, 'login'])->middleware('throttle:login')->name('hod.login.submit');
 Route::post('/hod/logout', [HODWebController::class, 'logout'])->name('hod.logout');
 
 // مسارات واجهات رئيس القسم (Frontend Only) محمية
@@ -272,7 +272,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
 use App\Http\Controllers\Web\AffairsWebController;
 
 Route::get('/affairs/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'affairs'))->name('affairs.login');
-Route::post('/affairs/login', [UnifiedAuthController::class, 'login'])->name('affairs.login.submit');
+Route::post('/affairs/login', [UnifiedAuthController::class, 'login'])->middleware('throttle:login')->name('affairs.login.submit');
 Route::post('/affairs/logout', [AffairsWebController::class, 'logout'])->name('affairs.logout');
 
 Route::prefix('affairs')->middleware(['affairs'])->group(function () {
@@ -390,7 +390,7 @@ use App\Http\Controllers\Web\AdminAcademicController;
 use App\Http\Controllers\Web\AdminCourseController;
 
 Route::get('/admin/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'admin'))->name('admin.login');
-Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->name('admin.login.submit');
+Route::post('/admin/login', [UnifiedAuthController::class, 'login'])->middleware('throttle:login')->name('admin.login.submit');
 Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 
 Route::prefix('admin')->middleware(['admin'])->group(function () {
@@ -505,7 +505,7 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
 use App\Http\Controllers\Web\StudentWebController;
 
 Route::get('/student/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'student'))->name('student.login');
-Route::post('/student/login', [UnifiedAuthController::class, 'login'])->name('student.login.post');
+Route::post('/student/login', [UnifiedAuthController::class, 'login'])->middleware('throttle:login')->name('student.login.post');
 Route::post('/student/logout', [StudentWebController::class, 'logout'])->name('student.logout');
 
 Route::prefix('student')->middleware(['student'])->group(function () {
@@ -582,7 +582,7 @@ use App\Http\Controllers\Web\ParentWebController;
 
 // تسجيل الدخول
 Route::get('/parent/login', fn(\Illuminate\Http\Request $r) => app(UnifiedAuthController::class)->showLoginForm($r, 'parent'))->name('parent.login');
-Route::post('/parent/login', [UnifiedAuthController::class, 'login'])->name('parent.login.post');
+Route::post('/parent/login', [UnifiedAuthController::class, 'login'])->middleware('throttle:login')->name('parent.login.post');
 Route::match(['get', 'post'], '/parent/logout', [ParentWebController::class, 'logout'])->name('parent.logout');
 
 // العمليات المحمية

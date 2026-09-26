@@ -14,6 +14,7 @@ use App\Traits\FaceRecognitionTrait;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Support\SingleSessionGuard;
+use App\Support\LoginThrottleGuard;
 
 class UnifiedAuthController extends Controller
 {
@@ -83,7 +84,23 @@ class UnifiedAuthController extends Controller
         }
 
         // 3. Validate credentials
-        if ($user && Hash::check($request->password, $user->password)) {
+        if ($user && LoginThrottleGuard::isLocked($user)) {
+            $minutes = LoginThrottleGuard::lockRemainingMinutes($user);
+            UserActivity::log('محاولة دخول مرفوضة', 'الحساب مقفول مؤقتاً بسبب محاولات دخول فاشلة متكررة', $user);
+            return back()->withErrors([
+                'login' => "🔒 تم قفل هذا الحساب مؤقتاً بسبب محاولات دخول فاشلة متكررة. يرجى المحاولة مرة أخرى خلال {$minutes} دقيقة."
+            ])->withInput($request->only('login'));
+        }
+
+        $passwordValid = $user && Hash::check($request->password, $user->password);
+
+        if ($user && !$passwordValid) {
+            LoginThrottleGuard::recordFailure($user);
+        }
+
+        if ($passwordValid) {
+            LoginThrottleGuard::recordSuccess($user);
+
             if ($user->status !== 'active') {
                 UserActivity::log('محاولة دخول مرفوضة', 'الحساب موقوف مؤقتاً', $user);
                 return back()->withErrors(['login' => 'عذراً، هذا الحساب موقوف مؤقتاً.'])->withInput($request->only('login'));

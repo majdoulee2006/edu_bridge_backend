@@ -12,6 +12,7 @@ use App\Models\Student;
 use App\Models\StudentParent;
 use App\Models\User;
 use App\Support\SingleSessionGuard;
+use App\Support\LoginThrottleGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -75,10 +76,22 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => 'اسم المستخدم أو الرقم الجامعي غير موجود بالنظام'], 404);
         }
 
+        if (LoginThrottleGuard::isLocked($user)) {
+            $minutes = LoginThrottleGuard::lockRemainingMinutes($user);
+            \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'الحساب مقفول مؤقتاً بسبب محاولات دخول فاشلة متكررة', $user);
+            return response()->json([
+                'success' => false,
+                'message' => "🔒 تم قفل هذا الحساب مؤقتاً بسبب محاولات دخول فاشلة متكررة. يرجى المحاولة مرة أخرى خلال {$minutes} دقيقة.",
+            ], 423);
+        }
+
         if (!Hash::check($request->password, $user->password)) {
+            LoginThrottleGuard::recordFailure($user);
             \App\Models\UserActivity::log('محاولة دخول فاشلة', 'كلمة مرور غير صحيحة عبر التطبيق', $user);
             return response()->json(['success' => false, 'message' => 'كلمة المرور غير صحيحة. يرجى التأكد وإعادة المحاولة.'], 401);
         }
+
+        LoginThrottleGuard::recordSuccess($user);
 
         if ($user->status === 'pending') {
             \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب قيد المراجعة عبر التطبيق', $user);

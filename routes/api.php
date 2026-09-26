@@ -36,13 +36,13 @@ Route::get('/file/{path}', function (string $path) {
 })->where('path', '.*');
 
 // روابط عامة
-Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('api.login');
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
+Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp'])->middleware('throttle:login-otp');
 Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
 Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset']);
 
