@@ -113,7 +113,10 @@ class AiAssistantController extends Controller
             . "   - **ممنوع منعاً باتاً وقاطعاً** أن تدمج إجابة سؤال قديم مع السؤال الجديد، أو تبدأ بالحديث عما سأله سابقاً، أو تعيد إجابة نقطة أجبت عليها في الرسائل الماضية.\n"
             . "   - تعامل مع السؤال الحالي بتركيز 100% وأعطه جوابه المباشر الشافي وحده دون أي استرجاع لما مضى.\n"
             . "5. 📊 **استخدام البيانات الحقيقية الحية المرفقة:**\n"
-            . "   - إذا سأل عن موعد محاضرته، أرقام غيابه، مواده، قاعاته، استخرج له فوراً من بياناته المرفقة بالأسفل وأجبه بالتفصيل الدقيق.\n\n"
+            . "   - إذا سأل عن موعد محاضرته، أرقام غيابه، مواده، قاعاته، استخرج له فوراً من بياناته المرفقة بالأسفل وأجبه بالتفصيل الدقيق.\n"
+            . "6. ✍️ **إتمام الإجابة بالكامل وعدم بترها نهائياً (إلزامية قصوى):**\n"
+            . "   - احرص على أن تكون إجابتك كاملة ومستوفية للشرح ومختومة بخاتمة طبيعية وواضحة.\n"
+            . "   - يُمنع منعاً باتاً التوقف في منتصف الجملة أو ترك الرد ناقصاً أو مقطوعاً.\n\n"
             . "═════════════════════════════════════════════════════════════\n"
             . $this->getDualPlatformEcosystemGuide() . "\n"
             . "═════════════════════════════════════════════════════════════\n"
@@ -127,7 +130,7 @@ class AiAssistantController extends Controller
         ];
         $contents[] = [
             'role'  => 'model',
-            'parts' => [['text' => 'مفهوم تماماً بكل سرور ومحبة. أنا رفيقك ومساعدك EduBridge AI، سأتحدث معك بسلاسة ولطف تام، وسأجيبك حصراً وبدقة على سؤالك الأخير فقط وبالمكان المحدد في الموبايل والويب دون أي دمج أو تكرار لأسئلة سابقة.']],
+            'parts' => [['text' => 'مفهوم تماماً بكل سرور ومحبة. أنا رفيقك ومساعدك EduBridge AI، سأتحدث معك بسلاسة ولطف تام، وسأجيبك حصراً وبدقة على سؤالك الأخير فقط وبالمكان المحدد في الموبايل والويب دون أي دمج أو تكرار لأسئلة سابقة، وسأحرص على أن تكون إجابتي كاملة وتامة دون أي انقطاع.']],
         ];
 
         // تنقية وإضافة سجل المحادثة السابق فقط (آخر تبادلين فقط كحد أقصى)
@@ -148,27 +151,25 @@ class AiAssistantController extends Controller
         // السؤال الحالي - التركيز المطلق عليه وحده
         $contents[] = [
             'role'  => 'user',
-            'parts' => [['text' => "أجبني على سؤالي التالي الآن مباشرة دون تكرار أي إجابة سابقة:\n" . $message]],
+            'parts' => [['text' => "أجبني على سؤالي التالي الآن مباشرة وبشكل كامل دون تكرار أي إجابة سابقة:\n" . $message]],
         ];
 
-        // مصفوفة الموديلات المعتمدة مع التبديل التلقائي في حال استنفاد الكوتا (Fallback Cascade)
+        // الموديلات المعتمدة بالترتيب لضمان أقصى سرعة واستجابة كاملة بدون تعليق
         $models = [
+            'gemini-3.5-flash-lite',
             'gemini-3.7-flash',
             'gemini-3.5-flash',
-            'gemini-3-flash-preview',
-            'gemini-flash-latest',
-            'gemini-3.8-flash',
         ];
 
         foreach ($models as $modelName) {
             try {
                 $response = Http::withHeaders([
                     'Content-Type' => 'application/json',
-                ])->timeout(20)->post("https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}", [
+                ])->timeout(15)->post("https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}", [
                     'contents' => $contents,
                     'generationConfig' => [
                         'temperature'     => 0.7,
-                        'maxOutputTokens' => 950,
+                        'maxOutputTokens' => 2500,
                     ],
                 ]);
 
@@ -392,11 +393,14 @@ GUIDE;
                 $classGroup = $branchName . ' - ' . $academicYearStr;
 
                 $schedules = Schedule::where('class_group', $classGroup)
-                    ->orWhereHas('course.students', function($q) use ($student) {
-                        $q->where('enrollments.student_id', $student->student_id);
-                    })
                     ->with(['course', 'course.teachers.user'])
                     ->get();
+
+                if ($schedules->isEmpty()) {
+                    $schedules = Schedule::whereHas('course.students', function($q) use ($student) {
+                        $q->where('enrollments.student_id', $student->student_id);
+                    })->with(['course', 'course.teachers.user'])->get();
+                }
 
                 if ($schedules->isNotEmpty()) {
                     $context .= "- جدول المحاضرات الأسبوعي الفعلي للطالب:\n";
@@ -478,21 +482,117 @@ GUIDE;
     }
 
     /**
-     * محرك الاستجابة الأكاديمي المحلي الذكي (Fallback)
+     * محرك الاستجابة الأكاديمي المحلي الذكي (Live DB-Powered Academic Engine)
      */
     protected function generateLocalAcademicResponse(string $message, string $role, $user): string
     {
         $q = mb_strtolower($message, 'UTF-8');
 
-        // فحص محاولات تجاوز الصلاحيات (حظر الإفصاح عن البيانات الإدارية أو صلاحيات الكادر لمن لا يملكها)
+        // 1. فحص محاولات تجاوز الصلاحيات (حظر الإفصاح عن البيانات الإدارية أو صلاحيات الكادر لمن لا يملكها)
         if ($role === 'student' || empty($role)) {
             if (str_contains($q, 'رصد حضور') || str_contains($q, 'رصد درجات') || str_contains($q, 'رصد علامات') || str_contains($q, 'تعديل علامات') || str_contains($q, 'تعديل درجات') || str_contains($q, 'حسابات') || str_contains($q, 'كادر') || str_contains($q, 'لوحة المعلم') || str_contains($q, 'لوحة الشؤون') || str_contains($q, 'لوحة المدير') || str_contains($q, 'ترفيع') || str_contains($q, 'بيانات الطلاب')) {
                 return "عذراً، هذه البيانات والإجراءات ليست من صلاحياتك للاطلاع عليها أو إدارتها، وليس من صلاحياتي إخبارك بها أو بتفاصيلها. يرجى مراجعة إدارة المعهد أو المعنيين بذلك.";
             }
         }
 
-        // الحضور والغياب والإنذارات
+        // 2. التحيات والمحادثات اللطيفة
+        if ($q === 'كيفك' || $q === 'كيفك اليوم' || $q === 'مرحبا' || $q === 'أهلا' || $q === 'اهلين' || $q === 'صباح الخير' || $q === 'مساء الخير' || str_contains($q, 'شو أخبارك') || str_contains($q, 'شو اخبارك') || str_contains($q, 'كيف حالك') || str_contains($q, 'عساك بخير')) {
+            return "يا أهلاً وسهلاً بك! أنا بأفضل حال والحمد لله، وكلي طاقة وسعادة لأني معك اليوم. تسلم على سؤالك اللطيف! ❤️\n\n"
+                . "طمني عنك كيف حالك؟ أنا جاهز بكل سرور لأساعدك بأي استفسار عن جدولك، محاضراتك، غيابك، أو أي ميزة بالمنظومة! 😊✨";
+        }
+
+        // 3. الاستفسار عن عدد المحاضرات أو جدول المحاضرات الأسبوعي الفعلي للطالب من قاعدة البيانات
+        if (str_contains($q, 'كم محاضرة') || str_contains($q, 'محاضراتي') || str_contains($q, 'محاضرات اليوم') || str_contains($q, 'جدول المحاضرات') || str_contains($q, 'عندي محاضر') || str_contains($q, 'شو عندي محاضر') || str_contains($q, 'ايمت عندي') || str_contains($q, 'إيمت عندي')) {
+            if ($user) {
+                $student = $user->student ?? Student::where('user_id', $user->user_id)->first();
+                if ($student) {
+                    $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? $student->level ?? '');
+                    $branchName = DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
+                    $classGroup = $branchName . ' - ' . $academicYearStr;
+
+                    $schedules = Schedule::where('class_group', $classGroup)
+                        ->with(['course', 'course.teachers.user'])
+                        ->get();
+
+                    if ($schedules->isEmpty()) {
+                        $schedules = Schedule::whereHas('course.students', function($q2) use ($student) {
+                            $q2->where('enrollments.student_id', $student->student_id);
+                        })->with(['course', 'course.teachers.user'])->get();
+                    }
+
+                    if ($schedules->isNotEmpty()) {
+                        $count = $schedules->count();
+                        $dayMap = [
+                            'Sunday'    => 'الأحد',
+                            'Monday'    => 'الاثنين',
+                            'Tuesday'   => 'الثلاثاء',
+                            'Wednesday' => 'الأربعاء',
+                            'Thursday'  => 'الخميس',
+                            'Friday'    => 'الجمعة',
+                            'Saturday'  => 'السبت',
+                        ];
+                        $reply = "أهلاً بك يا غالي! 🌟 لديك في جدولك الأسبوعي **{$count} محاضرات مسجلة**:\n\n";
+                        foreach ($schedules as $idx => $sch) {
+                            $num = $idx + 1;
+                            $d = $dayMap[$sch->day] ?? $sch->day;
+                            $cTitle = $sch->course->title ?? 'مقرر';
+                            $tName = $sch->course->teachers->first()->user->full_name ?? 'مدرس المقرر';
+                            $room = $sch->room ?? $sch->location ?? 'القاعة المعتمدة';
+                            $time = substr($sch->start_time, 0, 5) . ' إلى ' . substr($sch->end_time, 0, 5);
+                            $reply .= "{$num}. يوم **{$d}**: محاضرة **'{$cTitle}'** من الساعة {$time} في ({$room}) - مع الأستاذ: {$tName}.\n";
+                        }
+                        $reply .= "\n📱 **عبر الموبايل:** افتح الزر الدائري المركزي (Speed Dial) ➡️ **'الجدول'** لحفظ جدولك كصورة PNG بجهازك.\n";
+                        $reply .= "💻 **عبر الويب:** يمكنك استعراض وطباعة جدولك من لوحة الطالب عبر الرابط: `/student/schedule`.";
+                        return $reply;
+                    }
+
+                    // في حال عدم وجود جدول زمني ولكن مسجل بمقررات
+                    $courses = DB::table('enrollments')
+                        ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
+                        ->where('enrollments.student_id', $student->student_id)
+                        ->pluck('courses.title')
+                        ->toArray();
+                    if (!empty($courses)) {
+                        $cCount = count($courses);
+                        $reply = "أهلاً بك! لديك **{$cCount} مقررات دراسية** مسجلة هذا الفصل:\n";
+                        foreach ($courses as $i => $c) {
+                            $reply .= ($i + 1) . ". مقرر: **{$c}**\n";
+                        }
+                        $reply .= "\n📱 **عبر الموبايل:** يمكنك متابعة المواعيد من الزر المركزي (Speed Dial) ➡️ **'الجدول'**.\n";
+                        $reply .= "💻 **عبر الويب:** تجد تفاصيلها في صفحة المواد `/student/courses` والجدول `/student/schedule`.";
+                        return $reply;
+                    }
+                }
+            }
+            return "📅 **جدول المحاضرات والدوام الأسبوعي:**\n\n"
+                . "📱 **عبر الموبايل:** اضغط على الزر المركزي (Speed Dial) ثم اختر **'الجدول'** لمشاهدة كافة محاضراتك وتنزيل جدولك كصورة PNG عالية الدقة في المعرض.\n"
+                . "💻 **عبر الويب:** سجّل دخولك إلى بوابتك وافتح صفحة **الجدول** عبر الرابط: `/student/schedule`.";
+        }
+
+        // 4. الحضور والغياب والإنذارات الحقيقية من قاعدة البيانات
         if (str_contains($q, 'غياب') || str_contains($q, 'حضور') || str_contains($q, 'انذار') || str_contains($q, 'إنذار') || str_contains($q, 'حرمان')) {
+            if ($user && ($role === 'student' || ($user->role ?? '') === 'student')) {
+                $student = $user->student ?? Student::where('user_id', $user->user_id)->first();
+                if ($student) {
+                    $attendances = Attendance::where('student_id', $student->student_id)->get();
+                    $total = $attendances->count();
+                    if ($total > 0) {
+                        $present = $attendances->whereIn('status', ['present', 'late'])->count();
+                        $absent = $attendances->where('status', 'absent')->count();
+                        $rate = round(($absent / $total) * 100, 1);
+                        $statusText = $rate >= 20 ? '⚠️ تجاوزت نسبة الحرمان (20%)! يرجى تقديم عذر فوراً للشؤون.' : ($rate >= 15 ? '⚠️ لديك إنذار أولي لتجاوز نسبة 15% غياب.' : '✅ وضعك الأكاديمي سليم وممتاز.');
+
+                        return "📊 **سجل الحضور والغياب الفعلي الخاص بك:**\n\n"
+                            . "• إجمالي الجلسات المنعقدة: **{$total} جلسات**\n"
+                            . "• عدد جلسات الحضور: **{$present}**\n"
+                            . "• عدد جلسات الغياب: **{$absent}** (نسبة الغياب: **{$rate}%**)\n"
+                            . "• التقييم الأكاديمي: **{$statusText}**\n\n"
+                            . "📱 **عبر الموبايل:** من الزر المركزي (Speed Dial) ➡️ **'الحضور والغياب'** لرؤية تفاصيل كل جلسة وتقديم عذر طبي.\n"
+                            . "💻 **عبر الويب:** تابع سجل حضورك وإنذاراتك عبر الرابطين: `/student/attendance` و `/student/warnings`.";
+                    }
+                }
+            }
+
             return "📌 **لوائح الحضور والغياب الأكاديمية (EduBridge):**\n\n"
                 . "• يُحتسب اليوم حضوراً أكاديمياً بمجرد حضور جلسة واحدة على الأقل.\n"
                 . "• **نسبة الإنذار:** يُصدر النظام إنذاراً أولياً للطالب عند بلوغ نسبة الغياب **15%**.\n"
@@ -501,7 +601,7 @@ GUIDE;
                 . "💻 **عبر الويب:** يمكن للمعلم رصد الحضور وتصدير التقارير عبر لوحة المعلم `/teacher/attendance`، وتتابع الشؤون الحالات عبر لوحة `/affairs`.";
         }
 
-        // الخدمات والطلبات والأعذار وإعادة تعيين الجهاز
+        // 5. الخدمات والطلبات والأعذار وإعادة تعيين الجهاز
         if (str_contains($q, 'خدم') || str_contains($q, 'طلب') || str_contains($q, 'جهاز') || str_contains($q, 'عذر') || str_contains($q, 'شهادة') || str_contains($q, 'إجازة') || str_contains($q, 'اجازة') || str_contains($q, 'اذن') || str_contains($q, 'إذن')) {
             return "📑 **بوابة الخدمات والأعذار وإعادة تعيين الجهاز:**\n\n"
                 . "• **إعادة تعيين الجهاز (Device Reset):** إذا غيرت هاتفك وتريد تسجيل الحضور من الهاتف الجديد، ارفع طلباً وسيقوم موظف الشؤون بفك القفل فوراً.\n"
@@ -514,10 +614,10 @@ GUIDE;
                 . "• **لموظف الشؤون:** من لوحة `/affairs/student-services`، وتوجد ميزة **'إعادة تعيين الجهاز مباشرة (Direct Reset)'** بنقرة زر واحدة لإلغاء القفل فورياً!";
         }
 
-        // الامتحانات والبرنامج والجداول
-        if (str_contains($q, 'امتحان') || str_contains($q, 'جدول') || str_contains($q, 'دوام') || str_contains($q, 'برنامج')) {
-            return "📅 **الجداول والمواعيد الدراسية:**\n\n"
-                . "• تم اعتماد ونشر جداول الامتحانات والدوام الأسبوعي للشعب.\n\n"
+        // 6. الامتحانات وبرنامج الامتحان
+        if (str_contains($q, 'امتحان') || str_contains($q, 'برنامج الامتحان') || str_contains($q, 'جدول الامتحانات')) {
+            return "📅 **جدول الامتحانات الرسمية:**\n\n"
+                . "• تم اعتماد ونشر جداول الامتحانات الرسمية للشعب.\n\n"
                 . "📱 **عبر الموبايل:** من الزر الدائري المركزي (Speed Dial) اضغط على **'الجدول'** ويمكنك تنزيله فورياً كصورة PNG عالية الدقة في الاستوديو.\n"
                 . "💻 **عبر الويب:** يمكن لرئيس القسم إعداد وتعديل الجداول وتوزيع القاعات والمراقبين من لوحة `/hod/organization`، بينما يستعرضها الطالب من `/student/schedule` وولي الأمر من `/parent/schedule`.";
         }
