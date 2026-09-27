@@ -29,7 +29,33 @@ class SingleSessionGuard
 
     public static function isApiOccupied(User $user): bool
     {
-        return !empty($user->current_token_id);
+        if (empty($user->current_token_id)) {
+            return false;
+        }
+
+        // التحقق من وجود التوكن الفعلي في جدول personal_access_tokens
+        $token = \Illuminate\Support\Facades\DB::table('personal_access_tokens')
+            ->where('id', $user->current_token_id)
+            ->where('tokenable_id', $user->user_id)
+            ->first();
+
+        if (!$token) {
+            // التوكن غير موجود أصلاً (محذوف أو منتهي) -> تنظيف الحقل فوراً والسماح بالدخول
+            $user->forceFill(['current_token_id' => null])->save();
+            return false;
+        }
+
+        // إذا كان التوكن خاملاً ولم يُستخدم منذ أكثر من 24 ساعة، نعتبر الجلسة منتهية
+        if ($token->last_used_at) {
+            $lastUsed = Carbon::parse($token->last_used_at);
+            if ($lastUsed->diffInHours(now()) >= 24) {
+                \Illuminate\Support\Facades\DB::table('personal_access_tokens')->where('id', $token->id)->delete();
+                $user->forceFill(['current_token_id' => null])->save();
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
