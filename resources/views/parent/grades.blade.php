@@ -199,11 +199,6 @@
             </h3>
             <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">سجل أكاديمي موحد لجميع المواد المسجلة والحالة الإجمالية</p>
         </div>
-        <div style="display: flex; gap: 0.75rem;">
-            <a href="{{ route('parent.academic_card.pdf', ['student_id' => $selected_child_id]) }}" target="_blank" style="background: var(--accent-color, #eab308); color: #000; border: none; padding: 0.65rem 1.15rem; border-radius: 12px; font-weight: 800; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(234, 179, 8, 0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-                <i class="fa-solid fa-eye"></i> معاينة كشف درجات وسجل الابن المعتمد
-            </a>
-        </div>
     </div>
 
     {{-- Stats Grid --}}

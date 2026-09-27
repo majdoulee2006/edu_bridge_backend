@@ -25,8 +25,8 @@ Homestead.yaml
 Thumbs.db
 /scratch
 seed_dummy_data.php
-/public/exports/*.pdf
-/public/exports/*.csv
+/public/exports/*
+!/public/exports/.gitkeep
 
 # ملفات تحتوي بيانات اعتماد/بيانات حقيقية لا يجب رفعها أبداً للمستودع
 get_creds.php

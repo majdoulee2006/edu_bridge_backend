@@ -347,6 +347,36 @@ class StudentWebController extends Controller
         return view('student.schedule', compact('schedules', 'exams', 'days', 'semesterName', 'classGroup'));
     }
 
+    /**
+     * تصدير صورة البرنامج الأسبوعي الرسمي (PNG)
+     */
+    public function exportScheduleImage(Request $request)
+    {
+        $student = $this->getStudent();
+        $imagePath = \App\Services\ScheduleImageService::generateOfficialScheduleImage($student);
+        if ($imagePath && file_exists($imagePath)) {
+            return response()->download($imagePath, 'البرنامج_الأسبوعي_الرسمي_' . ($student->user->full_name ?? 'طالب') . '.png', [
+                'Content-Type' => 'image/png',
+            ]);
+        }
+        return back()->with('error', 'تعذر توليد صورة الجدول الرسمي');
+    }
+
+    /**
+     * تصدير صورة برنامج الامتحانات الرسمي (PNG)
+     */
+    public function exportExamScheduleImage(Request $request)
+    {
+        $student = $this->getStudent();
+        $imagePath = \App\Services\ScheduleImageService::generateOfficialExamImage($student);
+        if ($imagePath && file_exists($imagePath)) {
+            return response()->download($imagePath, 'برنامج_الامتحانات_الرسمي_' . ($student->user->full_name ?? 'طالب') . '.png', [
+                'Content-Type' => 'image/png',
+            ]);
+        }
+        return back()->with('error', 'تعذر توليد صورة برنامج الامتحانات');
+    }
+
     // ────────────────────────────────────────────────────────────
     //  COURSES & MATERIALS
     // ────────────────────────────────────────────────────────────

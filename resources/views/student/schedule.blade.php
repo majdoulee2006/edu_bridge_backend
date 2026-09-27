@@ -504,12 +504,9 @@
                 {{ $defaultDayKey === $currentDayName ? 'برنامج اليوم (' . $weekDaysMap[$defaultDayKey] . ')' : 'برنامج ' . $weekDaysMap[$defaultDayKey] }}
             </h4>
             <div class="export-actions">
-                <button type="button" onclick="downloadScheduleAsPDF()" class="btn-dark-export">
-                    <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> PDF
-                </button>
-                <button type="button" onclick="downloadScheduleAsImage()" class="btn-dark-export">
-                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> صورة
-                </button>
+                <a href="{{ route('student.schedule.export_image') }}" class="btn-dark-export" title="تنزيل صورة البرنامج الأسبوعي الرسمي">
+                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> صورة الجدول (PNG)
+                </a>
             </div>
         </div>
         <div class="day-count-badge" id="current-day-count">
@@ -585,12 +582,9 @@
         <div class="day-title-wrap">
             <h4 class="day-title">الامتحانات النهائية</h4>
             <div class="export-actions">
-                <button type="button" onclick="downloadExamsAsPDF()" class="btn-dark-export">
-                    <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> PDF
-                </button>
-                <button type="button" onclick="downloadExamsAsImage()" class="btn-dark-export">
-                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> صورة
-                </button>
+                <a href="{{ route('student.schedule.export_exam_image') }}" class="btn-dark-export" title="تنزيل صورة برنامج الامتحانات الرسمي">
+                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> صورة الجدول (PNG)
+                </a>
             </div>
         </div>
     </div>

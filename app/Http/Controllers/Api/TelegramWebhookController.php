@@ -87,6 +87,19 @@ class TelegramWebhookController extends Controller
             ], 400);
         }
 
+        // التحقق الأمني من أحقية الطالب في حضور هذا المقرر (السنة، الاختصاص، والتسجيل)
+        $lesson = DB::table('lessons')->where('lesson_id', $session->lesson_id)->first();
+        if ($lesson) {
+            $eligibility = $student->checkCourseEligibility($lesson->course_id);
+            if (!$eligibility['eligible']) {
+                return response()->json([
+                    'success'       => false,
+                    'message'       => $eligibility['message'],
+                    'reject_reason' => $eligibility['reason'],
+                ], 403);
+            }
+        }
+
         // التحقق من بصمة الوجه ومطابقتها مع بصمة الطالب المرجعية
         $faceEmbedding = $request->face_embedding;
         $faceStatus = 'verified';

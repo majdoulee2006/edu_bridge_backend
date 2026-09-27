@@ -566,11 +566,21 @@ class StudentController extends Controller
         if ($student) {
             $enrolledCount = DB::table('enrollments')->where('student_id', $student->student_id)->count();
             if ($enrolledCount === 0) {
-                $allCourseIds = DB::table('courses')->pluck('course_id');
-                foreach ($allCourseIds as $cid) {
+                $user = $request->user();
+                $level = trim($student->level ?? $user?->academic_year ?? 'السنة الأولى');
+                $yearMap = ['السنة الأولى' => 1, 'أولى' => 1, '1' => 1, 'السنة الثانية' => 2, 'ثانية' => 2, '2' => 2];
+                $yearInt = $yearMap[$level] ?? 1;
+
+                $validCourseIds = DB::table('courses')
+                    ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
+                    ->where('course_program.program_id', $student->program_id)
+                    ->where('courses.year', $yearInt)
+                    ->pluck('courses.course_id');
+
+                foreach ($validCourseIds as $cid) {
                     DB::table('enrollments')->updateOrInsert(
                         ['student_id' => $student->student_id, 'course_id' => $cid],
-                        ['enrollment_date' => now(), 'created_at' => now(), 'updated_at' => now()]
+                        ['enrollment_date' => now(), 'status' => 'enrolled', 'created_at' => now(), 'updated_at' => now()]
                     );
                 }
             }
@@ -1077,6 +1087,17 @@ class StudentController extends Controller
     {
         $student = $request->user()->student;
 
+        $imagePath = \App\Services\ScheduleImageService::generateOfficialExamImage($student);
+        if ($imagePath && file_exists($imagePath)) {
+            $fileName = basename($imagePath);
+            $url = url('exports/' . $fileName);
+            return response()->json([
+                'success'   => true,
+                'pdf_url'   => $url,
+                'image_url' => $url,
+            ], 200);
+        }
+
         // جلب معرفات المواد التي سجل فيها الطالب
         $myCourseIds = DB::table('enrollments')
             ->where('student_id', $student->student_id)
@@ -1156,7 +1177,18 @@ class StudentController extends Controller
     {
         $user = $request->user();
         $student = $user->student;
-        
+
+        $imagePath = \App\Services\ScheduleImageService::generateOfficialScheduleImage($student);
+        if ($imagePath && file_exists($imagePath)) {
+            $fileName = basename($imagePath);
+            $url = url('exports/' . $fileName);
+            return response()->json([
+                'success'   => true,
+                'pdf_url'   => $url,
+                'image_url' => $url,
+            ], 200);
+        }
+
         $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? $student->level ?? '');
         $branchName = \Illuminate\Support\Facades\DB::table('programs')->where('id', $student->program_id)->value('name') ?? $user->branch ?? '';
         $classGroup = $branchName . ' - ' . $academicYearStr;
@@ -2109,7 +2141,26 @@ class StudentController extends Controller
             ], 400);
         }
 
-        // ─── 2. التحقق من عدم تسجيل الحضور مسبقاً ───────────────────────
+        // ─── 2. آلية الأمان: التحقق من أحقية الطالب في حضور هذا المقرر (السنة، الاختصاص، والتسجيل) ──
+        $lesson = DB::table('lessons')->where('lesson_id', $session->lesson_id)->first();
+        if (!$lesson) {
+            return response()->json([
+                'success'       => false,
+                'message'       => 'المحاضرة المرتبطة بهذه الجلسة غير موجودة',
+                'reject_reason' => 'lesson_not_found',
+            ], 404);
+        }
+
+        $eligibility = $student->checkCourseEligibility($lesson->course_id);
+        if (!$eligibility['eligible']) {
+            return response()->json([
+                'success'       => false,
+                'message'       => $eligibility['message'],
+                'reject_reason' => $eligibility['reason'],
+            ], 403);
+        }
+
+        // ─── 3. التحقق من عدم تسجيل الحضور مسبقاً ───────────────────────
         $alreadyPresent = Attendance::where('student_id', $student->student_id)
             ->where('lesson_id', $session->lesson_id)
             ->where('status', 'present')
