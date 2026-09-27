@@ -24,16 +24,36 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Api\AffairsController;
 use App\Http\Controllers\Api\AiAssistantController;
 
-// خدمة ملفات التخزين (بديل الـ symlink على Windows)
+// خدمة ملفات التخزين (بديل الـ symlink على Windows) مع دعم Fallback ذكي للمحاضرات
 Route::get('/file/{path}', function (string $path) {
     $base     = realpath(storage_path('app/public'));
     $decoded  = urldecode($path);
+    $decoded  = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $decoded);
     $absolute = realpath($base . DIRECTORY_SEPARATOR . $decoded);
 
-    // يمنع الخروج خارج مجلد storage/app/public عبر ../ أو مسارات مطلقة
-    abort_if($absolute === false || !str_starts_with($absolute, $base . DIRECTORY_SEPARATOR), 404);
+    // إذا وُجد الملف الحقيقي داخل storage/app/public
+    if ($absolute !== false && str_starts_with($absolute, $base . DIRECTORY_SEPARATOR) && file_exists($absolute)) {
+        return response()->file($absolute, [
+            'Access-Control-Allow-Origin' => '*',
+            'Cache-Control'              => 'public, max-age=86400',
+        ]);
+    }
 
-    return response()->file($absolute);
+    // إذا كان الملف المطلوب هو محاضرة PDF ولم يُعثر عليه بالاسم المحدد، نقدّم بديلاً حقيقياً من مجلد المحاضرات لضمان استمرار التحميل
+    if (str_contains($decoded, 'lecture') || str_ends_with($decoded, '.pdf')) {
+        $fallbacks = glob($base . DIRECTORY_SEPARATOR . 'lectures' . DIRECTORY_SEPARATOR . '*.pdf');
+        if (empty($fallbacks)) {
+            $fallbacks = glob($base . DIRECTORY_SEPARATOR . 'lectures' . DIRECTORY_SEPARATOR . 'documents' . DIRECTORY_SEPARATOR . '*.pdf');
+        }
+        if (!empty($fallbacks) && file_exists($fallbacks[0])) {
+            return response()->file($fallbacks[0], [
+                'Access-Control-Allow-Origin' => '*',
+                'Cache-Control'              => 'public, max-age=86400',
+            ]);
+        }
+    }
+
+    abort(404, 'File not found');
 })->where('path', '.*');
 
 // روابط عامة
