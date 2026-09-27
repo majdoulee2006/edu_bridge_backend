@@ -46,6 +46,9 @@ class AiAssistantController extends Controller
             $role = $user->role;
         }
 
+        // 🌟 تحديد الرابط الفعلي المباشر للسيرفر بشكل ديناميكي كامل وفقاً للشبكة الحالية (WiFi/LAN/Port)
+        $baseHttp = $this->resolveServerBaseUrl($request);
+
         // بناء السياق الحي للمستخدم من قاعدة البيانات لجميع الأدوار
         $userLiveContext = $this->buildUserLiveContext($user, $role);
 
@@ -54,11 +57,13 @@ class AiAssistantController extends Controller
 
         if (!empty($apiKey)) {
             try {
-                $reply = $this->callGeminiApi($apiKey, $message, $role, $userLiveContext, $request->input('history', []));
+                $reply = $this->callGeminiApi($apiKey, $message, $role, $userLiveContext, $request->input('history', []), $baseHttp);
                 if (!empty($reply)) {
+                    // تنقية الاستجابة وضمان عدم تسريب أي رابط تسجيل دخول يخص دوراً آخر
+                    $cleanReply = $this->sanitizeLoginLinksForRole($reply, $role, $baseHttp);
                     return response()->json([
                         'success' => true,
-                        'reply'   => $reply,
+                        'reply'   => $cleanReply,
                         'source'  => 'gemini',
                     ]);
                 }
@@ -68,11 +73,12 @@ class AiAssistantController extends Controller
         }
 
         // 2. المحرك الأكاديمي المحلي الذكي (Local Knowledge & Data Engine)
-        $localReply = $this->generateLocalAcademicResponse($message, $role, $user);
+        $localReply = $this->generateLocalAcademicResponse($message, $role, $user, $baseHttp);
+        $cleanLocalReply = $this->sanitizeLoginLinksForRole($localReply, $role, $baseHttp);
 
         return response()->json([
             'success' => true,
-            'reply'   => $localReply,
+            'reply'   => $cleanLocalReply,
             'source'  => 'local_engine',
         ]);
     }
@@ -80,7 +86,7 @@ class AiAssistantController extends Controller
     /**
      * استدعاء Google Gemini API مع الدليل الشامل المزدوج (موبايل + ويب) لكافة أدوار المنظومة
      */
-    protected function callGeminiApi(string $apiKey, string $message, string $role, string $userContext, array $history): ?string
+    protected function callGeminiApi(string $apiKey, string $message, string $role, string $userContext, array $history, string $baseHttp): ?string
     {
         $roleTitle = match($role) {
             'teacher'              => 'أستاذ / عضو هيئة تدريسية',
@@ -91,15 +97,16 @@ class AiAssistantController extends Controller
             default                => 'طالب في المعهد',
         };
 
-        // استخراج الرابط الكامل الفعلي للسيرفر المتضمن للـ IP ورقم البورت
-        $baseHttp = env('APP_URL', 'http://10.102.114.209:8000');
-        if (empty($baseHttp) || str_contains($baseHttp, 'localhost') || str_contains($baseHttp, '127.0.0.1')) {
-            $host = request()->getSchemeAndHttpHost();
-            if (!empty($host) && !str_contains($host, 'localhost') && !str_contains($host, '127.0.0.1')) {
-                $baseHttp = $host;
-            }
-        }
-        $baseHttp = rtrim($baseHttp, '/');
+        $roleClean = strtolower(trim($role));
+        $dedicated = match($roleClean) {
+            'teacher'             => ['path' => '/teacher/login', 'title' => 'بوابة دخول الأساتذة والمدرسين على الويب'],
+            'parent'              => ['path' => '/parent/login',  'title' => 'بوابة دخول أولياء الأمور على الويب'],
+            'hod', 'boss', 'head' => ['path' => '/hod/login',     'title' => 'بوابة دخول رئاسة القسم والتنظيم الأكاديمي على الويب'],
+            'affairs'             => ['path' => '/affairs/login', 'title' => 'بوابة دخول شؤون الطلاب والمعاملات على الويب'],
+            'admin'               => ['path' => '/admin/login',   'title' => 'بوابة الإدارة المركزية الشاملة على الويب'],
+            default               => ['path' => '/student/login', 'title' => 'بوابة دخول الطالب على الويب (تدعم التحقق بالوجه والـ OTP عبر تيليغرام)'],
+        };
+        $dedicatedLoginUrl = "{$baseHttp}{$dedicated['path']}";
 
         $systemPrompt = "أنت 'EduBridge AI'، المساعد الذكي الرسمي الحصري الشامل لمنظومة معهد وجامعة 'EduBridge' الأكاديمية المتكاملة.\n\n"
             . "👤 **المستخدم المتحدث معك حالياً:** دور وصلاحية المستخدم الحالي هي: [{$roleTitle}] (الكود: {$role}).\n\n"
@@ -127,20 +134,16 @@ class AiAssistantController extends Controller
             . "6. ✍️ **إتمام الإجابة بالكامل وعدم بترها نهائياً (إلزامية قصوى):**\n"
             . "   - احرص على أن تكون إجابتك كاملة ومستوفية للشرح ومختومة بخاتمة طبيعية وواضحة.\n"
             . "   - يُمنع منعاً باتاً التوقف في منتصف الجملة أو ترك الرد ناقصاً أو مقطوعاً.\n"
-            . "7. 🔐 **رابط تسجيل الدخول المخصص على الويب (رابط كامل ومباشر مع رقم البورت):**\n"
+            . "7. 🔐 **رابط تسجيل الدخول المخصص على الويب (قاعدة العزل الأمني الصارم للأدوار):**\n"
+            . "   - ⛔ **تحذير أمني صارم جداً ومطلق:** المستخدم الحالي هو [{$roleTitle}]. يُمنع منعاً باتاً وقاطعاً تزويده بأي رابط تسجيل دخول يخص دوراً آخر (مثل شؤون الطلاب، المدرسين، الإدارة، أو أولياء الأمور). إعطاء رابط بوابة شؤون الطلاب (/affairs/login) أو المدرسين (/teacher/login) للطالب يعد خرقاً أمنياً جسيماً ومحظوراً تماماً!\n"
             . "   - عندما يسأل المستخدم عن **رابط تسجيل الدخول على الويب** أو **كيف أدخل على المنصة من المتصفح / موقع المعهد**:\n"
-            . "   - ⛔ **تحذير صارم جداً وإلزامي:** يُمنع منعاً باتاً وقاطعاً كتابة أو اختلاق أي دومين وهمي (مثل: edubridge.edu أو edubridge.com أو أي نطاق افتراضي) كما يُمنع كتابة مسارات ناقصة بدون دومين وبورت!\n"
-            . "   - **يجب عليك حصراً ودائماً** تزويد المستخدم بالرابط الكامل والشغال والمتضمن للـ IP ورقم البورت الفعلي التالي: `{$baseHttp}` متبوعاً بالمسار المخصص لدوره كالتالي:\n"
-            . "     * للطالب (student): الرابط المباشر الكامل هو: **`{$baseHttp}/student/login`** (بوابة دخول الطالب على الويب، تدعم التحقق بالوجه والـ OTP عبر تيليغرام).\n"
-            . "     * للمعلم / الأستاذ (teacher): الرابط المباشر الكامل هو: **`{$baseHttp}/teacher/login`** (بوابة دخول الأساتذة والمدرسين).\n"
-            . "     * لولي الأمر (parent): الرابط المباشر الكامل هو: **`{$baseHttp}/parent/login`** (بوابة دخول أولياء الأمور لمتابعة الأبناء).\n"
-            . "     * لرئيس القسم (head / hod / boss): الرابط المباشر الكامل هو: **`{$baseHttp}/hod/login`** (بوابة دخول رئاسة القسم والتنظيم الأكاديمي).\n"
-            . "     * لشؤون الطلاب (affairs): الرابط المباشر الكامل هو: **`{$baseHttp}/affairs/login`** (بوابة دخول شؤون الطلاب والمعاملات).\n"
-            . "     * لمدير النظام (admin): الرابط المباشر الكامل هو: **`{$baseHttp}/admin/login`** (بوابة الإدارة المركزية الشاملة).\n"
-            . "   - اذكر له الرابط العام الموحد كبديل إضافي: **`{$baseHttp}/login`**.\n"
-            . "   - وضّح له أنه يمكنه نسخ الرابط بالكامل ولصقه مباشرة في شريط عنوان المتصفح للدخول الفوري لبوابته.\n\n"
+            . "     * الرابط المخصص والوحيد المسموح لك بتقديمه له هو رابط بوابته المعتمدة لدوره حصراً:\n"
+            . "       🔗 **`{$dedicatedLoginUrl}`** ({$dedicated['title']})\n"
+            . "     * كبديل عام محايد فقط، يمكنك ذكر البوابة الرئيسية الموحدة: **`{$baseHttp}/login`**.\n"
+            . "     * ⛔ يُمنع تماماً كتابة أو اختلاق أي دومين وهمي (مثل edubridge.edu أو edubridge.com)، بل يجب دائماً تقديم الرابط الفعلي بالـ IP والبورت الموضح أعلاه: `{$dedicatedLoginUrl}`.\n"
+            . "     * وضّح للمستخدم أنه يمكنه نسخ الرابط بالكامل ولصقه مباشرة في شريط عنوان المتصفح للدخول الفوري لبوابته.\n\n"
             . "═════════════════════════════════════════════════════════════\n"
-            . $this->getDualPlatformEcosystemGuide($baseHttp) . "\n"
+            . $this->getDualPlatformEcosystemGuide($roleClean, $baseHttp) . "\n"
             . "═════════════════════════════════════════════════════════════\n"
             . $userContext;
 
@@ -217,8 +220,16 @@ class AiAssistantController extends Controller
     /**
      * دليل منظومة EduBridge الشامل والمتكامل (موبايل + ويب لكافة المستخدمين والأدوار)
      */
-    protected function getDualPlatformEcosystemGuide(string $baseHttp = 'http://10.102.114.209:8000'): string
+    protected function getDualPlatformEcosystemGuide(string $userRole = 'student', string $baseHttp = 'http://127.0.0.1:8000'): string
     {
+        $r = strtolower(trim($userRole));
+        $studentLoginNote = ($r === 'student') ? " - الرابط المباشر الكامل لدخولك: `{$baseHttp}/student/login`" : "";
+        $teacherLoginNote = ($r === 'teacher') ? " - الرابط المباشر الكامل لدخولك: `{$baseHttp}/teacher/login`" : "";
+        $parentLoginNote  = ($r === 'parent')  ? " - الرابط المباشر الكامل لدخولك: `{$baseHttp}/parent/login`" : "";
+        $hodLoginNote     = in_array($r, ['hod', 'boss', 'head']) ? " - الرابط المباشر الكامل لدخولك: `{$baseHttp}/hod/login`" : "";
+        $affairsLoginNote = ($r === 'affairs') ? " - الرابط المباشر الكامل لدخولك: `{$baseHttp}/affairs/login`" : "";
+        $adminLoginNote   = ($r === 'admin')   ? " - الرابط المباشر الكامل لدخولك: `{$baseHttp}/admin/login`" : "";
+
         return <<<GUIDE
 دليل منظومة EduBridge المتكاملة الشامل (تطبيق الموبايل Flutter + منصات الويب Laravel لجميع المستخدمين):
 
@@ -239,7 +250,7 @@ class AiAssistantController extends Controller
 • **طلبات الإذن:** تقديم طلب إذن مغادرة أو إجازة رسمية ومتابعة الموافقة.
 • **شريط التنقل السفلي:** الرئيسية (Home)، الملف الشخصي (Profile)، الإشعارات (Notifications)، الرسائل (Messages للتواصل مع الأساتذة).
 
-💻 **في منصة الويب (Student Web Portal - الرابط الكامل: `{$baseHttp}/student/login`):**
+💻 **في منصة الويب (Student Web Portal{$studentLoginNote}):**
 • تسجيل الدخول يدعم التحقق بالوجه (Face Verification) والـ OTP عبر تيليغرام.
 • **لوحة التحكم (`/student/dashboard`):** ملخص المقررات، نسبة الدوام والإنذارات.
 • **الجدول الدراسي والامتحانات (`/student/schedule`):** تصدير الجدول كصورة PNG عبر `/student/schedule/export-image`.
@@ -263,7 +274,7 @@ class AiAssistantController extends Controller
   - **استدعاء ولي الأمر (Parent Summon):** طلب مقابلة ولي أمر طالب.
 • **الهيدر وشريط التنقل:** نشر إعلانات للشعب، الرسائل مع الطلاب وأولياء الأمور، الإشعارات، تقارير طلبات أولياء الأمور.
 
-💻 **في منصة الويب (Teacher Web Portal - الرابط الكامل: `{$baseHttp}/teacher/login`):**
+💻 **في منصة الويب (Teacher Web Portal{$teacherLoginNote}):**
 • **رصد الحضور وعرض الـ QR (`/teacher/attendance`):**
   - بدء جلسة QR ديناميكية متجددة على شاشة القاعة، وإغلاق الجلسة.
   - **تصدير تقارير الحضور المتقدمة:** تقرير PDF رسمي للطباعة بتواقيع المشرف ورئيس القسم، وتقرير Excel ملكي تفاعلي (Interactive Excel Workbook) بحزم الأيام وأعمدة الجلسات وشيت خاص بالمحرومين ومعادلات تلقائية.
@@ -288,7 +299,7 @@ class AiAssistantController extends Controller
   - **التقارير:** طلب تقرير أداء وسلوك مفصل من مرشد الدورة.
 • **شريط التنقل:** المحادثة المباشرة مع مدرسي الابن والإدارة، الإشعارات، والملف الشخصي.
 
-💻 **في منصة الويب (Parent Web Portal - الرابط الكامل: `{$baseHttp}/parent/login`):**
+💻 **في منصة الويب (Parent Web Portal{$parentLoginNote}):**
 • **لوحة التحكم (`/parent/dashboard`):** اختيار الابن ومتابعة مؤشراته الحيوية.
 • **ربط الأبناء (`/parent/children`):** ربط حساب ابن جديد عبر كوده الأكاديمي.
 • **الجدول الدراسي والواجبات والدرجات (`/parent/schedule` و `/parent/assignments` و `/parent/grades`):** تصدير كشف العلامات PDF/Excel.
@@ -309,7 +320,7 @@ class AiAssistantController extends Controller
   - **طلبات الإجازات:** البت في إجازات المدرسين والطلاب.
   - **الإعلانات الرسمية والتقارير:** اعتماد تقارير الشعب ومتابعة نسب النجاح.
 
-💻 **في منصة الويب (HOD Web Portal - الرابط الكامل: `{$baseHttp}/hod/login`):**
+💻 **في منصة الويب (HOD Web Portal{$hodLoginNote}):**
 • **لوحة التحكم (`/hod/dashboard`):** إحصائيات الدوام، الشعب، ونشاط القسم.
 • **التنظيم الأكاديمي (`/hod/organization`):**
   - بناء وتعديل جداول المحاضرات والدوام الأسبوعي.
@@ -335,7 +346,7 @@ class AiAssistantController extends Controller
   - **الإجازات:** معالجة الإجازات والأعذار الطبية.
 • **بوابة الخدمات الطلابية (الهيدر):** البت في طلبات إعادة تعيين الأجهزة (Reset Device) فورياً، مصدقات التخرج، والوثائق.
 
-💻 **في منصة الويب (Affairs Web Portal - الرابط الكامل: `{$baseHttp}/affairs/login`):**
+💻 **في منصة الويب (Affairs Web Portal{$affairsLoginNote}):**
 • **الخدمات والطلبات الطلابية (`/affairs/student-services`):**
   - **زر إعادة تعيين الجهاز المباشر (`direct-reset-device`):** فك قفل جهاز الطالب بنقرة زر واحدة فوراً ليتمكن من مسح الـ QR من هاتفه الجديد!
   - معالجة طلبات المصدقات وكشوف العلامات والأعذار الطبية.
@@ -354,7 +365,7 @@ class AiAssistantController extends Controller
 ═════════════════════════════════════════════════════════════════════
 سادساً: مدير النظام العام (System Admin):
 ═════════════════════════════════════════════════════════════════════
-💻 **في منصة الويب الإدارية الشاملة (Admin Web Portal - الرابط الكامل: `{$baseHttp}/admin/login`):**
+💻 **في منصة الويب الإدارية الشاملة (Admin Web Portal{$adminLoginNote}):**
 • **لوحة القيادة الشاملة (`/admin/dashboard`):** إحصائيات متكاملة عن المعهد، نسب الطلاب والأساتذة والأقسام.
 • **إدارة الحسابات المركزية (`/admin/accounts`):**
   - إنشاء وتفعيل وتعديل وتجميد حسابات (طالب، ولي أمر، أستاذ، رئيس قسم، شؤون).
@@ -510,7 +521,7 @@ GUIDE;
     /**
      * محرك الاستجابة الأكاديمي المحلي الذكي (Live DB-Powered Academic Engine)
      */
-    protected function generateLocalAcademicResponse(string $message, string $role, $user): string
+    protected function generateLocalAcademicResponse(string $message, string $role, $user, string $baseHttp = 'http://127.0.0.1:8000'): string
     {
         $q = mb_strtolower($message, 'UTF-8');
 
@@ -529,13 +540,6 @@ GUIDE;
 
         // 2.5 استفسار عن رابط أو بوابة تسجيل الدخول على منصة الويب
         if (str_contains($q, 'تسجيل دخول') || str_contains($q, 'تسجيل الدخول') || str_contains($q, 'رابط الدخول') || str_contains($q, 'رابط الويب') || str_contains($q, 'رابط تسجيل') || str_contains($q, 'بوابة الويب') || str_contains($q, 'بوابة الدخول') || str_contains($q, 'كيف بفوت عالويب') || str_contains($q, 'كيف بسجل عالويب') || str_contains($q, 'فوت عالويب') || str_contains($q, 'ادخل عالويب') || str_contains($q, 'موقع المعهد') || str_contains($q, 'رابط المنصة')) {
-            $baseHttp = env('APP_URL', 'http://10.102.114.209:8000');
-            if (empty($baseHttp) || str_contains($baseHttp, 'localhost') || str_contains($baseHttp, '127.0.0.1')) {
-                $host = request()->getSchemeAndHttpHost();
-                if (!empty($host) && !str_contains($host, 'localhost') && !str_contains($host, '127.0.0.1')) {
-                    $baseHttp = $host;
-                }
-            }
             $baseHttp = rtrim($baseHttp, '/');
 
             $roleClean = strtolower($role);
@@ -753,5 +757,138 @@ GUIDE;
             . "أنا دليلك ومساعدك الذكي الشامل لمنظومة معهد وجامعة **EduBridge**.\n"
             . "أستطيع إرشادك بدقة لكل ما تحتاجه في **تطبيق الموبايل** (اسم الشاشات والأزرار) وفي **منصة الويب** (الروابط واللوحات).\n\n"
             . "تفضل بطرح سؤالك حول أي خدمة أو ميزة لأي دور (طالب، أستاذ، ولي أمر، شؤون، رئيس قسم، إدارة)!";
+    }
+
+    /**
+     * تحديد الرابط الفعلي المباشر للسيرفر بشكل ديناميكي كامل وفقاً للشبكة الحالية
+     */
+    protected function resolveServerBaseUrl(?Request $request = null): string
+    {
+        $port = 8000;
+        $scheme = 'http';
+
+        // 1. إذا أرسل التطبيق server_url صريحاً وكان IP حقيقي (ليس localhost)
+        if ($request && $request->filled('server_url')) {
+            $clientUrl = trim((string)$request->input('server_url'));
+            if (!empty($clientUrl)) {
+                $clientUrl = rtrim($clientUrl, '/');
+                if (!str_contains($clientUrl, '127.0.0.1') && !str_contains($clientUrl, 'localhost')) {
+                    return $clientUrl;
+                }
+            }
+        }
+
+        // 2. فحص الـ Host من الترويسة الحالية للطلب إن لم تكن localhost
+        if ($request) {
+            $scheme = $request->isSecure() ? 'https' : 'http';
+            $httpHost = $request->getHttpHost(); // e.g. 10.102.114.209:8000
+            if (!empty($httpHost) && !str_contains($httpHost, '127.0.0.1') && !str_contains($httpHost, 'localhost')) {
+                return "{$scheme}://{$httpHost}";
+            }
+            $reqPort = $request->getPort();
+            if (!empty($reqPort) && $reqPort > 0) {
+                $port = $reqPort;
+            }
+        }
+
+        // 3. في حال كان الاتصال عبر USB ADB Reverse (127.0.0.1):
+        // نستخرج الـ IP الفعلي لكارت الشبكة النشط (WiFi / Ethernet) عبر جدول توجيه كيرنل النظام
+        $lanIp = null;
+        try {
+            $sock = @stream_socket_client("udp://8.8.8.8:53", $errno, $errstr, 1);
+            if ($sock) {
+                $name = stream_socket_get_name($sock, false);
+                fclose($sock);
+                if ($name) {
+                    $lanIp = explode(':', $name)[0];
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        if (!empty($lanIp) && $lanIp !== '127.0.0.1') {
+            $portSuffix = ($port === 80 && $scheme === 'http') || ($port === 443 && $scheme === 'https') ? '' : ":{$port}";
+            return "{$scheme}://{$lanIp}{$portSuffix}";
+        }
+
+        // 4. فحص APP_URL من .env إن كان يحوي آي بي شبكة حقيقي
+        $appUrl = env('APP_URL');
+        if (!empty($appUrl) && !str_contains($appUrl, '127.0.0.1') && !str_contains($appUrl, 'localhost')) {
+            return rtrim($appUrl, '/');
+        }
+
+        // 5. محاولة قراءة آي بي الجهاز المعتمد
+        try {
+            $hostIp = gethostbyname(gethostname());
+            if (!empty($hostIp) && $hostIp !== '127.0.0.1') {
+                $portSuffix = ($port === 80 && $scheme === 'http') || ($port === 443 && $scheme === 'https') ? '' : ":{$port}";
+                return "{$scheme}://{$hostIp}{$portSuffix}";
+            }
+        } catch (\Throwable $e) {}
+
+        $portSuffix = ($port === 80 && $scheme === 'http') || ($port === 443 && $scheme === 'https') ? '' : ":{$port}";
+        return "{$scheme}://127.0.0.1{$portSuffix}";
+    }
+
+    /**
+     * تنقية الروابط وضمان العزل الأمني الصارم لروابط تسجيل الدخول حسب دور المستخدم
+     * بحيث يُمنع منعاً باتاً ظهور رابط أي دور آخر مهما كانت الظروف
+     */
+    protected function sanitizeLoginLinksForRole(string $text, string $role, string $baseHttp): string
+    {
+        $roleClean = strtolower(trim($role));
+
+        $roleMap = [
+            'student'             => ['path' => '/student/login', 'title' => 'بوابة دخول الطالب'],
+            'teacher'             => ['path' => '/teacher/login', 'title' => 'بوابة دخول الأساتذة والمدرسين'],
+            'parent'              => ['path' => '/parent/login',  'title' => 'بوابة دخول أولياء الأمور'],
+            'hod'                 => ['path' => '/hod/login',     'title' => 'بوابة دخول رئاسة القسم'],
+            'boss'                => ['path' => '/hod/login',     'title' => 'بوابة دخول رئاسة القسم'],
+            'head'                => ['path' => '/hod/login',     'title' => 'بوابة دخول رئاسة القسم'],
+            'affairs'             => ['path' => '/affairs/login', 'title' => 'بوابة دخول شؤون الطلاب'],
+            'admin'               => ['path' => '/admin/login',   'title' => 'بوابة الإدارة المركزية'],
+        ];
+
+        $allowedInfo = $roleMap[$roleClean] ?? $roleMap['student'];
+        $allowedPath = $allowedInfo['path'];
+        $correctDedicatedUrl = "{$baseHttp}{$allowedPath}";
+
+        // استبدال أي نطاقات وهمية (مثل edubridge.edu أو edubridge.com) بالرابط المعتمد
+        $text = preg_replace(
+            '#https?://(?:www\.)?edubridge\.(?:edu|com|org|local)(?::\d+)?(/student/login|/teacher/login|/parent/login|/hod/login|/affairs/login|/admin/login|/login)#i',
+            "{$baseHttp}$1",
+            $text
+        );
+
+        // قائمة المسارات الخاصة بالأدوار الأخرى المحظورة على هذا المستخدم
+        $allRolePaths = [
+            '/student/login',
+            '/teacher/login',
+            '/parent/login',
+            '/hod/login',
+            '/affairs/login',
+            '/admin/login',
+        ];
+
+        foreach ($allRolePaths as $path) {
+            if ($path !== $allowedPath) {
+                // إذا وجد مسار محظور بالكامل برابط، يستبدل فوراً بالرابط المخصص المسموح
+                $text = preg_replace(
+                    '#https?://[^\s`"\'\)]+' . preg_quote($path, '#') . '#i',
+                    $correctDedicatedUrl,
+                    $text
+                );
+                // استبدال المسار الجزئي إذا ذُكر بمفرده
+                $text = str_ireplace($path, $allowedPath, $text);
+            }
+        }
+
+        // استبدال أي عنوان قديم أو localhost بـ baseHttp الجديد للرابط المسموح والرابط العام
+        $text = preg_replace(
+            '#https?://(?:192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.\d+\.\d+\.\d+|127\.0\.0\.1|localhost)(?::\d+)?(' . preg_quote($allowedPath, '#') . '|/login)#i',
+            "{$baseHttp}$1",
+            $text
+        );
+
+        return $text;
     }
 }
