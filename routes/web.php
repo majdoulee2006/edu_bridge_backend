@@ -39,24 +39,34 @@ Route::get('/public-download/message/{id}', function ($id) {
 });
 
 Route::get('/storage/{path}', function ($path) {
+    $base      = realpath(storage_path('app/public'));
     $cleanPath = ltrim(str_replace('/storage/', '', $path), '/');
-    $filePath = storage_path('app/public/' . $cleanPath);
-    
-    if (file_exists($filePath)) {
+
+    // حماية من path traversal: أي ملف يجب أن يبقى فعلياً داخل storage/app/public
+    $resolve = function (string $candidate) use ($base) {
+        $real = realpath($candidate);
+        return ($real !== false && is_file($real) && str_starts_with($real, $base . DIRECTORY_SEPARATOR)) ? $real : null;
+    };
+
+    $filePath = $resolve($base . DIRECTORY_SEPARATOR . $cleanPath);
+    if ($filePath) {
         return response()->file($filePath, ['Content-Type' => mime_content_type($filePath) ?: 'application/octet-stream']);
     }
-    
+
     foreach (['.m4a', '.mp3', '.pdf', '.png', '.jpg', '.jpeg', '.docx', '.xlsx'] as $ext) {
-        if (file_exists($filePath . $ext)) {
-            return response()->file($filePath . $ext);
+        $withExt = $resolve($base . DIRECTORY_SEPARATOR . $cleanPath . $ext);
+        if ($withExt) {
+            return response()->file($withExt);
         }
     }
 
     $fileName = basename($cleanPath);
-    $allFiles = \Illuminate\Support\Facades\Storage::disk('public')->allFiles();
-    foreach ($allFiles as $f) {
+    foreach (\Illuminate\Support\Facades\Storage::disk('public')->allFiles() as $f) {
         if (basename($f) === $fileName || pathinfo($f, PATHINFO_FILENAME) === $fileName) {
-            return response()->file(storage_path('app/public/' . $f));
+            $found = $resolve($base . DIRECTORY_SEPARATOR . $f);
+            if ($found) {
+                return response()->file($found);
+            }
         }
     }
 
@@ -179,24 +189,6 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     // الإعدادات
     Route::get('/settings', [TeacherWebController::class, 'settings'])->name('teacher.settings');
 });
-
-// ===== Utility Routes =====
-Route::get('/create-student', function () {
-    try {
-        $user = User::updateOrCreate(
-            ['email' => 'student@test.com'],
-            [
-                'full_name' => 'طالب تجريبي جديد',
-                'password' => Hash::make('123456'),
-                'role' => 'student',
-            ]
-        );
-        return "تمت العملية بنجاح!";
-    } catch (\Exception $e) {
-        return "Error: " . $e->getMessage();
-    }
-});
-
 
 // مسارات تسجيل الدخول لرئيس القسم
 Route::post('/hod/login', [UnifiedAuthController::class, 'login'])->middleware('throttle:login')->name('hod.login.submit');

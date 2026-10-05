@@ -37,3 +37,8 @@ students_parents_credentials.xls
 *.sql
 accounts.xlsx
 accounts_report.xlsx
+
+# أدوات محلية وملفات dump وبصمات الوجه (لا تُرفع للمستودع)
+ngrok.exe
+/edu_bridge_backend
+/public/uploads/faces/
