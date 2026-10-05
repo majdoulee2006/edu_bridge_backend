@@ -20,7 +20,7 @@ sequenceDiagram
     U->>App: تعبئة نموذج التسجيل (الدور + الرقم الجامعي)
     App->>API: POST /api/register (throttle: otp-send)
     API->>DB: التحقق: الرقم موجود وغير مستخدم
-    Note over API,DB: ولي الأمر: يلزم رقم جامعي لابنه + تطابق الاسم الأخير
+    Note over API,DB: ولي الأمر: رقم الابن + تطابق الاسم
     API->>DB: إنشاء مستخدم status = inactive
     API-->>Aff: إشعار "طلب حساب بانتظار الاعتماد" (داخلي + FCM)
     API-->>App: pending_approval = true

@@ -20,7 +20,7 @@ sequenceDiagram
     U->>App: Fill the registration form (role + university ID)
     App->>API: POST /api/register (throttle: otp-send)
     API->>DB: Check: ID exists and is unused
-    Note over API,DB: Parent: needs the child's university ID + matching last name
+    Note over API,DB: Parent: child ID + last name match
     API->>DB: Create user with status = inactive
     API-->>Aff: "Account awaiting approval" notice (in-app + FCM)
     API-->>App: pending_approval = true

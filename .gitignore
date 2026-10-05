@@ -42,3 +42,7 @@ accounts_report.xlsx
 ngrok.exe
 /edu_bridge_backend
 /public/uploads/faces/
+
+# مخرجات توليد التوثيق (تُبنى عند الطلب)
+/site/
+/site-pdf/
