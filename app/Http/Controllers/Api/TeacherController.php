@@ -433,9 +433,30 @@ class TeacherController extends Controller
         ], 200);
     }
 
+    /**
+     * يرجع جلسة الحضور فقط إذا كانت تخص المعلّم المسجّل دخوله (أو مقرراً يدرّسه
+     * عندما لا يكون للدرس معلّم محدّد)، وإلا null.
+     */
+    private function findOwnedSession(Request $request, $sessionId): ?\App\Models\AttendanceSession
+    {
+        $teacher = $request->user()->teacher;
+        $session = \App\Models\AttendanceSession::with('lesson')->find($sessionId);
+        if (!$teacher || !$session || !$session->lesson) {
+            return null;
+        }
+
+        $lesson = $session->lesson;
+        if ($lesson->teacher_id !== null) {
+            return (int) $lesson->teacher_id === (int) $teacher->teacher_id ? $session : null;
+        }
+
+        $teachesCourse = $teacher->courses()->where('courses.course_id', $lesson->course_id)->exists();
+        return $teachesCourse ? $session : null;
+    }
+
     public function refreshQrToken(Request $request, $sessionId)
     {
-        $session = \App\Models\AttendanceSession::find($sessionId);
+        $session = $this->findOwnedSession($request, $sessionId);
 
         if (!$session || !$session->is_active) {
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة أو منتهية'], 404);
@@ -469,6 +490,15 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
         }
 
+        // المعلّم يعيد تعيين بصمة طلاب مقرراته فقط
+        $teacher = $request->user()->teacher;
+        $isMyStudent = $teacher && $teacher->courses()
+            ->whereHas('students', fn ($q) => $q->where('students.student_id', $student->student_id))
+            ->exists();
+        if (!$isMyStudent) {
+            return response()->json(['success' => false, 'message' => 'هذا الطالب غير مسجّل في أي من مقرراتك'], 403);
+        }
+
         $student->update([
             'face_embedding'      => null,
             'requires_face_reset' => false,
@@ -484,7 +514,7 @@ class TeacherController extends Controller
      */
     public function getSessionAttendance(Request $request, $sessionId)
     {
-        $session = \App\Models\AttendanceSession::find($sessionId);
+        $session = $this->findOwnedSession($request, $sessionId);
 
         if (!$session) {
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
@@ -533,7 +563,7 @@ class TeacherController extends Controller
      */
     public function endSession(Request $request, $sessionId)
     {
-        $session = \App\Models\AttendanceSession::find($sessionId);
+        $session = $this->findOwnedSession($request, $sessionId);
 
         if (!$session) {
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);

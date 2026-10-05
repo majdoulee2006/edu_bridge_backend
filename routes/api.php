@@ -44,14 +44,15 @@ Route::get('/file/{path}', function (string $path) {
 
 // روابط عامة
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('api.login');
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
-Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:otp-send');
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:otp-verify');
+Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:otp-send');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:otp-send');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:otp-verify');
 Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp'])->middleware('throttle:login-otp');
-Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
-Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset']);
+Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp'])->middleware('throttle:otp-verify');
+// يتحقق من كلمة المرور، فيحتاج نفس حماية تسجيل الدخول ضد التخمين
+Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset'])->middleware('throttle:login');
 
 // Telegram Webhook
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);

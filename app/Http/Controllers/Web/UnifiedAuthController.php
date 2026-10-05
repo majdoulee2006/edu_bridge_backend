@@ -515,13 +515,25 @@ class UnifiedAuthController extends Controller
             ], 400);
         }
 
-        if (trim($request->otp) !== (string) $sessionOtp) {
+        if (!hash_equals((string) $sessionOtp, trim($request->otp))) {
+            // بعد 5 محاولات خاطئة يُبطَل الرمز ويلزم طلب رمز جديد (منع التخمين)
+            $attempts = (int) session('pwd_reset_attempts', 0) + 1;
+            if ($attempts >= 5) {
+                session()->forget(['pwd_reset_otp', 'pwd_reset_expires_at', 'pwd_reset_user_id', 'pwd_reset_attempts']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'تجاوزت عدد المحاولات المسموح. تم إبطال الرمز، يرجى طلب رمز جديد.'
+                ], 429);
+            }
+            session(['pwd_reset_attempts' => $attempts]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'رمز OTP المدخل غير صحيح. يرجى التأكد وإعادة المحاولة.'
             ], 422);
         }
 
+        session()->forget('pwd_reset_attempts');
         session(['pwd_reset_verified' => true]);
 
         return response()->json([

@@ -90,8 +90,8 @@ Route::post('/login', [UnifiedAuthController::class, 'login'])->middleware('thro
 Route::match(['get', 'post'], '/logout', [UnifiedAuthController::class, 'logout'])->name('logout');
 
 // ===== مسارات إعادة تعيين كلمة السر عبر تلغرام OTP =====
-Route::post('/password/forgot/send-otp', [UnifiedAuthController::class, 'sendResetOtp'])->name('password.forgot.send_otp');
-Route::post('/password/forgot/verify-otp', [UnifiedAuthController::class, 'verifyResetOtp'])->name('password.forgot.verify_otp');
+Route::post('/password/forgot/send-otp', [UnifiedAuthController::class, 'sendResetOtp'])->middleware('throttle:otp-send')->name('password.forgot.send_otp');
+Route::post('/password/forgot/verify-otp', [UnifiedAuthController::class, 'verifyResetOtp'])->middleware('throttle:otp-verify')->name('password.forgot.verify_otp');
 Route::post('/password/forgot/reset', [UnifiedAuthController::class, 'resetPassword'])->name('password.forgot.reset');
 
 // ===== مسارات التحقق بالوجه للطالب عند تسجيل الدخول من أجهزة متعددة على الويب =====

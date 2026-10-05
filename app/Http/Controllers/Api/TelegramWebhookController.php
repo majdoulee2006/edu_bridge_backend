@@ -18,6 +18,18 @@ class TelegramWebhookController extends Controller
 
     public function handle(Request $request)
     {
+        // تيليغرام يرسل السر الذي سُجّل مع setWebhook(secret_token) في هذه الترويسة.
+        // بدون التحقق منها يستطيع أي طرف يعرف الرابط إرسال تحديثات مزوّرة للبوت.
+        $secret = config('services.telegram.webhook_secret');
+        if ($secret) {
+            if (!hash_equals((string) $secret, (string) $request->header('X-Telegram-Bot-Api-Secret-Token'))) {
+                return response()->json(['status' => 'forbidden'], 403);
+            }
+        } elseif (app()->environment('production')) {
+            Log::error('Telegram webhook rejected: TELEGRAM_WEBHOOK_SECRET is not configured in production.');
+            return response()->json(['status' => 'forbidden'], 403);
+        }
+
         try {
             $update = $request->all();
             

@@ -1175,7 +1175,7 @@ class StudentWebController extends Controller
             }
         }
 
-        $otp = (string) rand(100000, 999999);
+        $otp = (string) random_int(100000, 999999);
 
         $telegramService = new \App\Services\TelegramService();
         $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
@@ -1358,7 +1358,7 @@ class StudentWebController extends Controller
         $request->validate([
             'receiver_id' => 'required|exists:users,user_id',
             'message'     => 'required|string|max:2000',
-            'attachment'  => 'nullable|file|max:51200',
+            'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,mp3,m4a,mp4,aac,wav,ogg,oga,webm,amr,3gp,opus,mov',
         ]);
 
         $attachmentPath = null;

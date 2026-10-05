@@ -47,7 +47,7 @@ class DashboardController extends Controller
     public function sendOtp(Request $request)
     {
         $user = auth()->user();
-        $otp = rand(1000, 9999);
+        $otp = random_int(1000, 9999);
 
         \App\Models\Otp::updateOrCreate(
             ['email' => $user->email],

@@ -62,6 +62,26 @@ class AppServiceProvider extends ServiceProvider
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(3)->by($request->ip());
         });
 
+        // تخمين رمز OTP (6 أرقام): حد بالـ IP وحد مستقل بالبريد حتى لا يتجاوزه
+        // مهاجم يبدّل عناوين IP. 10 محاولات بالساعة لكل بريد = تخمين مستحيل عملياً.
+        \Illuminate\Support\Facades\RateLimiter::for('otp-verify', function (\Illuminate\Http\Request $request) {
+            // إن لم يُرسَل بريد (مسارات الويب) نرجع للـ IP حتى لا يتشارك الجميع نفس العدّاد
+            $email = strtolower(trim((string) $request->input('email', $request->ip())));
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('otp-ip:' . $request->ip()),
+                \Illuminate\Cache\RateLimiting\Limit::perHour(10)->by('otp-email:' . $email),
+            ];
+        });
+
+        // إرسال رموز OTP / تسجيل حسابات جديدة: منع إغراق البريد والتيليغرام
+        \Illuminate\Support\Facades\RateLimiter::for('otp-send', function (\Illuminate\Http\Request $request) {
+            $email = strtolower(trim((string) $request->input('email', $request->ip())));
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by('send-ip:' . $request->ip()),
+                \Illuminate\Cache\RateLimiting\Limit::perHour(10)->by('send-email:' . $email),
+            ];
+        });
+
         // Register Observers
         \App\Models\Grade::observe(\App\Observers\GradeObserver::class);
         \App\Models\Attendance::observe(\App\Observers\AttendanceObserver::class);
