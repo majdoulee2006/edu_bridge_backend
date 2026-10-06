@@ -42,8 +42,11 @@ class UnifiedAuthController extends Controller
             return $this->redirectUserByRole(Auth::user());
         }
 
-        $role = $this->roleConfigs[$roleKey] ?? $this->roleConfigs['unified'];
-        $role['key'] = $roleKey;
+        $roleConfigKey = isset($this->roleConfigs[$roleKey]) ? $roleKey : 'unified';
+        $role = $this->roleConfigs[$roleConfigKey];
+        $role['key'] = $roleConfigKey;
+        $role['title'] = __('messages.login_title_' . $roleConfigKey);
+        $role['badge'] = __('messages.login_badge_' . $roleConfigKey);
 
         return view('login', compact('role'));
     }
