@@ -53,4 +53,4 @@ For use when transferring the project to a buyer or a new developer. Tick each i
 - [ ] A full backup of the database and files
 - [ ] Server configuration (Nginx/cron/Supervisor) documented
 - [ ] Transfer the domain and HTTPS certificates
-- [ ] Stop or transfer any tunnels (ngrok) and auto-start services on the developer's machine (`سيرفر/setup_autostart.bat`)
+- [ ] Stop or transfer any tunnels (ngrok) and auto-start services on the developer's machine (`سيرفر/سيرفر.bat`)

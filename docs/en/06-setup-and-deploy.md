@@ -89,7 +89,7 @@ flutter run -d chrome           # web
 
 **Server address:** currently written in `lib/services/api_service.dart`. The app automatically tries: `127.0.0.1` (USB via `adb reverse tcp:8000 tcp:8000`), then fixed LAN addresses, then a subnet scan. For web it uses `http://127.0.0.1:8001`. **It should be replaced by environment configuration (flavors / `--dart-define`)** before any deployment.
 
-> WARNING, port mismatch: the script `سيرفر/run_server_forever.bat` runs the server on **8001**, while the app (non-web) assumes **8000**.
+> Port note: the script `سيرفر/سيرفر.bat` runs the server on **8000**, which matches what the app (non-web) assumes. Only the Flutter web build uses **8001**.
 
 **Firebase:** `android/app/google-services.json` exists. For web, the Firebase keys are written in `lib/main.dart`.
 
