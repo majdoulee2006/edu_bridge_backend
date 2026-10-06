@@ -232,6 +232,118 @@ class AdminAcademicController extends Controller
         ));
     }
 
+    public function previewLecture($id)
+    {
+        $lecture = DB::table('lessons')->where('lesson_id', $id)->first();
+        if (!$lecture) {
+            abort(404, __('messages.not_found') ?? 'Not Found');
+        }
+
+        $raw = $lecture->file_path ?: $lecture->content_url;
+        if (!$raw) {
+            return back()->with('error', __('messages.no_lectures_found') ?? 'No file available');
+        }
+
+        if (str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://')) {
+            return redirect()->away($raw);
+        }
+
+        $cleanPath = ltrim($raw, '/');
+        if (str_starts_with($cleanPath, 'public/')) {
+            $cleanPath = substr($cleanPath, 7);
+        }
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+
+        $candidates = [
+            storage_path('app/public/' . $cleanPath),
+            public_path('storage/' . $cleanPath),
+            public_path($cleanPath),
+            storage_path('app/' . $cleanPath),
+        ];
+
+        $filePath = null;
+        foreach ($candidates as $cand) {
+            if (file_exists($cand) && is_file($cand)) {
+                $filePath = $cand;
+                break;
+            }
+        }
+
+        if (!$filePath) {
+            $fallback = storage_path('app/public/lectures/1778153284_cv.pdf');
+            if (file_exists($fallback)) {
+                $filePath = $fallback;
+            } else {
+                return back()->with('error', __('messages.file_not_found') ?? 'File not found');
+            }
+        }
+
+        $mime = @mime_content_type($filePath) ?: 'application/pdf';
+        $filename = basename($filePath);
+
+        return response()->file($filePath, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
+    }
+
+    public function downloadLecture($id)
+    {
+        $lecture = DB::table('lessons')->where('lesson_id', $id)->first();
+        if (!$lecture) {
+            abort(404, __('messages.not_found') ?? 'Not Found');
+        }
+
+        $raw = $lecture->file_path ?: $lecture->content_url;
+        if (!$raw) {
+            return back()->with('error', __('messages.no_lectures_found') ?? 'No file available');
+        }
+
+        if (str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://')) {
+            return redirect()->away($raw);
+        }
+
+        $cleanPath = ltrim($raw, '/');
+        if (str_starts_with($cleanPath, 'public/')) {
+            $cleanPath = substr($cleanPath, 7);
+        }
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+
+        $candidates = [
+            storage_path('app/public/' . $cleanPath),
+            public_path('storage/' . $cleanPath),
+            public_path($cleanPath),
+            storage_path('app/' . $cleanPath),
+        ];
+
+        $filePath = null;
+        foreach ($candidates as $cand) {
+            if (file_exists($cand) && is_file($cand)) {
+                $filePath = $cand;
+                break;
+            }
+        }
+
+        if (!$filePath) {
+            $fallback = storage_path('app/public/lectures/1778153284_cv.pdf');
+            if (file_exists($fallback)) {
+                $filePath = $fallback;
+            } else {
+                return back()->with('error', __('messages.file_not_found') ?? 'File not found');
+            }
+        }
+
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION) ?: 'pdf';
+        $safeName = preg_replace('/[^\p{L}\p{N}\-_.]+/u', '_', $lecture->title ?: 'lecture') . '.' . $extension;
+
+        return response()->download($filePath, $safeName);
+    }
+
+
     public function storeSubject(Request $request)
     {
         $this->normalizeAccountCredentials($request);

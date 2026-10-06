@@ -241,28 +241,28 @@
                     <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl flex items-center gap-3 border border-slate-100/50 dark:border-slate-800/30">
                         <span class="material-symbols-outlined text-primary text-[22px]">person</span>
                         <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-400">المدرس المسؤول</span>
+                            <span class="text-[10px] font-bold text-slate-400">{{ __('messages.modal_teacher_in_charge') }}</span>
                             <span id="modal-teacher" class="text-xs font-black text-slate-800 dark:text-white mt-0.5"></span>
                         </div>
                     </div>
                     <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl flex items-center gap-3 border border-slate-100/50 dark:border-slate-800/30">
                         <span class="material-symbols-outlined text-indigo-500 text-[22px]">school</span>
                         <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-400">السنة الدراسية</span>
+                            <span class="text-[10px] font-bold text-slate-400">{{ __('messages.modal_academic_year') }}</span>
                             <span id="modal-level" class="text-xs font-black text-slate-800 dark:text-white mt-0.5"></span>
                         </div>
                     </div>
                     <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl flex items-center gap-3 border border-slate-100/50 dark:border-slate-800/30 col-span-2">
                         <span class="material-symbols-outlined text-emerald-500 text-[22px]">apartment</span>
                         <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-400">الأقسام الأكاديمية</span>
+                            <span class="text-[10px] font-bold text-slate-400">{{ __('messages.modal_academic_depts') }}</span>
                             <span id="modal-department" class="text-xs font-black text-slate-800 dark:text-white mt-0.5"></span>
                         </div>
                     </div>
                     <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl flex items-center gap-3 border border-slate-100/50 dark:border-slate-800/30 col-span-2">
                         <span class="material-symbols-outlined text-blue-500 text-[22px]">schedule</span>
                         <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-400">الساعات المخصصة للمادة</span>
+                            <span class="text-[10px] font-bold text-slate-400">{{ __('messages.modal_subject_hours') }}</span>
                             <span id="modal-hours" class="text-xs font-black text-slate-800 dark:text-white mt-0.5"></span>
                         </div>
                     </div>
@@ -270,7 +270,7 @@
 
                 <!-- Subject Description -->
                 <div class="flex flex-col gap-2">
-                    <h4 class="text-xs font-bold text-slate-450 dark:text-slate-500">تفاصيل ووصف المادة</h4>
+                    <h4 class="text-xs font-bold text-slate-450 dark:text-slate-500">{{ __('messages.modal_subject_desc_title') }}</h4>
                     <p id="modal-desc" class="text-xs text-slate-600 dark:text-slate-350 leading-relaxed bg-slate-50 dark:bg-slate-800/20 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-800/30">
                     </p>
                 </div>
@@ -279,8 +279,8 @@
                 <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
                     <a id="modal-lectures-btn" href="#" class="w-full py-3.5 px-5 rounded-2xl bg-primary text-slate-900 font-extrabold text-xs flex items-center justify-center gap-2.5 shadow-md hover:bg-primary-dark transition-all">
                         <i class="fa-solid fa-chalkboard-user text-base"></i>
-                        <span>انتقال إلى سجل المحاضرات لهذه المادة</span>
-                        <i class="fa-solid fa-arrow-left text-xs mr-auto"></i>
+                        <span>{{ __('messages.modal_go_to_lectures') }}</span>
+                        <i class="fa-solid {{ app()->getLocale() == 'ar' ? 'fa-arrow-left mr-auto' : 'fa-arrow-right ml-auto' }} text-xs"></i>
                     </a>
                 </div>
             </div>
@@ -297,8 +297,8 @@
                         <span class="material-symbols-outlined text-[24px]">menu_book</span>
                     </div>
                     <div class="flex flex-col">
-                        <h3 class="text-lg font-bold text-slate-850 dark:text-white leading-tight">إضافة مادة دراسية جديدة</h3>
-                        <span class="text-xs font-bold text-slate-400 mt-1">تعبئة تفاصيل المادة وتعيين المدرس والفرع</span>
+                        <h3 class="text-lg font-bold text-slate-850 dark:text-white leading-tight">{{ __('messages.add_subject_modal_title') }}</h3>
+                        <span class="text-xs font-bold text-slate-400 mt-1">{{ __('messages.add_subject_modal_subtitle') }}</span>
                     </div>
                 </div>
                 <button onclick="closeAddSubjectModal()" class="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
@@ -312,49 +312,49 @@
                 
                 {{-- Subject Code --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">رمز المادة (الكود)</label>
-                    <input type="text" name="code" placeholder="مثال: CS101، MATH201..."
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.subject_code_label') }}</label>
+                    <input type="text" name="code" placeholder="{{ __('messages.subject_code_ph') }}"
                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
                 </div>
 
                 {{-- Subject Name --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">اسم المادة الدراسية</label>
-                    <input type="text" name="title" required placeholder="مثال: أساسيات البرمجة، خوارزميات..."
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.subject_name_label') }}</label>
+                    <input type="text" name="title" required placeholder="{{ __('messages.subject_name_ph') }}"
                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none animate-input" />
                 </div>
 
                 {{-- Subject Description --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">وصف المادة</label>
-                    <textarea name="description" rows="3" placeholder="أدخل تفاصيل ومحتوى هذه المادة..."
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.subject_desc_label') }}</label>
+                    <textarea name="description" rows="3" placeholder="{{ __('messages.subject_desc_ph') }}"
                               class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-855 dark:text-white transition-all outline-none resize-none"></textarea>
                 </div>
 
                 {{-- Hours --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">عدد الساعات المخصصة</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.hours_allocated_label') }}</label>
                     <input type="number" name="hours" min="1" required value="40"
                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
                 </div>
 
                 {{-- Year --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">السنة الدراسية</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_year') }}</label>
                     <select name="year" required
                             class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="" disabled selected>اختر السنة...</option>
-                        <option value="1">السنة الأولى</option>
-                        <option value="2">السنة الثانية</option>
+                        <option value="" disabled selected>{{ __('messages.select_year_ph') }}</option>
+                        <option value="1">{{ __('messages.first_year') }}</option>
+                        <option value="2">{{ __('messages.second_year') }}</option>
                     </select>
                 </div>
 
                 {{-- Department --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">القسم الأكاديمي</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_dept') }}</label>
                     <select id="add-modal-dept-select" onchange="filterModalCourses(this.value, 'add-modal-program-select')" required
                             class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="" disabled selected>اختر القسم الأكاديمي أولاً...</option>
+                        <option value="" disabled selected>{{ __('messages.select_dept_first_ph') }}</option>
                         @foreach($departments as $dept)
                             <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
                         @endforeach
@@ -363,25 +363,25 @@
 
                 {{-- Course / Program --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الدورة</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.course_or_program') }}</label>
                     <select name="program_id" id="add-modal-program-select" required
                             class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="" disabled selected>اختر الدورة...</option>
+                        <option value="" disabled selected>{{ __('messages.select_program_ph') }}</option>
                         @foreach($programs as $prog)
-                            <option value="{{ $prog->id }}" data-dept="{{ $prog->department_id }}">{{ $prog->name }} ({{ $prog->department_name ?? 'بدون قسم' }})</option>
+                            <option value="{{ $prog->id }}" data-dept="{{ $prog->department_id }}">{{ $prog->name }} ({{ $prog->department_name ?? __('messages.not_allocated') }})</option>
                         @endforeach
                     </select>
                 </div>
 
                 {{-- Semester --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الفصل الدراسي</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_semester') }}</label>
                     <select name="semester_id" required
                             class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="" disabled selected>اختر الفصل الدراسي...</option>
+                        <option value="" disabled selected>{{ __('messages.select_semester_ph') }}</option>
                         @foreach($semesters as $sem)
                             @php
-                                $displaySemName = str_contains($sem->name, 'ثاني') ? 'فصل ثاني' : (str_contains($sem->name, 'أول') ? 'فصل أول' : $sem->name);
+                                $displaySemName = str_contains($sem->name, 'ثاني') ? __('messages.second_semester') : (str_contains($sem->name, 'أول') ? __('messages.first_semester') : $sem->name);
                             @endphp
                             <option value="{{ $sem->semester_id }}">{{ $displaySemName }}</option>
                         @endforeach
@@ -390,7 +390,7 @@
 
                 {{-- Action Button --}}
                 <button type="submit" id="add-subject-submit-btn" class="w-full py-4 mt-2 bg-[#f2f20d] text-slate-900 text-sm font-bold rounded-2xl shadow-glow hover:scale-[1.02] active:scale-95 transition-all">
-                    تأكيد وإضافة المادة الدراسية
+                    {{ __('messages.confirm_add_subject_btn') }}
                 </button>
             </form>
         </div>
@@ -405,8 +405,8 @@
                         <span class="material-symbols-outlined text-[24px]">edit</span>
                     </div>
                     <div class="flex flex-col">
-                        <h3 class="text-lg font-bold text-slate-850 dark:text-white leading-tight">تعديل المادة الدراسية</h3>
-                        <span class="text-xs font-bold text-slate-400 mt-1">تحديث بيانات المادة الدراسية</span>
+                        <h3 class="text-lg font-bold text-slate-850 dark:text-white leading-tight">{{ __('messages.edit_subject_modal_title') }}</h3>
+                        <span class="text-xs font-bold text-slate-400 mt-1">{{ __('messages.edit_subject_modal_subtitle') }}</span>
                     </div>
                 </div>
                 <button onclick="closeEditSubjectModal()" class="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
@@ -417,59 +417,59 @@
             <form id="edit-subject-form" method="POST" class="p-6 flex flex-col gap-4 overflow-y-auto max-h-[70vh] hide-scrollbar font-Cairo">
                 @csrf
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">رمز المادة (الكود)</label>
-                    <input type="text" id="edit-code" name="code" placeholder="مثال: CS101، MATH201..." class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.subject_code_label') }}</label>
+                    <input type="text" id="edit-code" name="code" placeholder="{{ __('messages.subject_code_ph') }}" class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">اسم المادة الدراسية</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.subject_name_label') }}</label>
                     <input type="text" id="edit-title" name="title" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none animate-input" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">وصف المادة</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.subject_desc_label') }}</label>
                     <textarea id="edit-description" name="description" rows="3" class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3 px-4 text-sm font-semibold text-slate-855 dark:text-white transition-all outline-none resize-none"></textarea>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">عدد الساعات المخصصة</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.hours_allocated_label') }}</label>
                     <input type="number" id="edit-hours" name="hours" min="1" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white transition-all outline-none" />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">السنة الدراسية</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_year') }}</label>
                     <select id="edit-year" name="year" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="1">السنة الأولى</option>
-                        <option value="2">السنة الثانية</option>
+                        <option value="1">{{ __('messages.first_year') }}</option>
+                        <option value="2">{{ __('messages.second_year') }}</option>
                     </select>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">القسم الأكاديمي</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_dept') }}</label>
                     <select id="edit-dept-select" onchange="filterModalCourses(this.value, 'edit-program')" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="" disabled selected>اختر القسم الأكاديمي...</option>
+                        <option value="" disabled selected>{{ __('messages.select_dept_first_ph') }}</option>
                         @foreach($departments as $dept)
                             <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الدورة</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.course_or_program') }}</label>
                     <select id="edit-program" name="program_id" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
-                        <option value="" disabled selected>اختر الدورة...</option>
+                        <option value="" disabled selected>{{ __('messages.select_program_ph') }}</option>
                         @foreach($programs as $prog)
-                            <option value="{{ $prog->id }}" data-dept="{{ $prog->department_id }}">{{ $prog->name }} ({{ $prog->department_name ?? 'بدون قسم' }})</option>
+                            <option value="{{ $prog->id }}" data-dept="{{ $prog->department_id }}">{{ $prog->name }} ({{ $prog->department_name ?? __('messages.not_allocated') }})</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الفصل الدراسي</label>
+                    <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_semester') }}</label>
                     <select id="edit-semester" name="semester_id" required class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none cursor-pointer">
                         @foreach($semesters as $sem)
                             @php
-                                $displaySemName = str_contains($sem->name, 'ثاني') ? 'فصل ثاني' : (str_contains($sem->name, 'أول') ? 'فصل أول' : $sem->name);
+                                $displaySemName = str_contains($sem->name, 'ثاني') ? __('messages.second_semester') : (str_contains($sem->name, 'أول') ? __('messages.first_semester') : $sem->name);
                             @endphp
                             <option value="{{ $sem->semester_id }}">{{ $displaySemName }}</option>
                         @endforeach
                     </select>
                 </div>
                 <button type="submit" class="w-full py-4 mt-2 bg-[#f2f20d] text-slate-900 text-sm font-bold rounded-2xl shadow-glow hover:scale-[1.02] active:scale-95 transition-all">
-                    حفظ التعديلات
+                    {{ __('messages.save_changes') }}
                 </button>
             </form>
         </div>
@@ -488,7 +488,7 @@
             btn.disabled = true;
             btn.style.pointerEvents = 'none';
             btn.style.opacity = '0.7';
-            btn.textContent = 'جاري إضافة المادة الدراسية...';
+            btn.textContent = "{{ __('messages.adding_subject_loading') }}";
         }
     }
 
@@ -499,22 +499,22 @@
         // Set text details
         document.getElementById('modal-title').textContent = course.title;
         document.getElementById('modal-semester').textContent = course.semester_name;
-        document.getElementById('modal-teacher').textContent = course.teacher_name || 'لم يعين مدرس بعد';
-        document.getElementById('modal-level').textContent = course.year == 2 ? 'السنة الثانية' : 'السنة الأولى';
+        document.getElementById('modal-teacher').textContent = course.teacher_name || "{{ __('messages.no_teacher_assigned') }}";
+        document.getElementById('modal-level').textContent = course.year == 2 ? "{{ __('messages.second_year') }}" : "{{ __('messages.first_year') }}";
         document.getElementById('modal-lectures-btn').href = '{{ route('admin.lectures') }}?course_id=' + course.course_id;
         
         // Departments and hours
         const depts = course.departments_list && course.departments_list.length > 0 
             ? course.departments_list.join(', ') 
-            : 'غير محدد';
+            : "{{ __('messages.not_allocated') }}";
         document.getElementById('modal-department').textContent = depts;
-        document.getElementById('modal-hours').textContent = (course.hours || 0) + ' ساعة دراسية معتمدة';
+        document.getElementById('modal-hours').textContent = (course.hours || 0) + ' ' + "{{ __('messages.credit_hours') }}";
         
         // Set dynamic description
         if (course.description) {
             document.getElementById('modal-desc').textContent = course.description;
         } else {
-            document.getElementById('modal-desc').textContent = 'هذه المادة الدراسية تغطي كافة المفاهيم الأساسية والتطبيقات العملية اللازمة لتمكين الطلاب في مجالات تخصصهم الأكاديمي والمهني.';
+            document.getElementById('modal-desc').textContent = "{{ __('messages.default_subject_desc') }}";
         }
         
         // Configure header icon styles

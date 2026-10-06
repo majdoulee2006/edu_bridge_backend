@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ParentMeetingController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Api\AffairsController;
 use App\Http\Controllers\Api\FaceImageController;
+use App\Http\Controllers\Api\AiAssistantController;
 use App\Http\Controllers\LocaleController;
 
 Route::post('/user/locale', [LocaleController::class, 'setApiLocale'])->middleware('auth:sanctum');

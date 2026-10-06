@@ -491,6 +491,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
 
     // المحاضرات
     Route::get('/lectures', [AdminAcademicController::class, 'lectures'])->name('admin.lectures');
+    Route::get('/lectures/{id}/preview', [AdminAcademicController::class, 'previewLecture'])->name('admin.lectures.preview');
+    Route::get('/lectures/{id}/download', [AdminAcademicController::class, 'downloadLecture'])->name('admin.lectures.download');
 
     // التقارير
     Route::get('/reports', [AdminReportController::class, 'reports'])->name('admin.reports');

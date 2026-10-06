@@ -160,30 +160,20 @@
                             @php
                                 $rawUrl = $l->file_path ?: $l->content_url;
                                 $isExternal = str_starts_with($rawUrl, 'http://') || str_starts_with($rawUrl, 'https://');
-                                if ($isExternal) {
-                                    $finalUrl = $rawUrl;
-                                } else {
-                                    $path = ltrim($rawUrl, '/');
-                                    if (str_starts_with($path, 'public/')) {
-                                        $path = substr($path, 7);
-                                    }
-                                    if (!str_starts_with($path, 'storage/')) {
-                                        $path = 'storage/' . $path;
-                                    }
-                                    $finalUrl = '/' . $path;
-                                }
+                                $previewUrl = $isExternal ? $rawUrl : route('admin.lectures.preview', $l->lesson_id);
+                                $downloadUrl = $isExternal ? $rawUrl : route('admin.lectures.download', $l->lesson_id);
                             @endphp
 
                             <div class="grid grid-cols-2 gap-2">
                                 {{-- View / Preview Button --}}
-                                <a href="{{ $finalUrl }}" target="_blank"
+                                <a href="{{ $previewUrl }}" target="_blank"
                                    class="py-2.5 px-3 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-300 text-xs font-extrabold flex items-center justify-center gap-1.5 border border-blue-500/30 transition-all">
                                     <i class="fa-solid fa-eye text-xs"></i>
                                     <span>{{ $isExternal ? __('messages.open_attached_link') : __('messages.preview_btn') }}</span>
                                 </a>
 
                                 {{-- Download / Open External Button --}}
-                                <a href="{{ $finalUrl }}" {{ $isExternal ? 'target="_blank"' : 'download' }}
+                                <a href="{{ $downloadUrl }}" {{ $isExternal ? 'target="_blank"' : '' }}
                                    class="py-2.5 px-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-extrabold flex items-center justify-center gap-1.5 border border-amber-500/40 transition-all">
                                     <i class="fa-solid {{ $isExternal ? 'fa-arrow-up-right-from-square' : 'fa-download' }} text-xs"></i>
                                     <span>{{ $isExternal ? __('messages.open_attached_link') : __('messages.download_btn') }}</span>
