@@ -310,6 +310,30 @@ class TeacherController extends Controller
             ], 403);
         }
 
+        // الدرس يجب أن يتبع نفس المقرر، والطلاب يجب أن يكونوا مسجّلين فيه
+        $lessonBelongs = Lesson::where('lesson_id', $request->lesson_id)
+            ->where('course_id', $request->course_id)
+            ->exists();
+        if (!$lessonBelongs) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المحاضرة المحددة لا تتبع هذا المقرر',
+            ], 422);
+        }
+
+        $enrolledIds = DB::table('enrollments')
+            ->where('course_id', $request->course_id)
+            ->pluck('student_id')
+            ->all();
+        foreach ($request->attendance as $record) {
+            if (!in_array((int) $record['student_id'], array_map('intval', $enrolledIds), true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'أحد الطلاب غير مسجّل في هذا المقرر',
+                ], 422);
+            }
+        }
+
         $saved = 0;
         foreach ($request->attendance as $record) {
             Attendance::updateOrCreate(
@@ -1998,6 +2022,12 @@ class TeacherController extends Controller
 
         if (!$absenceRequest) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        // المعلّم يرد فقط على طلبات طلاب مقرراته (نفس شرط القراءة في getAbsenceRequests)
+        $teacher = $request->user()->teacher;
+        if (!$teacher || !\App\Support\Access::teacherTeachesStudent($teacher->teacher_id, $absenceRequest->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص أحد طلاب مقرراتك'], 403);
         }
 
         $absenceRequest->update([

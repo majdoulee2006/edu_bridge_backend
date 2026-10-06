@@ -11,29 +11,10 @@ use App\Services\StudentAcademicService;
 
 class StudentParentController extends Controller
 {
-    /**
-     * يتحقق أن الطالب المطلوب مرتبط فعلاً بولي الأمر المسجّل دخوله.
-     * $idType = 'student' إذا كان المعرّف students.student_id، و'user' إذا كان users.user_id.
-     * (الربط في parent_students قد يحمل user_id أو المعرّف الداخلي، فنقبل الاثنين.)
-     */
+    /** تفويض مركزي: انظر App\Support\Access. */
     private function parentOwnsStudent(Request $request, $id, string $idType = 'student'): bool
     {
-        $parent = DB::table('parents')->where('user_id', $request->user()->user_id)->first();
-        if (!$parent) {
-            return false;
-        }
-
-        $student = DB::table('students')
-            ->where($idType === 'user' ? 'user_id' : 'student_id', $id)
-            ->first();
-        if (!$student) {
-            return false;
-        }
-
-        return DB::table('parent_students')
-            ->whereIn('parent_id', [$parent->user_id, $parent->parent_id])
-            ->whereIn('student_id', [$student->student_id, $student->user_id])
-            ->exists();
+        return \App\Support\Access::parentOwnsStudent($request->user(), $id, $idType);
     }
 
     public function requestReport(Request $request)
