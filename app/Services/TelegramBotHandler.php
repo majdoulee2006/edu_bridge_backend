@@ -20,6 +20,7 @@ use App\Models\Announcement;
 use App\Models\Notification;
 use App\Models\AbsenceRequest;
 use App\Models\StudentRequest;
+use App\Models\Program;
 use App\Services\FcmService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -82,7 +83,23 @@ class TelegramBotHandler
                     $this->sendMessage($chatId, "مرحباً مجدداً **{$user->full_name}** 👋\nحسابك مربوط بالفعل، وأي رمز تحقق (OTP) رح يوصلك هون تلقائياً.");
                 }
             } else {
-                $this->sendMessage($chatId, "مرحباً بك في البوت الرسمي لـ Edu Bridge 🎓\nللبدء، يرجى إدخال **اسم المستخدم / البريد الإلكتروني / رقم الهاتف / الرقم الجامعي** الخاص بحسابك:");
+                $keyboard = [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '🔐 تسجيل الدخول وربط الحساب', 'callback_data' => 'auth_login_start'],
+                        ],
+                        [
+                            ['text' => '🎓 إنشاء حساب طالب جديد', 'callback_data' => 'auth_register_student'],
+                            ['text' => '👨‍👩‍👧 إنشاء حساب ولي أمر جديد', 'callback_data' => 'auth_register_parent'],
+                        ]
+                    ]
+                ];
+                $this->sendMessage(
+                    $chatId,
+                    "👋 مرحباً بك في **البوت الرسمي لمنظومة Edu Bridge** 🎓\n\nبوابتك الأكاديمية والتعليمية الذكية لمتابعة المسار الدراسي والخدمات اللحظية.\n\nيرجى اختيار ما تود القيام به، أو إدخال (اسم المستخدم / الرقم الجامعي / الهاتف) لتسجيل الدخول مباشرة:",
+                    null,
+                    $keyboard
+                );
                 Cache::put($stateKey, 'awaiting_university_id', 3600);
             }
             return;
@@ -90,6 +107,48 @@ class TelegramBotHandler
 
         if ($text === '/logout') {
             $this->handleLogout($user, $chatId, $stateKey);
+            return;
+        }
+
+        // معالجة حالات إنشاء حساب طالب جديد (Student Registration Flow)
+        if ($state === 'reg_student_name') {
+            $this->handleRegStudentName($chatId, $text);
+            return;
+        }
+
+        if ($state === 'reg_student_uid') {
+            $this->handleRegStudentUid($chatId, $text);
+            return;
+        }
+
+        if ($state === 'reg_student_phone') {
+            $this->handleRegStudentPhone($chatId, $text);
+            return;
+        }
+
+        if ($state === 'reg_student_password') {
+            $this->handleRegStudentPassword($chatId, $text);
+            return;
+        }
+
+        // معالجة حالات إنشاء حساب ولي أمر جديد (Parent Registration Flow)
+        if ($state === 'reg_parent_name') {
+            $this->handleRegParentName($chatId, $text);
+            return;
+        }
+
+        if ($state === 'reg_parent_child_uid') {
+            $this->handleRegParentChildUid($chatId, $text);
+            return;
+        }
+
+        if ($state === 'reg_parent_phone') {
+            $this->handleRegParentPhone($chatId, $text);
+            return;
+        }
+
+        if ($state === 'reg_parent_password') {
+            $this->handleRegParentPassword($chatId, $text);
             return;
         }
 
@@ -356,6 +415,32 @@ class TelegramBotHandler
         $queryId = $callbackQuery['id'] ?? '';
 
         if (!$chatId) return;
+
+        // معالجة أزرار تسجيل الدخول وإنشاء الحساب (قبل التحقق من وجود الحساب)
+        if ($data === 'auth_login_start') {
+            Cache::put("telegram_state_{$chatId}", 'awaiting_university_id', 3600);
+            $this->sendMessage($chatId, "🔐 **تسجيل الدخول وربط الحساب**\n\nيرجى إدخال **اسم المستخدم / البريد الإلكتروني / رقم الهاتف / الرقم الجامعي** الخاص بحسابك:");
+            $this->answerCallbackQuery($queryId);
+            return;
+        } elseif ($data === 'auth_register_student') {
+            $this->handleStartRegisterStudent($chatId);
+            $this->answerCallbackQuery($queryId);
+            return;
+        } elseif ($data === 'auth_register_parent') {
+            $this->handleStartRegisterParent($chatId);
+            $this->answerCallbackQuery($queryId);
+            return;
+        } elseif (str_starts_with($data, 'reg_prog_')) {
+            $progId = (int)str_replace('reg_prog_', '', $data);
+            $this->handleRegStudentProgramCallback($chatId, $progId);
+            $this->answerCallbackQuery($queryId);
+            return;
+        } elseif (str_starts_with($data, 'reg_gender_')) {
+            $gender = str_replace('reg_gender_', '', $data) === 'male' ? 'ذكر' : 'أنثى';
+            $this->handleRegStudentGenderCallback($chatId, $gender);
+            $this->answerCallbackQuery($queryId);
+            return;
+        }
 
         $user = User::where('telegram_chat_id', $chatId)->first();
         if (!$user || (!in_array($user->role, ['student', 'parent', 'teacher', 'head', 'affairs', 'admin']) && !in_array($user->role_id, [1, 2, 3, 4, 5, 6]))) {
@@ -5014,6 +5099,426 @@ class TelegramBotHandler
             "✅ **تم نشر وبث التعميم الإداري بنجاح!** 📢\n\n📌 **العنوان:** {$title}\n🎯 **الجمهور المستهدف:** {$targetLabel}\n👥 **عدد المستلمين:** `{$recipients->count()}` مستخدم\n\n📨 تم إرسال إشعارات التطبيق والرسائل الفورية عبر التيليجرام لكافة المستهدفين."
         );
     }
+
+    // ==========================================
+    // Student Registration Handlers
+    // ==========================================
+
+    private function handleStartRegisterStudent($chatId)
+    {
+        Cache::put("telegram_state_{$chatId}", 'reg_student_name', 1800);
+        $this->sendMessage(
+            $chatId,
+            "🎓 **إنشاء حساب طالب جديد**\n\n📌 **الخطوة 1 من 6:**\nيرجى كتابة **اسمك الثلاثي أو الكامل**:"
+        );
+    }
+
+    private function handleRegStudentName($chatId, string $text)
+    {
+        $name = trim($text);
+        if (mb_strlen($name) < 3) {
+            $this->sendMessage($chatId, "⚠️ يرجى كتابة اسم صحيح لا يقل عن 3 أحرف.");
+            return;
+        }
+
+        Cache::put("reg_std_name_{$chatId}", $name, 1800);
+        Cache::put("telegram_state_{$chatId}", 'reg_student_uid', 1800);
+
+        $this->sendMessage(
+            $chatId,
+            "أهلاً بك **{$name}** 👋\n\n📌 **الخطوة 2 من 6:**\nيرجى إدخال **الرقم الجامعي** الخاص بك (مثال: `20241001`):"
+        );
+    }
+
+    private function handleRegStudentUid($chatId, string $text)
+    {
+        $uid = preg_replace('/\s+/', '', trim($text));
+        if (empty($uid)) {
+            $this->sendMessage($chatId, "⚠️ يرجى إدخال رقم جامعي صحيح.");
+            return;
+        }
+
+        // التحقق من تكرار الرقم الجامعي في جدول المستخدمين
+        $existingUser = User::where('university_id', $uid)
+            ->orWhere('username', 'std_' . $uid)
+            ->orWhereHas('student', fn($sq) => $sq->where('student_code', $uid))
+            ->first();
+
+        if ($existingUser) {
+            $this->sendMessage(
+                $chatId,
+                "❌ **عذراً! هذا الرقم الجامعي مستخدم مسبقاً في حساب آخر.**\nإذا كان الحساب يخصك، يمكنك الضغط على /start واختيار تسجيل الدخول."
+            );
+            return;
+        }
+
+        // إذا كان جدول university_ids موجوداً، نتحقق من صلاحية الرقم الجامعي
+        if (\Illuminate\Support\Facades\Schema::hasTable('university_ids')) {
+            $uidRecord = DB::table('university_ids')->where('university_id', $uid)->where('role', 'student')->first();
+            if ($uidRecord && $uidRecord->is_used) {
+                $this->sendMessage($chatId, "❌ هذا الرقم الجامعي تم تفعيله مسبقاً. يرجى التواصل مع إدارة شؤون الطلاب.");
+                return;
+            }
+        }
+
+        Cache::put("reg_std_uid_{$chatId}", $uid, 1800);
+        Cache::put("telegram_state_{$chatId}", 'reg_student_program', 1800);
+
+        // جلب قائمة البرامج والتخصصات المتاحة
+        $programs = Program::orderBy('id')->get();
+        $buttons = [];
+        $row = [];
+
+        foreach ($programs as $idx => $prog) {
+            $row[] = ['text' => "🏛️ {$prog->name}", 'callback_data' => "reg_prog_{$prog->id}"];
+            if (count($row) === 2 || $idx === $programs->count() - 1) {
+                $buttons[] = $row;
+                $row = [];
+            }
+        }
+
+        if (empty($buttons)) {
+            $buttons[] = [
+                ['text' => '🏛️ معلوماتية وهندسة برمجيات', 'callback_data' => 'reg_prog_1']
+            ];
+        }
+
+        $keyboard = ['inline_keyboard' => $buttons];
+
+        $this->sendMessage(
+            $chatId,
+            "📌 **الخطوة 3 من 6:**\nاختر **التخصص / البرنامج الأكاديمي** الخاص بك من القائمة أدناه:",
+            null,
+            $keyboard
+        );
+    }
+
+    private function handleRegStudentProgramCallback($chatId, int $progId)
+    {
+        $prog = Program::find($progId);
+        $progName = $prog->name ?? 'عام';
+
+        Cache::put("reg_std_prog_id_{$chatId}", $progId, 1800);
+        Cache::put("reg_std_prog_name_{$chatId}", $progName, 1800);
+        Cache::put("telegram_state_{$chatId}", 'reg_student_gender', 1800);
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '👨 ذكر', 'callback_data' => 'reg_gender_male'],
+                    ['text' => '👩 أنثى', 'callback_data' => 'reg_gender_female'],
+                ]
+            ]
+        ];
+
+        $this->sendMessage(
+            $chatId,
+            "تم اختيار تخصص: **{$progName}** 🏛️\n\n📌 **الخطوة 4 من 6:**\nيرجى تحديد **الجنس**:",
+            null,
+            $keyboard
+        );
+    }
+
+    private function handleRegStudentGenderCallback($chatId, string $gender)
+    {
+        Cache::put("reg_std_gender_{$chatId}", $gender, 1800);
+        Cache::put("telegram_state_{$chatId}", 'reg_student_phone', 1800);
+
+        $this->sendMessage(
+            $chatId,
+            "📌 **الخطوة 5 من 6:**\nيرجى إدخال **رقم الهاتف** الخاص بك (مثال: `0987654321`):"
+        );
+    }
+
+    private function handleRegStudentPhone($chatId, string $text)
+    {
+        $phone = preg_replace('/\s+/', '', trim($text));
+        if (mb_strlen($phone) < 8) {
+            $this->sendMessage($chatId, "⚠️ يرجى إدخال رقم هاتف صحيح.");
+            return;
+        }
+
+        Cache::put("reg_std_phone_{$chatId}", $phone, 1800);
+        Cache::put("telegram_state_{$chatId}", 'reg_student_password', 1800);
+
+        $this->sendMessage(
+            $chatId,
+            "📌 **الخطوة 6 من 6 (الأخيرة):**\nيرجى إدخال **كلمة المرور** لحسابك (6 أحرف أو أرقام على الأقل):"
+        );
+    }
+
+    private function handleRegStudentPassword($chatId, string $text)
+    {
+        $password = trim($text);
+        if (mb_strlen($password) < 6) {
+            $this->sendMessage($chatId, "⚠️ يجب ألا تقل كلمة المرور عن 6 خانات. يرجى إعادة الإدخال:");
+            return;
+        }
+
+        $name     = Cache::get("reg_std_name_{$chatId}");
+        $uid      = Cache::get("reg_std_uid_{$chatId}");
+        $progId   = Cache::get("reg_std_prog_id_{$chatId}", 1);
+        $progName = Cache::get("reg_std_prog_name_{$chatId}", 'معلوماتية');
+        $gender   = Cache::get("reg_std_gender_{$chatId}", 'ذكر');
+        $phone    = Cache::get("reg_std_phone_{$chatId}");
+
+        if (!$name || !$uid) {
+            $this->sendMessage($chatId, "⚠️ انتهت مهلة الجلسة، يرجى البدء من جديد عبر /start.");
+            Cache::forget("telegram_state_{$chatId}");
+            return;
+        }
+
+        $parts = explode(' ', $name, 2);
+        $firstName = $parts[0] ?? $name;
+        $lastName  = $parts[1] ?? '';
+
+        $email = "std_{$uid}@edubridge.edu";
+        $username = "std_{$uid}";
+
+        // التأكد من عدم تكرار الإيميل
+        if (User::where('email', $email)->exists()) {
+            $email = "std_{$uid}_" . time() . "@edubridge.edu";
+        }
+
+        DB::beginTransaction();
+        try {
+            $user = User::create([
+                'role_id'           => 3,
+                'full_name'         => $name,
+                'first_name'        => $firstName,
+                'last_name'         => $lastName,
+                'username'          => $username,
+                'email'             => $email,
+                'password'          => Hash::make($password),
+                'phone'             => $phone,
+                'telegram_chat_id'  => (string)$chatId,
+                'university_id'     => $uid,
+                'department'        => $progName,
+                'branch'            => 'الفرع الرئيسي',
+                'gender'            => $gender,
+                'academic_year'     => 'السنة الأولى',
+                'status'            => 'active',
+            ]);
+
+            Student::create([
+                'user_id'          => $user->user_id,
+                'student_code'     => $uid,
+                'program_id'       => $progId,
+                'level'            => 'السنة الأولى',
+                'is_device_locked' => 0,
+            ]);
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('university_ids')) {
+                DB::table('university_ids')->where('university_id', $uid)->update([
+                    'is_used'          => 1,
+                    'telegram_chat_id' => (string)$chatId,
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Telegram Student Registration Error: ' . $e->getMessage());
+            $this->sendMessage($chatId, "❌ حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة لاحقاً عبر /start.");
+            return;
+        }
+
+        // مسح الكاش المؤقت
+        Cache::forget("telegram_state_{$chatId}");
+        Cache::forget("reg_std_name_{$chatId}");
+        Cache::forget("reg_std_uid_{$chatId}");
+        Cache::forget("reg_std_prog_id_{$chatId}");
+        Cache::forget("reg_std_prog_name_{$chatId}");
+        Cache::forget("reg_std_gender_{$chatId}");
+        Cache::forget("reg_std_phone_{$chatId}");
+
+        Cache::forget('admin_profile_stats');
+        Cache::forget('distinct_user_actions');
+
+        \App\Models\UserActivity::log('إنشاء حساب جديد', "تم تسجيل حساب طالب جديد عبر بوت التلغرام: {$name} ({$uid})", $user);
+
+        $welcomeMsg = "🎉 **تهانينا! تم إنشاء وتفعيل حسابك الأكاديمي بنجاح!** 🎓\n\n"
+            . "👤 **الاسم:** {$name}\n"
+            . "🆔 **الرقم الجامعي:** `{$uid}`\n"
+            . "🏛️ **التخصص:** {$progName}\n"
+            . "📞 **الهاتف:** `{$phone}`\n"
+            . "📧 **اسم المستخدم:** `{$username}`\n"
+            . "─────────────\n"
+            . "⚡ تم ربط حسابك بالبوت تلقائياً ويمكنك الآن الاستفادة من كافة الخدمات أدناه:";
+
+        $this->sendStudentMainMenu($chatId, $welcomeMsg);
+    }
+
+    // ==========================================
+    // Parent Registration Handlers
+    // ==========================================
+
+    private function handleStartRegisterParent($chatId)
+    {
+        Cache::put("telegram_state_{$chatId}", 'reg_parent_name', 1800);
+        $this->sendMessage(
+            $chatId,
+            "👨‍👩‍👧 **إنشاء حساب ولي أمر جديد**\n\n📌 **الخطوة 1 من 4:**\nيرجى كتابة **الاسم الكامل لولي الأمر**:"
+        );
+    }
+
+    private function handleRegParentName($chatId, string $text)
+    {
+        $name = trim($text);
+        if (mb_strlen($name) < 3) {
+            $this->sendMessage($chatId, "⚠️ يرجى كتابة اسم صحيح لا يقل عن 3 أحرف.");
+            return;
+        }
+
+        Cache::put("reg_par_name_{$chatId}", $name, 1800);
+        Cache::put("telegram_state_{$chatId}", 'reg_parent_child_uid', 1800);
+
+        $this->sendMessage(
+            $chatId,
+            "أهلاً بك **{$name}** 👨‍👩‍👧\n\n📌 **الخطوة 2 من 4:**\nيرجى إدخال **الرقم الجامعي أو كود الطالب (الابن/الابنة)** للربط معه:"
+        );
+    }
+
+    private function handleRegParentChildUid($chatId, string $text)
+    {
+        $childUid = preg_replace('/\s+/', '', trim($text));
+
+        $studentUser = User::where(function($q) use ($childUid) {
+                $q->where('university_id', $childUid)
+                  ->orWhere('username', $childUid)
+                  ->orWhere('username', 'std_' . $childUid)
+                  ->orWhereHas('student', fn($sq) => $sq->where('student_code', $childUid));
+            })
+            ->where(function($q) {
+                $q->where('role_id', 3)->orWhere('role', 'student');
+            })
+            ->first();
+
+        if (!$studentUser) {
+            $this->sendMessage(
+                $chatId,
+                "❌ **لم يتم العثور على طالب بهذا الرقم الجامعي: `{$childUid}`**\n\nيرجى التأكد من الرقم الجامعي للابن/الابنة وإعادة إدخاله:"
+            );
+            return;
+        }
+
+        Cache::put("reg_par_child_user_id_{$chatId}", $studentUser->user_id, 1800);
+        Cache::put("reg_par_child_name_{$chatId}", $studentUser->full_name, 1800);
+        Cache::put("telegram_state_{$chatId}", 'reg_parent_phone', 1800);
+
+        $this->sendMessage(
+            $chatId,
+            "✅ **تم التحقق والتعرف على الطالب:**\n🎓 **{$studentUser->full_name}** ({$studentUser->department})\n\n📌 **الخطوة 3 من 4:**\nيرجى إدخال **رقم هاتف ولي الأمر** (مثال: `0987654321`):"
+        );
+    }
+
+    private function handleRegParentPhone($chatId, string $text)
+    {
+        $phone = preg_replace('/\s+/', '', trim($text));
+        if (mb_strlen($phone) < 8) {
+            $this->sendMessage($chatId, "⚠️ يرجى إدخال رقم هاتف صحيح.");
+            return;
+        }
+
+        Cache::put("reg_par_phone_{$chatId}", $phone, 1800);
+        Cache::put("telegram_state_{$chatId}", 'reg_parent_password', 1800);
+
+        $this->sendMessage(
+            $chatId,
+            "📌 **الخطوة 4 من 4 (الأخيرة):**\nيرجى إدخال **كلمة المرور** لحساب ولي الأمر (6 أحرف أو أرقام على الأقل):"
+        );
+    }
+
+    private function handleRegParentPassword($chatId, string $text)
+    {
+        $password = trim($text);
+        if (mb_strlen($password) < 6) {
+            $this->sendMessage($chatId, "⚠️ يجب ألا تقل كلمة المرور عن 6 خانات. يرجى إعادة الإدخال:");
+            return;
+        }
+
+        $name        = Cache::get("reg_par_name_{$chatId}");
+        $childUserId = Cache::get("reg_par_child_user_id_{$chatId}");
+        $childName   = Cache::get("reg_par_child_name_{$chatId}", 'الطالب');
+        $phone       = Cache::get("reg_par_phone_{$chatId}");
+
+        if (!$name || !$childUserId) {
+            $this->sendMessage($chatId, "⚠️ انتهت مهلة الجلسة، يرجى البدء من جديد عبر /start.");
+            Cache::forget("telegram_state_{$chatId}");
+            return;
+        }
+
+        $parts = explode(' ', $name, 2);
+        $firstName = $parts[0] ?? $name;
+        $lastName  = $parts[1] ?? '';
+
+        $phoneClean = preg_replace('/[^0-9]/', '', $phone);
+        $email = "parent_{$phoneClean}@edubridge.edu";
+        $username = "par_" . $phoneClean;
+
+        if (User::where('email', $email)->exists()) {
+            $email = "parent_{$phoneClean}_" . time() . "@edubridge.edu";
+        }
+
+        DB::beginTransaction();
+        try {
+            $user = User::create([
+                'role_id'           => 4,
+                'full_name'         => $name,
+                'first_name'        => $firstName,
+                'last_name'         => $lastName,
+                'username'          => $username,
+                'email'             => $email,
+                'password'          => Hash::make($password),
+                'phone'             => $phone,
+                'telegram_chat_id'  => (string)$chatId,
+                'branch'            => 'الفرع الرئيسي',
+                'status'            => 'active',
+            ]);
+
+            Parents::create([
+                'user_id' => $user->user_id,
+            ]);
+
+            DB::table('parent_students')->insert([
+                'parent_id'    => $user->user_id,
+                'student_id'   => $childUserId,
+                'relationship' => 'ولي أمر',
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Telegram Parent Registration Error: ' . $e->getMessage());
+            $this->sendMessage($chatId, "❌ حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة لاحقاً عبر /start.");
+            return;
+        }
+
+        // مسح الكاش المؤقت
+        Cache::forget("telegram_state_{$chatId}");
+        Cache::forget("reg_par_name_{$chatId}");
+        Cache::forget("reg_par_child_user_id_{$chatId}");
+        Cache::forget("reg_par_child_name_{$chatId}");
+        Cache::forget("reg_par_phone_{$chatId}");
+
+        Cache::forget('admin_profile_stats');
+        Cache::forget('distinct_user_actions');
+
+        \App\Models\UserActivity::log('إنشاء حساب جديد', "تم تسجيل حساب ولي أمر جديد عبر بوت التلغرام: {$name} للابن: {$childName}", $user);
+
+        $welcomeMsg = "🎉 **تهانينا! تم إنشاء وتفعيل حساب ولي الأمر بنجاح!** 👨‍👩‍👧‍👦\n\n"
+            . "👤 **الاسم:** {$name}\n"
+            . "🎓 **الطالب المرتبط:** {$childName}\n"
+            . "📞 **رقم الهاتف:** `{$phone}`\n"
+            . "📧 **اسم المستخدم:** `{$username}`\n"
+            . "─────────────\n"
+            . "⚡ تم ربط حسابك بالبوت تلقائياً ويمكنك الآن متابعة الحضور والدرجات وإرسال الإجازات للأبناء مباشرة أدناه:";
+
+        $this->sendParentMainMenu($chatId, $welcomeMsg);
+    }
 }
+
 
 
