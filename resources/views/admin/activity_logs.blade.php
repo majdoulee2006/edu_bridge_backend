@@ -1,9 +1,9 @@
 @extends('layouts.admin')
 
-@section('title', 'سجل النشاطات والأمان')
+@section('title', __('messages.activity_security_log'))
 
-@section('header-title', 'سجل تتبع حركة المستخدمين 🛡️')
-@section('header-subtitle', 'مراقبة وتتبع عمليات تسجيل الدخول والخروج والأنشطة لجميع مستخدمي النظام')
+@section('header-title', __('messages.user_activity_tracking_log'))
+@section('header-subtitle', __('messages.user_activity_tracking_desc'))
 
 @section('content')
 <div class="flex flex-col gap-6">
@@ -14,29 +14,29 @@
             
             <!-- Search Query -->
             <div class="relative flex-1 w-full">
-                <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <i class="fa-solid fa-magnifying-glass absolute {{ app()->getLocale() === 'en' ? 'left-4' : 'right-4' }} top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                 <input type="text" name="search" value="{{ request('search') }}" 
-                       placeholder="بحث باسم المستخدم أو الحركة..."
-                       class="w-full pr-11 pl-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-primary">
+                       placeholder="{{ __('messages.search_by_user_or_action') }}"
+                       class="w-full {{ app()->getLocale() === 'en' ? 'pl-11 pr-4' : 'pr-11 pl-4' }} py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-primary">
             </div>
 
             <!-- Filter by Role -->
             <div class="w-full md:w-56">
                 <select name="role" class="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-primary">
-                    <option value="">جميع الأدوار</option>
-                    <option value="إدارة" {{ request('role') == 'إدارة' ? 'selected' : '' }}>إدارة</option>
-                    <option value="شؤون طلاب" {{ request('role') == 'شؤون طلاب' ? 'selected' : '' }}>شؤون طلاب</option>
-                    <option value="رئيس قسم" {{ request('role') == 'رئيس قسم' ? 'selected' : '' }}>رئيس قسم</option>
-                    <option value="معلم" {{ request('role') == 'معلم' ? 'selected' : '' }}>معلم</option>
-                    <option value="طالب" {{ request('role') == 'طالب' ? 'selected' : '' }}>طالب</option>
-                    <option value="ولي أمر" {{ request('role') == 'ولي أمر' ? 'selected' : '' }}>ولي أمر</option>
+                    <option value="">{{ __('messages.all_roles') }}</option>
+                    <option value="إدارة" {{ request('role') == 'إدارة' ? 'selected' : '' }}>{{ __('messages.role_admin') }}</option>
+                    <option value="شؤون طلاب" {{ request('role') == 'شؤون طلاب' ? 'selected' : '' }}>{{ __('messages.role_affairs') }}</option>
+                    <option value="رئيس قسم" {{ request('role') == 'رئيس قسم' ? 'selected' : '' }}>{{ __('messages.role_hod') }}</option>
+                    <option value="معلم" {{ request('role') == 'معلم' ? 'selected' : '' }}>{{ __('messages.role_teacher') }}</option>
+                    <option value="طالب" {{ request('role') == 'طالب' ? 'selected' : '' }}>{{ __('messages.role_student') }}</option>
+                    <option value="ولي أمر" {{ request('role') == 'ولي أمر' ? 'selected' : '' }}>{{ __('messages.role_parent') }}</option>
                 </select>
             </div>
 
             <!-- Filter by Action -->
             <div class="w-full md:w-56">
                 <select name="action_type" class="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:border-primary">
-                    <option value="">جميع الحركات</option>
+                    <option value="">{{ __('messages.all_actions') }}</option>
                     @if(isset($allActions))
                         @foreach($allActions as $actType)
                             <option value="{{ $actType }}" {{ request('action_type') == $actType ? 'selected' : '' }}>
@@ -49,8 +49,8 @@
 
             <!-- Reset Filter Button -->
             @if(request()->hasAny(['search', 'role', 'action_type']))
-                <a href="{{ route('admin.activity_logs') }}" title="إعادة ضبط الفلاتر" class="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40 font-bold text-sm rounded-2xl py-3 px-5 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
-                    <i class="fa-solid fa-rotate-left"></i> إلغاء الفلترة
+                <a href="{{ route('admin.activity_logs') }}" title="{{ __('messages.reset_filters') }}" class="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40 font-bold text-sm rounded-2xl py-3 px-5 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-rotate-left"></i> {{ __('messages.reset_filters') }}
                 </a>
             @endif
         </form>
@@ -61,17 +61,17 @@
         <div class="p-6 border-b border-slate-100 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
             <h3 class="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
                 <i class="fa-solid fa-list-check text-primary"></i>
-                سجل العمليات والنشاط الأمني
+                {{ __('messages.operations_and_security_log') }}
             </h3>
             
             <div class="flex items-center gap-4">
-                <span class="text-xs font-bold text-slate-400">إجمالي السجلات: {{ $activities->total() }}</span>
+                <span class="text-xs font-bold text-slate-400">{{ __('messages.total_records') }}: {{ $activities->total() }}</span>
                 
-                <form action="{{ route('admin.activity_logs.clean') }}" method="POST" onsubmit="return confirm('هل أنت تأكد من رغبتك بتنظيف السجلات القديمة أكثر من 90 يوماً؟');">
+                <form action="{{ route('admin.activity_logs.clean') }}" method="POST" onsubmit="return confirm(@json(__('messages.confirm_clean_logs')));">
                     @csrf
                     <input type="hidden" name="days" value="90">
                     <button type="submit" class="bg-slate-100 dark:bg-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-600 hover:border-rose-200 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5">
-                        <i class="fa-solid fa-broom"></i> تنظيف السجلات القديمة (+90 يوماً)
+                        <i class="fa-solid fa-broom"></i> {{ __('messages.clean_old_logs_90') }}
                     </button>
                 </form>
             </div>
@@ -81,11 +81,11 @@
             <table class="w-full text-right text-sm">
                 <thead class="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase border-b border-slate-100 dark:border-slate-700/50">
                     <tr>
-                        <th class="py-4 px-6">المستخدم</th>
-                        <th class="py-4 px-6">الدور</th>
-                        <th class="py-4 px-6">نوع الحركة</th>
-                        <th class="py-4 px-6">التفاصيل</th>
-                        <th class="py-4 px-6">التاريخ والوقت</th>
+                        <th class="py-4 px-6">{{ __('messages.user') }}</th>
+                        <th class="py-4 px-6">{{ __('messages.role') }}</th>
+                        <th class="py-4 px-6">{{ __('messages.action_type') }}</th>
+                        <th class="py-4 px-6">{{ __('messages.details') }}</th>
+                        <th class="py-4 px-6">{{ __('messages.date_time') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/30">
@@ -96,10 +96,10 @@
                             <td class="py-4 px-6 font-bold text-slate-800 dark:text-slate-200">
                                 <div class="flex items-center gap-3">
                                     <div class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-black text-xs text-slate-700 dark:text-slate-300">
-                                        {{ mb_substr($act->user_name ?? 'ز', 0, 1) }}
+                                        {{ mb_substr($act->user_name ?? 'U', 0, 1) }}
                                     </div>
                                     <div class="flex flex-col">
-                                        <span>{{ $act->user_name ?? 'غير معروف' }}</span>
+                                        <span>{{ $act->user_name ?? __('messages.unknown') }}</span>
                                         @if($act->user_id)
                                             <span class="text-[11px] text-slate-400 font-medium">ID: {{ $act->user_id }}</span>
                                         @endif
@@ -110,21 +110,21 @@
                             <!-- Role Badge -->
                             <td class="py-4 px-6">
                                 <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                    {{ $act->role_name ?? 'غير محدد' }}
+                                    {{ $act->role_name ?? __('messages.unspecified') }}
                                 </span>
                             </td>
 
                             <!-- Action Badge -->
                             <td class="py-4 px-6">
-                                @if(str_contains($act->action, 'دخول'))
+                                @if(str_contains($act->action, 'دخول') || str_contains(strtolower($act->action), 'login'))
                                     <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1.5 w-fit">
                                         <i class="fa-solid fa-right-to-bracket"></i> {{ $act->action }}
                                     </span>
-                                @elseif(str_contains($act->action, 'خمول'))
+                                @elseif(str_contains($act->action, 'خمول') || str_contains(strtolower($act->action), 'idle'))
                                     <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40 flex items-center gap-1.5 w-fit">
                                         <i class="fa-solid fa-clock-rotate-left"></i> {{ $act->action }}
                                     </span>
-                                @elseif(str_contains($act->action, 'خروج'))
+                                @elseif(str_contains($act->action, 'خروج') || str_contains(strtolower($act->action), 'logout'))
                                     <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40 flex items-center gap-1.5 w-fit">
                                         <i class="fa-solid fa-right-from-bracket"></i> {{ $act->action }}
                                     </span>
@@ -151,7 +151,7 @@
                         <tr>
                             <td colspan="5" class="py-12 text-center text-slate-400">
                                 <i class="fa-solid fa-folder-open text-4xl mb-3 block"></i>
-                                لا توجد سجلات نشاط مطابقة حالياً.
+                                {{ __('messages.no_activity_records') }}
                             </td>
                         </tr>
                     @endforelse
@@ -212,7 +212,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         roleSelect.addEventListener('change', function() {
             updateActionOptions();
-            // تصفية عند تغيير الدور مع إبقاء أو إعادة تعيين نوع الحركة إذا لزم الأمر
             filterForm.submit();
         });
     }
@@ -234,3 +233,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endsection
+

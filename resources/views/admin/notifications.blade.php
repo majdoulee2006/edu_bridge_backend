@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'مركز الإشعارات')
+@section('title', __('messages.notifications_center'))
 
 @push('styles')
 <style>
@@ -58,9 +58,9 @@
         <div>
             <h2 class="text-2xl font-extrabold text-white flex items-center gap-2">
                 <i class="fa-solid fa-bell text-[#f2f20d]"></i>
-                مركز الإشعارات والتنبيهات
+                {{ __('messages.notifications_center') }}
             </h2>
-            <p class="text-sm text-zinc-400 mt-1">عرض ومتابعة كافة الطلبات والإشعارات والتنبيهات الإدارية الواردة</p>
+            <p class="text-sm text-zinc-400 mt-1">{{ __('messages.notifications_center_desc') }}</p>
         </div>
 
         <div class="flex items-center gap-3 flex-wrap">
@@ -68,7 +68,7 @@
             <button onclick="document.getElementById('sendNotifModal').classList.remove('hidden')"
                     class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#f2f20d] hover:bg-[#d9d90b] text-black shadow-glow hover:scale-105 active:scale-95 transition-all font-extrabold text-xs">
                 <i class="fa-solid fa-paper-plane text-sm"></i>
-                <span>إرسال إشعار جديد</span>
+                <span>{{ __('messages.send_new_notification') }}</span>
             </button>
 
             {{-- زر تحديد الكل كمقروء --}}
@@ -78,7 +78,7 @@
                     <button type="submit" 
                             class="flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold text-xs transition-all">
                         <i class="fa-solid fa-check-double text-[#f2f20d]"></i>
-                        <span>تحديد الكل كمقروء</span>
+                        <span>{{ __('messages.mark_all_read') }}</span>
                     </button>
                 </form>
             @endif
@@ -91,17 +91,17 @@
     @endphp
     <div class="flex items-center gap-4 mb-6 border-b border-zinc-800 pb-3">
         <a href="{{ route('admin.notifications') }}" class="notif-filter-btn {{ !request('filter') ? 'active' : '' }}">
-            كل الإشعارات
-            <span class="mr-1.5 px-2 py-0.5 rounded-full text-xs bg-zinc-800 text-zinc-300 font-bold">{{ $notifications->total() }}</span>
+            {{ __('messages.all_notifications') }}
+            <span class="mx-1.5 px-2 py-0.5 rounded-full text-xs bg-zinc-800 text-zinc-300 font-bold">{{ $notifications->total() }}</span>
         </a>
         <a href="{{ route('admin.notifications', ['filter' => 'unread']) }}" class="notif-filter-btn {{ request('filter') == 'unread' ? 'active' : '' }}">
-            غير مقروءة
+            {{ __('messages.unread') }}
             @if($unreadCount > 0)
-                <span class="mr-1.5 px-2 py-0.5 rounded-full text-xs bg-[#f2f20d] text-black font-black" id="unreadBadge">{{ $unreadCount }}</span>
+                <span class="mx-1.5 px-2 py-0.5 rounded-full text-xs bg-[#f2f20d] text-black font-black" id="unreadBadge">{{ $unreadCount }}</span>
             @endif
         </a>
         <a href="{{ route('admin.notifications', ['filter' => 'read']) }}" class="notif-filter-btn {{ request('filter') == 'read' ? 'active' : '' }}">
-            مقروءة
+            {{ __('messages.read') }}
         </a>
     </div>
 
@@ -164,7 +164,7 @@
                         <h3 class="text-base font-bold text-white leading-snug truncate">
                             {{ $notif->title }}
                         </h3>
-                        <span class="text-xs font-semibold text-zinc-500 shrink-0" dir="rtl">
+                        <span class="text-xs font-semibold text-zinc-500 shrink-0">
                             {{ \Carbon\Carbon::parse($notif->created_at)->translatedFormat('d F Y - h:i A') }}
                         </span>
                     </div>
@@ -176,8 +176,8 @@
                     @if($targetUrl)
                         <div class="flex items-center gap-2">
                             <a href="{{ $targetUrl }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-[#f2f20d] hover:text-black text-zinc-300 font-bold text-xs transition-all">
-                                <span>عرض التفاصيل</span>
-                                <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                                <span>{{ __('messages.view_details') }}</span>
+                                <i class="fa-solid {{ app()->getLocale() === 'en' ? 'fa-arrow-right' : 'fa-arrow-left' }} text-[10px]"></i>
                             </a>
                         </div>
                     @endif
@@ -193,8 +193,8 @@
                 <div class="w-16 h-16 rounded-full bg-zinc-800/80 text-[#f2f20d] flex items-center justify-center mx-auto mb-4 text-2xl">
                     <i class="fa-solid fa-bell-slash"></i>
                 </div>
-                <h3 class="text-lg font-bold text-white mb-1">لا توجد إشعارات حالياً</h3>
-                <p class="text-xs text-zinc-400 max-w-sm mx-auto">علبة التنبيهات والإشعارات فارغة تماماً. سريان العمل منتظم ولا توجد أي طلبات معلقة.</p>
+                <h3 class="text-lg font-bold text-white mb-1">{{ __('messages.no_notifications_currently') }}</h3>
+                <p class="text-xs text-zinc-400 max-w-sm mx-auto">{{ __('messages.no_notifications_desc') }}</p>
             </div>
         @endforelse
     </div>
@@ -207,11 +207,11 @@
 
     {{-- Modal إرسال إشعار جديد --}}
     <div id="sendNotifModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="w-full max-w-lg bg-[#121212] border border-zinc-800 rounded-3xl shadow-2xl p-6 text-right" dir="rtl">
+        <div class="w-full max-w-lg bg-[#121212] border border-zinc-800 rounded-3xl shadow-2xl p-6 text-right">
             <div class="flex items-center justify-between mb-5 border-b border-zinc-800 pb-4">
                 <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
                     <i class="fa-solid fa-paper-plane text-[#f2f20d]"></i>
-                    إرسال إشعار إداري جديد
+                    {{ __('messages.send_admin_notification') }}
                 </h3>
                 <button onclick="document.getElementById('sendNotifModal').classList.add('hidden')"
                         class="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors">
@@ -224,14 +224,14 @@
 
                 {{-- الجمهور / الفئة --}}
                 <div>
-                    <label class="text-xs font-bold text-zinc-300 block mb-2">جهة الإرسال (الفئة)</label>
+                    <label class="text-xs font-bold text-zinc-300 block mb-2">{{ __('messages.target_audience') }}</label>
                     <div class="grid grid-cols-3 gap-2">
                         <label class="cursor-pointer">
                             <input checked class="peer sr-only" name="recipient_type" value="all" type="radio"
                                    onchange="document.getElementById('deptSelectorModal').classList.add('hidden')"/>
                             <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
                                 <i class="fa-solid fa-users text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
-                                <p class="text-[11px] font-bold text-white leading-tight">كافة المستخدمين</p>
+                                <p class="text-[11px] font-bold text-white leading-tight">{{ __('messages.all_users') }}</p>
                             </div>
                         </label>
 
@@ -240,7 +240,7 @@
                                    onchange="document.getElementById('deptSelectorModal').classList.remove('hidden')"/>
                             <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
                                 <i class="fa-solid fa-building-columns text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
-                                <p class="text-[11px] font-bold text-white leading-tight">قسم معين</p>
+                                <p class="text-[11px] font-bold text-white leading-tight">{{ __('messages.specific_department') }}</p>
                             </div>
                         </label>
 
@@ -249,7 +249,7 @@
                                    onchange="document.getElementById('deptSelectorModal').classList.add('hidden')"/>
                             <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
                                 <i class="fa-solid fa-user-shield text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
-                                <p class="text-[11px] font-bold text-white leading-tight">رؤساء الأقسام بس</p>
+                                <p class="text-[11px] font-bold text-white leading-tight">{{ __('messages.department_heads_only') }}</p>
                             </div>
                         </label>
                     </div>
@@ -257,7 +257,7 @@
 
                 {{-- اختيار القسم --}}
                 <div id="deptSelectorModal" class="hidden">
-                    <label class="text-xs font-bold text-zinc-300 block mb-2">الأقسام المحددة</label>
+                    <label class="text-xs font-bold text-zinc-300 block mb-2">{{ __('messages.selected_departments') }}</label>
                     <div class="flex flex-col gap-2 max-h-36 overflow-y-auto pr-1">
                         @foreach(\App\Models\Department::orderBy('name')->get() as $d)
                         <label class="cursor-pointer flex items-center gap-3 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-[#f2f20d]/40 transition-all">
@@ -271,22 +271,22 @@
 
                 {{-- الموضوع --}}
                 <div>
-                    <label class="text-xs font-bold text-zinc-300 block mb-1">عنوان الإشعار</label>
-                    <input name="subject" type="text" required placeholder="أدخل عنوان الإشعار التنبيهي"
+                    <label class="text-xs font-bold text-zinc-300 block mb-1">{{ __('messages.notification_title') }}</label>
+                    <input name="subject" type="text" required placeholder="{{ __('messages.enter_notif_title') }}"
                            class="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 px-4 text-xs text-white focus:border-[#f2f20d] outline-none"/>
                 </div>
 
                 {{-- الرسالة --}}
                 <div>
-                    <label class="text-xs font-bold text-zinc-300 block mb-1">محتوى الإشعار</label>
-                    <textarea name="message" rows="3" required placeholder="اكتب نص الإشعار هنا..."
+                    <label class="text-xs font-bold text-zinc-300 block mb-1">{{ __('messages.notification_content') }}</label>
+                    <textarea name="message" rows="3" required placeholder="{{ __('messages.enter_notif_content') }}"
                               class="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 px-4 text-xs text-white focus:border-[#f2f20d] outline-none resize-none"></textarea>
                 </div>
 
                 <button type="submit" id="sendAdminNotifBtn"
                         class="w-full py-3 rounded-xl bg-[#f2f20d] text-black font-extrabold text-xs hover:bg-[#d9d90b] transition-all active:scale-[0.98] shadow-glow flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-paper-plane ml-1"></i>
-                    <span>تأكيد وإرسال الإشعار</span>
+                    <i class="fa-solid fa-paper-plane {{ app()->getLocale() === 'en' ? 'mr-1' : 'ml-1' }}"></i>
+                    <span>{{ __('messages.confirm_and_send_notif') }}</span>
                 </button>
             </form>
         </div>
@@ -317,7 +317,7 @@
     // AJAX Mark as Read
     function markAsRead(id, element) {
         const dot = element.querySelector('.unread-dot');
-        if (!dot) return; // already read
+        if (!dot) return;
 
         fetch(`/admin/notifications/${id}/read`, {
             method: 'POST',
@@ -364,7 +364,7 @@
                 isSubmitted = true;
                 btn.disabled = true;
                 btn.classList.add('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-sm"></i> <span>جاري الإرسال...</span>';
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-sm"></i> <span>${@json(__('messages.sending'))}</span>`;
             });
         }
 
@@ -373,9 +373,10 @@
             if (btn) {
                 btn.disabled = false;
                 btn.classList.remove('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
-                btn.innerHTML = '<i class="fa-solid fa-paper-plane ml-1"></i> <span>تأكيد وإرسال الإشعار</span>';
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane ml-1"></i> <span>${@json(__('messages.confirm_and_send_notif'))}</span>`;
             }
         });
     })();
 </script>
 @endpush
+
