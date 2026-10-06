@@ -106,5 +106,5 @@ This requires a **cron** entry running `php artisan schedule:run` every minute, 
 
 ## Current runtime environment notes
 
-- The current setup targets **local laptop operation**: `php artisan serve` (port 8000 or 8001), a USB tunnel, and an `ngrok` gateway (`ngrok.exe` has been removed from the repository).
+- The current setup targets **local laptop operation**: `php artisan serve` (port 8000), a USB tunnel, and an `ngrok` gateway (`ngrok.exe` has been removed from the repository).
 - There is no Docker, no CI/CD, and no configured production web server. Details in [`06-setup-and-deploy.md`](06-setup-and-deploy.md).
