@@ -150,6 +150,30 @@ class Access
             ->exists();
     }
 
+    /**
+     * هل يحق للمعلّم استدعاء ولي أمر هذا الطالب؟
+     * نعم إذا كان يدرّسه، أو كان مربّي دفعته (نفس البرنامج ونفس السنة).
+     */
+    public static function teacherCanSummonForStudent(int $teacherId, $studentId): bool
+    {
+        if (self::teacherTeachesStudent($teacherId, $studentId)) {
+            return true;
+        }
+
+        $teacher = DB::table('teachers')->where('teacher_id', $teacherId)->first();
+        if (!$teacher || empty($teacher->advisor_branch) || empty($teacher->advisor_year)) {
+            return false;
+        }
+
+        return DB::table('students')
+            ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->where('students.student_id', $studentId)
+            ->where('programs.name', $teacher->advisor_branch)
+            ->where('users.academic_year', $teacher->advisor_year)
+            ->exists();
+    }
+
     /** هل الطالب (students.student_id) مسجَّل في هذا المقرر؟ */
     public static function studentEnrolledInCourse($studentId, $courseId): bool
     {

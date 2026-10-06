@@ -1693,6 +1693,14 @@ class StudentController extends Controller
             ], 404);
         }
 
+        // التسليم فقط لواجبات مقررات الطالب المسجَّل فيها
+        if (!\App\Support\Access::studentEnrolledInCourse($student->student_id, $assignment->course_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذا الواجب ليس ضمن مقرراتك'
+            ], 403);
+        }
+
         $filePath = null;
         if ($request->hasFile('file')) {
             $file = $request->file('file');
@@ -2019,7 +2027,10 @@ class StudentController extends Controller
      */
     public function getLeaveDetails(Request $request, $id)
     {
-        $req = LeaveRequest::where('id', $id)->first();
+        // الطالب يرى طلباته فقط (leave_requests.student_id = users.user_id)
+        $req = LeaveRequest::where('id', $id)
+            ->where('student_id', $request->user()->user_id)
+            ->first();
         if (!$req) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }

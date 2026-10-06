@@ -282,7 +282,8 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/assignments/{assignmentId}/submissions', [TeacherController::class, 'getAssignmentSubmissions']);
         Route::post('/assignments/{submissionId}/grade', [TeacherController::class, 'gradeAssignment']);
         Route::post('/parent-summons/send', [TeacherController::class, 'sendParentSummon']);
-        Route::post('/parent-summons/request', [TeacherController::class, 'requestParentSummon']);
+        // كان يشير لدالة غير موجودة (requestParentSummon) فيرجع 500. التطبيق يرسل نفس حمولة sendParentSummon.
+        Route::post('/parent-summons/request', [TeacherController::class, 'sendParentSummon']);
         Route::get('/parent-summons', [ParentMeetingController::class, 'listSummons']);
         Route::get('/parent-summons-history', [TeacherController::class, 'getTeacherSummonsHistory']);
         Route::get('/educator-students', [TeacherController::class, 'getEducatorStudents']);

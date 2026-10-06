@@ -458,13 +458,19 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        // التحقق من التسجيل في المادة أو تسجيل الطالب تلقائياً
+        // التسجيل التلقائي مسموح فقط للمقررات التي يحق للطالب دراستها (نفس معيار الحضور بالـ QR)،
+        // وإلا كان يكفي فتح رابط أي مقرر ليسجَّل فيه.
         $enrolled = DB::table('enrollments')
             ->where('student_id', $student->student_id)
             ->where('course_id', $courseId)
             ->exists();
 
         if (!$enrolled) {
+            $eligibility = $student->checkCourseEligibility($courseId);
+            if (!($eligibility['eligible'] ?? false)) {
+                abort(403, $eligibility['message'] ?? 'هذا المقرر ليس ضمن مقرراتك.');
+            }
+
             DB::table('enrollments')->updateOrInsert(
                 ['student_id' => $student->student_id, 'course_id' => $courseId],
                 ['enrollment_date' => now(), 'created_at' => now(), 'updated_at' => now()]
@@ -497,6 +503,11 @@ class StudentWebController extends Controller
         $student = $this->getStudent();
         $lesson = DB::table('lessons')->where('lesson_id', $lessonId)->first();
         if (!$lesson) abort(404, 'المحاضرة غير موجودة');
+
+        // تحميل المحاضرة لمن هو مسجَّل في مقررها فقط
+        if (!\App\Support\Access::studentEnrolledInCourse($student->student_id, $lesson->course_id)) {
+            abort(403, 'هذه المحاضرة ليست ضمن مقرراتك.');
+        }
 
         $course = DB::table('courses')->where('course_id', $lesson->course_id)->first();
         $rawPath = $lesson->file_path ?: $lesson->content_url;

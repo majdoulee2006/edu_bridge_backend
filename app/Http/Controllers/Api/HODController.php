@@ -456,13 +456,14 @@ class HODController extends Controller
                 ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
                 ->leftJoin('users as parent_users', 'parent_summons.parent_user_id', '=', 'parent_users.user_id')
                 ->leftJoin('users as sender_users', 'parent_summons.sender_user_id', '=', 'sender_users.user_id')
-                ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
                 ->select(
                     'parent_summons.*',
                     'student_users.full_name as student_name',
                     'students.student_code',
                     'students.level as year',
-                    'departments.name_ar as department_name',
+                    'departments.name as department_name',
                     'parent_users.full_name as parent_name',
                     'sender_users.full_name as teacher_name'
                 );
@@ -486,12 +487,12 @@ class HODController extends Controller
      */
     public function forwardSummonToAffairs(Request $request, $id)
     {
-        $summon = DB::table('parent_summons')->where('summon_id', $id)->first();
+        $summon = DB::table('parent_summons')->where('id', $id)->first();
         if (!$summon) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
-        DB::table('parent_summons')->where('summon_id', $id)->update([
+        DB::table('parent_summons')->where('id', $id)->update([
             'status'     => 'pending_affairs',
             'updated_at' => now(),
         ]);

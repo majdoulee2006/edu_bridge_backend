@@ -187,4 +187,90 @@ class TeacherAccessTest extends TestCase
 
         $this->assertSame(0, DB::table('attendance')->count());
     }
+
+    // ── طلبات التقارير (N-03) ───────────────────────────────────────
+
+    private function reportRequestFor(array $teacher): int
+    {
+        $head = $this->makeUser('head');
+
+        return DB::table('report_requests')->insertGetId([
+            'head_id'     => $head->user_id,
+            'teacher_id'  => $teacher['teacher_id'],
+            'student_id'  => $this->student['student_id'],
+            'report_type' => 'behavioral',
+            'status'      => 'pending',
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+    }
+
+    public function test_teacher_cannot_read_or_submit_report_request_of_another_teacher(): void
+    {
+        $id = $this->reportRequestFor($this->teacherA);
+
+        $this->actAs($this->teacherB['user']);
+        $this->getJson("/api/teacher/report-requests/$id/stats")->assertForbidden();
+        $this->postJson("/api/teacher/report-requests/$id/submit", ['notes' => 'forged evaluation'])->assertForbidden();
+
+        $this->assertNull(DB::table('report_requests')->where('id', $id)->value('notes'));
+    }
+
+    public function test_teacher_can_submit_own_report_request(): void
+    {
+        $id = $this->reportRequestFor($this->teacherA);
+
+        $this->actAs($this->teacherA['user'])
+            ->postJson("/api/teacher/report-requests/$id/submit", ['notes' => 'good student'])
+            ->assertOk();
+    }
+
+    // ── استدعاء أولياء الأمور (N-05) ────────────────────────────────
+
+    public function test_teacher_cannot_summon_parent_of_unrelated_student(): void
+    {
+        $this->actAs($this->teacherB['user'])   // لا يدرّس هذا الطالب
+            ->postJson('/api/teacher/parent-summons/send', [
+                'student_id'   => $this->student['student_id'],
+                'reason_title' => 'x',
+                'details'      => 'x',
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(0, DB::table('parent_summons')->count());
+    }
+
+    public function test_summon_request_alias_route_works_for_own_student(): void
+    {
+        $this->actAs($this->teacherA['user'])
+            ->postJson('/api/teacher/parent-summons/request', [
+                'student_id'   => $this->student['student_id'],
+                'reason_title' => 'Behavior',
+                'details'      => 'Details',
+            ])
+            ->assertSuccessful();
+    }
+
+    // ── مسارات كانت تنهار بسبب عمود students.department_id المحذوف ────
+
+    public function test_educator_students_and_summons_history_do_not_crash(): void
+    {
+        $this->actAs($this->teacherA['user'])
+            ->getJson('/api/teacher/educator-students')
+            ->assertOk();
+
+        $this->actAs($this->teacherA['user'])
+            ->getJson('/api/teacher/parent-summons-history')
+            ->assertOk();
+    }
+
+    public function test_head_summons_list_does_not_crash(): void
+    {
+        $dept = $this->makeDepartment();
+        $head = $this->makeHead($dept);
+
+        $this->actAs($head['user'])
+            ->getJson('/api/department-head/appointments/summons')
+            ->assertOk();
+    }
 }

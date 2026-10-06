@@ -1212,6 +1212,11 @@ class TeacherController extends Controller
         if (!$reportRequest) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
+        // الطلب يخص هذا المعلّم فقط (نفس شرط getReportRequests)
+        $reqTeacher = $request->user()->teacher;
+        if (!$reqTeacher || (int) $reportRequest->teacher_id !== (int) $reqTeacher->teacher_id) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب غير موجَّه إليك'], 403);
+        }
 
         $studentId = $reportRequest->student_id;
         $courseId  = $reportRequest->course_id;
@@ -1248,6 +1253,10 @@ class TeacherController extends Controller
         $request->validate(['notes' => 'required|string|min:3']);
 
         $reportRequest = DB::table('report_requests')->find($id);
+        $evalTeacher = $request->user()->teacher;
+        if ($reportRequest && (!$evalTeacher || (int) $reportRequest->teacher_id !== (int) $evalTeacher->teacher_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب غير موجَّه إليك'], 403);
+        }
         if (!$reportRequest) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
@@ -2835,10 +2844,19 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
         }
 
+        // المعلّم يستدعي فقط أولياء أمور طلابه أو طلاب دفعته (إن كان مربّياً)
+        $senderTeacher = $sender->teacher;
+        if (!$senderTeacher || !\App\Support\Access::teacherCanSummonForStudent($senderTeacher->teacher_id, $student->student_id)) {
+            return response()->json(['success' => false, 'message' => 'لا يمكنك استدعاء ولي أمر هذا الطالب'], 403);
+        }
+
         // جلب رئيس قسم الطالب (HOD)
         $hodUserId = null;
-        if ($student->department_id) {
-            $hodUserId = DB::table('departments')->where('department_id', $student->department_id)->value('hod_user_id');
+        $studentDepartmentId = $student->program_id
+            ? DB::table('programs')->where('id', $student->program_id)->value('department_id')
+            : null;
+        if ($studentDepartmentId) {
+            $hodUserId = DB::table('heads')->where('department_id', $studentDepartmentId)->value('user_id');
         }
 
         // جلب ولي أمر الطالب للتسجيل المبدئي — parent_students.parent_id/student_id هما FK على users.user_id
@@ -2911,8 +2929,8 @@ class TeacherController extends Controller
 
         $studentQuery = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
-            ->leftJoin('programs', 'students.program_id', '=', 'programs.id');
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id');
 
         if ($courseIds->isNotEmpty()) {
             $studentIds = DB::table('enrollments')
@@ -2927,7 +2945,7 @@ class TeacherController extends Controller
         $students = $studentQuery->select(
             'students.student_id',
             'students.student_code',
-            'students.academic_year',
+            'users.academic_year',
             'users.full_name as student_name',
             'departments.name as department_name',
             'programs.name as program_name'
@@ -2936,12 +2954,12 @@ class TeacherController extends Controller
         if ($students->isEmpty()) {
             $students = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
                 ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
                 ->select(
                     'students.student_id',
                     'students.student_code',
-                    'students.academic_year',
+                    'users.academic_year',
                     'users.full_name as student_name',
                     'departments.name as department_name',
                     'programs.name as program_name'
@@ -2965,7 +2983,8 @@ class TeacherController extends Controller
         $query = DB::table('parent_summons')
             ->join('students', 'parent_summons.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
             ->where('parent_summons.sender_user_id', $user->user_id);
 
         if ($status === 'pending') {
@@ -2975,7 +2994,7 @@ class TeacherController extends Controller
         }
 
         $summons = $query->select(
-            'parent_summons.summon_id as id',
+            'parent_summons.id as id',
             'parent_summons.reason_title',
             'parent_summons.details',
             'parent_summons.summon_date',
