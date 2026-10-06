@@ -24,6 +24,8 @@ return [
     'settings'                  => 'Settings',
     'activity_logs'             => 'Activity & Security Logs',
     'logout'                    => 'Logout',
+    'confirm_logout'            => 'Confirm Logout',
+    'logout_prompt'             => 'Are you sure you want to end your session and logout of your account?',
     'calendar'                  => 'Calendar',
     'academic_pathway'          => 'Student Academic Pathway',
     'activities'                => 'Activities',

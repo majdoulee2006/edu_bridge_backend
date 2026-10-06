@@ -6,47 +6,52 @@
 <style>
     .notif-filter-btn {
         background: transparent;
-        color: #a1a1aa;
+        color: #64748b;
         border: none;
         padding: 0.6rem 1.2rem;
         font-size: 0.95rem;
         font-weight: 700;
         cursor: pointer;
         position: relative;
-        transition: color 0.2s;
+        transition: all 0.2s;
     }
-    .notif-filter-btn:hover { color: #ffffff; }
-    .notif-filter-btn.active { color: #ffffff; }
+    .notif-filter-btn:hover { color: #0f172a; }
+    .dark .notif-filter-btn { color: #a1a1aa; }
+    .dark .notif-filter-btn:hover { color: #ffffff; }
+    .notif-filter-btn.active {
+        color: #0f172a;
+        font-weight: 800;
+    }
+    .dark .notif-filter-btn.active {
+        color: #ffffff;
+    }
     .notif-filter-btn.active::after {
         content: '';
         position: absolute;
-        bottom: -0.6rem;
+        bottom: -0.85rem;
         left: 0;
         width: 100%;
         height: 3px;
-        background: #f2f20d;
+        background: var(--primary, #f2f20d);
         border-radius: 3px 3px 0 0;
         box-shadow: 0 0 10px rgba(242, 242, 13, 0.5);
     }
     
     .notif-card {
-        background-color: #121212;
-        border: 1px solid #262626;
         border-radius: 1.25rem;
         padding: 1.25rem;
         display: flex;
         align-items: flex-start;
         gap: 1.25rem;
-        transition: transform 0.2s, border-color 0.2s;
+        transition: all 0.2s ease;
         position: relative;
     }
     .notif-card:hover {
-        transform: translateX(-4px);
-        border-color: #3f3f46;
+        transform: translateY(-2px);
     }
     .notif-card.unread {
-        background: linear-gradient(to left, #121212, rgba(242, 242, 13, 0.04));
-        border-right: 4px solid #f2f20d;
+        border-inline-start-width: 4px;
+        border-inline-start-color: var(--primary, #f2f20d);
     }
 </style>
 @endpush
@@ -56,11 +61,11 @@
     {{-- ===== Page Header ===== --}}
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-            <h2 class="text-2xl font-extrabold text-white flex items-center gap-2">
-                <i class="fa-solid fa-bell text-[#f2f20d]"></i>
+            <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <i class="fa-solid fa-bell text-amber-500 dark:text-[#f2f20d]"></i>
                 {{ __('messages.notifications_center') }}
             </h2>
-            <p class="text-sm text-zinc-400 mt-1">{{ __('messages.notifications_center_desc') }}</p>
+            <p class="text-sm text-slate-500 dark:text-zinc-400 mt-1">{{ __('messages.notifications_center_desc') }}</p>
         </div>
 
         <div class="flex items-center gap-3 flex-wrap">
@@ -76,8 +81,8 @@
                 <form action="{{ route('admin.notifications.read_all') }}" method="POST">
                     @csrf
                     <button type="submit" 
-                            class="flex items-center gap-2 px-4 py-2.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold text-xs transition-all">
-                        <i class="fa-solid fa-check-double text-[#f2f20d]"></i>
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 font-bold text-xs transition-all shadow-sm">
+                        <i class="fa-solid fa-check-double text-amber-500 dark:text-[#f2f20d]"></i>
                         <span>{{ __('messages.mark_all_read') }}</span>
                     </button>
                 </form>
@@ -89,15 +94,15 @@
     @php
         $unreadCount = $notifications->filter(fn($n) => !$n->is_read)->count();
     @endphp
-    <div class="flex items-center gap-4 mb-6 border-b border-zinc-800 pb-3">
+    <div class="flex items-center gap-4 mb-6 border-b border-slate-200 dark:border-zinc-800 pb-3">
         <a href="{{ route('admin.notifications') }}" class="notif-filter-btn {{ !request('filter') ? 'active' : '' }}">
             {{ __('messages.all_notifications') }}
-            <span class="mx-1.5 px-2 py-0.5 rounded-full text-xs bg-zinc-800 text-zinc-300 font-bold">{{ $notifications->total() }}</span>
+            <span class="mx-1.5 px-2 py-0.5 rounded-full text-xs bg-slate-200/80 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-bold">{{ $notifications->total() }}</span>
         </a>
         <a href="{{ route('admin.notifications', ['filter' => 'unread']) }}" class="notif-filter-btn {{ request('filter') == 'unread' ? 'active' : '' }}">
             {{ __('messages.unread') }}
             @if($unreadCount > 0)
-                <span class="mx-1.5 px-2 py-0.5 rounded-full text-xs bg-[#f2f20d] text-black font-black" id="unreadBadge">{{ $unreadCount }}</span>
+                <span class="mx-1.5 px-2 py-0.5 rounded-full text-xs bg-amber-400 dark:bg-[#f2f20d] text-black font-black" id="unreadBadge">{{ $unreadCount }}</span>
             @endif
         </a>
         <a href="{{ route('admin.notifications', ['filter' => 'read']) }}" class="notif-filter-btn {{ request('filter') == 'read' ? 'active' : '' }}">
@@ -141,15 +146,15 @@
 
                 // Dynamic icon styling
                 $iconData = match(true) {
-                    str_contains($titleLower, 'موعد') || str_contains($titleLower, 'مقابلة') => ['icon' => 'fa-calendar-check', 'bg' => 'bg-amber-500/15', 'color' => 'text-amber-400'],
-                    str_contains($titleLower, 'رسالة') || $type === 'message' => ['icon' => 'fa-comments', 'bg' => 'bg-blue-500/15', 'color' => 'text-blue-400'],
-                    str_contains($titleLower, 'حساب') || $type === 'account' => ['icon' => 'fa-user-plus', 'bg' => 'bg-emerald-500/15', 'color' => 'text-emerald-400'],
-                    str_contains($titleLower, 'إجازة') || $type === 'leave' => ['icon' => 'fa-user-clock', 'bg' => 'bg-rose-500/15', 'color' => 'text-rose-400'],
-                    default => ['icon' => 'fa-bullhorn', 'bg' => 'bg-yellow-500/15', 'color' => 'text-[#f2f20d]'],
+                    str_contains($titleLower, 'موعد') || str_contains($titleLower, 'مقابلة') => ['icon' => 'fa-calendar-check', 'bg' => 'bg-amber-500/15', 'color' => 'text-amber-500 dark:text-amber-400'],
+                    str_contains($titleLower, 'رسالة') || $type === 'message' => ['icon' => 'fa-comments', 'bg' => 'bg-blue-500/15', 'color' => 'text-blue-600 dark:text-blue-400'],
+                    str_contains($titleLower, 'حساب') || $type === 'account' => ['icon' => 'fa-user-plus', 'bg' => 'bg-emerald-500/15', 'color' => 'text-emerald-600 dark:text-emerald-400'],
+                    str_contains($titleLower, 'إجازة') || $type === 'leave' => ['icon' => 'fa-user-clock', 'bg' => 'bg-rose-500/15', 'color' => 'text-rose-600 dark:text-rose-400'],
+                    default => ['icon' => 'fa-bullhorn', 'bg' => 'bg-amber-400/20 dark:bg-yellow-500/15', 'color' => 'text-amber-600 dark:text-[#f2f20d]'],
                 };
             @endphp
 
-            <div class="notif-card {{ !$notif->is_read ? 'unread' : '' }}" 
+            <div class="notif-card bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-zinc-700 {{ !$notif->is_read ? 'unread bg-amber-50/40 dark:bg-[#151515]' : '' }}" 
                  data-unread="{{ !$notif->is_read ? 'true' : 'false' }}"
                  onclick="markAsRead({{ $notif->id }}, this)">
                 
@@ -161,21 +166,21 @@
                 {{-- Content Body --}}
                 <div class="flex-1 min-w-0">
                     <div class="flex items-start justify-between gap-3 mb-1">
-                        <h3 class="text-base font-bold text-white leading-snug truncate">
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white leading-snug truncate">
                             {{ $notif->title }}
                         </h3>
-                        <span class="text-xs font-semibold text-zinc-500 shrink-0">
+                        <span class="text-xs font-semibold text-slate-400 dark:text-zinc-500 shrink-0">
                             {{ \Carbon\Carbon::parse($notif->created_at)->translatedFormat('d F Y - h:i A') }}
                         </span>
                     </div>
 
-                    <p class="text-xs text-zinc-400 leading-relaxed mb-3">
+                    <p class="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed mb-3">
                         {{ $notif->message }}
                     </p>
 
                     @if($targetUrl)
                         <div class="flex items-center gap-2">
-                            <a href="{{ $targetUrl }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-[#f2f20d] hover:text-black text-zinc-300 font-bold text-xs transition-all">
+                            <a href="{{ $targetUrl }}" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-[#f2f20d] text-slate-700 hover:text-black dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-[#f2f20d] dark:hover:text-black font-bold text-xs transition-all shadow-sm">
                                 <span>{{ __('messages.view_details') }}</span>
                                 <i class="fa-solid {{ app()->getLocale() === 'en' ? 'fa-arrow-right' : 'fa-arrow-left' }} text-[10px]"></i>
                             </a>
@@ -185,16 +190,16 @@
 
                 {{-- Unread glowing indicator --}}
                 @if(!$notif->is_read)
-                    <div class="unread-dot w-3 h-3 rounded-full bg-[#f2f20d] shadow-glow shrink-0 mt-1"></div>
+                    <div class="unread-dot w-3 h-3 rounded-full bg-amber-400 dark:bg-[#f2f20d] shadow-glow shrink-0 mt-1"></div>
                 @endif
             </div>
         @empty
-            <div class="text-center py-16 px-4 bg-[#121212] border border-zinc-800 rounded-3xl">
-                <div class="w-16 h-16 rounded-full bg-zinc-800/80 text-[#f2f20d] flex items-center justify-center mx-auto mb-4 text-2xl">
+            <div class="text-center py-16 px-4 bg-white dark:bg-[#121212] border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-sm">
+                <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-zinc-800/80 text-amber-500 dark:text-[#f2f20d] flex items-center justify-center mx-auto mb-4 text-2xl">
                     <i class="fa-solid fa-bell-slash"></i>
                 </div>
-                <h3 class="text-lg font-bold text-white mb-1">{{ __('messages.no_notifications_currently') }}</h3>
-                <p class="text-xs text-zinc-400 max-w-sm mx-auto">{{ __('messages.no_notifications_desc') }}</p>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">{{ __('messages.no_notifications_currently') }}</h3>
+                <p class="text-xs text-slate-500 dark:text-zinc-400 max-w-sm mx-auto">{{ __('messages.no_notifications_desc') }}</p>
             </div>
         @endforelse
     </div>
@@ -207,14 +212,14 @@
 
     {{-- Modal إرسال إشعار جديد --}}
     <div id="sendNotifModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="w-full max-w-lg bg-[#121212] border border-zinc-800 rounded-3xl shadow-2xl p-6 text-right">
-            <div class="flex items-center justify-between mb-5 border-b border-zinc-800 pb-4">
-                <h3 class="text-lg font-extrabold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-paper-plane text-[#f2f20d]"></i>
+        <div class="w-full max-w-lg bg-white dark:bg-[#141417] border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-6 text-right">
+            <div class="flex items-center justify-between mb-5 border-b border-slate-200 dark:border-zinc-800 pb-4">
+                <h3 class="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane text-amber-500 dark:text-[#f2f20d]"></i>
                     {{ __('messages.send_admin_notification') }}
                 </h3>
                 <button onclick="document.getElementById('sendNotifModal').classList.add('hidden')"
-                        class="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors">
+                        class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -224,32 +229,32 @@
 
                 {{-- الجمهور / الفئة --}}
                 <div>
-                    <label class="text-xs font-bold text-zinc-300 block mb-2">{{ __('messages.target_audience') }}</label>
+                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2">{{ __('messages.target_audience') }}</label>
                     <div class="grid grid-cols-3 gap-2">
                         <label class="cursor-pointer">
                             <input checked class="peer sr-only" name="recipient_type" value="all" type="radio"
                                    onchange="document.getElementById('deptSelectorModal').classList.add('hidden')"/>
-                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
-                                <i class="fa-solid fa-users text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
-                                <p class="text-[11px] font-bold text-white leading-tight">{{ __('messages.all_users') }}</p>
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-amber-400/10 dark:peer-checked:bg-[#f2f20d]/10 transition-all text-center">
+                                <i class="fa-solid fa-users text-slate-400 dark:text-zinc-400 peer-checked:text-amber-500 dark:peer-checked:text-[#f2f20d] text-sm"></i>
+                                <p class="text-[11px] font-bold text-slate-800 dark:text-white leading-tight">{{ __('messages.all_users') }}</p>
                             </div>
                         </label>
 
                         <label class="cursor-pointer">
                             <input class="peer sr-only" name="recipient_type" value="departments" type="radio"
                                    onchange="document.getElementById('deptSelectorModal').classList.remove('hidden')"/>
-                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
-                                <i class="fa-solid fa-building-columns text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
-                                <p class="text-[11px] font-bold text-white leading-tight">{{ __('messages.specific_department') }}</p>
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-amber-400/10 dark:peer-checked:bg-[#f2f20d]/10 transition-all text-center">
+                                <i class="fa-solid fa-building-columns text-slate-400 dark:text-zinc-400 peer-checked:text-amber-500 dark:peer-checked:text-[#f2f20d] text-sm"></i>
+                                <p class="text-[11px] font-bold text-slate-800 dark:text-white leading-tight">{{ __('messages.specific_department') }}</p>
                             </div>
                         </label>
 
                         <label class="cursor-pointer">
                             <input class="peer sr-only" name="recipient_type" value="heads" type="radio"
                                    onchange="document.getElementById('deptSelectorModal').classList.add('hidden')"/>
-                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-[#f2f20d]/10 transition-all text-center">
-                                <i class="fa-solid fa-user-shield text-zinc-400 peer-checked:text-[#f2f20d] text-sm"></i>
-                                <p class="text-[11px] font-bold text-white leading-tight">{{ __('messages.department_heads_only') }}</p>
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 peer-checked:border-[#f2f20d] peer-checked:bg-amber-400/10 dark:peer-checked:bg-[#f2f20d]/10 transition-all text-center">
+                                <i class="fa-solid fa-user-shield text-slate-400 dark:text-zinc-400 peer-checked:text-amber-500 dark:peer-checked:text-[#f2f20d] text-sm"></i>
+                                <p class="text-[11px] font-bold text-slate-800 dark:text-white leading-tight">{{ __('messages.department_heads_only') }}</p>
                             </div>
                         </label>
                     </div>
@@ -257,13 +262,13 @@
 
                 {{-- اختيار القسم --}}
                 <div id="deptSelectorModal" class="hidden">
-                    <label class="text-xs font-bold text-zinc-300 block mb-2">{{ __('messages.selected_departments') }}</label>
+                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2">{{ __('messages.selected_departments') }}</label>
                     <div class="flex flex-col gap-2 max-h-36 overflow-y-auto pr-1">
                         @foreach(\App\Models\Department::orderBy('name')->get() as $d)
-                        <label class="cursor-pointer flex items-center gap-3 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:border-[#f2f20d]/40 transition-all">
+                        <label class="cursor-pointer flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 hover:border-amber-400/50 transition-all">
                             <input type="checkbox" name="target_departments[]" value="{{ $d->department_id }}"
-                                   class="w-4 h-4 accent-[#f2f20d] cursor-pointer flex-shrink-0">
-                            <span class="text-xs font-bold text-white">{{ $d->name }}</span>
+                                   class="w-4 h-4 accent-amber-400 cursor-pointer flex-shrink-0">
+                            <span class="text-xs font-bold text-slate-800 dark:text-white">{{ $d->name }}</span>
                         </label>
                         @endforeach
                     </div>
@@ -271,16 +276,16 @@
 
                 {{-- الموضوع --}}
                 <div>
-                    <label class="text-xs font-bold text-zinc-300 block mb-1">{{ __('messages.notification_title') }}</label>
+                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1">{{ __('messages.notification_title') }}</label>
                     <input name="subject" type="text" required placeholder="{{ __('messages.enter_notif_title') }}"
-                           class="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 px-4 text-xs text-white focus:border-[#f2f20d] outline-none"/>
+                           class="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 py-2.5 px-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:border-[#f2f20d] focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all"/>
                 </div>
 
                 {{-- الرسالة --}}
                 <div>
-                    <label class="text-xs font-bold text-zinc-300 block mb-1">{{ __('messages.notification_content') }}</label>
+                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1">{{ __('messages.notification_content') }}</label>
                     <textarea name="message" rows="3" required placeholder="{{ __('messages.enter_notif_content') }}"
-                              class="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 px-4 text-xs text-white focus:border-[#f2f20d] outline-none resize-none"></textarea>
+                              class="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 py-2.5 px-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:border-[#f2f20d] focus:ring-1 focus:ring-[#f2f20d] outline-none resize-none transition-all"></textarea>
                 </div>
 
                 <button type="submit" id="sendAdminNotifBtn"
@@ -379,4 +384,3 @@
     })();
 </script>
 @endpush
-
