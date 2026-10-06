@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark" class="dark">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() == 'ar' ? 'rtl' : 'ltr' }}" data-theme="dark" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -495,6 +495,7 @@
                             </div>
                         </form>
                     @endif
+                    @include('components.lang-switcher')
 
                     <!-- Notification Bell Dropdown Card -->
                     @php

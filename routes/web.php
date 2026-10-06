@@ -5,8 +5,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\HODWebController;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\Web\UnifiedAuthController;
 use App\Http\Controllers\Web\TeacherWebController;
+use App\Http\Controllers\LocaleController;
+
+// Language Switcher Route
+Route::get('/lang/{locale}', [LocaleController::class, 'switchLanguage'])->name('lang.switch');
 
 // Public Storage & Attachment Download Routes for Mobile App
 Route::get('/public-download/message/{id}', function ($id) {
