@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark" class="dark">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'en' ? 'ltr' : 'rtl' }}" data-theme="dark" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -538,6 +538,7 @@
                     </div>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
+                    @include('components.lang-switcher')
                     <!-- Notification Bell Dropdown Card -->
                     @php
                         $headerUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count();

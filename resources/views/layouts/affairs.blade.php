@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark" class="dark">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'en' ? 'ltr' : 'rtl' }}" data-theme="dark" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -488,80 +488,80 @@
             
             <nav class="nav-menu" style="display: flex; flex-direction: column; flex: 1;">
                 <a href="{{ url('/affairs/dashboard') }}" class="nav-item {{ Request::is('affairs/dashboard') ? 'active' : '' }}">
-                    <i class="fa-solid fa-house"></i> الرئيسية
+                    <i class="fa-solid fa-house"></i> {{ __('messages.dashboard') }}
                 </a>
 
                 <a href="{{ url('/affairs/calendar') }}" class="nav-item {{ Request::is('affairs/calendar') ? 'active' : '' }}">
-                    <i class="fa-solid fa-calendar-days"></i> التقويم
+                    <i class="fa-solid fa-calendar-days"></i> {{ __('messages.calendar') }}
                 </a>
                 <a href="{{ route('affairs.appointments') }}" class="nav-item {{ Request::is('affairs/appointments*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-calendar-check"></i> المواعيد واللقاءات
+                    <i class="fa-solid fa-calendar-check"></i> {{ __('messages.appointments') }}
                 </a>
                 <a href="{{ route('affairs.course_weights') }}" class="nav-item {{ Request::is('affairs/course-weights') ? 'active' : '' }}">
-                    <i class="fa-solid fa-route"></i> المسار الأكاديمي الطلابي
+                    <i class="fa-solid fa-route"></i> {{ __('messages.academic_pathway') }}
                 </a>
                 <a href="{{ url('/affairs/activities') }}" class="nav-item {{ Request::is('affairs/activities') ? 'active' : '' }}">
-                    <i class="fa-solid fa-clipboard-list"></i> الأنشطة
+                    <i class="fa-solid fa-clipboard-list"></i> {{ __('messages.activities') }}
                 </a>
                 <a href="{{ route('affairs.reports') }}" class="nav-item {{ Request::is('affairs/reports') ? 'active' : '' }}">
-                    <i class="fa-solid fa-chart-column"></i> التقارير
+                    <i class="fa-solid fa-chart-column"></i> {{ __('messages.reports') }}
                 </a>
                 <a href="{{ url('/affairs/accounts') }}" class="nav-item {{ Request::is('affairs/accounts') ? 'active' : '' }}">
-                    <i class="fa-solid fa-users-gear"></i> الحسابات
+                    <i class="fa-solid fa-users-gear"></i> {{ __('messages.accounts') }}
                 </a>
                 <a href="{{ route('affairs.university_ids') }}" class="nav-item {{ Request::is('affairs/university-ids') ? 'active' : '' }}">
-                    <i class="fa-solid fa-id-card"></i> الأرقام الجامعية
+                    <i class="fa-solid fa-id-card"></i> {{ __('messages.university_ids') }}
                 </a>
                 <a href="{{ url('/affairs/pending-accounts') }}" class="nav-item {{ Request::is('affairs/pending-accounts') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
-                    <span><i class="fa-solid fa-clock"></i> طلبات التسجيل</span>
+                    <span><i class="fa-solid fa-clock"></i> {{ __('messages.registration_requests') }}</span>
                     @php $pc = \App\Models\User::whereIn('role_id',[3,4])->where('status','inactive')->count(); @endphp
                     @if($pc > 0)
                         <span style="background:#ef4444; color:white; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $pc }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/photo-requests') }}" class="nav-item {{ Request::is('affairs/photo-requests') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
-                    <span><i class="fa-solid fa-camera"></i> طلبات الصورة</span>
+                    <span><i class="fa-solid fa-camera"></i> {{ __('messages.photo_requests') }}</span>
                     @php $photoReqCount = \Illuminate\Support\Facades\DB::table('photo_change_requests')->where('status', 'pending')->count(); @endphp
                     @if($photoReqCount > 0)
                         <span style="background:#ffcc00; color:#1a1a1a; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $photoReqCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
-                    <span><i class="fa-solid fa-file-signature"></i> طلبات الإجازة</span>
+                    <span><i class="fa-solid fa-file-signature"></i> {{ __('messages.leave_requests') }}</span>
                     @php $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('absence_requests')->where('status', 'pending_affairs')->count(); @endphp
                     @if($pendingLeavesCount > 0)
                         <span style="background:#ef4444; color:white; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $pendingLeavesCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/student-services') }}" class="nav-item {{ Request::is('affairs/student-services*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-boxes-stacked"></i> الخدمات الطلابية
+                    <i class="fa-solid fa-boxes-stacked"></i> {{ __('messages.student_services') }}
                 </a>
                 <a href="{{ url('/affairs/messages') }}" class="nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}" style="position: relative;">
-                    <i class="fa-solid fa-comments"></i> الرسائل
+                    <i class="fa-solid fa-comments"></i> {{ __('messages.messages') }}
                     @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unreadMessages > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'en' ? 'right: 1rem;' : 'left: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/notifications') }}" class="nav-item {{ Request::is('affairs/notifications') ? 'active' : '' }}" style="position: relative;">
-                    <i class="fa-solid fa-bell"></i> الإشعارات
+                    <i class="fa-solid fa-bell"></i> {{ __('messages.notifications') }}
                     @php $unreadCount = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unreadCount > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadCount }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'en' ? 'right: 1rem;' : 'left: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/profile') }}" class="nav-item {{ Request::is('affairs/profile') ? 'active' : '' }}">
-                    <i class="fa-solid fa-user"></i> الملف الشخصي
+                    <i class="fa-solid fa-user"></i> {{ __('messages.profile') }}
                 </a>
                 <a href="{{ url('/affairs/settings') }}" class="nav-item {{ Request::is('affairs/settings') ? 'active' : '' }}">
-                    <i class="fa-solid fa-gear"></i> الإعدادات
+                    <i class="fa-solid fa-gear"></i> {{ __('messages.settings') }}
                 </a>
                 
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form action="{{ route('affairs.logout') }}" method="POST">
                         @csrf
-                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
+                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }}; padding-inline: 0;">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> {{ __('messages.logout') }}
                         </button>
                     </form>
                 </div>
@@ -587,6 +587,7 @@
                     </div>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
+                    @include('components.lang-switcher')
                     <!-- Notification Bell Dropdown Card -->
                     @php
                         $headerUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count();

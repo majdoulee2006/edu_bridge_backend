@@ -43,13 +43,18 @@ body {
     font-family: var(--font-family);
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    direction: rtl; /* Default Arabic */
     transition: background-color 0.3s, color 0.3s;
     overflow-x: hidden;
 }
 
-[dir="ltr"] {
+html[dir="rtl"], html[dir="rtl"] body {
+    direction: rtl;
+    text-align: right;
+}
+
+html[dir="ltr"], html[dir="ltr"] body {
     direction: ltr;
+    text-align: left;
 }
 
 /* Layout */

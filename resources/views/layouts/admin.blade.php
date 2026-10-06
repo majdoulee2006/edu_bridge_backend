@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="dark" data-theme="dark" dir="rtl" lang="ar">
+<html class="dark" data-theme="dark" dir="{{ app()->getLocale() === 'en' ? 'ltr' : 'rtl' }}" lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -532,92 +532,92 @@
             <!-- Admin Info -->
             <div style="text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
                 <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
-                    {{ mb_substr(Auth::user()->full_name ?? 'إ', 0, 1) }}
+                    {{ mb_substr(Auth::user()->full_name ?? 'A', 0, 1) }}
                 </div>
-                <div style="font-weight: 700; font-size: 0.95rem;">{{ Auth::user()->full_name ?? 'إدارة المعهد' }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">مدير عام</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ Auth::user()->full_name ?? (app()->getLocale() === 'en' ? 'Institute Admin' : 'إدارة المعهد') }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ __('messages.general_manager') }}</div>
             </div>
 
             <!-- Navigation Links -->
             <nav class="nav-menu">
                 {{-- Dashboard --}}
                 <a href="{{ route('admin.dashboard') }}" class="nav-item {{ Request::is('admin/dashboard') ? 'active' : '' }}">
-                    <i class="fa-solid fa-house"></i> الرئيسية
+                    <i class="fa-solid fa-house"></i> {{ __('messages.dashboard') }}
                 </a>
 
                 {{-- Accounts --}}
                 <a href="{{ route('admin.accounts') }}" class="nav-item {{ Request::is('admin/accounts*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-address-card"></i> الحسابات
+                    <i class="fa-solid fa-address-card"></i> {{ __('messages.accounts') }}
                 </a>
 
                 {{-- Courses --}}
                 <a href="{{ route('admin.courses') }}" class="nav-item {{ Request::is('admin/courses*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-graduation-cap"></i> الدورات
+                    <i class="fa-solid fa-graduation-cap"></i> {{ __('messages.courses') }}
                 </a>
 
                 {{-- Semesters --}}
                 <a href="{{ route('admin.semesters-subjects') }}" class="nav-item {{ Request::is('admin/semesters-subjects*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-book-bookmark"></i> الفصول والمواد
+                    <i class="fa-solid fa-book-bookmark"></i> {{ __('messages.semesters_subjects') }}
                 </a>
 
                 {{-- Lectures --}}
                 <a href="{{ route('admin.lectures') }}" class="nav-item {{ Request::is('admin/lectures*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-chalkboard-user"></i> المحاضرات
+                    <i class="fa-solid fa-chalkboard-user"></i> {{ __('messages.lectures') }}
                 </a>
 
                 {{-- Reports --}}
                 <a href="{{ route('admin.reports') }}" class="nav-item {{ Request::is('admin/reports*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-chart-simple"></i> التقارير
+                    <i class="fa-solid fa-chart-simple"></i> {{ __('messages.reports') }}
                 </a>
 
                 {{-- Student Services --}}
                 <a href="{{ route('admin.student_services') }}" class="nav-item {{ Request::is('admin/student-services*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-boxes-stacked"></i> الخدمات الطلابية
+                    <i class="fa-solid fa-boxes-stacked"></i> {{ __('messages.student_services') }}
                 </a>
 
                 {{-- Appointments --}}
                 <a href="{{ route('admin.appointments') }}" class="nav-item {{ Request::is('admin/appointments*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-calendar-check"></i> المواعيد واللقاءات
+                    <i class="fa-solid fa-calendar-check"></i> {{ __('messages.appointments') }}
                 </a>
 
                 {{-- Notifications --}}
                 <a href="{{ route('admin.notifications') }}" class="nav-item {{ Request::is('admin/notifications*') ? 'active' : '' }}" style="position: relative;">
-                    <i class="fa-solid fa-bell"></i> الإشعارات
+                    <i class="fa-solid fa-bell"></i> {{ __('messages.notifications') }}
                     @php $unread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unread > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unread }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'en' ? 'right: 1rem;' : 'left: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unread }}</span>
                     @endif
                 </a>
 
                 {{-- Messages --}}
                 <a href="{{ route('admin.messages') }}" class="nav-item {{ Request::is('admin/messages*') ? 'active' : '' }}" style="position: relative;">
-                    <i class="fa-solid fa-comments"></i> الرسائل
+                    <i class="fa-solid fa-comments"></i> {{ __('messages.messages') }}
                     @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unreadMessages > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'en' ? 'right: 1rem;' : 'left: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
                     @endif
                 </a>
 
                 {{-- Profile --}}
                 <a href="{{ route('admin.profile') }}" class="nav-item {{ Request::is('admin/profile*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-user"></i> الملف الشخصي
+                    <i class="fa-solid fa-user"></i> {{ __('messages.profile') }}
                 </a>
 
                 {{-- Settings --}}
                 <a href="{{ route('admin.settings') }}" class="nav-item {{ Request::is('admin/settings*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-gear"></i> الإعدادات
+                    <i class="fa-solid fa-gear"></i> {{ __('messages.settings') }}
                 </a>
 
                 {{-- Activity Logs --}}
                 <a href="{{ route('admin.activity_logs') }}" class="nav-item {{ Request::is('admin/activity-logs*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-shield-halved"></i> سجل النشاطات والأمان
+                    <i class="fa-solid fa-shield-halved"></i> {{ __('messages.activity_logs') }}
                 </a>
 
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form id="admin-logout-form" action="{{ route('admin.logout') }}" method="POST">
                         @csrf
-                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
+                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }}; padding-inline: 0;">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> {{ __('messages.logout') }}
                         </button>
                     </form>
                 </div>
@@ -633,7 +633,7 @@
                         <i class="fa-solid fa-bars"></i>
                     </button>
                     <h1 class="page-title text-slate-800 dark:text-white" style="font-size:1rem; font-weight:800;">
-                        أهلاً، {{ Auth::user()->full_name ?? 'إدارة المعهد' }} 👋
+                        {{ __('messages.welcome') }}، {{ Auth::user()->full_name ?? (app()->getLocale() === 'en' ? 'Institute Admin' : 'إدارة المعهد') }} 👋
                     </h1>
                 </div>
                 

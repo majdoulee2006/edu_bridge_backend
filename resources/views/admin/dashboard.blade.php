@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'الرئيسية')
+@section('title', __('messages.dashboard'))
 
 
 @section('content')
@@ -17,7 +17,7 @@
         </div>
         <div>
             <span class="text-2xl font-black text-slate-900 dark:text-white block group-hover:text-primary transition-colors">{{ $totalUsers }}</span>
-            <span class="text-xs font-semibold text-slate-400">إجمالي الحسابات</span>
+            <span class="text-xs font-semibold text-slate-400">{{ __('messages.total_accounts') }}</span>
         </div>
     </a>
     <a href="{{ route('admin.courses') }}" class="flex items-center gap-4 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 hover:border-primary/50 hover:scale-[1.02] active:scale-98 transition-all cursor-pointer group">
@@ -26,7 +26,7 @@
         </div>
         <div>
             <span class="text-2xl font-black text-slate-900 dark:text-white block group-hover:text-primary transition-colors">{{ $totalCourses }}</span>
-            <span class="text-xs font-semibold text-slate-400">الدورات الدراسية</span>
+            <span class="text-xs font-semibold text-slate-400">{{ __('messages.academic_courses') }}</span>
         </div>
     </a>
 </div>
@@ -35,12 +35,12 @@
 <div class="flex items-center justify-between -mb-1">
     <div class="flex items-center gap-2">
         <span class="w-1 h-5 bg-primary rounded-full"></span>
-        <h3 class="text-sm font-bold text-slate-800 dark:text-white">آخر الأخبار والإعلانات</h3>
+        <h3 class="text-sm font-bold text-slate-800 dark:text-white">{{ __('messages.latest_news_announcements') }}</h3>
     </div>
     <a href="{{ route('admin.announcements.create') }}"
        class="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-primary text-primary-content shadow-glow hover:scale-105 active:scale-95 transition-all">
         <span class="material-symbols-outlined text-[16px]">add</span>
-        إضافة إعلان
+        {{ __('messages.add_announcement') }}
     </a>
 </div>
 
@@ -132,7 +132,7 @@
 @empty
     <div class="p-8 text-center bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-soft">
         <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">campaign</span>
-        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">لا توجد إعلانات منشورة حالياً</p>
+        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">{{ __('messages.no_announcements_yet') }}</p>
     </div>
 @endforelse
 
