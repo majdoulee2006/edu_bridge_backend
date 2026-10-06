@@ -35,28 +35,6 @@ class HODController extends Controller
     }
 
     /**
-     * تحديث حالة طلب الإجازة (قبول/رفض)
-     */
-    public function updateLeaveStatus(Request $request, $id)
-    {
-        $request->validate([
-            'status' => 'required|in:approved,rejected',
-        ]);
-
-        try {
-            DB::table('leave_requests')
-                ->where('id', $id)
-                ->update(['status' => $request->status, 'updated_at' => now()]);
-
-            \App\Models\UserActivity::log('معالجة طلب إجازة', "قام رئيس القسم بتحديث حالة طلب الإجازة رقم {$id} إلى: {$request->status}");
-
-            return response()->json(['message' => 'Status updated successfully']);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
-        }
-    }
-
-    /**
      * جلب قائمة المدربين والطلاب لإنشاء طلب تقرير
      */
     public function getStaffAndStudents()
