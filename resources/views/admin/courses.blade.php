@@ -499,8 +499,8 @@
                     <span class="material-symbols-outlined text-xl">edit_note</span>
                 </div>
                 <div>
-                    <h3 class="text-sm font-black text-slate-850 dark:text-white">تعديل بيانات القسم الأكاديمي</h3>
-                    <p class="text-[11px] font-bold text-slate-400">قم بتعديل اسم القسم أو وصفه</p>
+                    <h3 class="text-sm font-black text-slate-850 dark:text-white">{{ __('messages.edit_dept_modal_title') }}</h3>
+                    <p class="text-[11px] font-bold text-slate-400">{{ __('messages.edit_dept_modal_subtitle') }}</p>
                 </div>
             </div>
             <button onclick="closeEditDepartmentModal()" type="button" class="w-8 h-8 rounded-xl bg-slate-200/60 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-rose-500 transition-all">
@@ -511,20 +511,20 @@
         <form id="edit-dept-form" action="" method="POST" class="p-6 flex flex-col gap-4">
             @csrf
             <div>
-                <label class="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">اسم القسم *</label>
+                <label class="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">{{ __('messages.dept_name_required') }}</label>
                 <input type="text" id="edit-dept-name" name="name" required class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all">
             </div>
 
             <div>
-                <label class="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">وصف القسم</label>
+                <label class="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1.5">{{ __('messages.dept_desc_label') }}</label>
                 <textarea id="edit-dept-desc" name="description" rows="3" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all resize-none"></textarea>
             </div>
 
             <div class="flex items-center justify-end gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button type="button" onclick="closeEditDepartmentModal()" class="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition-all">إلغاء</button>
+                <button type="button" onclick="closeEditDepartmentModal()" class="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition-all">{{ __('messages.cancel') }}</button>
                 <button type="submit" class="px-6 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all shadow-md flex items-center gap-2">
                     <span class="material-symbols-outlined text-base">save</span>
-                    <span>حفظ التعديلات</span>
+                    <span>{{ __('messages.save_changes') }}</span>
                 </button>
             </div>
         </form>
@@ -557,25 +557,25 @@
                 <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl flex flex-col items-center justify-center text-center border border-slate-100/50 dark:border-slate-800/30">
                     <span class="material-symbols-outlined text-slate-400 dark:text-slate-500 mb-1">class</span>
                     <span id="modal-courses-count" class="text-sm font-black text-slate-800 dark:text-white"></span>
-                    <span class="text-[10px] font-bold text-slate-400 mt-0.5">عدد المواد الدراسية</span>
+                    <span class="text-[10px] font-bold text-slate-400 mt-0.5">{{ __('messages.total_subjects_count') }}</span>
                 </div>
                 <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl flex flex-col items-center justify-center text-center border border-slate-100/50 dark:border-slate-800/30">
                     <span class="material-symbols-outlined text-slate-400 dark:text-slate-500 mb-1">schedule</span>
                     <span id="modal-hours" class="text-sm font-black text-slate-800 dark:text-white"></span>
-                    <span class="text-[10px] font-bold text-slate-400 mt-0.5">إجمالي الساعات المعتمدة</span>
+                    <span class="text-[10px] font-bold text-slate-400 mt-0.5">{{ __('messages.total_credit_hours') }}</span>
                 </div>
             </div>
 
             <!-- Program Description -->
             <div class="flex flex-col gap-2">
-                <h4 class="text-xs font-bold text-slate-450 dark:text-slate-500">وصف البرنامج التدريبي</h4>
+                <h4 class="text-xs font-bold text-slate-450 dark:text-slate-500">{{ __('messages.training_program_desc') }}</h4>
                 <p id="modal-desc" class="text-xs text-slate-600 dark:text-slate-350 leading-relaxed bg-slate-50 dark:bg-slate-800/20 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-800/30">
                 </p>
             </div>
 
             <!-- Subjects / Courses list -->
             <div class="flex flex-col gap-3">
-                <h4 class="text-xs font-bold text-slate-450 dark:text-slate-500">المواد والمناهج الدراسية المشمولة</h4>
+                <h4 class="text-xs font-bold text-slate-450 dark:text-slate-500">{{ __('messages.included_curriculums') }}</h4>
                 <div id="modal-subjects-list" class="flex flex-col gap-2.5">
                     <!-- Dynamic subject items -->
                 </div>
@@ -594,8 +594,8 @@
                     <span class="material-symbols-outlined text-2xl">domain_add</span>
                 </div>
                 <div>
-                    <h3 class="text-base font-bold text-slate-850 dark:text-white">إضافة قسم أكاديمي جديد</h3>
-                    <p class="text-xs text-slate-400">أدخل تفاصيل القسم لإضافته إلى المنظومة</p>
+                    <h3 class="text-base font-bold text-slate-850 dark:text-white">{{ __('messages.add_new_dept_modal_title') }}</h3>
+                    <p class="text-xs text-slate-400">{{ __('messages.add_new_dept_modal_subtitle') }}</p>
                 </div>
             </div>
             <button onclick="closeAddDepartmentModal()" type="button" class="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
@@ -607,18 +607,18 @@
         <form action="{{ route('admin.departments.store') }}" method="POST" class="p-6 flex flex-col gap-4">
             @csrf
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">اسم القسم *</label>
-                <input type="text" name="name" required placeholder="مثال: هندسة البرمجيات" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">{{ __('messages.dept_name_required') }}</label>
+                <input type="text" name="name" required placeholder="{{ __('messages.dept_name_placeholder') }}" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all">
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">وصف القسم</label>
-                <textarea name="description" rows="3" placeholder="توصيل مختبرات ومعلومات القسم..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none"></textarea>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">{{ __('messages.dept_desc_label') }}</label>
+                <textarea name="description" rows="3" placeholder="{{ __('messages.dept_desc_ph') }}" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none"></textarea>
             </div>
 
             <div class="flex items-center justify-end gap-3 mt-3">
-                <button type="button" onclick="closeAddDepartmentModal()" class="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition-all">إلغاء</button>
-                <button type="submit" class="px-6 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold shadow-glow transition-all">حفظ القسم</button>
+                <button type="button" onclick="closeAddDepartmentModal()" class="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition-all">{{ __('messages.cancel') }}</button>
+                <button type="submit" class="px-6 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-extrabold shadow-glow transition-all">{{ __('messages.save_dept_btn') }}</button>
             </div>
         </form>
     </div>
