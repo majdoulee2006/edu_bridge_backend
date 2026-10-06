@@ -20,13 +20,13 @@ class LocaleController extends Controller
         Session::put('locale', $locale);
         App::setLocale($locale);
 
-        if ($request->user()) {
-            $user = $request->user();
-            $user->locale = $locale;
-            $user->save();
+        if ($request->user() && $request->user()->locale !== $locale) {
+            \Illuminate\Support\Facades\DB::table('users')
+                ->where('user_id', $request->user()->user_id)
+                ->update(['locale' => $locale]);
         }
 
-        return redirect()->back()->with('locale_switched', $locale);
+        return redirect()->back();
     }
 
     /**

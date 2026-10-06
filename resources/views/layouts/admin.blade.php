@@ -642,7 +642,7 @@
 
                     <!-- Notification Bell Dropdown Card -->
                     @php
-                        $headerUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count();
+                        $headerUnread = $unread ?? \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count();
                         $headerRecentNotifs = \App\Models\Notification::where('user_id', auth()->id())
                             ->orderBy('created_at', 'desc')
                             ->limit(6)
