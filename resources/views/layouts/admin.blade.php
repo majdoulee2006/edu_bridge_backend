@@ -638,6 +638,8 @@
                 </div>
                 
                 <div class="header-actions" style="display:flex; align-items:center; gap:0.75rem;">
+                    @include('components.lang-switcher')
+
                     <!-- Notification Bell Dropdown Card -->
                     @php
                         $headerUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count();
