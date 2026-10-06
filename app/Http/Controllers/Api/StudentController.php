@@ -2244,16 +2244,8 @@ class StudentController extends Controller
         // حفظ صورة الوجه إن وُجدت
         $savedFaceImagePath = null;
         if ($faceImage) {
-            try {
-                $imgData = base64_decode($faceImage);
-                $filename = 'face_' . $student->student_id . '_' . time() . '.jpg';
-                $path = public_path('uploads/faces/' . $filename);
-                if (!is_dir(public_path('uploads/faces'))) {
-                    mkdir(public_path('uploads/faces'), 0755, true);
-                }
-                file_put_contents($path, $imgData);
-                $savedFaceImagePath = 'uploads/faces/' . $filename;
-            } catch (\Exception $e) {}
+            // تخزين خاص (storage/app/private/faces) وليس المجلد العام
+            $savedFaceImagePath = \App\Support\FaceImageStore::save($faceImage, 'face_' . $student->student_id);
         }
 
         if ($faceEmbedding && count($faceEmbedding) > 0) {

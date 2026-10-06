@@ -105,7 +105,8 @@ Route::get('/', function () {
 });
 
 // ===== مسارات ماسح تيليغرام الذكي (Telegram Web App Scanner) =====
-Route::get('/telegram/scanner', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'showScanner'])->name('telegram.scanner');
+// الرابط يصدره البوت موقّعاً ومؤقتاً (signed:relative) فلا يمكن فتح ماسح بـ chat_id شخص آخر
+Route::get('/telegram/scanner', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'showScanner'])->middleware('signed:relative')->name('telegram.scanner');
 Route::post('/telegram/record-attendance', [\App\Http\Controllers\Api\TelegramWebhookController::class, 'recordAttendanceFromScanner'])->name('telegram.record_attendance');
 
 // ===== مسارات المعلم (Teacher) =====

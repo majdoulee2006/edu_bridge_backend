@@ -826,7 +826,11 @@ class TelegramBotHandler
         if (!str_starts_with($domain, 'https://')) {
             $domain = 'https://edubridge-attend.loca.lt';
         }
-        $scannerUrl = rtrim($domain, '/') . '/telegram/scanner?chat_id=' . $chatId;
+        // رابط موقّع ومؤقت (15 دقيقة) مربوط بهذا الـ chat_id، حتى لا يستطيع أحد فتح الماسح باسم طالب آخر
+        $scannerPath = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'telegram.scanner', now()->addMinutes(15), ['chat_id' => $chatId], false
+        );
+        $scannerUrl = rtrim($domain, '/') . $scannerPath;
 
         $keyboard = [
             'inline_keyboard' => [

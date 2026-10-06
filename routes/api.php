@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ParentMeetingController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Api\AffairsController;
 use App\Http\Controllers\Api\AiAssistantController;
+use App\Http\Controllers\Api\FaceImageController;
 
 // خدمة ملفات التخزين (بديل الـ symlink على Windows).
 // يُسمح فقط بالملفات الموجودة فعلياً داخل storage/app/public (حماية من path traversal).
@@ -67,6 +68,9 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
 
     // المساعد الذكي (يتطلب تسجيل دخول لحماية مفتاح Gemini من الاستهلاك العام)
     Route::post('/ai/chat', [AiAssistantController::class, 'chat']);
+
+    // صورة الوجه المرفقة بسجل حضور (لمن يحق له فقط)
+    Route::get('/attendance/{attendanceId}/face', [FaceImageController::class, 'show']);
 
     // -----------------------------------------------------------
     // روابط ولي الأمر (تتطلب توكن + تتحقق من هوية المستخدم المسجل دخوله)

@@ -305,6 +305,8 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         let chatId = urlParams.get('chat_id') || tg?.initDataUnsafe?.user?.id;
+        // رمز يصدره السيرفر عند فتح الرابط الموقّع؛ هو الذي يحدد هوية الطالب عند تسجيل الحضور
+        const scannerToken = @json($scannerToken ?? null);
 
         let scannedQrToken = null;
         let html5QrCode = null;
@@ -486,7 +488,7 @@
                         'X-CSRF-TOKEN': csrfToken
                     },
                     body: JSON.stringify({
-                        chat_id: chatId,
+                        scanner_token: scannerToken,
                         qr_token: scannedQrToken,
                         face_image: faceImage,
                         face_embedding: faceEmbedding
