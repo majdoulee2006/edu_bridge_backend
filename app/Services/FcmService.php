@@ -3,14 +3,41 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class FcmService
 {
+    /** مسار ملف حساب الخدمة (الافتراضي storage/app/firebase-service-account.json). */
+    private static function credentialsPath(): string
+    {
+        return config('services.fcm.credentials') ?: storage_path('app/firebase-service-account.json');
+    }
+
+    /**
+     * access token لـ FCM: صالح ساعة، فنخزّنه 55 دقيقة بدل طلب جديد من Google عند كل إشعار.
+     */
     private static function getAccessToken(): ?string
     {
-        $credPath = storage_path('app/firebase-service-account.json');
+        $key = 'fcm_access_token_' . md5(self::credentialsPath());
+
+        $cached = Cache::get($key);
+        if ($cached) {
+            return $cached;
+        }
+
+        $token = self::requestAccessToken();
+        if ($token) {
+            Cache::put($key, $token, now()->addMinutes(55));
+        }
+
+        return $token;
+    }
+
+    private static function requestAccessToken(): ?string
+    {
+        $credPath = self::credentialsPath();
         if (!file_exists($credPath)) {
             Log::warning('FCM: firebase-service-account.json not found');
             return null;
@@ -68,7 +95,7 @@ class FcmService
 
     public static function send(string $token, string $title, string $body, array $data = []): bool
     {
-        $credPath = storage_path('app/firebase-service-account.json');
+        $credPath = self::credentialsPath();
         if (!file_exists($credPath)) return false;
 
         $creds = json_decode(file_get_contents($credPath), true);

@@ -191,7 +191,7 @@ class AdminDashboardController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password'     => 'required|min:6|confirmed',
+            'new_password'     => 'required|min:8|confirmed',
         ], [
             'current_password.required' => 'كلمة المرور الحالية مطلوبة.',
             'new_password.required'     => 'كلمة المرور الجديدة مطلوبة.',
@@ -222,7 +222,7 @@ class AdminDashboardController extends Controller
             'phone'            => 'nullable|string|max:20',
             'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'current_password' => 'nullable|string',
-            'new_password'     => 'nullable|string|min:6',
+            'new_password'     => 'nullable|string|min:8',
             'telegram_chat_id' => 'nullable|string',
         ]);
 
@@ -237,7 +237,7 @@ class AdminDashboardController extends Controller
             }
         }
 
-        $otp = (string) rand(100000, 999999);
+        $otp = (string) random_int(100000, 999999);
 
         $telegramService = new \App\Services\TelegramService();
         $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));

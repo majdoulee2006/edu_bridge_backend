@@ -656,16 +656,24 @@ class TelegramBotHandler
 
             // إشعار إدارة شؤون الطلاب
             $studentName = $attendance->student->user->full_name ?? 'طالب';
-            Notification::create([
-                'user_id'    => \App\Models\User::where('role_id', 1)->value('user_id') ?? 1, // الإدارة
-                'sender_id'  => $attendance->student->user->user_id ?? 1,
-                'title'      => 'عذر غياب جديد بحاجة للمراجعة',
-                'message'    => "قام الطالب ({$studentName}) بتقديم عذر لغيابه في مادة ({$attendance->lesson->course->title})، يرجى مراجعته.",
-                'type'       => 'excuse_request',
-                'category'   => 'administrative',
-                'related_id' => $attendance->attendance_id,
-                'is_read'    => false,
-            ]);
+            // موظفو الشؤون يراجعون الأعذار؛ وإن لم يوجد أحد فأول أدمن (لا نفترض أن المستخدم رقم 1 موجود)
+            $recipients = DB::table('users')->where('role_id', 6)->pluck('user_id');
+            if ($recipients->isEmpty() && ($fallbackAdmin = \App\Support\Access::systemSenderId())) {
+                $recipients = collect([$fallbackAdmin]);
+            }
+            foreach ($recipients as $recipientId) {
+                Notification::create([
+                    'user_id'    => $recipientId,
+                    'sender_id'  => $attendance->student->user->user_id ?? null,
+                    'title'      => 'عذر غياب جديد بحاجة للمراجعة',
+                    'message'    => "قام الطالب ({$studentName}) بتقديم عذر لغيابه في مادة ({$attendance->lesson->course->title})، يرجى مراجعته.",
+                    'type'       => 'excuse_request',
+                    'category'   => 'administrative',
+                    'related_id' => $attendance->attendance_id,
+                    'is_read'    => false,
+                ]);
+            }
+
         }
 
         Cache::forget("telegram_state_{$chatId}");
@@ -850,7 +858,11 @@ class TelegramBotHandler
         if (!str_starts_with($domain, 'https://')) {
             $domain = 'https://edubridge-attend.loca.lt';
         }
-        $scannerUrl = rtrim($domain, '/') . '/telegram/scanner?chat_id=' . $chatId;
+        // رابط موقّع ومؤقت (15 دقيقة) مربوط بهذا الـ chat_id، حتى لا يستطيع أحد فتح الماسح باسم طالب آخر
+        $scannerPath = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'telegram.scanner', now()->addMinutes(15), ['chat_id' => $chatId], false
+        );
+        $scannerUrl = rtrim($domain, '/') . $scannerPath;
 
         $keyboard = [
             'inline_keyboard' => [

@@ -238,7 +238,7 @@ class ChatController extends Controller
         $request->validate([
             'receiver_id'         => 'required',
             'message'             => 'nullable|string',
-            'attachment'          => 'nullable|file|max:51200',
+            'attachment'          => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,mp3,m4a,mp4,aac,wav,ogg,oga,webm,amr,3gp,opus,mov',
             'disappears_after'    => 'nullable|string',
             'reply_to_message_id' => 'nullable|exists:messages,id',
         ]);
@@ -263,7 +263,8 @@ class ChatController extends Controller
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
-            $ext = strtolower($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin');
+            // الامتداد من محتوى الملف الفعلي وليس من الاسم الذي يرسله العميل
+            $ext = strtolower($file->guessExtension() ?: 'bin');
             $fileName = uniqid('chat_', true) . '.' . $ext;
             $path = $file->storeAs('chat_attachments', $fileName, 'public');
             $attachmentPath = asset('storage/' . $path);
@@ -638,6 +639,16 @@ public function createGroup(Request $request)
     ]);
 
     $myId = $request->user()->user_id;
+
+    // مصفوفة "من يراسل من" تنطبق على أعضاء المجموعة أيضاً، وإلا صارت المجموعات طريقاً للالتفاف عليها
+    $invited = \App\Models\User::whereIn('user_id', $request->user_ids)
+        ->where('user_id', '!=', $myId)
+        ->get(['user_id', 'role_id']);
+    foreach ($invited as $member) {
+        if (!$this->canChat($request->user()->role_id, $member->role_id)) {
+            return response()->json(['error' => 'لا يمكنك إضافة هذا المستخدم إلى مجموعة.'], 403);
+        }
+    }
 
     // 2. إنشاء الجروب الأساسي
     $group = \App\Models\Group::create([

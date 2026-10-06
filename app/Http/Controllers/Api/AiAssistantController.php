@@ -762,6 +762,25 @@ GUIDE;
     /**
      * تحديد الرابط الفعلي المباشر للسيرفر بشكل ديناميكي كامل وفقاً للشبكة الحالية
      */
+    /**
+     * مضيف موثوق لروابط الدخول التي يولّدها المساعد.
+     */
+    protected function isTrustedServerHost(string $host, Request $request): bool
+    {
+        if (strcasecmp($host, $request->getHost()) === 0) {
+            return true;
+        }
+
+        $allowed = array_filter(array_map('trim', explode(',', (string) config('app.ai_allowed_hosts'))));
+        if (in_array(strtolower($host), array_map('strtolower', $allowed), true)) {
+            return true;
+        }
+
+        // عنوان IP خاص/محجوز (شبكة محلية: 10.x، 192.168.x، 172.16-31.x)
+        return filter_var($host, FILTER_VALIDATE_IP) !== false
+            && filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+    }
+
     protected function resolveServerBaseUrl(?Request $request = null): string
     {
         $port = 8000;
@@ -769,12 +788,14 @@ GUIDE;
 
         // 1. إذا أرسل التطبيق server_url صريحاً وكان IP حقيقي (ليس localhost)
         if ($request && $request->filled('server_url')) {
-            $clientUrl = trim((string)$request->input('server_url'));
-            if (!empty($clientUrl)) {
-                $clientUrl = rtrim($clientUrl, '/');
-                if (!str_contains($clientUrl, '127.0.0.1') && !str_contains($clientUrl, 'localhost')) {
-                    return $clientUrl;
-                }
+            // server_url يرسله العميل، فلا نثق به إلا إذا كان مضيفاً معروفاً: نفس مضيف الطلب، أو عنوان شبكة محلية،
+            // أو مضيفاً مدرجاً في AI_ALLOWED_HOSTS. وإلا استطاع مستخدم جعل المساعد يصدر روابط دخول لنطاق يختاره (تصيّد).
+            $parts = parse_url(trim((string) $request->input('server_url')));
+            $host  = $parts['host'] ?? null;
+            if ($host && in_array($parts['scheme'] ?? '', ['http', 'https'], true)
+                && !in_array($host, ['127.0.0.1', 'localhost'], true)
+                && $this->isTrustedServerHost($host, $request)) {
+                return $parts['scheme'] . '://' . $host . (isset($parts['port']) ? ':' . $parts['port'] : '');
             }
         }
 

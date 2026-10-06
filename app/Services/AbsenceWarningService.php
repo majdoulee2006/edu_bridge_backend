@@ -34,8 +34,10 @@ class AbsenceWarningService
         }
 
         // حساب عدد أيام الغياب الفريدة إجمالاً عبر كل المواد
+        // الغياب المعذور (عذر/إجازة معتمدة) لا يُحتسب ضمن حدود الإنذارات
         $absenceDays = Attendance::where('student_id', $studentId)
             ->where('status', 'absent')
+            ->where('excuse_status', '!=', 'approved')
             ->pluck('attendance_date')
             ->map(fn($d) => $d ? Carbon::parse($d)->toDateString() : null)
             ->filter()
@@ -112,9 +114,10 @@ class AbsenceWarningService
             ->value('parents.user_id');
 
         $summonId = null;
-        if ($parentUserId) {
+        $systemSender = \App\Support\Access::systemSenderId();
+        if ($parentUserId && $systemSender) {
             $summonId = DB::table('parent_summons')->insertGetId([
-                'sender_user_id' => 1, // النظام / الإدارة
+                'sender_user_id' => $systemSender, // النظام / الإدارة
                 'student_id'     => $student->student_id,
                 'parent_user_id' => $parentUserId,
                 'reason_title'   => 'تجاوز حد الغياب المسموح به (10 أيام)',
@@ -131,7 +134,7 @@ class AbsenceWarningService
 
             Notification::create([
                 'user_id'    => $parentUserId,
-                'sender_id'  => 1,
+                'sender_id'  => \App\Support\Access::systemSenderId(),
                 'title'      => $parentTitle,
                 'message'    => $parentMsg,
                 'type'       => 'parent_summon',
@@ -233,7 +236,7 @@ class AbsenceWarningService
         // 1. إشعار النظام المكتبي / الويب
         Notification::create([
             'user_id'    => $user->user_id,
-            'sender_id'  => 1,
+            'sender_id'  => \App\Support\Access::systemSenderId(),
             'title'      => $title,
             'message'    => $message,
             'type'       => 'warning',

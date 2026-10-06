@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\TelegramBotHandler;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class TelegramWebhookController extends Controller
@@ -18,6 +19,18 @@ class TelegramWebhookController extends Controller
 
     public function handle(Request $request)
     {
+        // تيليغرام يرسل السر الذي سُجّل مع setWebhook(secret_token) في هذه الترويسة.
+        // بدون التحقق منها يستطيع أي طرف يعرف الرابط إرسال تحديثات مزوّرة للبوت.
+        $secret = config('services.telegram.webhook_secret');
+        if ($secret) {
+            if (!hash_equals((string) $secret, (string) $request->header('X-Telegram-Bot-Api-Secret-Token'))) {
+                return response()->json(['status' => 'forbidden'], 403);
+            }
+        } elseif (app()->environment('production')) {
+            Log::error('Telegram webhook rejected: TELEGRAM_WEBHOOK_SECRET is not configured in production.');
+            return response()->json(['status' => 'forbidden'], 403);
+        }
+
         try {
             $update = $request->all();
             
@@ -42,8 +55,15 @@ class TelegramWebhookController extends Controller
      */
     public function showScanner(Request $request)
     {
-        $chatId = $request->query('chat_id');
-        return view('telegram.scanner', compact('chatId'));
+        $chatId = (string) $request->query('chat_id');
+
+        // رمز مشفّر ومؤقت يثبت أن هذه الصفحة فُتحت عبر رابط موقّع أصدره البوت لهذا الـ chat_id
+        $scannerToken = \Illuminate\Support\Facades\Crypt::encryptString(json_encode([
+            'chat_id' => $chatId,
+            'exp'     => now()->addMinutes(15)->timestamp,
+        ]));
+
+        return view('telegram.scanner', compact('chatId', 'scannerToken'));
     }
 
     /**
@@ -52,11 +72,25 @@ class TelegramWebhookController extends Controller
     public function recordAttendanceFromScanner(Request $request)
     {
         $request->validate([
-            'chat_id'        => 'required',
+            'scanner_token'  => 'required|string',
             'qr_token'       => 'required|string',
             'face_image'     => 'nullable|string',
             'face_embedding' => 'nullable|array',
         ]);
+
+        // الهوية تأتي من الرمز المشفّر الذي أصدره السيرفر، وليس من chat_id يرسله العميل
+        try {
+            $claims = json_decode(\Illuminate\Support\Facades\Crypt::decryptString($request->scanner_token), true);
+        } catch (\Throwable $e) {
+            $claims = null;
+        }
+        if (!is_array($claims) || empty($claims['chat_id']) || ($claims['exp'] ?? 0) < now()->timestamp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'انتهت صلاحية صفحة الماسح. افتحها من جديد من البوت.',
+            ], 403);
+        }
+        $request->merge(['chat_id' => $claims['chat_id']]);
 
         $user = \App\Models\User::where('telegram_chat_id', (string)$request->chat_id)->first();
         if (!$user || !$user->student) {
@@ -102,13 +136,14 @@ class TelegramWebhookController extends Controller
 
         // التحقق من بصمة الوجه ومطابقتها مع بصمة الطالب المرجعية
         $faceEmbedding = $request->face_embedding;
-        $faceStatus = 'verified';
+        $faceStatus = 'suspicious';   // الافتراضي: لم يُتحقَّق من الوجه
         $faceScore = null;
 
         if ($faceEmbedding && is_array($faceEmbedding) && count($faceEmbedding) > 0) {
             $storedEmbedding = $student->face_embedding;
             if (!empty($storedEmbedding) && is_array($storedEmbedding)) {
                 $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
+                $faceStatus = $faceScore >= 70.0 ? 'verified' : 'suspicious';
 
                 // التحقق من نسبة التطابق (الحد الأدنى 35% كما في تطبيق الفلاتر والويب)
                 if ($faceScore < 35.0) {
@@ -128,30 +163,24 @@ class TelegramWebhookController extends Controller
             } else {
                 // حفظ البصمة للمرة الأولى
                 $student->update(['face_embedding' => $faceEmbedding]);
-                $faceScore = 100.0;
+                $faceStatus = 'first_time';
+                $faceScore = null;
             }
         }
 
-        // حفظ صورة الوجه
-        $savedFaceImagePath = null;
-        if ($request->face_image) {
-            try {
-                $imgData = $request->face_image;
-                if (str_contains($imgData, ',')) {
-                    $imgData = explode(',', $imgData)[1];
-                }
-                $decoded = base64_decode($imgData);
-                $filename = 'face_tg_' . $student->student_id . '_' . time() . '.jpg';
-                $destDir = public_path('uploads/faces');
-                if (!is_dir($destDir)) {
-                    mkdir($destDir, 0755, true);
-                }
-                file_put_contents($destDir . '/' . $filename, $decoded);
-                $savedFaceImagePath = 'uploads/faces/' . $filename;
-            } catch (\Exception $e) {
-                Log::error("Failed saving face image: " . $e->getMessage());
-            }
+        // اشتراط الوجه (attendance.require_face): لا حضور بلا بيانات وجه
+        if (config('attendance.require_face') && empty($faceEmbedding) && !$request->face_image) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يلزم التحقق بالوجه لتسجيل الحضور.',
+            ], 403);
         }
+
+        // حفظ صورة الوجه
+        // تخزين خاص (storage/app/private/faces) وليس المجلد العام
+        $savedFaceImagePath = $request->face_image
+            ? \App\Support\FaceImageStore::save($request->face_image, 'face_tg_' . $student->student_id)
+            : null;
 
         // تسجيل أو تحديث الحضور
         $existing = \App\Models\Attendance::where('student_id', $student->student_id)
@@ -172,7 +201,7 @@ class TelegramWebhookController extends Controller
                 'excuse_status'   => 'none',
                 'face_image'      => $savedFaceImagePath ?? $existing->face_image,
                 'face_score'      => $faceScore,
-                'face_status'     => 'verified',
+                'face_status'     => $faceStatus,
             ]);
         } else {
             \App\Models\Attendance::create([
@@ -183,7 +212,7 @@ class TelegramWebhookController extends Controller
                 'excuse_status'   => 'none',
                 'face_image'      => $savedFaceImagePath,
                 'face_score'      => $faceScore,
-                'face_status'     => 'verified',
+                'face_status'     => $faceStatus,
             ]);
         }
 

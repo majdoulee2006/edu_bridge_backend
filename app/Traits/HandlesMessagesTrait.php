@@ -171,7 +171,7 @@ trait HandlesMessagesTrait
         $request->validate([
             'receiver_id'      => 'required|exists:users,user_id',
             'message'          => 'required|string|max:2000',
-            'attachment'       => 'nullable|file|max:51200', // max 50MB
+            'attachment'       => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,mp3,m4a,mp4,aac,wav,ogg,oga,webm,amr,3gp,opus,mov', // max 50MB
             'disappears_after' => 'nullable|integer|min:0', // in seconds
         ]);
 

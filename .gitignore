@@ -40,7 +40,7 @@ accounts_report.xlsx
 fix_admin.php
 public/reset_admin.php
 
-# Video files and folders
+# مجلدات وملفات الفيديو
 *video*
 promo_video/
 *.mp4
@@ -50,4 +50,13 @@ promo_video/
 *.webm
 *.flv
 *.wmv
+
+# أدوات محلية وملفات dump وبصمات الوجه (لا تُرفع للمستودع)
+ngrok.exe
+/edu_bridge_backend
+/public/uploads/faces/
+
+# مخرجات توليد التوثيق (تُبنى عند الطلب)
+/site/
+/site-pdf/
 

@@ -278,12 +278,12 @@ class HODWebController extends Controller
         $request->validate([
             'phone'            => 'nullable|string|max:20',
             'birth_date'       => 'nullable|date',
-            'password'         => 'nullable|string|min:6',
+            'password'         => 'nullable|string|min:8',
             'telegram_chat_id' => 'nullable|string',
         ]);
 
         $user = Auth::user();
-        $otp  = (string) rand(100000, 999999);
+        $otp  = (string) random_int(100000, 999999);
 
         $telegramService = new \App\Services\TelegramService();
         $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
@@ -422,6 +422,20 @@ class HODWebController extends Controller
             } else {
                 return back()->with('error', 'الطلب غير موجود.');
             }
+        }
+
+        // الطالب يجب أن يكون ضمن قسم رئيس القسم
+        if (!$studentUserId || !\App\Support\Access::headManagesUser(Auth::user(), $studentUserId)) {
+            abort(403, 'هذا الطلب لا يخص طلاب قسمك.');
+        }
+
+        // المرحلة الصحيحة: رئيس القسم يردّ فقط بعد موافقة ولي الأمر (لا قفز بين المراحل)
+        if (($leaveRequest->status ?? null) !== 'pending_hod') {
+            return back()->with('error', 'لا يمكن معالجة هذا الطلب في مرحلته الحالية.');
+        }
+
+        if (!in_array($status, ['approved', 'rejected'], true)) {
+            return back()->with('error', 'قيمة الحالة غير صالحة.');
         }
 
         if ($status === 'rejected') {
@@ -918,6 +932,11 @@ class HODWebController extends Controller
             return redirect()->back()->with('error', 'المستخدم غير موجود.');
         }
 
+        // رئيس القسم يعدّل فقط حسابات المعلّمين والطلاب وأولياء الأمور في قسمه
+        if (!\App\Support\Access::headManagesUser(Auth::user(), $id)) {
+            abort(403, 'لا تملك صلاحية تعديل هذا الحساب.');
+        }
+
         $request->validate([
             'full_name' => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
@@ -954,10 +973,13 @@ class HODWebController extends Controller
                     // Remove all existing courses
                     DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->delete();
 
-                    // Add new courses
+                    // Add new courses (فقط مقررات قسم رئيس القسم)
                     if ($request->has('courses') && is_array($request->courses)) {
                         $courseInserts = [];
                         foreach ($request->courses as $courseId) {
+                            if (!\App\Support\Access::headManagesCourse(Auth::user(), $courseId)) {
+                                continue;
+                            }
                             $courseInserts[] = [
                                 'teacher_id' => $teacher->teacher_id,
                                 'course_id'  => $courseId,
@@ -979,6 +1001,11 @@ class HODWebController extends Controller
      */
     public function deleteAccount($id)
     {
+        // يمنع حذف الأدمن/الشؤون/رؤساء الأقسام أو أي حساب خارج قسم الرئيس
+        if (!\App\Support\Access::headManagesUser(Auth::user(), $id)) {
+            abort(403, 'لا تملك صلاحية حذف هذا الحساب.');
+        }
+
         DB::table('users')->where('user_id', $id)->delete();
         return redirect()->back()->with('success', 'تم حذف الحساب بنجاح.');
     }
@@ -1048,6 +1075,10 @@ class HODWebController extends Controller
         $request->validate([
             'weight' => 'required|numeric|min:1',
         ]);
+
+        if (!\App\Support\Access::headManagesCourse(Auth::user(), $id)) {
+            abort(403, 'هذا المقرر لا يتبع قسمك.');
+        }
 
         DB::table('courses')
             ->where('course_id', $id)
@@ -1262,6 +1293,11 @@ class HODWebController extends Controller
      */
     public function deleteSchedule($id)
     {
+        $courseId = DB::table('schedules')->where('schedule_id', $id)->value('course_id');
+        if (!$courseId || !\App\Support\Access::headManagesCourse(Auth::user(), $courseId)) {
+            abort(403, 'هذه الحصة لا تتبع مقررات قسمك.');
+        }
+
         DB::table('schedules')->where('schedule_id', $id)->delete();
         return redirect()->back()->with('success', 'تم حذف الحصة الدراسية بنجاح.');
     }
@@ -1307,6 +1343,11 @@ class HODWebController extends Controller
      */
     public function deleteExam($id)
     {
+        $courseId = DB::table('exams')->where('exam_id', $id)->value('course_id');
+        if (!$courseId || !\App\Support\Access::headManagesCourse(Auth::user(), $courseId)) {
+            abort(403, 'هذا الامتحان لا يتبع مقررات قسمك.');
+        }
+
         DB::table('exams')->where('exam_id', $id)->delete();
         return redirect()->back()->with('success', 'تم حذف الامتحان بنجاح.');
     }
@@ -1376,7 +1417,7 @@ class HODWebController extends Controller
         $request->validate([
             'receiver_id' => 'required|exists:users,user_id',
             'message'     => 'required|string|max:2000',
-            'attachment'  => 'nullable|file|max:51200',
+            'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,mp3,m4a,mp4,aac,wav,ogg,oga,webm,amr,3gp,opus,mov',
         ]);
 
         $attachmentPath = null;
@@ -1650,6 +1691,15 @@ class HODWebController extends Controller
     public function deleteReport($id)
     {
         $report = DB::table('performance_reports')->where('report_id', $id)->first();
+
+        // الطالب صاحب التقرير يجب أن يكون في قسم رئيس القسم
+        $ownerStudentId = $report
+            ? $report->student_id
+            : DB::table('report_requests')->where('id', $id)->value('student_id');
+        if ($ownerStudentId && !\App\Support\Access::headManagesStudent(Auth::user(), $ownerStudentId)) {
+            abort(403, 'هذا التقرير لا يخص طلاب قسمك.');
+        }
+
         if ($report) {
             if ($report->report_request_id) {
                 DB::table('report_requests')->where('id', $report->report_request_id)->delete();
@@ -1672,6 +1722,10 @@ class HODWebController extends Controller
         $report = DB::table('performance_reports')->where('report_id', $id)->first();
         if (!$report) {
             return redirect()->back()->with('error', 'التقرير غير موجود.');
+        }
+
+        if (!\App\Support\Access::headManagesStudent(Auth::user(), $report->student_id)) {
+            abort(403, 'هذا التقرير لا يخص طلاب قسمك.');
         }
 
         $studentRow = DB::table('students')
@@ -1757,6 +1811,12 @@ class HODWebController extends Controller
         $requestId = $perfReport?->report_request_id ?? $id;
 
         $existingReq = DB::table('report_requests')->where('id', $requestId)->first();
+
+        $ownerStudentId = $perfReport->student_id ?? $existingReq->student_id ?? null;
+        if (!$ownerStudentId || !\App\Support\Access::headManagesStudent(Auth::user(), $ownerStudentId)) {
+            abort(403, 'هذا التقرير لا يخص طلاب قسمك.');
+        }
+
         if ($existingReq && !empty($existingReq->hod_notes)) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([

@@ -2435,6 +2435,10 @@ class AffairsWebController extends Controller
         if (!$user) {
             return redirect()->back()->with('error', 'المستخدم غير موجود.');
         }
+        if (!\App\Support\Access::canManageAccount(auth()->user(), $id)) {
+            abort(403, 'لا تملك صلاحية على هذا الحساب.');
+        }
+
 
         $request->validate([
             'full_name' => 'required|string|max:255',
@@ -2872,6 +2876,10 @@ class AffairsWebController extends Controller
         if (!$user) {
             return back()->with('error', 'الحساب غير موجود.');
         }
+        if (!\App\Support\Access::canManageAccount(auth()->user(), $id)) {
+            abort(403, 'لا تملك صلاحية على هذا الحساب.');
+        }
+
 
         $newStatus = ($user->status === 'active') ? 'inactive' : 'active';
         DB::table('users')->where('user_id', $id)->update([
@@ -2891,6 +2899,10 @@ class AffairsWebController extends Controller
         if (!$user) {
             return back()->with('error', 'الحساب غير موجود.');
         }
+        if (!\App\Support\Access::canManageAccount(auth()->user(), $id)) {
+            abort(403, 'لا تملك صلاحية على هذا الحساب.');
+        }
+
 
         $details = [];
 
@@ -2930,6 +2942,10 @@ class AffairsWebController extends Controller
         if (!$usr) {
             return back()->with('error', 'الحساب غير موجود.');
         }
+        if (!\App\Support\Access::canManageAccount(auth()->user(), $id)) {
+            abort(403, 'لا تملك صلاحية على هذا الحساب.');
+        }
+
 
         $roleId = intval($usr->role_id);
 
@@ -3210,7 +3226,7 @@ class AffairsWebController extends Controller
         $request->validate([
             'receiver_id' => 'required|exists:users,user_id',
             'message'     => 'required|string|max:2000',
-            'attachment'  => 'nullable|file|max:51200',
+            'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,mp3,m4a,mp4,aac,wav,ogg,oga,webm,amr,3gp,opus,mov',
         ]);
 
         $attachmentPath = null;
@@ -3421,7 +3437,7 @@ class AffairsWebController extends Controller
             'full_name'        => 'nullable|string|max:255',
             'phone'            => 'nullable|string|max:20',
             'current_password' => 'nullable|string',
-            'new_password'     => 'nullable|string|min:6',
+            'new_password'     => 'nullable|string|min:8',
             'telegram_chat_id' => 'nullable|string',
         ]);
 
@@ -3436,7 +3452,7 @@ class AffairsWebController extends Controller
             }
         }
 
-        $otp = (string) rand(100000, 999999);
+        $otp = (string) random_int(100000, 999999);
 
         $telegramService = new \App\Services\TelegramService();
         $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));

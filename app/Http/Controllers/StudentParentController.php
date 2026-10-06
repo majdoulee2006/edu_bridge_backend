@@ -11,6 +11,12 @@ use App\Services\StudentAcademicService;
 
 class StudentParentController extends Controller
 {
+    /** تفويض مركزي: انظر App\Support\Access. */
+    private function parentOwnsStudent(Request $request, $id, string $idType = 'student'): bool
+    {
+        return \App\Support\Access::parentOwnsStudent($request->user(), $id, $idType);
+    }
+
     public function requestReport(Request $request)
     {
         try {
@@ -148,8 +154,12 @@ class StudentParentController extends Controller
         }
     }
 
-    public function getFullPerformance($studentId)
+    public function getFullPerformance(Request $request, $studentId)
     {
+        if (!$this->parentOwnsStudent($request, $studentId, 'student')) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح لك بالوصول لبيانات هذا الطالب'], 403);
+        }
+
         // بيانات العلامات من النظام الجديد (grade_entries + grade_events)
         // $studentId هنا هو students.student_id (يأتي من /parent/children)
         $student = DB::table('students')->where('student_id', $studentId)->first();
@@ -255,8 +265,12 @@ class StudentParentController extends Controller
         ]);
     }
 
-    public function getAssignments($studentId)
+    public function getAssignments(Request $request, $studentId)
     {
+        if (!$this->parentOwnsStudent($request, $studentId, 'student')) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح لك بالوصول لبيانات هذا الطالب'], 403);
+        }
+
         $courseIds = DB::table('enrollments')
             ->where('student_id', $studentId)
             ->where('status', 'active')
@@ -294,8 +308,12 @@ class StudentParentController extends Controller
         return response()->json($assignments);
     }
 
-    public function getPermissions($studentId)
+    public function getPermissions(Request $request, $studentId)
     {
+        if (!$this->parentOwnsStudent($request, $studentId, 'student')) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح لك بالوصول لبيانات هذا الطالب'], 403);
+        }
+
         $permissions = DB::table('absence_requests')
             ->where('student_id', $studentId)
             ->orderBy('date', 'desc')
@@ -380,6 +398,11 @@ class StudentParentController extends Controller
         $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
         if (!$leaveRequest) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        // leave_requests.student_id يحمل users.user_id للطالب
+        if (!$this->parentOwnsStudent($request, $leaveRequest->student_id, 'user')) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح لك بالرد على هذا الطلب'], 403);
         }
 
         if ($request->status === 'approved') {
@@ -670,6 +693,10 @@ class StudentParentController extends Controller
 
         if (!$absenceRequest) {
             return response()->json(['message' => 'الطلب غير موجود'], 404);
+        }
+
+        if (!$this->parentOwnsStudent($request, $absenceRequest->student_id, 'student')) {
+            return response()->json(['message' => 'غير مصرح لك بالرد على هذا الطلب'], 403);
         }
 
         if ($request->status === 'rejected') {

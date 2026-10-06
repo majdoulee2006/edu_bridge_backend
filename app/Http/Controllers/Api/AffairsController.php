@@ -563,6 +563,10 @@ class AffairsController extends Controller
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'المستخدم غير موجود.'], 404);
         }
+        if (!\App\Support\Access::canManageAccount(request()->user(), $id)) {
+            return response()->json(['success' => false, 'message' => 'لا تملك صلاحية على هذا الحساب.'], 403);
+        }
+
 
         $v = Validator::make($request->all(), [
             'full_name' => 'required|string|max:255',
@@ -595,6 +599,10 @@ class AffairsController extends Controller
     {
         $user = User::find($id);
         if (!$user) return response()->json(['success' => false, 'message' => 'المستخدم غير موجود.'], 404);
+        if (!\App\Support\Access::canManageAccount(request()->user(), $id)) {
+            return response()->json(['success' => false, 'message' => 'لا تملك صلاحية على هذا الحساب.'], 403);
+        }
+
 
         $user->status = ($user->status === 'active') ? 'inactive' : 'active';
         $user->save();
@@ -606,6 +614,10 @@ class AffairsController extends Controller
     {
         $user = User::find($id);
         if (!$user) return response()->json(['success' => false, 'message' => 'المستخدم غير موجود.'], 404);
+        if (!\App\Support\Access::canManageAccount(request()->user(), $id)) {
+            return response()->json(['success' => false, 'message' => 'لا تملك صلاحية على هذا الحساب.'], 403);
+        }
+
 
         $user->delete();
         return response()->json(['success' => true, 'message' => 'تم حذف الحساب بنجاح.']);
@@ -2144,14 +2156,14 @@ class AffairsController extends Controller
             return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
         }
 
-        $summon = DB::table('parent_summons')->where('summon_id', $id)->first();
+        $summon = DB::table('parent_summons')->where('id', $id)->first();
         if (!$summon) {
             return response()->json(['success' => false, 'message' => 'طلب الاستدعاء غير موجود'], 404);
         }
 
         $summonDate = date('Y-m-d H:i:s', strtotime($request->summon_date));
 
-        DB::table('parent_summons')->where('summon_id', $id)->update([
+        DB::table('parent_summons')->where('id', $id)->update([
             'summon_date' => $summonDate,
             'details'     => $request->notes ? $summon->details . "\n[ملاحظات الشؤون: " . $request->notes . "]" : $summon->details,
             'status'      => 'sent',

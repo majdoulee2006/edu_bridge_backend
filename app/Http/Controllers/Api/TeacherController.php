@@ -310,6 +310,30 @@ class TeacherController extends Controller
             ], 403);
         }
 
+        // الدرس يجب أن يتبع نفس المقرر، والطلاب يجب أن يكونوا مسجّلين فيه
+        $lessonBelongs = Lesson::where('lesson_id', $request->lesson_id)
+            ->where('course_id', $request->course_id)
+            ->exists();
+        if (!$lessonBelongs) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المحاضرة المحددة لا تتبع هذا المقرر',
+            ], 422);
+        }
+
+        $enrolledIds = DB::table('enrollments')
+            ->where('course_id', $request->course_id)
+            ->pluck('student_id')
+            ->all();
+        foreach ($request->attendance as $record) {
+            if (!in_array((int) $record['student_id'], array_map('intval', $enrolledIds), true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'أحد الطلاب غير مسجّل في هذا المقرر',
+                ], 422);
+            }
+        }
+
         $saved = 0;
         foreach ($request->attendance as $record) {
             Attendance::updateOrCreate(
@@ -433,9 +457,30 @@ class TeacherController extends Controller
         ], 200);
     }
 
+    /**
+     * يرجع جلسة الحضور فقط إذا كانت تخص المعلّم المسجّل دخوله (أو مقرراً يدرّسه
+     * عندما لا يكون للدرس معلّم محدّد)، وإلا null.
+     */
+    private function findOwnedSession(Request $request, $sessionId): ?\App\Models\AttendanceSession
+    {
+        $teacher = $request->user()->teacher;
+        $session = \App\Models\AttendanceSession::with('lesson')->find($sessionId);
+        if (!$teacher || !$session || !$session->lesson) {
+            return null;
+        }
+
+        $lesson = $session->lesson;
+        if ($lesson->teacher_id !== null) {
+            return (int) $lesson->teacher_id === (int) $teacher->teacher_id ? $session : null;
+        }
+
+        $teachesCourse = $teacher->courses()->where('courses.course_id', $lesson->course_id)->exists();
+        return $teachesCourse ? $session : null;
+    }
+
     public function refreshQrToken(Request $request, $sessionId)
     {
-        $session = \App\Models\AttendanceSession::find($sessionId);
+        $session = $this->findOwnedSession($request, $sessionId);
 
         if (!$session || !$session->is_active) {
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة أو منتهية'], 404);
@@ -469,6 +514,15 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
         }
 
+        // المعلّم يعيد تعيين بصمة طلاب مقرراته فقط
+        $teacher = $request->user()->teacher;
+        $isMyStudent = $teacher && $teacher->courses()
+            ->whereHas('students', fn ($q) => $q->where('students.student_id', $student->student_id))
+            ->exists();
+        if (!$isMyStudent) {
+            return response()->json(['success' => false, 'message' => 'هذا الطالب غير مسجّل في أي من مقرراتك'], 403);
+        }
+
         $student->update([
             'face_embedding'      => null,
             'requires_face_reset' => false,
@@ -484,7 +538,7 @@ class TeacherController extends Controller
      */
     public function getSessionAttendance(Request $request, $sessionId)
     {
-        $session = \App\Models\AttendanceSession::find($sessionId);
+        $session = $this->findOwnedSession($request, $sessionId);
 
         if (!$session) {
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
@@ -533,7 +587,7 @@ class TeacherController extends Controller
      */
     public function endSession(Request $request, $sessionId)
     {
-        $session = \App\Models\AttendanceSession::find($sessionId);
+        $session = $this->findOwnedSession($request, $sessionId);
 
         if (!$session) {
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
@@ -543,22 +597,28 @@ class TeacherController extends Controller
         $course = $lesson->course;
         $allStudents = $course->students()->get();
 
-        $presentIds = Attendance::where('lesson_id', $lesson->lesson_id)
-            ->where('status', 'present')
+        // من له سجل أصلاً (حاضر أو متأخر أو غائب بعذر) لا يُمسّ؛ كان "late" يتحول إلى "absent"
+        $today = now()->toDateString();
+        $recordedIds = Attendance::where('lesson_id', $lesson->lesson_id)
+            ->whereDate('attendance_date', $today)
             ->pluck('student_id')
             ->toArray();
 
         foreach ($allStudents as $student) {
-            if (!in_array($student->student_id, $presentIds)) {
-                Attendance::updateOrCreate(
-                    [
-                        'student_id' => $student->student_id,
-                        'lesson_id'  => $lesson->lesson_id,
-                        'attendance_date' => now()->toDateString(),
-                    ],
-                    ['status' => 'absent']
-                );
+            if (in_array($student->student_id, $recordedIds)) {
+                continue;
             }
+
+            // إجازة/إذن معتمد لهذا اليوم: يُسجَّل الغياب لكنه معذور (لا يُحتسب في الإنذارات)
+            $excused = \App\Support\Access::studentHasApprovedLeave($student->student_id, $student->user_id, $today);
+
+            Attendance::create([
+                'student_id'      => $student->student_id,
+                'lesson_id'       => $lesson->lesson_id,
+                'attendance_date' => $today,
+                'status'          => 'absent',
+                'excuse_status'   => $excused ? 'approved' : 'none',
+            ]);
         }
 
         $session->update([
@@ -568,7 +628,7 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الواجب بنجاح',
+            'message' => 'تم إنهاء الجلسة وتسجيل الغياب',
         ], 200);
     }
 
@@ -1158,6 +1218,11 @@ class TeacherController extends Controller
         if (!$reportRequest) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
+        // الطلب يخص هذا المعلّم فقط (نفس شرط getReportRequests)
+        $reqTeacher = $request->user()->teacher;
+        if (!$reqTeacher || (int) $reportRequest->teacher_id !== (int) $reqTeacher->teacher_id) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب غير موجَّه إليك'], 403);
+        }
 
         $studentId = $reportRequest->student_id;
         $courseId  = $reportRequest->course_id;
@@ -1194,6 +1259,10 @@ class TeacherController extends Controller
         $request->validate(['notes' => 'required|string|min:3']);
 
         $reportRequest = DB::table('report_requests')->find($id);
+        $evalTeacher = $request->user()->teacher;
+        if ($reportRequest && (!$evalTeacher || (int) $reportRequest->teacher_id !== (int) $evalTeacher->teacher_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب غير موجَّه إليك'], 403);
+        }
         if (!$reportRequest) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
@@ -1968,6 +2037,12 @@ class TeacherController extends Controller
 
         if (!$absenceRequest) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+
+        // المعلّم يرد فقط على طلبات طلاب مقرراته (نفس شرط القراءة في getAbsenceRequests)
+        $teacher = $request->user()->teacher;
+        if (!$teacher || !\App\Support\Access::teacherTeachesStudent($teacher->teacher_id, $absenceRequest->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص أحد طلاب مقرراتك'], 403);
         }
 
         $absenceRequest->update([
@@ -2775,10 +2850,19 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الطالب غير موجود'], 404);
         }
 
+        // المعلّم يستدعي فقط أولياء أمور طلابه أو طلاب دفعته (إن كان مربّياً)
+        $senderTeacher = $sender->teacher;
+        if (!$senderTeacher || !\App\Support\Access::teacherCanSummonForStudent($senderTeacher->teacher_id, $student->student_id)) {
+            return response()->json(['success' => false, 'message' => 'لا يمكنك استدعاء ولي أمر هذا الطالب'], 403);
+        }
+
         // جلب رئيس قسم الطالب (HOD)
         $hodUserId = null;
-        if ($student->department_id) {
-            $hodUserId = DB::table('departments')->where('department_id', $student->department_id)->value('hod_user_id');
+        $studentDepartmentId = $student->program_id
+            ? DB::table('programs')->where('id', $student->program_id)->value('department_id')
+            : null;
+        if ($studentDepartmentId) {
+            $hodUserId = DB::table('heads')->where('department_id', $studentDepartmentId)->value('user_id');
         }
 
         // جلب ولي أمر الطالب للتسجيل المبدئي — parent_students.parent_id/student_id هما FK على users.user_id
@@ -2851,8 +2935,8 @@ class TeacherController extends Controller
 
         $studentQuery = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
-            ->leftJoin('programs', 'students.program_id', '=', 'programs.id');
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id');
 
         if ($courseIds->isNotEmpty()) {
             $studentIds = DB::table('enrollments')
@@ -2867,7 +2951,7 @@ class TeacherController extends Controller
         $students = $studentQuery->select(
             'students.student_id',
             'students.student_code',
-            'students.academic_year',
+            'users.academic_year',
             'users.full_name as student_name',
             'departments.name as department_name',
             'programs.name as program_name'
@@ -2876,12 +2960,12 @@ class TeacherController extends Controller
         if ($students->isEmpty()) {
             $students = DB::table('students')
                 ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
                 ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
                 ->select(
                     'students.student_id',
                     'students.student_code',
-                    'students.academic_year',
+                    'users.academic_year',
                     'users.full_name as student_name',
                     'departments.name as department_name',
                     'programs.name as program_name'
@@ -2905,7 +2989,8 @@ class TeacherController extends Controller
         $query = DB::table('parent_summons')
             ->join('students', 'parent_summons.student_id', '=', 'students.student_id')
             ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+            ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
             ->where('parent_summons.sender_user_id', $user->user_id);
 
         if ($status === 'pending') {
@@ -2915,7 +3000,7 @@ class TeacherController extends Controller
         }
 
         $summons = $query->select(
-            'parent_summons.summon_id as id',
+            'parent_summons.id as id',
             'parent_summons.reason_title',
             'parent_summons.details',
             'parent_summons.summon_date',

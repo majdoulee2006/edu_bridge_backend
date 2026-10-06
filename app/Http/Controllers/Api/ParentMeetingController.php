@@ -89,9 +89,9 @@ class ParentMeetingController extends Controller
 
         // إذا كان المستخدم رئيس قسم، نجلب فقط طلاب قسمه
         if ($user->role === 'head') {
-            $department = $user->department;
+            $department = \App\Support\Access::headDepartment($user)['name'];
             $query->whereHas('student.user', function ($q) use ($department) {
-                $q->where('department', 'LIKE', '%' . $department . '%');
+                $q->where('department', $department ?? '__none__');
             });
         }
 
@@ -128,6 +128,10 @@ class ParentMeetingController extends Controller
                 'success' => false,
                 'message' => 'طلب اللقاء غير موجود.'
             ], 404);
+        }
+
+        if ($request->user()->role === 'head' && !\App\Support\Access::headManagesStudent($request->user(), $meetingRequest->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص طلاب قسمك.'], 403);
         }
 
         $meetingRequest->update([
@@ -177,9 +181,10 @@ class ParentMeetingController extends Controller
         } 
         // إذا كان رئيس قسم، يرى استدعاءات طلاب قسمه
         elseif ($user->role === 'head') {
-            $department = $user->department;
+            // قسم رئيس القسم بدقة (القيمة الفارغة كانت تطابق كل الأقسام عبر LIKE '%%')
+            $department = \App\Support\Access::headDepartment($user)['name'];
             $query->whereHas('student.user', function ($q) use ($department) {
-                $q->where('department', 'LIKE', '%' . $department . '%');
+                $q->where('department', $department ?? '__none__');
             });
         }
 
@@ -212,6 +217,11 @@ class ParentMeetingController extends Controller
 
         $sender = $request->user();
         $student = Student::find($request->student_id);
+
+        // رئيس القسم يستدعي أولياء أمور طلاب قسمه فقط (الأدمن غير مقيَّد)
+        if ($sender->role === 'head' && !\App\Support\Access::headManagesStudent($sender, $student->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطالب ليس من طلاب قسمك.'], 403);
+        }
 
         // جلب ولي أمر الطالب — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserId = DB::table('parent_students')

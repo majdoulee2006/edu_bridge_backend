@@ -1,0 +1,68 @@
+site_name: Edu-Bridge Documentation
+site_description: Documentation for the Edu-Bridge academic management system / توثيق منظومة Edu-Bridge
+docs_dir: docs
+site_dir: site
+# روابط تنتهي بـ .html حتى يعمل الموقع المبني بالفتح المباشر (double-click) بدون سيرفر
+use_directory_urls: false
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+markdown_extensions:
+  - tables
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+extra_css:
+  - assets/extra.css
+extra_javascript:
+  - assets/rtl.js
+nav:
+  - Home: README.md
+  - English:
+      - Start here: en/00-README.md
+      - Product overview: en/01-product-overview.md
+      - Architecture: en/02-architecture.md
+      - Database dictionary: en/03-database.md
+      - API reference: en/04-api-reference.md
+      - Key flows: en/05-key-flows.md
+      - Setup and deployment: en/06-setup-and-deploy.md
+      - Security design: en/07-security.md
+      - Project status: en/08-project-status.md
+      - Roadmap: en/09-roadmap.md
+      - Handover checklist: en/10-handover-checklist.md
+      - Remediation plan: en/11-remediation-plan.md
+  - العربية:
+      - ابدأ هنا: ar/00-README.md
+      - نظرة عامة: ar/01-product-overview.md
+      - المعمارية: ar/02-architecture.md
+      - قاموس قاعدة البيانات: ar/03-database.md
+      - مرجع الـ API: ar/04-api-reference.md
+      - التدفقات الرئيسية: ar/05-key-flows.md
+      - التثبيت والتشغيل: ar/06-setup-and-deploy.md
+      - التصميم الأمني: ar/07-security.md
+      - حالة المشروع: ar/08-project-status.md
+      - خارطة الطريق: ar/09-roadmap.md
+      - قائمة التسليم: ar/10-handover-checklist.md
+      - خطة معالجة الثغرات: ar/11-remediation-plan.md

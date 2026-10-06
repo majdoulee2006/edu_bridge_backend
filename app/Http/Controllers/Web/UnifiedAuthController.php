@@ -14,6 +14,7 @@ use App\Traits\FaceRecognitionTrait;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Support\SingleSessionGuard;
+use App\Support\LoginThrottleGuard;
 
 class UnifiedAuthController extends Controller
 {
@@ -83,7 +84,23 @@ class UnifiedAuthController extends Controller
         }
 
         // 3. Validate credentials
-        if ($user && Hash::check($request->password, $user->password)) {
+        if ($user && LoginThrottleGuard::isLocked($user)) {
+            $minutes = LoginThrottleGuard::lockRemainingMinutes($user);
+            UserActivity::log('محاولة دخول مرفوضة', 'الحساب مقفول مؤقتاً بسبب محاولات دخول فاشلة متكررة', $user);
+            return back()->withErrors([
+                'login' => "🔒 تم قفل هذا الحساب مؤقتاً بسبب محاولات دخول فاشلة متكررة. يرجى المحاولة مرة أخرى خلال {$minutes} دقيقة."
+            ])->withInput($request->only('login'));
+        }
+
+        $passwordValid = $user && Hash::check($request->password, $user->password);
+
+        if ($user && !$passwordValid) {
+            LoginThrottleGuard::recordFailure($user);
+        }
+
+        if ($passwordValid) {
+            LoginThrottleGuard::recordSuccess($user);
+
             if ($user->status !== 'active') {
                 UserActivity::log('محاولة دخول مرفوضة', 'الحساب موقوف مؤقتاً', $user);
                 return back()->withErrors(['login' => 'عذراً، هذا الحساب موقوف مؤقتاً.'])->withInput($request->only('login'));
@@ -498,13 +515,25 @@ class UnifiedAuthController extends Controller
             ], 400);
         }
 
-        if (trim($request->otp) !== (string) $sessionOtp) {
+        if (!hash_equals((string) $sessionOtp, trim($request->otp))) {
+            // بعد 5 محاولات خاطئة يُبطَل الرمز ويلزم طلب رمز جديد (منع التخمين)
+            $attempts = (int) session('pwd_reset_attempts', 0) + 1;
+            if ($attempts >= 5) {
+                session()->forget(['pwd_reset_otp', 'pwd_reset_expires_at', 'pwd_reset_user_id', 'pwd_reset_attempts']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'تجاوزت عدد المحاولات المسموح. تم إبطال الرمز، يرجى طلب رمز جديد.'
+                ], 429);
+            }
+            session(['pwd_reset_attempts' => $attempts]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'رمز OTP المدخل غير صحيح. يرجى التأكد وإعادة المحاولة.'
             ], 422);
         }
 
+        session()->forget('pwd_reset_attempts');
         session(['pwd_reset_verified' => true]);
 
         return response()->json([
@@ -519,8 +548,8 @@ class UnifiedAuthController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'password'              => 'required|string|min:6|confirmed',
-            'password_confirmation' => 'required|string|min:6',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string|min:8',
         ], [
             'password.required'  => 'يرجى إدخال كلمة المرور الجديدة.',
             'password.min'       => 'كلمة المرور يجب أن لا تقل عن 6 أحرف/أرقام.',

@@ -103,6 +103,27 @@ class TeacherWebController extends Controller
         return Teacher::where('user_id', Auth::user()->user_id)->first();
     }
 
+    /**
+     * هل جلسة الحضور تخص المعلّم الحالي؟ (الدرس يعود له، أو يدرّس مقرر الدرس عندما لا يحدَّد معلّم).
+     */
+    private function ownsSession($sessionId): bool
+    {
+        $teacher = $this->getTeacher();
+        $lesson  = DB::table('attendance_sessions')
+            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
+            ->where('attendance_sessions.id', $sessionId)
+            ->select('lessons.teacher_id', 'lessons.course_id')
+            ->first();
+        if (!$teacher || !$lesson) {
+            return false;
+        }
+        if ($lesson->teacher_id !== null) {
+            return (int) $lesson->teacher_id === (int) $teacher->teacher_id;
+        }
+
+        return \App\Support\Access::teacherTeachesCourse($teacher->teacher_id, $lesson->course_id);
+    }
+
     // ────────────────────────────────────────────────────────────
     //  DASHBOARD
     // ────────────────────────────────────────────────────────────
@@ -328,6 +349,10 @@ class TeacherWebController extends Controller
 
     public function refreshSessionQr($id)
     {
+        if (!$this->ownsSession($id)) {
+            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة أو منتهية'], 404);
+        }
+
         $session = DB::table('attendance_sessions')->where('id', $id)->first();
         if (!$session || !$session->is_active) {
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة أو منتهية'], 404);
@@ -357,6 +382,10 @@ class TeacherWebController extends Controller
 
     public function endSession($id)
     {
+        if (!$this->ownsSession($id)) {
+            return redirect()->back()->with('error', 'الجلسة غير موجودة');
+        }
+
         $session = DB::table('attendance_sessions')->where('id', $id)->first();
         if (!$session) {
             return redirect()->back()->with('error', 'الجلسة غير موجودة');
@@ -438,6 +467,10 @@ class TeacherWebController extends Controller
 
     public function exportAttendance($sessionId)
     {
+        if (!$this->ownsSession($sessionId)) {
+            abort(404);
+        }
+
         $session = DB::table('attendance_sessions')
             ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
             ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
@@ -527,6 +560,10 @@ class TeacherWebController extends Controller
 
     public function getAbsentees($sessionId)
     {
+        if (!$this->ownsSession($sessionId)) {
+            return response()->json([]);
+        }
+
         $session = DB::table('attendance_sessions')
             ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
             ->where('attendance_sessions.id', $sessionId)
@@ -884,6 +921,10 @@ class TeacherWebController extends Controller
             ->where('assignments.assignment_id', $assignmentId)
             ->select('assignments.*', 'courses.title as course_title')
             ->first();
+
+        if (!$assignment || !$teacher || !\App\Support\Access::teacherTeachesCourse($teacher->teacher_id, $assignment->course_id)) {
+            abort(403, 'هذا الواجب لا يخص مقرراتك.');
+        }
 
         $submissions = DB::table('assignment_submissions')
             ->join('students', 'assignment_submissions.student_id', '=', 'students.student_id')
@@ -1285,7 +1326,7 @@ class TeacherWebController extends Controller
         $request->validate([
             'receiver_id' => 'required|exists:users,user_id',
             'message'     => 'required|string|max:2000',
-            'attachment'  => 'nullable|file|max:51200', // max 50MB
+            'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,mp3,m4a,mp4,aac,wav,ogg,oga,webm,amr,3gp,opus,mov', // max 50MB
         ]);
 
         $attachmentPath = null;
@@ -1477,7 +1518,7 @@ class TeacherWebController extends Controller
             'phone'            => 'nullable|string|max:20',
             'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'current_password' => 'nullable|string',
-            'new_password'     => 'nullable|string|min:6',
+            'new_password'     => 'nullable|string|min:8',
             'telegram_chat_id' => 'nullable|string',
         ]);
 
@@ -1493,7 +1534,7 @@ class TeacherWebController extends Controller
             }
         }
 
-        $otp = (string) rand(100000, 999999);
+        $otp = (string) random_int(100000, 999999);
         
         $telegramService = new \App\Services\TelegramService();
         $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
@@ -1562,7 +1603,7 @@ class TeacherWebController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password'     => 'required|min:6|confirmed',
+            'new_password'     => 'required|min:8|confirmed',
         ]);
 
         $user = Auth::user();
@@ -1812,6 +1853,13 @@ class TeacherWebController extends Controller
         ]);
 
         $reportRequest = DB::table('report_requests')->where('id', $id)->firstOrFail();
+
+        // الطلب موجَّه لهذا المعلّم فقط
+        $reportTeacher = $this->getTeacher();
+        if (!$reportTeacher || (int) $reportRequest->teacher_id !== (int) $reportTeacher->teacher_id) {
+            abort(403, 'هذا الطلب غير موجَّه إليك.');
+        }
+
         $studentId     = $reportRequest->student_id;
         $isBehavioral  = $reportRequest->report_type === 'behavioral';
 

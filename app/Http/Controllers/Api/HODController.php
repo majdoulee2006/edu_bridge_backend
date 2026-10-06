@@ -35,28 +35,6 @@ class HODController extends Controller
     }
 
     /**
-     * تحديث حالة طلب الإجازة (قبول/رفض)
-     */
-    public function updateLeaveStatus(Request $request, $id)
-    {
-        $request->validate([
-            'status' => 'required|in:approved,rejected',
-        ]);
-
-        try {
-            DB::table('leave_requests')
-                ->where('id', $id)
-                ->update(['status' => $request->status, 'updated_at' => now()]);
-
-            \App\Models\UserActivity::log('معالجة طلب إجازة', "قام رئيس القسم بتحديث حالة طلب الإجازة رقم {$id} إلى: {$request->status}");
-
-            return response()->json(['message' => 'Status updated successfully']);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
-        }
-    }
-
-    /**
      * جلب قائمة المدربين والطلاب لإنشاء طلب تقرير
      */
     public function getStaffAndStudents()
@@ -478,16 +456,20 @@ class HODController extends Controller
                 ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
                 ->leftJoin('users as parent_users', 'parent_summons.parent_user_id', '=', 'parent_users.user_id')
                 ->leftJoin('users as sender_users', 'parent_summons.sender_user_id', '=', 'sender_users.user_id')
-                ->leftJoin('departments', 'students.department_id', '=', 'departments.department_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
                 ->select(
                     'parent_summons.*',
                     'student_users.full_name as student_name',
                     'students.student_code',
                     'students.level as year',
-                    'departments.name_ar as department_name',
+                    'departments.name as department_name',
                     'parent_users.full_name as parent_name',
                     'sender_users.full_name as teacher_name'
                 );
+
+            // رئيس القسم يرى استدعاءات طلاب قسمه فقط
+            $query->where('student_users.department', \App\Support\Access::headDepartment($request->user())['name'] ?? '__none__');
 
             if ($status === 'pending') {
                 $query->whereIn('parent_summons.status', ['pending_hod', 'pending_affairs']);
@@ -508,12 +490,15 @@ class HODController extends Controller
      */
     public function forwardSummonToAffairs(Request $request, $id)
     {
-        $summon = DB::table('parent_summons')->where('summon_id', $id)->first();
+        $summon = DB::table('parent_summons')->where('id', $id)->first();
         if (!$summon) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
+        if (!\App\Support\Access::headManagesStudent($request->user(), $summon->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص طلاب قسمك'], 403);
+        }
 
-        DB::table('parent_summons')->where('summon_id', $id)->update([
+        DB::table('parent_summons')->where('id', $id)->update([
             'status'     => 'pending_affairs',
             'updated_at' => now(),
         ]);
@@ -653,6 +638,10 @@ class HODController extends Controller
                   ->orWhere('parent_meeting_requests.target_role', 'hod');
             });
 
+            // رئيس القسم يرى طلبات مواعيد أولياء أمور طلاب قسمه فقط
+            $headDeptName = \App\Support\Access::headDepartment($request->user())['name'];
+            $query->where('student_users.department', $headDeptName ?? '__none__');
+
             if ($status === 'pending') {
                 $query->where('parent_meeting_requests.status', 'pending');
             } else if ($status === 'completed') {
@@ -681,6 +670,9 @@ class HODController extends Controller
         $meeting = DB::table('parent_meeting_requests')->where('id', $id)->first();
         if (!$meeting) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+        if (!\App\Support\Access::headManagesStudent($request->user(), $meeting->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص طلاب قسمك'], 403);
         }
 
         $scheduledAt = $validated['scheduled_at'] ? date('Y-m-d H:i:s', strtotime($validated['scheduled_at'])) : null;

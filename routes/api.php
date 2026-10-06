@@ -12,9 +12,6 @@ use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\HODController;
-use App\Http\Controllers\Api\ScheduleController;
-use App\Http\Controllers\Api\ExamScheduleController;
-use App\Http\Controllers\Api\TeacherReportController;
 use App\Http\Controllers\Api\ParentController;
 use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
@@ -23,75 +20,40 @@ use App\Http\Controllers\Api\ParentMeetingController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\Api\AffairsController;
 use App\Http\Controllers\Api\AiAssistantController;
+use App\Http\Controllers\Api\FaceImageController;
 
-// خدمة ملفات التخزين (بديل الـ symlink على Windows) مع دعم Fallback ذكي للمحاضرات
+// خدمة ملفات التخزين (بديل الـ symlink على Windows).
+// يُسمح فقط بالملفات الموجودة فعلياً داخل storage/app/public (حماية من path traversal).
 Route::get('/file/{path}', function (string $path) {
     $base     = realpath(storage_path('app/public'));
     $decoded  = urldecode($path);
     $decoded  = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $decoded);
     $absolute = realpath($base . DIRECTORY_SEPARATOR . $decoded);
 
-    // إذا وُجد الملف الحقيقي داخل storage/app/public
-    if ($absolute !== false && str_starts_with($absolute, $base . DIRECTORY_SEPARATOR) && file_exists($absolute)) {
+    if ($absolute !== false && str_starts_with($absolute, $base . DIRECTORY_SEPARATOR) && is_file($absolute)) {
         return response()->file($absolute, [
             'Access-Control-Allow-Origin' => '*',
             'Cache-Control'              => 'public, max-age=86400',
         ]);
     }
 
-    // إذا كان الملف المطلوب هو محاضرة PDF ولم يُعثر عليه بالاسم المحدد، نقدّم بديلاً حقيقياً من مجلد المحاضرات لضمان استمرار التحميل
-    if (str_contains($decoded, 'lecture') || str_ends_with($decoded, '.pdf')) {
-        $fallbacks = glob($base . DIRECTORY_SEPARATOR . 'lectures' . DIRECTORY_SEPARATOR . '*.pdf');
-        if (empty($fallbacks)) {
-            $fallbacks = glob($base . DIRECTORY_SEPARATOR . 'lectures' . DIRECTORY_SEPARATOR . 'documents' . DIRECTORY_SEPARATOR . '*.pdf');
-        }
-        if (!empty($fallbacks) && file_exists($fallbacks[0])) {
-            return response()->file($fallbacks[0], [
-                'Access-Control-Allow-Origin' => '*',
-                'Cache-Control'              => 'public, max-age=86400',
-            ]);
-        }
-    }
-
     abort(404, 'File not found');
 })->where('path', '.*');
 
 // روابط عامة
-Route::post('/login', [AuthController::class, 'login'])->name('api.login');
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
-Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp']);
-Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
-Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset']);
-Route::post('/ai/chat', [AiAssistantController::class, 'chat']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('api.login');
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:otp-send');
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:otp-verify');
+Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:otp-send');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:otp-send');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:otp-verify');
+Route::post('/login-otp/send', [AuthController::class, 'sendLoginOtp'])->middleware('throttle:login-otp');
+Route::post('/login-otp/verify', [AuthController::class, 'verifyLoginOtp'])->middleware('throttle:otp-verify');
+// يتحقق من كلمة المرور، فيحتاج نفس حماية تسجيل الدخول ضد التخمين
+Route::post('/request-device-reset', [AuthController::class, 'requestDeviceReset'])->middleware('throttle:login');
 
 // Telegram Webhook
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
-Route::get('/system/settings', function () {
-    return response()->json([
-        'success' => true,
-        'data'    => \App\Models\SystemSetting::getThemeSettings()
-    ]);
-});
-
-// -----------------------------------------------------------
-// روابط ولي الأمر العامة (بدون توكن)
-// -----------------------------------------------------------
-Route::get('/parent/info/{user_id}', function ($user_id) {
-    $user = DB::table('users')->where('user_id', $user_id)->first();
-    if ($user) {
-        return response()->json([
-            'full_name' => $user->full_name,
-            'phone'     => $user->phone ?? 'لا يوجد رقم',
-            'role'      => $user->role,
-        ]);
-    }
-    return response()->json(['message' => 'المستخدم غير موجود'], 404);
-});
-
 Route::get('/system/settings', function () {
     return response()->json([
         'success' => true,
@@ -103,6 +65,12 @@ Route::get('/system/settings', function () {
 Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // المساعد الذكي (يتطلب تسجيل دخول لحماية مفتاح Gemini من الاستهلاك العام)
+    Route::post('/ai/chat', [AiAssistantController::class, 'chat']);
+
+    // صورة الوجه المرفقة بسجل حضور (لمن يحق له فقط)
+    Route::get('/attendance/{attendanceId}/face', [FaceImageController::class, 'show']);
 
     // -----------------------------------------------------------
     // روابط ولي الأمر (تتطلب توكن + تتحقق من هوية المستخدم المسجل دخوله)
@@ -315,7 +283,8 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/assignments/{assignmentId}/submissions', [TeacherController::class, 'getAssignmentSubmissions']);
         Route::post('/assignments/{submissionId}/grade', [TeacherController::class, 'gradeAssignment']);
         Route::post('/parent-summons/send', [TeacherController::class, 'sendParentSummon']);
-        Route::post('/parent-summons/request', [TeacherController::class, 'requestParentSummon']);
+        // كان يشير لدالة غير موجودة (requestParentSummon) فيرجع 500. التطبيق يرسل نفس حمولة sendParentSummon.
+        Route::post('/parent-summons/request', [TeacherController::class, 'sendParentSummon']);
         Route::get('/parent-summons', [ParentMeetingController::class, 'listSummons']);
         Route::get('/parent-summons-history', [TeacherController::class, 'getTeacherSummonsHistory']);
         Route::get('/educator-students', [TeacherController::class, 'getEducatorStudents']);
@@ -531,7 +500,30 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::post('/notifications/toggle-mute', [NotificationController::class, 'toggleMute']);
     });
 
-    Route::get('/student/info/{id}', function ($id) {
+    Route::get('/student/info/{id}', function (Request $request, $id) {
+        // فحص الملكية: الطالب يرى بياناته فقط، وولي الأمر يرى أبناءه المرتبطين فقط
+        $authUser = $request->user();
+        $target   = DB::table('students')
+            ->where('student_id', $id)->orWhere('user_id', $id)
+            ->first();
+        if (!$target) {
+            return response()->json(['message' => 'الطالب غير موجود'], 404);
+        }
+
+        $allowed = false;
+        if (strtolower((string) $authUser->role) === 'student') {
+            $allowed = (int) $target->user_id === (int) $authUser->user_id;
+        } else {
+            $parent  = DB::table('parents')->where('user_id', $authUser->user_id)->first();
+            $allowed = $parent && DB::table('parent_students')
+                ->whereIn('parent_id', [$parent->parent_id, $parent->user_id])
+                ->whereIn('student_id', [$target->student_id, $target->user_id])
+                ->exists();
+        }
+        if (!$allowed) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
         return DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
             ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
@@ -666,64 +658,11 @@ Route::prefix('affairs')->middleware(['auth:sanctum', 'single.session', 'role:af
     });
 });
 
-Route::get('/user/profile/{id}', function ($id) {
-    return DB::table('users')
-        ->where('user_id', $id)
-        ->select('full_name', 'email', 'phone')
-        ->first();
-});
-
-
-Route::get('/dev/reset-schedules', function() {
-    \Illuminate\Support\Facades\DB::table('schedules')->truncate();
-
-    $courses = \Illuminate\Support\Facades\DB::table('courses')->get();
-    if ($courses->isEmpty()) {
-        return response()->json(['message' => 'No courses found in database! Please seed courses first.'], 400);
-    }
-
-    $courseIds = $courses->pluck('course_id')->toArray();
-    $teacher = \Illuminate\Support\Facades\DB::table('teachers')->first();
-    $teacherId = $teacher ? $teacher->teacher_id : 1;
-
-    $c1 = $courseIds[0] ?? 1;
-    $c2 = $courseIds[1] ?? $c1;
-    $c3 = $courseIds[2] ?? $c1;
-    $c4 = $courseIds[3] ?? $c1;
-
-    $schedules = [
-        ['course_id' => $c1, 'teacher_id' => $teacherId, 'day' => 'Sunday', 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة A1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-        ['course_id' => $c2, 'teacher_id' => $teacherId, 'day' => 'Sunday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة A2', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-        ['course_id' => $c3, 'teacher_id' => $teacherId, 'day' => 'Sunday', 'start_time' => '11:00:00', 'end_time' => '12:30:00', 'room' => 'قاعة B1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-
-        ['course_id' => $c2, 'teacher_id' => $teacherId, 'day' => 'Monday', 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة A1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-        ['course_id' => $c4, 'teacher_id' => $teacherId, 'day' => 'Monday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة C3', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-
-        ['course_id' => $c1, 'teacher_id' => $teacherId, 'day' => 'Tuesday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة A1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-        ['course_id' => $c3, 'teacher_id' => $teacherId, 'day' => 'Tuesday', 'start_time' => '11:00:00', 'end_time' => '12:30:00', 'room' => 'قاعة B2', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-
-        ['course_id' => $c2, 'teacher_id' => $teacherId, 'day' => 'Wednesday', 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة A1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-        ['course_id' => $c1, 'teacher_id' => $teacherId, 'day' => 'Wednesday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة C2', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-        ['course_id' => $c4, 'teacher_id' => $teacherId, 'day' => 'Wednesday', 'start_time' => '11:00:00', 'end_time' => '12:30:00', 'room' => 'قاعة B1', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-
-        ['course_id' => $c3, 'teacher_id' => $teacherId, 'day' => 'Thursday', 'start_time' => '08:00:00', 'end_time' => '09:30:00', 'room' => 'قاعة B3', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-        ['course_id' => $c4, 'teacher_id' => $teacherId, 'day' => 'Thursday', 'start_time' => '09:30:00', 'end_time' => '11:00:00', 'room' => 'قاعة A2', 'class_group' => 'معلوماتية - سنة ثانية', 'created_at' => now(), 'updated_at' => now()],
-    ];
-
-    \Illuminate\Support\Facades\DB::table('schedules')->insert($schedules);
-
-    return response()->json(['message' => 'Schedules reset successfully to a varied, realistic weekly program!']);
-});
 
 
 
-Route::get('/parent/notifications/{id}', function ($id) {
-    return DB::table('notifications')
-        ->where('user_id', $id)
-        ->orderBy('created_at', 'desc')
-        ->get();
 
-    });
+
 });
 
 

@@ -458,13 +458,19 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        // التحقق من التسجيل في المادة أو تسجيل الطالب تلقائياً
+        // التسجيل التلقائي مسموح فقط للمقررات التي يحق للطالب دراستها (نفس معيار الحضور بالـ QR)،
+        // وإلا كان يكفي فتح رابط أي مقرر ليسجَّل فيه.
         $enrolled = DB::table('enrollments')
             ->where('student_id', $student->student_id)
             ->where('course_id', $courseId)
             ->exists();
 
         if (!$enrolled) {
+            $eligibility = $student->checkCourseEligibility($courseId);
+            if (!($eligibility['eligible'] ?? false)) {
+                abort(403, $eligibility['message'] ?? 'هذا المقرر ليس ضمن مقرراتك.');
+            }
+
             DB::table('enrollments')->updateOrInsert(
                 ['student_id' => $student->student_id, 'course_id' => $courseId],
                 ['enrollment_date' => now(), 'created_at' => now(), 'updated_at' => now()]
@@ -497,6 +503,11 @@ class StudentWebController extends Controller
         $student = $this->getStudent();
         $lesson = DB::table('lessons')->where('lesson_id', $lessonId)->first();
         if (!$lesson) abort(404, 'المحاضرة غير موجودة');
+
+        // تحميل المحاضرة لمن هو مسجَّل في مقررها فقط
+        if (!\App\Support\Access::studentEnrolledInCourse($student->student_id, $lesson->course_id)) {
+            abort(403, 'هذه المحاضرة ليست ضمن مقرراتك.');
+        }
 
         $course = DB::table('courses')->where('course_id', $lesson->course_id)->first();
         $rawPath = $lesson->file_path ?: $lesson->content_url;
@@ -1184,7 +1195,7 @@ class StudentWebController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password'     => 'required|min:6|confirmed',
+            'new_password'     => 'required|min:8|confirmed',
         ], [
             'current_password.required' => 'يرجى إدخال كلمة المرور الحالية.',
             'new_password.required'     => 'يرجى إدخال كلمة المرور الجديدة.',
@@ -1213,7 +1224,7 @@ class StudentWebController extends Controller
             'phone'            => 'nullable|string|max:20',
             'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'current_password' => 'nullable|string',
-            'new_password'     => 'nullable|string|min:6',
+            'new_password'     => 'nullable|string|min:8',
             'telegram_chat_id' => 'nullable|string',
         ]);
 
@@ -1228,7 +1239,7 @@ class StudentWebController extends Controller
             }
         }
 
-        $otp = (string) rand(100000, 999999);
+        $otp = (string) random_int(100000, 999999);
 
         $telegramService = new \App\Services\TelegramService();
         $telegramResult  = $telegramService->sendProfileOtpToUser($user, $otp, $request->input('telegram_chat_id'));
@@ -1411,7 +1422,7 @@ class StudentWebController extends Controller
         $request->validate([
             'receiver_id' => 'required|exists:users,user_id',
             'message'     => 'required|string|max:2000',
-            'attachment'  => 'nullable|file|max:51200',
+            'attachment'  => 'nullable|file|max:51200|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar,mp3,m4a,mp4,aac,wav,ogg,oga,webm,amr,3gp,opus,mov',
         ]);
 
         $attachmentPath = null;

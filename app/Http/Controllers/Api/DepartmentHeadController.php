@@ -471,6 +471,14 @@ class DepartmentHeadController extends Controller
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
 
+        // الطالب ضمن قسم الرئيس، والطلب في مرحلة رئيس القسم (بعد موافقة ولي الأمر)
+        if (!\App\Support\Access::headManagesUser($request->user(), $leaveRequest->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص طلاب قسمك'], 403);
+        }
+        if ($leaveRequest->status !== 'pending_hod') {
+            return response()->json(['success' => false, 'message' => 'لا يمكن معالجة الطلب في مرحلته الحالية'], 422);
+        }
+
         $newStatus = $request->status === 'approved' ? 'pending_affairs' : 'rejected';
 
         DB::table('leave_requests')
@@ -779,6 +787,9 @@ class DepartmentHeadController extends Controller
         if (!$requestRow) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
         }
+        if (!\App\Support\Access::headManagesStudent($request->user(), $requestRow->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا التقرير لا يخص طلاب قسمك'], 403);
+        }
 
         if ($requestRow->status !== 'completed') {
             return response()->json(['success' => false, 'message' => 'التقرير لم يتم إتمامه بعد من قبل المدرب'], 400);
@@ -852,6 +863,9 @@ class DepartmentHeadController extends Controller
         if (!$report) {
             return response()->json(['success' => false, 'message' => 'التقرير غير موجود'], 404);
         }
+        if (!\App\Support\Access::headManagesStudent($request->user(), $report->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا التقرير لا يخص طلاب قسمك'], 403);
+        }
 
         // منع التعديل إذا تم حفظ رأي رئيس القسم مسبقاً
         if (!empty($report->hod_notes)) {
@@ -875,6 +889,11 @@ class DepartmentHeadController extends Controller
 
     public function deleteReportRequest(Request $request, $id)
     {
+        $studentId = DB::table('report_requests')->where('id', $id)->value('student_id');
+        if ($studentId && !\App\Support\Access::headManagesStudent($request->user(), $studentId)) {
+            return response()->json(['success' => false, 'message' => 'هذا التقرير لا يخص طلاب قسمك'], 403);
+        }
+
         DB::table('performance_reports')->where('report_request_id', $id)->delete();
         $deleted = DB::table('report_requests')->where('id', $id)->delete();
         if ($deleted) {
@@ -1464,6 +1483,10 @@ class DepartmentHeadController extends Controller
 
     public function getCourseGradeEntries(Request $request, $courseId)
     {
+        if (!\App\Support\Access::headManagesCourse($request->user(), $courseId)) {
+            return response()->json(['success' => false, 'message' => 'هذا المقرر لا يتبع قسمك'], 403);
+        }
+
         $rows = DB::table('grade_events')
             ->join('grade_entries',  'grade_events.id',       '=', 'grade_entries.grade_event_id')
             ->join('students',       'grade_entries.student_id', '=', 'students.student_id')
@@ -1573,7 +1596,14 @@ class DepartmentHeadController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
         $req = \App\Models\StudentRequest::findOrFail($id);
-        
+
+        if (!\App\Support\Access::headManagesStudent($request->user(), $req->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص طلاب قسمك'], 403);
+        }
+        if ($req->status !== 'pending_hod') {
+            return response()->json(['success' => false, 'message' => 'لا يمكن معالجة الطلب في مرحلته الحالية'], 422);
+        }
+
         $req->hod_decision = $request->status;
         $req->hod_notes = $request->notes ?? '';
         
