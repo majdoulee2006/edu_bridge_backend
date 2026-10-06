@@ -41,6 +41,96 @@ class Access
             ->exists();
     }
 
+    // ───────────────────────── رئيس القسم ─────────────────────────
+
+    /**
+     * قسم رئيس القسم: من جدول heads، وإلا من users.department (الاسم).
+     *
+     * @return array{id: ?int, name: ?string}
+     */
+    public static function headDepartment(User $head): array
+    {
+        $row = DB::table('heads')->where('user_id', $head->user_id)->first();
+        $id  = $row->department_id ?? null;
+        $name = $id ? DB::table('departments')->where('department_id', $id)->value('name') : null;
+
+        if (!$name && !empty($head->department)) {
+            $name = $head->department;
+            $id   = $id ?: DB::table('departments')->where('name', $name)->value('department_id');
+        }
+
+        return ['id' => $id ? (int) $id : null, 'name' => $name];
+    }
+
+    /** هل المقرر ضمن برنامج تابع لقسم رئيس القسم؟ */
+    public static function headManagesCourse(User $head, $courseId): bool
+    {
+        $dept = self::headDepartment($head);
+        if (!$dept['id']) {
+            return false;
+        }
+
+        return DB::table('course_program')
+            ->join('programs', 'course_program.program_id', '=', 'programs.id')
+            ->where('programs.department_id', $dept['id'])
+            ->where('course_program.course_id', $courseId)
+            ->exists();
+    }
+
+    /**
+     * هل المستخدم (users.user_id) طالب أو معلّم أو ولي أمر ضمن قسم الرئيس؟
+     * الأدوار الأعلى (أدمن، رئيس قسم، شؤون) لا يديرها رئيس القسم أبداً.
+     */
+    public static function headManagesUser(User $head, $targetUserId): bool
+    {
+        $target = DB::table('users')->where('user_id', $targetUserId)->first();
+        if (!$target || (int) $target->user_id === (int) $head->user_id) {
+            return false;
+        }
+
+        $dept = self::headDepartment($head);
+        if (!$dept['name'] && !$dept['id']) {
+            return false;
+        }
+
+        switch ((int) $target->role_id) {
+            case 2: // معلّم
+            case 3: // طالب
+                return $dept['name'] !== null && $target->department === $dept['name'];
+
+            case 4: // ولي أمر: له ابن واحد على الأقل في القسم
+                $parent = DB::table('parents')->where('user_id', $target->user_id)->first();
+                if (!$parent) {
+                    return false;
+                }
+                $childUserIds = DB::table('parent_students')
+                    ->whereIn('parent_id', [$parent->user_id, $parent->parent_id])
+                    ->pluck('student_id');
+
+                return DB::table('students')
+                    ->join('users', 'students.user_id', '=', 'users.user_id')
+                    ->where(function ($q) use ($childUserIds) {
+                        $q->whereIn('students.user_id', $childUserIds)
+                          ->orWhereIn('students.student_id', $childUserIds);
+                    })
+                    ->where('users.department', $dept['name'])
+                    ->exists();
+
+            default:
+                return false;
+        }
+    }
+
+    /** هل الطالب (students.student_id) ضمن قسم رئيس القسم؟ */
+    public static function headManagesStudent(User $head, $studentId): bool
+    {
+        $userId = DB::table('students')->where('student_id', $studentId)->value('user_id');
+
+        return $userId ? self::headManagesUser($head, $userId) : false;
+    }
+
+    // ───────────────────────── المعلّم ─────────────────────────
+
     /** هل المعلّم يدرّس هذا المقرر؟ */
     public static function teacherTeachesCourse(int $teacherId, $courseId): bool
     {
