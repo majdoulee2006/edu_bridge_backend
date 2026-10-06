@@ -641,6 +641,11 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::get('/settings', [ParentWebController::class, 'settings'])->name('parent.settings');
 });
 
+// ===== بحث الطالب بالرقم الجامعي (للأدمن/الشؤون/رئيس القسم عند ربط ولي أمر) =====
+Route::middleware(['web', 'auth', 'throttle:60,1'])
+    ->get('/staff/student-lookup', [\App\Http\Controllers\Web\StudentLookupController::class, 'show'])
+    ->name('staff.student_lookup');
+
 // ===== Live Web Notifications Polling Route =====
 Route::middleware(['web'])->get('/web-notifications/latest', function () {
     $userId = Auth::id();

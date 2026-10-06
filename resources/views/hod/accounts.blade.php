@@ -729,7 +729,7 @@
         clearTimeout(lookupTimers[index]);
         if (!uid || uid.length < 4) { result.style.display='none'; return; }
         lookupTimers[index] = setTimeout(() => {
-            fetch('/api/student/info/' + encodeURIComponent(uid))
+            fetch('/staff/student-lookup?uid=' + encodeURIComponent(uid), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
                 .then(r => r.json())
                 .then(data => {
                     if (data && data.full_name) {

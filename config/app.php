@@ -72,6 +72,9 @@ return [
     */
     'fixed_otp' => env('OTP_FIXED_CODE'),
 
+    // مضيفات إضافية موثوقة لروابط الدخول التي يولّدها المساعد الذكي (مفصولة بفاصلة)
+    'ai_allowed_hosts' => env('AI_ALLOWED_HOSTS', ''),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
