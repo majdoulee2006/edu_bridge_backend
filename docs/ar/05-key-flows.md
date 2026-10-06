@@ -181,3 +181,29 @@ sequenceDiagram
 
 - **API:** `forgot-password` يرسل OTP، ثم `reset-password` (بالبريد + الرمز + كلمة جديدة).
 - **ويب:** عبر Telegram: `send-otp` ← `verify-otp` (5 محاولات كحد أقصى) ← `reset`، والرمز محفوظ في جلسة المتصفح وصالح 15 دقيقة.
+
+## 8) ماسح تيليغرام
+
+(المصدر: `TelegramBotHandler::handleQrAttendanceMenu`, `TelegramWebhookController`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Stu as الطالب
+    participant Bot as بوت تيليغرام
+    participant Web as صفحة الماسح
+    participant API as Laravel
+
+    Stu->>Bot: طلب حضور بالـ QR
+    Bot->>Bot: رابط موقّع مؤقت (15 دقيقة) مربوط بـ chat_id
+    Bot-->>Stu: زر فتح الماسح
+    Stu->>Web: فتح الرابط الموقّع
+    Web->>API: GET /telegram/scanner (signed:relative)
+    API-->>Web: صفحة + scanner_token مشفّر
+    Stu->>Web: مسح QR + التقاط وجه
+    Web->>API: POST /telegram/record-attendance (scanner_token, qr_token, وجه)
+    API->>API: فك التشفير: الهوية من الرمز وليس من العميل
+    API-->>Web: تم تسجيل الحضور أو رفض
+```
+
+الحالات: `verified` عند مطابقة وجه 70% فأكثر، `first_time` عند أول بصمة، `suspicious` عند غياب بيانات وجه أو تطابق ضعيف (مع تنبيه المعلّم). ويمكن اشتراط الوجه بـ `ATTENDANCE_REQUIRE_FACE=true`.

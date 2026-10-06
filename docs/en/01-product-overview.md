@@ -73,5 +73,5 @@ Timetable, grades, attendance, lectures, submit excuses and leave, QR scanner, a
 | Web UI | 142 Blade pages |
 | Flutter app | ~73K lines, ~170 files |
 | Database | 65 tables + 3 views (about 120 migrations) |
-| API | 329 endpoints |
+| API | 330 endpoints |
 | Web routes | ~370 routes |

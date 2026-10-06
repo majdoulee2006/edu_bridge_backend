@@ -181,3 +181,29 @@ Who can message whom:
 
 - **API:** `forgot-password` sends an OTP, then `reset-password` (email + code + new password).
 - **Web:** through Telegram: `send-otp` -> `verify-otp` (5 attempts maximum) -> `reset`; the code is kept in the browser session and is valid for 15 minutes.
+
+## 8) Telegram scanner
+
+(Source: `TelegramBotHandler::handleQrAttendanceMenu`, `TelegramWebhookController`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Stu as Student
+    participant Bot as Telegram bot
+    participant Web as Scanner page
+    participant API as Laravel
+
+    Stu->>Bot: Request QR attendance
+    Bot->>Bot: Signed expiring link (15 min) bound to the chat_id
+    Bot-->>Stu: Open-scanner button
+    Stu->>Web: Open the signed link
+    Web->>API: GET /telegram/scanner (signed:relative)
+    API-->>Web: Page + encrypted scanner_token
+    Stu->>Web: Scan QR + capture a face
+    Web->>API: POST /telegram/record-attendance (scanner_token, qr_token, face)
+    API->>API: Decrypt: identity comes from the token, not the client
+    API-->>Web: Attendance recorded or rejected
+```
+
+Statuses: `verified` for a face match of 70% or more, `first_time` for the first embedding, `suspicious` when face data is missing or the match is weak (the teacher is alerted). Face can be made mandatory with `ATTENDANCE_REQUIRE_FACE=true`.

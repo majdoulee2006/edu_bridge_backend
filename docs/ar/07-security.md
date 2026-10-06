@@ -6,12 +6,12 @@
 
 | القناة | الآلية | التفاصيل |
 |---|---|---|
-| التطبيق (API) | Laravel Sanctum، Bearer token | توكن واحد حالي لكل مستخدم (`users.current_token_id`)، وإصدار توكن جديد يحذف السابق. لا تاريخ انتهاء للتوكن (`expiration = null`) |
+| التطبيق (API) | Laravel Sanctum، Bearer token | توكن واحد حالي لكل مستخدم (`users.current_token_id`)، وإصدار توكن جديد يحذف السابق. ينتهي التوكن بعد 30 يوماً، والتطبيق يعيد المستخدم لشاشة الدخول عند 401 (`SANCTUM_EXPIRATION`=43200 دقيقة (30 يوماً)) |
 | الويب | جلسة Laravel + CSRF | جلسة واحدة نشطة (`current_session_id`) مع نافذة خمول **20 دقيقة**؛ بعدها يُسمح بدخول جديد |
-| بدائل الدخول | OTP بالبريد (`login-otp`) | رمز 6 أرقام عبر `random_int` (ما عدا `APP_ENV=local` حيث يُثبَّت `123456`) |
+| بدائل الدخول | OTP بالبريد (`login-otp`) | رمز 6 أرقام عبر `random_int`. رمز ثابت للتطوير فقط عند ضبط `OTP_FIXED_CODE` صراحةً وفي بيئة local/testing |
 | الطالب على ويب متعدد الأجهزة | تحقق بالوجه | `/student/face-verification` |
 
-كلمات المرور تُجزَّأ بـ bcrypt (`Hash`). الحد الأدنى 6 أحرف.
+كلمات المرور تُجزَّأ بـ bcrypt (`Hash`). الحد الأدنى 8 أحرف عند التعيين الذاتي (6 للحسابات التي ينشئها الموظفون حالياً).
 
 ## 2) التفويض
 
@@ -44,15 +44,15 @@
 |---|---|---|
 | كلمات المرور | `users.password` (bcrypt) | |
 | بصمة الوجه المرجعية | `students.face_embedding` (JSON، 192 رقماً) + `students.reference_photo` | بيانات حيوية، تتطلب موافقة وسياسة احتفاظ |
-| صور الحضور | `public/uploads/faces/` | ⚠️ داخل الجذر العام |
+| صور الحضور | `storage/app/private/faces/` (خاص) | تُعرض عبر `GET /api/attendance/{id}/face` لمن يحق له فقط؛ الأمر `faces:secure` ينقل القديم |
 | مفاتيح الخدمات | `.env` و`storage/app/firebase-service-account.json` | خارج git |
 | سجل النشاط | `user_activities` | تُحذف السجلات الأقدم من 90 يوماً |
 
 ## 6) الاتصال والنقل
 
 - HTTPS مفروض في `production` (`URL::forceScheme`).
-- CORS مفتوح حالياً (`*`)، ويجب تقييده (S-09).
-- حماية CSRF مفعّلة للويب، مع استثناء `affairs/accounts*` (S-16).
+- CORS مقيَّد: أصول `CORS_ALLOWED_ORIGINS` + localhost للتطوير (كان مفتوحاً `*`).
+- حماية CSRF مفعّلة للويب **بدون استثناءات**. الجلسات مشفّرة افتراضياً.
 
 ## 7) التدقيق والمراقبة
 

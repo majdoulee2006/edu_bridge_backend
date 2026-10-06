@@ -6,7 +6,7 @@ OUT = os.path.join(ROOT, 'site-pdf')
 os.makedirs(OUT, exist_ok=True)
 
 ORDER = ['00-README', '01-product-overview', '02-architecture', '05-key-flows', '06-setup-and-deploy',
-         '07-security', '08-project-status', '09-roadmap', '10-handover-checklist', '03-database', '04-api-reference']
+         '07-security', '08-project-status', '11-remediation-plan', '09-roadmap', '10-handover-checklist', '03-database', '04-api-reference']
 
 CFG = {
     'en': dict(title='Edu-Bridge: Technical Documentation', sub='Architecture, database, API, status and handover guide', dir='ltr', lang='en',

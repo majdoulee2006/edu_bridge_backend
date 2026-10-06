@@ -12,9 +12,9 @@
 | Dimension | Assessment |
 |---|---|
 | Functional completeness | **High.** 6 roles, a mobile app and full web dashboards, real-time chat, QR + face + location attendance, automatic absence warnings, a Telegram bot, an AI assistant |
-| Security maturity | **Medium to good after the fixes.** The critical vulnerabilities S-01 to S-07 are closed. Medium items (S-08 onwards) and production settings remain |
-| Code quality | **Medium to low.** Very large controllers, logic duplicated between web and API, no automated tests |
-| Production readiness | **Nearly ready.** Needs production environment setup (section 6) and the medium items in section 3 |
+| Security maturity | **Good.** All known critical, high and medium issues are closed, with **104+ automated tests**. Documented accepted risks remain (S-11, S-15) plus production settings |
+| Code quality | **Medium.** Large controllers and web/API duplication remain, but there is now a **test safety net** for authorization and attendance |
+| Production readiness | **Ready after environment setup (section 6)** and running `php artisan migrate` |
 | Documentation before this set | Almost none (default Laravel/Flutter READMEs) |
 
 ---
@@ -49,6 +49,58 @@
 **Actual test:** 12 OTP guesses were sent; 10 were accepted for processing (wrong code, `400`) and the rest were rejected with `429`.
 
 **Verification:** all migrations (about 120) were run on a new empty database and succeeded in full. The duplicate files are guarded by `hasColumn/hasTable` or add different columns, so they do not conflict. No migration was deleted on purpose.
+
+### Third batch (full remediation plan: [`11-remediation-plan.md`](11-remediation-plan.md))
+
+**Method:** every fix has an automated test written first. For most of them I proved that the test **fails on the old code and passes on the new**. Result: **104+ automated tests pass** (there were none).
+
+| # | Fix | Files |
+|---|---|---|
+| 18 | **N-10 (critical):** the head of department (web) can no longer delete or edit (email/password) any user; limited to teachers, students and parents **of their department**, never touching Admin/Affairs/other heads | `HODWebController`, `Support/Access` |
+| 19 | **N-11:** deleting schedules/exams/reports, course weighting and leave requests limited to the head's department, with a leave **state machine** (no skipping the parent's approval) | `HODWebController` |
+| 20 | **N-08/N-09:** the head's API (leave, reports, student services, course grades, meetings and parent summons) scoped to department and correct stage. The dead `updateLeaveStatus` that set `approved` directly was removed | `DepartmentHeadController`, `HODController`, `ParentMeetingController` |
+| 21 | **N-02/N-04/N-03/N-05/N-12:** a teacher cannot answer other students' excuses, mark attendance for a lesson/student outside the course, read/submit others' reports, or summon parents of non-students; same in the web version | `TeacherController`, `TeacherWebController` |
+| 22 | **N-06/N-07/N-13:** a student cannot read others' leave, submit assignments of non-enrolled courses, **or be auto-enrolled in any course** by opening its link (the materials page enrolled them instantly) | `StudentController`, `StudentWebController` |
+| 23 | **N-15:** role hierarchy: Affairs cannot edit/delete/disable Admin or other Affairs accounts (API + web) | `AffairsController`, `AffairsWebController` |
+| 24 | Chat: the "who can message whom" matrix now applies to **group creation** (it was a bypass) | `ChatController` |
+| 25 | **S-08/S-09/D3/D6/S-16/S-17/D7:** 30-day token expiry (app returns to login on 401), restricted CORS, **fixed OTP removed** (explicit dev-only option), 8-character passwords when set (server and app), CSRF exception removed, sessions encrypted by default | `config/*`, `AuthController`, `bootstrap/app.php`, Flutter |
+| 26 | **S-10/S-12:** attendance no longer accepts faces implicitly (the fake 90/96 scores removed): `first_time` / `suspicious` with a teacher alert, future scan times rejected, `ATTENDANCE_REQUIRE_FACE` option | `StudentController`, `config/attendance.php` |
+| 27 | **S-13:** face images in **private** storage with a permission-checked viewer, and a `faces:secure` command to move old ones | `FaceImageStore`, `FaceImageController`, `SecureFaceImages` |
+| 28 | **S-14:** the Telegram scanner uses a **signed, expiring link** + an encrypted token that identifies the student (no client `chat_id`), and honest face statuses | `TelegramWebhookController`, `TelegramBotHandler` |
+| 29 | **S-19:** `server_url` in the AI assistant restricted (same host / local network / allow-list) | `AiAssistantController` |
+| 30 | **B-01:** student lookup by university ID for Admin/Head pages through a dedicated role-scoped web route (it always failed) | `StudentLookupController` |
+| 31 | **B-08/B-07 partial:** ending a session no longer turns "late" into absent and honors approved leave; excused absences are excluded from warnings | `TeacherController`, `AbsenceWarningService` |
+| 32 | **B-11/F4:** FCM access-token cache, and removal of the hard-coded assumption that user 1 is the admin | `FcmService`, `Support/Access` |
+| 33 | Removed **6 dead controllers** with no authorization (N-14, N-16) | `Api/*`, `WebHead/*` |
+
+**Latent functional bugs found by the tests (each crashed whole features with a 500):**
+
+| # | Defect | Impact | Fix |
+|---|---|---|---|
+| L-01 | Code uses the non-existent column `students.department_id` | Teacher parent-summons, educator-students list and the head's summons list all returned 500 | Join through `programs.department_id` |
+| L-02 | `parent_summons.status` is an enum that rejects `pending_hod`/`pending_affairs` used by the code | The whole summons flow was broken | New migration `2026_10_06_100000` widens the values |
+| L-03 | Code reads `parent_summons.summon_id`; the real key is `id` | Forwarding/issuing a summon failed | Replaced with `id` |
+| L-04 | `departments.name_ar` and `students.academic_year` do not exist | Lists failed | `departments.name` and `users.academic_year` |
+| L-05 | `TelegramWebhookController` uses `DB` without importing it | **Every Telegram-scanner attendance returned 500** | Import added |
+| L-06 | Route `/teacher/parent-summons/request` pointed to a missing method | The teacher's parent-summon screen did not work | Bound to `sendParentSummon` |
+| L-07 | The end-session response said "assignment created" | Wrong message | Correct text |
+
+> **Important for deployment:** run `php artisan migrate` to apply the summons migration (L-02) on your live database, and add the new variables from `.env.example`.
+
+**Withdrawn or intentionally not fixed:**
+
+| Item | Decision |
+|---|---|
+| N-01 (grading a submission outside the teacher's course) | **Withdrawn:** my false alarm (the check exists past the first 17 lines). Its test is kept as a regression guard |
+| S-11 (client-sent face embedding, no liveness) | **Documented accepted risk:** no complete fix without an architectural change (on-device attestation/Play Integrity). Mitigated by device binding, location, reject logging and teacher alerts |
+| S-15 (QR shared with an absent student) | **Accepted risk:** mitigated by face, device and location checks |
+| B-05 (two rows for the same lesson on two days) | Not changed: needs an academic decision |
+| B-06 (`created_at` = client time) | **Accepted:** the scan time is now bounded by the session window (and never in the future) |
+| B-07 (per-semester absence count) | **Deferred:** an academic decision for the institute |
+| B-10 (synchronous FCM) | **Partial:** cost reduced by caching; queue sending requires `queue:work`, so it is left for the next phase |
+| 8-character password | Applied to **self-service** changes only; staff-created accounts remain at 6 (needs review of the creation screens) |
+
+---
 
 ---
 
@@ -94,18 +146,18 @@
 
 | # | Item | Details |
 |---|---|---|
-| S-08 ✅ | Sanctum tokens never expire | `config/sanctum.php`: `'expiration' => null`. A token is valid forever unless logged out. (`SingleSessionGuard` has logic that drops a 24-hour idle token, but only on a new login attempt) |
-| S-09 ✅ | CORS fully open | `config/cors.php`: `allowed_origins => ['*']` with `allowed_methods => ['*']`. Must be restricted to the project domains in production |
-| S-10 ✅ | Face check passes implicitly when there is no reference | `StudentController::scanAttendanceQr`: with no reference photo, `face_score = 96` and `verified`; if vector extraction fails, `90`; at first enrollment or after `requires_face_reset`, any face is accepted and stored as the reference (100%) |
+| S-08 ✔ **Fixed** | Sanctum tokens never expire | `config/sanctum.php`: `'expiration' => null`. A token is valid forever unless logged out. (`SingleSessionGuard` has logic that drops a 24-hour idle token, but only on a new login attempt) |
+| S-09 ✔ **Fixed** | CORS fully open | `config/cors.php`: `allowed_origins => ['*']` with `allowed_methods => ['*']`. Must be restricted to the project domains in production |
+| S-10 ✔ **Fixed** | Face check passes implicitly when there is no reference | `StudentController::scanAttendanceQr`: with no reference photo, `face_score = 96` and `verified`; if vector extraction fails, `90`; at first enrollment or after `requires_face_reset`, any face is accepted and stored as the reference (100%) |
 | S-11 ✅ | Face is compared on an embedding the client sends | The `face_embedding` is computed in the app and sent to the server. A modified app (or a direct HTTP request) can send the stored embedding itself. There is no server-side liveness check |
-| S-12 ✅ | `scanned_at`, `device_id` and `latitude/longitude` come from the client | All are unsigned values the client sends. A student can forge location, device and time (within the session window). The offline sync policy `anytime` opens the door to late recording |
-| S-13 ✅ | Face images in a public folder | Saved in `public/uploads/faces/` and reachable directly by URL. Sensitive biometric data. (The folder was added to `.gitignore`, but it is still public on the server) |
-| S-14 ✅ | `POST /telegram/record-attendance` (web, public) | Identifies the student only by the `chat_id` sent in the request, with no login. Whoever knows a student's Telegram `chat_id` and holds a live QR token can record their attendance. The only protection is the optional face check (`face_image` and `face_embedding` are both `nullable`) |
+| S-12 ✔ **Fixed** | `scanned_at`, `device_id` and `latitude/longitude` come from the client | All are unsigned values the client sends. A student can forge location, device and time (within the session window). The offline sync policy `anytime` opens the door to late recording |
+| S-13 ✔ **Fixed** | Face images in a public folder | Saved in `public/uploads/faces/` and reachable directly by URL. Sensitive biometric data. (The folder was added to `.gitignore`, but it is still public on the server) |
+| S-14 ✔ **Fixed** | `POST /telegram/record-attendance` (web, public) | Identifies the student only by the `chat_id` sent in the request, with no login. Whoever knows a student's Telegram `chat_id` and holds a live QR token can record their attendance. The only protection is the optional face check (`face_image` and `face_embedding` are both `nullable`) |
 | S-15 ✅ | QR token | `Str::random(32)` (good). But it can be shared with an absent student within the session (mitigated by the face, device and location checks) |
-| S-16 ⚠️ | CSRF protection partly disabled | `bootstrap/app.php`: `affairs/accounts` and `affairs/accounts/*` are excluded from CSRF. The reason must be reviewed, since these are account-modifying routes |
-| S-17 ✅ | `/broadcasting/auth` | Defined twice (one public, one inside `affairs`). In `routes/channels.php` the `presence-online` channel uses `$user->first_name`, which may be `null` |
+| S-16 ✔ **Fixed** | CSRF protection partly disabled | `bootstrap/app.php`: `affairs/accounts` and `affairs/accounts/*` are excluded from CSRF. The reason must be reviewed, since these are account-modifying routes |
+| S-17 ✔ **Fixed** | `/broadcasting/auth` | Defined twice (one public, one inside `affairs`). In `routes/channels.php` the `presence-online` channel uses `$user->first_name`, which may be `null` |
 | S-18 ⚠️ | `/web-notifications/*` (web) | Relies on `Auth::id()` only (good), but `delete` over `GET/POST` has no dedicated CSRF. Needs verification |
-| S-19 ✅ | Link injection into AI assistant replies | `AiAssistantController::resolveServerBaseUrl` accepts `server_url` from the request body as is (any non-localhost domain) and places it in the login links inside the assistant replies. A logged-in user can make the assistant emit links pointing to a domain they choose (phishing). A domain allow-list is needed |
+| S-19 ✔ **Fixed** | Link injection into AI assistant replies | `AiAssistantController::resolveServerBaseUrl` accepts `server_url` from the request body as is (any non-localhost domain) and places it in the login links inside the assistant replies. A logged-in user can make the assistant emit links pointing to a domain they choose (phishing). A domain allow-list is needed |
 
 ### 🟡 Low / improvements
 
@@ -191,6 +243,7 @@ The current `.env` settings are for local development and must be changed:
 ## 8. Recommended fix order
 
 1. ~~Week 1 (S-01 to S-07)~~ **Done**.
-2. **Next:** S-08, S-09, S-13, S-10 to S-12 (tokens, CORS, face images, attendance hardening), and the section 6 items.
+2. ~~Medium items (S-08 to S-19) and the extended authorization (N-xx)~~ **Done** (third batch).
+3. **Next:** the section 6 items (production setup), institute decisions (B-05/B-07), liveness checking (S-11), and splitting the controllers.
 3. **Weeks 3 to 4:** write Feature tests for the authorization routes (for each role: can it reach another's data?) so these errors do not return.
 4. **Later:** split controllers into Services, unify web/API logic, and squash the migrations.

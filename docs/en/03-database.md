@@ -216,7 +216,7 @@ Announcements and activities (target audience, images, link, event details)
 | `event_time` | `time` | Yes | NULL |  |  |
 | `location` | `varchar(255)` | Yes | NULL |  |  |
 
-**Foreign keys:** `course_id` -> `courses.course_id`, `user_id` -> `users.user_id`
+**Foreign keys:** `user_id` -> `users.user_id`, `course_id` -> `courses.course_id`
 
 ## assignment_submissions
 
@@ -285,7 +285,7 @@ Attendance log: status, device, location, face match score, reject reason, excus
 | `created_at` | `timestamp` | Yes | NULL |  |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `lesson_id` -> `lessons.lesson_id`, `student_id` -> `students.student_id`
+**Foreign keys:** `student_id` -> `students.student_id`, `lesson_id` -> `lessons.lesson_id`
 
 ## attendance_sessions
 
@@ -389,7 +389,7 @@ Teachers assigned to courses, with a role (e.g. advisor)
 | `created_at` | `timestamp` | Yes | NULL |  |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `teacher_id` -> `teachers.teacher_id`, `course_id` -> `courses.course_id`
+**Foreign keys:** `course_id` -> `courses.course_id`, `teacher_id` -> `teachers.teacher_id`
 
 ## courses
 
@@ -438,7 +438,7 @@ Student enrollment in courses per semester
 | `created_at` | `timestamp` | Yes | NULL |  |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `course_id` -> `courses.course_id`, `student_id` -> `students.student_id`
+**Foreign keys:** `student_id` -> `students.student_id`, `course_id` -> `courses.course_id`
 
 ## exams
 
@@ -592,7 +592,7 @@ Heads of department and their department link
 | `created_at` | `timestamp` | Yes | NULL |  |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `user_id` -> `users.user_id`, `department_id` -> `departments.department_id`
+**Foreign keys:** `department_id` -> `departments.department_id`, `user_id` -> `users.user_id`
 
 ## job_batches
 
@@ -667,7 +667,7 @@ Lectures / sessions (file, video, teacher, course); one attendance session is cr
 | `teacher_id` | `bigint(20) unsigned` | Yes | NULL | INDEX |  |
 | `department_id` | `bigint(20) unsigned` | Yes | NULL | INDEX |  |
 
-**Foreign keys:** `teacher_id` -> `teachers.teacher_id`, `department_id` -> `departments.department_id`, `course_id` -> `courses.course_id`
+**Foreign keys:** `course_id` -> `courses.course_id`, `teacher_id` -> `teachers.teacher_id`, `department_id` -> `departments.department_id`
 
 ## messages
 
@@ -694,7 +694,7 @@ Chat messages (attachments, reply, forward, delete, disappearing, delivery/read)
 | `created_at` | `timestamp` | Yes | NULL | INDEX |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `sender_id` -> `users.user_id`, `receiver_id` -> `users.user_id`
+**Foreign keys:** `receiver_id` -> `users.user_id`, `sender_id` -> `users.user_id`
 
 ## migrations
 
@@ -722,7 +722,7 @@ In-system notifications (type, category, related id)
 | `created_at` | `timestamp` | Yes | NULL |  |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `sender_id` -> `users.user_id`, `user_id` -> `users.user_id`
+**Foreign keys:** `user_id` -> `users.user_id`, `sender_id` -> `users.user_id`
 
 ## otp_codes
 
@@ -806,11 +806,11 @@ Parent summons (manual, or automatic after 10 absence days)
 | `reason_title` | `varchar(255)` | No |  |  |  |
 | `details` | `text` | No |  |  |  |
 | `summon_date` | `date` | Yes | NULL |  |  |
-| `status` | `enum('sent','acknowledged','attended','cancelled')` | No | 'sent' | INDEX |  |
+| `status` | `enum('pending_hod','pending_affairs','sent','acknowledged','attended','cancelled','approved','rejected','completed')` | No | 'sent' | INDEX |  |
 | `created_at` | `timestamp` | Yes | NULL |  |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `student_id` -> `students.student_id`, `sender_user_id` -> `users.user_id`
+**Foreign keys:** `sender_user_id` -> `users.user_id`, `student_id` -> `students.student_id`
 
 ## parents
 
@@ -969,7 +969,7 @@ Behavioral report requests (from head or parent) and head notes
 | `created_at` | `timestamp` | Yes | NULL |  |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `teacher_id` -> `teachers.teacher_id`, `student_id` -> `students.student_id`, `head_id` -> `users.user_id`, `course_id` -> `courses.course_id`
+**Foreign keys:** `course_id` -> `courses.course_id`, `teacher_id` -> `teachers.teacher_id`, `student_id` -> `students.student_id`, `head_id` -> `users.user_id`
 
 ## resources
 
@@ -1014,7 +1014,7 @@ Weekly class timetable (day, time, room, class group)
 | `created_at` | `timestamp` | Yes | NULL |  |  |
 | `updated_at` | `timestamp` | Yes | NULL |  |  |
 
-**Foreign keys:** `teacher_id` -> `users.user_id`, `course_id` -> `courses.course_id`
+**Foreign keys:** `course_id` -> `courses.course_id`, `teacher_id` -> `users.user_id`
 
 ## semesters
 

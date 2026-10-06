@@ -1,6 +1,6 @@
 # مرجع الـ API
 
-> مُولَّد آلياً من `php artisan route:list` (329 نقطة نهاية تحت `/api`). **الأساس:** `<SERVER>/api` (مثال محلي: `http://127.0.0.1:8000/api`).
+> مُولَّد آلياً من `php artisan route:list` (330 نقطة نهاية تحت `/api`). **الأساس:** `<SERVER>/api` (مثال محلي: `http://127.0.0.1:8000/api`).
 
 ## الاستخدام العام
 
@@ -15,7 +15,7 @@
 ## فهرس
 
 - عام (بدون مصادقة): **12**
-- مشترك بين الأدوار (مصادقة فقط): **27**
+- مشترك بين الأدوار (مصادقة فقط): **28**
 - الطالب (`/api/student/*`): **35**
 - المعلّم (`/api/teacher/*`): **59**
 - رئيس القسم (`/api/department-head/*`): **51**
@@ -46,6 +46,7 @@
 | الطريقة | المسار | المعالج | الصلاحية |
 |---|---|---|---|
 | POST | `/api/ai/chat` | `Api\AiAssistantController@chat` | مصادقة (أي دور) |
+| GET | `/api/attendance/{attendanceId}/face` | `Api\FaceImageController@show` | مصادقة (أي دور) |
 | POST | `/api/broadcasting/auth` | `Closure` | مصادقة (أي دور) |
 | GET | `/api/contacts` | `ChatController@getContacts` | مصادقة (أي دور) |
 | POST | `/api/groups` | `ChatController@createGroup` | مصادقة (أي دور) |
@@ -164,7 +165,7 @@
 | PUT | `/api/teacher/notifications/{notificationId}/read` | `Api\TeacherController@markNotificationRead` | مصادقة + دور: teacher |
 | GET | `/api/teacher/parent-summons` | `Api\ParentMeetingController@listSummons` | مصادقة + دور: teacher |
 | GET | `/api/teacher/parent-summons-history` | `Api\TeacherController@getTeacherSummonsHistory` | مصادقة + دور: teacher |
-| POST | `/api/teacher/parent-summons/request` | `Api\TeacherController@requestParentSummon` | مصادقة + دور: teacher |
+| POST | `/api/teacher/parent-summons/request` | `Api\TeacherController@sendParentSummon` | مصادقة + دور: teacher |
 | POST | `/api/teacher/parent-summons/send` | `Api\TeacherController@sendParentSummon` | مصادقة + دور: teacher |
 | GET | `/api/teacher/profile` | `Api\TeacherController@getTeacherProfile` | مصادقة + دور: teacher |
 | PUT | `/api/teacher/profile` | `Api\TeacherController@updateTeacherProfile` | مصادقة + دور: teacher |

@@ -19,13 +19,14 @@ Complete documentation of the project (Laravel backend + Flutter app) for handov
 | 01 | [product-overview](01-product-overview.md) | What the product is, roles, features |
 | 02 | [architecture](02-architecture.md) | Architecture, layers, external services, Flutter app |
 | 03 | [database](03-database.md) | Data dictionary (65 tables) + ERD *(auto-generated)* |
-| 04 | [api-reference](04-api-reference.md) | 329 API endpoints grouped by role *(auto-generated)* |
+| 04 | [api-reference](04-api-reference.md) | 330 API endpoints grouped by role *(auto-generated)* |
 | 05 | [key-flows](05-key-flows.md) | Diagrams: registration, login, attendance, warnings, leave, chat |
 | 06 | [setup-and-deploy](06-setup-and-deploy.md) | Install, environment variables, bot, Flutter, deployment |
 | 07 | [security](07-security.md) | Existing security controls and developer guidance |
 | 08 | [project-status](08-project-status.md) | The honest state: vulnerabilities, bugs, technical debt |
 | 09 | [roadmap](09-roadmap.md) | What to do, in order |
 | 10 | [handover-checklist](10-handover-checklist.md) | Handover checklist, licenses, ownership |
+| 11 | [remediation-plan](11-remediation-plan.md) | The remediation plan and what was executed |
 
 ## Regenerating the auto-generated files
 

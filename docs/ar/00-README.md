@@ -19,13 +19,14 @@
 | 01 | [product-overview](01-product-overview.md) | ما هو المنتج، الأدوار، الميزات |
 | 02 | [architecture](02-architecture.md) | المعمارية، الطبقات، الخدمات الخارجية، تطبيق Flutter |
 | 03 | [database](03-database.md) | قاموس البيانات (65 جدولاً) + مخطط ERD *(مُولَّد آلياً)* |
-| 04 | [api-reference](04-api-reference.md) | 329 نقطة API مصنّفة بالدور *(مُولَّد آلياً)* |
+| 04 | [api-reference](04-api-reference.md) | 330 نقطة API مصنّفة بالدور *(مُولَّد آلياً)* |
 | 05 | [key-flows](05-key-flows.md) | مخططات: التسجيل، الدخول، الحضور، الإنذارات، الإجازة، الدردشة |
 | 06 | [setup-and-deploy](06-setup-and-deploy.md) | التثبيت، متغيرات البيئة، البوت، Flutter، النشر |
 | 07 | [security](07-security.md) | الضوابط الأمنية الموجودة وإرشادات المطوّر |
 | 08 | [project-status](08-project-status.md) | الوضع الحقيقي: الثغرات والأخطاء والدين التقني |
 | 09 | [roadmap](09-roadmap.md) | ما يجب فعله بالترتيب |
 | 10 | [handover-checklist](10-handover-checklist.md) | قائمة التسليم والتراخيص |
+| 11 | [remediation-plan](11-remediation-plan.md) | خطة معالجة الثغرات وما نُفِّذ منها |
 
 ## كيف تُحدَّث الملفات المُولَّدة آلياً
 

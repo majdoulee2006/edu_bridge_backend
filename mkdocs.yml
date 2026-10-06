@@ -50,6 +50,7 @@ nav:
       - Project status: en/08-project-status.md
       - Roadmap: en/09-roadmap.md
       - Handover checklist: en/10-handover-checklist.md
+      - Remediation plan: en/11-remediation-plan.md
   - العربية:
       - ابدأ هنا: ar/00-README.md
       - نظرة عامة: ar/01-product-overview.md
@@ -62,3 +63,4 @@ nav:
       - حالة المشروع: ar/08-project-status.md
       - خارطة الطريق: ar/09-roadmap.md
       - قائمة التسليم: ar/10-handover-checklist.md
+      - خطة معالجة الثغرات: ar/11-remediation-plan.md

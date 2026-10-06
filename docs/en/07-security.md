@@ -6,12 +6,12 @@
 
 | Channel | Mechanism | Details |
 |---|---|---|
-| App (API) | Laravel Sanctum, Bearer token | One current token per user (`users.current_token_id`); issuing a new token deletes the previous one. Tokens have no expiry (`expiration = null`) |
+| App (API) | Laravel Sanctum, Bearer token | One current token per user (`users.current_token_id`); issuing a new token deletes the previous one. Tokens expire after **30 days** (`SANCTUM_EXPIRATION`), and the app returns to login on 401 |
 | Web | Laravel session + CSRF | One active session (`current_session_id`) with a **20-minute** idle window; afterwards a new login is allowed |
-| Login alternative | Email OTP (`login-otp`) | 6-digit code via `random_int` (except `APP_ENV=local`, where `123456` is fixed) |
+| Login alternative | Email OTP (`login-otp`) | 6-digit code via `random_int`. A fixed dev-only code applies only when `OTP_FIXED_CODE` is set explicitly in a local/testing environment |
 | Student on multi-device web | Face verification | `/student/face-verification` |
 
-Passwords are hashed with bcrypt (`Hash`). Minimum length is 6 characters.
+Passwords are hashed with bcrypt (`Hash`). Minimum length is 8 characters when set by the user (6 for staff-created accounts for now).
 
 ## 2) Authorization
 
@@ -44,15 +44,15 @@ The six layers (rotating QR, bound device, location, face, eligibility, no dupli
 |---|---|---|
 | Passwords | `users.password` (bcrypt) | |
 | Reference face embedding | `students.face_embedding` (JSON, 192 numbers) + `students.reference_photo` | Biometric data; requires consent and a retention policy |
-| Attendance photos | `public/uploads/faces/` | WARNING: inside the public root |
+| Attendance photos | `storage/app/private/faces/` (private) | Served through `GET /api/attendance/{id}/face` to authorized users only; `faces:secure` moves old ones |
 | Service keys | `.env` and `storage/app/firebase-service-account.json` | Outside git |
 | Activity log | `user_activities` | Entries older than 90 days are purged |
 
 ## 6) Transport
 
 - HTTPS is forced in `production` (`URL::forceScheme`).
-- CORS is currently open (`*`) and must be restricted (S-09).
-- CSRF protection is enabled for web, with an exception for `affairs/accounts*` (S-16).
+- CORS is restricted: `CORS_ALLOWED_ORIGINS` + localhost for development (it was open `*`).
+- CSRF protection is enabled for web **with no exceptions**. Sessions are encrypted by default.
 
 ## 7) Audit and monitoring
 

@@ -1,6 +1,6 @@
 # API Reference
 
-> Auto-generated from `php artisan route:list` (329 endpoints under `/api`). **Base:** `<SERVER>/api` (local example: `http://127.0.0.1:8000/api`).
+> Auto-generated from `php artisan route:list` (330 endpoints under `/api`). **Base:** `<SERVER>/api` (local example: `http://127.0.0.1:8000/api`).
 
 ## General usage
 
@@ -15,7 +15,7 @@
 ## Index
 
 - Public (no authentication): **12**
-- Shared (authentication only): **27**
+- Shared (authentication only): **28**
 - Student (`/api/student/*`): **35**
 - Teacher (`/api/teacher/*`): **59**
 - Head of department (`/api/department-head/*`): **51**
@@ -46,6 +46,7 @@
 | Method | Path | Handler | Access |
 |---|---|---|---|
 | POST | `/api/ai/chat` | `Api\AiAssistantController@chat` | Auth (any role) |
+| GET | `/api/attendance/{attendanceId}/face` | `Api\FaceImageController@show` | Auth (any role) |
 | POST | `/api/broadcasting/auth` | `Closure` | Auth (any role) |
 | GET | `/api/contacts` | `ChatController@getContacts` | Auth (any role) |
 | POST | `/api/groups` | `ChatController@createGroup` | Auth (any role) |
@@ -164,7 +165,7 @@
 | PUT | `/api/teacher/notifications/{notificationId}/read` | `Api\TeacherController@markNotificationRead` | Auth + role: teacher |
 | GET | `/api/teacher/parent-summons` | `Api\ParentMeetingController@listSummons` | Auth + role: teacher |
 | GET | `/api/teacher/parent-summons-history` | `Api\TeacherController@getTeacherSummonsHistory` | Auth + role: teacher |
-| POST | `/api/teacher/parent-summons/request` | `Api\TeacherController@requestParentSummon` | Auth + role: teacher |
+| POST | `/api/teacher/parent-summons/request` | `Api\TeacherController@sendParentSummon` | Auth + role: teacher |
 | POST | `/api/teacher/parent-summons/send` | `Api\TeacherController@sendParentSummon` | Auth + role: teacher |
 | GET | `/api/teacher/profile` | `Api\TeacherController@getTeacherProfile` | Auth + role: teacher |
 | PUT | `/api/teacher/profile` | `Api\TeacherController@updateTeacherProfile` | Auth + role: teacher |

@@ -216,7 +216,7 @@ View: إحصاءات لوحة الشؤون
 | `event_time` | `time` | نعم | NULL |  |  |
 | `location` | `varchar(255)` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `course_id` ← `courses.course_id`، `user_id` ← `users.user_id`
+**مفاتيح أجنبية:** `user_id` ← `users.user_id`، `course_id` ← `courses.course_id`
 
 ## assignment_submissions
 
@@ -285,7 +285,7 @@ View: إحصاءات لوحة الشؤون
 | `created_at` | `timestamp` | نعم | NULL |  |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `lesson_id` ← `lessons.lesson_id`، `student_id` ← `students.student_id`
+**مفاتيح أجنبية:** `student_id` ← `students.student_id`، `lesson_id` ← `lessons.lesson_id`
 
 ## attendance_sessions
 
@@ -389,7 +389,7 @@ View: إحصاءات لوحة الشؤون
 | `created_at` | `timestamp` | نعم | NULL |  |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `teacher_id` ← `teachers.teacher_id`، `course_id` ← `courses.course_id`
+**مفاتيح أجنبية:** `course_id` ← `courses.course_id`، `teacher_id` ← `teachers.teacher_id`
 
 ## courses
 
@@ -438,7 +438,7 @@ View: إحصاءات لوحة الشؤون
 | `created_at` | `timestamp` | نعم | NULL |  |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `course_id` ← `courses.course_id`، `student_id` ← `students.student_id`
+**مفاتيح أجنبية:** `student_id` ← `students.student_id`، `course_id` ← `courses.course_id`
 
 ## exams
 
@@ -592,7 +592,7 @@ View: إحصاءات لوحة الشؤون
 | `created_at` | `timestamp` | نعم | NULL |  |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `user_id` ← `users.user_id`، `department_id` ← `departments.department_id`
+**مفاتيح أجنبية:** `department_id` ← `departments.department_id`، `user_id` ← `users.user_id`
 
 ## job_batches
 
@@ -667,7 +667,7 @@ View: إحصاءات لوحة الشؤون
 | `teacher_id` | `bigint(20) unsigned` | نعم | NULL | INDEX |  |
 | `department_id` | `bigint(20) unsigned` | نعم | NULL | INDEX |  |
 
-**مفاتيح أجنبية:** `teacher_id` ← `teachers.teacher_id`، `department_id` ← `departments.department_id`، `course_id` ← `courses.course_id`
+**مفاتيح أجنبية:** `course_id` ← `courses.course_id`، `teacher_id` ← `teachers.teacher_id`، `department_id` ← `departments.department_id`
 
 ## messages
 
@@ -694,7 +694,7 @@ View: إحصاءات لوحة الشؤون
 | `created_at` | `timestamp` | نعم | NULL | INDEX |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `sender_id` ← `users.user_id`، `receiver_id` ← `users.user_id`
+**مفاتيح أجنبية:** `receiver_id` ← `users.user_id`، `sender_id` ← `users.user_id`
 
 ## migrations
 
@@ -722,7 +722,7 @@ View: إحصاءات لوحة الشؤون
 | `created_at` | `timestamp` | نعم | NULL |  |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `sender_id` ← `users.user_id`، `user_id` ← `users.user_id`
+**مفاتيح أجنبية:** `user_id` ← `users.user_id`، `sender_id` ← `users.user_id`
 
 ## otp_codes
 
@@ -806,11 +806,11 @@ View: إحصاءات لوحة الشؤون
 | `reason_title` | `varchar(255)` | لا |  |  |  |
 | `details` | `text` | لا |  |  |  |
 | `summon_date` | `date` | نعم | NULL |  |  |
-| `status` | `enum('sent','acknowledged','attended','cancelled')` | لا | 'sent' | INDEX |  |
+| `status` | `enum('pending_hod','pending_affairs','sent','acknowledged','attended','cancelled','approved','rejected','completed')` | لا | 'sent' | INDEX |  |
 | `created_at` | `timestamp` | نعم | NULL |  |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `student_id` ← `students.student_id`، `sender_user_id` ← `users.user_id`
+**مفاتيح أجنبية:** `sender_user_id` ← `users.user_id`، `student_id` ← `students.student_id`
 
 ## parents
 
@@ -969,7 +969,7 @@ View: إحصاءات لوحة الشؤون
 | `created_at` | `timestamp` | نعم | NULL |  |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `teacher_id` ← `teachers.teacher_id`، `student_id` ← `students.student_id`، `head_id` ← `users.user_id`، `course_id` ← `courses.course_id`
+**مفاتيح أجنبية:** `course_id` ← `courses.course_id`، `teacher_id` ← `teachers.teacher_id`، `student_id` ← `students.student_id`، `head_id` ← `users.user_id`
 
 ## resources
 
@@ -1014,7 +1014,7 @@ View: إحصاءات لوحة الشؤون
 | `created_at` | `timestamp` | نعم | NULL |  |  |
 | `updated_at` | `timestamp` | نعم | NULL |  |  |
 
-**مفاتيح أجنبية:** `teacher_id` ← `users.user_id`، `course_id` ← `courses.course_id`
+**مفاتيح أجنبية:** `course_id` ← `courses.course_id`، `teacher_id` ← `users.user_id`
 
 ## semesters
 
