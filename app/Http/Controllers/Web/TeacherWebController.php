@@ -103,6 +103,27 @@ class TeacherWebController extends Controller
         return Teacher::where('user_id', Auth::user()->user_id)->first();
     }
 
+    /**
+     * هل جلسة الحضور تخص المعلّم الحالي؟ (الدرس يعود له، أو يدرّس مقرر الدرس عندما لا يحدَّد معلّم).
+     */
+    private function ownsSession($sessionId): bool
+    {
+        $teacher = $this->getTeacher();
+        $lesson  = DB::table('attendance_sessions')
+            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
+            ->where('attendance_sessions.id', $sessionId)
+            ->select('lessons.teacher_id', 'lessons.course_id')
+            ->first();
+        if (!$teacher || !$lesson) {
+            return false;
+        }
+        if ($lesson->teacher_id !== null) {
+            return (int) $lesson->teacher_id === (int) $teacher->teacher_id;
+        }
+
+        return \App\Support\Access::teacherTeachesCourse($teacher->teacher_id, $lesson->course_id);
+    }
+
     // ────────────────────────────────────────────────────────────
     //  DASHBOARD
     // ────────────────────────────────────────────────────────────
@@ -328,6 +349,10 @@ class TeacherWebController extends Controller
 
     public function refreshSessionQr($id)
     {
+        if (!$this->ownsSession($id)) {
+            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة أو منتهية'], 404);
+        }
+
         $session = DB::table('attendance_sessions')->where('id', $id)->first();
         if (!$session || !$session->is_active) {
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة أو منتهية'], 404);
@@ -357,6 +382,10 @@ class TeacherWebController extends Controller
 
     public function endSession($id)
     {
+        if (!$this->ownsSession($id)) {
+            return redirect()->back()->with('error', 'الجلسة غير موجودة');
+        }
+
         $session = DB::table('attendance_sessions')->where('id', $id)->first();
         if (!$session) {
             return redirect()->back()->with('error', 'الجلسة غير موجودة');
@@ -438,6 +467,10 @@ class TeacherWebController extends Controller
 
     public function exportAttendance($sessionId)
     {
+        if (!$this->ownsSession($sessionId)) {
+            abort(404);
+        }
+
         $session = DB::table('attendance_sessions')
             ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
             ->join('courses', 'lessons.course_id', '=', 'courses.course_id')
@@ -527,6 +560,10 @@ class TeacherWebController extends Controller
 
     public function getAbsentees($sessionId)
     {
+        if (!$this->ownsSession($sessionId)) {
+            return response()->json([]);
+        }
+
         $session = DB::table('attendance_sessions')
             ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
             ->where('attendance_sessions.id', $sessionId)
@@ -884,6 +921,10 @@ class TeacherWebController extends Controller
             ->where('assignments.assignment_id', $assignmentId)
             ->select('assignments.*', 'courses.title as course_title')
             ->first();
+
+        if (!$assignment || !$teacher || !\App\Support\Access::teacherTeachesCourse($teacher->teacher_id, $assignment->course_id)) {
+            abort(403, 'هذا الواجب لا يخص مقرراتك.');
+        }
 
         $submissions = DB::table('assignment_submissions')
             ->join('students', 'assignment_submissions.student_id', '=', 'students.student_id')
@@ -1812,6 +1853,13 @@ class TeacherWebController extends Controller
         ]);
 
         $reportRequest = DB::table('report_requests')->where('id', $id)->firstOrFail();
+
+        // الطلب موجَّه لهذا المعلّم فقط
+        $reportTeacher = $this->getTeacher();
+        if (!$reportTeacher || (int) $reportRequest->teacher_id !== (int) $reportTeacher->teacher_id) {
+            abort(403, 'هذا الطلب غير موجَّه إليك.');
+        }
+
         $studentId     = $reportRequest->student_id;
         $isBehavioral  = $reportRequest->report_type === 'behavioral';
 
