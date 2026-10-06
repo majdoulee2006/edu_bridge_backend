@@ -125,6 +125,8 @@
         .sbtn { border:1px solid var(--border); background:var(--card); color:var(--text); font:inherit; font-size:14px; font-weight:800; padding:8px 16px; border-radius:999px; cursor:pointer; text-decoration:none; box-shadow:var(--shadow); transition:all .25s; display:inline-flex; align-items:center; gap:6px; }
         .sbtn:hover { border-color:var(--primary); transform:translateY(-3px); }
         .sbtn.ok { background:var(--primary); color:var(--btn-text); }
+        .webbtn { display:block; max-width:420px; margin:14px auto 0; padding:11px; text-align:center; border:2px solid var(--primary); border-radius:16px; color:var(--text); font-weight:800; font-size:16px; text-decoration:none; background:transparent; transition:all .25s; }
+        .webbtn:hover { background:var(--primary); color:var(--btn-text); transform:translateY(-2px); }
         .alt { display:block; text-align:center; margin-top:6px; font-size:13px; font-weight:700; color:var(--grey); }
         .alt a { color:var(--primary-dark); text-decoration:underline; }
         [data-theme="dark"] .alt a { color:var(--primary); }
@@ -179,6 +181,7 @@
         @else
             <div class="card" style="max-width:420px;margin:24px auto 0">التطبيق غير متوفر حالياً، حاول لاحقاً.</div>
         @endif
+        <a class="webbtn" href="{{ url('/') }}">🌐 الدخول إلى منصة الويب (من المتصفح)</a>
     </div>
 
     @if($release)
