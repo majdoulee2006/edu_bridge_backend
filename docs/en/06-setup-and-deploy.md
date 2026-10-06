@@ -120,3 +120,22 @@ The repository is not set up for it, so these are guidelines:
 | The app cannot find the server | `adb reverse tcp:8000 tcp:8000`, or set the address in `api_service.dart` |
 | 429 error | Rate limit exceeded (login 5/min, OTP 10/hour per email) |
 | 423 on login | The account is locked (5 failures) or signed in on another device |
+
+## 9) Distributing and updating the Android app
+
+The app is not on Google Play; it is downloaded **directly from the institute server** through a public page:
+
+- Download page: `/app` (e.g. `http://82.137.250.43:8080/edu_bridge/public/app`) with the download button, install steps, a QR code and share buttons.
+- Direct download: `/app/download` (64-bit build) and `/app/download?abi=v7a` (32-bit build for old phones).
+- Version check used by the app: `GET /api/app-version[?abi=arm64|v7a]` (public, no login).
+- Files live in `storage/app/app-release/`: `edubridge.apk`, `edubridge-v7a.apk` and `release.json`.
+
+**Publishing a new version:**
+
+1. Raise the number after `+` in `pubspec.yaml` (e.g. `1.0.1+2`).
+2. From the Flutter app folder: `flutter build apk --release --split-per-abi`.
+3. Copy `app-arm64-v8a-release.apk` to `edubridge.apk` and `app-armeabi-v7a-release.apk` to `edubridge-v7a.apk`.
+4. Edit `release.json` (`version_name`, `version_code`, `changelog`; change `min_version_code` only to force an update).
+5. Upload the backend folder to the server.
+
+**Signing rule:** an update installs over the existing app (keeping its data) only if the `applicationId` and the signing key are the same and the version number is higher. The release key (`android/edubridge-release.jks` and `android/key.properties`) is not in Git and must be backed up. Full details are in `APP_RELEASE_GUIDE_FOR_AI.md` at the project root.

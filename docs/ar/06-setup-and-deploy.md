@@ -120,3 +120,22 @@ flutter run -d chrome           # ويب
 | التطبيق لا يجد السيرفر | `adb reverse tcp:8000 tcp:8000` أو ضبط العنوان في `api_service.dart` |
 | خطأ 429 | تجاوز حدّ المعدّل (الدخول 5/دقيقة، OTP 10/ساعة لكل بريد) |
 | خطأ 423 عند الدخول | الحساب مقفول (5 فشلات) أو مسجّل من جهاز آخر |
+
+## 9) توزيع تطبيق الأندرويد وتحديثه
+
+التطبيق غير منشور على Google Play؛ يُحمَّل **من سيرفر المعهد مباشرة** عبر صفحة عامة:
+
+- صفحة التحميل: `/app` (مثلاً `http://82.137.250.43:8080/edu_bridge/public/app`) وفيها زر التحميل وخطوات التثبيت ورمز QR وأزرار المشاركة.
+- التحميل المباشر: `/app/download` (نسخة 64-بت)، و`/app/download?abi=v7a` (نسخة الهواتف القديمة 32-بت).
+- فحص الإصدار للتطبيق: `GET /api/app-version[?abi=arm64|v7a]` (عام، بدون تسجيل دخول).
+- الملفات داخل `storage/app/app-release/`: `edubridge.apk` و`edubridge-v7a.apk` و`release.json`.
+
+**نشر إصدار جديد:**
+
+1. ارفعي الرقم بعد `+` في `pubspec.yaml` (مثلاً `1.0.1+2`).
+2. من مجلد تطبيق Flutter: `flutter build apk --release --split-per-abi`.
+3. انسخي `app-arm64-v8a-release.apk` إلى `edubridge.apk`، و`app-armeabi-v7a-release.apk` إلى `edubridge-v7a.apk`.
+4. عدّلي `release.json` (`version_name` و`version_code` و`changelog`، ولا تغيّري `min_version_code` إلا لفرض التحديث).
+5. ارفعي مجلد الباك إند إلى السيرفر.
+
+**قاعدة التوقيع:** يتم التحديث فوق النسخة المثبتة (دون حذف البيانات) فقط إذا بقي `applicationId` نفسه ومفتاح التوقيع نفسه ورقم الإصدار أعلى. مفتاح الإصدار (`android/edubridge-release.jks` و`android/key.properties`) غير مرفوع إلى Git ويجب حفظ نسخة احتياطية منه. التفاصيل الكاملة في الملف `APP_RELEASE_GUIDE_FOR_AI.md` في جذر المشروع.
