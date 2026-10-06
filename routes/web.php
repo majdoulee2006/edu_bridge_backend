@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\HODWebController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Web\UnifiedAuthController;
 use App\Http\Controllers\Web\TeacherWebController;
 use App\Http\Controllers\LocaleController;
 
