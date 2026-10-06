@@ -22,6 +22,7 @@ class AttendanceScanTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Facades\Storage::fake('local');   // لا نكتب صور اختبار في التخزين الحقيقي
 
         $dept    = $this->makeDepartment();
         $program = $this->makeProgram($dept);

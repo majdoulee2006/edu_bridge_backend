@@ -24,6 +24,7 @@ class TelegramScannerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Facades\Storage::fake('local');   // لا نكتب صور اختبار في التخزين الحقيقي
         Http::fake();   // لا اتصال حقيقي بتيليغرام
 
         $dept    = $this->makeDepartment();
