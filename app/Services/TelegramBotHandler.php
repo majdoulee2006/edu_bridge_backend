@@ -1003,9 +1003,30 @@ class TelegramBotHandler
 
     private function getParentChildren(User $user)
     {
-        if (!$user->parent) return collect();
-        return $user->parent->students()->with('user')->get();
+        $children = collect();
+        if ($user->parent) {
+            $children = $user->parent->students()->with('user')->get();
+        }
+
+        if ($children->isEmpty()) {
+            $parentRecord = DB::table('parents')->where('user_id', $user->user_id)->first();
+            $parentIds = array_filter([$user->user_id, $parentRecord?->parent_id ?? null]);
+
+            $studentUserIds = DB::table('parent_students')
+                ->whereIn('parent_id', $parentIds)
+                ->pluck('student_id');
+
+            if ($studentUserIds->isNotEmpty()) {
+                $children = Student::where(function($q) use ($studentUserIds) {
+                    $q->whereIn('user_id', $studentUserIds)
+                      ->orWhereIn('student_id', $studentUserIds);
+                })->with('user')->get();
+            }
+        }
+
+        return $children;
     }
+
 
     private function handleParentChildren(User $user, $chatId)
     {
