@@ -597,22 +597,28 @@ class TeacherController extends Controller
         $course = $lesson->course;
         $allStudents = $course->students()->get();
 
-        $presentIds = Attendance::where('lesson_id', $lesson->lesson_id)
-            ->where('status', 'present')
+        // من له سجل أصلاً (حاضر أو متأخر أو غائب بعذر) لا يُمسّ؛ كان "late" يتحول إلى "absent"
+        $today = now()->toDateString();
+        $recordedIds = Attendance::where('lesson_id', $lesson->lesson_id)
+            ->whereDate('attendance_date', $today)
             ->pluck('student_id')
             ->toArray();
 
         foreach ($allStudents as $student) {
-            if (!in_array($student->student_id, $presentIds)) {
-                Attendance::updateOrCreate(
-                    [
-                        'student_id' => $student->student_id,
-                        'lesson_id'  => $lesson->lesson_id,
-                        'attendance_date' => now()->toDateString(),
-                    ],
-                    ['status' => 'absent']
-                );
+            if (in_array($student->student_id, $recordedIds)) {
+                continue;
             }
+
+            // إجازة/إذن معتمد لهذا اليوم: يُسجَّل الغياب لكنه معذور (لا يُحتسب في الإنذارات)
+            $excused = \App\Support\Access::studentHasApprovedLeave($student->student_id, $student->user_id, $today);
+
+            Attendance::create([
+                'student_id'      => $student->student_id,
+                'lesson_id'       => $lesson->lesson_id,
+                'attendance_date' => $today,
+                'status'          => 'absent',
+                'excuse_status'   => $excused ? 'approved' : 'none',
+            ]);
         }
 
         $session->update([
@@ -622,7 +628,7 @@ class TeacherController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنشاء الواجب بنجاح',
+            'message' => 'تم إنهاء الجلسة وتسجيل الغياب',
         ], 200);
     }
 

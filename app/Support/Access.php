@@ -41,6 +41,19 @@ class Access
             ->exists();
     }
 
+    // ───────────────────────── النظام ─────────────────────────
+
+    /**
+     * معرّف مستخدم "المرسل الآلي" للإشعارات والاستدعاءات التلقائية: أول حساب أدمن فعلي.
+     * (كان الكود يفترض أن المستخدم رقم 1 موجود دائماً، وينهار بقيد المفتاح الأجنبي إن لم يكن.)
+     */
+    public static function systemSenderId(): ?int
+    {
+        $id = DB::table('users')->where('role_id', 1)->orderBy('user_id')->value('user_id');
+
+        return $id ? (int) $id : null;
+    }
+
     // ───────────────────────── رئيس القسم ─────────────────────────
 
     /**
@@ -202,6 +215,18 @@ class Access
             ->where('programs.name', $teacher->advisor_branch)
             ->where('users.academic_year', $teacher->advisor_year)
             ->exists();
+    }
+
+    /**
+     * هل لدى الطالب إجازة أو إذن غياب معتمد في هذا التاريخ؟
+     * leave_requests.student_id = users.user_id ، و absence_requests.student_id = students.student_id
+     */
+    public static function studentHasApprovedLeave($studentId, $studentUserId, string $date): bool
+    {
+        return DB::table('leave_requests')
+                ->where('student_id', $studentUserId)->where('date', $date)->where('status', 'approved')->exists()
+            || DB::table('absence_requests')
+                ->where('student_id', $studentId)->where('date', $date)->where('status', 'approved')->exists();
     }
 
     /** هل الطالب (students.student_id) مسجَّل في هذا المقرر؟ */
