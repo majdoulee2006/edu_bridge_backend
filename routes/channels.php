@@ -12,7 +12,7 @@ Broadcast::channel('chat.{id}', function ($user, $id) {
 Broadcast::channel('presence-online', function ($user) {
     if ($user) {
         // بنرجع بيانات المستخدم عشان تظهر للكل إنه أونلاين
-        return ['id' => $user->user_id, 'name' => $user->first_name]; 
+        return ['id' => $user->user_id, 'name' => $user->full_name];
     }
     return false;
 });

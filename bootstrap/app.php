@@ -51,10 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureSingleWebSession::class,
         ]);
 
-        $middleware->validateCsrfTokens(except: [
-            'affairs/accounts',
-            'affairs/accounts/*',
-        ]);
+        // لا استثناءات CSRF: كل نماذج الويب ترسل @csrf (كان مسار affairs/accounts مستثنى دون مبرر).
 
         $middleware->api(prepend: [
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
