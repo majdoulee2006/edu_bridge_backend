@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Web\UnifiedAuthController;
 use App\Http\Controllers\Web\TeacherWebController;
 
+// صفحة تحميل التطبيق (للمشاركة مع أولياء الأمور) + تحميل مباشر
+Route::get('/app', [\App\Http\Controllers\AppReleaseController::class, 'page']);
+Route::get('/app/download', [\App\Http\Controllers\AppReleaseController::class, 'download']);
+
 // Public Storage & Attachment Download Routes for Mobile App
 Route::get('/public-download/message/{id}', function ($id) {
     $message = \App\Models\Message::find($id);

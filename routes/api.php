@@ -41,6 +41,9 @@ Route::get('/file/{path}', function (string $path) {
 })->where('path', '.*');
 
 // روابط عامة
+// فحص إصدار التطبيق (عام — يُستدعى قبل تسجيل الدخول)
+Route::get('/app-version', [\App\Http\Controllers\AppReleaseController::class, 'version']);
+
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('api.login');
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:otp-send');
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:otp-verify');
