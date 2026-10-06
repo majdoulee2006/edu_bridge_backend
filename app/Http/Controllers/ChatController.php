@@ -640,6 +640,16 @@ public function createGroup(Request $request)
 
     $myId = $request->user()->user_id;
 
+    // مصفوفة "من يراسل من" تنطبق على أعضاء المجموعة أيضاً، وإلا صارت المجموعات طريقاً للالتفاف عليها
+    $invited = \App\Models\User::whereIn('user_id', $request->user_ids)
+        ->where('user_id', '!=', $myId)
+        ->get(['user_id', 'role_id']);
+    foreach ($invited as $member) {
+        if (!$this->canChat($request->user()->role_id, $member->role_id)) {
+            return response()->json(['error' => 'لا يمكنك إضافة هذا المستخدم إلى مجموعة.'], 403);
+        }
+    }
+
     // 2. إنشاء الجروب الأساسي
     $group = \App\Models\Group::create([
         'name' => $request->name,
