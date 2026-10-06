@@ -81,7 +81,7 @@
                     <h4 class="text-base font-bold text-slate-900 dark:text-white leading-snug">{{ $post->title }}</h4>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-extrabold">
-                            {{ $loop->first ? 'إعلان هام' : 'إداري' }}
+                            {{ $loop->first ? ($post->target_role ? __('messages.announcements') : __('messages.new')) : __('messages.announcements') }}
                         </span>
                         <span class="text-xs text-slate-400 flex items-center gap-1">
                             <span class="material-symbols-outlined text-[13px]">schedule</span>
@@ -95,36 +95,36 @@
             <div class="flex items-center gap-1.5 flex-shrink-0">
                 <a href="{{ route('admin.announcements.edit', $postId) }}"
                    class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-colors">
-                    <span class="material-symbols-outlined text-[15px]">edit</span> تعديل
+                    <span class="material-symbols-outlined text-[15px]">edit</span> {{ __('messages.edit') }}
                 </a>
                 <form action="{{ route('admin.announcements.delete', $postId) }}" method="POST"
-                      onsubmit="return confirm('هل تريد حذف هذا الإعلان؟')">
+                      onsubmit="return confirm('{{ __('messages.delete') }}؟')">
                     @csrf
                     <button type="submit"
                             class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 transition-colors">
-                        <span class="material-symbols-outlined text-[15px]">delete</span> حذف
+                        <span class="material-symbols-outlined text-[15px]">delete</span> {{ __('messages.delete') }}
                     </button>
                 </form>
             </div>
             @endif
         </div>
 
-        {{-- المحتوى النصي --}}
+        {{-- Text Content --}}
         @if(!empty($post->content))
             <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
                 {{ $post->content }}
             </p>
         @endif
 
-        {{-- شبكة الصور بعرض كامل وبدون أي اقتطاع قسري --}}
+        {{-- Slider --}}
         @include('partials.image_slider', ['images' => $formattedImgs])
 
-        {{-- رابط خارجي إذا وجد --}}
+        {{-- External link --}}
         @if(!empty($post->link_url))
             <div class="pt-1">
                 <a href="{{ $post->link_url }}" target="_blank"
                    class="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
-                    <span class="material-symbols-outlined text-sm">open_in_new</span> فتح الرابط المرفق
+                    <span class="material-symbols-outlined text-sm">open_in_new</span> {{ __('messages.open_attached_link') }}
                 </a>
             </div>
         @endif

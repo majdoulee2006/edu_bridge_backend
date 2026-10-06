@@ -1,28 +1,28 @@
 @extends('layouts.admin')
 
-@section('title', 'الفصول والمواد')
+@section('title', __('messages.semesters_subjects_title'))
 
 @section('content')
 
     {{-- ===== Page Header ===== --}}
     <div class="flex items-center justify-between mb-2">
-        {{-- يمين: سهم الرجوع + العنوان --}}
+        {{-- Return Arrow + Title --}}
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.dashboard') }}"
                class="w-10 h-10 rounded-2xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft">
-                <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+                <span class="material-symbols-outlined text-[22px] rtl:rotate-0 ltr:rotate-180">arrow_forward</span>
             </a>
             <div class="flex flex-col">
-                <h2 class="text-xl font-bold text-slate-800 dark:text-white leading-tight">الفصول الدراسية والمواد</h2>
-                <span class="text-xs text-slate-400 dark:text-slate-500 mt-1">عرض وإدارة المواد الدراسية حسب القسم والفصل</span>
+                <h2 class="text-xl font-bold text-slate-800 dark:text-white leading-tight">{{ __('messages.semesters_subjects_title') }}</h2>
+                <span class="text-xs text-slate-400 dark:text-slate-500 mt-1">{{ __('messages.semesters_subjects_subtitle') }}</span>
             </div>
         </div>
 
-        {{-- يسار: زر إضافة مادة --}}
+        {{-- Add Subject Button --}}
         <button onclick="openAddSubjectModal()"
                 class="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-content text-xs font-bold rounded-full shadow-glow hover:scale-105 active:scale-95 transition-all">
             <span class="material-symbols-outlined text-[18px]">add</span>
-            إضافة مادة جديدة
+            {{ __('messages.add_new_subject') }}
         </button>
     </div>
 
@@ -31,10 +31,10 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             {{-- Department Filter --}}
             <div class="flex flex-col gap-1.5">
-                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">القسم الأكاديمي</label>
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_dept') }}</label>
                 <select name="department_id" id="dept-select" onchange="filterPrograms(this.value)"
                         class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
-                    <option value="">جميع الأقسام</option>
+                    <option value="">{{ __('messages.all_departments') }}</option>
                     @foreach($departments as $dept)
                         <option value="{{ $dept->department_id }}" {{ $selectedDept == $dept->department_id ? 'selected' : '' }}>
                             {{ $dept->name }}
@@ -45,10 +45,10 @@
 
             {{-- Program Filter --}}
             <div class="flex flex-col gap-1.5">
-                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الدورة / البرنامج</label>
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.course_or_program') }}</label>
                 <select name="program_id" id="program-select" onchange="document.getElementById('filter-form').submit()"
                         class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
-                    <option value="">جميع الدورات</option>
+                    <option value="">{{ __('messages.all_courses') }}</option>
                     @foreach($programs as $prog)
                         <option value="{{ $prog->id }}"
                                 data-dept="{{ $prog->department_id }}"
@@ -61,12 +61,12 @@
 
             {{-- Year Filter --}}
             <div class="flex flex-col gap-1.5">
-                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">السنة الدراسية</label>
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_year') }}</label>
                 <select name="year" onchange="document.getElementById('filter-form').submit()"
                         class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/30 py-3.5 px-4 text-sm font-bold text-slate-800 dark:text-white appearance-none transition-all outline-none">
-                    <option value="">جميع السنوات</option>
-                    <option value="1" {{ $selectedYear == '1' ? 'selected' : '' }}>السنة الأولى</option>
-                    <option value="2" {{ $selectedYear == '2' ? 'selected' : '' }}>السنة الثانية</option>
+                    <option value="">{{ __('messages.all_years') }}</option>
+                    <option value="1" {{ $selectedYear == '1' ? 'selected' : '' }}>{{ __('messages.first_year') }}</option>
+                    <option value="2" {{ $selectedYear == '2' ? 'selected' : '' }}>{{ __('messages.second_year') }}</option>
                 </select>
             </div>
         </div>
@@ -77,9 +77,9 @@
             $sem2 = $semesters->firstWhere(fn($s) => str_contains($s->name, 'ثاني')) ?? $semesters->skip(1)->first();
         @endphp
         <div class="flex flex-col gap-2 mt-2">
-            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">الفصل الدراسي</label>
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">{{ __('messages.academic_semester') }}</label>
             <div class="grid grid-cols-2 gap-3">
-                {{-- فصل أول --}}
+                {{-- First Semester --}}
                 @if($sem1)
                 <button type="button"
                         onclick="document.querySelector('[name=semester_id]').value='{{ $sem1->semester_id }}'; document.getElementById('filter-form').submit()"
@@ -88,17 +88,17 @@
                             ? 'bg-primary text-primary-content shadow-glow scale-[1.02]'
                             : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary/50 hover:text-primary' }}">
                     <span class="material-symbols-outlined text-[18px]">looks_one</span>
-                    الفصل الأول
+                    {{ __('messages.first_semester') }}
                 </button>
                 @else
                 <button type="button" disabled
                         class="py-3.5 px-4 rounded-2xl text-sm font-bold text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-400 opacity-50 cursor-not-allowed flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-[18px]">looks_one</span>
-                    الفصل الأول
+                    {{ __('messages.first_semester') }}
                 </button>
                 @endif
 
-                {{-- فصل ثاني --}}
+                {{-- Second Semester --}}
                 @if($sem2)
                 <button type="button"
                         onclick="document.querySelector('[name=semester_id]').value='{{ $sem2->semester_id }}'; document.getElementById('filter-form').submit()"
@@ -107,13 +107,13 @@
                             ? 'bg-primary text-primary-content shadow-glow scale-[1.02]'
                             : 'bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary/50 hover:text-primary' }}">
                     <span class="material-symbols-outlined text-[18px]">looks_two</span>
-                    الفصل الثاني
+                    {{ __('messages.second_semester') }}
                 </button>
                 @else
                 <button type="button" disabled
                         class="py-3.5 px-4 rounded-2xl text-sm font-bold text-center bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-400 opacity-50 cursor-not-allowed flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-[18px]">looks_two</span>
-                    الفصل الثاني
+                    {{ __('messages.second_semester') }}
                 </button>
                 @endif
             </div>
@@ -124,10 +124,10 @@
     {{-- ===== Subjects Header ===== --}}
     <div class="flex items-center justify-between mt-6 mb-3 px-1">
         <div class="flex items-center gap-2">
-            <span class="w-1.5 h-6 bg-[#f2f20d] rounded-full shadow-glow"></span>
-            <h3 class="text-base font-bold text-slate-800 dark:text-white">المواد الدراسية الحالية</h3>
+            <span class="w-1.5 h-6 bg-primary rounded-full shadow-glow"></span>
+            <h3 class="text-base font-bold text-slate-800 dark:text-white">{{ __('messages.current_subjects_title') }}</h3>
         </div>
-        <span class="text-xs font-extrabold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-555 dark:text-slate-400">{{ count($courses) }} مادة</span>
+        <span class="text-xs font-extrabold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-555 dark:text-slate-400">{{ __('messages.subjects_total_badge', ['count' => count($courses)]) }}</span>
     </div>
 
     {{-- ===== Subjects List ===== --}}
@@ -148,15 +148,15 @@
             @endphp
             <div onclick="showSubjectDetails({{ json_encode($course) }}, '{{ $sColor }}', '{{ $sIcon }}')" class="cursor-pointer flex flex-col justify-between p-6 rounded-3xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 shadow-soft hover:border-primary/45 hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
                 <!-- Hover bar -->
-                <div class="absolute right-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-[#f2f20d] transition-colors"></div>
+                <div class="absolute right-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-primary transition-colors"></div>
 
-                <div class="absolute top-4 left-4 flex flex-col gap-1 z-10">
-                    <button type="button" onclick="event.stopPropagation(); openEditSubjectModal({{ json_encode($course) }})" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all">
+                <div class="absolute top-4 start-4 flex flex-col gap-1 z-10">
+                    <button type="button" onclick="event.stopPropagation(); openEditSubjectModal({{ json_encode($course) }})" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all" title="{{ __('messages.edit_subject') }}">
                         <span class="material-symbols-outlined text-[18px]">edit</span>
                     </button>
-                    <form action="{{ route('admin.semesters-subjects.delete', $course->course_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه المادة؟')" onclick="event.stopPropagation()">
+                    <form action="{{ route('admin.semesters-subjects.delete', $course->course_id) }}" method="POST" onsubmit="return confirm('{{ __('messages.delete_subject_prompt') }}')" onclick="event.stopPropagation()">
                         @csrf
-                        <button type="submit" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all">
+                        <button type="submit" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all" title="{{ __('messages.delete_subject') }}">
                             <span class="material-symbols-outlined text-[18px]">delete</span>
                         </button>
                     </form>
@@ -176,7 +176,7 @@
                         
                         <div class="flex items-center gap-1.5 mt-2 text-slate-500 dark:text-slate-400">
                             <span class="material-symbols-outlined text-[14px]">person</span>
-                            <span class="text-xs font-semibold truncate">{{ $course->teacher_name ?? 'غير محدد' }}</span>
+                            <span class="text-xs font-semibold truncate">{{ $course->teacher_name ?? __('messages.no_teacher_assigned') }}</span>
                         </div>
 
                         @if(!empty($course->departments_list) && count($course->departments_list) > 0)
@@ -191,13 +191,13 @@
                 <div class="flex flex-col gap-2 border-t border-slate-50 dark:border-slate-800/60 pt-4 mt-4">
                     <div class="flex items-center justify-between">
                         <span class="text-[10px] px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-555 dark:text-slate-400 font-extrabold border border-slate-100/50 dark:border-slate-700/50">
-                            {{ count($course->lessons_list) }} محاضرات
+                            {{ __('messages.lectures_badge', ['count' => count($course->lessons_list)]) }}
                         </span>
                         <span class="text-[10px] px-2.5 py-1 rounded-lg bg-primary/10 text-primary-dark dark:text-primary font-extrabold border border-primary/20">
-                            {{ $course->hours ?? 0 }} ساعة مخصصة
+                            {{ __('messages.hours_badge', ['count' => $course->hours ?? 0]) }}
                         </span>
                         <span class="text-[10px] px-2.5 py-1 rounded-lg font-black bg-blue-50 text-blue-650 dark:bg-blue-950/20 dark:text-blue-400">
-                            {{ $course->year == 2 ? 'السنة الثانية' : 'السنة الأولى' }}
+                            {{ $course->year == 2 ? __('messages.second_year') : __('messages.first_year') }}
                         </span>
                     </div>
                 </div>
@@ -208,8 +208,8 @@
                     <span class="material-symbols-outlined text-4xl">menu_book</span>
                 </div>
                 <div class="flex flex-col gap-1 font-Cairo">
-                    <p class="text-base font-bold text-slate-850 dark:text-white">لا توجد مواد دراسية حالياً</p>
-                    <p class="text-xs text-slate-400">تأكد من ضبط خيارات التصفية أو القسم المختار.</p>
+                    <p class="text-base font-bold text-slate-850 dark:text-white">{{ __('messages.no_subjects_found') }}</p>
+                    <p class="text-xs text-slate-400">{{ __('messages.semesters_subjects_subtitle') }}</p>
                 </div>
             </div>
         @endforelse

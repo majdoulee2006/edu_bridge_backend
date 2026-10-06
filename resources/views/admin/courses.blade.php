@@ -1,14 +1,14 @@
 @extends('layouts.admin')
 
-@section('title', 'الدورات التدريبية')
-@section('header-title', 'الدورات والبرامج')
-@section('header-subtitle', 'إدارة وتصفية البرامج والدورات التدريبية حسب الأقسام')
+@section('title', __('messages.training_courses'))
+@section('header-title', __('messages.courses_and_programs'))
+@section('header-subtitle', __('messages.courses_subtitle'))
 
 @section('content')
 
 @if(session('new_department_id'))
 <div id="web-dept-wizard-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300">
-    <div class="bg-white dark:bg-surface-dark w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 scale-100 transition-all duration-300 flex flex-col p-6 text-right">
+    <div class="bg-white dark:bg-surface-dark w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 scale-100 transition-all duration-300 flex flex-col p-6 text-start">
         
         <!-- Header -->
         <div class="flex items-center gap-3 mb-4">
@@ -16,36 +16,36 @@
                 <span class="material-symbols-outlined text-2xl">task_alt</span>
             </div>
             <div>
-                <h3 class="text-lg font-bold text-slate-850 dark:text-white">تم إنشاء القسم بنجاح! 🎉</h3>
-                <p class="text-xs text-slate-400">القسم: {{ session('new_department_name') }}</p>
+                <h3 class="text-lg font-bold text-slate-850 dark:text-white">{{ __('messages.dept_created_success') }}</h3>
+                <p class="text-xs text-slate-400">{{ __('messages.department') }}: {{ session('new_department_name') }}</p>
             </div>
         </div>
 
         <!-- Main View -->
         <div id="web-wizard-main-view">
             <p class="text-xs md:text-sm text-slate-600 dark:text-slate-350 leading-relaxed mb-6">
-                ما هي الخطوة التي ترغب في البدء بها لتأسيس هذا القسم؟
+                {{ __('messages.dept_wizard_prompt') }}
             </p>
 
             <div class="flex flex-col gap-3">
-                <button onclick="showWebWizardSub('hod')" class="flex items-center justify-between p-4 rounded-2xl border border-slate-150 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-right w-full">
+                <button onclick="showWebWizardSub('hod')" class="flex items-center justify-between p-4 rounded-2xl border border-slate-150 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-start w-full">
                     <div class="flex items-center gap-3">
                         <span class="material-symbols-outlined text-amber-500">supervisor_account</span>
-                        <span class="text-xs md:text-sm font-bold text-slate-750 dark:text-white">رئيس القسم</span>
+                        <span class="text-xs md:text-sm font-bold text-slate-750 dark:text-white">{{ __('messages.department_head') }}</span>
                     </div>
-                    <span class="material-symbols-outlined text-slate-400">chevron_left</span>
+                    <span class="material-symbols-outlined text-slate-400 rtl:rotate-0 ltr:rotate-180">chevron_left</span>
                 </button>
 
-                <button onclick="showWebWizardSub('courses')" class="flex items-center justify-between p-4 rounded-2xl border border-slate-150 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-right w-full">
+                <button onclick="showWebWizardSub('courses')" class="flex items-center justify-between p-4 rounded-2xl border border-slate-150 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-start w-full">
                     <div class="flex items-center gap-3">
                         <span class="material-symbols-outlined text-emerald-500">library_books</span>
-                        <span class="text-xs md:text-sm font-bold text-slate-750 dark:text-white">الدورات والبرامج</span>
+                        <span class="text-xs md:text-sm font-bold text-slate-750 dark:text-white">{{ __('messages.courses_and_programs') }}</span>
                     </div>
-                    <span class="material-symbols-outlined text-slate-400">chevron_left</span>
+                    <span class="material-symbols-outlined text-slate-400 rtl:rotate-0 ltr:rotate-180">chevron_left</span>
                 </button>
 
                 <button onclick="document.getElementById('web-dept-wizard-modal').remove()" class="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs md:text-sm font-bold transition-all text-center">
-                    إغلاق وتخطي الإعداد حالياً
+                    {{ __('messages.close_skip_setup') }}
                 </button>
             </div>
         </div>
@@ -53,25 +53,25 @@
         <!-- HOD Sub-View -->
         <div id="web-wizard-hod-view" class="hidden">
             <p class="text-xs md:text-sm text-slate-600 dark:text-slate-350 leading-relaxed mb-4">
-                إشراف رئيس القسم: اختر الإجراء المناسب
+                {{ __('messages.assign_dept_head') }}
             </p>
             <div class="flex flex-col gap-3">
                 <a href="{{ route('admin.courses.assign-hod') }}?department_id={{ session('new_department_id') }}&action=new" class="flex items-center justify-between p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-300 transition-all">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg">person_add</span>
-                        <span class="text-xs font-bold">إنشاء رئيس قسم جديد (إضافة)</span>
+                        <span class="text-xs font-bold">{{ __('messages.create_new_hod_option') }}</span>
                     </div>
-                    <span class="material-symbols-outlined text-sm">arrow_back</span>
+                    <span class="material-symbols-outlined text-sm rtl:rotate-0 ltr:rotate-180">arrow_back</span>
                 </a>
                 <a href="{{ route('admin.courses.assign-hod') }}?department_id={{ session('new_department_id') }}&action=existing" class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg text-slate-500">group</span>
-                        <span class="text-xs font-bold text-slate-750 dark:text-white">تخصيص شخص موجود بالسيستم</span>
+                        <span class="text-xs font-bold text-slate-750 dark:text-white">{{ __('messages.assign_existing_user_hod') }}</span>
                     </div>
-                    <span class="material-symbols-outlined text-sm text-slate-400">arrow_back</span>
+                    <span class="material-symbols-outlined text-sm text-slate-400 rtl:rotate-0 ltr:rotate-180">arrow_back</span>
                 </a>
                 <button onclick="showWebWizardSub('main')" class="py-2.5 text-xs text-slate-400 font-bold hover:text-slate-600">
-                    رجوع للخيارات الرئيسية
+                    {{ __('messages.back_to_main_options') }}
                 </button>
             </div>
         </div>
@@ -79,25 +79,25 @@
         <!-- Courses Sub-View -->
         <div id="web-wizard-courses-view" class="hidden">
             <p class="text-xs md:text-sm text-slate-600 dark:text-slate-350 leading-relaxed mb-4">
-                إعداد الدورات: اختر الإجراء المناسب
+                {{ __('messages.assign_courses_to_dept') }}
             </p>
             <div class="flex flex-col gap-3">
                 <a href="{{ route('admin.courses.create') }}?department_id={{ session('new_department_id') }}" class="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300 transition-all">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg">add_circle</span>
-                        <span class="text-xs font-bold">إنشاء دورة جديدة للقسم</span>
+                        <span class="text-xs font-bold">{{ __('messages.create_new_course_for_dept') }}</span>
                     </div>
-                    <span class="material-symbols-outlined text-sm">arrow_back</span>
+                    <span class="material-symbols-outlined text-sm rtl:rotate-0 ltr:rotate-180">arrow_back</span>
                 </a>
-                <button onclick="if(document.getElementById('web-dept-wizard-modal')) document.getElementById('web-dept-wizard-modal').remove(); openAssignCoursesModal('{{ session('new_department_id') }}')" class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-right w-full">
+                <button onclick="if(document.getElementById('web-dept-wizard-modal')) document.getElementById('web-dept-wizard-modal').remove(); openAssignCoursesModal('{{ session('new_department_id') }}')" class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-start w-full">
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg text-slate-500">category</span>
-                        <span class="text-xs font-bold text-slate-750 dark:text-white">تخصيص دورات موجودة في النظام</span>
+                        <span class="text-xs font-bold text-slate-750 dark:text-white">{{ __('messages.assign_existing_courses') }}</span>
                     </div>
-                    <span class="material-symbols-outlined text-sm text-slate-400">arrow_back</span>
+                    <span class="material-symbols-outlined text-sm text-slate-400 rtl:rotate-0 ltr:rotate-180">arrow_back</span>
                 </button>
                 <button onclick="showWebWizardSub('main')" class="py-2.5 text-xs text-slate-400 font-bold hover:text-slate-600">
-                    رجوع للخيارات الرئيسية
+                    {{ __('messages.back_to_main_options') }}
                 </button>
             </div>
         </div>
@@ -138,13 +138,13 @@
     <div class="flex items-center gap-2 bg-slate-100/70 dark:bg-slate-900/70 p-1.5 rounded-2xl border border-slate-200/60 dark:border-slate-800">
         <button type="button" id="tab-btn-depts" onclick="switchMainView('depts')" class="px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/60 dark:border-slate-700">
             <span class="material-symbols-outlined text-lg">domain</span>
-            <span>الأقسام الأكاديمية</span>
+            <span>{{ __('messages.academic_departments') }}</span>
             <span class="bg-amber-500/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-black">{{ count($departments) }}</span>
         </button>
 
         <button type="button" id="tab-btn-courses" onclick="switchMainView('courses')" class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all flex items-center gap-2">
             <span class="material-symbols-outlined text-lg">school</span>
-            <span>الدورات والبرامج</span>
+            <span>{{ __('messages.courses_and_programs') }}</span>
             <span class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px] font-black">{{ count($programs) }}</span>
         </button>
     </div>
@@ -152,12 +152,12 @@
     <div class="flex items-center gap-3">
         <button type="button" id="btn-add-dept" onclick="openAddDepartmentModal()" class="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all shadow-glow flex items-center gap-2">
             <span class="material-symbols-outlined text-lg">domain_add</span>
-            <span>إضافة قسم جديد</span>
+            <span>{{ __('messages.add_new_department') }}</span>
         </button>
 
         <a href="{{ route('admin.courses.create') }}" id="btn-add-course" class="hidden px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs transition-all shadow-glow flex items-center gap-2">
             <span class="material-symbols-outlined text-lg">add_circle</span>
-            <span>إضافة دورة جديدة</span>
+            <span>{{ __('messages.add_new_course') }}</span>
         </a>
     </div>
 </div>
@@ -166,10 +166,10 @@
 <div id="depts-view-container" class="space-y-4 mb-8">
     <div class="flex items-center justify-between px-1">
         <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400">
-            الأقسام الأكاديمية المتاحة في المنظومة
+            {{ __('messages.depts_grid_title') }}
         </h3>
         <span class="text-xs font-extrabold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-            {{ count($departments) }} أقسام
+            {{ __('messages.depts_count_badge', ['count' => count($departments)]) }}
         </span>
     </div>
 
@@ -185,19 +185,19 @@
                         </div>
                         <div class="flex flex-col">
                             <h4 class="text-base font-black text-slate-850 dark:text-white">{{ $dept->name }}</h4>
-                            <span class="text-[10px] font-bold text-slate-400">قسم أكاديمي</span>
+                            <span class="text-[10px] font-bold text-slate-400">{{ __('messages.academic_dept_badge') }}</span>
                         </div>
                     </div>
 
                     {{-- Quick Action Menu: Edit / Delete --}}
                     <div class="flex items-center gap-1">
-                        <button type="button" onclick="openEditDepartmentModal({{ json_encode($dept) }})" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-amber-500 flex items-center justify-center transition-colors" title="تعديل بيانات القسم">
+                        <button type="button" onclick="openEditDepartmentModal({{ json_encode($dept) }})" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-amber-500 flex items-center justify-center transition-colors" title="{{ __('messages.edit_dept_info') }}">
                             <span class="material-symbols-outlined text-base">edit</span>
                         </button>
 
-                        <form action="{{ route('admin.departments.delete', $dept->department_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف قسم ({{ $dept->name }})؟ سيتم إلغاء تخصيص الدورات المرتبطة به دون حذفها.')">
+                        <form action="{{ route('admin.departments.delete', $dept->department_id) }}" method="POST" onsubmit="return confirm('{{ __('messages.delete_dept_prompt') }}')">
                             @csrf
-                            <button type="submit" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 flex items-center justify-center transition-colors" title="حذف القسم">
+                            <button type="submit" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-500 flex items-center justify-center transition-colors" title="{{ __('messages.delete') }}">
                                 <span class="material-symbols-outlined text-base">delete</span>
                             </button>
                         </form>
@@ -212,23 +212,23 @@
 
                 <div class="grid grid-cols-2 gap-2 my-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
                     <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl flex flex-col gap-0.5">
-                        <span class="text-[10px] font-bold text-slate-400">رئيس القسم الحالي</span>
+                        <span class="text-[10px] font-bold text-slate-400">{{ __('messages.current_dept_head') }}</span>
                         <span class="text-xs font-black text-slate-800 dark:text-white truncate">{{ $dept->current_hod_name }}</span>
                     </div>
                     <div class="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl flex flex-col gap-0.5">
-                        <span class="text-[10px] font-bold text-slate-400">عدد الدورات المخصصة</span>
-                        <span class="text-xs font-black text-slate-800 dark:text-white">{{ $dept->courses_count }} دورات</span>
+                        <span class="text-[10px] font-bold text-slate-400">{{ __('messages.allocated_courses_count') }}</span>
+                        <span class="text-xs font-black text-slate-800 dark:text-white">{{ __('messages.courses_count_badge', ['count' => $dept->courses_count]) }}</span>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-2 mt-3 pt-2">
                     <a href="{{ route('admin.courses.assign-hod') }}?department_id={{ $dept->department_id }}" class="flex-1 py-2.5 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-extrabold text-center transition-all flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-base">manage_accounts</span>
-                        <span>تعيين رئيس قسم</span>
+                        <span>{{ __('messages.assign_dept_head') }}</span>
                     </a>
                     <button type="button" onclick="selectDepartmentFilter('{{ $dept->department_id }}'); switchMainView('courses');" class="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-extrabold text-center transition-all flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-base">visibility</span>
-                        <span>عرض دوراته</span>
+                        <span>{{ __('messages.view_courses') }}</span>
                     </button>
                 </div>
             </div>
@@ -243,7 +243,7 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <div class="flex items-center gap-2">
                 <span class="w-2 h-6 bg-primary rounded-full shadow-glow"></span>
-                <h3 class="text-base font-bold text-slate-800 dark:text-white">فلترة وتصفية الدورات</h3>
+                <h3 class="text-base font-bold text-slate-800 dark:text-white">{{ __('messages.filter_courses') }}</h3>
             </div>
 
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -252,7 +252,7 @@
                     <select id="department-select-filter" 
                             onchange="onDepartmentSelectChange(this.value)" 
                             class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-2xl py-3 pr-10 pl-4 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none cursor-pointer">
-                        <option value="all" selected>🏢 جميع الأقسام الأكاديمية (الكل)</option>
+                        <option value="all" selected>🏢 {{ __('messages.all_academic_depts') }}</option>
                         @foreach($departments as $dept)
                             <option value="{{ $dept->department_id }}">📂 {{ $dept->name }}</option>
                         @endforeach
@@ -264,7 +264,7 @@
                     <input id="course-search-input" 
                            oninput="filterCourses()" 
                            type="text" 
-                           placeholder="بحث باسم الدورة..." 
+                           placeholder="{{ __('messages.search_courses_placeholder') }}" 
                            class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-2xl py-3 pr-10 pl-4 text-xs md:text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-slate-400"/>
                     <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
                 </div>
@@ -277,7 +277,7 @@
                     onclick="selectDepartmentFilter('all')" 
                     data-dept-id="all" 
                     class="dept-pill-btn active px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 bg-primary text-primary-content shadow-glow">
-                <span>الكل</span>
+                <span>{{ __('messages.all') }}</span>
                 <span class="bg-black/10 dark:bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-black">{{ count($programs) }}</span>
             </button>
 
@@ -299,10 +299,10 @@
 {{-- ===== Courses List Header Counter ===== --}}
 <div class="flex items-center justify-between mb-4 px-1">
     <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400">
-        نتائج الدورات والبرامج
+        {{ __('messages.courses_and_programs') }}
     </h3>
     <span id="filtered-count-badge" class="text-xs font-extrabold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-        عرض {{ count($programs) }} من أصل {{ count($programs) }} دورة
+        {{ __('messages.courses_count_badge', ['count' => count($programs)]) }}
     </span>
 </div>
 
@@ -334,9 +334,9 @@
                     <span class="material-symbols-outlined text-[28px]">{{ $icon }}</span>
                 </div>
                 
-                <form action="{{ route('admin.courses.delete', $program->id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه الدورة؟')" onclick="event.stopPropagation()" class="z-10">
+                <form action="{{ route('admin.courses.delete', $program->id) }}" method="POST" onsubmit="return confirm('{{ __('messages.delete_dept_prompt') }}')" onclick="event.stopPropagation()" class="z-10">
                     @csrf
-                    <button type="submit" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all active:scale-90" title="حذف الدورة">
+                    <button type="submit" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all active:scale-90" title="{{ __('messages.delete') }}">
                         <span class="material-symbols-outlined text-xl">delete</span>
                     </button>
                 </form>
@@ -349,8 +349,8 @@
                 </span>
                 <h4 class="text-lg font-bold text-slate-850 dark:text-white leading-snug group-hover:text-primary-dark dark:group-hover:text-primary transition-colors">{{ $program->name }}</h4>
                 <div class="flex items-center gap-2 mt-4">
-                    <span class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-extrabold border border-slate-100/50 dark:border-slate-700/50">{{ $program->course_count }} مواد</span>
-                    <span class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-extrabold border border-slate-100/50 dark:border-slate-700/50">{{ $program->total_hours }} ساعة معتمدة</span>
+                    <span class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-extrabold border border-slate-100/50 dark:border-slate-700/50">{{ $program->course_count }} {{ __('messages.subjects_count') }}</span>
+                    <span class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-extrabold border border-slate-100/50 dark:border-slate-700/50">{{ $program->total_hours }} {{ __('messages.credit_hours') }}</span>
                 </div>
             </div>
         </div>
@@ -363,8 +363,8 @@
             <span class="material-symbols-outlined text-4xl">menu_book</span>
         </div>
         <div class="flex flex-col gap-1 max-w-sm">
-            <p class="text-base font-bold text-slate-850 dark:text-white">لا توجد دورات مخصصة لهذا القسم بعد</p>
-            <p class="text-xs text-slate-400">لم يتم العثور على أي دورات لهذا القسم. يمكنك إضافة دورة جديدة لهذا القسم فوراً!</p>
+            <p class="text-base font-bold text-slate-850 dark:text-white">{{ __('messages.no_courses_in_dept') }}</p>
+            <p class="text-xs text-slate-400">{{ __('messages.courses_subtitle') }}</p>
         </div>
         <div class="flex items-center gap-3 flex-wrap justify-center mt-2">
             <a id="empty-state-add-course-btn" href="{{ route('admin.courses.create') }}" class="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black shadow-glow hover:scale-105 active:scale-95 transition-all flex items-center gap-2">

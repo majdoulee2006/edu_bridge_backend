@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'تعديل الإعلان')
+@section('title', __('messages.edit'))
 
 @section('content')
 
@@ -7,11 +7,11 @@
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.dashboard') }}"
                class="w-10 h-10 rounded-2xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft">
-                <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+                <span class="material-symbols-outlined text-[22px] rtl:rotate-0 ltr:rotate-180">arrow_forward</span>
             </a>
             <div>
-                <h2 class="text-xl font-bold text-slate-800 dark:text-white">تعديل الإعلان</h2>
-                <span class="text-xs text-slate-400 dark:text-slate-500">تعديل بيانات الإعلان المنشور</span>
+                <h2 class="text-xl font-bold text-slate-800 dark:text-white">{{ __('messages.edit') }} {{ __('messages.announcements') }}</h2>
+                <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('messages.announcement_subtitle') }}</span>
             </div>
         </div>
     </div>
@@ -22,22 +22,22 @@
             @csrf
 
             <div class="flex flex-col gap-1.5">
-                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">العنوان *</label>
+                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.announcement_title_label') }}</label>
                 <input type="text" name="title" value="{{ old('title', $announcement->title) }}" required
                        class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/20 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white outline-none transition-all">
                 @error('title')<p class="text-xs text-red-500 px-1 mt-1">{{ $message }}</p>@enderror
             </div>
 
             <div class="flex flex-col gap-1.5">
-                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">المحتوى *</label>
+                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.announcement_content_label') }}</label>
                 <textarea name="content" rows="6" required
                           class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/20 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white outline-none transition-all resize-none">{{ old('content', $announcement->content) }}</textarea>
                 @error('content')<p class="text-xs text-red-500 px-1 mt-1">{{ $message }}</p>@enderror
             </div>
 
-            {{-- الصور --}}
+            {{-- Images --}}
             <div class="flex flex-col gap-1.5">
-                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">صور مرفقة <span class="normal-case">(اتركها فارغة للإبقاء على الصور الحالية)</span></label>
+                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.attached_images') }} <span class="normal-case">({{ __('messages.optional') }})</span></label>
                 
                 @php
                     $currentImgs = [];
@@ -51,7 +51,7 @@
 
                 @if(!empty($currentImgs))
                     <div class="mb-2">
-                        <span class="text-xs text-slate-400 block mb-2 font-medium">الصور الحالية المنشورة:</span>
+                        <span class="text-xs text-slate-400 block mb-2 font-medium">{{ __('messages.attached_images') }}:</span>
                         <div class="flex flex-wrap gap-2">
                             @foreach($currentImgs as $cImg)
                                 <img src="{{ str_starts_with($cImg, 'http') ? $cImg : asset('storage/' . ltrim($cImg, '/')) }}" class="h-20 w-20 rounded-xl object-cover shadow-soft border border-slate-200 dark:border-slate-700" alt="">
@@ -74,8 +74,8 @@
                     
                     <div id="upload-placeholder" class="flex flex-col items-center cursor-pointer" onclick="document.getElementById('imgSelectorInput').click()">
                         <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">add_photo_alternate</span>
-                        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">اسحب الصور هنا أو اضغط لاختيار صورة/عدة صور جديدة لاستبدال الحالية</p>
-                        <p class="text-xs text-slate-400 mt-1">يمكنك قص وتعديل أو حذف أي صورة بعد اختيارها</p>
+                        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">{{ __('messages.drag_drop_images') }}</p>
+                        <p class="text-xs text-slate-400 mt-1">{{ __('messages.crop_edit_hint') }}</p>
                     </div>
 
                     <div id="img-preview-container" class="hidden w-full flex flex-col items-center gap-3">
@@ -85,7 +85,7 @@
                             <span id="preview-count" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800"></span>
                             <button type="button" onclick="document.getElementById('imgSelectorInput').click()"
                                     class="flex items-center gap-1 text-xs font-bold text-primary hover:underline">
-                                <span class="material-symbols-outlined text-sm">add_circle</span> إضافة المزيد
+                                <span class="material-symbols-outlined text-sm">add_circle</span> {{ __('messages.add_more') }}
                             </button>
                         </div>
                     </div>
@@ -97,11 +97,11 @@
                 <button type="submit"
                         class="flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm bg-primary text-primary-content shadow-glow hover:scale-105 active:scale-95 transition-all">
                     <span class="material-symbols-outlined text-[18px]">save</span>
-                    حفظ التعديلات
+                    {{ __('messages.save') }}
                 </button>
                 <a href="{{ route('admin.dashboard') }}"
                    class="px-5 py-3 rounded-2xl text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
-                    إلغاء
+                    {{ __('messages.cancel') }}
                 </a>
             </div>
         </form>

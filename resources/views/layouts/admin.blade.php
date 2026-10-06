@@ -649,7 +649,7 @@
                             ->get();
                     @endphp
                     <div class="notif-dropdown-wrapper" id="adminNotifDropdown">
-                        <a href="{{ route('admin.notifications') }}" class="notif-bell-trigger" id="adminNotifBellBtn" title="الإشعارات">
+                        <a href="{{ route('admin.notifications') }}" class="notif-bell-trigger" id="adminNotifBellBtn" title="{{ __('messages.notifications') }}">
                             <i class="fa-solid fa-bell"></i>
                             @if($headerUnread > 0)
                                 <span class="notif-badge-dot" id="headerNotifBadgeDot"></span>
@@ -659,14 +659,14 @@
                         <div class="notif-dropdown-card" id="adminNotifDropdownCard">
                             <div class="notif-card-header">
                                 <div class="notif-card-header-title">
-                                    <h4>الإشعارات</h4>
+                                    <h4>{{ __('messages.notifications') }}</h4>
                                     @if($headerUnread > 0)
-                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} جديدة</span>
+                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} {{ __('messages.new') }}</span>
                                     @endif
                                 </div>
                                 @if($headerUnread > 0)
                                     <button type="button" class="btn-mark-all-read" id="btnMarkAllHeaderNotif" onclick="markAllHeaderNotificationsAsRead(event)">
-                                        تحديد الكل كمقروء
+                                        {{ __('messages.mark_all_read') }}
                                     </button>
                                 @endif
                             </div>
@@ -696,28 +696,28 @@
                                 @empty
                                     <div class="notif-card-empty">
                                         <i class="fa-regular fa-bell-slash"></i>
-                                        <span>لا توجد إشعارات حالياً</span>
+                                        <span>{{ __('messages.no_notifications') }}</span>
                                     </div>
                                 @endforelse
                             </div>
 
                             <a href="{{ route('admin.notifications') }}" class="notif-card-footer">
-                                <span>عرض كافة الإشعارات</span>
-                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>{{ __('messages.view_all') }}</span>
+                                <i class="fa-solid fa-arrow-left rtl:rotate-0 ltr:rotate-180"></i>
                             </a>
                         </div>
                     </div>
 
                     <!-- Theme Toggle Switch -->
-                    <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-50 dark:bg-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all">
+                    <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-50 dark:bg-[#1f1f1f] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-all" title="Toggle Theme">
                         <i class="fa-solid fa-moon text-base dark:hidden"></i>
                         <i class="fa-solid fa-sun text-base hidden dark:inline"></i>
                     </button>
 
                     {{-- Profile Avatar info --}}
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-[#f2f20d] flex items-center justify-center font-black text-sm text-[#101924] shadow-glow">
-                            إ
+                        <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center font-black text-sm text-primary-content shadow-glow">
+                            {{ mb_substr(Auth::user()->full_name ?? (app()->getLocale() === 'en' ? 'A' : 'إ'), 0, 1) }}
                         </div>
                     </div>
                 </div>
