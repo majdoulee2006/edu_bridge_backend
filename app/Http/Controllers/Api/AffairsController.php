@@ -563,6 +563,10 @@ class AffairsController extends Controller
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'المستخدم غير موجود.'], 404);
         }
+        if (!\App\Support\Access::canManageAccount(request()->user(), $id)) {
+            return response()->json(['success' => false, 'message' => 'لا تملك صلاحية على هذا الحساب.'], 403);
+        }
+
 
         $v = Validator::make($request->all(), [
             'full_name' => 'required|string|max:255',
@@ -595,6 +599,10 @@ class AffairsController extends Controller
     {
         $user = User::find($id);
         if (!$user) return response()->json(['success' => false, 'message' => 'المستخدم غير موجود.'], 404);
+        if (!\App\Support\Access::canManageAccount(request()->user(), $id)) {
+            return response()->json(['success' => false, 'message' => 'لا تملك صلاحية على هذا الحساب.'], 403);
+        }
+
 
         $user->status = ($user->status === 'active') ? 'inactive' : 'active';
         $user->save();
@@ -606,6 +614,10 @@ class AffairsController extends Controller
     {
         $user = User::find($id);
         if (!$user) return response()->json(['success' => false, 'message' => 'المستخدم غير موجود.'], 404);
+        if (!\App\Support\Access::canManageAccount(request()->user(), $id)) {
+            return response()->json(['success' => false, 'message' => 'لا تملك صلاحية على هذا الحساب.'], 403);
+        }
+
 
         $user->delete();
         return response()->json(['success' => true, 'message' => 'تم حذف الحساب بنجاح.']);

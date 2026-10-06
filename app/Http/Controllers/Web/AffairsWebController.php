@@ -2395,6 +2395,10 @@ class AffairsWebController extends Controller
         if (!$user) {
             return redirect()->back()->with('error', 'المستخدم غير موجود.');
         }
+        if (!\App\Support\Access::canManageAccount(auth()->user(), $id)) {
+            abort(403, 'لا تملك صلاحية على هذا الحساب.');
+        }
+
 
         $request->validate([
             'full_name' => 'required|string|max:255',
@@ -2832,6 +2836,10 @@ class AffairsWebController extends Controller
         if (!$user) {
             return back()->with('error', 'الحساب غير موجود.');
         }
+        if (!\App\Support\Access::canManageAccount(auth()->user(), $id)) {
+            abort(403, 'لا تملك صلاحية على هذا الحساب.');
+        }
+
 
         $newStatus = ($user->status === 'active') ? 'inactive' : 'active';
         DB::table('users')->where('user_id', $id)->update([
@@ -2851,6 +2859,10 @@ class AffairsWebController extends Controller
         if (!$user) {
             return back()->with('error', 'الحساب غير موجود.');
         }
+        if (!\App\Support\Access::canManageAccount(auth()->user(), $id)) {
+            abort(403, 'لا تملك صلاحية على هذا الحساب.');
+        }
+
 
         $details = [];
 
@@ -2890,6 +2902,10 @@ class AffairsWebController extends Controller
         if (!$usr) {
             return back()->with('error', 'الحساب غير موجود.');
         }
+        if (!\App\Support\Access::canManageAccount(auth()->user(), $id)) {
+            abort(403, 'لا تملك صلاحية على هذا الحساب.');
+        }
+
 
         $roleId = intval($usr->role_id);
 

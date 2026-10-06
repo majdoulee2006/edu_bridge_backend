@@ -129,6 +129,36 @@ class Access
         return $userId ? self::headManagesUser($head, $userId) : false;
     }
 
+    // ───────────────────────── إدارة الحسابات (تسلسل الأدوار) ─────────────────────────
+
+    /**
+     * هل يحق لهذا المستخدم تعديل/حذف/تعطيل حساب المستخدم الهدف؟
+     *
+     *  - الأدمن (1): أي حساب.
+     *  - الشؤون (6): المعلّمون (2) والطلاب (3) وأولياء الأمور (4) ورؤساء الأقسام (5) فقط؛
+     *    لا الأدمن ولا موظفو الشؤون الآخرون.
+     *  - رئيس القسم (5): حسابات قسمه فقط (انظر headManagesUser).
+     *  - أي دور آخر: لا.
+     */
+    public static function canManageAccount(User $actor, $targetUserId): bool
+    {
+        $target = DB::table('users')->where('user_id', $targetUserId)->first();
+        if (!$target) {
+            return false;
+        }
+
+        switch ((int) $actor->role_id) {
+            case 1:
+                return true;
+            case 6:
+                return in_array((int) $target->role_id, [2, 3, 4, 5], true);
+            case 5:
+                return self::headManagesUser($actor, $targetUserId);
+            default:
+                return false;
+        }
+    }
+
     // ───────────────────────── المعلّم ─────────────────────────
 
     /** هل المعلّم يدرّس هذا المقرر؟ */
