@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Edu-Bridge | شؤون الطلاب</title>
+    <title>Edu-Bridge | {{ __('messages.student_affairs') }}</title>
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
@@ -480,10 +480,10 @@
             <!-- Affairs Info -->
             <div style="text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
                 <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
-                    {{ mb_substr(auth()->user()->full_name ?? 'أ', 0, 1) }}
+                    {{ mb_substr(auth()->user()->full_name ?? 'A', 0, 1) }}
                 </div>
-                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? 'أحمد محمد' }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">موظف شؤون</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? (app()->getLocale() === 'en' ? 'Student Affairs Officer' : 'موظف الشؤون') }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ __('messages.student_affairs_officer') }}</div>
             </div>
             
             <nav class="nav-menu" style="display: flex; flex-direction: column; flex: 1;">
@@ -561,7 +561,7 @@
                     <form action="{{ route('affairs.logout') }}" method="POST">
                         @csrf
                         <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }}; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> {{ __('messages.logout') }}
+                            <i class="fa-solid fa-arrow-right-from-bracket {{ app()->getLocale() === 'en' ? 'rotate-180' : '' }}"></i> {{ __('messages.logout') }}
                         </button>
                     </form>
                 </div>
@@ -578,8 +578,8 @@
                     <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
                         <i class="fa-solid fa-bars"></i>
                     </button>
-                    <!-- Settings button for top left usually, but we are RTL so top right depending on layout -->
-                    <a href="{{ route('affairs.settings') }}" class="settings-btn" title="الإعدادات">
+                    <!-- Settings button -->
+                    <a href="{{ route('affairs.settings') }}" class="settings-btn" title="{{ __('messages.settings') }}">
                         <i class="fa-solid fa-gear"></i>
                     </a>
                     <div>
@@ -597,7 +597,7 @@
                             ->get();
                     @endphp
                     <div class="notif-dropdown-wrapper" id="affairsNotifDropdown">
-                        <a href="{{ url('/affairs/notifications') }}" class="notif-bell-trigger" id="notifBellBtn" title="الإشعارات">
+                        <a href="{{ url('/affairs/notifications') }}" class="notif-bell-trigger" id="notifBellBtn" title="{{ __('messages.notifications') }}">
                             <i class="fa-solid fa-bell"></i>
                             @if($headerUnread > 0)
                                 <span class="notif-badge-dot" id="headerNotifBadgeDot"></span>
@@ -607,14 +607,14 @@
                         <div class="notif-dropdown-card" id="notifDropdownCard">
                             <div class="notif-card-header">
                                 <div class="notif-card-header-title">
-                                    <h4>الإشعارات</h4>
+                                    <h4>{{ __('messages.notifications') }}</h4>
                                     @if($headerUnread > 0)
-                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} جديدة</span>
+                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} {{ __('messages.new') }}</span>
                                     @endif
                                 </div>
                                 @if($headerUnread > 0)
                                     <button type="button" class="btn-mark-all-read" id="btnMarkAllHeaderNotif" onclick="markAllHeaderNotificationsAsRead(event)">
-                                        تحديد الكل كمقروء
+                                        {{ __('messages.mark_all_read') }}
                                     </button>
                                 @endif
                             </div>
@@ -626,7 +626,7 @@
                                        id="header-notif-item-{{ $n->id }}"
                                        onclick="markSingleHeaderNotifAsRead(event, {{ $n->id }}, '{{ url('/affairs/notifications') }}')">
                                         <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
-                                            <div class="notif-item-icon-wrap">
+                                             <div class="notif-item-icon-wrap">
                                                 <i class="fa-solid fa-bell"></i>
                                             </div>
                                             <div class="notif-item-content">
@@ -644,19 +644,19 @@
                                 @empty
                                     <div class="notif-card-empty">
                                         <i class="fa-regular fa-bell-slash"></i>
-                                        <span>لا توجد إشعارات حالياً</span>
+                                        <span>{{ __('messages.no_notifications') }}</span>
                                     </div>
                                 @endforelse
                             </div>
 
                             <a href="{{ url('/affairs/notifications') }}" class="notif-card-footer">
-                                <span>عرض كافة الإشعارات</span>
-                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>{{ __('messages.view_all') }}</span>
+                                <i class="fa-solid fa-arrow-left rtl:rotate-0 ltr:rotate-180"></i>
                             </a>
                         </div>
                     </div>
                     <!-- Dark Mode Toggle -->
-                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
+                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="{{ __('messages.settings') }}">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
                     </button>
                 </div>
@@ -682,11 +682,11 @@
         <nav class="bottom-nav">
             <a href="{{ route('affairs.dashboard') }}" class="bottom-nav-item {{ Request::is('affairs/dashboard') ? 'active' : '' }}">
                 <i class="fa-solid fa-house"></i>
-                <span>الرئيسية</span>
+                <span>{{ __('messages.dashboard') }}</span>
             </a>
             <a href="{{ route('affairs.profile') }}" class="bottom-nav-item {{ Request::is('affairs/profile') ? 'active' : '' }}">
                 <i class="fa-solid fa-user"></i>
-                <span>الملف الشخصي</span>
+                <span>{{ __('messages.profile') }}</span>
             </a>
             
             <div class="center-btn" onclick="toggleMobileMenu()">
@@ -695,12 +695,12 @@
             
             <a href="{{ route('affairs.notifications') }}" class="bottom-nav-item {{ Request::is('affairs/notifications') ? 'active' : '' }}">
                 <i class="fa-solid fa-bell"></i>
-                <span>الإشعارات</span>
+                <span>{{ __('messages.notifications') }}</span>
                 <span style="position: absolute; top: -5px; right: 5px; background: #ef4444; width: 8px; height: 8px; border-radius: 50%;"></span>
             </a>
             <a href="{{ route('affairs.messages') }}" class="bottom-nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}">
                 <i class="fa-solid fa-envelope"></i>
-                <span>الدردشات</span>
+                <span>{{ __('messages.messages') }}</span>
             </a>
         </nav>
     </div>
