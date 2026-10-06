@@ -152,9 +152,34 @@
                     str_contains($titleLower, 'إجازة') || $type === 'leave' => ['icon' => 'fa-user-clock', 'bg' => 'bg-rose-500/15', 'color' => 'text-rose-600 dark:text-rose-400'],
                     default => ['icon' => 'fa-bullhorn', 'bg' => 'bg-amber-400/20 dark:bg-yellow-500/15', 'color' => 'text-amber-600 dark:text-[#f2f20d]'],
                 };
+
+                // Dynamic Translation for common system notification titles & messages
+                $displayTitle = $notif->title;
+                $displayMessage = $notif->message;
+                if (app()->getLocale() === 'en') {
+                    if (str_contains($notif->title, 'طلب تسجيل جديد')) {
+                        $displayTitle = 'New Registration Request (Pending Approval)';
+                    } elseif (str_contains($notif->title, 'تعميم رسمي من إدارة المعهد العليا')) {
+                        $displayTitle = 'Official Notice from Institute Administration 📢';
+                    } elseif (str_contains($notif->title, 'استرحام')) {
+                        $displayTitle = 'Academic Petition Request';
+                    } elseif (str_contains($notif->title, 'وثيقة') || str_contains($notif->title, 'كشف')) {
+                        $displayTitle = 'Document / Transcript Request';
+                    } elseif (str_contains($notif->title, 'إكمال') || str_contains($notif->title, 'امتحان')) {
+                        $displayTitle = 'Makeup Exam Request';
+                    } elseif (str_contains($notif->title, 'موعد') || str_contains($notif->title, 'مقابلة')) {
+                        $displayTitle = 'Appointment / Meeting Notice';
+                    }
+
+                    if (str_contains($notif->message, 'طلب انضمام طالب')) {
+                        $displayMessage = preg_replace('/طلب انضمام طالب.*يرجى مراجعة الطلب والموافقة والتفعيل من قسم الحسابات\./u', 'New student registration request. Please review and approve in Accounts panel.', $notif->message);
+                    } elseif (trim($notif->message) === 'اعلان مهم' || trim($notif->message) === 'إعلان مهم') {
+                        $displayMessage = 'Important Administrative Announcement';
+                    }
+                }
             @endphp
 
-            <div class="notif-card bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-zinc-700 {{ !$notif->is_read ? 'unread bg-amber-50/40 dark:bg-[#151515]' : '' }}" 
+            <div class="notif-card bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-zinc-700 text-start {{ !$notif->is_read ? 'unread bg-amber-50/40 dark:bg-[#151515]' : '' }}" 
                  data-unread="{{ !$notif->is_read ? 'true' : 'false' }}"
                  onclick="markAsRead({{ $notif->id }}, this)">
                 
@@ -164,18 +189,18 @@
                 </div>
 
                 {{-- Content Body --}}
-                <div class="flex-1 min-w-0">
+                <div class="flex-1 min-w-0 text-start">
                     <div class="flex items-start justify-between gap-3 mb-1">
                         <h3 class="text-base font-bold text-slate-900 dark:text-white leading-snug truncate">
-                            {{ $notif->title }}
+                            {{ $displayTitle }}
                         </h3>
                         <span class="text-xs font-semibold text-slate-400 dark:text-zinc-500 shrink-0">
-                            {{ \Carbon\Carbon::parse($notif->created_at)->translatedFormat('d F Y - h:i A') }}
+                            {{ \Carbon\Carbon::parse($notif->created_at)->locale(app()->getLocale())->translatedFormat('d F Y - h:i A') }}
                         </span>
                     </div>
 
                     <p class="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed mb-3">
-                        {{ $notif->message }}
+                        {{ $displayMessage }}
                     </p>
 
                     @if($targetUrl)
@@ -212,7 +237,7 @@
 
     {{-- Modal إرسال إشعار جديد --}}
     <div id="sendNotifModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="w-full max-w-lg bg-white dark:bg-[#141417] border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-6 text-right">
+        <div class="w-full max-w-lg bg-white dark:bg-[#141417] border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-6 text-start">
             <div class="flex items-center justify-between mb-5 border-b border-slate-200 dark:border-zinc-800 pb-4">
                 <h3 class="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                     <i class="fa-solid fa-paper-plane text-amber-500 dark:text-[#f2f20d]"></i>
@@ -224,12 +249,12 @@
                 </button>
             </div>
 
-            <form id="sendAdminNotifForm" action="{{ route('admin.notifications.send') }}" method="POST" class="flex flex-col gap-4">
+            <form id="sendAdminNotifForm" action="{{ route('admin.notifications.send') }}" method="POST" class="flex flex-col gap-4 text-start">
                 @csrf
 
                 {{-- الجمهور / الفئة --}}
                 <div>
-                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2">{{ __('messages.target_audience') }}</label>
+                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2 text-start">{{ __('messages.target_audience') }}</label>
                     <div class="grid grid-cols-3 gap-2">
                         <label class="cursor-pointer">
                             <input checked class="peer sr-only" name="recipient_type" value="all" type="radio"
@@ -262,13 +287,26 @@
 
                 {{-- اختيار القسم --}}
                 <div id="deptSelectorModal" class="hidden">
-                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2">{{ __('messages.selected_departments') }}</label>
-                    <div class="flex flex-col gap-2 max-h-36 overflow-y-auto pr-1">
+                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2 text-start">{{ __('messages.selected_departments') }}</label>
+                    <div class="flex flex-col gap-2 max-h-36 overflow-y-auto px-1">
                         @foreach(\App\Models\Department::orderBy('name')->get() as $d)
+                            @php
+                                $dName = $d->name;
+                                if (app()->getLocale() === 'en') {
+                                    $dName = match($d->name) {
+                                        'تجاري' => 'Commercial / Business',
+                                        'طبي' => 'Medical Sciences',
+                                        'نظم المعلومات الحاسوبية' => 'Computer Information Systems',
+                                        'تقني' => 'Technical',
+                                        'هندسي' => 'Engineering',
+                                        default => $d->name,
+                                    };
+                                }
+                            @endphp
                         <label class="cursor-pointer flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 hover:border-amber-400/50 transition-all">
                             <input type="checkbox" name="target_departments[]" value="{{ $d->department_id }}"
                                    class="w-4 h-4 accent-amber-400 cursor-pointer flex-shrink-0">
-                            <span class="text-xs font-bold text-slate-800 dark:text-white">{{ $d->name }}</span>
+                            <span class="text-xs font-bold text-slate-800 dark:text-white flex-1 text-start">{{ $dName }}</span>
                         </label>
                         @endforeach
                     </div>
@@ -276,16 +314,16 @@
 
                 {{-- الموضوع --}}
                 <div>
-                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1">{{ __('messages.notification_title') }}</label>
+                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1 text-start">{{ __('messages.notification_title') }}</label>
                     <input name="subject" type="text" required placeholder="{{ __('messages.enter_notif_title') }}"
-                           class="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 py-2.5 px-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:border-[#f2f20d] focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all"/>
+                           class="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 py-2.5 px-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:border-[#f2f20d] focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all text-start"/>
                 </div>
 
                 {{-- الرسالة --}}
                 <div>
-                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1">{{ __('messages.notification_content') }}</label>
+                    <label class="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1 text-start">{{ __('messages.notification_content') }}</label>
                     <textarea name="message" rows="3" required placeholder="{{ __('messages.enter_notif_content') }}"
-                              class="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 py-2.5 px-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:border-[#f2f20d] focus:ring-1 focus:ring-[#f2f20d] outline-none resize-none transition-all"></textarea>
+                              class="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 py-2.5 px-4 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:border-[#f2f20d] focus:ring-1 focus:ring-[#f2f20d] outline-none resize-none transition-all text-start"></textarea>
                 </div>
 
                 <button type="submit" id="sendAdminNotifBtn"
@@ -378,7 +416,7 @@
             if (btn) {
                 btn.disabled = false;
                 btn.classList.remove('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
-                btn.innerHTML = `<i class="fa-solid fa-paper-plane ml-1"></i> <span>${@json(__('messages.confirm_and_send_notif'))}</span>`;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane {{ app()->getLocale() === 'en' ? 'mr-1' : 'ml-1' }}"></i> <span>${@json(__('messages.confirm_and_send_notif'))}</span>`;
             }
         });
     })();
