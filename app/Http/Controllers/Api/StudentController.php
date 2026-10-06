@@ -2100,6 +2100,15 @@ class StudentController extends Controller
         // جلب وقت المسح الفعلي من الموبايل أو اعتماد وقت السيرفر الحالي
         $scannedAt = $request->scanned_at ? Carbon::parse($request->scanned_at) : now();
 
+        // وقت المسح يرسله التطبيق: نرفض أي وقت مستقبلي (بهامش بسيط لفروق الساعات)
+        if ($scannedAt->greaterThan(now()->addSeconds(config('attendance.max_future_skew_seconds', 120)))) {
+            return response()->json([
+                'success'       => false,
+                'message'       => 'وقت المسح غير صالح (يسبق وقت السيرفر).',
+                'reject_reason' => 'expired_qr',
+            ], 400);
+        }
+
         // ─── 1. التحقق من صلاحية الـ QR ──────────────────────────────────
         $token = $request->qr_token;
         
@@ -2262,12 +2271,13 @@ class StudentController extends Controller
                     'face_embedding'      => $faceEmbedding,
                     'requires_face_reset' => false,
                 ]);
-                $faceStatus = 'verified';
-                $faceScore  = 100.0;
+                // أول تسجيل للوجه: لا مرجع للمقارنة، فلا نمنحه "verified" بدرجة 100 وهمية
+                $faceStatus = 'first_time';
+                $faceScore  = null;
             } elseif ($isDegenerateEmbedding) {
                 // الصورة المرجعية غير صالحة → تجاوز التحقق وتحديث البصمة الحية
-                $faceStatus = 'verified';
-                $faceScore  = 100.0;
+                $faceStatus = 'first_time';
+                $faceScore  = null;
                 $student->update(['face_embedding' => $faceEmbedding]);
             } else {
                 // مقارنة بصمة ArcFace مع البصمة المرجعية
@@ -2321,13 +2331,27 @@ class StudentController extends Controller
                         ], 403);
                     }
                 } else {
-                    $faceStatus = 'verified';
-                    $faceScore  = 90.0;
+                    // تعذّر استخراج بصمة للمقارنة: لا نعتبره تحققاً ناجحاً، بل نعلّمه للمراجعة
+                    $faceStatus = 'suspicious';
+                    $faceScore  = null;
                 }
             } else {
-                $faceStatus = 'verified';
-                $faceScore  = 96.0;
+                // لا توجد صورة مرجعية للمقارنة: الحضور يُسجَّل لكن يُعلَّم للمراجعة بدل اعتباره محقَّقاً
+                $faceStatus = 'suspicious';
+                $faceScore  = null;
             }
+        }
+
+        // اشتراط الوجه (إعداد attendance.require_face): لا حضور بلا بصمة/صورة وجه
+        if (!$faceEmbedding && !$faceImage && config('attendance.require_face')) {
+            $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
+
+            return response()->json([
+                'success'       => false,
+                'message'       => 'يلزم التحقق بالوجه لتسجيل الحضور.',
+                'reject_reason' => 'face_mismatch',
+                'face_status'   => 'rejected',
+            ], 403);
         }
 
         // ─── 6. تسجيل الحضور ─────────────────────────────────────────────
@@ -2353,6 +2377,11 @@ class StudentController extends Controller
         // تعيين تاريخ وساعة التسجيل الفعلي محلياً لتسجيل دقيق في قاعدة البيانات
         $attendance->created_at = $scannedAt;
         $attendance->save();
+
+        // تنبيه المعلّم عند تسجيل وجه جديد أو حضور يحتاج مراجعة (لا يوقف العملية عند الفشل)
+        if (in_array($faceStatus, ['first_time', 'suspicious'], true)) {
+            $this->notifyTeacherFace($session, $student, $faceStatus, $faceScore);
+        }
 
         $message = match($faceStatus) {
             'first_time'  => 'تم تسجيل حضورك وحفظ بيانات وجهك كمرجع ✅',
@@ -2438,9 +2467,10 @@ class StudentController extends Controller
         return round(max(0.0, min(100.0, $score)), 1);
     }
 
-    private function notifyTeacherFace($session, $student, string $status, float $score): void
+    private function notifyTeacherFace($session, $student, string $status, ?float $score): void
     {
         try {
+            $pct = $score === null ? 'غير متاح' : $score . '%';
             $lesson  = $session->lesson;
             $teacher = $lesson->teacher ?? null;
             if (!$teacher) return;
@@ -2455,8 +2485,8 @@ class StudentController extends Controller
             ];
             $bodies = [
                 'first_time'  => "الطالب $studentName سجّل حضوره لأول مرة في $courseName (تم حفظ صورته كمرجع).",
-                'suspicious'  => "الطالب $studentName — تطابق الوجه $score% في مادة $courseName.",
-                'rejected'    => "الطالب $studentName — فشل تحقق الوجه ($score%) في مادة $courseName.",
+                'suspicious'  => "الطالب $studentName — تطابق الوجه $pct في مادة $courseName.",
+                'rejected'    => "الطالب $studentName — فشل تحقق الوجه ($pct) في مادة $courseName.",
             ];
 
             \App\Models\Notification::create([
