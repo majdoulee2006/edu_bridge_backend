@@ -35,6 +35,11 @@ return [
         ],
     ],
 
+    'fcm' => [
+        // اتركه فارغاً لاستخدام storage/app/firebase-service-account.json
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+    ],
+
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
