@@ -4,18 +4,28 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Student;
+use App\Models\Teacher;
+use App\Models\Parents;
+use App\Models\Schedule;
+use App\Models\Grade;
+use App\Models\Attendance;
+use App\Models\AttendanceSession;
+use App\Models\Course;
+use App\Models\Lesson;
+use App\Models\Resource;
+use App\Models\Assignment;
+use App\Models\AssignmentSubmission;
+use App\Models\Exam;
+use App\Models\Announcement;
+use App\Models\Notification;
+use App\Models\AbsenceRequest;
+use App\Services\FcmService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
-use App\Models\Schedule;
-use App\Models\Grade;
-use App\Models\Attendance;
-use App\Models\Course;
 use Illuminate\Support\Facades\DB;
-use App\Models\Notification;
-use App\Services\FcmService;
+use Carbon\Carbon;
 
 class TelegramBotHandler
 {

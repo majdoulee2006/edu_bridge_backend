@@ -26,11 +26,8 @@ class TelegramPoll extends Command
                     'timeout'         => 30,
                     'allowed_updates' => ['message', 'callback_query'],
                 ]);
-            } catch (\Exception $e) {
-                // 🐛 انقطاع شبكة لحظي (DNS/Timeout/اتصال) كان عم يرمي استثناء
-                // غير ملتقط فيوقف السكربت بالكامل — بينما الهدف منه إنه يضل
-                // شغال للأبد. هلق أي انقطاع مؤقت بس بيسجل تحذير ويعيد
-                // المحاولة، بدل ما يطيح البرنامج كامل.
+            } catch (\Throwable $e) {
+                // 🐛 انقطاع شبكة لحظي أو خطأ
                 $this->warn('Connection error, retrying in 3s: ' . $e->getMessage());
                 sleep(3);
                 continue;
@@ -45,14 +42,10 @@ class TelegramPoll extends Command
                 $offset = $update['update_id'] + 1;
 
                 try {
-                    // 🔁 نفس بالضبط منطق TelegramWebhookController@handle، بس
-                    // عن طريق سحب التحديثات (getUpdates) بدل استقبالها عبر
-                    // رابط عام (webhook) — نتفادى تماماً مشاكل ngrok والنفق
-                    // العام يلي كانت بتمنع تيليغرام من التوصيل.
                     $telegramHandler->handleUpdate($update);
                     $chatId = $update['message']['chat']['id'] ?? ($update['callback_query']['message']['chat']['id'] ?? null);
                     $this->info("Handled update {$update['update_id']}" . ($chatId ? " (chat_id: {$chatId})" : ''));
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
                     $this->error("Error handling update {$update['update_id']}: " . $e->getMessage());
                 }
             }
