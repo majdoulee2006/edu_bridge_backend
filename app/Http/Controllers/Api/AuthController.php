@@ -254,7 +254,7 @@ class AuthController extends Controller
             'academic_year'    => 'nullable|string',
             'department'       => 'nullable|string',
             'branch'           => 'required_if:role,student|nullable|string',
-            'program_id'       => 'required_if:role,student|nullable|exists:programs,id',
+            'program_id'       => 'nullable|exists:programs,id',
             'children_ids'     => 'nullable|array',
             'fcm_token'        => 'nullable|string',
         ]);
@@ -430,16 +430,22 @@ class AuthController extends Controller
             ]);
 
             // Auto-enroll: تجهيز الطالب بكل مواد برنامجه بناءً على الفرع/التخصص
-            $branch = $request->branch ?? $request->department;
             $program = null;
-            if ($branch) {
+            if ($request->filled('program_id')) {
+                $program = \DB::table('programs')->where('id', $request->program_id)->first();
+            }
+
+            $branch = $request->branch ?? $request->department;
+            if (!$program && $branch) {
                 $program = \DB::table('programs')
                     ->where('name', 'LIKE', '%' . $branch . '%')
+                    ->orWhere('name', 'LIKE', '%' . mb_substr($branch, 0, 4) . '%')
                     ->first();
             }
             if (!$program && $request->department) {
                 $program = \DB::table('programs')
                     ->where('name', 'LIKE', '%' . $request->department . '%')
+                    ->orWhere('name', 'LIKE', '%' . mb_substr($request->department, 0, 4) . '%')
                     ->first();
             }
 
