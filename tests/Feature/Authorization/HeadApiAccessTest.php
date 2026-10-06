@@ -155,4 +155,71 @@ class HeadApiAccessTest extends TestCase
         $this->getJson("/api/department-head/grade-report-requests/$courseB/entries")->assertForbidden();
         $this->getJson("/api/department-head/grade-report-requests/$courseA/entries")->assertOk();
     }
+
+    // ── المواعيد والاستدعاءات ────────────────────────────────────
+
+    private function summon(array $student, string $status = 'pending_hod'): int
+    {
+        return DB::table('parent_summons')->insertGetId([
+            'sender_user_id' => $this->makeTeacher()['user']->user_id,
+            'student_id'     => $student['student_id'],
+            'reason_title'   => 'T', 'details' => 'D', 'status' => $status,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    private function meeting(array $student): int
+    {
+        return DB::table('parent_meeting_requests')->insertGetId([
+            'parent_user_id' => $this->makeParent()['user']->user_id,
+            'student_id'     => $student['student_id'],
+            'subject' => 'S', 'reason' => 'R',
+            'target_role'    => 'head',
+            'status'         => 'pending',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    public function test_head_sees_only_own_department_summons_and_meetings(): void
+    {
+        $mine    = $this->summon($this->studentA);
+        $foreign = $this->summon($this->studentB);
+        $myMeet  = $this->meeting($this->studentA);
+        $foMeet  = $this->meeting($this->studentB);
+
+        $summonIds  = collect($this->getJson('/api/department-head/appointments/summons')->assertOk()->json('data'))->pluck('id')->all();
+        $meetingIds = collect($this->getJson('/api/department-head/appointments/meetings')->assertOk()->json('data'))->pluck('id')->all();
+
+        $this->assertContains($mine, $summonIds);
+        $this->assertNotContains($foreign, $summonIds);
+        $this->assertContains($myMeet, $meetingIds);
+        $this->assertNotContains($foMeet, $meetingIds);
+    }
+
+    public function test_head_cannot_forward_or_answer_foreign_department_items(): void
+    {
+        $foreign = $this->summon($this->studentB);
+        $foMeet  = $this->meeting($this->studentB);
+
+        $this->postJson("/api/department-head/appointments/summons/$foreign/forward")->assertForbidden();
+        $this->putJson("/api/department-head/appointments/meetings/$foMeet/respond", ['status' => 'approved'])->assertForbidden();
+        $this->putJson("/api/department-head/parent-meetings/$foMeet/respond", ['status' => 'approved'])->assertForbidden();
+
+        $this->assertSame('pending_hod', DB::table('parent_summons')->where('id', $foreign)->value('status'));
+        $this->assertSame('pending', DB::table('parent_meeting_requests')->where('id', $foMeet)->value('status'));
+    }
+
+    public function test_head_cannot_summon_parent_of_foreign_student(): void
+    {
+        $this->makeParentLink($this->studentB);
+
+        $this->postJson('/api/department-head/parent-summons', [
+            'student_id' => $this->studentB['student_id'], 'reason_title' => 'x', 'details' => 'y',
+        ])->assertForbidden();
+    }
+
+    private function makeParentLink(array $student): void
+    {
+        $this->linkParent($this->makeParent()['user'], $student['user']);
+    }
 }

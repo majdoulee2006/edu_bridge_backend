@@ -468,6 +468,9 @@ class HODController extends Controller
                     'sender_users.full_name as teacher_name'
                 );
 
+            // رئيس القسم يرى استدعاءات طلاب قسمه فقط
+            $query->where('student_users.department', \App\Support\Access::headDepartment($request->user())['name'] ?? '__none__');
+
             if ($status === 'pending') {
                 $query->whereIn('parent_summons.status', ['pending_hod', 'pending_affairs']);
             } else if ($status === 'completed') {
@@ -490,6 +493,9 @@ class HODController extends Controller
         $summon = DB::table('parent_summons')->where('id', $id)->first();
         if (!$summon) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+        if (!\App\Support\Access::headManagesStudent($request->user(), $summon->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص طلاب قسمك'], 403);
         }
 
         DB::table('parent_summons')->where('id', $id)->update([
@@ -632,6 +638,10 @@ class HODController extends Controller
                   ->orWhere('parent_meeting_requests.target_role', 'hod');
             });
 
+            // رئيس القسم يرى طلبات مواعيد أولياء أمور طلاب قسمه فقط
+            $headDeptName = \App\Support\Access::headDepartment($request->user())['name'];
+            $query->where('student_users.department', $headDeptName ?? '__none__');
+
             if ($status === 'pending') {
                 $query->where('parent_meeting_requests.status', 'pending');
             } else if ($status === 'completed') {
@@ -660,6 +670,9 @@ class HODController extends Controller
         $meeting = DB::table('parent_meeting_requests')->where('id', $id)->first();
         if (!$meeting) {
             return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
+        }
+        if (!\App\Support\Access::headManagesStudent($request->user(), $meeting->student_id)) {
+            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص طلاب قسمك'], 403);
         }
 
         $scheduledAt = $validated['scheduled_at'] ? date('Y-m-d H:i:s', strtotime($validated['scheduled_at'])) : null;
