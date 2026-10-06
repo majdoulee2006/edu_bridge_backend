@@ -57,6 +57,7 @@ return [
     'inactive'                  => 'موقوف',
     'status'                    => 'الحالة',
     'actions'                   => 'الإجراءات',
+    'details'                   => 'التفاصيل',
     'mark_all_read'             => 'تحديد الكل كمقروء',
     'no_notifications'          => 'لا توجد إشعارات جديدة',
     'view_all'                  => 'عرض الكل',

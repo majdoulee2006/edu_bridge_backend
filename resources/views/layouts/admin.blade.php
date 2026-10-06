@@ -534,7 +534,7 @@
                 <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
                     {{ mb_substr(Auth::user()->full_name ?? 'A', 0, 1) }}
                 </div>
-                <div style="font-weight: 700; font-size: 0.95rem;">{{ Auth::user()->full_name ?? (app()->getLocale() === 'en' ? 'Institute Admin' : 'إدارة المعهد') }}</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ (app()->getLocale() === 'en' && Auth::user()->full_name === 'إدارة المعهد التقني') ? 'Technical Institute Admin' : (Auth::user()->full_name ?? (app()->getLocale() === 'en' ? 'Institute Admin' : 'إدارة المعهد')) }}</div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ __('messages.general_manager') }}</div>
             </div>
 
@@ -617,7 +617,7 @@
                     <form id="admin-logout-form" action="{{ route('admin.logout') }}" method="POST">
                         @csrf
                         <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }}; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> {{ __('messages.logout') }}
+                            <i class="fa-solid fa-arrow-right-from-bracket {{ app()->getLocale() === 'en' ? 'rotate-180' : '' }}"></i> {{ __('messages.logout') }}
                         </button>
                     </form>
                 </div>
@@ -633,7 +633,7 @@
                         <i class="fa-solid fa-bars"></i>
                     </button>
                     <h1 class="page-title text-slate-800 dark:text-white" style="font-size:1rem; font-weight:800;">
-                        {{ __('messages.welcome') }}، {{ Auth::user()->full_name ?? (app()->getLocale() === 'en' ? 'Institute Admin' : 'إدارة المعهد') }} 👋
+                        {{ __('messages.welcome') }}{{ app()->getLocale() === 'en' ? ',' : '،' }} {{ (app()->getLocale() === 'en' && Auth::user()->full_name === 'إدارة المعهد التقني') ? 'Technical Institute Admin' : (Auth::user()->full_name ?? (app()->getLocale() === 'en' ? 'Institute Admin' : 'إدارة المعهد')) }} 👋
                     </h1>
                 </div>
                 

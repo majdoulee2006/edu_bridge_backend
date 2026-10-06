@@ -57,6 +57,7 @@ return [
     'inactive'                  => 'Inactive',
     'status'                    => 'Status',
     'actions'                   => 'Actions',
+    'details'                   => 'Details',
     'mark_all_read'             => 'Mark all as read',
     'no_notifications'          => 'No new notifications',
     'view_all'                  => 'View All',
