@@ -189,16 +189,18 @@
         }
 
         @media (max-width: 768px) {
-            .admin-bottom-nav { display: flex !important; }
+            .admin-bottom-nav { display: flex !important; z-index: 1000 !important; }
             /* Push content above bottom nav */
             .admin-main-content {
                 padding-bottom: 85px !important;
             }
-            /* Sidebar stops ABOVE the bottom nav, floats over it */
             #sidebar {
-                bottom: 70px !important;
-                border-bottom-right-radius: 20px !important;
-                border-bottom-left-radius: 20px !important;
+                bottom: 0 !important;
+                height: 100vh !important;
+                height: 100dvh !important;
+                z-index: 100000 !important;
+                border-bottom-right-radius: 0 !important;
+                border-bottom-left-radius: 0 !important;
             }
         }
 
@@ -270,7 +272,7 @@
             z-index: 999999;
             display: none;
             flex-direction: column;
-            overflow: visible;
+            overflow: hidden;
             transform-origin: top left;
             animation: notifCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
@@ -278,6 +280,25 @@
             background: #121212;
             border-color: #2a2a2a;
             box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.5), 0 10px 20px -5px rgba(0, 0, 0, 0.25);
+        }
+
+        @media (max-width: 640px) {
+            .notif-dropdown-card {
+                position: fixed !important;
+                top: 68px !important;
+                left: 12px !important;
+                right: 12px !important;
+                width: auto !important;
+                max-width: calc(100vw - 24px) !important;
+                max-height: calc(100vh - 90px) !important;
+                transform-origin: top center !important;
+                border-radius: 1.25rem !important;
+                box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+            }
+            .notif-card-body {
+                max-height: calc(100vh - 240px) !important;
+                overflow-y: auto !important;
+            }
         }
 
         /* Continuous Invisible Hover Bridge */
@@ -373,18 +394,20 @@
         }
         .notif-card-item {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
+            justify-content: space-between;
             gap: 0.75rem;
-            padding: 0.8rem 1rem;
+            padding: 0.75rem 1rem;
             border-bottom: 1px solid #f1f5f9;
             text-decoration: none;
-            color: inherit;
+            color: #0f172a;
             transition: background 0.2s;
             position: relative;
             text-align: right;
         }
         .dark .notif-card-item {
-            border-color: #2a2a2a;
+            border-color: #242424;
+            color: #ffffff;
         }
         .notif-card-item:hover {
             background: rgba(0, 0, 0, 0.03);
@@ -406,7 +429,6 @@
             align-items: center;
             justify-content: center;
             font-size: 0.85rem;
-            margin-top: 2px;
             flex-shrink: 0;
         }
         .dark .notif-item-icon-wrap {
@@ -418,10 +440,9 @@
             min-width: 0;
         }
         .notif-item-title {
-            font-size: 0.84rem;
+            font-size: 0.86rem;
             font-weight: 700;
             color: #1e293b;
-            margin-bottom: 0.15rem;
             line-height: 1.3;
             white-space: nowrap;
             overflow: hidden;
@@ -430,19 +451,6 @@
         .dark .notif-item-title {
             color: #f1f5f9;
         }
-        .notif-item-msg {
-            font-size: 0.78rem;
-            color: #64748b;
-            line-height: 1.35;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            margin-bottom: 0.3rem;
-        }
-        .dark .notif-item-msg {
-            color: #94a3b8;
-        }
         .notif-item-time {
             font-size: 0.72rem;
             color: #94a3b8;
@@ -450,14 +458,14 @@
             align-items: center;
             gap: 0.3rem;
             opacity: 0.8;
+            margin-top: 0.15rem;
         }
         .notif-unread-dot {
             width: 8px;
             height: 8px;
             min-width: 8px;
             border-radius: 50%;
-            background-color: #3b82f6;
-            margin-top: 6px;
+            background-color: #ef4444;
             flex-shrink: 0;
         }
 
@@ -526,7 +534,7 @@
                 <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
                     {{ mb_substr(Auth::user()->full_name ?? 'إ', 0, 1) }}
                 </div>
-                <div style="font-weight: 700; font-size: 0.95rem;">{{ Auth::user()->full_name ?? 'إدارة المعهد التقني' }}</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ Auth::user()->full_name ?? 'إدارة المعهد' }}</div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">مدير عام</div>
             </div>
 
@@ -625,7 +633,7 @@
                         <i class="fa-solid fa-bars"></i>
                     </button>
                     <h1 class="page-title text-slate-800 dark:text-white" style="font-size:1rem; font-weight:800;">
-                        أهلاً، {{ Auth::user()->full_name ?? 'إدارة المعهد التقني' }} 👋
+                        أهلاً، {{ Auth::user()->full_name ?? 'إدارة المعهد' }} 👋
                     </h1>
                 </div>
                 
@@ -667,15 +675,16 @@
                                        class="notif-card-item {{ !$n->is_read ? 'is-unread' : '' }}" 
                                        id="header-notif-item-{{ $n->id }}"
                                        onclick="markSingleHeaderNotifAsRead(event, {{ $n->id }}, '{{ route('admin.notifications') }}')">
-                                        <div class="notif-item-icon-wrap">
-                                            <i class="fa-solid fa-bell"></i>
-                                        </div>
-                                        <div class="notif-item-content">
-                                            <div class="notif-item-title">{{ $n->title }}</div>
-                                            <div class="notif-item-msg">{{ Str::limit($n->message ?? $n->body, 70) }}</div>
-                                            <div class="notif-item-time">
-                                                <i class="fa-regular fa-clock"></i>
-                                                <span>{{ $n->created_at?->diffForHumans() }}</span>
+                                        <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+                                            <div class="notif-item-icon-wrap">
+                                                <i class="fa-solid fa-bell"></i>
+                                            </div>
+                                            <div class="notif-item-content">
+                                                <div class="notif-item-title">{{ $n->title }}</div>
+                                                <div class="notif-item-time">
+                                                    <i class="fa-regular fa-clock" style="font-size: 0.68rem;"></i>
+                                                    <span>{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->diffForHumans(null, true) : '' }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                         @if(!$n->is_read)
@@ -909,12 +918,21 @@
             }
         });
 
-        // Hover grace delay
+        // Hover & Click support for mobile and desktop
         (function() {
             const dropdownWrap = document.getElementById('adminNotifDropdown');
+            const bellBtn = document.getElementById('adminNotifBellBtn');
             let timer = null;
 
             if (dropdownWrap) {
+                if (bellBtn) {
+                    bellBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropdownWrap.classList.toggle('is-open');
+                    });
+                }
+
                 dropdownWrap.addEventListener('mouseenter', function() {
                     if (timer) clearTimeout(timer);
                     dropdownWrap.classList.add('is-open');

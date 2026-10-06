@@ -58,6 +58,8 @@ class TelegramBotHandler
             if ($user) {
                 if ($user->role === 'student') {
                     $this->sendStudentMainMenu($chatId, "مرحباً مجدداً **{$user->full_name}** 🎓");
+                } elseif ($user->role === 'parent') {
+                    $this->sendParentMainMenu($chatId, "مرحباً مجدداً **{$user->full_name}** 👨‍👩‍👧‍👦");
                 } else {
                     $this->sendMessage($chatId, "مرحباً مجدداً **{$user->full_name}** 👋\nحسابك مربوط بالفعل، وأي رمز تحقق (OTP) رح يوصلك هون تلقائياً.");
                 }
@@ -130,8 +132,20 @@ class TelegramBotHandler
             } else {
                 $this->sendStudentMainMenu($chatId);
             }
+        } elseif ($user && $user->role === 'parent') {
+            if (str_contains($text, 'علامات')) {
+                $this->handleParentGrades($user, $chatId);
+            } elseif (str_contains($text, 'غياب')) {
+                $this->handleParentAttendance($user, $chatId);
+            } elseif (str_contains($text, 'أبنائي') || str_contains($text, 'ابنائي')) {
+                $this->handleParentChildren($user, $chatId);
+            } elseif (str_contains($text, 'خروج')) {
+                $this->handleLogout($user, $chatId, $stateKey);
+            } else {
+                $this->sendParentMainMenu($chatId);
+            }
         } elseif ($user) {
-            // مستخدم مربوط بحسابه بس مش طالب (ولي أمر/معلم/رئيس قسم/إدارة) —
+            // مستخدم مربوط بحسابه بس مش طالب أو ولي أمر (معلم/رئيس قسم/إدارة) —
             // هالبوت حالياً بس بيستقبل رموز التحقق (OTP) لهالأدوار، ما عندو
             // قائمة خدمات تفاعلية إلهم بعد.
             $this->sendMessage($chatId, "مرحباً **{$user->full_name}** 👋\nحسابك مربوط، ورح توصلك رموز التحقق (OTP) هون تلقائياً وقت الحاجة.");
@@ -149,7 +163,7 @@ class TelegramBotHandler
         if (!$chatId) return;
 
         $user = User::where('telegram_chat_id', $chatId)->first();
-        if (!$user || $user->role !== 'student') {
+        if (!$user || !in_array($user->role, ['student', 'parent'])) {
             $this->answerCallbackQuery($queryId, "يرجى تسجيل الدخول أولاً.");
             return;
         }
@@ -183,6 +197,14 @@ class TelegramBotHandler
             Cache::put("telegram_leave_hours_{$chatId}", $hours, 1800);
             Cache::put("telegram_state_{$chatId}", 'awaiting_leave_reason', 1800);
             $this->sendMessage($chatId, "✍️ **سبب طلب الإجازة**\n\nتم اختيار الفترة: ({$hours})\nيرجى كتابة وتوضيح سبب طلب الإجازة الساعية:");
+            $this->answerCallbackQuery($queryId);
+        } elseif (str_starts_with($data, 'parent_student_grades_')) {
+            $studentId = str_replace('parent_student_grades_', '', $data);
+            $this->processParentStudentGrades($user, $chatId, $studentId);
+            $this->answerCallbackQuery($queryId);
+        } elseif (str_starts_with($data, 'parent_student_attendance_')) {
+            $studentId = str_replace('parent_student_attendance_', '', $data);
+            $this->processParentStudentAttendance($user, $chatId, $studentId);
             $this->answerCallbackQuery($queryId);
         }
     }
@@ -264,6 +286,8 @@ class TelegramBotHandler
 
             if ($user->role === 'student') {
                 $this->sendStudentMainMenu($chatId, "✅ **تم تسجيل الدخول وربط حسابك بنجاح!**\nمرحباً بك **{$user->full_name}** 🎓");
+            } elseif ($user->role === 'parent') {
+                $this->sendParentMainMenu($chatId, "✅ **تم تسجيل الدخول وربط حسابك بنجاح!**\nمرحباً بك **{$user->full_name}** 👨‍👩‍👧‍👦");
             } else {
                 $this->sendMessage($chatId, "✅ **تم ربط حسابك بنجاح!**\nمرحباً بك **{$user->full_name}** 🎓\n\nمن الآن، أي رمز تحقق (OTP) — لتغيير كلمة السر أو البريد أو رقم الهاتف — رح يوصلك مباشرة هون على هالمحادثة.");
             }
@@ -601,7 +625,7 @@ class TelegramBotHandler
         $msg = "📸 **مرفق العذر الطبي أو الرسمي**\n\n";
         $msg .= "تم حفظ نص العذر: \"{$text}\".\n\n";
         $msg .= "الآن يمكنك إرسال صورة الوثيقة أو التقرير الطبي من الكاميرا أو الاستديو.\n";
-        $msg .= "أو أرسل أمر /skip_photo للمتابعة بدون إرفاق صورة.";
+        $msg .= "أو أرسل أمر `/skip_photo` للمتابعة بدون إرفاق صورة.";
 
         $this->sendMessage($chatId, $msg);
     }
@@ -633,7 +657,7 @@ class TelegramBotHandler
             // إشعار إدارة شؤون الطلاب
             $studentName = $attendance->student->user->full_name ?? 'طالب';
             Notification::create([
-                'user_id'    => 1, // الإدارة
+                'user_id'    => \App\Models\User::where('role_id', 1)->value('user_id') ?? 1, // الإدارة
                 'sender_id'  => $attendance->student->user->user_id ?? 1,
                 'title'      => 'عذر غياب جديد بحاجة للمراجعة',
                 'message'    => "قام الطالب ({$studentName}) بتقديم عذر لغيابه في مادة ({$attendance->lesson->course->title})، يرجى مراجعته.",
@@ -935,5 +959,116 @@ class TelegramBotHandler
         } catch (\Exception $e) {
             Log::error('Telegram sendDocument error: ' . $e->getMessage());
         }
+    }
+
+    // ==========================================
+    // Parent Services Handlers
+    // ==========================================
+
+    private function sendParentMainMenu($chatId, $headerText = null)
+    {
+        $keyboard = [
+            'keyboard' => [
+                [['text' => '👨‍👦 أبنائي'], ['text' => '💯 علامات أبنائي']],
+                [['text' => '🛑 غيابات أبنائي']],
+                [['text' => '🚪 تسجيل خروج']]
+            ],
+            'resize_keyboard' => true,
+            'one_time_keyboard' => false
+        ];
+
+        $servicesList = "📋 **الخدمات المتاحة لك كولي أمر عبر البوت:**\n"
+            . "• 👨‍👦 **أبنائي**: استعراض قائمة أبنائك المسجلين بالمعهد\n"
+            . "• 💯 **علامات أبنائي**: استعراض درجات أبنائك وامتحاناتهم\n"
+            . "• 🛑 **غيابات أبنائي**: متابعة نسبة حضور أبنائك والإنذارات\n"
+            . "• 🚪 **تسجيل خروج**: فك ربط الحساب من هذا الجهاز\n\n"
+            . "👇 اختر الخدمة المطلوبة من الأزرار أدناه:";
+
+        $fullText = $headerText ? "{$headerText}\n\n{$servicesList}" : $servicesList;
+
+        $this->sendMessage($chatId, $fullText, $keyboard);
+    }
+
+    private function getParentChildren(User $user)
+    {
+        if (!$user->parent) return collect();
+        return $user->parent->students()->with('user')->get();
+    }
+
+    private function handleParentChildren(User $user, $chatId)
+    {
+        $children = $this->getParentChildren($user);
+        
+        if ($children->isEmpty()) {
+            $this->sendMessage($chatId, "لا يوجد أبناء مسجلين بحسابك حالياً.");
+            return;
+        }
+
+        $message = "👨‍👦 **قائمة أبنائك:**\n\n";
+        foreach ($children as $child) {
+            $childUser = $child->user;
+            $message .= "🔹 **{$childUser->full_name}**\n";
+            $message .= "التخصص: {$childUser->branch}\n";
+            $message .= "السنة: {$childUser->academic_year}\n";
+            $message .= "─────────────\n";
+        }
+
+        $this->sendMessage($chatId, $message);
+    }
+
+    private function handleParentGrades(User $user, $chatId)
+    {
+        $children = $this->getParentChildren($user);
+        
+        if ($children->isEmpty()) {
+            $this->sendMessage($chatId, "لا يوجد أبناء مسجلين بحسابك حالياً.");
+            return;
+        }
+
+        $keyboard = ['inline_keyboard' => []];
+        foreach ($children as $child) {
+            $keyboard['inline_keyboard'][] = [
+                ['text' => "💯 علامات " . ($child->user->first_name ?? $child->user->full_name ?? 'الابن'), 'callback_data' => "parent_student_grades_{$child->student_id}"]
+            ];
+        }
+
+        $this->sendMessage($chatId, "يرجى اختيار الابن لعرض علاماته:", null, $keyboard);
+    }
+
+    private function handleParentAttendance(User $user, $chatId)
+    {
+        $children = $this->getParentChildren($user);
+        
+        if ($children->isEmpty()) {
+            $this->sendMessage($chatId, "لا يوجد أبناء مسجلين بحسابك حالياً.");
+            return;
+        }
+
+        $keyboard = ['inline_keyboard' => []];
+        foreach ($children as $child) {
+            $keyboard['inline_keyboard'][] = [
+                ['text' => "🛑 غيابات " . ($child->user->first_name ?? $child->user->full_name ?? 'الابن'), 'callback_data' => "parent_student_attendance_{$child->student_id}"]
+            ];
+        }
+
+        $this->sendMessage($chatId, "يرجى اختيار الابن لعرض تقرير دوامه:", null, $keyboard);
+    }
+
+    private function processParentStudentGrades(User $parentUser, $chatId, $studentId)
+    {
+        $student = Student::with('user')->find($studentId);
+        if (!$student || !$student->user) return;
+        
+        $this->sendMessage($chatId, "👨‍👦 **تقرير علامات: {$student->user->full_name}**");
+        $this->handleGrades($student->user, $chatId);
+    }
+
+    private function processParentStudentAttendance(User $parentUser, $chatId, $studentId)
+    {
+        $student = Student::with('user')->find($studentId);
+        if (!$student || !$student->user) return;
+        
+        $this->sendMessage($chatId, "👨‍👦 **تقرير دوام: {$student->user->full_name}**");
+        $this->handleAttendance($student->user, $chatId);
     }
 }

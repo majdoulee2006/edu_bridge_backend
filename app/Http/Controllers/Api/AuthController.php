@@ -382,8 +382,15 @@ class AuthController extends Controller
 
         if ($request->role === 'student') {
             // نقل صورة الطالب المرجعية من جدول university_ids (اللي رفعها موظف الشؤون)
-            $referencePhoto = isset($uid) && !empty($uid->photo) ? $uid->photo : null;
+            // اعتماد صورة السيلفي الملتقطة أو صورة الشؤون كصورة مرجعية رسمية
+            $referencePhoto = (isset($uid) && !empty($uid->photo)) ? $uid->photo : $avatarPath;
             $studentCode    = !empty($request->university_id) ? $request->university_id : ('2026' . str_pad($user->user_id, 4, '0', STR_PAD_LEFT));
+
+            // استلام بصمة الوجه الرقمية إن أُرسلت مع السيلفي عند إنشاء الحساب
+            $faceEmbedding = $request->face_embedding;
+            if (is_string($faceEmbedding)) {
+                $faceEmbedding = json_decode($faceEmbedding, true);
+            }
 
             $student = Student::create([
                 'user_id'         => $user->user_id,
@@ -391,6 +398,7 @@ class AuthController extends Controller
                 'level'           => 'السنة الأولى',
                 'birth_date'      => $request->birth_date,
                 'reference_photo' => $referencePhoto,
+                'face_embedding'  => (is_array($faceEmbedding) && !empty($faceEmbedding)) ? $faceEmbedding : null,
             ]);
 
             // Auto-enroll: تجهيز الطالب بكل مواد برنامجه بناءً على الفرع/التخصص

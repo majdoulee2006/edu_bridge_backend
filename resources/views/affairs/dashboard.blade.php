@@ -239,31 +239,7 @@
     </a>
 </div>
 
-{{-- ── 🏛️ شريط الحالة الأكاديمية والرابط لصفحة الأعوام والفصول ── --}}
-<div style="background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-    <div style="display: flex; align-items: center; gap: 0.85rem;">
-        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(59,130,246,0.15); color: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
-            <i class="fa-solid fa-graduation-cap"></i>
-        </div>
-        <div>
-            <div style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 700;">الحالة الأكاديمية الشغّالة حالياً:</div>
-            <div style="font-size: 1.05rem; font-weight: 800; color: var(--text-primary); margin-top: 0.1rem; display: flex; align-items: center; gap: 0.5rem;">
-                @if($activeSemester)
-                    <span style="color: #10b981;">● {{ $activeSemester->name }}</span>
-                    @if($activeSemester->start_date && $activeSemester->end_date)
-                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">({{ $activeSemester->start_date }} ➔ {{ $activeSemester->end_date }})</span>
-                    @endif
-                @else
-                    <span style="color: #ef4444;">● لا يوجد أي فصل مفعّل حالياً بالمعهد</span>
-                @endif
-            </div>
-        </div>
-    </div>
 
-    <a href="{{ route('affairs.academic_management') }}" style="background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); padding: 0.6rem 1.2rem; border-radius: 0.65rem; font-weight: 800; text-decoration: none; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease;">
-        <i class="fa-solid fa-sliders"></i> إدارة الفصول والدفعات الأكاديمية
-    </a>
-</div>
 
 
 
@@ -281,32 +257,7 @@
 </div>
 @endif
 
-{{-- ── إعلانات المؤسسة (كاروسيل) â”€â”€ --}}
-<div class="section-header">
-    <h2 class="section-title">إعلانات المؤسسة</h2>
-    {{-- عرض الكل محذوف --}}
-</div>
 
-<div class="announcements-carousel">
-    @php
-        $gradients = ['bg-gradient-1','bg-gradient-2','bg-gradient-3','bg-gradient-4','bg-gradient-5'];
-    @endphp
-
-    @forelse($carouselAnnouncements as $i => $ann)
-        <div class="announcement-card {{ $gradients[$i % 5] }}">
-            <span class="ann-badge">{{ $ann->category ?? 'عام' }}</span>
-            <h3>{{ $ann->title }}</h3>
-            @if($ann->content)
-                <p>{{ Str::limit($ann->content, 80) }}</p>
-            @endif
-        </div>
-    @empty
-        <div class="empty-carousel">
-            <i class="fa-regular fa-bell-slash" style="margin-left:0.5rem;"></i>
-            لا توجد إعلانات حالياً
-        </div>
-    @endforelse
-</div>
 
 {{-- ── منشورات الإدارة ── --}}
 <div class="section-header">
@@ -319,37 +270,62 @@
         $color  = $colors[$loop->index % count($colors)];
         $initials = mb_substr($post->user->full_name ?? 'إ', 0, 1);
 
-        $firstImg = $post->image ?? null;
-        if (!$firstImg && !empty($post->images)) {
+        $imgsArr = [];
+        if (!empty($post->images)) {
             $imgsArr = is_string($post->images) ? json_decode($post->images, true) : $post->images;
-            if (is_array($imgsArr) && !empty($imgsArr)) {
-                $firstImg = $imgsArr[0];
+        }
+        if (empty($imgsArr) && !empty($post->image)) {
+            $imgsArr = [$post->image];
+        }
+
+        $formattedImgs = [];
+        if (is_array($imgsArr)) {
+            foreach ($imgsArr as $img) {
+                if ($img) {
+                    $formattedImgs[] = str_starts_with($img, 'http') ? $img : asset('storage/' . ltrim($img, '/'));
+                }
             }
         }
-        $imgUrl = null;
-        if ($firstImg) {
-            $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
-        }
     @endphp
-    <div class="post-card">
-        <div class="post-header">
-            <div class="post-avatar" style="background:{{ $color }};">{{ $initials }}</div>
-            <div>
-                <div class="post-author">{{ $post->user->full_name ?? 'الإدارة' }}</div>
-                <div class="post-time">{{ $post->created_at->diffForHumans() }}</div>
+        <div style="background: var(--bg-secondary); border: 1px solid rgba(128,128,128,0.2); border-radius: 1rem; margin-bottom: 1.5rem; padding: 1.25rem; display: flex; gap: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <!-- Avatar column -->
+            <div style="flex-shrink: 0;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background-color: {{ $color }}; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 1.1rem;">
+                    {{ $initials }}
+                </div>
             </div>
+            
+            <!-- Content column -->
+            <div style="flex: 1; min-width: 0;">
+                <!-- Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ $post->user->full_name ?? 'الإدارة' }}</span>
+                        @if(isset($post->user) && in_array($post->user->role, ['admin', 'hod', 'affairs']))
+                            <i class="fa-solid fa-circle-check" style="color: #1d9bf0; font-size: 0.85rem;"></i>
+                        @endif
+                        <span style="color: var(--text-muted); font-size: 0.9rem;" dir="ltr">@admin · {{ $post->created_at->diffForHumans(null, true) }}</span>
+                    </div>
+            </div>
+            
+            <!-- Category/Tag (if any) -->
+            @if($post->category)
+            <div style="margin-bottom: 0.5rem;">
+                <span style="background: rgba(29, 155, 240, 0.1); color: #1d9bf0; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">{{ $post->category }}</span>
+            </div>
+            @endif
+
+            <!-- Text Content -->
+            <div style="color: var(--text-dark); font-size: 0.95rem; line-height: 1.6; margin-bottom: 0.75rem; white-space: pre-line;">
+                @if($post->title)
+                <strong style="display: block; margin-bottom: 0.25rem; font-size: 1.05rem;">{{ $post->title }}</strong>
+                @endif
+                {{ $post->content }}
+            </div>
+
+            <!-- Image Attachment -->
+            @include('partials.image_slider', ['images' => $formattedImgs])
         </div>
-
-        @if($post->category)
-            <span class="post-category">{{ $post->category }}</span>
-        @endif
-
-        <h3 class="post-title">{{ $post->title }}</h3>
-        <p class="post-content">{{ $post->content }}</p>
-
-        @if($imgUrl)
-            <img src="{{ $imgUrl }}" alt="{{ $post->title }}" class="post-image">
-        @endif
     </div>
 @empty
     <div class="no-posts">

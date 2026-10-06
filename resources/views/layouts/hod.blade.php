@@ -151,9 +151,28 @@
             z-index: 999999;
             display: none;
             flex-direction: column;
-            overflow: visible;
+            overflow: hidden;
             transform-origin: top left;
             animation: notifCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @media (max-width: 640px) {
+            .notif-dropdown-card {
+                position: fixed !important;
+                top: 68px !important;
+                left: 12px !important;
+                right: 12px !important;
+                width: auto !important;
+                max-width: calc(100vw - 24px) !important;
+                max-height: calc(100vh - 90px) !important;
+                transform-origin: top center !important;
+                border-radius: 1.25rem !important;
+                box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+            }
+            .notif-card-body {
+                max-height: calc(100vh - 240px) !important;
+                overflow-y: auto !important;
+            }
         }
 
         /* Continuous Invisible Hover Bridge */
@@ -238,9 +257,10 @@
         }
         .notif-card-item {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
+            justify-content: space-between;
             gap: 0.75rem;
-            padding: 0.8rem 1rem;
+            padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--border-color, #2a2a2a);
             text-decoration: none;
             color: inherit;
@@ -268,7 +288,6 @@
             align-items: center;
             justify-content: center;
             font-size: 0.85rem;
-            margin-top: 2px;
             flex-shrink: 0;
         }
         .notif-item-content {
@@ -276,24 +295,13 @@
             min-width: 0;
         }
         .notif-item-title {
-            font-size: 0.84rem;
+            font-size: 0.86rem;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 0.15rem;
             line-height: 1.3;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-        .notif-item-msg {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            line-height: 1.35;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            margin-bottom: 0.3rem;
         }
         .notif-item-time {
             font-size: 0.72rem;
@@ -302,14 +310,14 @@
             align-items: center;
             gap: 0.3rem;
             opacity: 0.8;
+            margin-top: 0.15rem;
         }
         .notif-unread-dot {
             width: 8px;
             height: 8px;
             min-width: 8px;
             border-radius: 50%;
-            background-color: #3b82f6;
-            margin-top: 6px;
+            background-color: #ef4444;
             flex-shrink: 0;
         }
 
@@ -517,15 +525,16 @@
                                        class="notif-card-item {{ !$n->is_read ? 'is-unread' : '' }}" 
                                        id="header-notif-item-{{ $n->id }}"
                                        onclick="markSingleHeaderNotifAsRead(event, {{ $n->id }}, '{{ url('/hod/notifications') }}')">
-                                        <div class="notif-item-icon-wrap">
-                                            <i class="fa-solid fa-bell"></i>
-                                        </div>
-                                        <div class="notif-item-content">
-                                            <div class="notif-item-title">{{ $n->title }}</div>
-                                            <div class="notif-item-msg">{{ Str::limit($n->message ?? $n->body, 70) }}</div>
-                                            <div class="notif-item-time">
-                                                <i class="fa-regular fa-clock"></i>
-                                                <span>{{ $n->created_at?->diffForHumans() }}</span>
+                                        <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+                                            <div class="notif-item-icon-wrap">
+                                                <i class="fa-solid fa-bell"></i>
+                                            </div>
+                                            <div class="notif-item-content">
+                                                <div class="notif-item-title">{{ $n->title }}</div>
+                                                <div class="notif-item-time">
+                                                    <i class="fa-regular fa-clock" style="font-size: 0.68rem;"></i>
+                                                    <span>{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->diffForHumans(null, true) : '' }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                         @if(!$n->is_read)
@@ -677,12 +686,21 @@
             }
         });
 
-        // Hover grace delay
+        // Hover & Click support for mobile and desktop
         (function() {
             const dropdownWrap = document.getElementById('hodNotifDropdown');
+            const bellBtn = document.getElementById('hodNotifBellBtn');
             let timer = null;
 
             if (dropdownWrap) {
+                if (bellBtn) {
+                    bellBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropdownWrap.classList.toggle('is-open');
+                    });
+                }
+
                 dropdownWrap.addEventListener('mouseenter', function() {
                     if (timer) clearTimeout(timer);
                     dropdownWrap.classList.add('is-open');

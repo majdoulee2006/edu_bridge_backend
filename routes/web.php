@@ -284,6 +284,10 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/calendar/events/delete/{id}', [AffairsWebController::class, 'deleteCalendarEvent'])->name('affairs.calendar.delete');
     Route::get('/activities', [AffairsWebController::class, 'activities'])->name('affairs.activities');
     
+    // إعدادات الفصول والترفيع المدمجة
+    Route::post('/semester/activate', [AffairsWebController::class, 'activateSemester'])->name('affairs.semester.activate');
+    Route::post('/promote/year2', [AffairsWebController::class, 'promoteYear2'])->name('affairs.promote.year2');
+
     // تثقيلات المواد ونتائج الطلاب
     Route::get('/course-weights', [AffairsWebController::class, 'courseWeights'])->name('affairs.course_weights');
     Route::post('/course-weights/student-decision', [AffairsWebController::class, 'studentAcademicDecision'])->name('affairs.course_weights.student_decision');

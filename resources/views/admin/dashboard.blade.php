@@ -5,23 +5,6 @@
 
 @section('content')
 
-{{-- ===== Welcome Banner ===== --}}
-<div class="relative rounded-2xl overflow-hidden bg-primary text-primary-content p-5 shadow-glow">
-    <div class="absolute left-0 top-0 bottom-0 w-28 opacity-10 pointer-events-none overflow-hidden">
-        <span class="material-symbols-outlined text-[110px] text-black absolute -left-3 -top-3">admin_panel_settings</span>
-    </div>
-    <p class="text-[10px] font-extrabold opacity-75 mb-0.5 uppercase tracking-widest">لوحة التحكم</p>
-    <h2 class="text-xl font-extrabold leading-tight">مرحباً، {{ Auth::user()->full_name ?? 'المدير العام' }}</h2>
-    <p class="text-xs opacity-90 mt-1">
-        @php $pending = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
-        @if($pending > 0)
-            لديك <strong>{{ $pending }}</strong> {{ $pending == 1 ? 'إشعار' : 'إشعارات' }} تنتظر المراجعة
-        @else
-            لا توجد إشعارات جديدة، كل شيء على ما يرام ✓
-        @endif
-    </p>
-</div>
-
 {{-- ===== Quick Stats ===== --}}
 @php
     $totalUsers   = \App\Models\User::count();
@@ -134,11 +117,7 @@
         @endif
 
         {{-- شبكة الصور بعرض كامل وبدون أي اقتطاع قسري --}}
-        @if(!empty($formattedImgs))
-            <div class="w-full rounded-2xl overflow-hidden shadow-xs border border-slate-200/60 dark:border-slate-700/60" style="height: 320px;">
-                @include('partials.announcement_image_grid', ['images' => $formattedImgs, 'id' => $postId])
-            </div>
-        @endif
+        @include('partials.image_slider', ['images' => $formattedImgs])
 
         {{-- رابط خارجي إذا وجد --}}
         @if(!empty($post->link_url))
@@ -151,44 +130,9 @@
         @endif
     </div>
 @empty
-    {{-- Fallback static cards when no data --}}
-    <div class="relative rounded-2xl overflow-hidden bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 group hover:shadow-md transition-shadow">
-        <div class="h-44 relative overflow-hidden" style="background: linear-gradient(135deg, #1e3a5f 0%, #152d45 100%);">
-            <span class="material-symbols-outlined absolute inset-0 m-auto text-[80px] text-white/5">campaign</span>
-            <div class="absolute bottom-3 right-3 z-10">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-primary text-primary-content text-[10px] font-extrabold shadow-sm">إعلان هام</span>
-            </div>
-        </div>
-        <div class="p-4">
-            <div class="flex items-center gap-1.5 mb-2">
-                <span class="material-symbols-outlined text-slate-400 text-[13px]">schedule</span>
-                <span class="text-[10px] text-slate-400 font-medium">منذ ساعتين</span>
-            </div>
-            <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-1">موعد الامتحانات النهائية للفصل الأول</h4>
-            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">تم اعتماد جدول الامتحانات النهائية وسيتم نشره على جميع المنصات الرسمية.</p>
-        </div>
-    </div>
-
-    <div class="flex items-start gap-3 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
-        <div class="w-16 h-16 rounded-xl bg-blue-50 dark:bg-slate-700/50 flex-shrink-0 flex items-center justify-center">
-            <span class="material-symbols-outlined text-blue-400 text-[28px]">policy</span>
-        </div>
-        <div class="flex-1">
-            <span class="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[9px] font-bold rounded-md mb-1">إداري</span>
-            <h4 class="text-sm font-bold text-slate-900 dark:text-white leading-snug mb-1">تحديث سياسة الحضور والغياب</h4>
-            <span class="text-[10px] text-slate-400">أمس · 04:30 م</span>
-        </div>
-    </div>
-
-    <div class="flex items-start gap-3 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark shadow-soft border-r-4 border-primary border-t border-b border-l border-slate-100 dark:border-slate-700/50">
-        <div class="w-10 h-10 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-yellow-500 text-[20px]">event</span>
-        </div>
-        <div class="flex-1">
-            <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-0.5">اجتماع مجلس الإدارة</h4>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400">مناقشة الميزانية السنوية للمؤسسة</p>
-            <span class="text-[10px] text-slate-400 mt-0.5 block">الأحد القادم · 10:00 صباحاً</span>
-        </div>
+    <div class="p-8 text-center bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-soft">
+        <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">campaign</span>
+        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">لا توجد إعلانات منشورة حالياً</p>
     </div>
 @endforelse
 
