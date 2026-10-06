@@ -3397,7 +3397,7 @@ class AffairsWebController extends Controller
             'full_name'        => 'nullable|string|max:255',
             'phone'            => 'nullable|string|max:20',
             'current_password' => 'nullable|string',
-            'new_password'     => 'nullable|string|min:6',
+            'new_password'     => 'nullable|string|min:8',
             'telegram_chat_id' => 'nullable|string',
         ]);
 

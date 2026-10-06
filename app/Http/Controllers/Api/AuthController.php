@@ -23,6 +23,21 @@ use Illuminate\Support\Facades\Validator;
 class AuthController extends Controller
 {
     /**
+     * رمز تحقق من 6 أرقام بمولّد آمن تشفيرياً.
+     * رمز ثابت للتطوير يُفعَّل فقط عند ضبط OTP_FIXED_CODE صراحةً وفي بيئة local/testing،
+     * فنسيان APP_ENV=local على سيرفر حقيقي لا يفتح الحسابات.
+     */
+    private function generateOtp(): string
+    {
+        $fixed = config('app.fixed_otp');
+        if (!empty($fixed) && app()->environment('local', 'testing')) {
+            return (string) $fixed;
+        }
+
+        return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * يصدر توكن Sanctum جديد لليوزر ويُبطل كل التوكنات السابقة (تسجيل دخول
      * واحد فعّال بنفس الوقت عبر التطبيق - راجع EnsureSingleApiSession).
      */
@@ -230,7 +245,7 @@ class AuthController extends Controller
             'phone'            => 'nullable|string|max:20',
             'telegram_username'=> 'nullable|string|max:100',
             'telegram_chat_id' => 'nullable|string|max:100',
-            'password'         => 'required|string|min:6',
+            'password'         => 'required|string|min:8',
             'role'             => 'required|in:student,parent',
             'university_id'    => 'nullable|string|unique:users,university_id',
             'child_university_id' => 'nullable|string',
@@ -588,7 +603,7 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => 'الحساب مفعّل بالفعل'], 400);
         }
 
-        $otp = app()->environment('local') ? '123456' : str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otp = $this->generateOtp();
 
         OtpCode::where('email', $request->email)->delete();
 
@@ -658,7 +673,7 @@ class AuthController extends Controller
             'email'            => 'sometimes|email|unique:users,email,' . $user->user_id . ',user_id',
             'phone'            => 'sometimes|string|max:20',
             'current_password' => 'sometimes|string',
-            'password'         => 'sometimes|string|min:6',
+            'password'         => 'sometimes|string|min:8',
         ]);
 
         if ($validator->fails()) {
@@ -1026,7 +1041,7 @@ class AuthController extends Controller
         }
 
         $user = User::where('email', $request->email)->first();
-        $otp  = app()->environment('local') ? '123456' : str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otp  = $this->generateOtp();
 
         OtpCode::where('email', $request->email)->delete();
         OtpCode::create([
@@ -1052,7 +1067,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email'    => 'required|email|exists:users,email',
             'otp'      => 'required|string|size:6',
-            'password' => 'required|string|min:6',
+            'password' => 'required|string|min:8',
         ]);
 
         if ($validator->fails()) {

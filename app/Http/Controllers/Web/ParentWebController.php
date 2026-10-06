@@ -945,7 +945,7 @@ class ParentWebController extends Controller
 
         $request->validate([
             'current_password' => 'required',
-            'password'         => 'required|min:6|confirmed',
+            'password'         => 'required|min:8|confirmed',
         ], [
             'current_password.required' => 'كلمة المرور الحالية مطلوبة.',
             'password.required' => 'كلمة المرور الجديدة مطلوبة.',
@@ -974,7 +974,7 @@ class ParentWebController extends Controller
             'phone'            => 'nullable|string|max:20',
             'email'            => 'nullable|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
             'current_password' => 'nullable|string',
-            'new_password'     => 'nullable|string|min:6',
+            'new_password'     => 'nullable|string|min:8',
             'telegram_chat_id' => 'nullable|string',
         ]);
 

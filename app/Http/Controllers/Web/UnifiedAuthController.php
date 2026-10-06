@@ -548,8 +548,8 @@ class UnifiedAuthController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'password'              => 'required|string|min:6|confirmed',
-            'password_confirmation' => 'required|string|min:6',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string|min:8',
         ], [
             'password.required'  => 'يرجى إدخال كلمة المرور الجديدة.',
             'password.min'       => 'كلمة المرور يجب أن لا تقل عن 6 أحرف/أرقام.',

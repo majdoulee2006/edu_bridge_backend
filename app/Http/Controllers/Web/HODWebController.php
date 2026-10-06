@@ -278,7 +278,7 @@ class HODWebController extends Controller
         $request->validate([
             'phone'            => 'nullable|string|max:20',
             'birth_date'       => 'nullable|date',
-            'password'         => 'nullable|string|min:6',
+            'password'         => 'nullable|string|min:8',
             'telegram_chat_id' => 'nullable|string',
         ]);
 
