@@ -22,6 +22,7 @@ use App\Models\AbsenceRequest;
 use App\Models\StudentRequest;
 use App\Models\Program;
 use App\Services\FcmService;
+use App\Services\LeaveWorkflow;
 use App\Support\LoginThrottleGuard;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -45,7 +46,7 @@ trait ParentHandlers
         $keyboard = [
             'keyboard' => [
                 [['text' => '👨‍👦 أبنائي'], ['text' => '💯 علامات أبنائي']],
-                [['text' => '🛑 غيابات أبنائي']],
+                [['text' => '🛑 غيابات أبنائي'], ['text' => '✈️ إجازات أبنائي']],
                 [['text' => '🚪 تسجيل خروج']]
             ],
             'resize_keyboard' => true,
@@ -56,6 +57,7 @@ trait ParentHandlers
             . "• 👨‍👦 **أبنائي**: استعراض قائمة أبنائك المسجلين بالمعهد\n"
             . "• 💯 **علامات أبنائي**: استعراض درجات أبنائك وامتحاناتهم\n"
             . "• 🛑 **غيابات أبنائي**: متابعة نسبة حضور أبنائك والإنذارات\n"
+            . "• ✈️ **إجازات أبنائي**: الموافقة على طلبات إجازة أبنائك أو رفضها\n"
             . "• 🚪 **تسجيل خروج**: فك ربط الحساب من هذا الجهاز\n\n"
             . "👇 اختر الخدمة المطلوبة من الأزرار أدناه:";
 
@@ -166,5 +168,63 @@ trait ParentHandlers
         
         $this->sendMessage($chatId, "👨‍👦 **تقرير دوام: {$student->user->full_name}**");
         $this->handleAttendance($student->user, $chatId);
+    }
+
+    /** طلبات إجازة الأبناء المنتظرة موافقتك (الخطوة الأولى في المسار: الطالب ثم ولي الأمر). */
+    private function handleParentLeaves(User $user, $chatId)
+    {
+        $childUserIds = $this->getParentChildren($user)->pluck('user_id')->filter()->all();
+
+        $leaves = $childUserIds
+            ? DB::table('leave_requests')
+                ->join('users', 'leave_requests.student_id', '=', 'users.user_id')
+                ->whereIn('leave_requests.student_id', $childUserIds)
+                ->where('leave_requests.status', LeaveWorkflow::STAGE_PARENT)
+                ->orderByDesc('leave_requests.created_at')
+                ->take(10)
+                ->get(['leave_requests.id', 'leave_requests.type', 'leave_requests.date', 'leave_requests.reason', 'users.full_name'])
+            : collect();
+
+        if ($leaves->isEmpty()) {
+            $this->sendMessage($chatId, "🌟 **لا توجد طلبات إجازة بانتظار موافقتك.**");
+            return;
+        }
+
+        $msg = "✈️ **طلبات إجازة أبنائك بانتظار موافقتك ({$leaves->count()}):**\n\n";
+        $keyboard = ['inline_keyboard' => []];
+
+        foreach ($leaves as $i => $l) {
+            $typeLabel = $l->type === 'hourly' ? 'إجازة ساعية' : 'إجازة يوم كامل';
+            $msg .= ($i + 1) . ". 👤 **{$l->full_name}**\n";
+            $msg .= "   📌 {$typeLabel} | 📅 `{$l->date}`\n";
+            $msg .= "   📝 \"{$l->reason}\"\n";
+            $msg .= "─────────────\n";
+
+            $keyboard['inline_keyboard'][] = [
+                ['text' => "✅ موافقة: {$l->full_name}", 'callback_data' => "parent_leave_approve_{$l->id}"],
+                ['text' => "❌ رفض: {$l->full_name}", 'callback_data' => "parent_leave_reject_{$l->id}"],
+            ];
+        }
+
+        $this->sendMessage($chatId, $msg, null, $keyboard);
+    }
+
+    /** نفس المسار في التطبيق والويب: LeaveWorkflow::parentRespond (ابنك فقط، ومرحلة pending_parent فقط). */
+    private function parentDecideLeave(User $user, $chatId, int $leaveId, string $decision): void
+    {
+        $result = LeaveWorkflow::parentRespond($user, $leaveId, $decision);
+
+        if (!$result['ok']) {
+            $this->sendMessage($chatId, match ($result['error']) {
+                'stage'     => "ℹ️ تم الرد على هذا الطلب مسبقاً.",
+                'forbidden' => "⛔ هذا الطلب لا يخص أحد أبنائك.",
+                default     => "❌ الطلب غير موجود.",
+            });
+            return;
+        }
+
+        $this->sendMessage($chatId, $decision === 'approved'
+            ? "✅ **تمت موافقتك على الإجازة.** تم تحويل الطلب إلى رئيس القسم."
+            : "🛑 **تم رفض الإجازة.** تم إيقاف الطلب وإشعار ابنك.");
     }
 }

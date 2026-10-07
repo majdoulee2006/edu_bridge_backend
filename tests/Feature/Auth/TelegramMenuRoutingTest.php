@@ -95,7 +95,7 @@ class TelegramMenuRoutingTest extends TestCase
 
     public static function roles(): array
     {
-        return [['student', 7], ['parent', 4], ['teacher', 10], ['head', 8], ['affairs', 7], ['admin', 7]];
+        return [['student', 8], ['parent', 5], ['teacher', 10], ['head', 8], ['affairs', 7], ['admin', 7]];
     }
 
     #[DataProvider('roles')]

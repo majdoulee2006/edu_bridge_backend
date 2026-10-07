@@ -42,6 +42,14 @@ trait CallbackAuthorization
             }
         }
 
+        foreach (['parent_leave_approve_', 'parent_leave_reject_'] as $prefix) {
+            if (str_starts_with($data, $prefix)) {
+                $leave = DB::table('leave_requests')->where('id', $this->callbackRecordId($data, $prefix))->first();
+
+                return $leave && Access::parentOwnsStudent($user, $leave->student_id, 'user');
+            }
+        }
+
         // ---- الطالب: عذره على غيابه هو، ومحتوى المواد المسجّل فيها ----
         if (str_starts_with($data, 'excuse_start_')) {
             $attendance = Attendance::with('student')->find($this->callbackRecordId($data, 'excuse_start_'));

@@ -228,7 +228,7 @@ class TelegramHodServicesTest extends TestCase
         $this->press("hod_reject_leave_{$id}");
 
         $this->assertSame('rejected', DB::table('leave_requests')->where('id', $id)->value('status'));
-        $this->assertSame(1, DB::table('notifications')->where('user_id', $student['user']->user_id)->where('type', 'leave_rejected')->count());
+        $this->assertSame(1, DB::table('notifications')->where('user_id', $student['user']->user_id)->where('type', 'leave_request')->count());
     }
 
     public function test_leave_decisions_are_refused_for_other_departments_and_wrong_stages(): void
