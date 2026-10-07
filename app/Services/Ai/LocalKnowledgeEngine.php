@@ -45,6 +45,12 @@ class LocalKnowledgeEngine
             }
         }
 
+        if ($role === 'hod' && !empty($data['department'])) {
+            if ($r = $this->hodAnswer($q, $data)) {
+                return $r;
+            }
+        }
+
         if ($role === 'teacher' && $this->has($q, ['مرشد', 'مربي', 'مربّي'])) {
             return empty($data['advisor'])
                 ? '🧭 لست معيَّناً كمرشد (مربي) لدورة حالياً. التعيين من رئيس القسم.'
@@ -390,6 +396,82 @@ class LocalKnowledgeEngine
         $countYears    = count(array_unique(array_map(fn ($c) => $c['year'], $rows)));
 
         return $out . "\n📊 الإجمالي: {$countCourses} مقرراً في " . max($countPrograms, 1) . " دورة و{$countYears} سنة دراسية.";
+    }
+
+    /**
+     * أسئلة رئيس القسم عن قسمه: الأساتذة، المرشدون، الطلاب، الدورات.
+     */
+    protected function hodAnswer(string $q, array $data): ?string
+    {
+        $dept = $data['department'];
+
+        // المرشدون (مربو الدورات)
+        if ($this->has($q, ['مرشد', 'مربي', 'مربّي', 'مرشدين', 'مربين'])) {
+            $advisors = array_values(array_filter($data['dept_teachers'] ?? [], fn ($t) => !empty($t['advisor'])));
+            if (empty($advisors)) {
+                return "🧭 لا يوجد مرشدو دورات معيّنون في قسم {$dept} حالياً. التعيين من **إدارة الحسابات** (`/hod/accounts`).";
+            }
+            $out = "🧭 **مرشدو الدورات في قسم {$dept}:**\n\n";
+            foreach ($advisors as $t) {
+                $out .= "• **{$t['name']}** — {$t['advisor']}\n";
+            }
+
+            return $out;
+        }
+
+        // الأساتذة
+        if ($this->has($q, ['اساتذ', 'أساتذ', 'مدرسين', 'معلمين', 'كادر', 'دكاترة', 'مدربين', 'اساتذة', 'استاذ', 'أستاذ', 'كم مدرس', 'كم معلم'])) {
+            $teachers = $data['dept_teachers'] ?? [];
+            if (empty($teachers)) {
+                return "👨‍🏫 لا يوجد أساتذة مسجلون في قسم {$dept} حالياً.";
+            }
+            $out = "👨‍🏫 **أساتذة قسم {$dept} ({$data['teachers_count']}):**\n";
+            foreach ($teachers as $t) {
+                $shown = array_slice($t['courses'], 0, 6);
+                $more  = count($t['courses']) - count($shown);
+                $out  .= "\n• **{$t['name']}**"
+                    . (!empty($t['advisor']) ? " — مرشد دورة {$t['advisor']}" : '')
+                    . ($shown ? "\n   المقررات: " . implode('، ', $shown) . ($more > 0 ? " (+{$more} أخرى)" : '') : "\n   بلا مقررات مسندة") . "\n";
+            }
+
+            return $out;
+        }
+
+        // الطلاب
+        if ($this->has($q, ['طلاب', 'طالب', 'الطلبة', 'عدد'])) {
+            $groups = $data['dept_students'] ?? [];
+            if (empty($groups)) {
+                return "👥 لا يوجد طلاب مسجلون في قسم {$dept} حالياً.";
+            }
+            $withNames = $this->has($q, ['مين', 'من هم', 'اسماء', 'أسماء', 'قائمة', 'شو عندي', 'اعرض']);
+            $out = "👥 **طلاب قسم {$dept}: {$data['students_count']} طالباً**\n";
+            foreach ($groups as $label => $info) {
+                $out .= "\n🎓 **دورة {$label}** ({$info['count']})" . ($withNames ? ":\n• " . implode("\n• ", $info['names']) : '') . "\n";
+            }
+
+            return $out . ($withNames ? '' : "\nاسألني \"مين طلاب القسم\" لعرض الأسماء.");
+        }
+
+        // الدورات (البرامج)
+        if ($this->has($q, ['دورات', 'دورة', 'برامج', 'تخصصات', 'اختصاصات'])) {
+            if (empty($data['programs'])) {
+                return "🎓 لا توجد دورات مسجلة في قسم {$dept}.";
+            }
+            $out = "🎓 **دورات قسم {$dept}:**\n\n";
+            foreach ($data['programs'] as $p) {
+                $count = 0;
+                foreach ($data['dept_students'] ?? [] as $label => $info) {
+                    if (str_starts_with($label, $p)) {
+                        $count += $info['count'];
+                    }
+                }
+                $out .= "• **{$p}** — {$count} طالباً\n";
+            }
+
+            return $out;
+        }
+
+        return null;
     }
 
     protected function teacherStudentsAnswer(array $data): ?string
