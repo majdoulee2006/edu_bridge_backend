@@ -530,6 +530,44 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('/hod/announcements/create', $this->ask('بدي ارسل اعلان لكل الطلاب')->json('reply'));
     }
 
+    public function test_affairs_pending_devices_students_warnings_and_search(): void
+    {
+        $dept = $this->makeDepartment('قسم-الشؤون-' . $this->nextSeq());
+        $prog = $this->makeProgram($dept);
+        DB::table('programs')->where('id', $prog)->update(['name' => 'معلوماتية']);
+        $s1 = $this->makeStudent(['full_name' => 'طالب-جهاز', 'university_id' => '9990001'], $prog);
+        DB::table('students')->where('student_id', $s1['student_id'])->update(['level' => 'السنة الأولى']);
+        $s2 = $this->makeStudent(['full_name' => 'طالب-آخر'], $prog);
+        DB::table('users')->where('user_id', $s2['user']->user_id)->update(['status' => 'inactive']);
+
+        foreach ([['device_reset', 'pending_affairs'], ['mercy', 'pending_affairs'], ['document', 'pending_hod']] as [$type, $st]) {
+            DB::table('student_requests')->insert(['student_id' => $s1['student_id'], 'type' => $type, 'details' => 'x', 'status' => $st, 'created_at' => now(), 'updated_at' => now()]);
+        }
+        DB::table('semesters')->insert(['name' => 'فصل-اختبار', 'start_date' => '2026-09-01', 'end_date' => '2027-01-01', 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('semesters')->where('name', '!=', 'فصل-اختبار')->update(['is_active' => 0]);
+        $this->actAs($this->makeUser('affairs'));
+
+        $pending = $this->ask('كم طلب معلق عندنا؟')->json('reply');
+        $this->assertStringContainsString('طلبات الطلاب: **2**', $pending);      // pending_hod لا يُحتسب
+        $this->assertStringContainsString('طلبات إعادة تعيين جهاز: 1', $pending);
+
+        $devices = $this->ask('مين الطلاب اللي طالبين اعادة تعيين جهاز؟')->json('reply');
+        $this->assertStringContainsString('طالب-جهاز', $devices);
+        $this->assertStringContainsString('9990001', $devices);
+
+        $this->assertStringContainsString('**1**', $this->ask('كم حساب معلق بانتظار التفعيل؟')->json('reply'));
+        $this->assertStringContainsString('قسم-الشؤون', $this->ask('كم طالب بالمعهد؟')->json('reply'));
+        $this->assertStringContainsString('فصل-اختبار', $this->ask('شو الفصل الحالي؟')->json('reply'));
+
+        // بحث بالاسم وبالرقم الجامعي
+        $byName = $this->ask('ابحث عن طالب طالب-جهاز')->json('reply');
+        $this->assertStringContainsString('الدورة: معلوماتية', $byName);
+        $this->assertStringContainsString('السنة الأولى', $this->ask('معلومات عن الرقم الجامعي 9990001')->json('reply'));
+
+        // أسئلة «كيف» تبقى إجراءات
+        $this->assertStringContainsString('affairs/student-services', $this->ask('كيف أعيد تعيين جهاز طالب؟')->json('reply'));
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);

@@ -698,10 +698,78 @@ class AiContextBuilder
         return ['attendance_by_program' => $att, 'attendance_by_group' => $byGroup, 'average_by_program' => $avg];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * بيانات موظف الشؤون (على مستوى المعهد): الطلبات المعلقة حسب النوع، إعادة تعيين الأجهزة، الحسابات المعلقة،
+     * أعداد الطلاب والكادر، الإنذارات، الفصل النشط، وفهرس الطلاب للبحث.
+     *
+     * @return array<string, mixed>
+     */
     public function affairs(): array
     {
-        return ['pending_requests' => DB::table('student_requests')->where('status', 'pending_affairs')->count()];
+        $out = ['pending_requests' => DB::table('student_requests')->whereIn('status', ['pending_affairs', 'pending'])->count()];
+
+        return $out
+            + $this->safe(fn () => $this->affairsPending(), [])
+            + $this->safe(fn () => $this->affairsPeople(), []);
+    }
+
+    /** @return array<string, mixed> */
+    protected function affairsPending(): array
+    {
+        $base = DB::table('student_requests as r')
+            ->join('students as s', 's.student_id', '=', 'r.student_id')
+            ->join('users as u', 'u.user_id', '=', 's.user_id')
+            ->whereIn('r.status', ['pending_affairs', 'pending']);
+
+        $byType = (clone $base)->groupBy('r.type')->selectRaw('r.type, COUNT(*) as c')->pluck('c', 'type')->map(fn ($c) => (int) $c)->all();
+        $latest = (clone $base)->orderByDesc('r.created_at')->limit(8)->get(['r.type', 'u.full_name', 'u.university_id', 'r.created_at'])
+            ->map(fn ($r) => ['type' => $r->type, 'student' => $r->full_name, 'uid' => $r->university_id, 'date' => substr((string) $r->created_at, 0, 10)])->all();
+        $deviceResets = (clone $base)->where('r.type', 'device_reset')->orderBy('r.created_at')->limit(30)->get(['u.full_name', 'u.university_id', 'r.created_at'])
+            ->map(fn ($r) => ['student' => $r->full_name, 'uid' => $r->university_id, 'date' => substr((string) $r->created_at, 0, 10)])->all();
+
+        return ['pending' => [
+            'by_type'        => $byType,
+            'latest'         => $latest,
+            'device_resets'  => $deviceResets,
+            'leaves'         => DB::table('leave_requests')->whereIn('status', ['pending_affairs', 'pending'])->count(),
+            'absence_excuses' => DB::table('absence_requests')->whereIn('status', ['pending_affairs', 'pending'])->count(),
+            'photo_changes'  => DB::table('photo_change_requests')->where('status', 'pending')->count(),
+            'accounts'       => DB::table('users')->whereIn('role_id', [3, 4])->where('status', 'inactive')->count(),
+        ]];
+    }
+
+    /** @return array<string, mixed> */
+    protected function affairsPeople(): array
+    {
+        $students = DB::table('students as s')
+            ->join('users as u', 'u.user_id', '=', 's.user_id')
+            ->leftJoin('programs as p', 'p.id', '=', 's.program_id')
+            ->leftJoin('departments as d', 'd.department_id', '=', 'p.department_id')
+            ->orderBy('u.full_name')
+            ->get(['s.student_id', 's.user_id', 'u.full_name', 'u.university_id', 's.student_code', 's.level', 'u.status', 'p.name as program', 'd.name as department']);
+
+        $groups = [];
+        foreach ($students as $r) {
+            $key = trim(($r->department ?: 'قسم غير محدد') . ' / ' . ($r->program ?: 'دورة غير محددة') . ($r->level ? ' - ' . $r->level : ''));
+            $groups[$key] = ($groups[$key] ?? 0) + 1;
+        }
+
+        $semester = DB::table('semesters')->where('is_active', 1)->first();
+        $counts   = DB::table('users')->selectRaw('role_id, COUNT(*) as c')->groupBy('role_id')->pluck('c', 'role_id');
+
+        return [
+            'students_count'  => $students->count(),
+            'student_groups'  => $groups,
+            'student_index'   => $students->take(400)->map(fn ($r) => [
+                'id' => $r->student_id, 'name' => $r->full_name, 'uid' => $r->university_id ?: $r->student_code,
+                'program' => $r->program, 'department' => $r->department, 'level' => $r->level, 'status' => $r->status,
+            ])->all(),
+            'semester'        => $semester ? ['name' => $semester->name, 'start' => substr((string) $semester->start_date, 0, 10), 'end' => substr((string) $semester->end_date, 0, 10)] : null,
+            'staff'           => [
+                'teachers' => (int) ($counts[2] ?? 0), 'parents' => (int) ($counts[4] ?? 0),
+                'heads' => (int) ($counts[5] ?? 0), 'affairs' => (int) ($counts[6] ?? 0), 'admins' => (int) ($counts[1] ?? 0),
+            ],
+        ] + $this->safe(fn () => $this->departmentAbsence($students->unique('student_id')->values()), []);
     }
 
     /** @return array<string, mixed> */
@@ -786,6 +854,24 @@ class AiContextBuilder
         }
         if (isset($d['pending_requests'])) {
             $t .= "- طلبات الطلاب المعلقة لدى الشؤون: {$d['pending_requests']}\n";
+        }
+        if (isset($d['pending']['device_resets'])) {
+            $p = $d['pending'];
+            $t .= "- معلّق لدى الشؤون: إجازات {$p['leaves']}، أعذار غياب {$p['absence_excuses']}، تغيير صور {$p['photo_changes']}، حسابات بانتظار التفعيل {$p['accounts']}، طلبات إعادة تعيين جهاز " . count($p['device_resets']) . "\n";
+            foreach ($p['by_type'] as $type => $c) {
+                $t .= "  * طلبات من نوع {$type}: {$c}\n";
+            }
+            foreach (array_slice($p['device_resets'], 0, 10) as $r) {
+                $t .= "  * إعادة تعيين جهاز: {$r['student']} ({$r['uid']}) {$r['date']}\n";
+            }
+        }
+        if (isset($d['student_groups'])) {
+            $t .= "- إجمالي الطلاب: {$d['students_count']}؛ الفصل النشط: " . ($d['semester']['name'] ?? 'غير محدد') . "\n";
+            foreach ($d['student_groups'] as $g => $c) {
+                $t .= "  * {$g}: {$c}\n";
+            }
+            $st = $d['staff'] ?? [];
+            $t .= "- الكادر: أساتذة " . ($st['teachers'] ?? 0) . "، رؤساء أقسام " . ($st['heads'] ?? 0) . "، أولياء أمور " . ($st['parents'] ?? 0) . "\n";
         }
         if (!empty($d['department'])) {
             $t .= "- القسم: {$d['department']}" . (isset($d['students_count']) ? "، طلاب: {$d['students_count']}، أساتذة: {$d['teachers_count']}" : '') . "\n";
