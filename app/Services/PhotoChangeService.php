@@ -1,12 +1,12 @@
 <?php
 
-namespace AppServices;
+namespace App\Services;
 
-use IlluminateSupportFacadesDB;
-use IlluminateSupportFacadesStorage;
-use IlluminateHttpUploadedFile;
-use AppModelsNotification;
-use AppServicesFcmService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use App\Models\Notification;
+use App\Services\FcmService;
 
 class PhotoChangeService
 {
