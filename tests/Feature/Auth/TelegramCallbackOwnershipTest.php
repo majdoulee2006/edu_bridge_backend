@@ -164,7 +164,7 @@ class TelegramCallbackOwnershipTest extends TestCase
 
     public function test_head_can_only_decide_on_requests_of_his_own_department(): void
     {
-        $dept = $this->makeDepartment();
+        $dept = $this->makeDepartment('قسم الحاسوب');
         $head = $this->makeHead($dept, ['telegram_chat_id' => '7301', 'department' => 'قسم الحاسوب']);
 
         $inDept  = $this->makeStudent(['department' => 'قسم الحاسوب']);

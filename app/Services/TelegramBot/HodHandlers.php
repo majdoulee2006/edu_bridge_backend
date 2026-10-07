@@ -23,6 +23,7 @@ use App\Models\StudentRequest;
 use App\Models\Program;
 use App\Services\FcmService;
 use App\Support\LoginThrottleGuard;
+use App\Support\Access;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -45,7 +46,7 @@ trait HodHandlers
         $keyboard = [
             'keyboard' => [
                 [['text' => '🏛️ لوحة القسم والإحصائيات'], ['text' => '👨‍🏫 كادر القسم التدريسي']],
-                [['text' => '📚 مقررات وشعب القسم'], ['text' => '✈️ إجازات المعلمين']],
+                [['text' => '📚 مقررات وشعب القسم'], ['text' => '✈️ إجازات الطلاب']],
                 [['text' => '🎓 الطلبات والخدمات الطلابية'], ['text' => '🤝 مواعيد أولياء الأمور']],
                 [['text' => '📢 نشر إعلان للقسم'], ['text' => '🚪 تسجيل خروج']]
             ],
@@ -58,83 +59,157 @@ trait HodHandlers
         $this->sendMessage($chatId, $fullText, $keyboard);
     }
 
+    /**
+     * قسم رئيس القسم: نفس مرجع الويب (Access::headDepartment: heads.department_id ثم users.department).
+     * لا نختلق قسماً افتراضياً: كان الاسم الافتراضي يجعل الاستعلامات تعرض بيانات كل الأقسام.
+     *
+     * @return array{id: ?int, name: ?string}
+     */
     private function getHodDepartmentInfo(User $user)
     {
-        $deptName = $user->department;
-        $headRecord = DB::table('heads')->where('user_id', $user->user_id)->first();
-        $deptId = $headRecord?->department_id;
+        return Access::headDepartment($user);
+    }
 
-        if (!$deptId && $deptName) {
-            $deptId = DB::table('departments')
-                ->where('name', 'LIKE', '%' . $deptName . '%')
-                ->value('department_id');
+    /** رئيس بلا قسم محدد لا يرى ولا يعدّل شيئاً (فشل مغلق). */
+    private function hodHasDepartment(User $user, $chatId): bool
+    {
+        $dept = $this->getHodDepartmentInfo($user);
+        if ($dept['id'] || $dept['name']) {
+            return true;
         }
 
-        if (!$deptName && $deptId) {
-            $deptName = DB::table('departments')->where('department_id', $deptId)->value('name');
+        $this->sendMessage($chatId, "⚠️ حسابك غير مرتبط بقسم أكاديمي، تواصل مع إدارة النظام لربطه بقسمك.");
+        return false;
+    }
+
+    /** مستخدمو القسم بدور معيّن (2 معلم، 3 طالب): مطابقة دقيقة لاسم القسم كما في الويب (لا LIKE). */
+    private function hodDeptUsers(User $user, int $roleId)
+    {
+        $name = $this->getHodDepartmentInfo($user)['name'];
+        $query = User::where('role_id', $roleId);
+
+        return $name ? $query->where('department', $name) : $query->whereRaw('1 = 0');
+    }
+
+    /** مقررات القسم: ضمن برامج تابعة لقسمه (نفس Access::headManagesCourse). */
+    private function hodCoursesQuery(User $user)
+    {
+        $deptId = $this->getHodDepartmentInfo($user)['id'];
+        $query = Course::withCount('students')->with('teachers.user');
+        if (!$deptId) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return [
-            'id'   => $deptId,
-            'name' => $deptName ?: 'القسم الأكاديمي',
-        ];
+        return $query->whereExists(function ($q) use ($deptId) {
+            $q->select(DB::raw(1))
+              ->from('course_program')
+              ->join('programs', 'course_program.program_id', '=', 'programs.id')
+              ->whereColumn('courses.course_id', 'course_program.course_id')
+              ->where('programs.department_id', $deptId);
+        });
+    }
+
+    /** طلبات إجازة طلاب القسم المنتظرة قرار رئيس القسم (pending_hod فقط، كما في الويب). */
+    private function hodPendingLeavesQuery(User $user)
+    {
+        $name = $this->getHodDepartmentInfo($user)['name'];
+
+        $query = DB::table('leave_requests')
+            ->leftJoin('users as u', 'leave_requests.student_id', '=', 'u.user_id')
+            ->leftJoin('teachers', 'leave_requests.teacher_id', '=', 'teachers.teacher_id')
+            ->leftJoin('users as tu', 'teachers.user_id', '=', 'tu.user_id')
+            ->where('leave_requests.status', 'pending_hod');
+
+        if (!$name) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function ($q) use ($name) {
+            $q->where('u.department', $name)->orWhere('tu.department', $name);
+        });
+    }
+
+    /** طلبات خدمات طلاب القسم (نفس شرط صفحة الويب: قسم الطالب أو برنامجه التابع للقسم). */
+    private function hodStudentRequestsQuery(User $user)
+    {
+        $dept = $this->getHodDepartmentInfo($user);
+        $query = StudentRequest::with(['student.user', 'student.program.department']);
+
+        if (!$dept['name'] && !$dept['id']) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('student', function ($sq) use ($dept) {
+            $sq->where(function ($w) use ($dept) {
+                if ($dept['name']) {
+                    $w->whereHas('user', fn ($uq) => $uq->where('department', $dept['name']));
+                }
+                if ($dept['id']) {
+                    $w->orWhereHas('program', fn ($pq) => $pq->where('department_id', $dept['id']));
+                }
+            });
+        });
+    }
+
+    /**
+     * طلب خدمة طالب يحق لهذا الرئيس البتّ فيه الآن: من قسمه وفي مرحلة pending_hod فقط
+     * (كان البوت يقبل أي مرحلة: تعديل قرار سابق أو تخطي الشؤون). null مع رسالة للمستخدم عند الرفض.
+     */
+    private function hodFindActionableRequest(User $user, $chatId, int $reqId): ?StudentRequest
+    {
+        $studentReq = $this->hodStudentRequestsQuery($user)->where('student_requests.id', $reqId)->first();
+        if (!$studentReq) {
+            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
+            return null;
+        }
+
+        if ($studentReq->status !== 'pending_hod') {
+            $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلتك بعد، ولا يمكن تعديله.");
+            return null;
+        }
+
+        return $studentReq;
+    }
+
+    /** إجازة طالب من قسم الرئيس وفي مرحلة pending_hod (نفس شروط HODWebController::updateLeaveStatus). */
+    private function hodFindActionableLeave(User $user, $chatId, int $leaveId): ?object
+    {
+        $leave = DB::table('leave_requests')->where('id', $leaveId)->first();
+        $applicantUserId = $leave ? ($leave->student_id ?: DB::table('teachers')->where('teacher_id', $leave->teacher_id)->value('user_id')) : null;
+
+        if (!$leave || !$applicantUserId || !Access::headManagesUser($user, $applicantUserId)) {
+            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
+            return null;
+        }
+
+        if ($leave->status !== 'pending_hod') {
+            $this->sendMessage($chatId, "ℹ️ لا يمكن معالجة هذا الطلب في مرحلته الحالية.");
+            return null;
+        }
+
+        return $leave;
     }
 
     private function handleHodOverview(User $user, $chatId)
     {
+        if (!$this->hodHasDepartment($user, $chatId)) {
+            return;
+        }
+
         $deptInfo = $this->getHodDepartmentInfo($user);
-        $deptName = $deptInfo['name'];
-        $deptId = $deptInfo['id'];
+        $deptName = $deptInfo['name'] ?? 'القسم الأكاديمي';
 
-        // عدد معلمي القسم
-        $teachersCount = User::where('role_id', 2)
-            ->where(function($q) use ($deptName) {
-                $q->where('department', 'LIKE', "%{$deptName}%");
-            })->count();
+        $teachersCount = $this->hodDeptUsers($user, 2)->count();
+        $studentsCount = $this->hodDeptUsers($user, 3)->count();
+        $coursesCount = $this->hodCoursesQuery($user)->count();
+        $pendingLeavesCount = $this->hodPendingLeavesQuery($user)->count();
+        $pendingStudentReqsCount = $this->hodStudentRequestsQuery($user)->where('status', 'pending_hod')->count();
 
-        if ($teachersCount === 0) {
-            $teachersCount = User::where('role_id', 2)->count();
-        }
-
-        // عدد طلاب القسم
-        $studentsCount = User::where('role_id', 3)
-            ->where(function($q) use ($deptName) {
-                $q->where('department', 'LIKE', "%{$deptName}%");
-            })->count();
-
-        if ($studentsCount === 0) {
-            $studentsCount = User::where('role_id', 3)->count();
-        }
-
-        // عدد المقررات
-        $coursesQuery = DB::table('courses');
-        if ($deptId) {
-            $coursesQuery->whereExists(function($q) use ($deptId) {
-                $q->select(DB::raw(1))
-                  ->from('course_program')
-                  ->join('programs', 'course_program.program_id', '=', 'programs.id')
-                  ->whereColumn('courses.course_id', 'course_program.course_id')
-                  ->where('programs.department_id', $deptId);
-            });
-        }
-        $coursesCount = $coursesQuery->count();
-        if ($coursesCount === 0) {
-            $coursesCount = Course::count();
-        }
-
-        // طلبات الإجازات المعلقة للمعلمين
-        $pendingLeavesCount = DB::table('leave_requests')
-            ->whereIn('status', ['pending', 'pending_hod'])
-            ->count();
-
-        // الطلبات الطلابية المعلقة بانتظار رئيس القسم
-        $pendingStudentReqsCount = DB::table('student_requests')
-            ->where('status', 'pending_hod')
-            ->count();
-
-        // المواعيد القادمة
         $upcomingMeetingsCount = DB::table('parent_meeting_requests')
-            ->whereIn('status', ['pending', 'approved'])
+            ->join('students', 'parent_meeting_requests.student_id', '=', 'students.student_id')
+            ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
+            ->where('student_users.department', $deptInfo['name'] ?? '')
+            ->whereIn('parent_meeting_requests.status', ['pending', 'approved'])
             ->count();
 
         $msg = "🏛️ **لوحة معلومات القسم الأكاديمي**\n\n"
@@ -145,7 +220,7 @@ trait HodHandlers
             . "🎓 **إجمالي الطلاب:** `{$studentsCount}` طالب\n"
             . "📚 **المقررات المعتمدة:** `{$coursesCount}` مقرر\n"
             . "─────────────\n"
-            . "⏳ **إجازات معلمين معلقة:** `{$pendingLeavesCount}` طلب\n"
+            . "⏳ **إجازات طلاب معلقة:** `{$pendingLeavesCount}` طلب\n"
             . "⏳ **طلبات طلابية معلقة:** `{$pendingStudentReqsCount}` طلب\n"
             . "🤝 **مواعيد أولياء الأمور:** `{$upcomingMeetingsCount}` موعد\n\n"
             . "👇 يمكنك استخدام الأزرار أدناه للإدارة السريعة:";
@@ -157,7 +232,7 @@ trait HodHandlers
                     ['text' => '📚 مقررات القسم', 'callback_data' => 'hod_action_courses'],
                 ],
                 [
-                    ['text' => '✈️ إجازات المعلمين (' . $pendingLeavesCount . ')', 'callback_data' => 'hod_action_leaves'],
+                    ['text' => '✈️ إجازات الطلاب (' . $pendingLeavesCount . ')', 'callback_data' => 'hod_action_leaves'],
                     ['text' => '🎓 طلبات الطلاب (' . $pendingStudentReqsCount . ')', 'callback_data' => 'hod_action_requests'],
                 ],
                 [
@@ -171,18 +246,13 @@ trait HodHandlers
 
     private function handleHodTeachers(User $user, $chatId)
     {
-        $deptInfo = $this->getHodDepartmentInfo($user);
-        $deptName = $deptInfo['name'];
+        if (!$this->hodHasDepartment($user, $chatId)) {
+            return;
+        }
 
         $teachers = Teacher::with(['user', 'courses'])
-            ->whereHas('user', function($q) use ($deptName) {
-                $q->where('department', 'LIKE', "%{$deptName}%");
-            })
+            ->whereIn('user_id', $this->hodDeptUsers($user, 2)->select('user_id'))
             ->get();
-
-        if ($teachers->isEmpty()) {
-            $teachers = Teacher::with(['user', 'courses'])->take(15)->get();
-        }
 
         if ($teachers->isEmpty()) {
             $this->sendMessage($chatId, "👨‍🏫 لا يوجد معلمون مسجلون في القسم حالياً.");
@@ -219,6 +289,11 @@ trait HodHandlers
             return;
         }
 
+        if (!Access::headManagesUser($user, $teacher->user_id)) {
+            $this->sendMessage($chatId, "❌ ملف المعلم غير موجود.");
+            return;
+        }
+
         $tUser = $teacher->user;
         $name = $tUser->full_name;
         $spec = $teacher->specialization ?? 'عام';
@@ -247,24 +322,11 @@ trait HodHandlers
 
     private function handleHodCourses(User $user, $chatId)
     {
-        $deptInfo = $this->getHodDepartmentInfo($user);
-        $deptId = $deptInfo['id'];
-
-        $query = Course::withCount('students')->with('teachers.user');
-        if ($deptId) {
-            $query->whereExists(function($q) use ($deptId) {
-                $q->select(DB::raw(1))
-                  ->from('course_program')
-                  ->join('programs', 'course_program.program_id', '=', 'programs.id')
-                  ->whereColumn('courses.course_id', 'course_program.course_id')
-                  ->where('programs.department_id', $deptId);
-            });
+        if (!$this->hodHasDepartment($user, $chatId)) {
+            return;
         }
 
-        $courses = $query->orderBy('title')->get();
-        if ($courses->isEmpty()) {
-            $courses = Course::withCount('students')->with('teachers.user')->take(15)->get();
-        }
+        $courses = $this->hodCoursesQuery($user)->orderBy('title')->get();
 
         if ($courses->isEmpty()) {
             $this->sendMessage($chatId, "📚 لا توجد مقررات مسجلة في القسم.");
@@ -296,6 +358,11 @@ trait HodHandlers
     {
         $course = Course::with(['teachers.user', 'students.user'])->withCount(['lessons'])->find($courseId);
         if (!$course) {
+            $this->sendMessage($chatId, "❌ المقرر غير موجود.");
+            return;
+        }
+
+        if (!Access::headManagesCourse($user, $courseId)) {
             $this->sendMessage($chatId, "❌ المقرر غير موجود.");
             return;
         }
@@ -332,16 +399,16 @@ trait HodHandlers
 
     private function handleHodTeacherLeaves(User $user, $chatId)
     {
-        $leaves = DB::table('leave_requests')
-            ->leftJoin('users as u', 'leave_requests.student_id', '=', 'u.user_id')
-            ->leftJoin('teachers', 'leave_requests.teacher_id', '=', 'teachers.teacher_id')
-            ->leftJoin('users as tu', 'teachers.user_id', '=', 'tu.user_id')
+        if (!$this->hodHasDepartment($user, $chatId)) {
+            return;
+        }
+
+        $leaves = $this->hodPendingLeavesQuery($user)
             ->select(
                 'leave_requests.*',
                 DB::raw('COALESCE(tu.full_name, u.full_name, "مستخدم") as applicant_name'),
                 DB::raw('COALESCE(tu.role_id, u.role_id, 2) as applicant_role')
             )
-            ->whereIn('leave_requests.status', ['pending', 'pending_hod'])
             ->orderByDesc('leave_requests.created_at')
             ->take(10)
             ->get();
@@ -377,16 +444,32 @@ trait HodHandlers
 
     private function handleHodApproveLeave(User $user, $chatId, int $leaveId)
     {
-        $leave = DB::table('leave_requests')->where('id', $leaveId)->first();
+        $leave = $this->hodFindActionableLeave($user, $chatId, $leaveId);
         if (!$leave) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 
+        // رئيس القسم يمرّر الطلب لشؤون الطلاب للاعتماد النهائي (كما في الويب)، ولا يعتمده بنفسه.
         DB::table('leave_requests')->where('id', $leaveId)->update([
-            'status'     => 'approved',
+            'status'     => 'pending_affairs',
             'updated_at' => now(),
         ]);
+
+        $affairsTitle = 'طلب إذن جديد بانتظار الاعتماد النهائي';
+        $affairsMsg = "وافق رئيس القسم ({$user->full_name}) على طلب إجازة بتاريخ ({$leave->date})، يرجى الاعتماد النهائي.";
+        foreach (DB::table('users')->where('role_id', 6)->pluck('user_id') as $affairsId) {
+            Notification::create([
+                'user_id'    => $affairsId,
+                'sender_id'  => $user->user_id,
+                'title'      => $affairsTitle,
+                'message'    => $affairsMsg,
+                'type'       => 'leave_request',
+                'category'   => 'administrative',
+                'related_id' => $leaveId,
+                'is_read'    => false,
+            ]);
+            FcmService::sendToUser($affairsId, $affairsTitle, $affairsMsg, ['type' => 'leave_request', 'related_id' => (string) $leaveId]);
+        }
 
         // إشعار صاحب الطلب
         $applicantUserId = $leave->student_id;
@@ -396,8 +479,8 @@ trait HodHandlers
 
         if ($applicantUserId) {
             $appUser = User::find($applicantUserId);
-            $notifTitle = "تمت الموافقة على طلب الإجازة";
-            $notifMsg = "وافق رئيس القسم ({$user->full_name}) على طلب إجازتك بتاريخ ({$leave->date}).";
+            $notifTitle = "وافق رئيس القسم على طلب الإجازة";
+            $notifMsg = "وافق رئيس القسم ({$user->full_name}) على طلب إجازتك بتاريخ ({$leave->date}) وتم تحويله لشؤون الطلاب للاعتماد النهائي.";
 
             Notification::create([
                 'user_id'    => $applicantUserId,
@@ -422,9 +505,8 @@ trait HodHandlers
 
     private function handleHodRejectLeave(User $user, $chatId, int $leaveId)
     {
-        $leave = DB::table('leave_requests')->where('id', $leaveId)->first();
+        $leave = $this->hodFindActionableLeave($user, $chatId, $leaveId);
         if (!$leave) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 
@@ -467,26 +549,15 @@ trait HodHandlers
 
     private function handleHodStudentRequests(User $user, $chatId)
     {
-        $deptInfo = $this->getHodDepartmentInfo($user);
-        $deptName = $deptInfo['name'];
-        $deptId = $deptInfo['id'];
-
-        $query = StudentRequest::with(['student.user', 'student.program.department'])
-            ->whereIn('status', ['pending_hod', 'pending_admin']);
-
-        if ($deptName || $deptId) {
-            $query->whereHas('student', function ($sq) use ($deptName, $deptId) {
-                $sq->where(function ($w) use ($deptName, $deptId) {
-                    if ($deptName) {
-                        $w->whereHas('user', function ($uq) use ($deptName) {
-                            $uq->where('department', 'LIKE', "%{$deptName}%");
-                        });
-                    }
-                });
-            });
+        if (!$this->hodHasDepartment($user, $chatId)) {
+            return;
         }
 
-        $requests = $query->orderByDesc('created_at')->take(10)->get();
+        $requests = $this->hodStudentRequestsQuery($user)
+            ->where('status', 'pending_hod')
+            ->orderByDesc('created_at')
+            ->take(10)
+            ->get();
 
         if ($requests->isEmpty()) {
             $this->sendMessage($chatId, "🌟 **لا توجد طلبات طلابية معلقة لقسمك حالياً.**");
@@ -522,9 +593,8 @@ trait HodHandlers
 
     private function handleHodApproveStudentReq(User $user, $chatId, int $reqId)
     {
-        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        $studentReq = $this->hodFindActionableRequest($user, $chatId, $reqId);
         if (!$studentReq) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 
@@ -560,9 +630,8 @@ trait HodHandlers
 
     private function handleHodRejectStudentReq(User $user, $chatId, int $reqId)
     {
-        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        $studentReq = $this->hodFindActionableRequest($user, $chatId, $reqId);
         if (!$studentReq) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 
@@ -594,9 +663,8 @@ trait HodHandlers
 
     private function handleHodStartNotesStudentReq(User $user, $chatId, int $reqId)
     {
-        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        $studentReq = $this->hodFindActionableRequest($user, $chatId, $reqId);
         if (!$studentReq) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 
@@ -609,9 +677,8 @@ trait HodHandlers
     private function handleHodReqNotesInput(User $user, $chatId, string $text, string $state)
     {
         $reqId = (int)str_replace('awaiting_hod_req_notes_', '', $state);
-        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        $studentReq = $this->hodFindActionableRequest($user, $chatId, $reqId);
         if (!$studentReq) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             Cache::forget("telegram_state_{$chatId}");
             return;
         }
@@ -627,23 +694,25 @@ trait HodHandlers
 
     private function handleHodAppointments(User $user, $chatId)
     {
-        $deptInfo = $this->getHodDepartmentInfo($user);
-        $deptName = $deptInfo['name'];
+        if (!$this->hodHasDepartment($user, $chatId)) {
+            return;
+        }
+
+        $deptName = $this->getHodDepartmentInfo($user)['name'] ?? '';
 
         $meetings = DB::table('parent_meeting_requests')
-            ->join('users as parent_users', 'parent_meeting_requests.parent_id', '=', 'parent_users.user_id')
+            ->join('users as parent_users', 'parent_meeting_requests.parent_user_id', '=', 'parent_users.user_id')
             ->join('students', 'parent_meeting_requests.student_id', '=', 'students.student_id')
             ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
-            ->where(function($q) use ($deptName) {
-                $q->where('student_users.department', 'LIKE', "%{$deptName}%");
-            })
+            ->where('student_users.department', $deptName)
             ->select(
                 'parent_meeting_requests.*',
+                DB::raw('COALESCE(parent_meeting_requests.scheduled_at, parent_meeting_requests.preferred_date) as meeting_date'),
                 'parent_users.full_name as parent_name',
                 'parent_users.phone as parent_phone',
                 'student_users.full_name as student_name'
             )
-            ->orderByDesc('parent_meeting_requests.meeting_date')
+            ->orderByDesc('meeting_date')
             ->take(10)
             ->get();
 
@@ -675,6 +744,10 @@ trait HodHandlers
 
     private function handleHodBroadcastStart(User $user, $chatId)
     {
+        if (!$this->hodHasDepartment($user, $chatId)) {
+            return;
+        }
+
         Cache::put("telegram_state_{$chatId}", 'awaiting_hod_ann_title', 1800);
         $this->sendMessage($chatId, "📢 **نشر إعلان أكاديمي للقسم** 🏛️\n\nيرجى كتابة **عنوان الإعلان**:");
     }
@@ -716,11 +789,24 @@ trait HodHandlers
 
     private function handleHodAnnPublish(User $user, $chatId, string $target)
     {
-        $title = Cache::get("telegram_hod_ann_title_{$chatId}", 'إعلان من رئيس القسم');
-        $content = Cache::get("telegram_hod_ann_content_{$chatId}", '');
+        if (!in_array($target, ['all', 'students', 'teachers'], true)) {
+            $this->sendMessage($chatId, "⚠️ جمهور غير صالح، ابدأ نشر الإعلان من جديد.");
+            return;
+        }
+
+        $title = trim((string) Cache::get("telegram_hod_ann_title_{$chatId}", ''));
+        $content = trim((string) Cache::get("telegram_hod_ann_content_{$chatId}", ''));
+        if ($title === '' || $content === '' || !$this->hodHasDepartment($user, $chatId)) {
+            Cache::forget("telegram_state_{$chatId}");
+            if ($title === '' || $content === '') {
+                $this->sendMessage($chatId, "⚠️ انتهت مهلة الإعلان أو أنه فارغ، ابدأ النشر من جديد.");
+            }
+            return;
+        }
+
         $deptInfo = $this->getHodDepartmentInfo($user);
         $deptId = $deptInfo['id'];
-        $deptName = $deptInfo['name'];
+        $deptName = $deptInfo['name'] ?? 'القسم';
 
         $announcement = Announcement::create([
             'user_id'         => $user->user_id,
@@ -735,23 +821,15 @@ trait HodHandlers
         Cache::forget("telegram_hod_ann_title_{$chatId}");
         Cache::forget("telegram_hod_ann_content_{$chatId}");
 
-        $roleIds = match($target) {
+        $roleIds = match ($target) {
             'students' => [3],
             'teachers' => [2],
             default    => [2, 3],
         };
 
-        $recipientsQuery = User::whereIn('role_id', $roleIds)
-            ->where('status', 'active');
-
-        if ($deptName) {
-            $recipientsQuery->where('department', 'LIKE', "%{$deptName}%");
-        }
-
-        $recipients = $recipientsQuery->get();
-        if ($recipients->isEmpty()) {
-            $recipients = User::whereIn('role_id', $roleIds)->where('status', 'active')->get();
-        }
+        // مستلمو القسم فقط: لا رجوع إلى كل مستخدمي النظام إذا لم يوجد مستلمون (كان يعمّم الإعلان على الجميع)
+        $recipients = collect($roleIds)
+            ->flatMap(fn ($roleId) => $this->hodDeptUsers($user, $roleId)->where('status', 'active')->get());
 
         $notifTitle = "📢 إعلان من رئيس القسم ({$deptName})";
         $now = now();
