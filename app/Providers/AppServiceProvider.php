@@ -54,6 +54,11 @@ class AppServiceProvider extends ServiceProvider
         // حماية إضافية ضد تخمين كلمة السر: تحديد معدّل بالـ IP لكل محاولة
         // تسجيل دخول (فوق قفل الحساب نفسه بـ LoginThrottleGuard - راجع
         // UnifiedAuthController و Api\AuthController).
+        // المساعد الذكي: كل طلب قد يستهلك حتى 3 استدعاءات Gemini
+        \Illuminate\Support\Facades\RateLimiter::for('ai-chat', function (\Illuminate\Http\Request $request) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(12)->by($request->user()?->getAuthIdentifier() ?: $request->ip());
+        });
+
         \Illuminate\Support\Facades\RateLimiter::for('login', function (\Illuminate\Http\Request $request) {
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by($request->ip());
         });

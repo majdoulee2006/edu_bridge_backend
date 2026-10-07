@@ -40,6 +40,13 @@ return [
         'credentials' => env('FIREBASE_CREDENTIALS'),
     ],
 
+    'gemini' => [
+        'key'     => env('GEMINI_API_KEY'),
+        // قائمة موديلات مفصولة بفاصلة تُجرَّب بالترتيب عند الفشل/الحصّة
+        'models'  => array_values(array_filter(array_map('trim', explode(',', (string) env('GEMINI_MODELS', 'gemini-3.5-flash-lite,gemini-3.7-flash,gemini-3.5-flash'))))),
+        'timeout' => (int) env('GEMINI_TIMEOUT', 12),
+    ],
+
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
