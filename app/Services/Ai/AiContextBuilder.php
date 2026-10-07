@@ -275,7 +275,9 @@ class AiContextBuilder
             ->get(['courses.course_id', 'courses.title', 'courses.year']);
 
         $ids = $courses->pluck('course_id')->all();
-        $schedule = empty($ids) ? [] : \App\Models\Schedule::whereIn('course_id', $ids)->with('course')->get()
+        $own = \App\Models\Schedule::where('teacher_id', $user->user_id)->with('course')->get();
+        $rowsSrc = $own->isNotEmpty() ? $own : (empty($ids) ? collect() : \App\Models\Schedule::whereIn('course_id', $ids)->with('course')->get());
+        $schedule = $rowsSrc
             ->map(fn ($s) => [
                 'day'    => $this->dayAr($s->day),
                 'order'  => self::DAY_ORDER[strtolower((string) $s->day)] ?? 9,
@@ -619,7 +621,10 @@ class AiContextBuilder
             $progOf[$r->course_id] = $courses[$r->course_id]['programs'];
         }
 
-        $schedule = \App\Models\Schedule::whereIn('course_id', $courseIds)->get()->map(fn ($s) => [
+        $schedRows    = \App\Models\Schedule::whereIn('course_id', $courseIds)->get();
+        $teacherNames = DB::table('users')->whereIn('user_id', $schedRows->pluck('teacher_id')->filter()->unique()->all() ?: [0])->pluck('full_name', 'user_id');
+        $schedule = $schedRows->map(fn ($s) => [
+            'teacher'  => $teacherNames[$s->teacher_id] ?? null,
             'day'      => $this->dayAr($s->day),
             'order'    => self::DAY_ORDER[strtolower((string) $s->day)] ?? 9,
             'start'    => substr((string) $s->start_time, 0, 5),
@@ -653,17 +658,28 @@ class AiContextBuilder
             return [];
         }
 
-        $att = DB::table('attendance as a')
+        $rows = DB::table('attendance as a')
             ->join('students as s', 's.student_id', '=', 'a.student_id')
             ->leftJoin('programs as p', 'p.id', '=', 's.program_id')
             ->whereIn('a.student_id', $ids)
-            ->groupBy('p.name')
-            ->selectRaw("p.name as program, COUNT(*) as total, SUM(CASE WHEN a.status IN ('present','late') THEN 1 ELSE 0 END) as present")
-            ->get()
-            ->mapWithKeys(fn ($r) => [$r->program ?: 'دورة غير محددة' => [
-                'sessions' => (int) $r->total,
-                'rate'     => $r->total > 0 ? round($r->present / $r->total * 100, 1) : null,
-            ]])->all();
+            ->groupBy('p.name', 's.level')
+            ->selectRaw("p.name as program, s.level as level, COUNT(*) as total, SUM(CASE WHEN a.status IN ('present','late') THEN 1 ELSE 0 END) as present")
+            ->get();
+
+        // حضور كل دورة وسنة، وتجميعها لكل دورة (بوزن عدد الجلسات)
+        $byGroup = [];
+        $byProg  = [];
+        foreach ($rows as $r) {
+            $prog  = $r->program ?: 'دورة غير محددة';
+            $label = trim($prog . ($r->level ? ' - ' . $r->level : ''));
+            $byGroup[$label] = ['sessions' => (int) $r->total, 'rate' => $r->total > 0 ? round($r->present / $r->total * 100, 1) : null];
+            $byProg[$prog]['total']   = ($byProg[$prog]['total'] ?? 0) + (int) $r->total;
+            $byProg[$prog]['present'] = ($byProg[$prog]['present'] ?? 0) + (int) $r->present;
+        }
+        $att = [];
+        foreach ($byProg as $prog => $x) {
+            $att[$prog] = ['sessions' => $x['total'], 'rate' => $x['total'] > 0 ? round($x['present'] / $x['total'] * 100, 1) : null];
+        }
 
         $avg = [];
         if ($studentRows->count() <= 60) {
@@ -679,7 +695,7 @@ class AiContextBuilder
             }
         }
 
-        return ['attendance_by_program' => $att, 'average_by_program' => $avg];
+        return ['attendance_by_program' => $att, 'attendance_by_group' => $byGroup, 'average_by_program' => $avg];
     }
 
     /** @return array<string, mixed> */

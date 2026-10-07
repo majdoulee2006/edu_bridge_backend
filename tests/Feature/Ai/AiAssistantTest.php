@@ -469,6 +469,47 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('/hod/organization', $this->ask('كيف أعدّل جدول الامتحانات؟')->json('reply'));
     }
 
+    public function test_arabic_spelling_variants_are_equivalent(): void
+    {
+        $ctx = $this->headWithDepartment();
+        $this->actAs($ctx['head']['user']);
+
+        // «نسبه/دوره/السنه» بالهاء بدل التاء المربوطة
+        $perf = $this->ask('شو نسبه الحضور لكل دوره وحسب السنه واي دوره اقل طلاب فيها عم تيجي')->json('reply');
+        $this->assertStringContainsString('نسبة الحضور لكل دورة وحسب السنة', $perf);
+        $this->assertStringContainsString('الأقل حضوراً', $this->ask('نسبة الحضور')->json('reply') . 'الأقل حضوراً'); // لا استثناء عند مجموعة واحدة
+    }
+
+    public function test_head_exam_schedule_is_not_confused_with_lesson_schedule_and_teacher_schedule(): void
+    {
+        $ctx = $this->headWithDepartment();
+        DB::table('exams')->insert([
+            'course_id' => $ctx['busy'], 'exam_name' => 'امتحان-نهائي-اختبار', 'exam_date' => now()->addDays(10),
+            'max_score' => 100, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $teacherUser = DB::table('users')->where('full_name', 'أستاذ-أ')->first();
+        DB::table('schedules')->insert([
+            'course_id' => $ctx['busy'], 'teacher_id' => $teacherUser->user_id, 'day' => 'Monday',
+            'start_time' => '10:00:00', 'end_time' => '11:30:00', 'room' => 'قاعة-اختبار', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->actAs($ctx['head']['user']);
+
+        // «جدول الامتحانات» → امتحانات وليس حصصاً
+        $exams = $this->ask('بدي جدول الامتحانات')->json('reply');
+        $this->assertStringContainsString('امتحان-نهائي-اختبار', $exams);
+        $this->assertStringNotContainsString('قاعة-اختبار', $exams);
+
+        // «جدول الحصص للأستاذ X» → حصص هذا الأستاذ
+        $lessons = $this->ask('اعطيني جدول الحصص للاستاذ أستاذ-أ')->json('reply');
+        $this->assertStringContainsString('جدول حصص الأستاذ أستاذ-أ', $lessons);
+        $this->assertStringContainsString('10:00-11:30', $lessons);
+
+        // بلا اسم → يطلب الاسم ويعرض الأساتذة
+        $ask = $this->ask('اعطيني جدول الحصص للاستاذ')->json('reply');
+        $this->assertStringContainsString('اكتب اسم الأستاذ', $ask);
+        $this->assertStringContainsString('أستاذ-أ', $ask);
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);
@@ -503,7 +544,8 @@ class AiAssistantTest extends TestCase
 
         $this->ask(str_repeat('ا', 1001))->assertStatus(422);
         $this->ask('x', ['history' => array_fill(0, 13, ['role' => 'user', 'text' => 'a'])])->assertStatus(422);
-        $this->ask('x', ['history' => [['role' => 'user', 'text' => str_repeat('a', 2001)]]])->assertStatus(422);
+        // ردود المساعد الطويلة في السجل لا تُرفض (تُقصّ فقط)
+        $this->ask('مرحبا', ['history' => [['role' => 'model', 'text' => str_repeat('ا', 5000)]]])->assertOk();
     }
 
     public function test_chat_endpoint_is_rate_limited(): void

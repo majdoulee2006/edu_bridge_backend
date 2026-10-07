@@ -34,10 +34,15 @@ class AiAssistantController extends Controller
             'server_url'     => 'nullable|string|max:255',
             'history'        => 'nullable|array|max:12',
             'history.*.role' => 'nullable|string|max:10',
-            'history.*.text' => 'nullable|string|max:2000',
+            'history.*.text' => 'nullable|string',
         ]);
 
         $message = trim($request->input('message'));
+        // ردود المساعد الطويلة تعود كسجل محادثة: نقصّها بدل رفض الطلب
+        $history = array_map(fn ($h) => [
+            'role' => is_array($h) ? ($h['role'] ?? 'user') : 'user',
+            'text' => mb_substr((string) (is_array($h) ? ($h['text'] ?? '') : ''), 0, 1500),
+        ], (array) $request->input('history', []));
         $user    = $request->user();
         $role    = AiRole::normalize($user?->role ?? $request->input('role'));
 
@@ -47,7 +52,7 @@ class AiAssistantController extends Controller
         if ($this->gemini->isConfigured()) {
             $reply = $this->gemini->generate(
                 $this->systemPrompt($role, $data, $baseHttp),
-                (array) $request->input('history', []),
+                $history,
                 $message
             );
 
@@ -62,7 +67,7 @@ class AiAssistantController extends Controller
 
         return response()->json([
             'success' => true,
-            'reply'   => $this->sanitizer->sanitize($this->local->respond($message, $role, $data, $baseHttp, (array) $request->input('history', [])), $role, $baseHttp),
+            'reply'   => $this->sanitizer->sanitize($this->local->respond($message, $role, $data, $baseHttp, $history), $role, $baseHttp),
             'source'  => 'local_engine',
         ]);
     }

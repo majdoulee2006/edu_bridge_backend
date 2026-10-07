@@ -22,11 +22,11 @@ class LocalKnowledgeEngine
      */
     public function respond(string $message, string $role, array $data, string $baseHttp, array $history = []): string
     {
-        $q    = mb_strtolower(trim($message), 'UTF-8');
+        $q    = $this->norm($message);
         $role = AiRole::normalize($role);
 
         foreach (self::RESTRICTED[$role] ?? [] as $kw) {
-            if (str_contains($q, $kw)) {
+            if (str_contains($q, $this->norm($kw))) {
                 return self::DENIED;
             }
         }
@@ -414,6 +414,12 @@ class LocalKnowledgeEngine
         $policy = $this->has($q, ['نظام', 'لائحة', 'لوائح', 'سياسة', 'شروط']);
 
         if (!$howTo && !$policy) {
+            // 0) بحث عن طالب باسمه (أولاً: اسم الطالب قد يحوي كلمة مثل «منذر»)
+            if ($this->has($q, ['ابحث', 'معلومات عن', 'بيانات', 'اسمه', 'عن الطالب', 'عن طالب', 'وين الطالب'])) {
+                if ($r = $this->hodStudentSearchAnswer($q, $data)) {
+                    return $r;
+                }
+            }
             // 1) الإنذارات والغياب
             if ($this->has($q, ['منذر', 'انذار', 'إنذار', 'غياب', 'غيب', 'غايب', 'متغيب', 'ما بيداوم', 'مو بيداوم', 'ما بحضر'])) {
                 return $this->hodWarningsAnswer($data, $this->has($q, ['اكتر', 'أكثر', 'اكثر', 'اعلى', 'أعلى']) && !$this->has($q, ['منذر']));
@@ -423,22 +429,16 @@ class LocalKnowledgeEngine
                 return $this->hodPendingAnswer($data);
             }
             // 3) الأداء
-            if ($this->has($q, ['نسبة الحضور', 'نسبة حضور', 'معدل النجاح', 'معدل الدورات', 'اضعف', 'أضعف', 'افضل دورة', 'أفضل دورة', 'اداء', 'أداء', 'مقارنة'])) {
+            if ($this->has($q, ['نسبة الحضور', 'نسبة حضور', 'نسبة دوام', 'معدل النجاح', 'معدل الدورات', 'اضعف', 'افضل دورة', 'اقل دورة', 'اقل حضور', 'اكثر حضور', 'اداء', 'مقارنة', 'تيجي', 'بتجي', 'بيجو', 'بيحضرو', 'بحضرو', 'اقل طلاب'])) {
                 return $this->hodPerformanceAnswer($data);
             }
             // 4) الامتحانات القادمة
-            if ($this->has($q, ['امتحانات', 'امتحان القادم', 'الامتحانات القادمة']) && !$this->has($q, ['جدول'])) {
+            if ($this->has($q, ['امتحان', 'اختبار', 'مذاكرة'])) {
                 return $this->hodExamsAnswer($q, $data);
             }
-            // 5) جدول دورة
-            if ($this->has($q, ['جدول'])) {
+            // 5) جدول الحصص (دورة/سنة/أستاذ)
+            if ($this->has($q, ['جدول', 'حصص', 'حصة', 'محاضرات الاستاذ', 'دوام الاستاذ'])) {
                 return $this->hodScheduleAnswer($q, $data);
-            }
-            // 6) بحث عن طالب
-            if ($this->has($q, ['ابحث', 'معلومات عن', 'بيانات', 'اسمه', 'عن الطالب', 'عن طالب', 'وين الطالب'])) {
-                if ($r = $this->hodStudentSearchAnswer($q, $data)) {
-                    return $r;
-                }
             }
             // أساتذة بلا مقررات / الأكثر عبئاً / غير المشرفين (قبل المقررات لأن العبارة تحوي «مقررات»)
             if ($this->has($q, ['بدون مقررات', 'بلا مقررات', 'اكتر مقررات', 'أكثر مقررات', 'اكتر عبء', 'مو مشرف', 'مش مشرف', 'غير مشرف', 'غير المشرف', 'مو المشرف', 'مو مرشد', 'مش مرشد', 'غير المرشد', 'ما عندهم دورة', 'مو مشرفين'])) {
@@ -621,19 +621,31 @@ class LocalKnowledgeEngine
 
     protected function hodPerformanceAnswer(array $data): string
     {
-        $att = $data['attendance_by_program'] ?? [];
+        $att    = $data['attendance_by_program'] ?? [];
+        $groups = $data['attendance_by_group'] ?? [];
         if (empty($att)) {
-            return '📊 لا توجد جلسات حضور مسجلة لطلاب القسم بعد.';
+            return '📊 لا توجد جلسات حضور مسجلة لطلاب القسم بعد، فلا أستطيع حساب نسب الحضور.';
         }
+
         uasort($att, fn ($a, $b) => ($b['rate'] ?? -1) <=> ($a['rate'] ?? -1));
-        $out = "📊 **أداء دورات القسم:**\n\n";
+        $out = "📊 **نسبة الحضور لكل دورة وحسب السنة:**\n";
         foreach ($att as $prog => $x) {
-            $out .= "• **{$prog}** — حضور " . ($x['rate'] ?? '—') . "% ({$x['sessions']} جلسة)"
+            $out .= "\n🎓 **دورة {$prog}** — " . ($x['rate'] ?? '—') . "% ({$x['sessions']} جلسة)"
                 . (isset($data['average_by_program'][$prog]) ? '، متوسط المعدل ' . $data['average_by_program'][$prog] : '') . "\n";
+            foreach ($groups as $label => $g) {
+                if (str_starts_with($label, $prog . ' - ')) {
+                    $out .= '   • ' . trim(substr($label, strlen($prog) + 3)) . ': ' . ($g['rate'] ?? '—') . "% ({$g['sessions']} جلسة)\n";
+                }
+            }
         }
-        $rated = array_filter($att, fn ($x) => $x['rate'] !== null);
+
+        $rated = array_filter($groups ?: $att, fn ($x) => $x['rate'] !== null);
         if (count($rated) > 1) {
-            $out .= "\n📈 الأفضل حضوراً: **" . array_key_first($rated) . "**، والأضعف: **" . array_key_last($rated) . '**.';
+            asort($rated);
+            $low  = array_key_first($rated);
+            $high = array_key_last($rated);
+            uasort($rated, fn ($a, $b) => $a['rate'] <=> $b['rate']);
+            $out .= "\n📉 **الأقل حضوراً:** {$low} (" . $rated[$low]['rate'] . "%)\n📈 **الأعلى حضوراً:** {$high} (" . $rated[$high]['rate'] . '%)';
         }
 
         return $out;
@@ -663,6 +675,37 @@ class LocalKnowledgeEngine
         if (empty($rows)) {
             return '📅 لا يوجد جدول محاضرات مسجل لمقررات القسم. لإعداده: **التنظيم الأكاديمي** (`/hod/organization`).';
         }
+
+        // جدول أستاذ بعينه (يُذكر اسمه) أو طلب جدول «الأستاذ» بدون اسم
+        $teacherNames = array_values(array_unique(array_filter(array_merge(
+            array_column($data['dept_teachers'] ?? [], 'name'),
+            array_column($rows, 'teacher')
+        ))));
+        $teacher = $this->detectTeacher($q, $teacherNames);
+        if ($teacher !== null) {
+            $mine = array_values(array_filter($rows, fn ($r) => ($r['teacher'] ?? null) === $teacher));
+            if (empty($mine)) {
+                return "📅 لا توجد حصص مجدولة للأستاذ **{$teacher}**.";
+            }
+            $out = "📅 **جدول حصص الأستاذ {$teacher}:**\n";
+            $byDay = [];
+            foreach ($mine as $r) {
+                $byDay[$r['day']][] = $r;
+            }
+            foreach ($byDay as $day => $list) {
+                $out .= "\n**{$day}**\n";
+                foreach ($list as $r) {
+                    $out .= "• {$r['start']}-{$r['end']} {$r['course']}" . ($r['programs'] ? ' (' . implode('، ', $r['programs']) . (isset($r['year']) ? ' - ' . (AiContextBuilder::YEAR_AR[$r['year']] ?? '') : '') . ')' : '')
+                        . ($r['room'] ? " — {$r['room']}" : '') . "\n";
+                }
+            }
+
+            return $out . "\n📊 إجمالي الحصص الأسبوعية: " . count($mine) . '.';
+        }
+        if ($this->has($q, ['استاذ', 'مدرس', 'معلم', 'دكتور', 'للاساتذه', 'الاساتذه'])) {
+            return "📅 اكتب اسم الأستاذ لأعرض جدول حصصه، مثلاً: **جدول الأستاذ {$teacherNames[0]}**.\n\n**أساتذة القسم:**\n• " . implode("\n• ", array_slice($teacherNames, 0, 20));
+        }
+
         $prog = $this->detectProgram($q, $data['programs'] ?? []);
         $year = $this->detectYear($q);
         $rows = array_values(array_filter($rows, fn ($r) =>
@@ -679,20 +722,34 @@ class LocalKnowledgeEngine
         foreach ($byDay as $day => $list) {
             $out .= "\n**{$day}**\n";
             foreach ($list as $r) {
-                $out .= "• {$r['start']}-{$r['end']} {$r['course']}" . ($r['room'] ? " ({$r['room']})" : '') . "\n";
+                $out .= "• {$r['start']}-{$r['end']} {$r['course']}" . (!empty($r['teacher']) ? " — {$r['teacher']}" : '') . ($r['room'] ? " ({$r['room']})" : '') . "\n";
             }
         }
 
         return $out . (count($rows) > 40 ? "\n... وغيرها، حدّد دورة وسنة لتضييق القائمة." : '');
     }
 
+    /** اسم أستاذ مذكور في السؤال (الاسم كاملاً أو الأول والأخير) أو null. */
+    private function detectTeacher(string $q, array $names): ?string
+    {
+        foreach ($names as $name) {
+            $n     = $this->norm($name);
+            $words = array_values(array_filter(preg_split('/\s+/u', $n)));
+            if (str_contains($q, $n) || (count($words) >= 2 && str_contains($q, $words[0]) && str_contains($q, end($words)))) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
     protected function hodStudentSearchAnswer(string $q, array $data): ?string
     {
         $needle = null;
         foreach ($data['student_index'] ?? [] as $s) {
-            $words = array_filter(preg_split('/\s+/u', mb_strtolower($s['name'], 'UTF-8')));
+            $words = array_filter(preg_split('/\s+/u', $this->norm($s['name'])));
             // يطابق إذا ورد الاسم الأول والأخير (أو الاسم كاملاً) في السؤال
-            if (str_contains($q, mb_strtolower($s['name'], 'UTF-8')) || (count($words) >= 2 && str_contains($q, reset($words)) && str_contains($q, end($words)))) {
+            if (str_contains($q, $this->norm($s['name'])) || (count($words) >= 2 && str_contains($q, reset($words)) && str_contains($q, end($words)))) {
                 $needle = $s;
                 break;
             }
@@ -722,7 +779,7 @@ class LocalKnowledgeEngine
 
         // من يدرّس مقرراً معيناً؟
         foreach ($courses as $c) {
-            if (mb_strlen($c['title']) >= 3 && str_contains($q, mb_strtolower($c['title'], 'UTF-8'))) {
+            if (mb_strlen($c['title']) >= 3 && str_contains($q, $this->norm($c['title']))) {
                 return "👨‍🏫 **{$c['title']}** (" . (AiContextBuilder::YEAR_AR[$c['year']] ?? 'سنة غير محددة') . ' - دورة ' . implode('، ', $c['programs']) . ")\nالأستاذ: "
                     . ($c['teachers'] ? '**' . implode('، ', $c['teachers']) . '**' : '⚠️ لا يوجد أستاذ مسند');
             }
@@ -964,7 +1021,7 @@ class LocalKnowledgeEngine
     /** كلمات النص بحروف صغيرة وبدون «ال» التعريف في أولها. */
     private function stemWords(string $text): array
     {
-        $words = preg_split('/[\s\-_,،.؟?]+/u', mb_strtolower(trim($text), 'UTF-8'));
+        $words = preg_split('/[\s\-_,،.؟?]+/u', $this->norm($text));
 
         return array_values(array_filter(array_map(fn ($w) => preg_replace('/^ال/u', '', $w), $words)));
     }
@@ -1000,18 +1057,31 @@ class LocalKnowledgeEngine
 
     private function isGreeting(string $q): bool
     {
-        if (in_array($q, ['كيفك', 'كيفك اليوم', 'مرحبا', 'أهلا', 'اهلا', 'اهلين', 'السلام عليكم', 'صباح الخير', 'مساء الخير', 'hi', 'hello'], true)) {
+        $q = $this->norm($q);
+        if (in_array($q, ['كيفك', 'كيفك اليوم', 'مرحبا', 'اهلا', 'اهلين', 'السلام عليكم', 'صباح الخير', 'مساء الخير', 'hi', 'hello'], true)) {
             return true;
         }
 
         return $this->has($q, ['شو أخبارك', 'شو اخبارك', 'كيف حالك', 'عساك بخير']);
     }
 
+    /**
+     * توحيد الكتابة العربية للمقارنة: ة→ه، ى→ي، أإآ→ا، ؤ→و، ئ→ي، وحذف التشكيل والتطويل،
+     * فيتساوى «نسبة الحضور» و«نسبه الحضور» و«السنة» و«السنه».
+     */
+    private function norm(string $text): string
+    {
+        $t = mb_strtolower(trim($text), 'UTF-8');
+        $t = preg_replace('/[\x{064B}-\x{065F}\x{0670}\x{0640}]/u', '', $t);
+
+        return strtr($t, ['ة' => 'ه', 'ى' => 'ي', 'أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ؤ' => 'و', 'ئ' => 'ي']);
+    }
+
     /** @param string[] $needles */
     private function has(string $q, array $needles): bool
     {
         foreach ($needles as $n) {
-            if (str_contains($q, $n)) {
+            if (str_contains($q, $this->norm($n))) {
                 return true;
             }
         }
