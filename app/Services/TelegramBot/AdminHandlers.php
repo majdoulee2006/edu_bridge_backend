@@ -161,10 +161,28 @@ trait AdminHandlers
         }
     }
 
+    /** طلب خدمة طالب يحق للإدارة البتّ فيه الآن: pending_admin فقط (القرار النهائي بعد الشؤون ورئيس القسم). */
+    private function adminFindActionableRequest($chatId, int $reqId): ?StudentRequest
+    {
+        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        if (!$studentReq) {
+            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
+            return null;
+        }
+
+        if ($studentReq->status !== 'pending_admin') {
+            $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الإدارة بعد، ولا يمكن تعديله.");
+            return null;
+        }
+
+        return $studentReq;
+    }
+
     private function handleAdminApproveUser(User $user, $chatId, int $targetUserId)
     {
         $targetUser = User::find($targetUserId);
-        if (!$targetUser) {
+        // حساب معلّق فقط (نفس شرط قائمة التدقيق). بدون هذا الفحص كان زر قديم يحذف حساباً فعالاً (الرفض يحذف المستخدم وبياناته).
+        if (!$targetUser || $targetUser->status !== 'inactive' || (int) $targetUser->role_id === 1) {
             $this->sendMessage($chatId, "❌ الحساب غير موجود أو تمت معالجته.");
             return;
         }
@@ -216,7 +234,8 @@ trait AdminHandlers
     private function handleAdminRejectUser(User $user, $chatId, int $targetUserId)
     {
         $targetUser = User::find($targetUserId);
-        if (!$targetUser) {
+        // حساب معلّق فقط (نفس شرط قائمة التدقيق). بدون هذا الفحص كان زر قديم يحذف حساباً فعالاً (الرفض يحذف المستخدم وبياناته).
+        if (!$targetUser || $targetUser->status !== 'inactive' || (int) $targetUser->role_id === 1) {
             $this->sendMessage($chatId, "❌ الحساب غير موجود أو تمت معالجته مسبقاً.");
             return;
         }
@@ -306,9 +325,8 @@ trait AdminHandlers
 
     private function handleAdminApproveStudentReq(User $user, $chatId, int $reqId)
     {
-        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        $studentReq = $this->adminFindActionableRequest($chatId, $reqId);
         if (!$studentReq) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 
@@ -373,9 +391,8 @@ trait AdminHandlers
 
     private function handleAdminRejectStudentReq(User $user, $chatId, int $reqId)
     {
-        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        $studentReq = $this->adminFindActionableRequest($chatId, $reqId);
         if (!$studentReq) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 

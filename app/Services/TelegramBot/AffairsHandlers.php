@@ -188,6 +188,26 @@ trait AffairsHandlers
         }
     }
 
+    /**
+     * طلب خدمة طالب يحق للشؤون البتّ فيه الآن: مرحلة pending_affairs فقط (كما في الويب).
+     * كان الزر القديم يغيّر حالة أي طلب في أي مرحلة (يتخطى رئيس القسم والإدارة).
+     */
+    private function affairsFindActionableRequest($chatId, int $reqId): ?StudentRequest
+    {
+        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        if (!$studentReq) {
+            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
+            return null;
+        }
+
+        if (!in_array($studentReq->status, ['pending_affairs', 'pending'], true)) {
+            $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد، ولا يمكن تعديله.");
+            return null;
+        }
+
+        return $studentReq;
+    }
+
     private function handleAffairsApproveLeave(User $user, $chatId, string $src, int $id)
     {
         $studentUserId = null;
@@ -199,6 +219,10 @@ trait AffairsHandlers
                 $this->sendMessage($chatId, "❌ طلب الإجازة غير موجود.");
                 return;
             }
+            if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
+                $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
+                return;
+            }
             DB::table('leave_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
             $studentUserId = $rec->student_id;
             $leaveDate = $rec->date ?? $leaveDate;
@@ -206,6 +230,10 @@ trait AffairsHandlers
             $rec = DB::table('absence_requests')->where('request_id', $id)->first();
             if (!$rec) {
                 $this->sendMessage($chatId, "❌ عذر الغياب غير موجود.");
+                return;
+            }
+            if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
+                $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
                 return;
             }
             DB::table('absence_requests')->where('request_id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
@@ -253,6 +281,10 @@ trait AffairsHandlers
                 $this->sendMessage($chatId, "❌ طلب الإجازة غير موجود.");
                 return;
             }
+            if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
+                $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
+                return;
+            }
             DB::table('leave_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => now()]);
             $studentUserId = $rec->student_id;
             $leaveDate = $rec->date ?? $leaveDate;
@@ -260,6 +292,10 @@ trait AffairsHandlers
             $rec = DB::table('absence_requests')->where('request_id', $id)->first();
             if (!$rec) {
                 $this->sendMessage($chatId, "❌ عذر الغياب غير موجود.");
+                return;
+            }
+            if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
+                $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
                 return;
             }
             DB::table('absence_requests')->where('request_id', $id)->update(['status' => 'rejected', 'updated_at' => now()]);
@@ -481,9 +517,8 @@ trait AffairsHandlers
 
     private function handleAffairsApproveStudentReq(User $user, $chatId, int $reqId)
     {
-        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        $studentReq = $this->affairsFindActionableRequest($chatId, $reqId);
         if (!$studentReq) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 
@@ -569,9 +604,8 @@ trait AffairsHandlers
 
     private function handleAffairsRejectStudentReq(User $user, $chatId, int $reqId)
     {
-        $studentReq = StudentRequest::with('student.user')->find($reqId);
+        $studentReq = $this->affairsFindActionableRequest($chatId, $reqId);
         if (!$studentReq) {
-            $this->sendMessage($chatId, "❌ الطلب غير موجود.");
             return;
         }
 
@@ -665,8 +699,8 @@ trait AffairsHandlers
             $coursesCount = DB::table('enrollments')->where('student_id', $s->student_id)->where('status', 'active')->count();
 
             // نسبة الحضور
-            $totalSessions = DB::table('attendances')->where('student_id', $s->student_id)->count();
-            $presentSessions = DB::table('attendances')->where('student_id', $s->student_id)->where('status', 'present')->count();
+            $totalSessions = DB::table('attendance')->where('student_id', $s->student_id)->count();
+            $presentSessions = DB::table('attendance')->where('student_id', $s->student_id)->where('status', 'present')->count();
             $attendanceRate = $totalSessions > 0 ? round(($presentSessions / $totalSessions) * 100, 1) . '%' : 'لا توجد جلسات';
 
             // بيانات ولي الأمر
