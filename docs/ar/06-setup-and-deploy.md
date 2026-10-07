@@ -55,6 +55,7 @@ php artisan schedule:work     # المهام المجدولة محلياً (بد
 | `MAIL_MAILER/HOST/PORT/USERNAME/PASSWORD/FROM_ADDRESS` | رسائل OTP | ⚠️ القيمة الحالية `log` لا ترسل شيئاً |
 | `TELEGRAM_BOT_TOKEN` | البوت | من BotFather |
 | `TELEGRAM_WEBHOOK_SECRET` | سرّ التحقق من الـ webhook | مطلوب في الإنتاج |
+| `TELEGRAM_FORWARD_NOTIFICATIONS` | نسخ كل إشعار بالتطبيق إلى تيليغرام المستخدم | `true` (الافتراضي)؛ `false` للإيقاف |
 | `GEMINI_API_KEY` | المساعد الذكي | اختياري؛ بدونه يعمل المحرك المحلي |
 | `SESSION_LIFETIME` | دقائق (افتراضي 20) | |
 

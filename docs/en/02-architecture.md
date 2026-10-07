@@ -53,7 +53,7 @@ flowchart LR
 | Routes | `routes/api.php`, `routes/web.php`, `routes/channels.php`, `routes/console.php` | Define the interfaces and attach middleware (role, single session, throttle) |
 | Middleware | `app/Http/Middleware/` | `RoleMiddleware` (API), `Check*Role` (web), `EnsureSingleApiSession`, `EnsureSingleWebSession` |
 | Controllers | `app/Http/Controllers/{Api,Web,WebHead}` | Request logic. **Very large** and mix business logic with presentation (see section 5 of project status) |
-| Services | `app/Services/` | `FcmService`, `TelegramService`, `TelegramBotHandler`, `AbsenceWarningService`, `StudentAcademicService`, PDF/Excel/timetable-image services |
+| Services | `app/Services/` | `FcmService`, `TelegramService`, `TelegramBotHandler` (+ role traits in `app/Services/TelegramBot/`), `AbsenceWarningService`, `StudentAcademicService`, PDF/Excel/timetable-image services |
 | Observers | `app/Observers/` | `AttendanceObserver` (absence warnings + Telegram notice), `GradeObserver` (grade notice) |
 | Support | `app/Support/` | `SingleSessionGuard`, `LoginThrottleGuard` |
 | Traits | `app/Traits/` | `FaceRecognitionTrait`, `HandlesMessagesTrait`, `NormalizesAccountCredentialsTrait` |

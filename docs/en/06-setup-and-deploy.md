@@ -55,6 +55,7 @@ Or the ready shortcut: `composer run dev` (runs the server, queue, logs and Vite
 | `MAIL_MAILER/HOST/PORT/USERNAME/PASSWORD/FROM_ADDRESS` | OTP emails | WARNING: the current value `log` sends nothing |
 | `TELEGRAM_BOT_TOKEN` | The bot | From BotFather |
 | `TELEGRAM_WEBHOOK_SECRET` | Secret to verify the webhook | Required in production |
+| `TELEGRAM_FORWARD_NOTIFICATIONS` | Copy every app notification to the user's Telegram | `true` (default); `false` to turn off |
 | `GEMINI_API_KEY` | AI assistant | Optional; without it the local engine is used |
 | `SESSION_LIFETIME` | Minutes (default 20) | |
 
