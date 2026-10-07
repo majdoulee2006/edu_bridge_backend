@@ -75,6 +75,54 @@ class Access
         return ['id' => $id ? (int) $id : null, 'name' => $name];
     }
 
+    /**
+     * مستخدمو قسم رئيس القسم (نشطون) بحسب الأدوار: 2 معلمون، 3 طلاب، ومعهم أولياء أمور طلاب القسم إن طُلب.
+     * يُستعمل لأي إشعار/إعلان يرسله رئيس القسم: كان يصل إلى مستخدمي النظام كله.
+     *
+     * @param  int[] $roleIds
+     * @return int[]
+     */
+    public static function headAudienceUserIds(User $head, array $roleIds, bool $includeParents = false): array
+    {
+        $dept = self::headDepartment($head);
+        if (!$dept['name']) {
+            return [];
+        }
+
+        $ids = DB::table('users')
+            ->where('status', 'active')
+            ->whereIn('role_id', $roleIds)
+            ->where('department', $dept['name'])
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($includeParents) {
+            $students = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->where('users.department', $dept['name'])
+                ->get(['students.student_id', 'students.user_id']);
+
+            $studentKeys = $students->pluck('student_id')->merge($students->pluck('user_id'))->unique()->all();
+
+            $parents = DB::table('parent_students')
+                ->join('parents', function ($j) {
+                    $j->on('parent_students.parent_id', '=', 'parents.user_id')
+                      ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
+                })
+                ->join('users', 'parents.user_id', '=', 'users.user_id')
+                ->whereIn('parent_students.student_id', $studentKeys)
+                ->where('users.status', 'active')
+                ->pluck('parents.user_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $ids = array_values(array_unique(array_merge($ids, $parents)));
+        }
+
+        return $ids;
+    }
+
     /** هل المقرر ضمن برنامج تابع لقسم رئيس القسم؟ */
     public static function headManagesCourse(User $head, $courseId): bool
     {

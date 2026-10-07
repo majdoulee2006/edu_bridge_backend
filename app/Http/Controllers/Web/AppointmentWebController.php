@@ -26,37 +26,28 @@ class AppointmentWebController extends Controller
         $summonsQuery = ParentSummon::with(['sender', 'student.user', 'parent']);
 
         if ($isHOD) {
-            $dept = $user->department;
+            // اسم قسم الرئيس من مرجع الصلاحيات (heads ثم users.department) ومطابقة دقيقة؛ لا قسم = لا نتائج
+            $dept = \App\Support\Access::headDepartment($user)['name'] ?? '___no_department___';
             // تصفية اللقاءات لطلاب القسم فقط
             $meetingsQuery->whereHas('student.user', function ($q) use ($dept) {
-                $q->where('department', 'LIKE', '%' . $dept . '%');
+                $q->where('department', $dept);
             });
             // تصفية الاستدعاءات لطلاب القسم فقط
             $summonsQuery->whereHas('student.user', function ($q) use ($dept) {
-                $q->where('department', 'LIKE', '%' . $dept . '%');
+                $q->where('department', $dept);
             });
 
             // جلب الطلاب في هذا القسم مع اختصاصاتهم
             $students = Student::with(['user', 'program'])
                 ->whereHas('user', function($q) use ($dept) {
-                    $q->where('department', 'LIKE', '%' . $dept . '%');
+                    $q->where('department', $dept);
                 })->get();
 
-            // جلب الدورات / الاختصاصات التابعة لقسم رئيس القسم
-            $departmentId = DB::table('departments')
-                ->where('name', 'LIKE', '%' . $dept . '%')
-                ->orWhere('description', 'LIKE', '%' . $dept . '%')
-                ->value('department_id');
-
-            if ($departmentId) {
-                $programs = DB::table('programs')->where('department_id', $departmentId)->get();
-            } else {
-                $programs = DB::table('programs')->get();
-            }
-
-            if ($programs->isEmpty()) {
-                $programs = DB::table('programs')->get();
-            }
+            // الاختصاصات التابعة لقسم رئيس القسم فقط (بلا رجوع إلى كل الاختصاصات)
+            $departmentId = \App\Support\Access::headDepartment($user)['id'];
+            $programs = $departmentId
+                ? DB::table('programs')->where('department_id', $departmentId)->get()
+                : collect();
         } else {
             // الأدمن يرى كل شيء
             $students = Student::with(['user', 'program'])->get();

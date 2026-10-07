@@ -81,11 +81,8 @@ class HODWebController extends Controller
     public function dashboard()
     {
         $userId = auth()->id();
-        $head = DB::table('heads')->where('user_id', $userId)->first();
-        $deptId = $head ? $head->department_id : null;
-        if (!$deptId && auth()->user()->department) {
-            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . auth()->user()->department . '%')->value('department_id');
-        }
+        $dept = \App\Support\Access::headDepartment(auth()->user());
+        $deptId = $dept['id'];
 
         $announcements = DB::table('announcements')
             ->where(function($q) use ($userId, $deptId) {
@@ -101,9 +98,18 @@ class HODWebController extends Controller
             ->get();
 
         // إحصائيات رئيس القسم
-        $teachersCount = \App\Models\User::where('role_id', 2)->count();
-        $studentsCount = \App\Models\User::where('role_id', 3)->count();
-        $coursesCount = \App\Models\Course::count();
+        // أرقام قسمه فقط (كانت تعرض عدد معلمي وطلاب ومقررات الجامعة كلها)
+        $deptUsers = fn (int $roleId) => $dept['name']
+            ? \App\Models\User::where('role_id', $roleId)->where('department', $dept['name'])->count()
+            : 0;
+        $teachersCount = $deptUsers(2);
+        $studentsCount = $deptUsers(3);
+        $coursesCount = $deptId
+            ? DB::table('course_program')
+                ->join('programs', 'course_program.program_id', '=', 'programs.id')
+                ->where('programs.department_id', $deptId)
+                ->distinct()->count('course_program.course_id')
+            : 0;
 
         return view('hod.dashboard', compact('announcements', 'teachersCount', 'studentsCount', 'coursesCount'));
     }
@@ -177,17 +183,13 @@ class HODWebController extends Controller
 
         $category = 'administrative';
 
-        // تحديد المستخدمين المستهدفين
-        $query = DB::table('users')->where('status', 'active');
-
-        if ($request->target === 'students') {
-            $query->where('role_id', 3);
-        } elseif ($request->target === 'students_teachers') {
-            $query->whereIn('role_id', [2, 3]);
-        }
-        // 'all' → كل المستخدمين
-
-        $users = $query->get(['user_id', 'device_token']);
+        // تحديد المستخدمين المستهدفين: مستخدمو قسم الرئيس فقط (كان 'all' يصل لكل مستخدمي النظام بمن فيهم الإدارة)
+        $audienceIds = \App\Support\Access::headAudienceUserIds(
+            auth()->user(),
+            $request->target === 'students' ? [3] : [2, 3],
+            $request->target === 'all'   // الجميع = طلاب ومعلمو القسم وأولياء أمور طلابه
+        );
+        $users = DB::table('users')->whereIn('user_id', $audienceIds)->get(['user_id', 'device_token']);
 
         $senderId = auth()->id();
         $now = now();
@@ -1127,10 +1129,12 @@ class HODWebController extends Controller
 
         $primaryImage = !empty($imagesList) ? $imagesList[0] : null;
 
-        $head = DB::table('heads')->where('user_id', auth()->id())->first();
-        $deptId = $head ? $head->department_id : null;
-        if (!$deptId && auth()->user()->department) {
-            $deptId = DB::table('departments')->where('name', 'LIKE', '%' . auth()->user()->department . '%')->value('department_id');
+        $deptId = \App\Support\Access::headDepartment(auth()->user())['id'];
+
+        // إعلان خاص بمقرر: يجب أن يكون المقرر ضمن قسم الرئيس
+        if ($request->type === 'course_specific' && $request->course_id
+            && !\App\Support\Access::headManagesCourse(auth()->user(), $request->course_id)) {
+            abort(403, 'هذا المقرر لا يتبع قسمك.');
         }
 
         $announcement = \App\Models\Announcement::create([
@@ -1153,9 +1157,8 @@ class HODWebController extends Controller
             'teachers' => [2],
             default    => [2, 3],
         };
-        $userIds = \App\Models\User::whereIn('role_id', $roleIds)
-            ->where('status', 'active')
-            ->pluck('user_id');
+        // مستلمو القسم فقط (كان الإعلان يُرسل إشعاراً لكل الطلاب/المعلمين في النظام)
+        $userIds = collect(\App\Support\Access::headAudienceUserIds(auth()->user(), $roleIds));
 
         $now = now();
         $notifRows = $userIds->map(fn($uid) => [
