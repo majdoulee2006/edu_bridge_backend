@@ -33,6 +33,8 @@ use App\Services\TelegramBot\AuthHandlers;
 use App\Services\TelegramBot\StudentHandlers;
 use App\Services\TelegramBot\ParentHandlers;
 use App\Services\TelegramBot\TeacherHandlers;
+use App\Services\TelegramBot\TeacherAssignmentHandlers;
+use App\Services\TelegramBot\TeacherLectureHandlers;
 use App\Services\TelegramBot\HodHandlers;
 use App\Services\TelegramBot\AffairsHandlers;
 use App\Services\TelegramBot\AdminHandlers;
@@ -41,7 +43,7 @@ use App\Services\TelegramBot\CallbackAuthorization;
 
 class TelegramBotHandler
 {
-    use AuthHandlers, StudentHandlers, ParentHandlers, TeacherHandlers, HodHandlers, AffairsHandlers, AdminHandlers, RegistrationHandlers, CallbackAuthorization;
+    use AuthHandlers, StudentHandlers, ParentHandlers, TeacherHandlers, TeacherAssignmentHandlers, TeacherLectureHandlers, HodHandlers, AffairsHandlers, AdminHandlers, RegistrationHandlers, CallbackAuthorization;
 
     private string $token;
     private string $apiUrl;
