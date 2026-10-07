@@ -70,7 +70,7 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // المساعد الذكي (يتطلب تسجيل دخول لحماية مفتاح Gemini من الاستهلاك العام)
-    Route::post('/ai/chat', [AiAssistantController::class, 'chat']);
+    Route::post('/ai/chat', [AiAssistantController::class, 'chat'])->middleware('throttle:ai-chat');
 
     // صورة الوجه المرفقة بسجل حضور (لمن يحق له فقط)
     Route::get('/attendance/{attendanceId}/face', [FaceImageController::class, 'show']);
