@@ -21,21 +21,24 @@ class ParentController extends Controller
 {
     public function getChildren(Request $request, $parentId = null)
     {
-        if ($parentId) {
-            $parent = Parents::find($parentId);
-        } else {
-            $parent = Parents::where('user_id', $request->user()->user_id)->first();
-        }
+        // ولي الأمر يرى أبناءه فقط: نحدد السجل من المستخدم المصادَق عليه دائماً،
+        // و{parent_id} الاختياري (مسار قديم يرسله التطبيق) لا يُقبل إلا إذا كان له.
+        $parent = Parents::where('user_id', $request->user()->user_id)->first();
 
         if (!$parent) {
             return response()->json(['success' => false, 'message' => 'هذه الخدمة متاحة فقط لأولياء الأمور'], 403);
         }
 
+        if ($parentId && !in_array((string) $parentId, [(string) $parent->parent_id, (string) $parent->user_id], true)) {
+            return response()->json(['success' => false, 'message' => 'غير مصرح'], 403);
+        }
+
         $children = $parent->students()
             ->with(['user', 'attendances', 'grades'])
             ->get()
-            ->map(function($student) {
-                $performance = json_decode(app(\App\Http\Controllers\StudentParentController::class)->getFullPerformance($student->student_id)->getContent(), true);
+            ->map(function($student) use ($request) {
+                // getFullPerformance يتحقق من ملكية الطالب عبر $request (إصلاح: كان يُستدعى بدونه فيسقط بـ 500)
+                $performance = json_decode(app(\App\Http\Controllers\StudentParentController::class)->getFullPerformance($request, $student->student_id)->getContent(), true);
 
                 $deptInfo = \DB::table('students')
                     ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
