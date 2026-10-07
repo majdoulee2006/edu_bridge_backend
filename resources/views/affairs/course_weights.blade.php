@@ -677,8 +677,8 @@
                             <div>
                                 <label class="block text-xs font-semibold text-zinc-400 mb-2">الفصل الدراسي المراد تفعيله:</label>
                                 <select name="semester_name" required class="w-full bg-zinc-900/80 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all outline-none">
-                                    <option value="الفصل الأول" {{ ($activeSemester->semester_name ?? '') == 'الفصل الأول' ? 'selected' : '' }}>الفصل الدراسي الأول</option>
-                                    <option value="الفصل الثاني" {{ ($activeSemester->semester_name ?? '') == 'الفصل الثاني' ? 'selected' : '' }}>الفصل الدراسي الثاني</option>
+                                    <option value="الفصل الأول" {{ ($activeSemester->name ?? '') == 'الفصل الأول' ? 'selected' : '' }}>الفصل الدراسي الأول</option>
+                                    <option value="الفصل الثاني" {{ ($activeSemester->name ?? '') == 'الفصل الثاني' ? 'selected' : '' }}>الفصل الدراسي الثاني</option>
                                 </select>
                             </div>
                             <div>
