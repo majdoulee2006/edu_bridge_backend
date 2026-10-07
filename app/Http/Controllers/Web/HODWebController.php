@@ -16,13 +16,6 @@ class HODWebController extends Controller
     /**
      * Show Login Form
      */
-    public function showLoginForm()
-    {
-        if (Auth::check() && Auth::user()->role_id == 5) {
-            return redirect('/hod/dashboard');
-        }
-        return view('auth.hod-login');
-    }
 
     /**
      * Handle Login Request
@@ -79,7 +72,7 @@ class HODWebController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/hod/login');
+        return redirect()->route('login');
     }
 
     /**

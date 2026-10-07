@@ -254,12 +254,11 @@ class LocalKnowledgeEngine
 
     protected function loginAnswer(string $role, string $baseHttp): string
     {
-        $base = rtrim($baseHttp, '/');
-        $url  = $base . LoginLinkSanitizer::pathFor($role);
+        $url = rtrim($baseHttp, '/') . LoginLinkSanitizer::LOGIN_PATH;
 
-        return "🌐 **بوابة تسجيل دخولك على الويب (" . AiRole::title($role) . "):**\n\n"
+        return "🌐 **بوابة تسجيل الدخول على الويب (موحدة لكل الأدوار):**\n\n"
             . "🔗 **`{$url}`**\n\n"
-            . "انسخ الرابط والصقه في شريط عنوان المتصفح. وكبديل عام: `{$base}/login`.";
+            . "انسخ الرابط والصقه في شريط عنوان المتصفح، وبعد الدخول يوجّهك النظام تلقائياً إلى لوحة " . AiRole::title($role) . "."; 
     }
 
     // ───────────────────────── مساعدات ─────────────────────────

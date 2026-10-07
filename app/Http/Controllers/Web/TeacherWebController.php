@@ -22,14 +22,6 @@ class TeacherWebController extends Controller
     //  AUTH
     // ────────────────────────────────────────────────────────────
 
-    public function showLoginForm()
-    {
-        if (Auth::check()) {
-            $teacher = Teacher::where('user_id', Auth::user()->user_id)->first();
-            if ($teacher) return redirect('/teacher/dashboard');
-        }
-        return view('teacher.login');
-    }
 
     public function login(Request $request)
     {
@@ -92,7 +84,7 @@ class TeacherWebController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/teacher/login');
+        return redirect()->route('login');
     }
 
     // ────────────────────────────────────────────────────────────

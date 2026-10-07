@@ -63,7 +63,10 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->renderable(function (\Illuminate\Session\TokenMismatchException $e, $request) {
-            return redirect()->route('login')->with('error', 'انتهت مدة الجلسة السابقة. تم تحديث الشفرة تلقائياً، يرجى إعادة محاولة تسجيل الدخول.');
+        // Laravel يحوّل TokenMismatchException إلى HttpException(419) قبل تنفيذ renderable، فنلتقط 419 مباشرة
+        $exceptions->renderable(function (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e, $request) {
+            if ($e->getStatusCode() === 419 && !$request->expectsJson()) {
+                return redirect()->route('login')->with('error', 'انتهت صلاحية الصفحة. يرجى إعادة محاولة تسجيل الدخول.');
+            }
         });
     })->create();

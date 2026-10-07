@@ -91,14 +91,6 @@ class ParentWebController extends Controller
     // ────────────────────────────────────────────────────────────
     //  AUTH
     // ────────────────────────────────────────────────────────────
-    public function showLoginForm()
-    {
-        if (Auth::check()) {
-            $parent = DB::table('parents')->where('user_id', Auth::user()->user_id)->first();
-            if ($parent) return redirect('/parent/dashboard');
-        }
-        return view('parent.login');
-    }
 
     public function login(Request $request)
     {
@@ -151,7 +143,7 @@ class ParentWebController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/parent/login');
+        return redirect()->route('login');
     }
 
     // ────────────────────────────────────────────────────────────

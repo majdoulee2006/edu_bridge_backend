@@ -65,11 +65,11 @@ class AiAssistantTest extends TestCase
 
         $reply = $this->ask('اعطني رابط تسجيل الدخول', ['role' => 'admin'])->assertOk()->json('reply');
 
-        $this->assertStringContainsString('/student/login', $reply);
-        $this->assertStringNotContainsString('/admin/login', $reply);
+        $this->assertStringContainsString('/login', $reply);
+        $this->assertStringContainsString('لوحة ' . \App\Services\Ai\AiRole::title('student'), $reply);
     }
 
-    public function test_every_actor_gets_an_answer_and_only_own_login_link(): void
+    public function test_every_actor_gets_the_single_unified_login_link(): void
     {
         $actors = [
             'student' => $this->makeStudent()['user'],
@@ -84,12 +84,8 @@ class AiAssistantTest extends TestCase
             $reply = $this->actAs($user)->ask('كيف أدخل على الويب؟ رابط تسجيل الدخول')
                 ->assertOk()->assertJson(['success' => true, 'source' => 'local_engine'])->json('reply');
 
-            $this->assertStringContainsString("/{$role}/login", $reply, "role {$role}");
-            foreach (['student', 'teacher', 'parent', 'hod', 'affairs', 'admin'] as $other) {
-                if ($other !== $role) {
-                    $this->assertStringNotContainsString("/{$other}/login", $reply, "{$role} must not see {$other} link");
-                }
-            }
+            $this->assertStringContainsString('/login', $reply, "role {$role}");
+            $this->assertDoesNotMatchRegularExpression('#/(student|teacher|parent|hod|affairs|admin)/login#', $reply, "role {$role}");
         }
     }
 
@@ -223,7 +219,7 @@ class AiAssistantTest extends TestCase
         Http::assertSentCount(1);
     }
 
-    public function test_other_role_login_links_in_model_output_are_rewritten(): void
+    public function test_legacy_role_login_links_in_model_output_are_rewritten(): void
     {
         $this->fakeGemini(['generativelanguage.googleapis.com/*' => Http::response([
             'candidates' => [['content' => ['parts' => [['text' => 'ادخل من http://evil.test/affairs/login أو /teacher/login']]]]],
@@ -231,10 +227,9 @@ class AiAssistantTest extends TestCase
         $this->actAs($this->makeStudent()['user']);
 
         $reply = $this->ask('رابط الدخول')->json('reply');
-        $this->assertStringNotContainsString('/affairs/login', $reply);
-        $this->assertStringNotContainsString('/teacher/login', $reply);
+        $this->assertDoesNotMatchRegularExpression('#/(student|teacher|parent|hod|affairs|admin)/login#', $reply);
         $this->assertStringNotContainsString('evil.test', $reply);
-        $this->assertStringContainsString('/student/login', $reply);
+        $this->assertStringContainsString('/login', $reply);
     }
 
     public function test_parent_context_contains_only_own_children(): void
@@ -284,12 +279,9 @@ class AiAssistantTest extends TestCase
         $s = new LoginLinkSanitizer();
 
         $out = $s->sanitize('https://edubridge.com/student/login و http://10.0.0.5:9000/login', 'student', 'http://192.168.1.2:8000');
-        $this->assertSame('http://192.168.1.2:8000/student/login و http://192.168.1.2:8000/login', $out);
+        $this->assertSame('http://192.168.1.2:8000/login و http://192.168.1.2:8000/login', $out);
 
-        $out = $s->sanitize('زر http://x.test/hod/login', 'teacher', 'http://h:8000');
-        $this->assertSame('زر http://h:8000/teacher/login', $out);
-
-        // الأدوار المتفرعة (boss/head) تُوحَّد إلى hod
-        $this->assertSame('/hod/login', LoginLinkSanitizer::pathFor('boss'));
+        $out = $s->sanitize('زر http://x.test/hod/login أو /teacher/login', 'teacher', 'http://h:8000');
+        $this->assertSame('زر http://h:8000/login أو /login', $out);
     }
 }

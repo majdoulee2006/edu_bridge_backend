@@ -89,7 +89,7 @@
                         <p class="text-muted small">إدارة المحاضرات، الحضور، والطلاب</p>
                     </div>
                     {{-- التعديل هنا: الربط بصفحة اللوغ ان وليس الداش بورد --}}
-                    <a href="{{ route('teacher.login') }}" class="btn btn-select">دخول</a>
+                    <a href="{{ route('login') }}" class="btn btn-select">دخول</a>
                 </div>
             </div>
 

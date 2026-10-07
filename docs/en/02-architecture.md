@@ -68,7 +68,7 @@ flowchart LR
 | Authentication | Sanctum Bearer token | Laravel session + CSRF |
 | Role protection | `role:student` ... | `student` / `teacher` / `hod` / `affairs` / `admin` / `parent` |
 | Single session | Current token (`current_token_id`) | `current_session_id` + 20-minute idle window |
-| Login | `POST /api/login` | One page per role: `/student/login`, `/teacher/login`, `/hod/login`, `/affairs/login`, `/admin/login`, `/parent/login` (handled by `UnifiedAuthController`) |
+| Login | `POST /api/login` | One unified page for every role: `/login` (handled by `UnifiedAuthController`; the per-role login URLs were removed) |
 
 > Core logic is duplicated between the two interfaces (e.g. QR attendance has an API copy, a Web copy and a Telegram copy). This is the project's biggest technical debt.
 

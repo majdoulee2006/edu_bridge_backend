@@ -308,7 +308,6 @@
 
             <form action="{{ url('/login') }}" method="POST">
                 @csrf
-                <input type="hidden" name="role_key" value="{{ $role['key'] ?? 'unified' }}">
 
                 <div class="form-group">
                     <label class="form-label">بيانات الحساب</label>
