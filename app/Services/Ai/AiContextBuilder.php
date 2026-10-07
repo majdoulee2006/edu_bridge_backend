@@ -295,39 +295,38 @@ class AiContextBuilder
     }
 
     /**
-     * طلاب كل مقرر يدرّسه المعلم: العدد وأول 30 اسماً، وإجمالي الطلاب الفريدين.
+     * طلاب المعلم (المسجلون في مقرراته) مجمّعين حسب الدورة (البرنامج) والسنة،
+     * مثل «معلوماتية - السنة الأولى»: العدد وأول 30 اسماً، وإجمالي الطلاب الفريدين.
      *
-     * @return array{course_students: array<string, array{count:int,names:string[]}>, students_total:int}
+     * @return array{program_students: array<string, array{count:int,names:string[]}>, students_total:int}
      */
     protected function teacherStudents($courses): array
     {
-        $titles = $courses->pluck('title', 'course_id');
-        if ($titles->isEmpty()) {
+        $ids = $courses->pluck('course_id')->all();
+        if (empty($ids)) {
             return [];
         }
 
         $rows = DB::table('enrollments as e')
             ->join('students as s', 's.student_id', '=', 'e.student_id')
             ->join('users as u', 'u.user_id', '=', 's.user_id')
-            ->whereIn('e.course_id', $titles->keys()->all())
-            ->orderBy('u.full_name')
-            ->get(['e.course_id', 's.student_id', 'u.full_name']);
+            ->leftJoin('programs as p', 'p.id', '=', 's.program_id')
+            ->whereIn('e.course_id', $ids)
+            ->orderBy('p.name')->orderBy('s.level')->orderBy('u.full_name')
+            ->get(['s.student_id', 'u.full_name', 's.level', 'p.name as program']);
 
-        $perCourse = [];
-        foreach ($rows as $r) {
-            $title = $titles[$r->course_id] ?? null;
-            if ($title === null) {
-                continue;
-            }
-            $perCourse[$title]['ids'][$r->student_id] = $r->full_name;
+        $groups = [];
+        foreach ($rows->unique('student_id') as $r) {
+            $key = trim(($r->program ?: 'دورة غير محددة') . ($r->level ? ' - ' . $r->level : ''));
+            $groups[$key][] = $r->full_name;
         }
 
         $out = [];
-        foreach ($perCourse as $title => $info) {
-            $out[$title] = ['count' => count($info['ids']), 'names' => array_slice(array_values($info['ids']), 0, 30)];
+        foreach ($groups as $key => $names) {
+            $out[$key] = ['count' => count($names), 'names' => array_slice($names, 0, 30)];
         }
 
-        return ['course_students' => $out, 'students_total' => $rows->pluck('student_id')->unique()->count()];
+        return ['program_students' => $out, 'students_total' => $rows->pluck('student_id')->unique()->count()];
     }
 
     // ───────────────────────── ولي الأمر ─────────────────────────
@@ -457,9 +456,9 @@ class AiContextBuilder
             $t .= "- الابن: {$c['name']} (كود {$c['code']}) {$c['level']}: أيام غياب غير معذورة " . ($c['attendance']['absence_days'] ?? 0) . "، غياب {$abs} من {$tot} جلسة، المعدل " . ($c['average'] ?? 'غير متوفر') . "\n";
         }
         if (isset($d['students_total'])) {
-            $t .= "- إجمالي طلابك: {$d['students_total']}\n";
-            foreach ($d['course_students'] as $title => $info) {
-                $t .= "  * {$title}: {$info['count']} طالباً (" . implode('، ', array_slice($info['names'], 0, 15)) . ($info['count'] > 15 ? ' ...' : '') . ")\n";
+            $t .= "- إجمالي طلابك (مجمّعون حسب الدورة والسنة): {$d['students_total']}\n";
+            foreach ($d['program_students'] as $title => $info) {
+                $t .= "  * دورة {$title}: {$info['count']} طالباً (" . implode('، ', array_slice($info['names'], 0, 15)) . ($info['count'] > 15 ? ' ...' : '') . ")\n";
             }
         }
         if (isset($d['pending_grading'])) {

@@ -271,20 +271,30 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('رياضيات-ابني', $follow);
     }
 
-    public function test_teacher_gets_the_students_of_his_courses(): void
+    public function test_teacher_gets_his_students_grouped_by_program(): void
     {
         $teacher = $this->makeTeacher();
-        $course  = $this->makeCourse(null, ['title' => 'مقرر-المعلم']);
+        $course  = $this->makeCourse();
         $this->assignTeacher($course, $teacher['teacher_id']);
-        $mine = $this->makeStudent(['full_name' => 'طالبي-الأول']);
-        $this->enroll($mine['student_id'], $course);
-        $this->enroll($this->makeStudent(['full_name' => 'طالب-مقرر-آخر'])['student_id'], $this->makeCourse());
+
+        $dept = $this->makeDepartment();
+        $info = $this->makeProgram($dept);
+        $ai   = $this->makeProgram($dept);
+        DB::table('programs')->where('id', $info)->update(['name' => 'معلوماتية-اختبار']);
+        DB::table('programs')->where('id', $ai)->update(['name' => 'ذكاء-اختبار']);
+
+        $a = $this->makeStudent(['full_name' => 'طالب-معلوماتية'], $info);
+        $b = $this->makeStudent(['full_name' => 'طالب-ذكاء'], $ai);
+        $other = $this->makeStudent(['full_name' => 'طالب-مقرر-آخر'], $info);
+        $this->enroll($a['student_id'], $course);
+        $this->enroll($b['student_id'], $course);
+        $this->enroll($other['student_id'], $this->makeCourse());
         $this->actAs($teacher['user']);
 
         $reply = $this->ask('مين الطلاب الي بعطيهم')->json('reply');
 
-        $this->assertStringContainsString('طالبي-الأول', $reply);
-        $this->assertStringContainsString('مقرر-المعلم', $reply);
+        $this->assertMatchesRegularExpression('/دورة معلوماتية-اختبار.*طالب-معلوماتية/su', $reply);
+        $this->assertMatchesRegularExpression('/دورة ذكاء-اختبار.*طالب-ذكاء/su', $reply);
         $this->assertStringNotContainsString('طالب-مقرر-آخر', $reply);
     }
 
