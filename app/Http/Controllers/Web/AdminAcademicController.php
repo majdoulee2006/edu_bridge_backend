@@ -232,6 +232,51 @@ class AdminAcademicController extends Controller
         ));
     }
 
+    /**
+     * مجلدات الملفات المسموح تقديمها من واجهة المحاضرات. أي مسار خارجها مرفوض.
+     * (storage/app كاملاً غير مسموح: يحوي storage/app/private والنسخ الاحتياطية.)
+     */
+    private function lectureRoots(): array
+    {
+        return array_filter([
+            realpath(storage_path('app/public')),
+            realpath(public_path('storage')),
+            realpath(public_path('uploads')),
+        ]);
+    }
+
+    /**
+     * يحوّل مسار الملف المخزّن بقاعدة البيانات إلى ملف حقيقي داخل المجلدات المسموحة، أو null.
+     * القيمة قد تأتي من content_url الذي يكتبه المعلم بحرية، فلا نثق بها (منع ../ ومسارات خارج التخزين).
+     */
+    private function resolveLectureFile(string $raw): ?string
+    {
+        $clean = ltrim(str_replace(chr(92), '/', $raw), '/');
+        foreach (['public/', 'storage/'] as $prefix) {
+            if (str_starts_with($clean, $prefix)) {
+                $clean = substr($clean, strlen($prefix));
+            }
+        }
+
+        if ($clean === '' || str_contains($clean, chr(0)) || in_array('..', explode('/', $clean), true)) {
+            return null;
+        }
+
+        foreach ($this->lectureRoots() as $root) {
+            $candidate = realpath($root . DIRECTORY_SEPARATOR . $clean);
+            if ($candidate !== false && is_file($candidate) && str_starts_with($candidate, $root . DIRECTORY_SEPARATOR)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function isWebUrl(string $value): bool
+    {
+        return str_starts_with($value, 'http://') || str_starts_with($value, 'https://');
+    }
+
     public function previewLecture($id)
     {
         $lecture = DB::table('lessons')->where('lesson_id', $id)->first();
@@ -244,40 +289,13 @@ class AdminAcademicController extends Controller
             return back()->with('error', __('messages.no_lectures_found') ?? 'No file available');
         }
 
-        if (str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://')) {
+        if ($this->isWebUrl($raw)) {
             return redirect()->away($raw);
         }
 
-        $cleanPath = ltrim($raw, '/');
-        if (str_starts_with($cleanPath, 'public/')) {
-            $cleanPath = substr($cleanPath, 7);
-        }
-        if (str_starts_with($cleanPath, 'storage/')) {
-            $cleanPath = substr($cleanPath, 8);
-        }
-
-        $candidates = [
-            storage_path('app/public/' . $cleanPath),
-            public_path('storage/' . $cleanPath),
-            public_path($cleanPath),
-            storage_path('app/' . $cleanPath),
-        ];
-
-        $filePath = null;
-        foreach ($candidates as $cand) {
-            if (file_exists($cand) && is_file($cand)) {
-                $filePath = $cand;
-                break;
-            }
-        }
-
+        $filePath = $this->resolveLectureFile($raw);
         if (!$filePath) {
-            $fallback = storage_path('app/public/lectures/1778153284_cv.pdf');
-            if (file_exists($fallback)) {
-                $filePath = $fallback;
-            } else {
-                return back()->with('error', __('messages.file_not_found') ?? 'File not found');
-            }
+            return back()->with('error', __('messages.file_not_found') ?? 'File not found');
         }
 
         $mime = @mime_content_type($filePath) ?: 'application/pdf';
@@ -301,40 +319,13 @@ class AdminAcademicController extends Controller
             return back()->with('error', __('messages.no_lectures_found') ?? 'No file available');
         }
 
-        if (str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://')) {
+        if ($this->isWebUrl($raw)) {
             return redirect()->away($raw);
         }
 
-        $cleanPath = ltrim($raw, '/');
-        if (str_starts_with($cleanPath, 'public/')) {
-            $cleanPath = substr($cleanPath, 7);
-        }
-        if (str_starts_with($cleanPath, 'storage/')) {
-            $cleanPath = substr($cleanPath, 8);
-        }
-
-        $candidates = [
-            storage_path('app/public/' . $cleanPath),
-            public_path('storage/' . $cleanPath),
-            public_path($cleanPath),
-            storage_path('app/' . $cleanPath),
-        ];
-
-        $filePath = null;
-        foreach ($candidates as $cand) {
-            if (file_exists($cand) && is_file($cand)) {
-                $filePath = $cand;
-                break;
-            }
-        }
-
+        $filePath = $this->resolveLectureFile($raw);
         if (!$filePath) {
-            $fallback = storage_path('app/public/lectures/1778153284_cv.pdf');
-            if (file_exists($fallback)) {
-                $filePath = $fallback;
-            } else {
-                return back()->with('error', __('messages.file_not_found') ?? 'File not found');
-            }
+            return back()->with('error', __('messages.file_not_found') ?? 'File not found');
         }
 
         $extension = pathinfo($filePath, PATHINFO_EXTENSION) ?: 'pdf';
