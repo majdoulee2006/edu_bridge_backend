@@ -754,10 +754,21 @@ class AiContextBuilder
             $groups[$key] = ($groups[$key] ?? 0) + 1;
         }
 
+        $departments = DB::table('departments as d')
+            ->leftJoin('heads as h', 'h.department_id', '=', 'd.department_id')
+            ->leftJoin('users as hu', 'hu.user_id', '=', 'h.user_id')
+            ->orderBy('d.name')
+            ->get(['d.department_id', 'd.name', 'hu.full_name as head']);
+        $progsByDept = DB::table('programs')->orderBy('name')->get(['department_id', 'name'])
+            ->groupBy('department_id')->map(fn ($g) => $g->pluck('name')->all());
+
         $semester = DB::table('semesters')->where('is_active', 1)->first();
         $counts   = DB::table('users')->selectRaw('role_id, COUNT(*) as c')->groupBy('role_id')->pluck('c', 'role_id');
 
         return [
+            'departments'     => $departments->map(fn ($d) => [
+                'name' => $d->name, 'head' => $d->head, 'programs' => $progsByDept[$d->department_id] ?? [],
+            ])->all(),
             'students_count'  => $students->count(),
             'student_groups'  => $groups,
             'student_index'   => $students->take(400)->map(fn ($r) => [
@@ -869,6 +880,9 @@ class AiContextBuilder
             $t .= "- إجمالي الطلاب: {$d['students_count']}؛ الفصل النشط: " . ($d['semester']['name'] ?? 'غير محدد') . "\n";
             foreach ($d['student_groups'] as $g => $c) {
                 $t .= "  * {$g}: {$c}\n";
+            }
+            foreach ($d['departments'] ?? [] as $dep) {
+                $t .= "- قسم {$dep['name']}: رئيس القسم " . ($dep['head'] ?: 'غير معيّن') . '، دوراته: ' . ($dep['programs'] ? implode('، ', $dep['programs']) : 'لا يوجد') . "\n";
             }
             $st = $d['staff'] ?? [];
             $t .= "- الكادر: أساتذة " . ($st['teachers'] ?? 0) . "، رؤساء أقسام " . ($st['heads'] ?? 0) . "، أولياء أمور " . ($st['parents'] ?? 0) . "\n";
