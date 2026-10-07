@@ -401,10 +401,19 @@ class AttendanceExcelService
             );
         }
 
-        // ج) ورقة ملخص الإنذارات والحرمان الأكاديمي
+        // أيام الغياب غير المعذورة لكل طالب ضمن الفترة (أساس نظام الإنذارات 7/10/15)
+        $absentDaysByStudent = [];
+        foreach ($attendances as $att) {
+            if ($att->status === 'absent' && ($att->excuse_status ?? 'none') !== 'approved' && $att->attendance_date) {
+                $absentDaysByStudent[$att->student_id][Carbon::parse($att->attendance_date)->toDateString()] = true;
+            }
+        }
+        $absentDaysByStudent = array_map('count', $absentDaysByStudent);
+
+        // ج) ورقة ملخص الإنذارات الأكاديمية
         self::renderAlertsWorksheet(
             $spreadsheet,
-            'ملخص الإنذارات والحرمان',
+            'ملخص الإنذارات',
             $filterClassText,
             $supervisorName,
             $periodLabel,
@@ -412,7 +421,8 @@ class AttendanceExcelService
             $coursesList,
             $sessions,
             $matrix,
-            $courseStudentsMap
+            $courseStudentsMap,
+            $absentDaysByStudent
         );
 
         // تعيين الورقة الأولى كنشطة
@@ -869,7 +879,7 @@ class AttendanceExcelService
     }
 
     /**
-     * بناء ورقة الإنذارات والحرمان الأكاديمي
+     * بناء ورقة الإنذارات الأكاديمية (7/10/15 يوم غياب غير معذور)
      */
     protected static function renderAlertsWorksheet(
         Spreadsheet $spreadsheet,
@@ -881,7 +891,8 @@ class AttendanceExcelService
         $coursesList,
         $sessions,
         array $matrix,
-        array $courseStudentsMap
+        array $courseStudentsMap,
+        array $absentDaysByStudent = []
     ): void {
         $safeTitle = mb_substr($sheetTitle, 0, 30);
         $sheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $safeTitle);
@@ -913,7 +924,7 @@ class AttendanceExcelService
             'F2' => 'الجلسات الكلية',
             'G2' => 'حضور',
             'H2' => 'غياب',
-            'I2' => 'نسبة الغياب',
+            'I2' => 'أيام الغياب غير المعذورة',
             'J2' => 'درجة الإنذار',
             'K2' => 'الإجراء الإداري المطلوب',
         ];
@@ -956,11 +967,12 @@ class AttendanceExcelService
 
             if ($totalSess > 0) {
                 $absentSess = $totalSess - $attendedSess;
-                $absenceRate = round(($absentSess / $totalSess) * 100, 1);
+                // نظام الإنذارات المعتمد: عدد أيام الغياب غير المعذورة (AbsenceWarningService)
+                $absenceDays = $absentDaysByStudent[$stId] ?? 0;
+                $level = \App\Services\AbsenceWarningService::levelFor($absenceDays);
 
-                if ($absenceRate >= 15) {
+                if ($level !== null) {
                     $num++;
-                    $isBanned = $absenceRate >= 20;
 
                     $sheet->setCellValue("A{$rowNum}", str_pad($num, 2, '0', STR_PAD_LEFT));
                     $sheet->setCellValue("B{$rowNum}", $info['academic_id']);
@@ -970,9 +982,17 @@ class AttendanceExcelService
                     $sheet->setCellValue("F{$rowNum}", $totalSess);
                     $sheet->setCellValue("G{$rowNum}", $attendedSess);
                     $sheet->setCellValue("H{$rowNum}", $absentSess);
-                    $sheet->setCellValue("I{$rowNum}", $absenceRate . '%');
-                    $sheet->setCellValue("J{$rowNum}", $isBanned ? 'حرمان نهائي (20% فما فوق)' : 'إنذار وتنبيه غياب (15%)');
-                    $sheet->setCellValue("K{$rowNum}", $isBanned ? 'إشعار خطي + حرمان رسمي من الامتحان' : 'توجيه إنذار خطي + استدعاء ولي أمر');
+                    $sheet->setCellValue("I{$rowNum}", $absenceDays . ' يوم');
+                    $sheet->setCellValue("J{$rowNum}", match ($level) {
+                        'final'  => 'إنذار نهائي (' . \App\Services\AbsenceWarningService::FINAL_WARNING_DAYS . ' يوماً فما فوق)',
+                        'second' => 'إنذار ثانٍ (' . \App\Services\AbsenceWarningService::SECOND_WARNING_DAYS . ' أيام فما فوق)',
+                        default  => 'إنذار أول (' . \App\Services\AbsenceWarningService::FIRST_WARNING_DAYS . ' أيام فما فوق)',
+                    });
+                    $sheet->setCellValue("K{$rowNum}", match ($level) {
+                        'final'  => 'إحالة للإدارة ورئيس القسم لاتخاذ القرار',
+                        'second' => 'استدعاء ولي أمر',
+                        default  => 'تنبيه الطالب والتزام بالدوام',
+                    });
 
                     $sheet->getStyle("A{$rowNum}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                     $sheet->getStyle("B{$rowNum}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -985,8 +1005,8 @@ class AttendanceExcelService
                     ]);
 
                     $sheet->getStyle("J{$rowNum}")->applyFromArray([
-                        'font' => ['bold' => true, 'color' => ['rgb' => $isBanned ? '991B1B' : '92400E']],
-                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $isBanned ? 'FEE2E2' : 'FEF3C7']],
+                        'font' => ['bold' => true, 'color' => ['rgb' => $level === 'first' ? '92400E' : '991B1B']],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $level === 'first' ? 'FEF3C7' : 'FEE2E2']],
                         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                     ]);
 

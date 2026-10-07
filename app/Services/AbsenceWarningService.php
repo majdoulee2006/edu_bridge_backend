@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\Log;
 
 class AbsenceWarningService
 {
+    /** حدود الإنذارات بعدد أيام الغياب غير المعذورة (مصدر الحقيقة الوحيد للنظام، ويقرأه المساعد الذكي وتقارير الحضور) */
+    public const FIRST_WARNING_DAYS  = 7;
+    public const SECOND_WARNING_DAYS = 10;
+    public const FINAL_WARNING_DAYS  = 15;
+
     protected TelegramBotHandler $telegramBot;
 
     public function __construct(TelegramBotHandler $telegramBot)
@@ -33,9 +38,29 @@ class AbsenceWarningService
             return;
         }
 
-        // حساب عدد أيام الغياب الفريدة إجمالاً عبر كل المواد
-        // الغياب المعذور (عذر/إجازة معتمدة) لا يُحتسب ضمن حدود الإنذارات
-        $absenceDays = Attendance::where('student_id', $studentId)
+        $absenceDays = self::countAbsenceDays($studentId);
+
+        // 1. إنذار نهائي وإحالة للإدارة ورئيس القسم
+        if ($absenceDays >= self::FINAL_WARNING_DAYS) {
+            $this->issueFinalWarning($student, $absenceDays);
+        }
+        // 2. إنذار ثانٍ واستدعاء ولي أمر تلقائي
+        elseif ($absenceDays >= self::SECOND_WARNING_DAYS) {
+            $this->issueSecondWarning($student, $absenceDays);
+        }
+        // 3. إنذار أول وتنبيه
+        elseif ($absenceDays >= self::FIRST_WARNING_DAYS) {
+            $this->issueFirstWarning($student, $absenceDays);
+        }
+    }
+
+    /**
+     * عدد أيام الغياب الفريدة إجمالاً عبر كل المواد.
+     * الغياب المعذور (عذر/إجازة معتمدة) لا يُحتسب ضمن حدود الإنذارات.
+     */
+    public static function countAbsenceDays(int $studentId): int
+    {
+        return Attendance::where('student_id', $studentId)
             ->where('status', 'absent')
             ->where('excuse_status', '!=', 'approved')
             ->pluck('attendance_date')
@@ -43,19 +68,17 @@ class AbsenceWarningService
             ->filter()
             ->unique()
             ->count();
+    }
 
-        // 1. فحص حد الـ 15 يوم غياب (إنذار نهائي وإحالة للإدارة ورئيس القسم)
-        if ($absenceDays >= 15) {
-            $this->issueFinalWarning($student, $absenceDays);
-        }
-        // 2. فحص حد الـ 10 أيام غياب (إنذار ثانٍ واستدعاء ولي أمر تلقائي)
-        elseif ($absenceDays >= 10) {
-            $this->issueSecondWarning($student, $absenceDays);
-        }
-        // 3. فحص حد الـ 7 أيام غياب (إنذار أول وتنبيه)
-        elseif ($absenceDays >= 7) {
-            $this->issueFirstWarning($student, $absenceDays);
-        }
+    /** مستوى الإنذار المقابل لعدد الأيام: first | second | final | null */
+    public static function levelFor(int $absenceDays): ?string
+    {
+        return match (true) {
+            $absenceDays >= self::FINAL_WARNING_DAYS  => 'final',
+            $absenceDays >= self::SECOND_WARNING_DAYS => 'second',
+            $absenceDays >= self::FIRST_WARNING_DAYS  => 'first',
+            default                                   => null,
+        };
     }
 
     /**
