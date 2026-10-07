@@ -429,6 +429,12 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('إنذار ثانٍ', $w);          // 10 أيام
         $this->assertStringContainsString('**1**', $w);
 
+        // صيغة عامية: «بغيبه» = غيابه، والمطلوب ترتيب الأكثر غياباً (وليس قائمة كل الطلاب)
+        $top = $this->ask('مين الطلاب اللي اكتر شي بغيبه')->json('reply');
+        $this->assertStringContainsString('الأكثر غياباً', $top);
+        $this->assertStringContainsString('1. **طالب-منذَر**', $top);
+        $this->assertStringNotContainsString('طلاب قسم', $top);
+
         $p = $this->ask('كم طلب معلق بانتظاري؟')->json('reply');
         $this->assertStringContainsString('طلبات الخدمات الطلابية: **1**', $p);
         $this->assertStringContainsString('طلب استرحام', $p);

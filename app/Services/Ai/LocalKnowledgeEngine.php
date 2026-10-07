@@ -86,7 +86,7 @@ class LocalKnowledgeEngine
                 return $r;
             }
         }
-        if ($this->has($q, ['غياب', 'حضور', 'انذار', 'إنذار', 'حرمان'])) {
+        if ($this->has($q, ['غياب', 'غيب', 'حضور', 'انذار', 'إنذار', 'حرمان'])) {
             return $this->attendanceAnswer($role, $data);
         }
         if ($this->has($q, ['علام', 'درج', 'معدل', 'كشف', 'مسار'])) {
@@ -415,8 +415,8 @@ class LocalKnowledgeEngine
 
         if (!$howTo && !$policy) {
             // 1) الإنذارات والغياب
-            if ($this->has($q, ['منذر', 'انذار', 'إنذار', 'اكتر طلاب غياب', 'أكثر طلاب غياب', 'اكتر غياب', 'غياب', 'غايب'])) {
-                return $this->hodWarningsAnswer($data);
+            if ($this->has($q, ['منذر', 'انذار', 'إنذار', 'غياب', 'غيب', 'غايب', 'متغيب', 'ما بيداوم', 'مو بيداوم', 'ما بحضر'])) {
+                return $this->hodWarningsAnswer($data, $this->has($q, ['اكتر', 'أكثر', 'اكثر', 'اعلى', 'أعلى']) && !$this->has($q, ['منذر']));
             }
             // 2) المعلّق بانتظاره
             if ($this->has($q, ['معلق', 'بانتظار', 'انتظار', 'ينتظر', 'شو آخر الطلبات', 'اخر الطلبات', 'آخر الطلبات', 'طلبات اجازة', 'طلبات إجازة', 'طلبات الاجازة', 'كم طلب'])) {
@@ -555,10 +555,27 @@ class LocalKnowledgeEngine
 
     private const LEVEL_TEXT = ['first' => '⚠️ إنذار أول', 'second' => '🚨 إنذار ثانٍ', 'final' => '⛔ إنذار نهائي'];
 
-    protected function hodWarningsAnswer(array $data): string
+    protected function hodWarningsAnswer(array $data, bool $topOnly = false): string
     {
         if (!isset($data['warning_counts'])) {
             return '⚠️ لا توجد بيانات غياب لطلاب القسم حتى الآن.';
+        }
+
+        // «مين أكتر طلاب غياباً» → ترتيب الأكثر غياباً فقط
+        if ($topOnly) {
+            $top = array_slice($data['absence_list'] ?? [], 0, 10);
+            if (empty($top)) {
+                return '✅ لا يوجد غياب غير معذور مسجل لأي طالب في القسم حتى الآن.';
+            }
+            $out = "📉 **الطلاب الأكثر غياباً** (أيام غياب غير معذورة):
+
+";
+            foreach ($top as $i => $x) {
+                $out .= ($i + 1) . ". **{$x['name']}** ({$x['group']}) — {$x['days']} يوم" . ($x['level'] ? ' — ' . self::LEVEL_TEXT[$x['level']] : '') . "
+";
+            }
+
+            return $out;
         }
         $w   = $data['warning_counts'];
         $out = "⚠️ **إنذارات طلاب القسم** (أيام الغياب غير المعذورة):\n\n• إنذار أول (7 أيام): **{$w['first']}**\n• إنذار ثانٍ (10 أيام): **{$w['second']}**\n• إنذار نهائي (15 يوماً): **{$w['final']}**\n";
