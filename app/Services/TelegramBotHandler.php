@@ -37,10 +37,11 @@ use App\Services\TelegramBot\HodHandlers;
 use App\Services\TelegramBot\AffairsHandlers;
 use App\Services\TelegramBot\AdminHandlers;
 use App\Services\TelegramBot\RegistrationHandlers;
+use App\Services\TelegramBot\CallbackAuthorization;
 
 class TelegramBotHandler
 {
-    use AuthHandlers, StudentHandlers, ParentHandlers, TeacherHandlers, HodHandlers, AffairsHandlers, AdminHandlers, RegistrationHandlers;
+    use AuthHandlers, StudentHandlers, ParentHandlers, TeacherHandlers, HodHandlers, AffairsHandlers, AdminHandlers, RegistrationHandlers, CallbackAuthorization;
 
     private string $token;
     private string $apiUrl;
@@ -466,6 +467,13 @@ class TelegramBotHandler
         if ($requiredRole !== null && !$this->userHasBotRole($user, $requiredRole)) {
             Log::warning('Telegram callback refused: role mismatch', ['user_id' => $user->user_id, 'required' => $requiredRole]);
             $this->answerCallbackQuery($queryId, "غير مصرّح لك بهذا الإجراء.");
+            return;
+        }
+
+        // ملكية السجل داخل الزر: ولي الأمر لأبنائه، المعلم لمقرراته/جلساته/تسليماته، الطالب لعذره ومواده، رئيس القسم لطلبات قسمه.
+        if (!$this->userMayUseCallback($user, $data)) {
+            Log::warning('Telegram callback refused: record not owned by caller', ['user_id' => $user->user_id, 'data' => $data]);
+            $this->answerCallbackQuery($queryId, "غير مصرّح لك بالوصول إلى هذا السجل.");
             return;
         }
 
