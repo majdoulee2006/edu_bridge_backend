@@ -294,13 +294,13 @@ class LocalKnowledgeEngine
 
     protected function teacherStudentsAnswer(array $data): ?string
     {
-        if (empty($data['course_students'])) {
+        if (empty($data['program_students'])) {
             return null;
         }
 
-        $out = "👥 **طلابك: {$data['students_total']} طالباً** في مقرراتك:\n";
-        foreach ($data['course_students'] as $title => $info) {
-            $out .= "\n**{$title}** ({$info['count']}):\n• " . implode("\n• ", $info['names']) . "\n";
+        $out = "👥 **طلابك: {$data['students_total']} طالباً**، حسب الدورة:\n";
+        foreach ($data['program_students'] as $group => $info) {
+            $out .= "\n🎓 **دورة {$group}** ({$info['count']}):\n• " . implode("\n• ", $info['names']) . "\n";
             if ($info['count'] > count($info['names'])) {
                 $out .= '• ... و' . ($info['count'] - count($info['names'])) . " آخرين\n";
             }
