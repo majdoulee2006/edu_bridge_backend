@@ -9,6 +9,7 @@ use App\Services\AbsenceWarningService;
 use App\Services\StudentAcademicService;
 use App\Support\Access;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * يبني بيانات المستخدم الحية كمصفوفة منظمة (تستهلكها المحرك المحلي)،
@@ -68,7 +69,7 @@ class AiContextBuilder
         $out = [
             'code'     => $student->student_code ?? $user->university_id ?? null,
             'level'    => $student->level ?? $user->academic_year ?? null,
-            'branch'   => $user->branch ?? null,
+            'branch'   => $user->branch ?? DB::table('programs')->where('id', $student->program_id)->value('name'),
             'semester' => $semester->name ?? null,
         ];
 
@@ -77,7 +78,9 @@ class AiContextBuilder
             ->join('courses', 'enrollments.course_id', '=', 'courses.course_id')
             ->where('enrollments.student_id', $student->student_id);
 
-        $courses = $semId ? (clone $base)->where('enrollments.semester_id', $semId)->get(['courses.course_id', 'courses.title']) : collect();
+        $courses = ($semId && $this->hasColumn('enrollments', 'semester_id'))
+            ? (clone $base)->where('enrollments.semester_id', $semId)->get(['courses.course_id', 'courses.title'])
+            : collect();
         $out['courses_scoped_to_semester'] = $courses->isNotEmpty();
         if ($courses->isEmpty()) {
             $courses = $base->get(['courses.course_id', 'courses.title']);
@@ -85,11 +88,12 @@ class AiContextBuilder
         $courseIds  = $courses->pluck('course_id')->unique()->values()->all();
         $out['courses'] = $courses->pluck('title')->unique()->values()->all();
 
-        $out['schedule']    = $this->studentSchedule($user, $student, $courseIds);
-        $out['attendance']  = $this->attendanceByCourse($student->student_id, $courseIds, $semId);
-        $out['grades']      = $this->grades($student->student_id, $courseIds);
-        $out['assignments'] = $this->pendingAssignments($student->student_id, $courseIds);
-        $out['exams']       = $this->upcomingExams($courseIds);
+        // كل قسم معزول: فشل أحدها (عمود ناقص مثلاً) لا يُسقط بقية بيانات المستخدم
+        $out['schedule']    = $this->safe(fn () => $this->studentSchedule($user, $student, $courseIds), []);
+        $out['attendance']  = $this->safe(fn () => $this->attendanceByCourse($student->student_id, $courseIds, $semId), []);
+        $out['grades']      = $this->safe(fn () => $this->grades($student->student_id, $courseIds), []);
+        $out['assignments'] = $this->safe(fn () => $this->pendingAssignments($student->student_id, $courseIds), []);
+        $out['exams']       = $this->safe(fn () => $this->upcomingExams($courseIds), []);
 
         return $out;
     }
@@ -130,7 +134,7 @@ class AiContextBuilder
             ->join('courses as c', 'l.course_id', '=', 'c.course_id')
             ->where('a.student_id', $studentId);
 
-        if ($semId) {
+        if ($semId && $this->hasColumn('attendance', 'semester_id')) {
             $q->where(fn ($w) => $w->where('a.semester_id', $semId)->orWhereNull('a.semester_id'));
         }
         if (!empty($courseIds)) {
@@ -275,22 +279,23 @@ class AiContextBuilder
 
         $students = DB::table('students')
             ->join('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
             ->where(fn ($q) => $q->whereIn('students.user_id', $linked)->orWhereIn('students.student_id', $linked))
-            ->select('students.student_id', 'students.student_code', 'students.level', 'users.full_name', 'users.branch')
+            ->select('students.student_id', 'students.student_code', 'students.level', 'users.full_name', DB::raw('COALESCE(users.branch, programs.name) as branch'))
             ->get()->unique('student_id')->take(6);
 
         $semId = DB::table('semesters')->where('is_active', 1)->value('semester_id');
 
         $children = [];
         foreach ($students as $s) {
-            $att = $this->attendanceByCourse($s->student_id, [], $semId);
+            $att = $this->safe(fn () => $this->attendanceByCourse($s->student_id, [], $semId), []);
             $children[] = [
                 'name'       => $s->full_name,
                 'code'       => $s->student_code,
                 'level'      => $s->level,
                 'branch'     => $s->branch,
                 'attendance' => $att,
-                'average'    => StudentAcademicService::getAcademicSummary($s->student_id)['average'] ?? null,
+                'average'    => $this->safe(fn () => StudentAcademicService::getAcademicSummary($s->student_id)['average'] ?? null, null),
             ];
         }
 
@@ -390,6 +395,25 @@ class AiContextBuilder
         }
 
         return $t;
+    }
+
+    /** ينفّذ قسماً من السياق ويعيد القيمة الافتراضية (مع تسجيل الخطأ) إن فشل. */
+    private function safe(callable $fn, $default)
+    {
+        try {
+            return $fn();
+        } catch (\Throwable $e) {
+            \Log::warning('AiContextBuilder section failed: ' . $e->getMessage());
+
+            return $default;
+        }
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        static $cache = [];
+
+        return $cache["$table.$column"] ??= Schema::hasColumn($table, $column);
     }
 
     private function dayAr($day): string
