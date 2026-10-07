@@ -245,6 +245,32 @@ class AiAssistantTest extends TestCase
         $this->assertStringNotContainsString('طالب-غريب', $reply);
     }
 
+    public function test_parent_gets_children_courses_teachers_and_follow_up(): void
+    {
+        $child   = $this->makeStudent(['full_name' => 'ابني-الحقيقي']);
+        $parent  = $this->makeParent();
+        $teacher = $this->makeTeacher(['full_name' => 'مدرس-الرياضيات']);
+        $course  = $this->makeCourse(null, ['title' => 'رياضيات-ابني']);
+        $this->enroll($child['student_id'], $course);
+        $this->assignTeacher($course, $teacher['teacher_id']);
+        $this->linkParent($parent['user'], $child['user']);
+        $this->actAs($parent['user']);
+
+        $courses = $this->ask('شو المواد الي عندو ياها')->json('reply');
+        $this->assertStringContainsString('رياضيات-ابني', $courses);
+
+        $teachers = $this->ask('مين بيعطيه طيب')->json('reply');
+        $this->assertStringContainsString('مدرس-الرياضيات', $teachers);
+
+        // متابعة قصيرة بلا كلمات مفتاحية → تُعاد معالجة آخر سؤال للمستخدم
+        $follow = $this->ask('اي شو هنن', ['history' => [
+            ['role' => 'model', 'text' => 'مرحباً'],
+            ['role' => 'user', 'text' => 'شو المواد الي عندو ياها'],
+            ['role' => 'model', 'text' => 'رد عام'],
+        ]])->json('reply');
+        $this->assertStringContainsString('رياضيات-ابني', $follow);
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);

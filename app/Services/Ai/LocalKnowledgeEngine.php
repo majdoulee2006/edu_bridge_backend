@@ -20,7 +20,7 @@ class LocalKnowledgeEngine
     /**
      * @param  array  $data  ناتج AiContextBuilder::build
      */
-    public function respond(string $message, string $role, array $data, string $baseHttp): string
+    public function respond(string $message, string $role, array $data, string $baseHttp, array $history = []): string
     {
         $q    = mb_strtolower(trim($message), 'UTF-8');
         $role = AiRole::normalize($role);
@@ -37,6 +37,12 @@ class LocalKnowledgeEngine
 
         if ($this->has($q, ['مين انا', 'من انا', 'مين أنا', 'من أنا', 'شو اسمي', 'معلوماتي', 'بياناتي', 'حسابي'])) {
             return $this->whoAmIAnswer($role, $data);
+        }
+
+        if ($this->has($q, ['مين بيعطي', 'مين بيدرس', 'مين يدرس', 'مين المدرس', 'مين الاستاذ', 'مين الأستاذ', 'مين المعلم', 'مدرسين', 'مدرسي', 'اساتذ', 'أساتذ', 'معلمين', 'معلمي', 'بيعطيه', 'بيدرسه', 'بيدرسني', 'بيعطيني', 'مين مدرس'])) {
+            if ($r = $this->teachersAnswer($role, $data)) {
+                return $r;
+            }
         }
 
         if ($this->has($q, ['تسجيل دخول', 'تسجيل الدخول', 'رابط الدخول', 'رابط الويب', 'رابط تسجيل', 'بوابة الويب', 'بوابة الدخول', 'فوت عالويب', 'ادخل عالويب', 'موقع المعهد', 'رابط المنصة'])) {
@@ -78,6 +84,16 @@ class LocalKnowledgeEngine
         }
         if ($this->has($q, ['نصيح', 'ادرس', 'مذاكر', 'تنظيم'])) {
             return "💡 **نصائح للتفوق:**\n\n1. قسّم الدراسة لفترات 45 دقيقة تتبعها 10 دقائق راحة.\n2. أنجز الواجبات فور صدورها.\n3. حافظ على الحضور لتجنب الإنذارات والحرمان.\n4. راسل مدرّس المقرر عند أي استفسار.";
+        }
+
+        // متابعة قصيرة ("اي شو هنن"، "وبعدين"...) → نعيد معالجة آخر سؤال للمستخدم
+        if (!empty($history) && $this->wordCount($q) <= 5) {
+            foreach (array_reverse($history) as $h) {
+                $prev = trim((string) ($h['text'] ?? ''));
+                if (($h['role'] ?? '') === 'user' && $prev !== '' && mb_strtolower($prev, 'UTF-8') !== $q) {
+                    return $this->respond($prev, $role, $data, $baseHttp, []);
+                }
+            }
         }
 
         return "شكراً لتواصلك مع **EduBridge AI**! 🌟\n\nأستطيع إرشادك في شاشات التطبيق وصفحات الويب الخاصة بدورك" . $this->hintFor($role) . ".\nاسألني مثلاً عن الجدول أو الغياب أو العلامات أو الخدمات.";
@@ -232,6 +248,17 @@ class LocalKnowledgeEngine
 
     protected function coursesAnswer(string $role, array $data): string
     {
+        if ($role === 'parent' && !empty($data['children'])) {
+            $out = "📚 **مقررات أبنائك:**\n";
+            foreach ($data['children'] as $c) {
+                $out .= "\n**{$c['name']}:**\n";
+                $titles = array_keys($c['course_teachers'] ?? []);
+                $out .= $titles ? '• ' . implode("\n• ", $titles) . "\n" : "• لا توجد مقررات مسجلة حتى الآن.\n";
+            }
+
+            return $out . "\nاسألني \"مين بيدرّسه؟\" لمعرفة أستاذ كل مقرر.";
+        }
+
         if (!empty($data['courses'])) {
             $list = implode('، ', $data['courses']);
             $what = $role === 'teacher' ? 'المقررات التي تدرّسها' : 'مقرراتك';
@@ -257,6 +284,33 @@ class LocalKnowledgeEngine
             'admin'   => "👤 إنشاء/تعديل/تجميد الحسابات: `/admin/accounts`.",
             default   => "👤 تعدّل ملفك الشخصي وكلمة السر من **'الملف الشخصي'** في الشريط السفلي. لأي تعديل آخر على حسابك راجع شؤون الطلاب.",
         };
+    }
+
+    protected function teachersAnswer(string $role, array $data): ?string
+    {
+        $block = function (array $map): string {
+            $out = '';
+            foreach ($map as $title => $teachers) {
+                $out .= "• **{$title}**: " . ($teachers ? implode('، ', $teachers) : 'غير محدد') . "\n";
+            }
+
+            return $out;
+        };
+
+        if ($role === 'student' && !empty($data['course_teachers'])) {
+            return "👨‍🏫 **أساتذة مقرراتك:**\n\n" . $block($data['course_teachers']);
+        }
+
+        if ($role === 'parent' && !empty($data['children'])) {
+            $out = "👨‍🏫 **أساتذة أبنائك:**\n";
+            foreach ($data['children'] as $c) {
+                $out .= "\n**{$c['name']}:**\n" . ($block($c['course_teachers'] ?? []) ?: "• لا توجد مقررات مسجلة.\n");
+            }
+
+            return $out;
+        }
+
+        return null;
     }
 
     protected function childrenAnswer(array $data): string
@@ -312,6 +366,11 @@ class LocalKnowledgeEngine
     }
 
     // ───────────────────────── مساعدات ─────────────────────────
+
+    private function wordCount(string $q): int
+    {
+        return count(array_filter(preg_split('/\s+/u', trim($q))));
+    }
 
     private function levelText(?string $level, int $days): string
     {
