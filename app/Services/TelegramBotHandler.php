@@ -449,6 +449,16 @@ class TelegramBotHandler
             return;
         }
 
+        // حارس مركزي: أزرار كل دور (admin_ / affairs_ / hod_ / teacher_ / parent_) لا تُنفَّذ إلا من حساب بهذا الدور.
+        // معالجات الإجراءات نفسها (تعديل حالة حساب، اعتماد طلبات...) لا تفحص الدور، فبدون هذا الحارس
+        // يكفي أن يصل callback مزوَّر (مثلاً إن تسرّب سر الـ webhook) لينفَّذ إجراء إداري من أي حساب مربوط.
+        $requiredRole = $this->requiredRoleForCallback($data);
+        if ($requiredRole !== null && !$this->userHasBotRole($user, $requiredRole)) {
+            Log::warning('Telegram callback refused: role mismatch', ['user_id' => $user->user_id, 'required' => $requiredRole]);
+            $this->answerCallbackQuery($queryId, "غير مصرّح لك بهذا الإجراء.");
+            return;
+        }
+
         // تحليل بيانات الزر المضغوط
         if (str_starts_with($data, 'course_lectures_')) {
             $courseId = str_replace('course_lectures_', '', $data);
@@ -846,6 +856,25 @@ class TelegramBotHandler
 
             $this->sendMessage($chatId, "❌ كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى:");
         }
+    }
+
+    /** الدور المطلوب لزر معيّن حسب بادئته، أو null للأزرار العامة (الطالب/التسجيل...). */
+    private function requiredRoleForCallback(string $data): ?string
+    {
+        foreach (['admin_' => 'admin', 'affairs_' => 'affairs', 'hod_' => 'head', 'teacher_' => 'teacher', 'parent_' => 'parent'] as $prefix => $role) {
+            if (str_starts_with($data, $prefix)) {
+                return $role;
+            }
+        }
+
+        return null;
+    }
+
+    private function userHasBotRole(User $user, string $role): bool
+    {
+        $ids = ['admin' => 1, 'teacher' => 2, 'student' => 3, 'parent' => 4, 'head' => 5, 'affairs' => 6];
+
+        return (int) $user->role_id === ($ids[$role] ?? -1);
     }
 
     private function sendLoginLockedMessage($chatId, User $user): void
