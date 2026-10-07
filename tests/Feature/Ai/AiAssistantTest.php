@@ -564,6 +564,15 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('الدورة: معلوماتية', $byName);
         $this->assertStringContainsString('السنة الأولى', $this->ask('معلومات عن الرقم الجامعي 9990001')->json('reply'));
 
+        // عامية: «قديه» = كم
+        $this->assertStringContainsString('طلاب المعهد', $this->ask('قديه عندي طلاب بالمعهد')->json('reply'));
+
+        // رؤساء الأقسام ورئيس قسم معيّن (بالاسم أو باسم إحدى دوراته)
+        $headUser = $this->makeHead($dept, ['full_name' => 'رئيس-اختبار'])['user'];
+        $all = $this->ask('شو رؤساء الاقسام الموجوده بالمؤسسه التعليميه')->json('reply');
+        $this->assertStringContainsString('رئيس-اختبار', $all);
+        $this->assertStringContainsString('**رئيس-اختبار**', $this->ask('مين رئيس قسم المعلوماتيه')->json('reply'));
+
         // أسئلة «كيف» تبقى إجراءات
         $this->assertStringContainsString('affairs/student-services', $this->ask('كيف أعيد تعيين جهاز طالب؟')->json('reply'));
     }
