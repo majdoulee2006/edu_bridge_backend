@@ -25,13 +25,6 @@ class AffairsWebController extends Controller
     use \App\Traits\HandlesMessagesTrait;
     use \App\Traits\NormalizesAccountCredentialsTrait;
     // ─────────────────────────── Auth ───────────────────────────
-    public function showLoginForm()
-    {
-        if (Auth::check()) {
-            return redirect()->route('affairs.dashboard');
-        }
-        return view('affairs.login');
-    }
 
     public function login(Request $request)
     {
@@ -80,7 +73,7 @@ class AffairsWebController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('affairs.login');
+        return redirect()->route('login');
     }
 
     // ─────────────────────────── Dashboard ───────────────────────────

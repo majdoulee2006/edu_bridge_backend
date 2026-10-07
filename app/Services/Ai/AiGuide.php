@@ -12,9 +12,9 @@ class AiGuide
     {
         $role = AiRole::normalize($role);
         $base = rtrim($baseHttp, '/');
-        $login = $base . LoginLinkSanitizer::pathFor($role);
+        $login = $base . LoginLinkSanitizer::LOGIN_PATH;
 
-        return self::GUIDES[$role] . "\n\n- رابط تسجيل دخولك على الويب: {$login}\n\n" . self::RULES;
+        return self::GUIDES[$role] . "\n\n- رابط تسجيل الدخول على الويب (بوابة موحدة لكل الأدوار): {$login}\n\n" . self::RULES;
     }
 
     private const RULES = <<<'TXT'

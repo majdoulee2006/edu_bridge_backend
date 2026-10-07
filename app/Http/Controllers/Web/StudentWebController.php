@@ -16,14 +16,6 @@ class StudentWebController extends Controller
     //  AUTH
     // ────────────────────────────────────────────────────────────
 
-    public function showLoginForm()
-    {
-        if (Auth::check()) {
-            $student = Student::where('user_id', Auth::user()->user_id)->first();
-            if ($student) return redirect('/student/dashboard');
-        }
-        return view('student.login');
-    }
 
     public function login(Request $request)
     {
@@ -88,7 +80,7 @@ class StudentWebController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/student/login');
+        return redirect()->route('login');
     }
 
     // ────────────────────────────────────────────────────────────

@@ -68,7 +68,7 @@ flowchart LR
 | المصادقة | Sanctum Bearer token | جلسة Laravel + CSRF |
 | الحماية بالدور | `role:student` … | `student` / `teacher` / `hod` / `affairs` / `admin` / `parent` |
 | الجلسة الواحدة | توكن واحد حالي (`current_token_id`) | `current_session_id` + نافذة خمول 20 دقيقة |
-| الدخول | `POST /api/login` | صفحة لكل دور: `/student/login`, `/teacher/login`, `/hod/login`, `/affairs/login`, `/admin/login`, `/parent/login` (تدار بـ `UnifiedAuthController`) |
+| الدخول | `POST /api/login` | صفحة موحدة لكل الأدوار: `/login` (تدار بـ `UnifiedAuthController`؛ حُذفت روابط الدخول الخاصة بكل دور) |
 
 > المنطق الأساسي مكرر بين الواجهتين (مثلاً تسجيل الحضور بالـ QR له نسخة في API ونسخة في Web ونسخة في Telegram). هذا أكبر دَين تقني في المشروع.
 
