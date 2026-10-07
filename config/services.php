@@ -50,6 +50,9 @@ return [
     'telegram' => [
         'bot_token' => env('TELEGRAM_BOT_TOKEN'),
         'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+        // نسخ كل إشعار للتطبيق إلى تيليغرام لمن ربط حسابه بالبوت. ضعها false لإيقاف النسخ
+        // (الإشعارات تتضمن علامات وإنذارات غياب).
+        'forward_notifications' => env('TELEGRAM_FORWARD_NOTIFICATIONS', true),
     ],
 
 ];
