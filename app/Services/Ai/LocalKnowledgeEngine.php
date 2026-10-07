@@ -59,6 +59,12 @@ class LocalKnowledgeEngine
             }
         }
 
+        if ($role === 'affairs') {
+            if ($r = $this->affairsAnswer($q, $data)) {
+                return $r;
+            }
+        }
+
         if ($role === 'teacher' && $this->has($q, ['مرشد', 'مربي', 'مربّي'])) {
             return empty($data['advisor'])
                 ? '🧭 لست معيَّناً كمرشد (مربي) لدورة حالياً. التعيين من رئيس القسم.'
@@ -919,7 +925,7 @@ class LocalKnowledgeEngine
             'teacher' => ['شو جدولي؟', 'شو الدورات اللي بعطيها؟', 'اي سنين بعطي؟', 'شو المواد اللي بعطيها بالسنة الأولى؟', 'مين الطلاب اللي بعطيهم؟', 'هل أنا مشرف دورة؟', 'كم تسليم بانتظار التصحيح؟', 'كيف أبدأ جلسة حضور؟', 'شو نظام الإنذارات؟'],
             'parent' => ['مين ابني؟', 'شو المواد اللي عندو؟', 'مين بيعطيه؟', 'كم غياب ابني؟', 'شو علامات ابني؟', 'كيف أقدّم إذن غياب؟', 'كيف أحجز موعد مع الإدارة؟'],
             'student' => ['شو جدولي؟', 'كم غيابي؟', 'شو علاماتي؟', 'شو واجباتي؟', 'متى امتحاناتي؟', 'مين بيعطيني؟', 'كيف أطلب إعادة تعيين الجهاز؟', 'كيف أقدّم عذر طبي؟'],
-            'affairs' => ['كم طلب معلق عندنا؟', 'كيف أعيد تعيين جهاز طالب؟', 'كيف أصدّر كشف علامات؟', 'كيف أرقّي الطلاب؟', 'كيف أفعّل فصل دراسي؟'],
+            'affairs' => ['كم طلب معلق عندنا؟', 'مين الطلاب اللي طالبين إعادة تعيين جهاز؟', 'كم حساب معلق بانتظار التفعيل؟', 'كم طالب بالمعهد؟', 'مين الطلاب المنذَرون؟', 'أكتر طلاب غياباً', 'ابحث عن طالب يوسف الاحمد', 'شو الفصل الحالي؟', 'كم أستاذ عندنا؟', 'كيف أعيد تعيين جهاز طالب؟', 'كيف أصدّر كشف علامات؟', 'كيف أفعّل فصل دراسي؟'],
             'admin' => ['كيف أنشئ حساب؟', 'وين سجلات النشاط؟', 'كيف أعيّن رئيس قسم؟'],
         ];
 
@@ -930,6 +936,140 @@ class LocalKnowledgeEngine
     {
         return "💡 **أسئلة تقدر تسألني إياها (" . AiRole::title($role) . "):**\n\n• " . implode("\n• ", $this->examples($role))
             . "\n\nاكتبها بصيغتك، وأنا أجيبك من بياناتك الحقيقية.";
+    }
+
+    private const REQUEST_TYPES = [
+        'mercy' => 'طلبات استرحام', 'document' => 'طلبات وثائق ومصدقات', 'makeup' => 'طلبات إكمال/إعادة',
+        'device_reset' => 'طلبات إعادة تعيين جهاز', 'face_photo' => 'طلبات تغيير صورة', 'general' => 'طلبات عامة',
+    ];
+
+    /**
+     * أسئلة موظف الشؤون عن بيانات المعهد: الطلبات المعلقة، الأجهزة، الحسابات، الطلاب، الإنذارات، الفصل، الكادر.
+     */
+    protected function affairsAnswer(string $q, array $data): ?string
+    {
+        if ($this->has($q, ['كيف', 'ازاي', 'شلون', 'طريقة']) || $this->has($q, ['نظام', 'لائحة', 'لوائح', 'سياسة', 'شروط'])) {
+            return null;
+        }
+
+        // بحث عن طالب بالاسم أو الرقم الجامعي
+        if ($this->has($q, ['ابحث', 'معلومات عن', 'بيانات', 'اسمه', 'عن الطالب', 'عن طالب', 'رقم جامعي', 'الرقم الجامعي'])) {
+            if ($r = $this->affairsStudentSearch($q, $data)) {
+                return $r;
+            }
+        }
+
+        // إعادة تعيين الأجهزة
+        if ($this->has($q, ['اعادة تعيين', 'اعاده تعيين', 'ريست', 'reset']) && $this->has($q, ['جهاز', 'اجهزة', 'مين', 'كم', 'طلبات'])) {
+            $list = $data['pending']['device_resets'] ?? [];
+            if (empty($list)) {
+                return '✅ لا توجد طلبات إعادة تعيين جهاز معلقة حالياً.';
+            }
+            $out = "📱 **طلبات إعادة تعيين الجهاز المعلقة (" . count($list) . "):**\n\n";
+            foreach ($list as $r) {
+                $out .= "• **{$r['student']}** ({$r['uid']}) — {$r['date']}\n";
+            }
+
+            return $out . "\nللتنفيذ: `/affairs/student-services` ← **إعادة تعيين الجهاز المباشر**.";
+        }
+
+        // الإنذارات والغياب على مستوى المعهد
+        if ($this->has($q, ['منذر', 'انذار', 'غياب', 'غيب', 'غايب', 'متغيب'])) {
+            return $this->hodWarningsAnswer($data + ['department' => 'المعهد'], $this->has($q, ['اكتر', 'اكثر', 'اعلى']) && !$this->has($q, ['منذر']));
+        }
+
+        // الحسابات المعلقة
+        if ($this->has($q, ['حسابات معلقه', 'حساب معلق', 'بانتظار التفعيل', 'تفعيل حساب', 'حسابات جديده', 'حسابات غير مفعله'])) {
+            $n = $data['pending']['accounts'] ?? 0;
+
+            return $n ? "👤 يوجد **{$n}** حساباً (طلاب/أولياء أمور) بانتظار التفعيل. للمراجعة: `/affairs/accounts`." : '✅ لا توجد حسابات معلقة بانتظار التفعيل.';
+        }
+
+        // الفصل الدراسي
+        if ($this->has($q, ['فصل', 'الفصل الحالي', 'الفصل الدراسي'])) {
+            $sem = $data['semester'] ?? null;
+
+            return $sem
+                ? "🗓️ **الفصل النشط:** {$sem['name']}\n• البداية: {$sem['start']}\n• النهاية: {$sem['end']}\n\nلتفعيل فصل جديد أو ترقية الطلاب: `/affairs/academic-management`."
+                : '🗓️ لا يوجد فصل دراسي مفعّل حالياً. لتفعيله: `/affairs/academic-management`.';
+        }
+
+        // أعداد الكادر
+        if ($this->has($q, ['كم استاذ', 'كم معلم', 'كم مدرس', 'كم ولي امر', 'كم اولياء', 'كم رئيس قسم', 'عدد الاساتذه', 'عدد المعلمين', 'عدد اولياء'])) {
+            $st = $data['staff'] ?? [];
+
+            return "👥 **الكادر والمستخدمون:**\n\n• الأساتذة: **" . ($st['teachers'] ?? 0) . "**\n• رؤساء الأقسام: **" . ($st['heads'] ?? 0)
+                . "**\n• أولياء الأمور: **" . ($st['parents'] ?? 0) . "**\n• موظفو الشؤون: **" . ($st['affairs'] ?? 0) . '**';
+        }
+
+        // أعداد الطلاب
+        if ($this->has($q, ['كم طالب', 'عدد الطلاب', 'كم طلاب', 'اجمالي الطلاب', 'مجموع الطلاب', 'طلاب المعهد', 'الطلاب بالمعهد'])) {
+            $groups = $data['student_groups'] ?? [];
+            if (empty($groups)) {
+                return '👥 لا يوجد طلاب مسجلون بعد.';
+            }
+            $out = "👥 **طلاب المعهد: {$data['students_count']} طالباً**\n";
+            $byDept = [];
+            foreach ($groups as $label => $count) {
+                [$dept, $rest] = array_pad(explode(' / ', $label, 2), 2, '');
+                $byDept[$dept][$rest] = $count;
+            }
+            foreach ($byDept as $dept => $list) {
+                $out .= "\n🏛️ **قسم {$dept}** (" . array_sum($list) . "):\n";
+                foreach ($list as $label => $count) {
+                    $out .= "• {$label}: {$count}\n";
+                }
+            }
+
+            return $out;
+        }
+
+        // الطلبات المعلقة
+        if ($this->has($q, ['معلق', 'بانتظار', 'انتظار', 'كم طلب', 'طلبات', 'شو اخر الطلبات', 'اخر الطلبات'])) {
+            $p = $data['pending'] ?? null;
+            if (!$p) {
+                return '📥 لا توجد بيانات للطلبات حالياً.';
+            }
+            $out = "📥 **المعلّق لدى الشؤون:**\n\n• طلبات الطلاب: **" . ($data['pending_requests'] ?? 0) . "**\n";
+            foreach ($p['by_type'] as $type => $c) {
+                $out .= '   - ' . (self::REQUEST_TYPES[$type] ?? $type) . ": {$c}\n";
+            }
+            $out .= "• طلبات الإجازات: **{$p['leaves']}**\n• أعذار الغياب: **{$p['absence_excuses']}**\n• طلبات تغيير الصور: **{$p['photo_changes']}**\n• حسابات بانتظار التفعيل: **{$p['accounts']}**\n";
+            if (!empty($p['latest'])) {
+                $out .= "\n**آخر الطلبات:**\n";
+                foreach (array_slice($p['latest'], 0, 5) as $r) {
+                    $out .= "• {$r['student']} — " . (self::REQUEST_TYPES[$r['type']] ?? $r['type']) . " ({$r['date']})\n";
+                }
+            }
+
+            return $out . "\nللمعالجة: `/affairs/student-services`.";
+        }
+
+        return null;
+    }
+
+    protected function affairsStudentSearch(string $q, array $data): ?string
+    {
+        foreach ($data['student_index'] ?? [] as $s) {
+            $words = array_values(array_filter(preg_split('/\s+/u', $this->norm($s['name']))));
+            $byName = str_contains($q, $this->norm($s['name'])) || (count($words) >= 2 && str_contains($q, $words[0]) && str_contains($q, end($words)));
+            $byUid  = !empty($s['uid']) && str_contains($q, (string) $s['uid']);
+            if ($byName || $byUid) {
+                $abs = null;
+                foreach ($data['absence_list'] ?? [] as $x) {
+                    if ($x['name'] === $s['name']) {
+                        $abs = $x;
+                    }
+                }
+
+                return "🎓 **{$s['name']}**\n• الرقم الجامعي: " . ($s['uid'] ?: 'غير محدد')
+                    . "\n• القسم: " . ($s['department'] ?: 'غير محدد') . "\n• الدورة: " . ($s['program'] ?: 'غير محددة')
+                    . "\n• السنة: " . ($s['level'] ?: 'غير محددة') . "\n• حالة الحساب: " . ($s['status'] === 'active' ? 'مفعّل' : $s['status'])
+                    . "\n• أيام الغياب غير المعذورة: " . ($abs['days'] ?? 0) . (!empty($abs['level']) ? ' — ' . self::LEVEL_TEXT[$abs['level']] : '');
+            }
+        }
+
+        return null;
     }
 
     protected function announcementAnswer(string $role): string
