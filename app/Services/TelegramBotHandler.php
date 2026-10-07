@@ -360,14 +360,15 @@ class TelegramBotHandler
                 $this->sendTeacherMainMenu($chatId);
             }
         } elseif ($user && ($user->role === 'head' || $user->role_id == 5)) {
-            if (str_contains($text, 'لوحة') || str_contains($text, 'إحصائيات') || str_contains($text, 'احصائيات') || str_contains($text, 'قسم')) {
+            // ملاحظة: لا نطابق كلمة «قسم» هنا: أزرار «مقررات وشعب القسم» و«نشر إعلان للقسم» تحويها وكانت تذهب للوحة بدل خدمتها.
+            if (str_contains($text, 'لوحة') || str_contains($text, 'إحصائيات') || str_contains($text, 'احصائيات')) {
                 $this->handleHodOverview($user, $chatId);
+            } elseif (str_contains($text, 'إجاز') || str_contains($text, 'اجاز')) {
+                $this->handleHodTeacherLeaves($user, $chatId);
             } elseif (str_contains($text, 'كادر') || str_contains($text, 'معلم') || str_contains($text, 'مدرب') || str_contains($text, 'أساتذة') || str_contains($text, 'اساتذة')) {
                 $this->handleHodTeachers($user, $chatId);
             } elseif (str_contains($text, 'مقرر') || str_contains($text, 'شعب') || str_contains($text, 'مواد')) {
                 $this->handleHodCourses($user, $chatId);
-            } elseif (str_contains($text, 'إجاز') || str_contains($text, 'اجاز')) {
-                $this->handleHodTeacherLeaves($user, $chatId);
             } elseif (str_contains($text, 'طلب') || str_contains($text, 'خدمات') || str_contains($text, 'طلاب')) {
                 $this->handleHodStudentRequests($user, $chatId);
             } elseif (str_contains($text, 'موعد') || str_contains($text, 'مواعيد') || str_contains($text, 'أولياء') || str_contains($text, 'اولياء') || str_contains($text, 'لقاء')) {

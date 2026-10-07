@@ -9,8 +9,9 @@ use App\Models\Exam;
 use App\Models\Lesson;
 use App\Models\Resource;
 use App\Models\Student;
-use App\Models\StudentRequest;
+use App\Models\Teacher;
 use App\Models\User;
+use App\Support\Access;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -112,10 +113,30 @@ trait CallbackAuthorization
                 && $this->teacherOwnsCourse($user, (int) $attendance->lesson->course_id);
         }
 
-        // ---- رئيس القسم: طلبات طلاب قسمه فقط (نفس شرط قائمة الطلبات) ----
+        // ---- رئيس القسم: قسمه فقط (نفس مرجع الويب: App\Support\Access) ----
         foreach (['hod_approve_req_', 'hod_reject_req_', 'hod_notes_req_'] as $prefix) {
             if (str_starts_with($data, $prefix)) {
-                return $this->hodMayAccessStudentRequest($user, $this->callbackRecordId($data, $prefix));
+                return $this->hodStudentRequestsQuery($user)
+                    ->where('student_requests.id', $this->callbackRecordId($data, $prefix))
+                    ->exists();
+            }
+        }
+        if (str_starts_with($data, 'hod_teacher_detail_')) {
+            $teacher = Teacher::find($this->callbackRecordId($data, 'hod_teacher_detail_'));
+
+            return $teacher && Access::headManagesUser($user, $teacher->user_id);
+        }
+        if (str_starts_with($data, 'hod_course_detail_')) {
+            return Access::headManagesCourse($user, $this->callbackRecordId($data, 'hod_course_detail_'));
+        }
+        foreach (['hod_approve_leave_', 'hod_reject_leave_'] as $prefix) {
+            if (str_starts_with($data, $prefix)) {
+                $leave = DB::table('leave_requests')->where('id', $this->callbackRecordId($data, $prefix))->first();
+                $applicantId = $leave
+                    ? ($leave->student_id ?: DB::table('teachers')->where('teacher_id', $leave->teacher_id)->value('user_id'))
+                    : null;
+
+                return $applicantId && Access::headManagesUser($user, $applicantId);
             }
         }
 
@@ -139,18 +160,5 @@ trait CallbackAuthorization
         }
 
         return $this->getTeacherCourses($user)->pluck('course_id')->map(fn ($id) => (int) $id)->contains($courseId);
-    }
-
-    private function hodMayAccessStudentRequest(User $user, int $requestId): bool
-    {
-        $request = StudentRequest::with('student.user')->find($requestId);
-        if (!$request || !$request->student || !$request->student->user) {
-            return false;
-        }
-
-        $deptName = $this->getHodDepartmentInfo($user)['name'] ?? null;
-        $studentDept = (string) ($request->student->user->department ?? '');
-
-        return $deptName && $studentDept !== '' && str_contains($studentDept, $deptName);
     }
 }
