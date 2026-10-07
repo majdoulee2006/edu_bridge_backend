@@ -72,6 +72,32 @@ class LeaveWorkflow
         return $leave;
     }
 
+    /**
+     * ولي الأمر يقدّم الإجازة نيابة عن ابنه: موافقته مفهومة ضمناً، فيبدأ الطلب من مرحلة رئيس القسم.
+     * (كان الويب يُدخلها في جدولين معاً فتظهر مرتين لرئيس القسم.)
+     */
+    public static function submitByParent(User $parent, User $student, string $type, string $date, string $reason, ?string $attachment = null, string $title = 'طلب إجازة من ولي الأمر', ?string $message = null): LeaveRequest
+    {
+        $leave = LeaveRequest::create([
+            'student_id' => $student->user_id,
+            'type'       => $type,
+            'date'       => $date,
+            'reason'     => $reason,
+            'attachment' => $attachment,
+            'status'     => self::STAGE_HOD,
+        ]);
+
+        $name = $student->full_name ?? 'الطالب';
+        $message ??= "قدّم ولي أمر الطالب {$name} طلب إجازة بتاريخ {$date}، بانتظار موافقتك.";
+        foreach (self::reviewerIdsOf($student->user_id) as $reviewerId) {
+            self::notify($reviewerId, $title, $message, $leave->id);
+        }
+
+        UserActivity::log('تقديم طلب إجازة من ولي الأمر', "قدّم ولي الأمر طلب إجازة للطالب {$name} بتاريخ {$date}", $parent);
+
+        return $leave;
+    }
+
     // ───────────────────────── ولي الأمر ─────────────────────────
 
     public static function parentRespond(User $parent, int $leaveId, string $decision): array
@@ -175,6 +201,27 @@ class LeaveWorkflow
             self::notify($headId, $title, $hodMsg, $leaveId);
         }
 
+        // مربي الدورة (Advisor): المعلم المسؤول عن قسم وسنة الطالب (كما في تطبيق الموبايل)
+        $info = DB::table('users')
+            ->join('students', 'users.user_id', '=', 'students.user_id')
+            ->where('users.user_id', $leave->student_id)
+            ->select('users.department', 'users.full_name', 'students.level')
+            ->first();
+        if ($info && $info->department && $info->level) {
+            $advisorUserId = DB::table('teachers')
+                ->where('advisor_branch', $info->department)
+                ->where('advisor_year', $info->level)
+                ->value('user_id');
+            if ($advisorUserId) {
+                self::notify(
+                    $advisorUserId,
+                    'تحديث حالة تبرير غياب',
+                    ($approved ? 'قامت شؤون الطلاب بقبول' : 'قامت شؤون الطلاب برفض') . " تبرير غياب للطالب {$info->full_name} (عن تاريخ {$leave->date})",
+                    $leaveId
+                );
+            }
+        }
+
         return self::ok($leaveId);
     }
 
@@ -216,17 +263,22 @@ class LeaveWorkflow
             ->unique()->values()->all();
     }
 
-    private static function notifyHeadsOf(int $studentUserId, string $title, string $message, int $leaveId): void
+    /** من يُنبَّه لطلب بانتظار رئيس القسم: رئيس قسم الطالب، وإلا المديرون كي لا يضيع الطلب. */
+    public static function reviewerIdsOf(int $studentUserId): array
     {
         $heads = self::headUserIdsOf($studentUserId);
-        if (!$heads) {
-            // لا رئيس قسم مرتبط بقسم الطالب: ننبّه الإدارة بدل أن يضيع الطلب
-            $heads = DB::table('users')->where('role_id', 1)->pluck('user_id')->all();
+
+        return $heads ?: DB::table('users')->where('role_id', 1)->pluck('user_id')->all();
+    }
+
+    private static function notifyHeadsOf(int $studentUserId, string $title, string $message, int $leaveId): void
+    {
+        if (!self::headUserIdsOf($studentUserId)) {
             $message .= ' (لا يوجد رئيس قسم مرتبط بقسم الطالب)';
         }
 
-        foreach ($heads as $headId) {
-            self::notify($headId, $title, $message, $leaveId);
+        foreach (self::reviewerIdsOf($studentUserId) as $reviewerId) {
+            self::notify($reviewerId, $title, $message, $leaveId);
         }
     }
 
