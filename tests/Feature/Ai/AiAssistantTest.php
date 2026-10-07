@@ -577,6 +577,26 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('affairs/student-services', $this->ask('كيف أعيد تعيين جهاز طالب؟')->json('reply'));
     }
 
+    public function test_admin_gets_system_wide_answers_and_activity_log(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->makeStudent();
+        $this->makeCourse();
+        DB::table('user_activities')->insert([
+            'user_id' => $admin->user_id, 'user_name' => 'مستخدم-النشاط', 'role_name' => 'إدارة', 'action' => 'عملية-اختبار',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->actAs($admin);
+
+        $this->assertStringContainsString('طلاب المعهد', $this->ask('كم طالب بالمعهد؟')->json('reply'));
+        $this->makeDepartment('قسم-الإدارة');
+        $this->assertStringContainsString('قسم-الإدارة', $this->ask('شو رؤساء الأقسام؟')->json('reply'));
+        $this->assertMatchesRegularExpression('/\*\*[1-9]\d*\*\*/', $this->ask('كم مقرر بالنظام؟')->json('reply'));
+        $this->assertStringContainsString('عملية-اختبار', $this->ask('شو آخر النشاطات؟')->json('reply'));
+        $this->assertStringContainsString('مفعّلة', $this->ask('كم حساب مفعل وغير مفعل؟')->json('reply'));
+        $this->assertStringContainsString('/admin/accounts', $this->ask('كيف أنشئ حساب؟')->json('reply'));
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);

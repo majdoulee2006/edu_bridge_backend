@@ -783,16 +783,32 @@ class AiContextBuilder
         ] + $this->safe(fn () => $this->departmentAbsence($students->unique('student_id')->values()), []);
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * مدير النظام: كل ما يراه موظف الشؤون (طلبات، طلاب، أقسام، فصل) + إحصاءات المنظومة وسجل النشاط.
+     *
+     * @return array<string, mixed>
+     */
     public function admin(): array
     {
         $counts = DB::table('users')->selectRaw('role_id, COUNT(*) as c')->groupBy('role_id')->pluck('c', 'role_id');
 
-        return ['users' => [
+        $out = ['users' => [
             'students' => (int) ($counts[3] ?? 0),
             'teachers' => (int) ($counts[2] ?? 0),
             'parents'  => (int) ($counts[4] ?? 0),
         ]];
+
+        return $out
+            + $this->safe(fn () => $this->affairsPending(), [])
+            + $this->safe(fn () => $this->affairsPeople(), [])
+            + $this->safe(fn () => [
+                'courses_count'       => DB::table('courses')->count(),
+                'accounts_by_status'  => DB::table('users')->selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status')->map(fn ($c) => (int) $c)->all(),
+                'announcements_count' => DB::table('announcements')->count(),
+                'recent_activity'     => DB::table('user_activities')->orderByDesc('id')->limit(10)
+                    ->get(['user_name', 'role_name', 'action', 'created_at'])
+                    ->map(fn ($r) => ['user' => $r->user_name, 'role' => $r->role_name, 'action' => $r->action, 'at' => substr((string) $r->created_at, 0, 16)])->all(),
+            ], []);
     }
 
     // ───────────────────────── نص الـ prompt ─────────────────────────
@@ -917,6 +933,12 @@ class AiContextBuilder
         }
         foreach ($d['dept_students'] ?? [] as $group => $info) {
             $t .= "  * طلاب دورة {$group}: {$info['count']}" . ($info['count'] <= 15 ? ' (' . implode('، ', $info['names']) . ')' : '') . "\n";
+        }
+        if (isset($d['courses_count'])) {
+            $t .= "- المقررات: {$d['courses_count']}، المنشورات/الإعلانات: {$d['announcements_count']}، حالات الحسابات: " . json_encode($d['accounts_by_status'], JSON_UNESCAPED_UNICODE) . "\n";
+            foreach (array_slice($d['recent_activity'] ?? [], 0, 6) as $x) {
+                $t .= "  * {$x['at']} {$x['user']} ({$x['role']}): {$x['action']}\n";
+            }
         }
         if (isset($d['users'])) {
             $t .= "- المستخدمون: طلاب {$d['users']['students']}، أساتذة {$d['users']['teachers']}، أولياء أمور {$d['users']['parents']}\n";
