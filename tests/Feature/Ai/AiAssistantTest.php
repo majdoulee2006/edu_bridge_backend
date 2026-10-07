@@ -386,6 +386,83 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('معلوماتية', $this->ask('شو دورات القسم')->json('reply'));
     }
 
+    /** بيئة قسم صغيرة لاختبار أسئلة رئيس القسم الإضافية. */
+    private function headWithDepartment(): array
+    {
+        $deptName = 'قسم-اختبار-' . $this->nextSeq();
+        $dept     = $this->makeDepartment($deptName);
+        $prog     = $this->makeProgram($dept);
+        DB::table('programs')->where('id', $prog)->update(['name' => 'معلوماتية']);
+        $head = $this->makeHead($dept, ['department' => $deptName]);
+
+        $teacher = $this->makeTeacher(['full_name' => 'أستاذ-أ', 'department' => $deptName]);
+        $busy    = $this->makeCourse($prog, ['title' => 'مقرر-بأستاذ', 'year' => 1]);
+        $this->assignTeacher($busy, $teacher['teacher_id']);
+        $orphan  = $this->makeCourse($prog, ['title' => 'مقرر-يتيم', 'year' => 2]);
+        $idle    = $this->makeTeacher(['full_name' => 'أستاذ-بلا-مقررات', 'department' => $deptName]);
+
+        $student = $this->makeStudent(['full_name' => 'طالب-منذَر', 'department' => $deptName], $prog);
+        DB::table('students')->where('student_id', $student['student_id'])->update(['level' => 'السنة الأولى']);
+        $lesson = DB::table('lessons')->insertGetId(['course_id' => $busy, 'title' => 'L', 'created_at' => now(), 'updated_at' => now()]);
+        $rows = [];
+        for ($i = 0; $i < 10; $i++) {
+            $rows[] = ['student_id' => $student['student_id'], 'lesson_id' => $lesson, 'status' => 'absent', 'excuse_status' => 'none',
+                'attendance_date' => now()->subDays($i + 1)->toDateString(), 'created_at' => now(), 'updated_at' => now()];
+        }
+        DB::table('attendance')->insert($rows);
+
+        DB::table('student_requests')->insert([
+            'student_id' => $student['student_id'], 'type' => 'mercy', 'details' => 'x',
+            'status' => 'pending_hod', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return ['head' => $head, 'busy' => $busy, 'orphan' => $orphan, 'student' => $student];
+    }
+
+    public function test_head_warnings_pending_and_performance(): void
+    {
+        $ctx = $this->headWithDepartment();
+        $this->actAs($ctx['head']['user']);
+
+        $w = $this->ask('مين الطلاب المنذرين؟')->json('reply');
+        $this->assertStringContainsString('طالب-منذَر', $w);
+        $this->assertStringContainsString('إنذار ثانٍ', $w);          // 10 أيام
+        $this->assertStringContainsString('**1**', $w);
+
+        $p = $this->ask('كم طلب معلق بانتظاري؟')->json('reply');
+        $this->assertStringContainsString('طلبات الخدمات الطلابية: **1**', $p);
+        $this->assertStringContainsString('طلب استرحام', $p);
+
+        $perf = $this->ask('نسبة الحضور لكل دورة')->json('reply');
+        $this->assertStringContainsString('معلوماتية', $perf);
+        $this->assertStringContainsString('0%', $perf);
+
+        // سؤال اللائحة يبقى جواب النظام وليس قائمة الطلاب
+        $this->assertStringContainsString('نظام الإنذارات', $this->ask('شو نظام الإنذارات؟')->json('reply'));
+    }
+
+    public function test_head_courses_teachers_and_student_search(): void
+    {
+        $ctx = $this->headWithDepartment();
+        $this->actAs($ctx['head']['user']);
+
+        $this->assertStringContainsString('مقرر-يتيم', $this->ask('أي مقرر بلا أستاذ؟')->json('reply'));
+        $this->assertStringContainsString('أستاذ-أ', $this->ask('مين بيدرس مقرر-بأستاذ')->json('reply'));
+        $this->assertStringContainsString('أستاذ-بلا-مقررات', $this->ask('أي أستاذ بدون مقررات؟')->json('reply'));
+        $this->assertStringContainsString('أستاذ-أ', $this->ask('مين الأساتذة غير المشرفين؟')->json('reply'));
+
+        $byYear = $this->ask('شو مقررات السنة الثانية بدورة المعلوماتية؟')->json('reply');
+        $this->assertStringContainsString('مقرر-يتيم', $byYear);
+        $this->assertStringNotContainsString('مقرر-بأستاذ', $byYear);
+
+        $s = $this->ask('ابحث عن طالب طالب-منذَر')->json('reply');
+        $this->assertStringContainsString('الدورة: معلوماتية', $s);
+        $this->assertStringContainsString('10', $s);
+
+        // «كيف» تبقى أسئلة إجراءات ولا تُعامل كسؤال بيانات
+        $this->assertStringContainsString('/hod/organization', $this->ask('كيف أعدّل جدول الامتحانات؟')->json('reply'));
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);

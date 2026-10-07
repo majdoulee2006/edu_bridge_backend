@@ -39,7 +39,7 @@ class LocalKnowledgeEngine
             return $this->helpAnswer($role);
         }
 
-        if ($this->has($q, ['مين انا', 'من انا', 'مين أنا', 'من أنا', 'شو اسمي', 'معلوماتي', 'بياناتي', 'حسابي'])) {
+        if ($this->has($q, ['مين انا', 'من انا', 'مين أنا', 'من أنا', 'شو اسمي', 'بياناتي', 'حسابي']) || preg_match('/(^|\s)معلوماتي(\s|$)/u', $q)) {
             return $this->whoAmIAnswer($role, $data);
         }
 
@@ -409,6 +409,49 @@ class LocalKnowledgeEngine
     {
         $dept = $data['department'];
 
+        // أسئلة «كيف» (إجراءات) تبقى للمسارات العامة، وأسئلة النظام/اللائحة كذلك
+        $howTo  = $this->has($q, ['كيف', 'ازاي', 'شلون', 'طريقة']);
+        $policy = $this->has($q, ['نظام', 'لائحة', 'لوائح', 'سياسة', 'شروط']);
+
+        if (!$howTo && !$policy) {
+            // 1) الإنذارات والغياب
+            if ($this->has($q, ['منذر', 'انذار', 'إنذار', 'اكتر طلاب غياب', 'أكثر طلاب غياب', 'اكتر غياب', 'غياب', 'غايب'])) {
+                return $this->hodWarningsAnswer($data);
+            }
+            // 2) المعلّق بانتظاره
+            if ($this->has($q, ['معلق', 'بانتظار', 'انتظار', 'ينتظر', 'شو آخر الطلبات', 'اخر الطلبات', 'آخر الطلبات', 'طلبات اجازة', 'طلبات إجازة', 'طلبات الاجازة', 'كم طلب'])) {
+                return $this->hodPendingAnswer($data);
+            }
+            // 3) الأداء
+            if ($this->has($q, ['نسبة الحضور', 'نسبة حضور', 'معدل النجاح', 'معدل الدورات', 'اضعف', 'أضعف', 'افضل دورة', 'أفضل دورة', 'اداء', 'أداء', 'مقارنة'])) {
+                return $this->hodPerformanceAnswer($data);
+            }
+            // 4) الامتحانات القادمة
+            if ($this->has($q, ['امتحانات', 'امتحان القادم', 'الامتحانات القادمة']) && !$this->has($q, ['جدول'])) {
+                return $this->hodExamsAnswer($q, $data);
+            }
+            // 5) جدول دورة
+            if ($this->has($q, ['جدول'])) {
+                return $this->hodScheduleAnswer($q, $data);
+            }
+            // 6) بحث عن طالب
+            if ($this->has($q, ['ابحث', 'معلومات عن', 'بيانات', 'اسمه', 'عن الطالب', 'عن طالب', 'وين الطالب'])) {
+                if ($r = $this->hodStudentSearchAnswer($q, $data)) {
+                    return $r;
+                }
+            }
+            // أساتذة بلا مقررات / الأكثر عبئاً / غير المشرفين (قبل المقررات لأن العبارة تحوي «مقررات»)
+            if ($this->has($q, ['بدون مقررات', 'بلا مقررات', 'اكتر مقررات', 'أكثر مقررات', 'اكتر عبء', 'مو مشرف', 'مش مشرف', 'غير مشرف', 'غير المشرف', 'مو المشرف', 'مو مرشد', 'مش مرشد', 'غير المرشد', 'ما عندهم دورة', 'مو مشرفين'])) {
+                return $this->hodTeacherLoadAnswer($q, $data);
+            }
+            // 7) المقررات (بلا أستاذ، حسب السنة/الدورة، من يدرّس مقرراً)
+            if ($this->has($q, ['مقرر', 'مواد', 'مادة', 'بلا استاذ', 'بدون استاذ', 'بلا أستاذ', 'بدون أستاذ', 'مين بيدرس', 'مين يدرس'])) {
+                if ($r = $this->hodCoursesAnswer($q, $data)) {
+                    return $r;
+                }
+            }
+        }
+
         // المرشدون (مربو الدورات)
         if ($this->has($q, ['مرشد', 'مربي', 'مربّي', 'مرشدين', 'مربين', 'مشرف', 'المشرف', 'مشرفين', 'مشرفة', 'مسؤول الدورة', 'مسوول الدورة'])) {
             return $this->advisorsByProgramAnswer($data);
@@ -475,6 +518,277 @@ class LocalKnowledgeEngine
         return null;
     }
 
+    // ───────────── ردود رئيس القسم الإضافية ─────────────
+
+    private function detectYear(string $q): ?int
+    {
+        return match (true) {
+            $this->has($q, ['اولى', 'أولى', 'الاولى', 'الأولى']) => 1,
+            $this->has($q, ['تانية', 'ثانية', 'التانية', 'الثانية', 'ثاني']) => 2,
+            $this->has($q, ['تالتة', 'ثالثة', 'الثالثة']) => 3,
+            default => null,
+        };
+    }
+
+    /** اسم الدورة المذكور في السؤال (تجاهل «ال» التعريف) أو null */
+    private function detectProgram(string $q, array $programs): ?string
+    {
+        $qWords = $this->stemWords($q);
+        foreach ($programs as $name) {
+            $need = $this->stemWords($name);
+            $ok = $need && count(array_filter($need, function ($w) use ($qWords) {
+                foreach ($qWords as $qw) {
+                    if (mb_strlen($w) >= 3 && str_contains($qw, $w)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })) === count($need);
+            if ($ok) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    private const LEVEL_TEXT = ['first' => '⚠️ إنذار أول', 'second' => '🚨 إنذار ثانٍ', 'final' => '⛔ إنذار نهائي'];
+
+    protected function hodWarningsAnswer(array $data): string
+    {
+        if (!isset($data['warning_counts'])) {
+            return '⚠️ لا توجد بيانات غياب لطلاب القسم حتى الآن.';
+        }
+        $w   = $data['warning_counts'];
+        $out = "⚠️ **إنذارات طلاب القسم** (أيام الغياب غير المعذورة):\n\n• إنذار أول (7 أيام): **{$w['first']}**\n• إنذار ثانٍ (10 أيام): **{$w['second']}**\n• إنذار نهائي (15 يوماً): **{$w['final']}**\n";
+
+        $warned = array_values(array_filter($data['absence_list'] ?? [], fn ($x) => $x['level']));
+        if ($warned) {
+            $out .= "\n**الطلاب المنذَرون:**\n";
+            foreach ($warned as $x) {
+                $out .= "• {$x['name']} ({$x['group']}) — {$x['days']} يوم — " . self::LEVEL_TEXT[$x['level']] . "\n";
+            }
+        } else {
+            $out .= "\n✅ لا يوجد طالب بلغ حد الإنذار الأول بعد.";
+        }
+
+        $others = array_values(array_filter($data['absence_list'] ?? [], fn ($x) => !$x['level']));
+        if ($others) {
+            $out .= "\n**الأكثر غياباً (دون حد الإنذار):**\n";
+            foreach (array_slice($others, 0, 5) as $x) {
+                $out .= "• {$x['name']} — {$x['days']} يوم\n";
+            }
+        }
+
+        return $out;
+    }
+
+    protected function hodPendingAnswer(array $data): string
+    {
+        if (!isset($data['pending'])) {
+            return '📥 لا توجد بيانات للطلبات المعلقة حالياً.';
+        }
+        $p = $data['pending'];
+        $out = "📥 **بانتظار قرارك:**\n\n• طلبات الإجازات: **{$p['leaves']}**\n• طلبات الخدمات الطلابية: **{$p['requests']}**\n• طلبات لقاء أولياء الأمور: **{$p['meetings']}**\n";
+        if (!empty($p['recent_requests'])) {
+            $out .= "\n**آخر طلبات الخدمات:**\n";
+            foreach ($p['recent_requests'] as $r) {
+                $type = ['mercy' => 'طلب استرحام', 'document' => 'طلب وثيقة', 'makeup' => 'طلب إكمال/إعادة', 'device_reset' => 'إعادة تعيين جهاز', 'face_photo' => 'تغيير صورة', 'general' => 'طلب عام'][$r['type']] ?? $r['type'];
+                $out .= "• {$r['student']} — {$type} ({$r['date']})\n";
+            }
+        }
+
+        return $out . "\nللبت: **طلبات الإجازات** من الزر المركزي، و`/hod/student-services` للخدمات.";
+    }
+
+    protected function hodPerformanceAnswer(array $data): string
+    {
+        $att = $data['attendance_by_program'] ?? [];
+        if (empty($att)) {
+            return '📊 لا توجد جلسات حضور مسجلة لطلاب القسم بعد.';
+        }
+        uasort($att, fn ($a, $b) => ($b['rate'] ?? -1) <=> ($a['rate'] ?? -1));
+        $out = "📊 **أداء دورات القسم:**\n\n";
+        foreach ($att as $prog => $x) {
+            $out .= "• **{$prog}** — حضور " . ($x['rate'] ?? '—') . "% ({$x['sessions']} جلسة)"
+                . (isset($data['average_by_program'][$prog]) ? '، متوسط المعدل ' . $data['average_by_program'][$prog] : '') . "\n";
+        }
+        $rated = array_filter($att, fn ($x) => $x['rate'] !== null);
+        if (count($rated) > 1) {
+            $out .= "\n📈 الأفضل حضوراً: **" . array_key_first($rated) . "**، والأضعف: **" . array_key_last($rated) . '**.';
+        }
+
+        return $out;
+    }
+
+    protected function hodExamsAnswer(string $q, array $data): string
+    {
+        $exams = $data['dept_exams'] ?? [];
+        $prog  = $this->detectProgram($q, $data['programs'] ?? []);
+        if ($prog) {
+            $exams = array_values(array_filter($exams, fn ($e) => in_array($prog, $e['programs'], true)));
+        }
+        if (empty($exams)) {
+            return '📅 لا توجد امتحانات قادمة' . ($prog ? " لدورة {$prog}" : '') . ' مسجلة. لإضافتها: **التنظيم الأكاديمي** (`/hod/organization`).';
+        }
+        $out = '📅 **الامتحانات القادمة' . ($prog ? " لدورة {$prog}" : ' في القسم') . ":**\n\n";
+        foreach ($exams as $e) {
+            $out .= "• **{$e['course']}** ({$e['name']}) — {$e['date']}" . ($e['room'] ? " في {$e['room']}" : '') . "\n";
+        }
+
+        return $out;
+    }
+
+    protected function hodScheduleAnswer(string $q, array $data): string
+    {
+        $rows = $data['dept_schedule'] ?? [];
+        if (empty($rows)) {
+            return '📅 لا يوجد جدول محاضرات مسجل لمقررات القسم. لإعداده: **التنظيم الأكاديمي** (`/hod/organization`).';
+        }
+        $prog = $this->detectProgram($q, $data['programs'] ?? []);
+        $year = $this->detectYear($q);
+        $rows = array_values(array_filter($rows, fn ($r) =>
+            ($prog === null || in_array($prog, $r['programs'], true)) && ($year === null || $r['year'] === $year)));
+        if (empty($rows)) {
+            return '📅 لا توجد محاضرات مجدولة' . ($prog ? " لدورة {$prog}" : '') . ($year ? ' في ' . AiContextBuilder::YEAR_AR[$year] : '') . '.';
+        }
+
+        $out = '📅 **جدول ' . ($prog ? "دورة {$prog}" : 'القسم') . ($year ? ' - ' . AiContextBuilder::YEAR_AR[$year] : '') . ":**\n";
+        $byDay = [];
+        foreach (array_slice($rows, 0, 40) as $r) {
+            $byDay[$r['day']][] = $r;
+        }
+        foreach ($byDay as $day => $list) {
+            $out .= "\n**{$day}**\n";
+            foreach ($list as $r) {
+                $out .= "• {$r['start']}-{$r['end']} {$r['course']}" . ($r['room'] ? " ({$r['room']})" : '') . "\n";
+            }
+        }
+
+        return $out . (count($rows) > 40 ? "\n... وغيرها، حدّد دورة وسنة لتضييق القائمة." : '');
+    }
+
+    protected function hodStudentSearchAnswer(string $q, array $data): ?string
+    {
+        $needle = null;
+        foreach ($data['student_index'] ?? [] as $s) {
+            $words = array_filter(preg_split('/\s+/u', mb_strtolower($s['name'], 'UTF-8')));
+            // يطابق إذا ورد الاسم الأول والأخير (أو الاسم كاملاً) في السؤال
+            if (str_contains($q, mb_strtolower($s['name'], 'UTF-8')) || (count($words) >= 2 && str_contains($q, reset($words)) && str_contains($q, end($words)))) {
+                $needle = $s;
+                break;
+            }
+        }
+        if (!$needle) {
+            return null;
+        }
+
+        $abs = null;
+        foreach ($data['absence_list'] ?? [] as $x) {
+            if ($x['name'] === $needle['name']) {
+                $abs = $x;
+            }
+        }
+
+        return "🎓 **{$needle['name']}**\n• الدورة: {$needle['program']}\n• السنة: " . ($needle['level'] ?: 'غير محددة')
+            . "\n• أيام الغياب غير المعذورة: " . ($abs['days'] ?? 0)
+            . (!empty($abs['level']) ? ' — ' . self::LEVEL_TEXT[$abs['level']] : '');
+    }
+
+    protected function hodCoursesAnswer(string $q, array $data): ?string
+    {
+        $courses = $data['dept_courses'] ?? [];
+        if (empty($courses)) {
+            return null;
+        }
+
+        // من يدرّس مقرراً معيناً؟
+        foreach ($courses as $c) {
+            if (mb_strlen($c['title']) >= 3 && str_contains($q, mb_strtolower($c['title'], 'UTF-8'))) {
+                return "👨‍🏫 **{$c['title']}** (" . (AiContextBuilder::YEAR_AR[$c['year']] ?? 'سنة غير محددة') . ' - دورة ' . implode('، ', $c['programs']) . ")\nالأستاذ: "
+                    . ($c['teachers'] ? '**' . implode('، ', $c['teachers']) . '**' : '⚠️ لا يوجد أستاذ مسند');
+            }
+        }
+
+        // مقررات بلا أستاذ
+        if ($this->has($q, ['بلا استاذ', 'بدون استاذ', 'بلا أستاذ', 'بدون أستاذ', 'بدون مدرس', 'بلا مدرس'])) {
+            $none = array_values(array_filter($courses, fn ($c) => empty($c['teachers'])));
+            if (empty($none)) {
+                return '✅ كل مقررات القسم لها أساتذة مسندون.';
+            }
+            $out = "⚠️ **مقررات بلا أستاذ (" . count($none) . "):**\n\n";
+            foreach ($none as $c) {
+                $out .= "• {$c['title']} — " . (AiContextBuilder::YEAR_AR[$c['year']] ?? 'سنة غير محددة') . ' - ' . implode('، ', $c['programs']) . "\n";
+            }
+
+            return $out;
+        }
+
+        // مقررات حسب السنة/الدورة (أو العدد)
+        $year = $this->detectYear($q);
+        $prog = $this->detectProgram($q, $data['programs'] ?? []);
+        $rows = array_values(array_filter($courses, fn ($c) =>
+            ($year === null || $c['year'] === $year) && ($prog === null || in_array($prog, $c['programs'], true))));
+        if (empty($rows)) {
+            return '📚 لا توجد مقررات' . ($prog ? " لدورة {$prog}" : '') . ($year ? ' في ' . AiContextBuilder::YEAR_AR[$year] : '') . '.';
+        }
+
+        if ($this->has($q, ['كم'])) {
+            return '📚 عدد المقررات' . ($prog ? " في دورة {$prog}" : ' في القسم') . ($year ? ' - ' . AiContextBuilder::YEAR_AR[$year] : '') . ': **' . count($rows) . '**.';
+        }
+
+        $groups = [];
+        foreach ($rows as $c) {
+            foreach ($c['programs'] as $p) {
+                $groups[$p][AiContextBuilder::YEAR_AR[$c['year']] ?? 'سنة غير محددة'][] = $c['title'] . ($c['teachers'] ? ' (' . implode('، ', $c['teachers']) . ')' : ' (بلا أستاذ)');
+            }
+        }
+        ksort($groups);
+        $out = '📚 **مقررات ' . ($prog ? "دورة {$prog}" : 'القسم') . ($year ? ' - ' . AiContextBuilder::YEAR_AR[$year] : '') . ' (' . count($rows) . "):**\n";
+        foreach ($groups as $p => $years) {
+            $out .= "\n**دورة {$p}:**\n";
+            ksort($years);
+            foreach ($years as $y => $titles) {
+                $out .= "• {$y}: " . implode('، ', $titles) . "\n";
+            }
+        }
+
+        return $out;
+    }
+
+    protected function hodTeacherLoadAnswer(string $q, array $data): string
+    {
+        $teachers = $data['dept_teachers'] ?? [];
+        if (empty($teachers)) {
+            return '👨‍🏫 لا يوجد أساتذة مسجلون في القسم.';
+        }
+
+        if ($this->has($q, ['بدون مقررات', 'بلا مقررات'])) {
+            $none = array_values(array_filter($teachers, fn ($t) => empty($t['courses'])));
+
+            return $none
+                ? "👨‍🏫 **أساتذة بلا مقررات مسندة:**\n\n• " . implode("\n• ", array_column($none, 'name'))
+                : '✅ كل أساتذة القسم لديهم مقررات مسندة.';
+        }
+
+        if ($this->has($q, ['مو مشرف', 'مش مشرف', 'غير مشرف', 'غير المشرف', 'مو المشرف', 'مو مرشد', 'مش مرشد', 'غير المرشد', 'ما عندهم دورة', 'مو مشرفين'])) {
+            $non = array_values(array_filter($teachers, fn ($t) => empty($t['advisor'])));
+
+            return $non
+                ? "👨‍🏫 **أساتذة غير مشرفين على دورة (" . count($non) . "):**\n\n• " . implode("\n• ", array_column($non, 'name'))
+                : '✅ كل أساتذة القسم مشرفون على دورات.';
+        }
+
+        usort($teachers, fn ($a, $b) => count($b['courses']) <=> count($a['courses']));
+        $out = "👨‍🏫 **الأساتذة حسب عدد المقررات:**\n\n";
+        foreach (array_slice($teachers, 0, 5) as $t) {
+            $out .= "• **{$t['name']}** — " . count($t['courses']) . " مقرراً\n";
+        }
+
+        return $out;
+    }
+
     /**
      * مشرف (مرشد/مربي) كل دورة وسنة في قسم رئيس القسم، مع الإشارة للدورات التي بلا مشرف.
      */
@@ -520,7 +834,7 @@ class LocalKnowledgeEngine
     protected function helpAnswer(string $role): string
     {
         $lists = [
-            'hod' => ['شو عندي أساتذة بالقسم؟', 'كم طالب عندي؟', 'مين طلاب القسم؟', 'شو دورات القسم؟', 'مين المشرف لكل دورة؟', 'كيف أعدّل جدول الامتحانات؟', 'كيف أبت بطلبات الإجازات؟', 'شو نظام الإنذارات؟', 'كيف أنشر إعلان؟', 'مين انا؟'],
+            'hod' => ['شو عندي أساتذة بالقسم؟', 'كم طالب عندي؟', 'مين طلاب القسم؟', 'شو دورات القسم؟', 'مين المشرف لكل دورة؟', 'مين الطلاب المنذَرون؟', 'أكتر طلاب غياباً', 'كم طلب معلق بانتظاري؟', 'نسبة الحضور لكل دورة', 'أي دورة أضعف حضوراً؟', 'شو مقررات السنة الثانية بدورة الاتصالات؟', 'أي مقرر بلا أستاذ؟', 'مين بيدرّس خوارزميات؟', 'أي أستاذ بدون مقررات؟', 'مين الأساتذة غير المشرفين؟', 'شو جدول دورة المعلوماتية؟', 'شو امتحانات القسم القادمة؟', 'ابحث عن طالب يوسف الاحمد', 'كيف أعدّل جدول الامتحانات؟', 'كيف أبت بطلبات الإجازات؟', 'شو نظام الإنذارات؟', 'كيف أنشر إعلان؟'],
             'teacher' => ['شو جدولي؟', 'شو الدورات اللي بعطيها؟', 'اي سنين بعطي؟', 'شو المواد اللي بعطيها بالسنة الأولى؟', 'مين الطلاب اللي بعطيهم؟', 'هل أنا مشرف دورة؟', 'كم تسليم بانتظار التصحيح؟', 'كيف أبدأ جلسة حضور؟', 'شو نظام الإنذارات؟'],
             'parent' => ['مين ابني؟', 'شو المواد اللي عندو؟', 'مين بيعطيه؟', 'كم غياب ابني؟', 'شو علامات ابني؟', 'كيف أقدّم إذن غياب؟', 'كيف أحجز موعد مع الإدارة؟'],
             'student' => ['شو جدولي؟', 'كم غيابي؟', 'شو علاماتي؟', 'شو واجباتي؟', 'متى امتحاناتي؟', 'مين بيعطيني؟', 'كيف أطلب إعادة تعيين الجهاز؟', 'كيف أقدّم عذر طبي؟'],
