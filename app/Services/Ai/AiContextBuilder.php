@@ -407,12 +407,84 @@ class AiContextBuilder
     {
         $dept = Access::headDepartment($user);
         $out  = ['department' => $dept['name']];
-        if ($dept['name']) {
-            $out['students_count'] = DB::table('users')->where('role_id', 3)->where('department', $dept['name'])->count();
-            $out['teachers_count'] = DB::table('users')->where('role_id', 2)->where('department', $dept['name'])->count();
+
+        if ($dept['id']) {
+            $out += $this->safe(fn () => $this->departmentOverview((int) $dept['id'], (string) $dept['name']), []);
         }
 
         return $out;
+    }
+
+    /**
+     * نظرة على قسم رئيس القسم: الدورات (البرامج)، الأساتذة ومقرراتهم والمرشدون، والطلاب حسب الدورة والسنة.
+     * الأستاذ يُحسب من القسم إذا كان حقل قسمه يطابق، أو إذا درّس مقرراً ضمن دورات القسم.
+     *
+     * @return array<string, mixed>
+     */
+    protected function departmentOverview(int $deptId, string $deptName): array
+    {
+        $programs = DB::table('programs')->where('department_id', $deptId)->orderBy('name')->pluck('name', 'id');
+        $progIds  = $programs->keys()->all();
+
+        // ── الأساتذة
+        $teachers = DB::table('teachers as t')
+            ->join('users as u', 'u.user_id', '=', 't.user_id')
+            ->where(function ($w) use ($deptName, $progIds) {
+                $w->where('u.department', $deptName);
+                if ($progIds) {
+                    $w->orWhereIn('t.teacher_id', function ($q) use ($progIds) {
+                        $q->select('ct.teacher_id')->from('course_teachers as ct')
+                            ->join('course_program as cp', 'cp.course_id', '=', 'ct.course_id')
+                            ->whereIn('cp.program_id', $progIds);
+                    });
+                }
+            })
+            ->orderBy('u.full_name')
+            ->get(['t.teacher_id', 'u.full_name', 't.advisor_branch', 't.advisor_year']);
+
+        $coursesByTeacher = DB::table('course_teachers as ct')
+            ->join('courses as c', 'c.course_id', '=', 'ct.course_id')
+            ->whereIn('ct.teacher_id', $teachers->pluck('teacher_id')->all() ?: [0])
+            ->get(['ct.teacher_id', 'c.title'])
+            ->groupBy('teacher_id')
+            ->map(fn ($rows) => $rows->pluck('title')->unique()->values()->all());
+
+        $teacherList = $teachers->map(fn ($t) => [
+            'name'    => $t->full_name,
+            'courses' => $coursesByTeacher[$t->teacher_id] ?? [],
+            'advisor' => trim(($t->advisor_branch ?? '') . ' - ' . ($t->advisor_year ?? ''), ' -') ?: null,
+        ])->all();
+
+        // ── الطلاب حسب الدورة والسنة
+        $students = DB::table('students as s')
+            ->join('users as u', 'u.user_id', '=', 's.user_id')
+            ->leftJoin('programs as p', 'p.id', '=', 's.program_id')
+            ->where(function ($w) use ($deptName, $progIds) {
+                $w->where('u.department', $deptName);
+                if ($progIds) {
+                    $w->orWhereIn('s.program_id', $progIds);
+                }
+            })
+            ->orderBy('p.name')->orderBy('s.level')->orderBy('u.full_name')
+            ->get(['s.student_id', 'u.full_name', 's.level', 'p.name as program']);
+
+        $groups = [];
+        foreach ($students->unique('student_id') as $r) {
+            $key = trim(($r->program ?: 'دورة غير محددة') . ($r->level ? ' - ' . $r->level : ''));
+            $groups[$key][] = $r->full_name;
+        }
+        $dept_students = [];
+        foreach ($groups as $key => $names) {
+            $dept_students[$key] = ['count' => count($names), 'names' => array_slice($names, 0, 40)];
+        }
+
+        return [
+            'programs'       => $programs->values()->all(),
+            'dept_teachers'  => $teacherList,
+            'teachers_count' => count($teacherList),
+            'dept_students'  => $dept_students,
+            'students_count' => $students->pluck('student_id')->unique()->count(),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -506,6 +578,16 @@ class AiContextBuilder
         }
         if (!empty($d['department'])) {
             $t .= "- القسم: {$d['department']}" . (isset($d['students_count']) ? "، طلاب: {$d['students_count']}، أساتذة: {$d['teachers_count']}" : '') . "\n";
+        }
+        if (!empty($d['programs'])) {
+            $t .= '- دورات القسم: ' . implode('، ', $d['programs']) . "\n";
+        }
+        foreach ($d['dept_teachers'] ?? [] as $x) {
+            $t .= "  * أستاذ {$x['name']}: " . ($x['courses'] ? implode('، ', array_slice($x['courses'], 0, 8)) : 'بلا مقررات')
+                . (!empty($x['advisor']) ? " (مرشد دورة {$x['advisor']})" : '') . "\n";
+        }
+        foreach ($d['dept_students'] ?? [] as $group => $info) {
+            $t .= "  * طلاب دورة {$group}: {$info['count']}" . ($info['count'] <= 15 ? ' (' . implode('، ', $info['names']) . ')' : '') . "\n";
         }
         if (isset($d['users'])) {
             $t .= "- المستخدمون: طلاب {$d['users']['students']}، أساتذة {$d['users']['teachers']}، أولياء أمور {$d['users']['parents']}\n";

@@ -340,6 +340,45 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('معلوماتية - السنة الثانية', $this->ask('انا مرشد لأي دورة؟')->json('reply'));
     }
 
+    public function test_head_gets_his_departments_teachers_students_programs_and_advisors(): void
+    {
+        $deptName = 'قسم-اختبار-' . $this->nextSeq();
+        $dept     = $this->makeDepartment($deptName);
+        $info     = $this->makeProgram($dept);
+        DB::table('programs')->where('id', $info)->update(['name' => 'معلوماتية']);
+        $head = $this->makeHead($dept, ['department' => $deptName]);
+
+        $teacher = $this->makeTeacher(['full_name' => 'أستاذ-القسم', 'department' => $deptName]);
+        DB::table('teachers')->where('teacher_id', $teacher['teacher_id'])->update(['advisor_branch' => 'معلوماتية', 'advisor_year' => 'السنة الأولى']);
+        $course = $this->makeCourse($info, ['title' => 'مقرر-القسم', 'year' => 1]);
+        $this->assignTeacher($course, $teacher['teacher_id']);
+
+        // أستاذ بلا حقل قسم لكنه يدرّس مقرراً من دورات القسم
+        $viaCourse = $this->makeTeacher(['full_name' => 'أستاذ-عبر-المقرر']);
+        $this->assignTeacher($this->makeCourse($info, ['title' => 'مقرر-ثاني', 'year' => 1]), $viaCourse['teacher_id']);
+
+        $this->makeTeacher(['full_name' => 'أستاذ-قسم-آخر', 'department' => 'قسم-آخر']);
+
+        $student = $this->makeStudent(['full_name' => 'طالب-القسم', 'department' => $deptName], $info);
+        DB::table('students')->where('student_id', $student['student_id'])->update(['level' => 'السنة الأولى']);
+        $this->makeStudent(['full_name' => 'طالب-قسم-آخر', 'department' => 'قسم-آخر']);
+        $this->actAs($head['user']);
+
+        $teachers = $this->ask('شو عندي اساتذه بالقسم')->json('reply');
+        $this->assertStringContainsString('أستاذ-القسم', $teachers);
+        $this->assertStringContainsString('مقرر-القسم', $teachers);
+        $this->assertStringContainsString('أستاذ-عبر-المقرر', $teachers);
+        $this->assertStringNotContainsString('أستاذ-قسم-آخر', $teachers);
+
+        $students = $this->ask('مين طلاب القسم')->json('reply');
+        $this->assertStringContainsString('دورة معلوماتية - السنة الأولى', $students);
+        $this->assertStringContainsString('طالب-القسم', $students);
+        $this->assertStringNotContainsString('طالب-قسم-آخر', $students);
+
+        $this->assertStringContainsString('أستاذ-القسم', $this->ask('مين المرشدين')->json('reply'));
+        $this->assertStringContainsString('معلوماتية', $this->ask('شو دورات القسم')->json('reply'));
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);
