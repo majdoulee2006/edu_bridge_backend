@@ -45,6 +45,18 @@ class LocalKnowledgeEngine
             }
         }
 
+        if ($role === 'teacher' && $this->has($q, ['مرشد', 'مربي', 'مربّي'])) {
+            return empty($data['advisor'])
+                ? '🧭 لست معيَّناً كمرشد (مربي) لدورة حالياً. التعيين من رئيس القسم.'
+                : "🧭 أنت مرشد (مربي) دورة: **{$data['advisor']}**.";
+        }
+
+        if ($role === 'teacher' && !empty($data['teaching'])
+            && $this->has($q, ['دورة', 'دورات', 'الدورات', 'سنة', 'سنين', 'سنوات', 'السنة', 'مواد', 'مقررات', 'مقرر', 'مادة', 'بعطي', 'بدرس', 'بدرّس'])
+            && !$this->has($q, ['جدول', 'غياب', 'حضور', 'امتحان', 'علام', 'واجب', 'مين بيعطي', 'مين بيدرس'])) {
+            return $this->teachingAnswer($q, $data['teaching']);
+        }
+
         if ($this->has($q, ['مين بيعطي', 'مين بيدرس', 'مين يدرس', 'مين المدرس', 'مين الاستاذ', 'مين الأستاذ', 'مين المعلم', 'مدرسين', 'مدرسي', 'اساتذ', 'أساتذ', 'معلمين', 'معلمي', 'بيعطيه', 'بيدرسه', 'بيدرسني', 'بيعطيني', 'مين مدرس'])) {
             if ($r = $this->teachersAnswer($role, $data)) {
                 return $r;
@@ -292,6 +304,94 @@ class LocalKnowledgeEngine
         };
     }
 
+    /**
+     * مقررات المعلم حسب الدورة والسنة، مع فلترة إذا ذكر في سؤاله دورة أو سنة معينة.
+     *
+     * @param array<int, array{title:string, year:?int, programs:string[]}> $teaching
+     */
+    protected function teachingAnswer(string $q, array $teaching): string
+    {
+        // فلترة بالسنة
+        $year = null;
+        if ($this->has($q, ['اولى', 'أولى', 'الاولى', 'الأولى', 'سنة اولى', 'سنه اولى'])) {
+            $year = 1;
+        } elseif ($this->has($q, ['تانية', 'ثانية', 'التانية', 'الثانية', 'تاني سنة', 'ثاني'])) {
+            $year = 2;
+        } elseif ($this->has($q, ['تالتة', 'ثالثة', 'الثالثة'])) {
+            $year = 3;
+        }
+
+        // فلترة بالدورة: اسم دورة (أو جزء منه) مذكور في السؤال
+        $allPrograms = array_values(array_unique(array_merge(...array_map(fn ($c) => $c['programs'], $teaching) ?: [[]])));
+        $program = null;
+        $qWords = $this->stemWords($q);
+        foreach ($allPrograms as $name) {
+            $need = $this->stemWords($name);
+            // كل كلمات اسم الدورة (بدون «ال» التعريف) موجودة في السؤال (مع السماح بسوابق مثل ب/ل)
+            $found = $need && count(array_filter($need, function ($w) use ($qWords) {
+                foreach ($qWords as $qw) {
+                    if (mb_strlen($w) >= 3 && str_contains($qw, $w)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })) === count($need);
+            if ($found) {
+                $program = $name;
+                break;
+            }
+        }
+
+        $rows = array_values(array_filter($teaching, fn ($c) =>
+            ($year === null || $c['year'] === $year) && ($program === null || in_array($program, $c['programs'], true))));
+
+        if (empty($rows)) {
+            return '📚 لا توجد مقررات تدرّسها' . ($year ? ' في ' . AiContextBuilder::YEAR_AR[$year] : '') . ($program ? " ضمن دورة {$program}" : '') . ' حالياً.';
+        }
+
+        $yearName = fn ($y) => AiContextBuilder::YEAR_AR[$y] ?? 'سنة غير محددة';
+        $titles   = fn (array $list) => implode('، ', array_unique(array_column($list, 'title')));
+
+        // سؤال عن السنوات صراحةً (بدون ذكر الدورات) → نجمّع بالسنة أولاً
+        $byYearFirst = $this->has($q, ['سنة', 'سنين', 'سنوات', 'السنة']) && !$this->has($q, ['دورة', 'دورات']);
+
+        $out = '🎓 **' . ($program ? "مقرراتك في دورة {$program}" : ($year ? 'مقرراتك في ' . $yearName($year) : 'ما تدرّسه')) . ":**\n";
+
+        if ($byYearFirst) {
+            $groups = [];
+            foreach ($rows as $c) {
+                $groups[$yearName($c['year'])][] = $c;
+            }
+            ksort($groups);
+            foreach ($groups as $label => $list) {
+                $progs = array_unique(array_merge(...array_map(fn ($c) => $c['programs'], $list)));
+                $out .= "\n**{$label}**" . ($progs ? ' — دورات: ' . implode('، ', $progs) : '') . ":\n• " . implode("\n• ", array_unique(array_column($list, 'title'))) . "\n";
+            }
+        } else {
+            $groups = [];
+            foreach ($rows as $c) {
+                foreach ($c['programs'] ?: ['دورة غير محددة'] as $pname) {
+                    $groups[$pname][$yearName($c['year'])][] = $c;
+                }
+            }
+            ksort($groups);
+            foreach ($groups as $pname => $years) {
+                $out .= "\n**دورة {$pname}:**\n";
+                ksort($years);
+                foreach ($years as $label => $list) {
+                    $out .= "• {$label}: {$titles($list)}\n";
+                }
+            }
+        }
+
+        $countCourses  = count(array_unique(array_column($rows, 'title')));
+        $countPrograms = count(array_unique(array_merge(...array_map(fn ($c) => $c['programs'], $rows) ?: [[]])));
+        $countYears    = count(array_unique(array_map(fn ($c) => $c['year'], $rows)));
+
+        return $out . "\n📊 الإجمالي: {$countCourses} مقرراً في " . max($countPrograms, 1) . " دورة و{$countYears} سنة دراسية.";
+    }
+
     protected function teacherStudentsAnswer(array $data): ?string
     {
         if (empty($data['program_students'])) {
@@ -389,6 +489,14 @@ class LocalKnowledgeEngine
     }
 
     // ───────────────────────── مساعدات ─────────────────────────
+
+    /** كلمات النص بحروف صغيرة وبدون «ال» التعريف في أولها. */
+    private function stemWords(string $text): array
+    {
+        $words = preg_split('/[\s\-_,،.؟?]+/u', mb_strtolower(trim($text), 'UTF-8'));
+
+        return array_values(array_filter(array_map(fn ($w) => preg_replace('/^ال/u', '', $w), $words)));
+    }
 
     private function wordCount(string $q): int
     {

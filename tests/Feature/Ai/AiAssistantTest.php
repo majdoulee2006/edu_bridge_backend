@@ -298,6 +298,48 @@ class AiAssistantTest extends TestCase
         $this->assertStringNotContainsString('طالب-مقرر-آخر', $reply);
     }
 
+    public function test_teacher_gets_programs_years_and_courses_he_teaches(): void
+    {
+        $teacher = $this->makeTeacher();
+        $dept    = $this->makeDepartment();
+        $info    = $this->makeProgram($dept);
+        $ai      = $this->makeProgram($dept);
+        DB::table('programs')->where('id', $info)->update(['name' => 'معلوماتية']);
+        DB::table('programs')->where('id', $ai)->update(['name' => 'ذكاء اصطناعي']);
+
+        $c1 = $this->makeCourse($info, ['title' => 'مادة-سنة-أولى', 'year' => 1]);
+        $c2 = $this->makeCourse($info, ['title' => 'مادة-سنة-ثانية', 'year' => 2]);
+        $c3 = $this->makeCourse($ai, ['title' => 'مادة-ذكاء', 'year' => 2]);
+        foreach ([$c1, $c2, $c3] as $c) {
+            $this->assignTeacher($c, $teacher['teacher_id']);
+        }
+        $this->makeCourse($info, ['title' => 'مادة-مدرس-آخر', 'year' => 1]);
+        DB::table('teachers')->where('teacher_id', $teacher['teacher_id'])
+            ->update(['advisor_branch' => 'معلوماتية', 'advisor_year' => 'السنة الثانية']);
+        $this->actAs($teacher['user']);
+
+        $all = $this->ask('شو الدورات اللي بعطيها')->json('reply');
+        $this->assertStringContainsString('دورة معلوماتية', $all);
+        $this->assertStringContainsString('دورة ذكاء اصطناعي', $all);
+        $this->assertStringContainsString('مادة-سنة-أولى', $all);
+        $this->assertStringNotContainsString('مادة-مدرس-آخر', $all);
+
+        $year2 = $this->ask('شو المواد اللي بعطيها بالسنة التانية')->json('reply');
+        $this->assertStringContainsString('مادة-سنة-ثانية', $year2);
+        $this->assertStringContainsString('مادة-ذكاء', $year2);
+        $this->assertStringNotContainsString('مادة-سنة-أولى', $year2);
+
+        $byProgram = $this->ask('شو المواد اللي بعطيها بدورة الذكاء الاصطناعي')->json('reply');
+        $this->assertStringContainsString('مادة-ذكاء', $byProgram);
+        $this->assertStringNotContainsString('مادة-سنة-أولى', $byProgram);
+
+        $years = $this->ask('اي سنين بعطي')->json('reply');
+        $this->assertStringContainsString('السنة الأولى', $years);
+        $this->assertStringContainsString('السنة الثانية', $years);
+
+        $this->assertStringContainsString('معلوماتية - السنة الثانية', $this->ask('انا مرشد لأي دورة؟')->json('reply'));
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);

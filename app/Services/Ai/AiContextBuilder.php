@@ -22,6 +22,8 @@ class AiContextBuilder
         'thursday' => 'الخميس', 'friday' => 'الجمعة', 'saturday' => 'السبت',
     ];
 
+    public const YEAR_AR = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة'];
+
     private const DAY_ORDER = ['sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3, 'thursday' => 4, 'friday' => 5, 'saturday' => 6];
 
     /** @return array<string, mixed> */
@@ -270,7 +272,7 @@ class AiContextBuilder
         $courses = DB::table('course_teachers')
             ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
             ->where('course_teachers.teacher_id', $teacher->teacher_id)
-            ->get(['courses.course_id', 'courses.title']);
+            ->get(['courses.course_id', 'courses.title', 'courses.year']);
 
         $ids = $courses->pluck('course_id')->all();
         $schedule = empty($ids) ? [] : \App\Models\Schedule::whereIn('course_id', $ids)->with('course')->get()
@@ -291,7 +293,35 @@ class AiContextBuilder
             'courses'          => $courses->pluck('title')->unique()->values()->all(),
             'schedule'         => $schedule,
             'pending_grading'  => $pending,
+            'advisor'          => trim(($teacher->advisor_branch ?? '') . ' - ' . ($teacher->advisor_year ?? ''), ' -') ?: null,
+            'teaching'         => $this->safe(fn () => $this->teachingDetails($courses), []),
         ] + $this->safe(fn () => $this->teacherStudents($courses), []);
+    }
+
+    /**
+     * مقررات المعلم مع السنة والدورات (البرامج) التي يُدرَّس فيها المقرر.
+     *
+     * @return array<int, array{title:string, year:?int, programs:string[]}>
+     */
+    protected function teachingDetails($courses): array
+    {
+        $ids = $courses->pluck('course_id')->all();
+        if (empty($ids)) {
+            return [];
+        }
+
+        $programs = DB::table('course_program as cp')
+            ->join('programs as p', 'p.id', '=', 'cp.program_id')
+            ->whereIn('cp.course_id', $ids)
+            ->get(['cp.course_id', 'p.name'])
+            ->groupBy('course_id')
+            ->map(fn ($rows) => $rows->pluck('name')->unique()->values()->all());
+
+        return $courses->map(fn ($c) => [
+            'title'    => $c->title,
+            'year'     => $c->year !== null ? (int) $c->year : null,
+            'programs' => $programs[$c->course_id] ?? [],
+        ])->unique(fn ($c) => $c['title'] . '|' . $c['year'])->values()->all();
     }
 
     /**
@@ -454,6 +484,13 @@ class AiContextBuilder
                 $t .= "- مقرر {$c['name']}: {$title} (المدرّس: " . ($teachers ? implode('، ', $teachers) : 'غير محدد') . ")\n";
             }
             $t .= "- الابن: {$c['name']} (كود {$c['code']}) {$c['level']}: أيام غياب غير معذورة " . ($c['attendance']['absence_days'] ?? 0) . "، غياب {$abs} من {$tot} جلسة، المعدل " . ($c['average'] ?? 'غير متوفر') . "\n";
+        }
+        foreach ($d['teaching'] ?? [] as $c) {
+            $t .= "- يدرّس {$c['title']}: " . (self::YEAR_AR[$c['year']] ?? 'سنة غير محددة')
+                . '، الدورات: ' . ($c['programs'] ? implode('، ', $c['programs']) : 'غير محددة') . "\n";
+        }
+        if (!empty($d['advisor'])) {
+            $t .= "- هو مرشد (مربي) دورة: {$d['advisor']}\n";
         }
         if (isset($d['students_total'])) {
             $t .= "- إجمالي طلابك (مجمّعون حسب الدورة والسنة): {$d['students_total']}\n";
