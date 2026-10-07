@@ -22,6 +22,7 @@ use App\Models\AbsenceRequest;
 use App\Models\StudentRequest;
 use App\Models\Program;
 use App\Services\FcmService;
+use App\Support\LoginThrottleGuard;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -798,7 +799,16 @@ class TelegramBotHandler
         $user = User::find($userId);
         if (!$user) return;
 
+        // نفس قفل المحاولات المستخدم بتسجيل الدخول على الويب (5 محاولات فاشلة = قفل 15 دقيقة)،
+        // وإلا يمكن تخمين كلمة السر عبر البوت بلا حد.
+        if (LoginThrottleGuard::isLocked($user)) {
+            $this->sendLoginLockedMessage($chatId, $user);
+            return;
+        }
+
         if (Hash::check($text, $user->password)) {
+            LoginThrottleGuard::recordSuccess($user);
+
             // Success! Link telegram_chat_id
             $user->telegram_chat_id = $chatId;
             $user->save();
@@ -826,8 +836,28 @@ class TelegramBotHandler
                 $this->sendMessage($chatId, "✅ **تم ربط حسابك بنجاح!**\nمرحباً بك **{$user->full_name}** 🎓\n\nمن الآن، أي رمز تحقق (OTP) — لتغيير كلمة السر أو البريد أو رقم الهاتف — رح يوصلك مباشرة هون على هالمحادثة.");
             }
         } else {
+            LoginThrottleGuard::recordFailure($user);
+            $user->refresh();
+
+            if (LoginThrottleGuard::isLocked($user)) {
+                $this->sendLoginLockedMessage($chatId, $user);
+                return;
+            }
+
             $this->sendMessage($chatId, "❌ كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى:");
         }
+    }
+
+    private function sendLoginLockedMessage($chatId, User $user): void
+    {
+        $minutes = LoginThrottleGuard::lockRemainingMinutes($user);
+        Cache::forget("telegram_state_{$chatId}");
+        Cache::forget("telegram_auth_{$chatId}_user_id");
+
+        $this->sendMessage(
+            $chatId,
+            "🔒 تم قفل الحساب مؤقتاً بسبب محاولات دخول فاشلة متكررة. حاول مرة أخرى بعد {$minutes} دقيقة."
+        );
     }
 
     // ==========================================
@@ -5152,13 +5182,16 @@ class TelegramBotHandler
             return;
         }
 
-        // إذا كان جدول university_ids موجوداً، نتحقق من صلاحية الرقم الجامعي
-        if (\Illuminate\Support\Facades\Schema::hasTable('university_ids')) {
-            $uidRecord = DB::table('university_ids')->where('university_id', $uid)->where('role', 'student')->first();
-            if ($uidRecord && $uidRecord->is_used) {
-                $this->sendMessage($chatId, "❌ هذا الرقم الجامعي تم تفعيله مسبقاً. يرجى التواصل مع إدارة شؤون الطلاب.");
-                return;
-            }
+        // الرقم الجامعي لازم يكون صادراً من شؤون الطلاب وغير مستخدم (نفس شرط التسجيل من التطبيق)،
+        // وإلا يستطيع أي شخص اختراع رقم وإنشاء حساب طالب.
+        $uidRecord = DB::table('university_ids')->where('university_id', $uid)->where('role', 'student')->first();
+        if (!$uidRecord) {
+            $this->sendMessage($chatId, "❌ هذا الرقم الجامعي غير موجود. يرجى التأكد منه أو التواصل مع إدارة شؤون الطلاب.");
+            return;
+        }
+        if ($uidRecord->is_used) {
+            $this->sendMessage($chatId, "❌ هذا الرقم الجامعي تم تفعيله مسبقاً. يرجى التواصل مع إدارة شؤون الطلاب.");
+            return;
         }
 
         Cache::put("reg_std_uid_{$chatId}", $uid, 1800);
@@ -5243,15 +5276,15 @@ class TelegramBotHandler
 
         $this->sendMessage(
             $chatId,
-            "📌 **الخطوة 6 من 6 (الأخيرة):**\nيرجى إدخال **كلمة المرور** لحسابك (6 أحرف أو أرقام على الأقل):"
+            "📌 **الخطوة 6 من 6 (الأخيرة):**\nيرجى إدخال **كلمة المرور** لحسابك (8 أحرف أو أرقام على الأقل):"
         );
     }
 
     private function handleRegStudentPassword($chatId, string $text)
     {
         $password = trim($text);
-        if (mb_strlen($password) < 6) {
-            $this->sendMessage($chatId, "⚠️ يجب ألا تقل كلمة المرور عن 6 خانات. يرجى إعادة الإدخال:");
+        if (mb_strlen($password) < 8) {
+            $this->sendMessage($chatId, "⚠️ يجب ألا تقل كلمة المرور عن 8 خانات. يرجى إعادة الإدخال:");
             return;
         }
 
@@ -5364,9 +5397,9 @@ class TelegramBotHandler
 
     private function handleRegParentName($chatId, string $text)
     {
-        $name = trim($text);
-        if (mb_strlen($name) < 3) {
-            $this->sendMessage($chatId, "⚠️ يرجى كتابة اسم صحيح لا يقل عن 3 أحرف.");
+        $name = trim(preg_replace('/\s+/u', ' ', $text));
+        if (mb_strlen($name) < 3 || !str_contains($name, ' ')) {
+            $this->sendMessage($chatId, "⚠️ يرجى كتابة اسمك الكامل (الاسم + اسم العائلة).");
             return;
         }
 
@@ -5379,6 +5412,19 @@ class TelegramBotHandler
         );
     }
 
+    private function parentLastNameMatchesChild(string $parentFullName, User $child): bool
+    {
+        $lastWord = function (string $s): string {
+            $words = explode(' ', mb_strtolower(trim(preg_replace('/\s+/u', ' ', $s))));
+            return (string) end($words);
+        };
+
+        $childLast  = $lastWord((string) ($child->last_name ?: $child->full_name));
+        $parentLast = $lastWord($parentFullName);
+
+        return $childLast !== '' && $parentLast !== '' && $childLast === $parentLast;
+    }
+
     private function handleRegParentChildUid($chatId, string $text)
     {
         $childUid = preg_replace('/\s+/', '', trim($text));
@@ -5389,15 +5435,26 @@ class TelegramBotHandler
                   ->orWhere('username', 'std_' . $childUid)
                   ->orWhereHas('student', fn($sq) => $sq->where('student_code', $childUid));
             })
-            ->where(function($q) {
-                $q->where('role_id', 3)->orWhere('role', 'student');
-            })
+            // عمود users.role محذوف (الدور عبر role_id)، والاستعلام عنه كان يرمي خطأ SQL في كل مرة
+            ->where('role_id', 3)
             ->first();
 
         if (!$studentUser) {
             $this->sendMessage(
                 $chatId,
                 "❌ **لم يتم العثور على طالب بهذا الرقم الجامعي: `{$childUid}`**\n\nيرجى التأكد من الرقم الجامعي للابن/الابنة وإعادة إدخاله:"
+            );
+            return;
+        }
+
+        // نفس شرط التسجيل من التطبيق: اسم عائلة ولي الأمر يطابق اسم عائلة الطالب،
+        // وإلا يكفي معرفة الرقم الجامعي لأي طالب لتسجيل نفسك وليّ أمره والاطلاع على بياناته.
+        $parentName = (string) Cache::get("reg_par_name_{$chatId}", '');
+        if (!$this->parentLastNameMatchesChild($parentName, $studentUser)) {
+            $this->sendMessage(
+                $chatId,
+                "❌ **اسم العائلة لا يطابق اسم عائلة الطالب.**
+تأكد من كتابة اسمك الكامل (الاسم + اسم العائلة) ومن الرقم الجامعي، أو تواصل مع إدارة شؤون الطلاب."
             );
             return;
         }
@@ -5425,15 +5482,15 @@ class TelegramBotHandler
 
         $this->sendMessage(
             $chatId,
-            "📌 **الخطوة 4 من 4 (الأخيرة):**\nيرجى إدخال **كلمة المرور** لحساب ولي الأمر (6 أحرف أو أرقام على الأقل):"
+            "📌 **الخطوة 4 من 4 (الأخيرة):**\nيرجى إدخال **كلمة المرور** لحساب ولي الأمر (8 أحرف أو أرقام على الأقل):"
         );
     }
 
     private function handleRegParentPassword($chatId, string $text)
     {
         $password = trim($text);
-        if (mb_strlen($password) < 6) {
-            $this->sendMessage($chatId, "⚠️ يجب ألا تقل كلمة المرور عن 6 خانات. يرجى إعادة الإدخال:");
+        if (mb_strlen($password) < 8) {
+            $this->sendMessage($chatId, "⚠️ يجب ألا تقل كلمة المرور عن 8 خانات. يرجى إعادة الإدخال:");
             return;
         }
 
