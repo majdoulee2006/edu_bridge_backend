@@ -353,16 +353,14 @@ class UnifiedAuthController extends Controller
     {
         $request->validate([
             'identifier'          => 'required|string',
-            'telegram_identifier' => 'required|string',
+            'telegram_identifier' => 'nullable|string',
             'role'                => 'nullable|string',
         ], [
-            'identifier.required'          => __('messages.identifier_required'),
-            'telegram_identifier.required' => __('messages.telegram_required'),
+            'identifier.required' => __('messages.identifier_required'),
         ]);
 
-        $input        = trim($request->identifier);
-        $telegramInput = trim($request->telegram_identifier);
-        $role         = $request->input('role', 'unified');
+        $input = trim($request->identifier);
+        $role  = $request->input('role', 'unified');
 
         // البحث عن المستخدم
         $user = User::where('email', $input)
@@ -401,50 +399,44 @@ class UnifiedAuthController extends Controller
             ], 403);
         }
 
-        // جلب Chat ID من التليجرام
-        $telegramService = app(\App\Services\TelegramService::class);
+        // الرمز يُرسل فقط إلى حساب تيليغرام المربوط مسبقاً بهذا الحساب (يربطه صاحبه من البوت بكلمة سره).
+        // لا نقبل أبداً معرّف تيليغرام قادماً من الطلب: وإلا يستطيع أي شخص يعرف الرقم الجامعي
+        // أن يربط حسابه هو ويستلم الرمز ويستولي على الحساب (ويستمر باستلام إشعاراته بعدها).
         $chatId = $user->telegram_chat_id;
 
         if (!$chatId) {
-            $foundId = $telegramService->findChatIdByUsername($telegramInput);
-            if ($foundId) {
-                $chatId = $foundId;
-                $user->update(['telegram_chat_id' => $chatId]);
-            } elseif (is_numeric($telegramInput)) {
-                $chatId = (int) $telegramInput;
-                $user->update(['telegram_chat_id' => $chatId]);
-            }
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.reset_telegram_not_linked'),
+            ], 422);
         }
 
         // توليد رمز OTP مكون من 6 أرقام
         $otp = (string) random_int(100000, 999999);
 
-        // حفظ الرمز في الجلسة
+        $sent = app(\App\Services\TelegramService::class)
+            ->sendOtpSync((int) $chatId, $otp, $user->full_name ?? '');
+
+        if (!$sent) {
+            // لا نُرجع الرمز في الجواب أبداً، ولا نفتح جلسة استعادة بدون رمز وصل فعلاً
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.otp_send_failed'),
+            ], 503);
+        }
+
+        // حفظ الرمز في الجلسة بعد نجاح الإرسال فقط
         session([
             'pwd_reset_user_id'    => $user->user_id,
             'pwd_reset_otp'        => $otp,
             'pwd_reset_expires_at' => now()->addMinutes(15)->timestamp,
             'pwd_reset_verified'   => false,
         ]);
-
-        // إرسال الرسالة عبر التليجرام
-        $sent = false;
-        if ($chatId) {
-            $sent = $telegramService->sendOtpSync((int) $chatId, $otp, $user->full_name ?? '');
-        }
-
-        if (!$sent) {
-            // في حال عدم توفر البوت أو عدم العثور على Chat ID، يتم إبلاغ المستخدم بضرورة بدء المحادثة مع البوت
-            return response()->json([
-                'success' => true,
-                'message' => __('messages.otp_generated_note', ['otp' => $otp]),
-                'chat_id' => $chatId
-            ]);
-        }
+        session()->forget('pwd_reset_attempts');
 
         return response()->json([
             'success' => true,
-            'message' => __('messages.otp_sent_success')
+            'message' => __('messages.otp_sent_success'),
         ]);
     }
 

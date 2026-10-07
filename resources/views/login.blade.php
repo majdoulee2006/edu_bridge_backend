@@ -440,13 +440,9 @@
                     </div>
 
                     <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">{{ __('messages.telegram_id_label') }}</label>
-                        <div class="input-group">
-                            <i class="fa-brands fa-telegram input-icon" style="color: #38bdf8;"></i>
-                            <input type="text" id="reset-telegram" class="form-control" placeholder="{{ __('messages.telegram_id_placeholder') }}" required>
-                        </div>
-                        <p style="font-size: 0.75rem; color: #71717a; margin-top: 0.4rem;">
-                            💡 {{ __('messages.telegram_otp_note') }}
+                        <p style="font-size: 0.8rem; color: #a1a1aa; margin: 0;">
+                            <i class="fa-brands fa-telegram" style="color: #38bdf8;"></i>
+                            {{ __('messages.reset_telegram_linked_note') }}
                         </p>
                     </div>
 
@@ -779,11 +775,10 @@
         // إرسال كود OTP عبر تليجرام
         async function submitSendOtp() {
             const identifier = document.getElementById('reset-identifier').value.trim();
-            const telegramIdentifier = document.getElementById('reset-telegram').value.trim();
             const btn = document.getElementById('btn-send-otp');
 
-            if (!identifier || !telegramIdentifier) {
-                showResetAlert(isEn ? 'Please fill in all required fields (ID/Phone and Telegram).' : 'يرجى ملء كافة الحقول المطلوبة (الرقم/الجوال ومعرف تليجرام).');
+            if (!identifier) {
+                showResetAlert(isEn ? 'Please enter your university ID or phone number.' : 'يرجى إدخال الرقم الجامعي أو رقم الجوال.');
                 return;
             }
 
@@ -803,7 +798,6 @@
                     },
                     body: JSON.stringify({
                         identifier: identifier,
-                        telegram_identifier: telegramIdentifier,
                         role: selectedRole
                     })
                 });
