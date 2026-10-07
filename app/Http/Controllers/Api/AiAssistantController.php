@@ -62,7 +62,7 @@ class AiAssistantController extends Controller
 
         return response()->json([
             'success' => true,
-            'reply'   => $this->sanitizer->sanitize($this->local->respond($message, $role, $data, $baseHttp), $role, $baseHttp),
+            'reply'   => $this->sanitizer->sanitize($this->local->respond($message, $role, $data, $baseHttp, (array) $request->input('history', [])), $role, $baseHttp),
             'source'  => 'local_engine',
         ]);
     }

@@ -87,6 +87,7 @@ class AiContextBuilder
         }
         $courseIds  = $courses->pluck('course_id')->unique()->values()->all();
         $out['courses'] = $courses->pluck('title')->unique()->values()->all();
+        $out['course_teachers'] = $this->safe(fn () => $this->courseTeachers($courseIds), []);
 
         // كل قسم معزول: فشل أحدها (عمود ناقص مثلاً) لا يُسقط بقية بيانات المستخدم
         $out['schedule']    = $this->safe(fn () => $this->studentSchedule($user, $student, $courseIds), []);
@@ -96,6 +97,36 @@ class AiContextBuilder
         $out['exams']       = $this->safe(fn () => $this->upcomingExams($courseIds), []);
 
         return $out;
+    }
+
+    /**
+     * [مقرر => [أسماء الأساتذة]] للمقررات المعطاة.
+     *
+     * @return array<string, string[]>
+     */
+    protected function courseTeachers(array $courseIds): array
+    {
+        if (empty($courseIds)) {
+            return [];
+        }
+
+        $rows = DB::table('courses as c')
+            ->leftJoin('course_teachers as ct', 'ct.course_id', '=', 'c.course_id')
+            ->leftJoin('teachers as t', 't.teacher_id', '=', 'ct.teacher_id')
+            ->leftJoin('users as u', 'u.user_id', '=', 't.user_id')
+            ->whereIn('c.course_id', $courseIds)
+            ->orderBy('c.title')
+            ->get(['c.title', 'u.full_name']);
+
+        $map = [];
+        foreach ($rows as $r) {
+            $map[$r->title] ??= [];
+            if ($r->full_name && !in_array($r->full_name, $map[$r->title], true)) {
+                $map[$r->title][] = $r->full_name;
+            }
+        }
+
+        return $map;
     }
 
     protected function studentSchedule($user, $student, array $courseIds): array
@@ -289,12 +320,14 @@ class AiContextBuilder
         $children = [];
         foreach ($students as $s) {
             $att = $this->safe(fn () => $this->attendanceByCourse($s->student_id, [], $semId), []);
+            $childCourseIds = DB::table('enrollments')->where('student_id', $s->student_id)->pluck('course_id')->unique()->values()->all();
             $children[] = [
                 'name'       => $s->full_name,
                 'code'       => $s->student_code,
                 'level'      => $s->level,
                 'branch'     => $s->branch,
                 'attendance' => $att,
+                'course_teachers' => $this->safe(fn () => $this->courseTeachers($childCourseIds), []),
                 'average'    => $this->safe(fn () => StudentAcademicService::getAcademicSummary($s->student_id)['average'] ?? null, null),
             ];
         }
@@ -370,6 +403,9 @@ class AiContextBuilder
                 $t .= '  * ' . $c['title'] . ': ' . ($c['total'] ?? 'لم تُرصد') . " - {$c['status']}\n";
             }
         }
+        foreach ($d['course_teachers'] ?? [] as $title => $teachers) {
+            $t .= "- مدرّس {$title}: " . ($teachers ? implode('، ', $teachers) : 'غير محدد') . "\n";
+        }
         foreach ($d['assignments'] ?? [] as $a) {
             $t .= "- واجب غير مسلَّم: {$a['title']} ({$a['course']}) آخر موعد {$a['due']}\n";
         }
@@ -379,6 +415,9 @@ class AiContextBuilder
         foreach ($d['children'] ?? [] as $c) {
             $abs = $c['attendance']['absent'] ?? 0;
             $tot = $c['attendance']['total'] ?? 0;
+            foreach ($c['course_teachers'] ?? [] as $title => $teachers) {
+                $t .= "- مقرر {$c['name']}: {$title} (المدرّس: " . ($teachers ? implode('، ', $teachers) : 'غير محدد') . ")\n";
+            }
             $t .= "- الابن: {$c['name']} (كود {$c['code']}) {$c['level']}: أيام غياب غير معذورة " . ($c['attendance']['absence_days'] ?? 0) . "، غياب {$abs} من {$tot} جلسة، المعدل " . ($c['average'] ?? 'غير متوفر') . "\n";
         }
         if (isset($d['pending_grading'])) {
