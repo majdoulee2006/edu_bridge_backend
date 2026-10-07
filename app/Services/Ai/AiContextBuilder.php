@@ -409,7 +409,7 @@ class AiContextBuilder
         $out  = ['department' => $dept['name']];
 
         if ($dept['id']) {
-            $out += $this->safe(fn () => $this->departmentOverview((int) $dept['id'], (string) $dept['name']), []);
+            $out += $this->safe(fn () => $this->departmentOverview((int) $dept['id'], (string) $dept['name'], (int) $user->user_id), []);
         }
 
         return $out;
@@ -421,7 +421,7 @@ class AiContextBuilder
      *
      * @return array<string, mixed>
      */
-    protected function departmentOverview(int $deptId, string $deptName): array
+    protected function departmentOverview(int $deptId, string $deptName, int $headUserId = 0): array
     {
         $programs = DB::table('programs')->where('department_id', $deptId)->orderBy('name')->pluck('name', 'id');
         $progIds  = $programs->keys()->all();
@@ -441,6 +441,7 @@ class AiContextBuilder
             })
             ->orderBy('u.full_name')
             ->get(['t.teacher_id', 'u.full_name', 't.advisor_branch', 't.advisor_year']);
+        $teacherIds = $teachers->pluck('teacher_id')->all();
 
         $coursesByTeacher = DB::table('course_teachers as ct')
             ->join('courses as c', 'c.course_id', '=', 'ct.course_id')
@@ -466,10 +467,11 @@ class AiContextBuilder
                 }
             })
             ->orderBy('p.name')->orderBy('s.level')->orderBy('u.full_name')
-            ->get(['s.student_id', 'u.full_name', 's.level', 'p.name as program']);
+            ->get(['s.student_id', 's.user_id', 'u.full_name', 's.level', 'p.name as program']);
 
+        $studentRows = $students->unique('student_id')->values();
         $groups = [];
-        foreach ($students->unique('student_id') as $r) {
+        foreach ($studentRows as $r) {
             $key = trim(($r->program ?: 'دورة غير محددة') . ($r->level ? ' - ' . $r->level : ''));
             $groups[$key][] = $r->full_name;
         }
@@ -483,8 +485,201 @@ class AiContextBuilder
             'dept_teachers'  => $teacherList,
             'teachers_count' => count($teacherList),
             'dept_students'  => $dept_students,
-            'students_count' => $students->pluck('student_id')->unique()->count(),
+            'students_count' => $studentRows->count(),
+            'student_index'  => $studentRows->take(300)->map(fn ($r) => [
+                'id' => $r->student_id, 'name' => $r->full_name, 'program' => $r->program, 'level' => $r->level,
+            ])->all(),
+        ]
+            + $this->safe(fn () => $this->departmentAbsence($studentRows), [])
+            + $this->safe(fn () => $this->departmentPending($studentRows, $teacherIds, $deptId, $headUserId), [])
+            + $this->safe(fn () => $this->departmentCurriculum($progIds), [])
+            + $this->safe(fn () => $this->departmentPerformance($studentRows), []);
+    }
+
+    /**
+     * غياب طلاب القسم (أيام غياب غير معذورة، نفس أساس AbsenceWarningService) ومستويات الإنذار.
+     *
+     * @return array<string, mixed>
+     */
+    protected function departmentAbsence($studentRows): array
+    {
+        $ids = $studentRows->pluck('student_id')->all();
+        if (empty($ids)) {
+            return [];
+        }
+
+        $days = DB::table('attendance')
+            ->whereIn('student_id', $ids)
+            ->where('status', 'absent')
+            ->where('excuse_status', '!=', 'approved')
+            ->whereNotNull('attendance_date')
+            ->groupBy('student_id')
+            ->selectRaw('student_id, COUNT(DISTINCT attendance_date) as d')
+            ->pluck('d', 'student_id');
+
+        $list   = [];
+        $counts = ['first' => 0, 'second' => 0, 'final' => 0];
+        foreach ($studentRows as $r) {
+            $d = (int) ($days[$r->student_id] ?? 0);
+            if ($d <= 0) {
+                continue;
+            }
+            $level = AbsenceWarningService::levelFor($d);
+            if ($level) {
+                $counts[$level]++;
+            }
+            $list[] = [
+                'name'  => $r->full_name,
+                'group' => trim(($r->program ?: '') . ($r->level ? ' - ' . $r->level : '')),
+                'days'  => $d,
+                'level' => $level,
+            ];
+        }
+        usort($list, fn ($a, $b) => $b['days'] <=> $a['days']);
+
+        return ['absence_list' => array_slice($list, 0, 60), 'warning_counts' => $counts];
+    }
+
+    /**
+     * ما ينتظر قرار رئيس القسم: إجازات وطلبات خدمات بحالة pending_hod وطلبات لقاء أولياء الأمور.
+     *
+     * @return array<string, mixed>
+     */
+    protected function departmentPending($studentRows, array $teacherIds, int $deptId, int $headUserId): array
+    {
+        $studentIds = $studentRows->pluck('student_id')->all();
+        $userIds    = $studentRows->pluck('user_id')->all();
+
+        $leaves = DB::table('leave_requests')->where('status', 'pending_hod')
+            ->where(function ($w) use ($userIds, $teacherIds) {
+                $w->whereIn('student_id', $userIds ?: [0])->orWhereIn('teacher_id', $teacherIds ?: [0]);
+            })->count();
+
+        $requestsQ = DB::table('student_requests as r')
+            ->join('students as s', 's.student_id', '=', 'r.student_id')
+            ->join('users as u', 'u.user_id', '=', 's.user_id')
+            ->where('r.status', 'pending_hod')
+            ->whereIn('r.student_id', $studentIds ?: [0]);
+        $requests = (clone $requestsQ)->orderByDesc('r.created_at')->limit(5)->get(['r.type', 'u.full_name', 'r.created_at'])
+            ->map(fn ($r) => ['type' => $r->type, 'student' => $r->full_name, 'date' => substr((string) $r->created_at, 0, 10)])->all();
+
+        $meetings = DB::table('parent_meeting_requests')->where('status', 'pending')
+            ->where(function ($w) use ($deptId, $headUserId) {
+                $w->where('department_id', $deptId);
+                if ($headUserId) {
+                    $w->orWhere('target_user_id', $headUserId);
+                }
+            })->count();
+
+        return [
+            'pending' => [
+                'leaves'          => $leaves,
+                'requests'        => $requestsQ->count(),
+                'recent_requests' => $requests,
+                'meetings'        => $meetings,
+            ],
         ];
+    }
+
+    /**
+     * مقررات القسم (من ربط المقرر بدورات القسم) مع الأساتذة، وجدولها وامتحاناتها القادمة.
+     *
+     * @return array<string, mixed>
+     */
+    protected function departmentCurriculum(array $progIds): array
+    {
+        if (empty($progIds)) {
+            return [];
+        }
+
+        $rows = DB::table('courses as c')
+            ->join('course_program as cp', 'cp.course_id', '=', 'c.course_id')
+            ->join('programs as p', 'p.id', '=', 'cp.program_id')
+            ->whereIn('cp.program_id', $progIds)
+            ->get(['c.course_id', 'c.title', 'c.year', 'p.name as program']);
+        if ($rows->isEmpty()) {
+            return [];
+        }
+        $courseIds = $rows->pluck('course_id')->unique()->values()->all();
+
+        $teachers = DB::table('course_teachers as ct')
+            ->join('teachers as t', 't.teacher_id', '=', 'ct.teacher_id')
+            ->join('users as u', 'u.user_id', '=', 't.user_id')
+            ->whereIn('ct.course_id', $courseIds)
+            ->get(['ct.course_id', 'u.full_name'])
+            ->groupBy('course_id')->map(fn ($g) => $g->pluck('full_name')->unique()->values()->all());
+
+        $courses = [];
+        $progOf  = [];
+        foreach ($rows as $r) {
+            $courses[$r->course_id] ??= ['title' => $r->title, 'year' => $r->year !== null ? (int) $r->year : null, 'programs' => [], 'teachers' => $teachers[$r->course_id] ?? []];
+            if (!in_array($r->program, $courses[$r->course_id]['programs'], true)) {
+                $courses[$r->course_id]['programs'][] = $r->program;
+            }
+            $progOf[$r->course_id] = $courses[$r->course_id]['programs'];
+        }
+
+        $schedule = \App\Models\Schedule::whereIn('course_id', $courseIds)->get()->map(fn ($s) => [
+            'day'      => $this->dayAr($s->day),
+            'order'    => self::DAY_ORDER[strtolower((string) $s->day)] ?? 9,
+            'start'    => substr((string) $s->start_time, 0, 5),
+            'end'      => substr((string) $s->end_time, 0, 5),
+            'room'     => $s->room ?: null,
+            'course'   => $courses[$s->course_id]['title'] ?? 'مقرر',
+            'year'     => $courses[$s->course_id]['year'] ?? null,
+            'programs' => $courses[$s->course_id]['programs'] ?? [],
+        ])->sortBy([['order', 'asc'], ['start', 'asc']])->values()->take(300)->all();
+
+        $exams = DB::table('exams as e')->whereIn('e.course_id', $courseIds)->where('e.exam_date', '>=', now())
+            ->orderBy('e.exam_date')->limit(15)->get(['e.course_id', 'e.exam_name', 'e.exam_date', 'e.room'])
+            ->map(fn ($e) => [
+                'name'     => $e->exam_name, 'date' => substr((string) $e->exam_date, 0, 16), 'room' => $e->room ?: null,
+                'course'   => $courses[$e->course_id]['title'] ?? 'مقرر',
+                'programs' => $courses[$e->course_id]['programs'] ?? [],
+            ])->all();
+
+        return ['dept_courses' => array_values($courses), 'dept_schedule' => $schedule, 'dept_exams' => $exams];
+    }
+
+    /**
+     * أداء القسم: نسبة الحضور لكل دورة، ومتوسط المعدل (إن كان عدد الطلاب معقولاً).
+     *
+     * @return array<string, mixed>
+     */
+    protected function departmentPerformance($studentRows): array
+    {
+        $ids = $studentRows->pluck('student_id')->all();
+        if (empty($ids)) {
+            return [];
+        }
+
+        $att = DB::table('attendance as a')
+            ->join('students as s', 's.student_id', '=', 'a.student_id')
+            ->leftJoin('programs as p', 'p.id', '=', 's.program_id')
+            ->whereIn('a.student_id', $ids)
+            ->groupBy('p.name')
+            ->selectRaw("p.name as program, COUNT(*) as total, SUM(CASE WHEN a.status IN ('present','late') THEN 1 ELSE 0 END) as present")
+            ->get()
+            ->mapWithKeys(fn ($r) => [$r->program ?: 'دورة غير محددة' => [
+                'sessions' => (int) $r->total,
+                'rate'     => $r->total > 0 ? round($r->present / $r->total * 100, 1) : null,
+            ]])->all();
+
+        $avg = [];
+        if ($studentRows->count() <= 60) {
+            $sums = [];
+            foreach ($studentRows as $r) {
+                $a = (float) (StudentAcademicService::getAcademicSummary($r->student_id)['average'] ?? 0);
+                if ($a > 0) {
+                    $sums[$r->program ?: 'دورة غير محددة'][] = $a;
+                }
+            }
+            foreach ($sums as $prog => $list) {
+                $avg[$prog] = round(array_sum($list) / count($list), 1);
+            }
+        }
+
+        return ['attendance_by_program' => $att, 'average_by_program' => $avg];
     }
 
     /** @return array<string, mixed> */
@@ -585,6 +780,24 @@ class AiContextBuilder
         foreach ($d['dept_teachers'] ?? [] as $x) {
             $t .= "  * أستاذ {$x['name']}: " . ($x['courses'] ? implode('، ', array_slice($x['courses'], 0, 8)) : 'بلا مقررات')
                 . (!empty($x['advisor']) ? " (مرشد دورة {$x['advisor']})" : '') . "\n";
+        }
+        if (!empty($d['warning_counts'])) {
+            $w = $d['warning_counts'];
+            $t .= "- إنذارات طلاب القسم (حسب أيام الغياب غير المعذورة): أول {$w['first']}، ثانٍ {$w['second']}، نهائي {$w['final']}\n";
+            foreach (array_slice($d['absence_list'] ?? [], 0, 10) as $x) {
+                $t .= "  * {$x['name']} ({$x['group']}): {$x['days']} يوم غياب" . ($x['level'] ? ' — إنذار ' . ['first' => 'أول', 'second' => 'ثانٍ', 'final' => 'نهائي'][$x['level']] : '') . "\n";
+            }
+        }
+        if (isset($d['pending'])) {
+            $p = $d['pending'];
+            $t .= "- بانتظار قراره: إجازات {$p['leaves']}، طلبات خدمات {$p['requests']}، طلبات لقاء أولياء أمور {$p['meetings']}\n";
+        }
+        foreach ($d['attendance_by_program'] ?? [] as $prog => $x) {
+            $t .= "- حضور دورة {$prog}: " . ($x['rate'] ?? 'غير متوفر') . "% من {$x['sessions']} جلسة"
+                . (isset($d['average_by_program'][$prog]) ? "، متوسط المعدل {$d['average_by_program'][$prog]}" : '') . "\n";
+        }
+        foreach ($d['dept_exams'] ?? [] as $e) {
+            $t .= "- امتحان قادم بالقسم: {$e['course']} ({$e['name']}) {$e['date']}\n";
         }
         foreach ($d['dept_students'] ?? [] as $group => $info) {
             $t .= "  * طلاب دورة {$group}: {$info['count']}" . ($info['count'] <= 15 ? ' (' . implode('، ', $info['names']) . ')' : '') . "\n";
