@@ -682,17 +682,19 @@ class TelegramBotHandler
             $this->handleAffairsBroadcastStart($user, $chatId);
             $this->answerCallbackQuery($queryId);
         } elseif (str_starts_with($data, 'affairs_approve_leave_')) {
+            // الصيغة: affairs_approve_leave_{جدول}_{رقم} والجدول نفسه يحوي شرطة سفلية (leave_requests / absence_requests)
             $payload = str_replace('affairs_approve_leave_', '', $data);
-            $parts = explode('_', $payload, 2);
-            $src = $parts[0] ?? 'leave_requests';
-            $id = (int)($parts[1] ?? 0);
+            preg_match('/^(leave_requests|absence_requests)_(\d+)$/', $payload, $m);
+            $src = $m[1] ?? 'leave_requests';
+            $id = (int) ($m[2] ?? 0);
             $this->handleAffairsApproveLeave($user, $chatId, $src, $id);
             $this->answerCallbackQuery($queryId);
         } elseif (str_starts_with($data, 'affairs_reject_leave_')) {
+            // الصيغة: affairs_reject_leave_{جدول}_{رقم} والجدول نفسه يحوي شرطة سفلية (leave_requests / absence_requests)
             $payload = str_replace('affairs_reject_leave_', '', $data);
-            $parts = explode('_', $payload, 2);
-            $src = $parts[0] ?? 'leave_requests';
-            $id = (int)($parts[1] ?? 0);
+            preg_match('/^(leave_requests|absence_requests)_(\d+)$/', $payload, $m);
+            $src = $m[1] ?? 'leave_requests';
+            $id = (int) ($m[2] ?? 0);
             $this->handleAffairsRejectLeave($user, $chatId, $src, $id);
             $this->answerCallbackQuery($queryId);
         } elseif (str_starts_with($data, 'affairs_approve_photo_')) {

@@ -790,7 +790,8 @@ trait TeacherHandlers
         $dept = $user->department;
         $hodUserIds = DB::table('users')->where('role_id', 5);
         if ($dept) {
-            $hodUserIds->where('department', 'LIKE', "%{$dept}%");
+            // رئيس نفس القسم فقط (مطابقة دقيقة): LIKE كان يُبلغ رؤساء أقسام أسماؤها تحتوي اسم قسم المعلم
+            $hodUserIds->where('department', $dept);
         }
         $recipients = $hodUserIds->pluck('user_id');
 
