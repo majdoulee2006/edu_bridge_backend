@@ -1873,8 +1873,51 @@ class AffairsWebController extends Controller
         return back()->with('success', 'تم تفعيل ' . $target->name . ' وتحديث تواريخه بنجاح!');
     }
 
+    /**
+     * ترفيع مجموعة طلاب إلى مستوى جديد: تحديث المستوى والسنة الدراسية وتسجيل المواد وإشعار الطالب.
+     * كل طالب بعملية (transaction) مستقلة حتى لا يبقى طالب بنصف ترفيع، والإشعارات تُرسل بعد نجاح الحفظ.
+     * (يستخدمها المساران: /students/promote و /promote/year2 حتى لا يختلف سلوكهما.)
+     */
+    private function promoteStudentsTo($students, string $targetLevel): int
+    {
+        $count = 0;
+
+        foreach ($students as $st) {
+            try {
+                DB::transaction(function () use ($st, $targetLevel) {
+                    $st->update(['level' => $targetLevel, 'updated_at' => now()]);
+                    DB::table('users')->where('user_id', $st->user_id)->update(['academic_year' => $targetLevel]);
+                    Student::autoEnrollCourses($st->student_id);
+                });
+            } catch (\Throwable $e) {
+                Log::error('Student promotion failed', ['student_id' => $st->student_id, 'error' => $e->getMessage()]);
+                continue;
+            }
+
+            $title   = 'مبروك! تم الترفيع الأكاديمي 🎓';
+            $message = "قام موظف الشؤون بترفيعك بنجاح إلى ({$targetLevel}) وتسجيل جميع المواد المقررة لك.";
+
+            Notification::create([
+                'user_id'   => $st->user_id,
+                'sender_id' => auth()->id(),
+                'title'     => $title,
+                'message'   => $message,
+                'type'      => 'academic',
+                'category'  => 'academic',
+                'is_read'   => 0,
+            ]);
+            \App\Services\FcmService::sendToUser($st->user_id, $title, $message, ['type' => 'academic']);
+
+            $count++;
+        }
+
+        return $count;
+    }
+
     public function promoteStudentsWeb(Request $request)
     {
+        $request->validate(['target_level' => 'nullable|string|max:50']);
+
         $query = Student::query();
 
         if ($request->filled('student_ids')) {
@@ -1888,28 +1931,10 @@ class AffairsWebController extends Controller
             });
         }
 
-        $students = $query->get();
         $targetLevel = $request->input('target_level', 'السنة الثانية');
-        $count = 0;
+        $count = $this->promoteStudentsTo($query->get(), $targetLevel);
 
-        foreach ($students as $st) {
-            $st->update(['level' => $targetLevel, 'updated_at' => now()]);
-            DB::table('users')->where('user_id', $st->user_id)->update(['academic_year' => $targetLevel]);
-            Student::autoEnrollCourses($st->student_id);
-
-            // إرسال إشعار للطالب بالترفيع
-            Notification::create([
-                'user_id'   => $st->user_id,
-                'title'     => 'مبروك! تم الترفيع الأكاديمي 🎓',
-                'message'   => "قام موظف الشؤون بترفيعك بنجاح إلى ({$targetLevel}) وتسجيل جميع المواد المقررة لك.",
-                'type'      => 'academic',
-                'category'  => 'academic',
-                'is_read'   => 0,
-            ]);
-            \App\Services\FcmService::sendToUser($st->user_id, 'مبروك! تم الترفيع الأكاديمي 🎓', "قام موظف الشؤون بترفيعك بنجاح إلى ({$targetLevel}) وتسجيل جميع المواد المقررة لك.", ['type' => 'academic']);
-
-            $count++;
-        }
+        \App\Models\UserActivity::log('ترفيع أكاديمي', "تم ترفيع {$count} طالباً إلى ({$targetLevel})");
 
         return back()->with('success', "تم ترفيع {$count} طالباً بنجاح إلى {$targetLevel} وتسجيل موادهم تلقائياً.");
     }
@@ -3868,7 +3893,7 @@ class AffairsWebController extends Controller
             \Illuminate\Support\Facades\DB::table('semesters')->update(['is_active' => false]);
             
             $existing = \Illuminate\Support\Facades\DB::table('semesters')
-                        ->where('semester_name', $request->semester_name)
+                        ->where('name', $request->semester_name)
                         ->first();
                         
             if ($existing) {
@@ -3878,13 +3903,16 @@ class AffairsWebController extends Controller
                         'start_date' => $request->start_date,
                         'end_date' => $request->end_date,
                         'is_active' => true,
+                        'updated_at' => now(),
                     ]);
             } else {
                 \Illuminate\Support\Facades\DB::table('semesters')->insert([
-                    'semester_name' => $request->semester_name,
+                    'name' => $request->semester_name,
                     'start_date' => $request->start_date,
                     'end_date' => $request->end_date,
                     'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
         });
@@ -3894,24 +3922,16 @@ class AffairsWebController extends Controller
 
     public function promoteYear2(Request $request)
     {
-        $students = \App\Models\Student::whereIn('level', ['السنة الأولى', 'أولى', '1'])
-                            ->orWhereNull('level')->orWhere('level', '')->get();
-                            
-        foreach ($students as $student) {
-            $student->update(['level' => 'السنة الثانية']);
-            
-            \App\Models\Notification::create([
-                'user_id'    => $student->user_id,
-                'sender_id'  => auth()->id(),
-                'title'      => 'ترقية أكاديمية 🎓',
-                'message'    => 'تم ترفيعك بنجاح إلى السنة الثانية. تهانينا!',
-                'type'       => 'academic_promotion',
-                'category'   => 'academic',
-                'is_read'    => false,
-            ]);
-        }
+        // نفس منطق /students/promote (المستوى + السنة الدراسية + تسجيل المواد + الإشعارات)
+        $students = Student::where(function ($q) {
+            $q->whereIn('level', ['السنة الأولى', 'أولى', '1'])->orWhereNull('level')->orWhere('level', '');
+        })->get();
 
-        return back()->with('success', 'تم ترفيع جميع طلاب السنة الأولى بنجاح إلى السنة الثانية');
+        $count = $this->promoteStudentsTo($students, 'السنة الثانية');
+
+        \App\Models\UserActivity::log('ترفيع أكاديمي', "تم ترفيع {$count} طالباً من السنة الأولى إلى السنة الثانية");
+
+        return back()->with('success', "تم ترفيع {$count} طالباً من السنة الأولى إلى السنة الثانية وتسجيل موادهم.");
     }
 }
 
