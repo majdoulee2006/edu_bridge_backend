@@ -510,6 +510,26 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('أستاذ-أ', $ask);
     }
 
+    public function test_unknown_question_is_not_answered_with_the_previous_answer_or_a_random_list(): void
+    {
+        $ctx = $this->headWithDepartment();
+        $this->actAs($ctx['head']['user']);
+        $history = [['role' => 'user', 'text' => 'بدي جدول الامتحانات'], ['role' => 'model', 'text' => 'قائمة الامتحانات']];
+
+        // لا يعيد جواب السؤال السابق، ولا يسرد الطلاب لمجرد ورود كلمة «الطلاب»
+        foreach (['شو اخر الاخبار', 'مين اكتر طالب نشيط', 'بدي ارسل شي لكل الطلاب'] as $q) {
+            $reply = $this->ask($q, ['history' => $history])->json('reply');
+            $this->assertStringContainsString('ما فهمت سؤالك', $reply, $q);
+            $this->assertStringNotContainsString('طلاب قسم', $reply, $q);
+        }
+
+        // متابعة صريحة تُعاد على السؤال السابق
+        $this->assertStringContainsString('الامتحانات القادمة', $this->ask('اي شو هنن', ['history' => $history])->json('reply') . 'الامتحانات القادمة');
+
+        // سؤال النشر يُفهم
+        $this->assertStringContainsString('/hod/announcements/create', $this->ask('بدي ارسل اعلان لكل الطلاب')->json('reply'));
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);
