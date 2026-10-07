@@ -35,6 +35,10 @@ class LocalKnowledgeEngine
             return "يا أهلاً وسهلاً بك! ❤️ أنا EduBridge AI، جاهز أساعدك بأي استفسار عن المنظومة" . $this->hintFor($role) . ' 😊';
         }
 
+        if ($this->has($q, ['شو بتعرف', 'شو بتقدر', 'شو فيني', 'شو اسأل', 'شو أسأل', 'شو بسألك', 'ساعدني', 'مساعدة', 'اسئلة', 'أسئلة', 'شو بتساعد', 'شو بتعمل', 'help'])) {
+            return $this->helpAnswer($role);
+        }
+
         if ($this->has($q, ['مين انا', 'من انا', 'مين أنا', 'من أنا', 'شو اسمي', 'معلوماتي', 'بياناتي', 'حسابي'])) {
             return $this->whoAmIAnswer($role, $data);
         }
@@ -406,17 +410,8 @@ class LocalKnowledgeEngine
         $dept = $data['department'];
 
         // المرشدون (مربو الدورات)
-        if ($this->has($q, ['مرشد', 'مربي', 'مربّي', 'مرشدين', 'مربين'])) {
-            $advisors = array_values(array_filter($data['dept_teachers'] ?? [], fn ($t) => !empty($t['advisor'])));
-            if (empty($advisors)) {
-                return "🧭 لا يوجد مرشدو دورات معيّنون في قسم {$dept} حالياً. التعيين من **إدارة الحسابات** (`/hod/accounts`).";
-            }
-            $out = "🧭 **مرشدو الدورات في قسم {$dept}:**\n\n";
-            foreach ($advisors as $t) {
-                $out .= "• **{$t['name']}** — {$t['advisor']}\n";
-            }
-
-            return $out;
+        if ($this->has($q, ['مرشد', 'مربي', 'مربّي', 'مرشدين', 'مربين', 'مشرف', 'المشرف', 'مشرفين', 'مشرفة', 'مسؤول الدورة', 'مسوول الدورة'])) {
+            return $this->advisorsByProgramAnswer($data);
         }
 
         // الأساتذة
@@ -465,13 +460,76 @@ class LocalKnowledgeEngine
                         $count += $info['count'];
                     }
                 }
-                $out .= "• **{$p}** — {$count} طالباً\n";
+                $sup = [];
+                foreach ($data['dept_teachers'] ?? [] as $t) {
+                    if (!empty($t['advisor']) && str_starts_with($t['advisor'], $p)) {
+                        $sup[] = $t['name'] . ' (' . trim(substr($t['advisor'], strlen($p)), ' -') . ')';
+                    }
+                }
+                $out .= "• **{$p}** — {$count} طالباً" . ($sup ? "\n   المشرفون: " . implode('، ', $sup) : '') . "\n";
             }
 
-            return $out;
+            return $out . "\nاسألني \"مين المشرف لكل دورة\" لعرض الدورات التي بلا مشرف.";
         }
 
         return null;
+    }
+
+    /**
+     * مشرف (مرشد/مربي) كل دورة وسنة في قسم رئيس القسم، مع الإشارة للدورات التي بلا مشرف.
+     */
+    protected function advisorsByProgramAnswer(array $data): string
+    {
+        $dept = $data['department'];
+
+        // [دورة => [سنة => [أسماء المشرفين]]] انطلاقاً من مجموعات الطلاب ومن تعيينات المرشدين
+        $map = [];
+        $add = function (string $label) use (&$map) {
+            [$prog, $year] = array_pad(array_map('trim', explode(' - ', $label, 2)), 2, 'غير محددة');
+            $map[$prog][$year] ??= [];
+
+            return [$prog, $year];
+        };
+        foreach (array_keys($data['dept_students'] ?? []) as $label) {
+            $add($label);
+        }
+        foreach ($data['dept_teachers'] ?? [] as $t) {
+            if (!empty($t['advisor'])) {
+                [$prog, $year] = $add($t['advisor']);
+                $map[$prog][$year][] = $t['name'];
+            }
+        }
+
+        if (empty($map)) {
+            return "🧭 لا توجد دورات أو مشرفون مسجلون في قسم {$dept} حالياً.";
+        }
+
+        ksort($map);
+        $out = "🧭 **مشرفو الدورات في قسم {$dept}:**\n";
+        foreach ($map as $prog => $years) {
+            $out .= "\n🎓 **دورة {$prog}:**\n";
+            ksort($years);
+            foreach ($years as $year => $names) {
+                $out .= "• {$year}: " . ($names ? '**' . implode('، ', $names) . '**' : '⚠️ بلا مشرف') . "\n";
+            }
+        }
+
+        return $out . "\nلتعيين أو تغيير مشرف: **إدارة الحسابات** (`/hod/accounts`).";
+    }
+
+    protected function helpAnswer(string $role): string
+    {
+        $lists = [
+            'hod' => ['شو عندي أساتذة بالقسم؟', 'كم طالب عندي؟', 'مين طلاب القسم؟', 'شو دورات القسم؟', 'مين المشرف لكل دورة؟', 'كيف أعدّل جدول الامتحانات؟', 'كيف أبت بطلبات الإجازات؟', 'شو نظام الإنذارات؟', 'كيف أنشر إعلان؟', 'مين انا؟'],
+            'teacher' => ['شو جدولي؟', 'شو الدورات اللي بعطيها؟', 'اي سنين بعطي؟', 'شو المواد اللي بعطيها بالسنة الأولى؟', 'مين الطلاب اللي بعطيهم؟', 'هل أنا مشرف دورة؟', 'كم تسليم بانتظار التصحيح؟', 'كيف أبدأ جلسة حضور؟', 'شو نظام الإنذارات؟'],
+            'parent' => ['مين ابني؟', 'شو المواد اللي عندو؟', 'مين بيعطيه؟', 'كم غياب ابني؟', 'شو علامات ابني؟', 'كيف أقدّم إذن غياب؟', 'كيف أحجز موعد مع الإدارة؟'],
+            'student' => ['شو جدولي؟', 'كم غيابي؟', 'شو علاماتي؟', 'شو واجباتي؟', 'متى امتحاناتي؟', 'مين بيعطيني؟', 'كيف أطلب إعادة تعيين الجهاز؟', 'كيف أقدّم عذر طبي؟'],
+            'affairs' => ['كم طلب معلق عندنا؟', 'كيف أعيد تعيين جهاز طالب؟', 'كيف أصدّر كشف علامات؟', 'كيف أرقّي الطلاب؟', 'كيف أفعّل فصل دراسي؟'],
+            'admin' => ['كيف أنشئ حساب؟', 'وين سجلات النشاط؟', 'كيف أعيّن رئيس قسم؟'],
+        ];
+
+        return "💡 **أسئلة تقدر تسألني إياها (" . AiRole::title($role) . "):**\n\n• " . implode("\n• ", $lists[$role] ?? $lists['student'])
+            . "\n\nاكتبها بصيغتك، وأنا أجيبك من بياناتك الحقيقية.";
     }
 
     protected function teacherStudentsAnswer(array $data): ?string

@@ -376,6 +376,13 @@ class AiAssistantTest extends TestCase
         $this->assertStringNotContainsString('طالب-قسم-آخر', $students);
 
         $this->assertStringContainsString('أستاذ-القسم', $this->ask('مين المرشدين')->json('reply'));
+
+        // «المشرف» = مرشد/مربي الدورة، مجمّعاً حسب الدورة والسنة
+        $sup = $this->ask('مين المشرف لكل دورة')->json('reply');
+        $this->assertMatchesRegularExpression('/دورة معلوماتية.*السنة الأولى: \*\*أستاذ-القسم\*\*/su', $sup);
+
+        // سؤال المساعدة يعرض أمثلة الدور
+        $this->assertStringContainsString('مين المشرف لكل دورة', $this->ask('شو أسأل')->json('reply'));
         $this->assertStringContainsString('معلوماتية', $this->ask('شو دورات القسم')->json('reply'));
     }
 
