@@ -97,7 +97,7 @@ class FcmService
         }
 
         $sentTelegram = false;
-        if (!empty($user->telegram_chat_id)) {
+        if (!empty($user->telegram_chat_id) && config('services.telegram.forward_notifications', true)) {
             try {
                 $tg = new \App\Services\TelegramService();
                 $cleanBody = strip_tags($body);
