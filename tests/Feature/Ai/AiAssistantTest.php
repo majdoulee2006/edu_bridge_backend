@@ -232,6 +232,26 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('/login', $reply);
     }
 
+    public function test_parent_asking_who_is_my_child_gets_the_children_list(): void
+    {
+        $mine   = $this->makeStudent(['full_name' => 'ابني-الحقيقي']);
+        $parent = $this->makeParent();
+        $this->linkParent($parent['user'], $mine['user']);
+        $this->makeStudent(['full_name' => 'طالب-غريب']);
+
+        $reply = $this->actAs($parent['user'])->ask('مين ابني')->assertOk()->json('reply');
+
+        $this->assertStringContainsString('ابني-الحقيقي', $reply);
+        $this->assertStringNotContainsString('طالب-غريب', $reply);
+    }
+
+    public function test_who_am_i_answers_for_any_role(): void
+    {
+        $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);
+
+        $this->assertStringContainsString('موظف-اختبار', $this->actAs($user)->ask('مين انا')->json('reply'));
+    }
+
     public function test_parent_context_contains_only_own_children(): void
     {
         $mine    = $this->makeStudent(['full_name' => 'ابني-الحقيقي']);

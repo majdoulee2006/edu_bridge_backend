@@ -35,6 +35,10 @@ class LocalKnowledgeEngine
             return "يا أهلاً وسهلاً بك! ❤️ أنا EduBridge AI، جاهز أساعدك بأي استفسار عن المنظومة" . $this->hintFor($role) . ' 😊';
         }
 
+        if ($this->has($q, ['مين انا', 'من انا', 'مين أنا', 'من أنا', 'شو اسمي', 'معلوماتي', 'بياناتي', 'حسابي'])) {
+            return $this->whoAmIAnswer($role, $data);
+        }
+
         if ($this->has($q, ['تسجيل دخول', 'تسجيل الدخول', 'رابط الدخول', 'رابط الويب', 'رابط تسجيل', 'بوابة الويب', 'بوابة الدخول', 'فوت عالويب', 'ادخل عالويب', 'موقع المعهد', 'رابط المنصة'])) {
             return $this->loginAnswer($role, $baseHttp);
         }
@@ -68,6 +72,9 @@ class LocalKnowledgeEngine
         }
         if ($this->has($q, ['حساب', 'كلمة سر', 'كلمة المرور', 'مستخدم'])) {
             return $this->accountsAnswer($role);
+        }
+        if ($role === 'parent' && $this->has($q, ['ابني', 'ابنتي', 'بنتي', 'ابنائي', 'أبنائي', 'اولادي', 'أولادي', 'مين ابن', 'ولدي', 'اولادك'])) {
+            return $this->childrenAnswer($data);
         }
         if ($this->has($q, ['نصيح', 'ادرس', 'مذاكر', 'تنظيم'])) {
             return "💡 **نصائح للتفوق:**\n\n1. قسّم الدراسة لفترات 45 دقيقة تتبعها 10 دقائق راحة.\n2. أنجز الواجبات فور صدورها.\n3. حافظ على الحضور لتجنب الإنذارات والحرمان.\n4. راسل مدرّس المقرر عند أي استفسار.";
@@ -250,6 +257,49 @@ class LocalKnowledgeEngine
             'admin'   => "👤 إنشاء/تعديل/تجميد الحسابات: `/admin/accounts`.",
             default   => "👤 تعدّل ملفك الشخصي وكلمة السر من **'الملف الشخصي'** في الشريط السفلي. لأي تعديل آخر على حسابك راجع شؤون الطلاب.",
         };
+    }
+
+    protected function childrenAnswer(array $data): string
+    {
+        if (empty($data['children'])) {
+            return "👨‍👩‍👧 لا يوجد أبناء مرتبطون بحسابك حتى الآن.
+
+لربط ابن بحسابك: **الإضافة (+)** في الصفحة الرئيسية أو `/parent/children` على الويب، أو راجع شؤون الطلاب.";
+        }
+
+        $out = "👨‍👩‍👧 **أبناؤك المرتبطون بحسابك (" . count($data['children']) . "):**
+
+";
+        foreach ($data['children'] as $c) {
+            $days = $c['attendance']['absence_days'] ?? 0;
+            $out .= "• **{$c['name']}**" . (!empty($c['code']) ? " — الرقم الجامعي {$c['code']}" : '')
+                . (!empty($c['level']) ? " — {$c['level']}" : '')
+                . (!empty($c['branch']) ? " — {$c['branch']}" : '')
+                . "
+   أيام الغياب غير المعذورة: {$days}، المعدل: " . ($c['average'] ?? 'غير متوفر') . "
+";
+        }
+
+        return $out . "
+اسألني عن غياب أبنائك أو علاماتهم لمزيد من التفاصيل.";
+    }
+
+    protected function whoAmIAnswer(string $role, array $data): string
+    {
+        $out = "👤 **" . ($data['name'] ?? 'مستخدم') . "** — " . AiRole::title($role) . "
+";
+        foreach (['code' => 'الرقم الجامعي', 'level' => 'السنة/المستوى', 'branch' => 'التخصص', 'semester' => 'الفصل النشط', 'department' => 'القسم'] as $k => $label) {
+            if (!empty($data[$k])) {
+                $out .= "• {$label}: {$data[$k]}
+";
+            }
+        }
+        if ($role === 'parent' && !empty($data['children'])) {
+            $out .= '• الأبناء: ' . implode('، ', array_column($data['children'], 'name')) . "
+";
+        }
+
+        return rtrim($out);
     }
 
     protected function loginAnswer(string $role, string $baseHttp): string
