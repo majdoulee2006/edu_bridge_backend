@@ -657,133 +657,13 @@ class AffairsController extends Controller
         ]);
         if ($v->fails()) return response()->json(['success' => false, 'message' => $v->errors()->first()], 422);
 
-        $leave = DB::table('leave_requests')->where('id', $id)->first();
-        if (!$leave) return response()->json(['success' => false, 'message' => 'الطلب غير موجود.'], 404);
+        // المسار الموحّد: القرار النهائي في مرحلة pending_affairs فقط، مع إشعار الطالب وولي الأمر ورئيس قسمه ومربي الدورة
+        $result = \App\Services\LeaveWorkflow::affairsRespond($request->user(), (int) $id, $request->status);
 
-        $status = $request->status;
-
-        DB::table('leave_requests')
-            ->where('id', $id)
-            ->update([
-                'status' => $status,
-                'updated_at' => now()
-            ]);
-
-        if ($leave->student_id) {
-            $title   = $status === 'approved' ? 'القرار النهائي: تمت الموافقة على الإجازة' : 'القرار النهائي: تم رفض الإجازة';
-            $message = $status === 'approved'
-                ? 'وافقت إدارة شؤون الطلاب نهائياً على طلب إجازتك بتاريخ ' . $leave->date . '.'
-                : 'نعتذر، تم رفض طلب إجازتك بتاريخ ' . $leave->date . ' من قِبل إدارة شؤون الطلاب.';
-
-            // 1. إشعار الطالب
-            DB::table('notifications')->insert([
-                'user_id'    => $leave->student_id,
-                'title'      => $title,
-                'message'    => $message,
-                'type'       => 'leave_request',
-                'related_id' => $id,
-                'is_read'    => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            \App\Services\FcmService::sendToUser(
-                $leave->student_id,
-                $title,
-                $message,
-                ['type' => 'leave_request', 'related_id' => (string) $id]
-            );
-
-            // 2. إشعار ولي الأمر — parent_students.parent_id/student_id هما FK على users.user_id، و $leave->student_id هو بالفعل user_id
-            $studentRecord = DB::table('students')->where('user_id', $leave->student_id)->first();
-            if ($studentRecord) {
-                $parentUserIds = DB::table('parent_students')
-                    ->join('parents', 'parent_students.parent_id', '=', 'parents.user_id')
-                    ->where('parent_students.student_id', $leave->student_id)
-                    ->pluck('parents.user_id');
-
-                $parentMsg = $status === 'approved'
-                    ? 'وافقت شؤون الطلاب نهائياً على طلب الإجازة المقدم بتاريخ ' . $leave->date . '.'
-                    : 'تم رفض طلب الإجازة المقدم بتاريخ ' . $leave->date . ' من قِبل شؤون الطلاب.';
-
-                foreach ($parentUserIds as $pId) {
-                    if ($pId) {
-                        DB::table('notifications')->insert([
-                            'user_id'    => $pId,
-                            'title'      => $title,
-                            'message'    => $parentMsg,
-                            'type'       => 'leave_request',
-                            'related_id' => $id,
-                            'is_read'    => 0,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                        \App\Services\FcmService::sendToUser($pId, $title, $parentMsg, ['type' => 'leave_request', 'related_id' => (string) $id]);
-                    }
-                }
-            }
-
-            // 3. إشعار رئيس القسم (HOD)
-            $headUserId = DB::table('heads')->value('user_id')
-                ?? DB::table('users')->where('role_id', 5)->value('user_id');
-
-            if ($headUserId) {
-                $studentName = DB::table('users')->where('user_id', $leave->student_id)->value('full_name') ?? 'الطالب';
-                $hodMsg = $status === 'approved'
-                    ? 'اعتمدت شؤون الطلاب إجازة الطالب ' . $studentName . ' بتاريخ ' . $leave->date
-                    : 'رفضت شؤون الطلاب إجازة الطالب ' . $studentName . ' بتاريخ ' . $leave->date;
-
-                DB::table('notifications')->insert([
-                    'user_id'    => $headUserId,
-                    'title'      => $title,
-                    'message'    => $hodMsg,
-                    'type'       => 'leave_request',
-                    'related_id' => $id,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser($headUserId, $title, $hodMsg, ['type' => 'leave_request', 'related_id' => (string) $id]);
-            }
-
-            // 4. إشعار لمربي الدورة (Advisor)
-            $studentInfo = DB::table('users')
-                ->join('students', 'users.user_id', '=', 'students.user_id')
-                ->where('users.user_id', $leave->student_id)
-                ->select('users.department', 'users.full_name', 'students.level')
-                ->first();
-            
-            if ($studentInfo) {
-                $advisor = DB::table('teachers')
-                    ->where('advisor_branch', $studentInfo->department)
-                    ->where('advisor_year', $studentInfo->level)
-                    ->first();
-                
-                if ($advisor && $advisor->user_id) {
-                    $advisorTitle = 'تحديث حالة تبرير غياب';
-                    $advisorMessage = $status === 'approved'
-                        ? 'قامت شؤون الطلاب بقبول تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leave->date . ')'
-                        : 'قامت شؤون الطلاب برفض تبرير غياب للطالب ' . $studentInfo->full_name . ' (عن تاريخ ' . $leave->date . ')';
-                    
-                    DB::table('notifications')->insert([
-                        'user_id'    => $advisor->user_id,
-                        'title'      => $advisorTitle,
-                        'message'    => $advisorMessage,
-                        'type'       => 'leave_request',
-                        'related_id' => $id,
-                        'is_read'    => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    \App\Services\FcmService::sendToUser(
-                        $advisor->user_id,
-                        $advisorTitle,
-                        $advisorMessage,
-                        ['type' => 'leave_request', 'related_id' => (string) $id]
-                    );
-                }
-            }
+        if (!$result['ok']) {
+            return $result['error'] === 'stage'
+                ? response()->json(['success' => false, 'message' => 'تم اتخاذ القرار في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون.'], 422)
+                : response()->json(['success' => false, 'message' => 'الطلب غير موجود.'], 404);
         }
 
         return response()->json(['success' => true, 'message' => 'تم تحديث حالة طلب الإجازة وإشعار جميع الأطراف المعنية.']);

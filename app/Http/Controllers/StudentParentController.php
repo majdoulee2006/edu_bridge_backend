@@ -395,79 +395,15 @@ class StudentParentController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
 
-        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
-        if (!$leaveRequest) {
-            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
-        }
+        // المسار الموحّد: ابنه فقط، ومرحلة pending_parent فقط (كان يُقبل الرد في أي مرحلة)
+        $result = \App\Services\LeaveWorkflow::parentRespond($request->user(), (int) $id, $request->status);
 
-        // leave_requests.student_id يحمل users.user_id للطالب
-        if (!$this->parentOwnsStudent($request, $leaveRequest->student_id, 'user')) {
-            return response()->json(['success' => false, 'message' => 'غير مصرح لك بالرد على هذا الطلب'], 403);
-        }
-
-        if ($request->status === 'approved') {
-            // ولي الأمر وافق → ينتقل لرئيس القسم
-            DB::table('leave_requests')
-                ->where('id', $id)
-                ->update(['status' => 'pending_hod', 'updated_at' => now()]);
-
-            $studentUser = DB::table('users')->where('user_id', $leaveRequest->student_id)->first();
-            $studentName = $studentUser->full_name ?? 'الطالب';
-
-            $headUserIds = DB::table('users')->where('role_id', 5)
-                ->pluck('user_id')
-                ->merge(DB::table('heads')->pluck('user_id'))
-                ->unique();
-
-            foreach ($headUserIds as $headUserId) {
-                $alreadyNotified = DB::table('notifications')
-                    ->where('user_id', $headUserId)
-                    ->where('type', 'leave_request')
-                    ->where('related_id', $id)
-                    ->exists();
-                if (!$alreadyNotified) {
-                    DB::table('notifications')->insert([
-                        'user_id'    => $headUserId,
-                        'title'      => 'طلب إجازة بانتظار موافقتك',
-                        'message'    => 'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
-                        'type'       => 'leave_request',
-                        'related_id' => $id,
-                        'is_read'    => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    \App\Services\FcmService::sendToUser(
-                        $headUserId,
-                        'طلب إجازة بانتظار موافقتك',
-                        'وافق ولي أمر الطالب ' . $studentName . ' على طلب إجازة بتاريخ ' . $leaveRequest->date . '، يرجى مراجعته',
-                        ['type' => 'leave_request', 'related_id' => (string)$id]
-                    );
-                }
-            }
-        } else {
-            // ولي الأمر رفض → إشعار الطالب
-            DB::table('leave_requests')
-                ->where('id', $id)
-                ->update(['status' => 'rejected', 'updated_at' => now()]);
-
-            if ($leaveRequest->student_id) {
-                $typeText = $leaveRequest->type === 'hourly' ? 'الساعية' : 'اليومية';
-                DB::table('notifications')->insert([
-                    'user_id'    => $leaveRequest->student_id,
-                    'title'      => 'تم رفض طلب الإجازة',
-                    'message'    => 'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
-                    'type'       => 'leave_request',
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser(
-                    $leaveRequest->student_id,
-                    'تم رفض طلب الإجازة',
-                    'تم رفض طلب إجازتك ' . $typeText . ' بتاريخ ' . $leaveRequest->date . ' من قِبل ولي الأمر',
-                    ['type' => 'leave_request', 'related_id' => (string)$id]
-                );
-            }
+        if (!$result['ok']) {
+            return match ($result['error']) {
+                'not_found' => response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404),
+                'forbidden' => response()->json(['success' => false, 'message' => 'غير مصرح لك بالرد على هذا الطلب'], 403),
+                default     => response()->json(['success' => false, 'message' => 'تم الرد على هذا الطلب مسبقاً'], 422),
+            };
         }
 
         return response()->json(['success' => true, 'message' => 'تم تحديث حالة الطلب']);
@@ -621,11 +557,8 @@ class StudentParentController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Notify all dept heads
-        $headUserIds = DB::table('users')->where('role_id', 5)
-            ->pluck('user_id')
-            ->merge(DB::table('heads')->pluck('user_id'))
-            ->unique();
+        // رئيس قسم الطالب فقط (كان يُرسل لكل رؤساء الأقسام)
+        $headUserIds = collect(\App\Services\LeaveWorkflow::reviewerIdsOf($studentUser->user_id));
 
         $isJustification = $request->type === 'justification';
         $title = $isJustification ? 'تبرير غياب من ولي الأمر' : 'طلب إجازة من ولي الأمر';
