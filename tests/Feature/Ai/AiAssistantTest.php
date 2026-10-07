@@ -271,6 +271,23 @@ class AiAssistantTest extends TestCase
         $this->assertStringContainsString('رياضيات-ابني', $follow);
     }
 
+    public function test_teacher_gets_the_students_of_his_courses(): void
+    {
+        $teacher = $this->makeTeacher();
+        $course  = $this->makeCourse(null, ['title' => 'مقرر-المعلم']);
+        $this->assignTeacher($course, $teacher['teacher_id']);
+        $mine = $this->makeStudent(['full_name' => 'طالبي-الأول']);
+        $this->enroll($mine['student_id'], $course);
+        $this->enroll($this->makeStudent(['full_name' => 'طالب-مقرر-آخر'])['student_id'], $this->makeCourse());
+        $this->actAs($teacher['user']);
+
+        $reply = $this->ask('مين الطلاب الي بعطيهم')->json('reply');
+
+        $this->assertStringContainsString('طالبي-الأول', $reply);
+        $this->assertStringContainsString('مقرر-المعلم', $reply);
+        $this->assertStringNotContainsString('طالب-مقرر-آخر', $reply);
+    }
+
     public function test_who_am_i_answers_for_any_role(): void
     {
         $user = $this->makeUser('affairs', ['full_name' => 'موظف-اختبار']);

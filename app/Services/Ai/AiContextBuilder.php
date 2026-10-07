@@ -291,7 +291,43 @@ class AiContextBuilder
             'courses'          => $courses->pluck('title')->unique()->values()->all(),
             'schedule'         => $schedule,
             'pending_grading'  => $pending,
-        ];
+        ] + $this->safe(fn () => $this->teacherStudents($courses), []);
+    }
+
+    /**
+     * طلاب كل مقرر يدرّسه المعلم: العدد وأول 30 اسماً، وإجمالي الطلاب الفريدين.
+     *
+     * @return array{course_students: array<string, array{count:int,names:string[]}>, students_total:int}
+     */
+    protected function teacherStudents($courses): array
+    {
+        $titles = $courses->pluck('title', 'course_id');
+        if ($titles->isEmpty()) {
+            return [];
+        }
+
+        $rows = DB::table('enrollments as e')
+            ->join('students as s', 's.student_id', '=', 'e.student_id')
+            ->join('users as u', 'u.user_id', '=', 's.user_id')
+            ->whereIn('e.course_id', $titles->keys()->all())
+            ->orderBy('u.full_name')
+            ->get(['e.course_id', 's.student_id', 'u.full_name']);
+
+        $perCourse = [];
+        foreach ($rows as $r) {
+            $title = $titles[$r->course_id] ?? null;
+            if ($title === null) {
+                continue;
+            }
+            $perCourse[$title]['ids'][$r->student_id] = $r->full_name;
+        }
+
+        $out = [];
+        foreach ($perCourse as $title => $info) {
+            $out[$title] = ['count' => count($info['ids']), 'names' => array_slice(array_values($info['ids']), 0, 30)];
+        }
+
+        return ['course_students' => $out, 'students_total' => $rows->pluck('student_id')->unique()->count()];
     }
 
     // ───────────────────────── ولي الأمر ─────────────────────────
@@ -419,6 +455,12 @@ class AiContextBuilder
                 $t .= "- مقرر {$c['name']}: {$title} (المدرّس: " . ($teachers ? implode('، ', $teachers) : 'غير محدد') . ")\n";
             }
             $t .= "- الابن: {$c['name']} (كود {$c['code']}) {$c['level']}: أيام غياب غير معذورة " . ($c['attendance']['absence_days'] ?? 0) . "، غياب {$abs} من {$tot} جلسة، المعدل " . ($c['average'] ?? 'غير متوفر') . "\n";
+        }
+        if (isset($d['students_total'])) {
+            $t .= "- إجمالي طلابك: {$d['students_total']}\n";
+            foreach ($d['course_students'] as $title => $info) {
+                $t .= "  * {$title}: {$info['count']} طالباً (" . implode('، ', array_slice($info['names'], 0, 15)) . ($info['count'] > 15 ? ' ...' : '') . ")\n";
+            }
         }
         if (isset($d['pending_grading'])) {
             $t .= "- تسليمات بانتظار التصحيح: {$d['pending_grading']}\n";

@@ -39,6 +39,12 @@ class LocalKnowledgeEngine
             return $this->whoAmIAnswer($role, $data);
         }
 
+        if ($role === 'teacher' && $this->has($q, ['طلابي', 'مين الطلاب', 'من الطلاب', 'كم طالب', 'عدد الطلاب', 'اسماء الطلاب', 'أسماء الطلاب', 'بعطيهم', 'بدرسهم', 'بدرّسهم', 'الطلاب الي', 'الطلاب اللي', 'الطلاب الذين', 'قائمة الطلاب'])) {
+            if ($r = $this->teacherStudentsAnswer($data)) {
+                return $r;
+            }
+        }
+
         if ($this->has($q, ['مين بيعطي', 'مين بيدرس', 'مين يدرس', 'مين المدرس', 'مين الاستاذ', 'مين الأستاذ', 'مين المعلم', 'مدرسين', 'مدرسي', 'اساتذ', 'أساتذ', 'معلمين', 'معلمي', 'بيعطيه', 'بيدرسه', 'بيدرسني', 'بيعطيني', 'مين مدرس'])) {
             if ($r = $this->teachersAnswer($role, $data)) {
                 return $r;
@@ -284,6 +290,23 @@ class LocalKnowledgeEngine
             'admin'   => "👤 إنشاء/تعديل/تجميد الحسابات: `/admin/accounts`.",
             default   => "👤 تعدّل ملفك الشخصي وكلمة السر من **'الملف الشخصي'** في الشريط السفلي. لأي تعديل آخر على حسابك راجع شؤون الطلاب.",
         };
+    }
+
+    protected function teacherStudentsAnswer(array $data): ?string
+    {
+        if (empty($data['course_students'])) {
+            return null;
+        }
+
+        $out = "👥 **طلابك: {$data['students_total']} طالباً** في مقرراتك:\n";
+        foreach ($data['course_students'] as $title => $info) {
+            $out .= "\n**{$title}** ({$info['count']}):\n• " . implode("\n• ", $info['names']) . "\n";
+            if ($info['count'] > count($info['names'])) {
+                $out .= '• ... و' . ($info['count'] - count($info['names'])) . " آخرين\n";
+            }
+        }
+
+        return $out;
     }
 
     protected function teachersAnswer(string $role, array $data): ?string
