@@ -254,7 +254,7 @@ class AuthController extends Controller
             'academic_year'    => 'nullable|string',
             'department'       => 'nullable|string',
             'branch'           => 'required_if:role,student|nullable|string',
-            'program_id'       => 'required_if:role,student|nullable|exists:programs,id',
+            'program_id'       => 'nullable|exists:programs,id',
             'children_ids'     => 'nullable|array',
             'fcm_token'        => 'nullable|string',
         ]);
@@ -410,8 +410,15 @@ class AuthController extends Controller
 
         if ($request->role === 'student') {
             // نقل صورة الطالب المرجعية من جدول university_ids (اللي رفعها موظف الشؤون)
-            $referencePhoto = isset($uid) && !empty($uid->photo) ? $uid->photo : null;
+            // اعتماد صورة السيلفي الملتقطة أو صورة الشؤون كصورة مرجعية رسمية
+            $referencePhoto = (isset($uid) && !empty($uid->photo)) ? $uid->photo : $avatarPath;
             $studentCode    = !empty($request->university_id) ? $request->university_id : ('2026' . str_pad($user->user_id, 4, '0', STR_PAD_LEFT));
+
+            // استلام بصمة الوجه الرقمية إن أُرسلت مع السيلفي عند إنشاء الحساب
+            $faceEmbedding = $request->face_embedding;
+            if (is_string($faceEmbedding)) {
+                $faceEmbedding = json_decode($faceEmbedding, true);
+            }
 
             $student = Student::create([
                 'user_id'         => $user->user_id,
@@ -419,19 +426,26 @@ class AuthController extends Controller
                 'level'           => 'السنة الأولى',
                 'birth_date'      => $request->birth_date,
                 'reference_photo' => $referencePhoto,
+                'face_embedding'  => (is_array($faceEmbedding) && !empty($faceEmbedding)) ? $faceEmbedding : null,
             ]);
 
             // Auto-enroll: تجهيز الطالب بكل مواد برنامجه بناءً على الفرع/التخصص
-            $branch = $request->branch ?? $request->department;
             $program = null;
-            if ($branch) {
+            if ($request->filled('program_id')) {
+                $program = \DB::table('programs')->where('id', $request->program_id)->first();
+            }
+
+            $branch = $request->branch ?? $request->department;
+            if (!$program && $branch) {
                 $program = \DB::table('programs')
                     ->where('name', 'LIKE', '%' . $branch . '%')
+                    ->orWhere('name', 'LIKE', '%' . mb_substr($branch, 0, 4) . '%')
                     ->first();
             }
             if (!$program && $request->department) {
                 $program = \DB::table('programs')
                     ->where('name', 'LIKE', '%' . $request->department . '%')
+                    ->orWhere('name', 'LIKE', '%' . mb_substr($request->department, 0, 4) . '%')
                     ->first();
             }
 

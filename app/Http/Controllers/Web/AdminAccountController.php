@@ -53,13 +53,19 @@ class AdminAccountController extends Controller
 
         $users = $query->orderByDesc('created_at')->paginate(24)->withQueryString();
 
+        $roleCounts = DB::table('users')
+            ->select('role_id', DB::raw('count(*) as count'))
+            ->where('role_id', '!=', 1)
+            ->groupBy('role_id')
+            ->pluck('count', 'role_id');
+
         $counts = [
-            'all'     => DB::table('users')->where('role_id', '!=', 1)->count(),
-            'student' => DB::table('users')->where('role_id', 3)->count(),
-            'teacher' => DB::table('users')->where('role_id', 2)->count(),
-            'hod'     => DB::table('users')->where('role_id', 5)->count(),
-            'parent'  => DB::table('users')->where('role_id', 4)->count(),
-            'affairs' => DB::table('users')->where('role_id', 6)->count(),
+            'all'     => (int) $roleCounts->sum(),
+            'student' => (int) ($roleCounts[3] ?? 0),
+            'teacher' => (int) ($roleCounts[2] ?? 0),
+            'hod'     => (int) ($roleCounts[5] ?? 0),
+            'parent'  => (int) ($roleCounts[4] ?? 0),
+            'affairs' => (int) ($roleCounts[6] ?? 0),
         ];
 
         $pendingUsers = DB::table('users')

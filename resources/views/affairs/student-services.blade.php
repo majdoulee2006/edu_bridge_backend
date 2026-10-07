@@ -1,5 +1,5 @@
 @extends('layouts.affairs')
-@section('title', 'الخدمات الطلابية')
+@section('title', __('messages.student_services'))
 
 @push('styles')
 <style>
@@ -30,11 +30,11 @@
         border-bottom: 2px solid var(--border-color);
         padding-bottom: 0.5rem;
         overflow-x: auto;
-        scrollbar-width: none; /* Firefox */
-        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
     }
     .custom-tabs::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Opera */
+        display: none;
     }
     .tab-btn {
         background: transparent;
@@ -76,7 +76,7 @@
         display: block;
     }
 
-    /* Tables - Fixed Height & Strictly Single-Line */
+    /* Tables */
     .table-container {
         background: var(--bg-secondary);
         border-radius: 1.25rem;
@@ -88,9 +88,10 @@
         width: 100%;
         border-collapse: collapse;
         white-space: nowrap !important;
+        text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};
     }
     .custom-table th {
-        text-align: right;
+        text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};
         padding: 0.9rem 1rem !important;
         color: var(--text-secondary);
         font-weight: 800;
@@ -107,6 +108,7 @@
         white-space: nowrap !important;
         height: 54px;
         line-height: 1.2;
+        text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};
     }
     .custom-table tr:hover td {
         background: rgba(0, 0, 0, 0.02);
@@ -167,7 +169,7 @@
     .badge-approved { background: #bbf7d0; color: #166534; }
     .badge-rejected { background: #fecaca; color: #991b1b; }
 
-    /* Square Action Buttons Side-by-Side */
+    /* Square Action Buttons */
     .action-btns {
         display: inline-flex !important;
         align-items: center !important;
@@ -215,7 +217,7 @@
         cursor: default !important;
     }
 
-    /* Modal Styling - Compact Portrait Card */
+    /* Modal Styling */
     .modal-overlay {
         position: fixed;
         inset: 0;
@@ -249,13 +251,13 @@
         flex-direction: column !important;
         gap: 0.85rem !important;
         margin: auto;
+        text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};
     }
     .modal-overlay.active #requestModal .modal-content,
     #requestModal.active .modal-content {
         transform: scale(1) !important;
     }
 
-    /* Modal Card Header */
     .modal-card-header {
         display: flex;
         justify-content: space-between;
@@ -310,7 +312,6 @@
         color: #ef4444;
     }
 
-    /* Student Info Mini-Card */
     .student-mini-card {
         background: var(--bg-secondary, #f9fafb);
         border: 1px solid var(--border-color, #e5e7eb);
@@ -336,10 +337,9 @@
     .student-mini-value {
         color: var(--text-primary);
         font-weight: 700;
-        text-align: left;
+        text-align: {{ app()->getLocale() === 'en' ? 'right' : 'left' }};
     }
 
-    /* Details Box */
     .modal-detail-box {
         display: flex;
         flex-direction: column;
@@ -368,7 +368,6 @@
         overflow-y: auto;
     }
 
-    /* Notes Area Compact */
     .notes-area-compact {
         width: 100%;
         min-height: 65px;
@@ -378,7 +377,7 @@
         padding: 0.6rem 0.75rem;
         background: var(--bg-primary, #ffffff);
         color: var(--text-primary);
-        font-family: 'Cairo', sans-serif;
+        font-family: inherit;
         font-size: 0.86rem;
         resize: vertical;
         transition: border-color 0.2s;
@@ -388,7 +387,6 @@
         border-color: var(--accent-color, #f59e0b);
     }
 
-    /* Modal Footer Buttons */
     .modal-card-footer {
         display: flex;
         gap: 0.6rem;
@@ -402,7 +400,7 @@
         font-weight: 700;
         font-size: 0.88rem;
         cursor: pointer;
-        font-family: 'Cairo', sans-serif;
+        font-family: inherit;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -429,25 +427,25 @@
 @section('content')
 <div class="services-container">
     <div class="page-header">
-        <h2>الخدمات والطلبات الطلابية</h2>
+        <h2>{{ __('messages.student_services_and_requests') }}</h2>
     </div>
 
     <!-- Tabs Navigation -->
     <div class="custom-tabs">
         <button class="tab-btn active" onclick="switchTab(this, 'mercy')">
-            <i class="fa-solid fa-gavel"></i> طلبات الاسترحام
+            <i class="fa-solid fa-gavel"></i> {{ __('messages.mercy_requests') }}
         </button>
         <button class="tab-btn" onclick="switchTab(this, 'documents')">
-            <i class="fa-solid fa-file-invoice"></i> طلبات الوثائق
+            <i class="fa-solid fa-file-invoice"></i> {{ __('messages.document_requests') }}
         </button>
         <button class="tab-btn" onclick="switchTab(this, 'makeup')">
-            <i class="fa-solid fa-pen-to-square"></i> امتحانات الإكمال
+            <i class="fa-solid fa-pen-to-square"></i> {{ __('messages.makeup_exams') }}
         </button>
         <button class="tab-btn" onclick="switchTab(this, 'device-reset')">
-            <i class="fa-solid fa-mobile-screen-button"></i> فك قفل الجهاز
+            <i class="fa-solid fa-mobile-screen-button"></i> {{ __('messages.device_reset_tab') }}
         </button>
         <button class="tab-btn" onclick="switchTab(this, 'face-photo')">
-            <i class="fa-solid fa-user-gear"></i> طلبات صورة الوجه / البصمة
+            <i class="fa-solid fa-user-gear"></i> {{ __('messages.face_photo_tab') }}
         </button>
     </div>
 
@@ -457,13 +455,13 @@
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>موضوع الاسترحام</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th style="text-align: center;">الإجراءات</th>
+                        <th>{{ __('messages.student') }}</th>
+                        <th>{{ __('messages.university_id') }}</th>
+                        <th>{{ __('messages.academic_year') }}</th>
+                        <th>{{ __('messages.mercy_subject') }}</th>
+                        <th>{{ __('messages.request_date') }}</th>
+                        <th>{{ __('messages.status') }}</th>
+                        <th style="text-align: center;">{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -471,8 +469,8 @@
                     <tr>
                         <td class="table-cell-nowrap">
                             <div class="table-student-cell">
-                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'S', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}">{{ $req->student?->user?->full_name ?? __('messages.unknown') }}</span>
                             </div>
                         </td>
                         <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
@@ -483,25 +481,25 @@
                         <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs')
-                                <span class="badge badge-pending">بانتظار قرارك</span>
+                                <span class="badge badge-pending">{{ __('messages.awaiting_your_decision') }}</span>
                             @else
-                                <span class="badge badge-approved">تم تحويله لرئيس القسم</span>
+                                <span class="badge badge-approved">{{ __('messages.transferred_to_hod') }}</span>
                             @endif
                         </td>
                         <td class="table-cell-nowrap" style="text-align: center;">
                             @php $canRespond = ($req->status == 'pending_affairs'); @endphp
                             <div class="action-btns">
                                 <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
-                                    title="{{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}"
-                                    data-type="استرحام"
+                                    title="{{ $canRespond ? __('messages.affairs_feedback_action') : __('messages.view_only_preview') }}"
+                                    data-type="{{ __('messages.mercy_request') }}"
                                     data-type-key="{{ $req->type }}"
-                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
-                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
-                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? __('messages.unspecified') }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? __('messages.unspecified') }}"
                                     data-details="{{ $req->formatted_details }}"
-                                    data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إرسال الرأي مسبقاً') }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? '' }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
@@ -512,7 +510,7 @@
                     </tr>
                     @endforeach
                     @if($requests->where('type', 'mercy')->isEmpty())
-                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    <tr><td colspan="7" style="text-align: center;">{{ __('messages.no_requests_found') }}</td></tr>
                     @endif
                 </tbody>
             </table>
@@ -525,13 +523,13 @@
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>نوع الوثيقة</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th style="text-align: center;">الإجراءات</th>
+                        <th>{{ __('messages.student') }}</th>
+                        <th>{{ __('messages.university_id') }}</th>
+                        <th>{{ __('messages.academic_year') }}</th>
+                        <th>{{ __('messages.document_type') }}</th>
+                        <th>{{ __('messages.request_date') }}</th>
+                        <th>{{ __('messages.status') }}</th>
+                        <th style="text-align: center;">{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -539,8 +537,8 @@
                     <tr>
                         <td class="table-cell-nowrap">
                             <div class="table-student-cell">
-                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'S', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}">{{ $req->student?->user?->full_name ?? __('messages.unknown') }}</span>
                             </div>
                         </td>
                         <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
@@ -551,17 +549,17 @@
                         <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs')
-                                <span class="badge badge-pending">بانتظار قرارك</span>
+                                <span class="badge badge-pending">{{ __('messages.awaiting_your_decision') }}</span>
                             @elseif($req->status == 'pending_hod')
-                                <span class="badge badge-pending" style="background:#3b82f6; color:#fff;">عند رئيس القسم</span>
+                                <span class="badge badge-pending" style="background:#3b82f6; color:#fff;">{{ __('messages.at_department_head') }}</span>
                             @elseif($req->status == 'pending_admin')
-                                <span class="badge badge-pending" style="background:#8b5cf6; color:#fff;">عند إدارة المعهد</span>
+                                <span class="badge badge-pending" style="background:#8b5cf6; color:#fff;">{{ __('messages.at_institute_admin') }}</span>
                             @elseif($req->status == 'completed' && $req->admin_decision == 'approved')
-                                <span class="badge badge-approved">معتمد ومكتمل ✅</span>
+                                <span class="badge badge-approved">{{ __('messages.approved_and_completed') }} ✅</span>
                             @elseif($req->status == 'completed' && $req->admin_decision == 'rejected')
-                                <span class="badge badge-rejected">مرفوض ❌</span>
+                                <span class="badge badge-rejected">{{ __('messages.rejected') }} ❌</span>
                             @else
-                                <span class="badge badge-approved">تم تحويله للمتابعة</span>
+                                <span class="badge badge-approved">{{ __('messages.transferred_to_hod') }}</span>
                             @endif
                         </td>
                         <td class="table-cell-nowrap" style="text-align: center;">
@@ -571,16 +569,16 @@
                             @endphp
                             <div class="action-btns">
                                 <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
-                                    title="{{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}"
-                                    data-type="وثيقة"
+                                    title="{{ $canRespond ? __('messages.affairs_feedback_action') : __('messages.view_only_preview') }}"
+                                    data-type="{{ __('messages.doc_request') }}"
                                     data-type-key="{{ $req->type }}"
-                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
-                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
-                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? __('messages.unspecified') }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? __('messages.unspecified') }}"
                                     data-details="{{ $req->formatted_details }}"
-                                    data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إرسال الرأي مسبقاً') }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? '' }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
@@ -591,7 +589,7 @@
                                     <a href="{{ route('affairs.course_weights', ['student_id' => $req->student_id, 'search' => $req->student?->student_code ?? $req->student?->user?->full_name]) }}"
                                        target="_blank"
                                        class="btn-action-square btn-pathway"
-                                       title="المسار الأكاديمي للطالب">
+                                       title="{{ __('messages.student_academic_pathway') }}">
                                         <i class="fa-solid fa-graduation-cap"></i>
                                     </a>
                                 @endif
@@ -600,7 +598,7 @@
                     </tr>
                     @endforeach
                     @if($requests->where('type', 'document')->isEmpty())
-                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    <tr><td colspan="7" style="text-align: center;">{{ __('messages.no_requests_found') }}</td></tr>
                     @endif
                 </tbody>
             </table>
@@ -613,13 +611,13 @@
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>المواد المطلوبة للإكمال</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th style="text-align: center;">الإجراءات</th>
+                        <th>{{ __('messages.student') }}</th>
+                        <th>{{ __('messages.university_id') }}</th>
+                        <th>{{ __('messages.academic_year') }}</th>
+                        <th>{{ __('messages.makeup_courses') }}</th>
+                        <th>{{ __('messages.request_date') }}</th>
+                        <th>{{ __('messages.status') }}</th>
+                        <th style="text-align: center;">{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -627,8 +625,8 @@
                     <tr>
                         <td class="table-cell-nowrap">
                             <div class="table-student-cell">
-                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'S', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}">{{ $req->student?->user?->full_name ?? __('messages.unknown') }}</span>
                             </div>
                         </td>
                         <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
@@ -639,25 +637,25 @@
                         <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs')
-                                <span class="badge badge-pending">بانتظار قرارك</span>
+                                <span class="badge badge-pending">{{ __('messages.awaiting_your_decision') }}</span>
                             @else
-                                <span class="badge badge-approved">تم تحويله لرئيس القسم</span>
+                                <span class="badge badge-approved">{{ __('messages.transferred_to_hod') }}</span>
                             @endif
                         </td>
                         <td class="table-cell-nowrap" style="text-align: center;">
                             @php $canRespond = ($req->status == 'pending_affairs'); @endphp
                             <div class="action-btns">
                                 <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
-                                    title="{{ $canRespond ? 'إبداء رأي الشؤون' : 'معاينة (قراءة فقط)' }}"
-                                    data-type="إكمال"
+                                    title="{{ $canRespond ? __('messages.affairs_feedback_action') : __('messages.view_only_preview') }}"
+                                    data-type="{{ __('messages.makeup_request') }}"
                                     data-type-key="{{ $req->type }}"
-                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
-                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
-                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? __('messages.unspecified') }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? __('messages.unspecified') }}"
                                     data-details="{{ $req->formatted_details }}"
-                                    data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إرسال الرأي مسبقاً') }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? '' }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
@@ -668,7 +666,7 @@
                     </tr>
                     @endforeach
                     @if($requests->where('type', 'makeup')->isEmpty())
-                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    <tr><td colspan="7" style="text-align: center;">{{ __('messages.no_requests_found') }}</td></tr>
                     @endif
                 </tbody>
             </table>
@@ -681,13 +679,13 @@
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>السبب / التفاصيل</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th style="text-align: center;">الإجراءات</th>
+                        <th>{{ __('messages.student') }}</th>
+                        <th>{{ __('messages.university_id') }}</th>
+                        <th>{{ __('messages.academic_year') }}</th>
+                        <th>{{ __('messages.reason_details') }}</th>
+                        <th>{{ __('messages.request_date') }}</th>
+                        <th>{{ __('messages.status') }}</th>
+                        <th style="text-align: center;">{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -695,8 +693,8 @@
                     <tr>
                         <td class="table-cell-nowrap">
                             <div class="table-student-cell">
-                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'S', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}">{{ $req->student?->user?->full_name ?? __('messages.unknown') }}</span>
                             </div>
                         </td>
                         <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
@@ -707,35 +705,35 @@
                         <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs' || $req->status == 'pending')
-                                <span class="badge badge-pending">بانتظار قرارك</span>
+                                <span class="badge badge-pending">{{ __('messages.awaiting_your_decision') }}</span>
                             @elseif($req->status == 'approved')
-                                <span class="badge badge-approved">تم فك القفل</span>
+                                <span class="badge badge-approved">{{ __('messages.device_unlocked') }}</span>
                             @else
-                                <span class="badge badge-rejected">مرفوض</span>
+                                <span class="badge badge-rejected">{{ __('messages.rejected') }}</span>
                             @endif
                         </td>
                         <td class="table-cell-nowrap" style="text-align: center;">
                             @php $canRespond = ($req->status == 'pending_affairs' || $req->status == 'pending'); @endphp
                             <div class="action-btns">
                                 @if($canRespond)
-                                <form method="POST" action="{{ route('affairs.student_services.direct_reset_device', $req->id) }}" style="display:inline; margin:0;" onsubmit="return confirm('هل أنت متأكد من فك قفل الجهاز وتصفير بيانات جهازه فوراً للطالب ({{ $req->student?->user?->full_name }})؟')">
+                                <form method="POST" action="{{ route('affairs.student_services.direct_reset_device', $req->id) }}" style="display:inline; margin:0;" onsubmit="return confirm(@json(__('messages.confirm_device_unlock_prompt', ['name' => $req->student?->user?->full_name ?? ''])));">
                                     @csrf
-                                    <button type="submit" class="btn-action-square btn-reset" title="فك قفل الجهاز فوراً">
+                                    <button type="submit" class="btn-action-square btn-reset" title="{{ __('messages.unlock_device_immediately') }}">
                                         <i class="fa-solid fa-mobile-screen-button"></i>
                                     </button>
                                 </form>
                                 @endif
                                 <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
-                                    title="{{ $canRespond ? 'معالجة وتفاصيل الطلب' : 'معاينة (قراءة فقط)' }}"
-                                    data-type="فك قفل الجهاز"
+                                    title="{{ $canRespond ? __('messages.affairs_feedback_action') : __('messages.view_only_preview') }}"
+                                    data-type="{{ __('messages.device_reset_tab') }}"
                                     data-type-key="{{ $req->type }}"
-                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
-                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
-                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? __('messages.unspecified') }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? __('messages.unspecified') }}"
                                     data-details="{{ $req->formatted_details }}"
-                                    data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إتخاذ القرار مسبقاً') }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? '' }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
@@ -746,7 +744,7 @@
                     </tr>
                     @endforeach
                     @if($requests->where('type', 'device_reset')->isEmpty())
-                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات فك قفل جهاز</td></tr>
+                    <tr><td colspan="7" style="text-align: center;">{{ __('messages.no_requests_found') }}</td></tr>
                     @endif
                 </tbody>
             </table>
@@ -759,14 +757,14 @@
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th style="text-align: center;">الصورة</th>
-                        <th>السبب / التفاصيل</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th style="text-align: center;">الإجراءات</th>
+                        <th>{{ __('messages.student') }}</th>
+                        <th>{{ __('messages.university_id') }}</th>
+                        <th>{{ __('messages.academic_year') }}</th>
+                        <th style="text-align: center;">{{ __('messages.photo') }}</th>
+                        <th>{{ __('messages.reason_details') }}</th>
+                        <th>{{ __('messages.request_date') }}</th>
+                        <th>{{ __('messages.status') }}</th>
+                        <th style="text-align: center;">{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -789,17 +787,17 @@
                                 @if($req->student?->user?->avatar)
                                     <img src="{{ asset('storage/' . $req->student->user->avatar) }}" alt="Avatar" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid var(--accent-color); flex-shrink:0;">
                                 @else
-                                    <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
+                                    <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'S', 0, 1) }}</div>
                                 @endif
-                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}">{{ $req->student?->user?->full_name ?? __('messages.unknown') }}</span>
                             </div>
                         </td>
                         <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
                         <td class="table-cell-nowrap">{{ $req->student?->user?->academic_year ?? 'N/A' }}</td>
                         <td class="table-cell-nowrap" style="text-align: center;">
                             @if($photoUrl)
-                                <a href="{{ $photoUrl }}" target="_blank" title="عرض الصورة">
-                                    <img src="{{ $photoUrl }}" alt="صورة الطالب" style="width: 34px; height: 34px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color); vertical-align: middle;">
+                                <a href="{{ $photoUrl }}" target="_blank" title="{{ __('messages.view_details') }}">
+                                    <img src="{{ $photoUrl }}" alt="Student" style="width: 34px; height: 34px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color); vertical-align: middle;">
                                 </a>
                             @else
                                 <span style="color: var(--text-secondary); font-size: 0.8rem;">-</span>
@@ -811,28 +809,28 @@
                         <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td class="table-cell-nowrap">
                             @if($req->status == 'pending_affairs' || $req->status == 'pending')
-                                <span class="badge badge-pending">بانتظار قرارك</span>
+                                <span class="badge badge-pending">{{ __('messages.awaiting_your_decision') }}</span>
                             @elseif($req->status == 'approved')
-                                <span class="badge badge-approved">تم اعتماد الصورة</span>
+                                <span class="badge badge-approved">{{ __('messages.photo_approved') }}</span>
                             @else
-                                <span class="badge badge-rejected">مرفوض</span>
+                                <span class="badge badge-rejected">{{ __('messages.rejected') }}</span>
                             @endif
                         </td>
                         <td class="table-cell-nowrap" style="text-align: center;">
                             @php $canRespond = ($req->status == 'pending_affairs' || $req->status == 'pending'); @endphp
                             <div class="action-btns">
                                 <button type="button" class="btn-action-square {{ $canRespond ? 'btn-view' : 'btn-disabled' }}"
-                                    title="{{ $canRespond ? 'معالجة وتحديث الصورة' : 'معاينة (قراءة فقط)' }}"
-                                    data-type="تحديث صورة بصمة الوجه"
+                                    title="{{ $canRespond ? __('messages.affairs_feedback_action') : __('messages.view_only_preview') }}"
+                                    data-type="{{ __('messages.face_photo_tab') }}"
                                     data-type-key="face_photo"
                                     data-photo-url="{{ $photoUrl ?? '' }}"
-                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
-                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
-                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? __('messages.unspecified') }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? __('messages.unspecified') }}"
                                     data-details="{{ $req->formatted_details }}"
-                                    data-affairs-notes="{{ $req->affairs_notes ?? ($canRespond ? '' : 'تم إتخاذ القرار مسبقاً') }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? '' }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)">
@@ -843,7 +841,7 @@
                     </tr>
                     @endforeach
                     @if($requests->where('type', 'face_photo')->isEmpty())
-                    <tr><td colspan="8" style="text-align: center;">لا توجد طلبات تحديث صورة شخصية أو بصمة وجه</td></tr>
+                    <tr><td colspan="8" style="text-align: center;">{{ __('messages.no_requests_found') }}</td></tr>
                     @endif
                 </tbody>
             </table>
@@ -852,7 +850,7 @@
 
 </div>
 
-<!-- Request Details Modal - Compact Portrait Card -->
+<!-- Request Details Modal -->
 <div id="requestModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
     <form class="modal-content" id="decisionForm" method="POST" action="" enctype="multipart/form-data">
         @csrf
@@ -864,11 +862,11 @@
                     <i class="fa-solid fa-file-invoice"></i>
                 </div>
                 <div>
-                    <h3>تفاصيل ومعالجة الطلب</h3>
+                    <h3>{{ __('messages.request_details_and_processing') }}</h3>
                     <span id="modal-request-type"></span>
                 </div>
             </div>
-            <button type="button" class="btn-close-modal" onclick="closeModal()" title="إغلاق">
+            <button type="button" class="btn-close-modal" onclick="closeModal()" title="{{ __('messages.close') }}">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -876,28 +874,28 @@
         <!-- Student Mini Card -->
         <div class="student-mini-card">
             <div class="student-mini-row">
-                <span class="student-mini-label"><i class="fa-solid fa-user"></i> الطالب:</span>
+                <span class="student-mini-label"><i class="fa-solid fa-user"></i> {{ __('messages.student') }}:</span>
                 <span class="student-mini-value" id="modal-student-name"></span>
             </div>
             <div class="student-mini-row">
-                <span class="student-mini-label"><i class="fa-solid fa-id-card"></i> الرقم الجامعي:</span>
+                <span class="student-mini-label"><i class="fa-solid fa-id-card"></i> {{ __('messages.university_id') }}:</span>
                 <span class="student-mini-value" id="modal-student-id"></span>
             </div>
             <div class="student-mini-row">
-                <span class="student-mini-label"><i class="fa-solid fa-building-columns"></i> القسم والتخصص:</span>
+                <span class="student-mini-label"><i class="fa-solid fa-building-columns"></i> {{ __('messages.dept_and_major') }}:</span>
                 <span class="student-mini-value">
                     <span id="modal-student-department"></span> - <span id="modal-student-specialization"></span>
                 </span>
             </div>
             <div class="student-mini-row">
-                <span class="student-mini-label"><i class="fa-solid fa-calendar"></i> السنة الدراسية:</span>
+                <span class="student-mini-label"><i class="fa-solid fa-calendar"></i> {{ __('messages.academic_year') }}:</span>
                 <span class="student-mini-value" id="modal-student-year" style="color: var(--accent-color, #f59e0b);"></span>
             </div>
         </div>
 
         <!-- Request Details -->
         <div class="modal-detail-box">
-            <label><i class="fa-solid fa-comment-dots"></i> تفاصيل الطلب / السبب:</label>
+            <label><i class="fa-solid fa-comment-dots"></i> {{ __('messages.request_details_reason') }}:</label>
             <div class="modal-detail-content" id="modal-request-details"></div>
         </div>
 
@@ -905,11 +903,11 @@
         <div id="modal-photo-section" style="display: none; padding: 0.75rem 0.85rem; border: 1.5px dashed var(--accent-color, #f59e0b); border-radius: 12px; background: rgba(245, 158, 11, 0.04);">
             <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.6rem;">
                 <div id="modal-photo-preview-wrap" style="display: none;">
-                    <img id="modal-photo-preview" src="" alt="صورة الطالب" style="width: 55px; height: 55px; object-fit: cover; border-radius: 8px; border: 2px solid var(--accent-color, #f59e0b); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <img id="modal-photo-preview" src="" alt="Student" style="width: 55px; height: 55px; object-fit: cover; border-radius: 8px; border: 2px solid var(--accent-color, #f59e0b); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 </div>
                 <div>
                     <strong style="display: block; font-size: 0.86rem; color: var(--text-primary); margin-bottom: 0.2rem;">
-                        <i class="fa-solid fa-camera"></i> صورة الطالب المرفقة
+                        <i class="fa-solid fa-camera"></i> {{ __('messages.student_attached_photo') }}
                     </strong>
                     <span id="modal-photo-status" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.3; display: block;"></span>
                 </div>
@@ -917,7 +915,7 @@
 
             <div class="modal-detail-box" id="modal-photo-input-container" style="margin-bottom: 0;">
                 <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); display: block;">
-                    <i class="fa-solid fa-image"></i> اختيار صورة بديلة (JPG, PNG, WEBP):
+                    <i class="fa-solid fa-image"></i> {{ __('messages.select_alternative_photo') }}:
                 </label>
                 <input type="file" name="photo" id="modal-photo-input" style="padding: 0.45rem; cursor: pointer; width: 100%; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-primary); font-size: 0.82rem;" accept="image/jpeg,image/png,image/jpg,image/webp">
             </div>
@@ -925,21 +923,21 @@
         
         <!-- Affairs Notes -->
         <div class="modal-detail-box">
-            <label><i class="fa-solid fa-pen"></i> رأي وملاحظات الشؤون:</label>
-            <textarea class="notes-area-compact" name="notes" id="modal-notes" placeholder="اكتب ملاحظات الشؤون هنا..."></textarea>
+            <label><i class="fa-solid fa-pen"></i> {{ __('messages.affairs_notes_label') }}:</label>
+            <textarea class="notes-area-compact" name="notes" id="modal-notes" placeholder="{{ __('messages.affairs_notes_placeholder') }}"></textarea>
             <input type="hidden" name="decision" id="decisionInput" value="approved">
         </div>
 
         <!-- Footer -->
         <div id="modal-readonly-badge" style="display: none; color: #6b7280; font-size: 0.85rem; font-weight: bold; text-align: center; padding: 0.5rem 0;">
-            <i class="fa-solid fa-lock"></i> تم اتخاذ القرار وتسجيله مسبقاً
+            <i class="fa-solid fa-lock"></i> {{ __('messages.decision_already_taken') }}
         </div>
         <div class="modal-card-footer" id="modal-footer-actions">
             <button type="button" class="btn-modal-reject" id="modal-btn-reject" onclick="submitDecision('rejected')">
-                <i class="fa-solid fa-xmark"></i> <span id="modal-reject-text">عدم موافقة</span>
+                <i class="fa-solid fa-xmark"></i> <span id="modal-reject-text">{{ __('messages.reject_request') }}</span>
             </button>
             <button type="button" class="btn-modal-approve" id="modal-btn-approve" onclick="submitDecision('approved')">
-                <i class="fa-solid fa-check"></i> <span id="modal-approve-text">موافقة</span>
+                <i class="fa-solid fa-check"></i> <span id="modal-approve-text">{{ __('messages.approve') }}</span>
             </button>
         </div>
     </form>
@@ -1008,8 +1006,8 @@
             try {
                 const parsed = JSON.parse(details);
                 let parts = [];
-                if (parsed.reason) parts.push('السبب: ' + parsed.reason);
-                if (parsed.new_device_id) parts.push('رمز تعريف الجهاز الجديد (Device ID): ' + parsed.new_device_id);
+                if (parsed.reason) parts.push(@json(__('messages.reason_details')) + ': ' + parsed.reason);
+                if (parsed.new_device_id) parts.push('Device ID: ' + parsed.new_device_id);
                 if (parts.length > 0) displayDetails = parts.join('\n');
             } catch(e) {}
         }
@@ -1028,15 +1026,15 @@
             photoInput.value = '';
         }
 
-        if (typeKey === 'face_photo' || type.includes('صورة') || type.includes('بصمة')) {
+        if (typeKey === 'face_photo' || type.includes('صورة') || type.includes('بصمة') || type.toLowerCase().includes('photo')) {
             photoSection.style.display = 'block';
             if (photoUrl) {
                 photoPreview.src = photoUrl;
                 photoPreviewWrap.style.display = 'block';
-                photoStatus.innerText = 'هذه هي الصورة المرفقة بالطلب حالياً، يمكنك اعتمادها أو رفع بديل عنها أدناه.';
+                photoStatus.innerText = @json(__('messages.student_attached_photo'));
             } else {
                 photoPreviewWrap.style.display = 'none';
-                photoStatus.innerText = 'لم يقم الطالب بإرفاق ملف صورة بالطلب، يمكنك اختيار صورة جديدة له أدناه.';
+                photoStatus.innerText = @json(__('messages.select_alternative_photo'));
             }
 
             if (canRespond) {
@@ -1047,16 +1045,16 @@
                 photoInput.disabled = true;
             }
 
-            document.getElementById('modal-approve-text').innerText = 'موافقة واعتماد الصورة الجديدة';
-            document.getElementById('modal-reject-text').innerText = 'رفض الطلب';
-        } else if (typeKey === 'device_reset' || type.includes('قفل')) {
+            document.getElementById('modal-approve-text').innerText = @json(__('messages.approve'));
+            document.getElementById('modal-reject-text').innerText = @json(__('messages.reject'));
+        } else if (typeKey === 'device_reset' || type.includes('قفل') || type.toLowerCase().includes('device')) {
             photoSection.style.display = 'none';
-            document.getElementById('modal-approve-text').innerText = 'موافقة وفك قفل الجهاز';
-            document.getElementById('modal-reject-text').innerText = 'رفض الطلب';
+            document.getElementById('modal-approve-text').innerText = @json(__('messages.approve'));
+            document.getElementById('modal-reject-text').innerText = @json(__('messages.reject'));
         } else {
             photoSection.style.display = 'none';
-            document.getElementById('modal-approve-text').innerText = 'موافقة وتحويل لرئيس القسم';
-            document.getElementById('modal-reject-text').innerText = 'عدم موافقة وتحويل لرئيس القسم';
+            document.getElementById('modal-approve-text').innerText = @json(__('messages.approve'));
+            document.getElementById('modal-reject-text').innerText = @json(__('messages.reject'));
         }
 
         const notesElement = document.getElementById('modal-notes');
@@ -1104,13 +1102,12 @@
             setTimeout(() => notesElement.style.transform = 'translateX(-5px)', 100);
             setTimeout(() => notesElement.style.transform = 'translateX(5px)', 200);
             setTimeout(() => notesElement.style.transform = 'translateX(0)', 300);
-            alert('❌ عذراً، يجب كتابة الملاحظات قبل اتخاذ قرار الرفض أو القبول!');
+            alert(@json(__('messages.notes_required_before_decision')));
             return;
         }
         
         document.getElementById('decisionInput').value = decision;
         document.getElementById('decisionForm').submit();
     }
-
 </script>
 @endpush

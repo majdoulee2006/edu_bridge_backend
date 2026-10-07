@@ -37,6 +37,19 @@ students_parents_credentials.xls
 *.sql
 accounts.xlsx
 accounts_report.xlsx
+fix_admin.php
+public/reset_admin.php
+
+# مجلدات وملفات الفيديو
+*video*
+promo_video/
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.webm
+*.flv
+*.wmv
 
 # أدوات محلية وملفات dump وبصمات الوجه (لا تُرفع للمستودع)
 ngrok.exe
@@ -46,3 +59,4 @@ ngrok.exe
 # مخرجات توليد التوثيق (تُبنى عند الطلب)
 /site/
 /site-pdf/
+

@@ -4,353 +4,312 @@
 
 @push('styles')
 <style>
+    .student-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.1rem;
+        margin-bottom: 2rem;
+    }
+    @media (min-width: 1200px) {
+        .student-stats-grid {
+            grid-template-columns: repeat(5, 1fr);
+        }
+    }
+
     .stat-card {
         background: var(--bg-secondary);
+        border: 1px solid var(--border-color, rgba(0,0,0,0.06));
         border-radius: 1.25rem;
-        padding: 1.5rem;
-        box-shadow: var(--shadow);
+        padding: 1.25rem 1.4rem;
+        box-shadow: 0 4px 15px -2px rgba(0,0,0,0.04);
         display: flex;
-        align-items: center;
-        gap: 1.25rem;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1rem;
         cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 2px solid transparent;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         text-decoration: none;
         color: inherit;
+        position: relative;
     }
     .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-        border-color: var(--accent-color);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 25px -4px rgba(0,0,0,0.1);
+        border-color: var(--accent-color, #eab308);
     }
-    .stat-card-plain { cursor: default; }
-    .stat-card-plain:hover { transform: none; border-color: transparent; }
+
+    .stat-card-body {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.25rem;
+    }
+
+    .stat-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-width: 0;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        line-height: 1.1;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+    }
 
     .stat-icon {
-        width: 56px; height: 56px;
+        width: 48px;
+        height: 48px;
         border-radius: 1rem;
-        background: var(--accent-color);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.4rem; color: #1a1a1a; flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        transition: transform 0.25s ease;
     }
-    .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
-    .stat-label { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem; }
-    .stat-hint  {
+    .stat-card:hover .stat-icon {
+        transform: scale(1.1);
+    }
+
+    .stat-icon-yellow { background: rgba(234, 179, 8, 0.15); color: #ca8a04; }
+    .stat-icon-blue   { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+    .stat-icon-emerald{ background: rgba(16, 185, 129, 0.15); color: #059669; }
+    .stat-icon-purple { background: rgba(168, 85, 247, 0.15); color: #9333ea; }
+    .stat-icon-rose   { background: rgba(244, 63, 94, 0.15); color: #e11d48; }
+
+    html.dark .stat-icon-yellow { background: rgba(234, 179, 8, 0.2); color: #facc15; }
+    html.dark .stat-icon-blue   { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    html.dark .stat-icon-emerald{ background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    html.dark .stat-icon-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+    html.dark .stat-icon-rose   { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+
+    .stat-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 0.6rem;
+        border-top: 1px dashed var(--border-color, rgba(0,0,0,0.08));
+    }
+    .stat-hint {
         font-size: 0.75rem;
-        color: #92400e;
-        margin-top: 0.35rem;
+        color: var(--text-secondary);
         font-weight: 700;
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
+        transition: color 0.2s;
     }
-    html.dark .stat-hint,
-    [data-theme="dark"] .stat-hint {
-        color: var(--accent-color);
+    .stat-card:hover .stat-hint {
+        color: var(--accent-color, #ca8a04);
     }
-
-    .section-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; }
-
-    .notif-card { background: var(--bg-secondary); border-radius: 1rem; padding: 1.25rem; box-shadow: var(--shadow); margin-bottom: 0.75rem; display: flex; gap: 1rem; align-items: flex-start; }
-    .notif-dot  { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-color); flex-shrink: 0; margin-top: 5px; }
-
-    .list-item {
-        background: var(--bg-primary);
-        border-radius: 0.875rem;
-        padding: 1rem 1.25rem;
-        margin-bottom: 0.6rem;
-        display: flex; align-items: center; gap: 1rem;
-        border-right: 3px solid var(--accent-color);
+    .stat-arrow {
+        font-size: 0.75rem;
+        opacity: 0.5;
+        transition: transform 0.2s, opacity 0.2s;
     }
-    .list-icon {
-        width: 40px; height: 40px; border-radius: 0.75rem;
-        background: var(--accent-color);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1rem; color: #1a1a1a; flex-shrink: 0;
-    }
-    .list-item-title { font-weight: 700; font-size: 0.95rem; }
-    .list-item-sub   { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.15rem; }
-
-    .badge { padding: 0.2rem 0.6rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; }
-    .badge-pending { background: hsl(30,70%,90%);  color: hsl(30,50%,30%); }
-    .badge-submitted { background: hsl(200,70%,90%); color: hsl(200,50%,30%); }
-    .badge-graded  { background: hsl(120,70%,90%); color: hsl(120,50%,30%); }
-    .badge-late    { background: hsl(0,70%,90%);   color: hsl(0,50%,30%); }
-
-    /* Mobile notice card */
-    .mobile-notice {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 1.25rem;
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        margin-bottom: 2rem;
-        color: var(--text-primary);
-        box-shadow: var(--shadow);
-        text-decoration: none;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .mobile-notice:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-    }
-    html.dark .mobile-notice,
-    [data-theme="dark"] .mobile-notice {
-        background: linear-gradient(135deg, #18181b, #27272a);
-        border-color: #3f3f46;
-        color: #ffffff;
-    }
-    .mobile-notice-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 1rem;
-        background: var(--accent-color);
-        color: #1a1a1a;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.4rem;
-        flex-shrink: 0;
-    }
-    .mobile-notice-text {
-        font-size: 0.88rem;
-        line-height: 1.6;
-        color: var(--text-secondary);
-    }
-    html.dark .mobile-notice-text,
-    [data-theme="dark"] .mobile-notice-text {
-        color: #d4d4d8;
-    }
-    .mobile-notice-title {
-        font-weight: 800;
-        font-size: 1rem;
-        margin-bottom: 0.25rem;
-        color: var(--text-primary);
-    }
-    html.dark .mobile-notice-title,
-    [data-theme="dark"] .mobile-notice-title {
-        color: var(--accent-color);
+    .stat-card:hover .stat-arrow {
+        transform: translateX(-3px);
+        opacity: 1;
+        color: var(--accent-color, #ca8a04);
     }
 
     /* Attendance bar */
-    .att-bar-wrap { background: var(--bg-primary); border-radius: 2rem; height: 10px; overflow: hidden; margin-top: 0.5rem; }
-    .att-bar { height: 100%; border-radius: 2rem; background: var(--accent-color); transition: width 0.5s; }
+    .att-bar-wrap {
+        background: var(--bg-primary);
+        border-radius: 2rem;
+        height: 6px;
+        overflow: hidden;
+        margin-top: 0.4rem;
+        width: 100%;
+    }
+    .att-bar {
+        height: 100%;
+        border-radius: 2rem;
+        background: linear-gradient(90deg, #10b981, #34d399);
+        transition: width 0.5s;
+    }
 
-    .modal-overlay {
-        display: none; position: fixed; inset: 0;
-        background: rgba(0,0,0,0.5); z-index: 1000;
-        align-items: center; justify-content: center;
+    .section-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    .modal-overlay.active { display: flex; }
-    .modal-card {
-        background: var(--bg-secondary);
-        border-radius: 1.5rem;
-        width: 94%; max-width: 560px;
-        max-height: 85vh; overflow-y: auto;
-        padding: 2rem;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-        animation: slideUp 0.25s ease;
-    }
-    @keyframes slideUp {
-        from { transform: translateY(30px); opacity: 0; }
-        to   { transform: translateY(0);    opacity: 1; }
-    }
-    .modal-header {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 1.5rem; padding-bottom: 1rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-    .modal-close { background: none; border: none; font-size: 1.3rem; color: var(--text-secondary); cursor: pointer; }
 </style>
 @endpush
 
 @section('content')
 
-{{-- Web Attendance Quick Banner --}}
-<a href="{{ route('student.attendance') }}" class="mobile-notice">
-    <div class="mobile-notice-icon">
-        <i class="fa-solid fa-qrcode"></i>
-    </div>
-    <div class="flex-1">
-        <div class="mobile-notice-title flex items-center justify-between">
-            <span>تسجيل الحضور الفوري (QR والوجه)</span>
-            <span class="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-full shadow-sm">متاح الآن بالويب</span>
-        </div>
-        <p class="mobile-notice-text m-0">
-            افتح كاميرا الجوال أو اللابتوب مباشرة وقم بمسح رمز QR والتحقق من وجهك دون الحاجة لانتظار بناء APK.
-        </p>
-    </div>
-</a>
+{{-- Professional 5 Stats Cards Grid --}}
+<div class="student-stats-grid">
 
-{{-- Stats --}}
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
-
+    {{-- 1. موادي الدراسية --}}
     <a href="{{ route('student.courses') }}" class="stat-card">
-        <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
-        <div>
-            <div class="stat-value">{{ $courses->count() }}</div>
-            <div class="stat-label">موادي الدراسية</div>
-            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+        <div class="stat-card-body">
+            <div class="stat-info">
+                <span class="stat-label">المواد الدراسية</span>
+                <div class="stat-value">{{ $courses->count() }}</div>
+            </div>
+            <div class="stat-icon stat-icon-blue">
+                <i class="fa-solid fa-book-open"></i>
+            </div>
+        </div>
+        <div class="stat-footer">
+            <span class="stat-hint">عرض المقررات</span>
+            <i class="fa-solid fa-arrow-left stat-arrow"></i>
         </div>
     </a>
 
+    {{-- 2. الواجبات القادمة --}}
     <a href="{{ route('student.assignments') }}" class="stat-card">
-        <div class="stat-icon"><i class="fa-solid fa-file-pen"></i></div>
-        <div>
-            <div class="stat-value">{{ $assignments->count() }}</div>
-            <div class="stat-label">الواجبات القادمة</div>
-            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+        <div class="stat-card-body">
+            <div class="stat-info">
+                <span class="stat-label">الواجبات القادمة</span>
+                <div class="stat-value">{{ $assignments->count() }}</div>
+            </div>
+            <div class="stat-icon stat-icon-yellow">
+                <i class="fa-solid fa-file-pen"></i>
+            </div>
+        </div>
+        <div class="stat-footer">
+            <span class="stat-hint">تسليم الواجبات</span>
+            <i class="fa-solid fa-arrow-left stat-arrow"></i>
         </div>
     </a>
 
-    <a href="{{ route('student.grades') }}" class="stat-card">
-        <div class="stat-icon"><i class="fa-solid fa-id-card"></i></div>
-        <div>
-            <div class="stat-value" style="font-size: 1.4rem;">كشف العلامات</div>
-            <div class="stat-label">بطاقة الطالب الأكاديمية</div>
-            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
-        </div>
-    </a>
-
-    <a href="{{ route('student.grades') }}" class="stat-card">
-        <div class="stat-icon"><i class="fa-solid fa-chart-bar"></i></div>
-        <div style="flex: 1;">
-            <div class="stat-value">{{ $avgGrade !== null ? $avgGrade . '%' : 'غير متاح' }}</div>
-            <div class="stat-label">متوسط الدرجات</div>
-            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
-        </div>
-    </a>
-
+    {{-- 3. نسبة الحضور --}}
     <a href="{{ route('student.attendance') }}" class="stat-card">
-        <div class="stat-icon"><i class="fa-solid fa-clipboard-user"></i></div>
-        <div style="flex: 1;">
-            <div class="stat-value">{{ $attendanceRate !== null ? $attendanceRate . '%' : 'غير متاح' }}</div>
-            <div class="stat-label">نسبة الحضور</div>
-            @if($attendanceRate !== null)
-            <div class="att-bar-wrap">
-                <div class="att-bar" style="width: {{ $attendanceRate }}%;"></div>
+        <div class="stat-card-body">
+            <div class="stat-info" style="width: 100%;">
+                <span class="stat-label">نسبة الحضور</span>
+                <div class="stat-value">{{ $attendanceRate !== null ? $attendanceRate . '%' : 'غير متاح' }}</div>
+                @if($attendanceRate !== null)
+                <div class="att-bar-wrap">
+                    <div class="att-bar" style="width: {{ min(100, max(0, $attendanceRate)) }}%;"></div>
+                </div>
+                @endif
             </div>
-            @endif
-            <div class="stat-hint" style="margin-top: 0.4rem;"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+            <div class="stat-icon stat-icon-emerald">
+                <i class="fa-solid fa-clipboard-user"></i>
+            </div>
+        </div>
+        <div class="stat-footer">
+            <span class="stat-hint">سجل الحضور</span>
+            <i class="fa-solid fa-arrow-left stat-arrow"></i>
         </div>
     </a>
 
-</div>
-
-{{-- Upcoming Assignments --}}
-<div style="margin-bottom: 2rem;">
-    <p class="section-title">
-        <i class="fa-solid fa-file-pen" style="color: var(--accent-color);"></i>
-        الواجبات القادمة
-    </p>
-
-    @forelse($assignments as $a)
-        @php
-            $dueDate = \Carbon\Carbon::parse($a->due_date);
-            $isOverdue = $dueDate->isPast();
-        @endphp
-        <div class="list-item">
-            <div class="list-icon"><i class="fa-solid fa-file-lines"></i></div>
-            <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
-                    @if($isOverdue)
-                        <span class="badge badge-late">متأخر</span>
-                    @else
-                        <span class="badge badge-pending">نشط</span>
-                    @endif
-                    <span class="list-item-title">{{ $a->title }}</span>
-                </div>
-                <div class="list-item-sub">
-                    <i class="fa-solid fa-book"></i> {{ $a->course_title }}
-                    &nbsp;·&nbsp;
-                    <i class="fa-solid fa-calendar"></i> {{ $dueDate->format('Y-m-d') }}
-                </div>
+    {{-- 4. متوسط الدرجات --}}
+    <a href="{{ route('student.grades') }}" class="stat-card">
+        <div class="stat-card-body">
+            <div class="stat-info">
+                <span class="stat-label">متوسط الدرجات</span>
+                <div class="stat-value">{{ $avgGrade !== null ? $avgGrade . '%' : 'غير متاح' }}</div>
             </div>
-            <a href="{{ route('student.assignments') }}" style="color: var(--accent-color); font-size: 1rem;">
-                <i class="fa-solid fa-chevron-left"></i>
-            </a>
+            <div class="stat-icon stat-icon-purple">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
         </div>
-    @empty
-        <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
-            <i class="fa-solid fa-check-circle" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>
-            لا توجد واجبات قادمة
+        <div class="stat-footer">
+            <span class="stat-hint">تقرير الأداء</span>
+            <i class="fa-solid fa-arrow-left stat-arrow"></i>
         </div>
-    @endforelse
+    </a>
+
+    {{-- 5. كشف العلامات / بطاقة الطالب --}}
+    <a href="{{ route('student.grades') }}" class="stat-card">
+        <div class="stat-card-body">
+            <div class="stat-info">
+                <span class="stat-label">بطاقة الطالب</span>
+                <div class="stat-value" style="font-size: 1.25rem;">كشف العلامات</div>
+            </div>
+            <div class="stat-icon stat-icon-rose">
+                <i class="fa-solid fa-id-card"></i>
+            </div>
+        </div>
+        <div class="stat-footer">
+            <span class="stat-hint">السجل الأكاديمي</span>
+            <i class="fa-solid fa-arrow-left stat-arrow"></i>
+        </div>
+    </a>
+
 </div>
 
 {{-- Announcements --}}
 <div style="margin-bottom: 2rem;">
     <p class="section-title">
-        <i class="fa-solid fa-bullhorn" style="color: var(--accent-color);"></i>
+        <i class="fa-solid fa-bullhorn" style="color: var(--accent-color, #eab308);"></i>
         آخر الأخبار والإعلانات
     </p>
 
     @forelse($announcements as $ann)
         @php
-            $firstImg = $ann->image ?? null;
-            if (!$firstImg && !empty($ann->images)) {
+            $imgsArr = [];
+            if (!empty($ann->images)) {
                 $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
-                if (is_array($imgsArr) && !empty($imgsArr)) {
-                    $firstImg = $imgsArr[0];
+            }
+            if (empty($imgsArr) && !empty($ann->image)) {
+                $imgsArr = [$ann->image];
+            }
+
+            $formattedImgs = [];
+            if (is_array($imgsArr)) {
+                foreach ($imgsArr as $img) {
+                    if ($img) {
+                        $formattedImgs[] = str_starts_with($img, 'http') ? $img : asset('storage/' . ltrim($img, '/'));
+                    }
                 }
             }
-            $imgUrl = null;
-            if ($firstImg) {
-                $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
-            }
-            $gradients = [
-                'linear-gradient(135deg,#18181b,#f2f20d33)',
-                'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
-                'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
-                'linear-gradient(135deg,#2d1b69,#11998e)',
-                'linear-gradient(135deg,#232526,#414345)',
-            ];
-            $grad = $gradients[$loop->index % count($gradients)];
-            $icons = ['fa-bullhorn','fa-bell','fa-star','fa-bookmark','fa-flag'];
-            $icon  = $icons[$loop->index % count($icons)];
         @endphp
 
-        @if($loop->first)
-        <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 1.25rem; min-height: 200px;">
-            <div style="width: 38%; flex-shrink: 0; background: {{ $grad }}; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                @if($imgUrl)
-                    <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;"
-                         onerror="this.style.display='none'">
-                @endif
-                <i class="fa-solid {{ $icon }}" style="font-size: 4rem; color: rgba(242,242,13,0.25);"></i>
-            </div>
-            <div style="flex: 1; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <span style="background: var(--accent-color); color: #1a1a1a; padding: 0.2rem 0.75rem; border-radius: 2rem; font-size: 0.78rem; font-weight: 700; display: inline-block; margin-bottom: 0.75rem;">إعلان هام</span>
-                    <h4 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.5rem;">{{ $ann->title }}</h4>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">{{ Str::limit($ann->content, 200) }}</p>
-                </div>
-                <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.75rem;">
-                    <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color, rgba(0,0,0,0.06)); border-radius: 1.25rem; margin-bottom: 1.25rem; padding: 1.25rem; display: flex; gap: 0.75rem; box-shadow: 0 4px 15px -2px rgba(0,0,0,0.04);">
+            <!-- Avatar column -->
+            <div style="flex-shrink: 0;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background-color: var(--accent-color, #1d9bf0); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 1.1rem;">
+                    إ
                 </div>
             </div>
-        </div>
-        @else
-        <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 0.75rem; min-height: 110px;">
-            <div style="width: 150px; flex-shrink: 0; background: {{ $grad }}; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                @if($imgUrl)
-                    <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0;"
-                         onerror="this.style.display='none'">
-                @endif
-                <i class="fa-solid {{ $icon }}" style="font-size: 2.5rem; color: rgba(242,242,13,0.3);"></i>
+            
+            <!-- Content column -->
+            <div style="flex: 1; min-width: 0;">
+                <!-- Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">الإدارة</span>
+                        <i class="fa-solid fa-circle-check" style="color: #1d9bf0; font-size: 0.85rem;"></i>
+                        <span style="color: var(--text-muted); font-size: 0.85rem;" dir="ltr">@admin · {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans(null, true) }}</span>
+                    </div>
+                </div>
+
+                <!-- Text Content -->
+                <div style="color: var(--text-dark); font-size: 0.95rem; line-height: 1.6; margin-bottom: 0.75rem; white-space: pre-line;">
+                    @if($ann->title)
+                    <strong style="display: block; margin-bottom: 0.25rem; font-size: 1.05rem;">{{ $ann->title }}</strong>
+                    @endif
+                    {{ $ann->content }}
+                </div>
+
+                <!-- Image Attachment -->
+                @include('partials.image_slider', ['images' => $formattedImgs])
             </div>
-            <div style="flex: 1; padding: 1rem 1.25rem; display: flex; flex-direction: column; justify-content: center;">
-                <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.3rem;">{{ $ann->title }}</h4>
-                <p style="font-size: 0.8rem; color: var(--text-secondary); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ $ann->content }}</p>
-                <span style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">{{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
-            </div>
         </div>
-        @endif
     @empty
-        <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
-            <i class="fa-solid fa-bullhorn" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>
+        <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary); border: 1px solid var(--border-color, rgba(0,0,0,0.06));">
+            <i class="fa-solid fa-bullhorn" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: var(--accent-color, #eab308); opacity: 0.5;"></i>
             لا توجد إعلانات حالياً
         </div>
     @endforelse

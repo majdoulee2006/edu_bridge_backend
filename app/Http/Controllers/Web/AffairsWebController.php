@@ -303,15 +303,16 @@ class AffairsWebController extends Controller
 
             $levelStr = trim((string)$s->level);
             $isGrad = in_array($levelStr, ['خريج', 'graduate']) || $s->user_status === 'graduated';
-            $isSupp = in_array($levelStr, ['دورة تكميلية', 'تكميلي']) || ($levelStr == 'السنة الثانية' && $failedCount > 0);
+            $isSupp = str_contains($levelStr, 'دورة تكميلية') || str_contains($levelStr, 'تكميلي');
+            $isFailed = str_contains($levelStr, 'راسب') || str_contains($levelStr, 'إعادة');
 
             $standing = 'passed';
             if ($isGrad) {
                 $standing = 'graduated';
+            } elseif ($isFailed) {
+                $standing = 'failed';
             } elseif ($isSupp) {
                 $standing = 'supplementary';
-            } elseif ($failedCount > 0) {
-                $standing = 'failed';
             }
 
             $advKey = trim((string)$s->program_name) . '_' . trim((string)$s->level);
@@ -383,7 +384,7 @@ class AffairsWebController extends Controller
         ];
     }
 
-    public function courseWeights()
+    public function courseWeights(Request $request)
     {
         $data = $this->getCourseWeightsPayload();
 
@@ -394,7 +395,37 @@ class AffairsWebController extends Controller
             ]);
         }
 
-        return view('affairs.course_weights', compact('data'));
+        // --- Data for Modal ---
+        $firstYearCount = \App\Models\Student::whereIn('level', ['السنة الأولى', 'أولى', '1'])
+                            ->orWhereNull('level')->orWhere('level', '')->count();
+        
+        $secondYearCount = \App\Models\Student::whereIn('level', ['السنة الثانية', 'ثانية', '2', 'خريج', 'تكميل'])
+                            ->count();
+                            
+        $activeSemester = \Illuminate\Support\Facades\DB::table('semesters')->where('is_active', true)->first();
+        $semestersList = \Illuminate\Support\Facades\DB::table('semesters')->orderByDesc('start_date')->get();
+
+        $query = \App\Models\Student::query();
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('full_name', 'like', "%{$search}%");
+            })->orWhere('student_code', 'like', "%{$search}%");
+        }
+        
+        if ($request->filled('level_filter')) {
+            if ($request->level_filter === 'first_year') {
+                $query->where(function($q) {
+                    $q->whereIn('level', ['السنة الأولى', 'أولى', '1'])->orWhereNull('level')->orWhere('level', '');
+                });
+            } elseif ($request->level_filter === 'second_year') {
+                $query->whereIn('level', ['السنة الثانية', 'ثانية', '2', 'خريج', 'تكميل']);
+            }
+        }
+        $students = $query->with(['user', 'program'])->paginate(15)->appends($request->query());
+        // --------------------------------------------------------
+
+        return view('affairs.course_weights', compact('data', 'firstYearCount', 'secondYearCount', 'activeSemester', 'semestersList', 'students'));
     }
 
     /**
@@ -421,7 +452,10 @@ class AffairsWebController extends Controller
         if ($decision === 'promote_semester_2') {
             $newLevel = 'السنة الأولى - الفصل الثاني';
             $newStanding = 'passed';
-            $student->update(['updated_at' => now()]);
+            $student->update(['level' => $newLevel, 'updated_at' => now()]);
+            if ($user) {
+                $user->update(['academic_year' => $newLevel]);
+            }
             $title = 'مبروك! تم الترفيع إلى الفصل الثاني 📚';
             $message = 'قررت شؤون الطلاب ترفيعك بنجاح إلى الفصل الدراسي الثاني بعد استيفاء مقررات الفصل الأول.' . ($notes ? " ملاحظة: {$notes}" : '');
         } elseif ($decision === 'promote_year_2') {
@@ -437,8 +471,12 @@ class AffairsWebController extends Controller
         } elseif ($decision === 'promote_semester_4') {
             $newLevel = 'السنة الثانية - الفصل الرابع';
             $newStanding = 'passed';
-            $student->update(['updated_at' => now()]);
+            $student->update(['level' => $newLevel, 'updated_at' => now()]);
+            if ($user) {
+                $user->update(['academic_year' => $newLevel]);
+            }
             $title = 'مبروك! تم الترفيع إلى الفصل الرابع 📚✨';
+
             $message = 'قررت شؤون الطلاب ترفيعك بنجاح إلى الفصل الدراسي الرابع (فصل التخرج النهائي) بعد استيفاء مقررات الفصل الثالث.' . ($notes ? " ملاحظة: {$notes}" : '');
         } elseif ($decision === 'graduate') {
             $newLevel = 'خريج';
@@ -450,13 +488,15 @@ class AffairsWebController extends Controller
             $title = 'مبارك التخرج! 🎓✨';
             $message = 'اعتمدت شؤون الطلاب تخرجك الرسمي بنجاح من المعهد. نتمنى لك دوام التوفيق والنجاح.' . ($notes ? " ملاحظة: {$notes}" : '');
         } elseif ($decision === 'supplementary') {
-            $newLevel = 'دورة تكميلية';
+            $isYear1 = str_contains($student->level, 'الأولى') || $student->level == '1';
+            $newLevel = $isYear1 ? 'السنة الأولى (دورة تكميلية)' : 'السنة الثانية (دورة تكميلية)';
             $newStanding = 'supplementary';
             $student->update(['level' => $newLevel, 'updated_at' => now()]);
             $title = 'إشعار الدورة التكميلية 📝';
             $message = 'تم اعتماد إحالتك للدورة التكميلية في المواد غير المجتازة. يرجى مراجعة شؤون الطلاب.' . ($notes ? " ملاحظة: {$notes}" : '');
         } elseif ($decision === 'repeat_year') {
-            $newLevel = 'راسب - إعادة سنة';
+            $isYear1 = str_contains($student->level, 'الأولى') || $student->level == '1';
+            $newLevel = $isYear1 ? 'السنة الأولى (راسب - إعادة)' : 'السنة الثانية (راسب - إعادة)';
             $newStanding = 'failed';
             $student->update(['level' => $newLevel, 'updated_at' => now()]);
             $title = 'تنبيه أكاديمي - إعادة السنة ⚠️';
@@ -3605,7 +3645,7 @@ class AffairsWebController extends Controller
         }
 
         DB::table('users')->where('user_id', $req->user_id)->update(['avatar' => $req->new_photo]);
-        DB::table('students')->where('user_id', $req->user_id)->update(['reference_photo' => $req->new_photo]);
+        DB::table('students')->where('user_id', $req->user_id)->update(['reference_photo' => $req->new_photo, 'face_embedding' => null]);
         DB::table('photo_change_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
 
         // إرسال إشعار للطالب
@@ -3816,6 +3856,62 @@ class AffairsWebController extends Controller
             'message' => 'تمت مشاركة محضر الدفعة بنجاح مع ' . count($users) . ' عضو من الكادر الأكاديمي والإداري.',
         ]);
     }
-}
+    public function activateSemester(Request $request)
+    {
+        $request->validate([
+            'semester_name' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+        ]);
 
+        \Illuminate\Support\Facades\DB::transaction(function() use ($request) {
+            \Illuminate\Support\Facades\DB::table('semesters')->update(['is_active' => false]);
+            
+            $existing = \Illuminate\Support\Facades\DB::table('semesters')
+                        ->where('semester_name', $request->semester_name)
+                        ->first();
+                        
+            if ($existing) {
+                \Illuminate\Support\Facades\DB::table('semesters')
+                    ->where('semester_id', $existing->semester_id)
+                    ->update([
+                        'start_date' => $request->start_date,
+                        'end_date' => $request->end_date,
+                        'is_active' => true,
+                    ]);
+            } else {
+                \Illuminate\Support\Facades\DB::table('semesters')->insert([
+                    'semester_name' => $request->semester_name,
+                    'start_date' => $request->start_date,
+                    'end_date' => $request->end_date,
+                    'is_active' => true,
+                ]);
+            }
+        });
+
+        return back()->with('success', 'تم اعتماد وتفعيل الفصل الدراسي بنجاح');
+    }
+
+    public function promoteYear2(Request $request)
+    {
+        $students = \App\Models\Student::whereIn('level', ['السنة الأولى', 'أولى', '1'])
+                            ->orWhereNull('level')->orWhere('level', '')->get();
+                            
+        foreach ($students as $student) {
+            $student->update(['level' => 'السنة الثانية']);
+            
+            \App\Models\Notification::create([
+                'user_id'    => $student->user_id,
+                'sender_id'  => auth()->id(),
+                'title'      => 'ترقية أكاديمية 🎓',
+                'message'    => 'تم ترفيعك بنجاح إلى السنة الثانية. تهانينا!',
+                'type'       => 'academic_promotion',
+                'category'   => 'academic',
+                'is_read'    => false,
+            ]);
+        }
+
+        return back()->with('success', 'تم ترفيع جميع طلاب السنة الأولى بنجاح إلى السنة الثانية');
+    }
+}
 

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark" class="dark">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'en' ? 'ltr' : 'rtl' }}" data-theme="dark" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Edu-Bridge | شؤون الطلاب</title>
+    <title>Edu-Bridge | {{ __('messages.student_affairs') }}</title>
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
@@ -237,9 +237,28 @@
             z-index: 999999;
             display: none;
             flex-direction: column;
-            overflow: visible;
+            overflow: hidden;
             transform-origin: top left;
             animation: notifCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @media (max-width: 640px) {
+            .notif-dropdown-card {
+                position: fixed !important;
+                top: 68px !important;
+                left: 12px !important;
+                right: 12px !important;
+                width: auto !important;
+                max-width: calc(100vw - 24px) !important;
+                max-height: calc(100vh - 90px) !important;
+                transform-origin: top center !important;
+                border-radius: 1.25rem !important;
+                box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+            }
+            .notif-card-body {
+                max-height: calc(100vh - 240px) !important;
+                overflow-y: auto !important;
+            }
         }
 
         /* Continuous Invisible Hover Bridge */
@@ -324,15 +343,19 @@
         }
         .notif-card-item {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
+            justify-content: space-between;
             gap: 0.75rem;
-            padding: 0.8rem 1rem;
-            border-bottom: 1px solid var(--border-color, #e5e7eb);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
             text-decoration: none;
-            color: inherit;
+            color: var(--text-primary);
             transition: background 0.2s;
             position: relative;
             text-align: right;
+        }
+        [data-theme="dark"] .notif-card-item {
+            border-bottom-color: #242424;
         }
         .notif-card-item:hover {
             background: rgba(0, 0, 0, 0.03);
@@ -357,7 +380,6 @@
             align-items: center;
             justify-content: center;
             font-size: 0.9rem;
-            margin-top: 2px;
             flex-shrink: 0;
         }
         .notif-item-content {
@@ -365,24 +387,13 @@
             min-width: 0;
         }
         .notif-item-title {
-            font-size: 0.84rem;
+            font-size: 0.86rem;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 0.15rem;
             line-height: 1.3;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-        .notif-item-msg {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            line-height: 1.35;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            margin-bottom: 0.3rem;
         }
         .notif-item-time {
             font-size: 0.72rem;
@@ -391,14 +402,14 @@
             align-items: center;
             gap: 0.3rem;
             opacity: 0.8;
+            margin-top: 0.15rem;
         }
         .notif-unread-dot {
             width: 8px;
             height: 8px;
             min-width: 8px;
             border-radius: 50%;
-            background-color: #3b82f6;
-            margin-top: 6px;
+            background-color: #ef4444;
             flex-shrink: 0;
         }
 
@@ -469,93 +480,88 @@
             <!-- Affairs Info -->
             <div style="text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
                 <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
-                    {{ mb_substr(auth()->user()->full_name ?? 'أ', 0, 1) }}
+                    {{ mb_substr(auth()->user()->full_name ?? 'A', 0, 1) }}
                 </div>
-                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? 'أحمد محمد' }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">موظف شؤون</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? (app()->getLocale() === 'en' ? 'Student Affairs Officer' : 'موظف الشؤون') }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ __('messages.student_affairs_officer') }}</div>
             </div>
             
             <nav class="nav-menu" style="display: flex; flex-direction: column; flex: 1;">
                 <a href="{{ url('/affairs/dashboard') }}" class="nav-item {{ Request::is('affairs/dashboard') ? 'active' : '' }}">
-                    <i class="fa-solid fa-house"></i> الرئيسية
+                    <i class="fa-solid fa-house"></i> {{ __('messages.dashboard') }}
                 </a>
-                <a href="{{ route('affairs.academic_management') }}" class="nav-item {{ Request::is('affairs/academic-management*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-graduation-cap"></i> الأعوام والفصول الدراسية
-                </a>
+
                 <a href="{{ url('/affairs/calendar') }}" class="nav-item {{ Request::is('affairs/calendar') ? 'active' : '' }}">
-                    <i class="fa-solid fa-calendar-days"></i> التقويم
+                    <i class="fa-solid fa-calendar-days"></i> {{ __('messages.calendar') }}
                 </a>
                 <a href="{{ route('affairs.appointments') }}" class="nav-item {{ Request::is('affairs/appointments*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-calendar-check"></i> المواعيد واللقاءات
+                    <i class="fa-solid fa-calendar-check"></i> {{ __('messages.appointments') }}
                 </a>
                 <a href="{{ route('affairs.course_weights') }}" class="nav-item {{ Request::is('affairs/course-weights') ? 'active' : '' }}">
-                    <i class="fa-solid fa-route"></i> المسار الأكاديمي الطلابي
+                    <i class="fa-solid fa-route"></i> {{ __('messages.academic_pathway') }}
                 </a>
                 <a href="{{ url('/affairs/activities') }}" class="nav-item {{ Request::is('affairs/activities') ? 'active' : '' }}">
-                    <i class="fa-solid fa-clipboard-list"></i> الأنشطة
-                </a>
-                <a href="{{ route('affairs.announcements') }}" class="nav-item {{ Request::is('affairs/announcements') ? 'active' : '' }}">
-                    <i class="fa-solid fa-bullhorn"></i> الإعلانات
+                    <i class="fa-solid fa-clipboard-list"></i> {{ __('messages.activities') }}
                 </a>
                 <a href="{{ route('affairs.reports') }}" class="nav-item {{ Request::is('affairs/reports') ? 'active' : '' }}">
-                    <i class="fa-solid fa-chart-column"></i> التقارير
+                    <i class="fa-solid fa-chart-column"></i> {{ __('messages.reports') }}
                 </a>
                 <a href="{{ url('/affairs/accounts') }}" class="nav-item {{ Request::is('affairs/accounts') ? 'active' : '' }}">
-                    <i class="fa-solid fa-users-gear"></i> الحسابات
+                    <i class="fa-solid fa-users-gear"></i> {{ __('messages.accounts') }}
                 </a>
                 <a href="{{ route('affairs.university_ids') }}" class="nav-item {{ Request::is('affairs/university-ids') ? 'active' : '' }}">
-                    <i class="fa-solid fa-id-card"></i> الأرقام الجامعية
+                    <i class="fa-solid fa-id-card"></i> {{ __('messages.university_ids') }}
                 </a>
                 <a href="{{ url('/affairs/pending-accounts') }}" class="nav-item {{ Request::is('affairs/pending-accounts') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
-                    <span><i class="fa-solid fa-clock"></i> طلبات التسجيل</span>
+                    <span><i class="fa-solid fa-clock"></i> {{ __('messages.registration_requests') }}</span>
                     @php $pc = \App\Models\User::whereIn('role_id',[3,4])->where('status','inactive')->count(); @endphp
                     @if($pc > 0)
                         <span style="background:#ef4444; color:white; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $pc }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/photo-requests') }}" class="nav-item {{ Request::is('affairs/photo-requests') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
-                    <span><i class="fa-solid fa-camera"></i> طلبات الصورة</span>
+                    <span><i class="fa-solid fa-camera"></i> {{ __('messages.photo_requests') }}</span>
                     @php $photoReqCount = \Illuminate\Support\Facades\DB::table('photo_change_requests')->where('status', 'pending')->count(); @endphp
                     @if($photoReqCount > 0)
                         <span style="background:#ffcc00; color:#1a1a1a; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $photoReqCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
-                    <span><i class="fa-solid fa-file-signature"></i> طلبات الإجازة</span>
+                    <span><i class="fa-solid fa-file-signature"></i> {{ __('messages.leave_requests') }}</span>
                     @php $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('absence_requests')->where('status', 'pending_affairs')->count(); @endphp
                     @if($pendingLeavesCount > 0)
                         <span style="background:#ef4444; color:white; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $pendingLeavesCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/student-services') }}" class="nav-item {{ Request::is('affairs/student-services*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-boxes-stacked"></i> الخدمات الطلابية
+                    <i class="fa-solid fa-boxes-stacked"></i> {{ __('messages.student_services') }}
                 </a>
                 <a href="{{ url('/affairs/messages') }}" class="nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}" style="position: relative;">
-                    <i class="fa-solid fa-comments"></i> الرسائل
+                    <i class="fa-solid fa-comments"></i> {{ __('messages.messages') }}
                     @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unreadMessages > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'en' ? 'right: 1rem;' : 'left: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/notifications') }}" class="nav-item {{ Request::is('affairs/notifications') ? 'active' : '' }}" style="position: relative;">
-                    <i class="fa-solid fa-bell"></i> الإشعارات
+                    <i class="fa-solid fa-bell"></i> {{ __('messages.notifications') }}
                     @php $unreadCount = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unreadCount > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadCount }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'en' ? 'right: 1rem;' : 'left: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/affairs/profile') }}" class="nav-item {{ Request::is('affairs/profile') ? 'active' : '' }}">
-                    <i class="fa-solid fa-user"></i> الملف الشخصي
+                    <i class="fa-solid fa-user"></i> {{ __('messages.profile') }}
                 </a>
                 <a href="{{ url('/affairs/settings') }}" class="nav-item {{ Request::is('affairs/settings') ? 'active' : '' }}">
-                    <i class="fa-solid fa-gear"></i> الإعدادات
+                    <i class="fa-solid fa-gear"></i> {{ __('messages.settings') }}
                 </a>
                 
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form action="{{ route('affairs.logout') }}" method="POST">
                         @csrf
-                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
+                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }}; padding-inline: 0;">
+                            <i class="fa-solid fa-arrow-right-from-bracket {{ app()->getLocale() === 'en' ? 'rotate-180' : '' }}"></i> {{ __('messages.logout') }}
                         </button>
                     </form>
                 </div>
@@ -572,8 +578,8 @@
                     <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
                         <i class="fa-solid fa-bars"></i>
                     </button>
-                    <!-- Settings button for top left usually, but we are RTL so top right depending on layout -->
-                    <a href="{{ route('affairs.settings') }}" class="settings-btn" title="الإعدادات">
+                    <!-- Settings button -->
+                    <a href="{{ route('affairs.settings') }}" class="settings-btn" title="{{ __('messages.settings') }}">
                         <i class="fa-solid fa-gear"></i>
                     </a>
                     <div>
@@ -581,6 +587,7 @@
                     </div>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 1rem;">
+                    @include('components.lang-switcher')
                     <!-- Notification Bell Dropdown Card -->
                     @php
                         $headerUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count();
@@ -590,7 +597,7 @@
                             ->get();
                     @endphp
                     <div class="notif-dropdown-wrapper" id="affairsNotifDropdown">
-                        <a href="{{ url('/affairs/notifications') }}" class="notif-bell-trigger" id="notifBellBtn" title="الإشعارات">
+                        <a href="{{ url('/affairs/notifications') }}" class="notif-bell-trigger" id="notifBellBtn" title="{{ __('messages.notifications') }}">
                             <i class="fa-solid fa-bell"></i>
                             @if($headerUnread > 0)
                                 <span class="notif-badge-dot" id="headerNotifBadgeDot"></span>
@@ -600,14 +607,14 @@
                         <div class="notif-dropdown-card" id="notifDropdownCard">
                             <div class="notif-card-header">
                                 <div class="notif-card-header-title">
-                                    <h4>الإشعارات</h4>
+                                    <h4>{{ __('messages.notifications') }}</h4>
                                     @if($headerUnread > 0)
-                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} جديدة</span>
+                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} {{ __('messages.new') }}</span>
                                     @endif
                                 </div>
                                 @if($headerUnread > 0)
                                     <button type="button" class="btn-mark-all-read" id="btnMarkAllHeaderNotif" onclick="markAllHeaderNotificationsAsRead(event)">
-                                        تحديد الكل كمقروء
+                                        {{ __('messages.mark_all_read') }}
                                     </button>
                                 @endif
                             </div>
@@ -618,15 +625,16 @@
                                        class="notif-card-item {{ !$n->is_read ? 'is-unread' : '' }}" 
                                        id="header-notif-item-{{ $n->id }}"
                                        onclick="markSingleHeaderNotifAsRead(event, {{ $n->id }}, '{{ url('/affairs/notifications') }}')">
-                                        <div class="notif-item-icon-wrap">
-                                            <i class="fa-solid fa-bell"></i>
-                                        </div>
-                                        <div class="notif-item-content">
-                                            <div class="notif-item-title">{{ $n->title }}</div>
-                                            <div class="notif-item-msg">{{ Str::limit($n->message, 70) }}</div>
-                                            <div class="notif-item-time">
-                                                <i class="fa-regular fa-clock"></i>
-                                                <span>{{ $n->created_at?->diffForHumans() }}</span>
+                                        <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+                                             <div class="notif-item-icon-wrap">
+                                                <i class="fa-solid fa-bell"></i>
+                                            </div>
+                                            <div class="notif-item-content">
+                                                <div class="notif-item-title">{{ $n->title }}</div>
+                                                <div class="notif-item-time">
+                                                    <i class="fa-regular fa-clock" style="font-size: 0.68rem;"></i>
+                                                    <span>{{ $n->created_at ? \Carbon\Carbon::parse($n->created_at)->diffForHumans(null, true) : '' }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                         @if(!$n->is_read)
@@ -636,19 +644,19 @@
                                 @empty
                                     <div class="notif-card-empty">
                                         <i class="fa-regular fa-bell-slash"></i>
-                                        <span>لا توجد إشعارات حالياً</span>
+                                        <span>{{ __('messages.no_notifications') }}</span>
                                     </div>
                                 @endforelse
                             </div>
 
                             <a href="{{ url('/affairs/notifications') }}" class="notif-card-footer">
-                                <span>عرض كافة الإشعارات</span>
-                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>{{ __('messages.view_all') }}</span>
+                                <i class="fa-solid fa-arrow-left rtl:rotate-0 ltr:rotate-180"></i>
                             </a>
                         </div>
                     </div>
                     <!-- Dark Mode Toggle -->
-                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
+                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="{{ __('messages.settings') }}">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
                     </button>
                 </div>
@@ -674,11 +682,11 @@
         <nav class="bottom-nav">
             <a href="{{ route('affairs.dashboard') }}" class="bottom-nav-item {{ Request::is('affairs/dashboard') ? 'active' : '' }}">
                 <i class="fa-solid fa-house"></i>
-                <span>الرئيسية</span>
+                <span>{{ __('messages.dashboard') }}</span>
             </a>
             <a href="{{ route('affairs.profile') }}" class="bottom-nav-item {{ Request::is('affairs/profile') ? 'active' : '' }}">
                 <i class="fa-solid fa-user"></i>
-                <span>الملف الشخصي</span>
+                <span>{{ __('messages.profile') }}</span>
             </a>
             
             <div class="center-btn" onclick="toggleMobileMenu()">
@@ -687,12 +695,12 @@
             
             <a href="{{ route('affairs.notifications') }}" class="bottom-nav-item {{ Request::is('affairs/notifications') ? 'active' : '' }}">
                 <i class="fa-solid fa-bell"></i>
-                <span>الإشعارات</span>
+                <span>{{ __('messages.notifications') }}</span>
                 <span style="position: absolute; top: -5px; right: 5px; background: #ef4444; width: 8px; height: 8px; border-radius: 50%;"></span>
             </a>
             <a href="{{ route('affairs.messages') }}" class="bottom-nav-item {{ Request::is('affairs/messages') ? 'active' : '' }}">
                 <i class="fa-solid fa-envelope"></i>
-                <span>الدردشات</span>
+                <span>{{ __('messages.messages') }}</span>
             </a>
         </nav>
     </div>
@@ -779,12 +787,21 @@
             }
         });
 
-        // Hover grace delay: Keeps dropdown open while moving mouse freely over notifications
+        // Hover & Click support for mobile and desktop
         (function() {
             const dropdownWrap = document.getElementById('affairsNotifDropdown');
+            const bellBtn = document.getElementById('notifBellBtn');
             let timer = null;
 
             if (dropdownWrap) {
+                if (bellBtn) {
+                    bellBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropdownWrap.classList.toggle('is-open');
+                    });
+                }
+
                 dropdownWrap.addEventListener('mouseenter', function() {
                     if (timer) clearTimeout(timer);
                     dropdownWrap.classList.add('is-open');

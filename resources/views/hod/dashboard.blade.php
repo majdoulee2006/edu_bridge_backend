@@ -125,6 +125,10 @@
 
     @forelse($announcements as $ann)
         @php
+            $colors = ['#111827','#1d4ed8','#065f46','#7c3aed','#be123c','#b45309'];
+            $color  = $colors[$loop->index % count($colors)];
+            $initials = mb_substr($ann->user->full_name ?? 'إ', 0, 1);
+
             $imgsArr = [];
             if (!empty($ann->images)) {
                 $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
@@ -146,71 +150,57 @@
             $annId   = $ann->announcement_id ?? $ann->id;
         @endphp
 
-        @if($loop->first)
-        {{-- Hero card --}}
-        <div class="ann-hero">
-            <div class="ann-hero-img">
-                @if(!empty($formattedImgs))
-                    @include('partials.announcement_image_grid', ['images' => $formattedImgs, 'id' => $annId])
-                @else
-                    <div class="ann-no-img" style="width:100%; height:100%;">
-                        <i class="fa-solid fa-bullhorn" style="font-size:3.5rem; color:rgba(255,255,255,0.07);"></i>
-                    </div>
-                @endif
-                <div class="ann-hero-img-grad"></div>
-                <span class="ann-hero-img-badge">إعلان هام</span>
+        <div style="background: var(--bg-secondary); border: 1px solid rgba(128,128,128,0.2); border-radius: 1rem; margin-bottom: 1.5rem; padding: 1.25rem; display: flex; gap: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <!-- Avatar column -->
+            <div style="flex-shrink: 0;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background-color: {{ $color }}; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 1.1rem;">
+                    {{ $initials }}
+                </div>
             </div>
-            <div class="ann-hero-body">
-                <div class="ann-hero-footer" style="margin-bottom:0.6rem;">
-                    <span style="font-size:0.75rem; color:var(--text-secondary);"><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
+            
+            <!-- Content column -->
+            <div style="flex: 1; min-width: 0;">
+                <!-- Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ $ann->user->full_name ?? 'رئيس القسم' }}</span>
+                        @if(isset($ann->user) && in_array($ann->user->role, ['admin', 'hod', 'affairs']))
+                            <i class="fa-solid fa-circle-check" style="color: #1d9bf0; font-size: 0.85rem;"></i>
+                        @endif
+                        <span style="color: var(--text-muted); font-size: 0.9rem;" dir="ltr">@admin · {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans(null, true) }}</span>
+                    </div>
+
                     @if($isOwner)
-                    <div class="ann-actions">
-                        <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i> تعديل</a>
-                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف الإعلان؟')" style="margin:0;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <a href="{{ route('hod.announcements.edit', $annId) }}" style="color: var(--text-muted);"><i class="fa-solid fa-pen"></i></a>
+                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin:0; display: flex; align-items: center;">
                             @csrf
-                            <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i> حذف</button>
+                            <button type="submit" style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 0;"><i class="fa-solid fa-trash"></i></button>
                         </form>
                     </div>
                     @endif
                 </div>
-                <h4 class="ann-hero-title">{{ $ann->title }}</h4>
-                <p class="ann-hero-excerpt">{{ $ann->content }}</p>
+            
+                <!-- Text Content -->
+                <div style="color: var(--text-dark); font-size: 0.95rem; line-height: 1.6; margin-bottom: 0.75rem; white-space: pre-line;">
+                    @if($ann->title)
+                    <strong style="display: block; margin-bottom: 0.25rem; font-size: 1.05rem;">{{ $ann->title }}</strong>
+                    @endif
+                    {{ $ann->content }}
+                </div>
+
+                <!-- Image Attachment -->
+                @include('partials.image_slider', ['images' => $formattedImgs])
+                
                 @if(isset($ann->link_url) && $ann->link_url)
-                    <a href="{{ $ann->link_url }}" target="_blank" style="display:inline-flex; align-items:center; gap:0.3rem; color:var(--accent-color); font-size:0.82rem; font-weight:700; text-decoration:none;">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i> فتح الرابط
-                    </a>
-                @endif
-            </div>
-        </div>
-        @else
-        {{-- Row card --}}
-        <div class="ann-row">
-            <div class="ann-row-thumb">
-                @if(!empty($formattedImgs))
-                    @include('partials.announcement_image_grid', ['images' => $formattedImgs, 'id' => $annId])
-                @else
-                    <div class="ann-no-img" style="width:100%; height:100%; position:absolute; inset:0;">
-                        <i class="fa-solid fa-bullhorn" style="font-size:1.75rem; color:rgba(255,255,255,0.12);"></i>
+                    <div style="margin-top: 0.75rem;">
+                        <a href="{{ $ann->link_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 0.5rem; color: #1d9bf0; text-decoration: none; font-size: 0.9rem; font-weight: 700;">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> فتح الرابط
+                        </a>
                     </div>
                 @endif
             </div>
-            <div class="ann-row-body">
-                <h4 class="ann-row-title">{{ $ann->title }}</h4>
-                <div class="ann-row-meta">
-                    <span><i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
-                    @if($isOwner)
-                    <div class="ann-actions" style="margin-right:auto;">
-                        <a href="{{ route('hod.announcements.edit', $annId) }}" class="btn-edit-sm"><i class="fa-solid fa-pen"></i></a>
-                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin:0;">
-                            @csrf
-                            <button type="submit" class="btn-del-sm"><i class="fa-solid fa-trash"></i></button>
-                        </form>
-                    </div>
-                    @endif
-                </div>
-            </div>
         </div>
-        @endif
     @empty
     <div style="text-align:center; padding:2rem; background:var(--bg-secondary); border-radius:1.25rem; color:var(--text-secondary);">
         <i class="fa-solid fa-bullhorn" style="font-size:2rem; opacity:0.3; margin-bottom:0.5rem; display:block;"></i>

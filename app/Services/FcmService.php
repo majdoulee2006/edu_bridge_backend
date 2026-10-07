@@ -89,8 +89,27 @@ class FcmService
     public static function sendToUserSync(int $userId, string $title, string $body, array $data = []): bool
     {
         $user = User::find($userId);
-        if (!$user || empty($user->device_token) || $user->notifications_muted) return false;
-        return self::send($user->device_token, $title, $body, $data);
+        if (!$user || $user->notifications_muted) return false;
+
+        $sentFcm = false;
+        if (!empty($user->device_token)) {
+            $sentFcm = self::send($user->device_token, $title, $body, $data);
+        }
+
+        $sentTelegram = false;
+        if (!empty($user->telegram_chat_id)) {
+            try {
+                $tg = new \App\Services\TelegramService();
+                $cleanBody = strip_tags($body);
+                $cleanTitle = strip_tags($title);
+                $formatted = "🔔 <b>{$cleanTitle}</b>\n\n{$cleanBody}";
+                $sentTelegram = $tg->sendMessage((int) $user->telegram_chat_id, $formatted);
+            } catch (\Throwable $e) {
+                Log::warning('Auto Telegram forward from FcmService error: ' . $e->getMessage());
+            }
+        }
+
+        return $sentFcm || $sentTelegram;
     }
 
     public static function send(string $token, string $title, string $body, array $data = []): bool

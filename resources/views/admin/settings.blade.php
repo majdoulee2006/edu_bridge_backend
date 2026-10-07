@@ -1,42 +1,42 @@
 @extends('layouts.admin')
 
-@section('title', 'الإعدادات')
-@section('header-title', 'الإعدادات')
-@section('header-subtitle', 'تخصيص وإعدادات لوحة التحكم')
+@section('title', __('messages.settings'))
+@section('header-title', __('messages.settings'))
+@section('header-subtitle', __('messages.customize_dashboard_settings'))
 
 @section('content')
 
     <!-- Profile Summary Widget -->
     <div class="bg-white dark:bg-card-dark rounded-3xl p-4 flex items-center justify-between shadow-soft border border-slate-100 dark:border-slate-800/50 transition-colors">
-        <div class="flex flex-col gap-1 mr-2">
+        <div class="flex flex-col gap-1 {{ app()->getLocale() === 'en' ? 'ml-2' : 'mr-2' }}">
             <h3 class="font-bold text-lg text-slate-900 dark:text-white">{{ Auth::user()->full_name }}</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">مدير النظام التعليمي</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{{ __('messages.system_admin') }}</p>
         </div>
         <div class="relative">
             <div class="w-14 h-14 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-xl shadow-glow">
-                {{ mb_substr(Auth::user()->full_name ?? 'م', 0, 1) }}
+                {{ mb_substr(Auth::user()->full_name ?? 'A', 0, 1) }}
             </div>
         </div>
     </div>
 
     <!-- Appearance Settings -->
     <div class="bg-white dark:bg-card-dark rounded-3xl p-5 shadow-soft border border-slate-100 dark:border-slate-800/50 transition-colors space-y-6">
-        <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 mb-2">المظهر والسمات</h4>
+        <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 mb-2">{{ __('messages.appearance_and_themes') }}</h4>
         
         <!-- Font Size Slider -->
         <div class="space-y-3">
             <div class="flex items-center justify-between">
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">حجم الخط</span>
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ __('messages.font_size') }}</span>
                 <span class="material-symbols-outlined text-slate-400 text-[20px]">text_fields</span>
             </div>
             <div class="flex items-center gap-3 px-1">
-                <span class="text-[10px] text-slate-400">صغير</span>
+                <span class="text-[10px] text-slate-400">{{ __('messages.small') }}</span>
                 <input id="font-size-slider" class="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary" max="22" min="12" step="1" type="range" value="16"/>
-                <span class="text-[10px] text-slate-400">كبير</span>
+                <span class="text-[10px] text-slate-400">{{ __('messages.large') }}</span>
             </div>
             <div class="flex justify-between px-1 text-[10px] text-slate-400">
                 <span></span>
-                <span class="text-primary-dark dark:text-primary font-bold">متوسط</span>
+                <span class="text-primary-dark dark:text-primary font-bold">{{ __('messages.medium') }}</span>
                 <span></span>
             </div>
         </div>
@@ -45,7 +45,7 @@
         <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-slate-400 text-[20px]">dark_mode</span>
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">الوضع الداكن</span>
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ __('messages.dark_mode') }}</span>
             </div>
             
             <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -60,32 +60,32 @@
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-slate-400 text-[20px]">palette</span>
                     <div>
-                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">اللون الأساسي للنظام والتطبيق</span>
-                        <p class="text-[11px] text-slate-400">يتم تطبيق هذا اللون رسمياً على المظهر العام للويب والتطبيق</p>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ __('messages.primary_theme_color') }}</span>
+                        <p class="text-[11px] text-slate-400">{{ __('messages.primary_theme_color_desc') }}</p>
                     </div>
                 </div>
                 <span id="active-color-name" class="text-xs font-bold px-3 py-1 rounded-full text-slate-900 shadow-sm" style="background-color: {{ $themeSettings['primary_color'] ?? '#f2f20d' }};">
-                    {{ $themeSettings['accent_name'] ?? 'الأصفر المعهد' }}
+                    {{ $themeSettings['accent_name'] ?? __('messages.color_institute_yellow') }}
                 </span>
             </div>
 
             <div class="grid grid-cols-6 gap-3 pt-2">
-                <button type="button" onclick="selectSystemColor('#f2f20d', 'الأصفر المعهد')" title="الأصفر المعهد" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #f2f20d; border-color: {{ ($themeSettings['primary_color'] ?? '#f2f20d') == '#f2f20d' ? '#ffffff' : 'transparent' }};">
+                <button type="button" onclick="selectSystemColor('#f2f20d', @json(__('messages.color_institute_yellow')))" title="{{ __('messages.color_institute_yellow') }}" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #f2f20d; border-color: {{ ($themeSettings['primary_color'] ?? '#f2f20d') == '#f2f20d' ? '#ffffff' : 'transparent' }};">
                     <i class="fa-solid fa-check text-slate-900 text-xs {{ ($themeSettings['primary_color'] ?? '#f2f20d') == '#f2f20d' ? '' : 'hidden' }}"></i>
                 </button>
-                <button type="button" onclick="selectSystemColor('#3b82f6', 'الأزرق الملكي')" title="الأزرق الملكي" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #3b82f6; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#3b82f6' ? '#ffffff' : 'transparent' }};">
+                <button type="button" onclick="selectSystemColor('#3b82f6', @json(__('messages.color_royal_blue')))" title="{{ __('messages.color_royal_blue') }}" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #3b82f6; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#3b82f6' ? '#ffffff' : 'transparent' }};">
                     <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#3b82f6' ? '' : 'hidden' }}"></i>
                 </button>
-                <button type="button" onclick="selectSystemColor('#10b981', 'الأخضر الزمردي')" title="الأخضر الزمردي" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #10b981; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#10b981' ? '#ffffff' : 'transparent' }};">
+                <button type="button" onclick="selectSystemColor('#10b981', @json(__('messages.color_emerald_green')))" title="{{ __('messages.color_emerald_green') }}" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #10b981; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#10b981' ? '#ffffff' : 'transparent' }};">
                     <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#10b981' ? '' : 'hidden' }}"></i>
                 </button>
-                <button type="button" onclick="selectSystemColor('#8b5cf6', 'الأرجواني الفاخر')" title="الأرجواني الفاخر" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #8b5cf6; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#8b5cf6' ? '#ffffff' : 'transparent' }};">
+                <button type="button" onclick="selectSystemColor('#8b5cf6', @json(__('messages.color_luxury_purple')))" title="{{ __('messages.color_luxury_purple') }}" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #8b5cf6; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#8b5cf6' ? '#ffffff' : 'transparent' }};">
                     <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#8b5cf6' ? '' : 'hidden' }}"></i>
                 </button>
-                <button type="button" onclick="selectSystemColor('#f97316', 'البرتقالي الدافئ')" title="البرتقالي الدافئ" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #f97316; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#f97316' ? '#ffffff' : 'transparent' }};">
+                <button type="button" onclick="selectSystemColor('#f97316', @json(__('messages.color_warm_orange')))" title="{{ __('messages.color_warm_orange') }}" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #f97316; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#f97316' ? '#ffffff' : 'transparent' }};">
                     <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#f97316' ? '' : 'hidden' }}"></i>
                 </button>
-                <button type="button" onclick="selectSystemColor('#ef4444', 'الأحمر القرمزي')" title="الأحمر القرمزي" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #ef4444; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#ef4444' ? '#ffffff' : 'transparent' }};">
+                <button type="button" onclick="selectSystemColor('#ef4444', @json(__('messages.color_crimson_red')))" title="{{ __('messages.color_crimson_red') }}" class="h-10 rounded-2xl flex items-center justify-center border-2 transition-transform hover:scale-105 shadow-sm" style="background-color: #ef4444; border-color: {{ ($themeSettings['primary_color'] ?? '') == '#ef4444' ? '#ffffff' : 'transparent' }};">
                     <i class="fa-solid fa-check text-white text-xs {{ ($themeSettings['primary_color'] ?? '') == '#ef4444' ? '' : 'hidden' }}"></i>
                 </button>
             </div>
@@ -95,13 +95,13 @@
 
     <!-- Notifications Settings -->
     <div class="bg-white dark:bg-card-dark rounded-3xl p-5 shadow-soft border border-slate-100 dark:border-slate-800/50 transition-colors space-y-6">
-        <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 mb-2">الإشعارات والتنبيهات</h4>
+        <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 mb-2">{{ __('messages.notifications_and_alerts') }}</h4>
         
         <!-- Enable Notifications -->
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-slate-400 text-[20px]">notifications</span>
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">تفعيل التنبيهات الفورية</span>
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ __('messages.enable_push_notifications') }}</span>
             </div>
             <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
                 <input class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-slate-200" id="notif-toggle" name="toggle" type="checkbox" onclick="toggleSwitch('notif-toggle')"/>
@@ -113,7 +113,7 @@
         <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-slate-400 text-[20px]">volume_up</span>
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">أصوات التنبيهات</span>
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ __('messages.sound_effects') }}</span>
             </div>
             <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
                 <input class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-slate-200" id="sound-toggle" name="toggle" type="checkbox" onclick="toggleSwitch('sound-toggle')"/>
@@ -125,7 +125,7 @@
         <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-slate-400 text-[20px]">vibration</span>
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">الاهتزاز</span>
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ __('messages.vibrations') ?? 'الاهتزاز' }}</span>
             </div>
             <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
                 <input class="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-slate-200" id="vibrate-toggle" name="toggle" type="checkbox" onclick="toggleSwitch('vibrate-toggle')"/>
@@ -137,8 +137,8 @@
     <!-- Ultra-Premium About App & Privacy Showcase Cards -->
     <div class="bg-white dark:bg-card-dark rounded-3xl p-6 shadow-soft border border-slate-100 dark:border-slate-800/50 space-y-4 transition-colors">
         <div class="flex items-center justify-between mb-2">
-            <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">الدعم والمعلومات والأمان</h4>
-            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/10 text-amber-500 border border-amber-400/20">منظومة معتمدة</span>
+            <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{{ __('messages.support_and_info') ?? 'الدعم والمعلومات والأمان' }}</h4>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/10 text-amber-500 border border-amber-400/20">{{ __('messages.verified_system') ?? 'منظومة معتمدة' }}</span>
         </div>
 
         <div>
@@ -149,18 +149,18 @@
                         <i class="fa-solid fa-graduation-cap"></i>
                     </div>
                     <span class="text-xs font-bold text-amber-500 flex items-center gap-1 group-hover:translate-x-[-4px] transition-transform">
-                        استعراض <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                        {{ __('messages.view_details') }} <i class="fa-solid {{ app()->getLocale() === 'en' ? 'fa-arrow-right' : 'fa-arrow-left' }} text-[10px]"></i>
                     </span>
                 </div>
                 <div class="mt-4">
-                    <h5 class="font-bold text-base text-slate-900 dark:text-white">حول المنصة وفريق التطوير</h5>
+                    <h5 class="font-bold text-base text-slate-900 dark:text-white">{{ __('messages.about_platform_and_team') ?? 'حول المنصة وفريق التطوير' }}</h5>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                        معلومات نظام Edu-Bridge الأكاديمي، كادر الهندسة والبرمجة، سياسة الخصوصية، والتقنيات المعتمدة.
+                        {{ __('messages.about_platform_desc') ?? 'معلومات نظام Edu-Bridge الأكاديمي، كادر الهندسة والبرمجة، سياسة الخصوصية، والتقنيات المعتمدة.' }}
                     </p>
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>5 مهندسين معتمدين</span>
-                    <span class="text-amber-500 font-semibold">منظومة معتمدة</span>
+                    <span>5 {{ __('messages.engineers_verified') ?? 'مهندسين معتمدين' }}</span>
+                    <span class="text-amber-500 font-semibold">{{ __('messages.verified_system') ?? 'منظومة معتمدة' }}</span>
                 </div>
             </div>
         </div>

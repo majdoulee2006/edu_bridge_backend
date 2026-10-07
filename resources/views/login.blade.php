@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'en' ? 'ltr' : 'rtl' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -163,11 +163,20 @@
 
         .input-icon {
             position: absolute;
-            right: 1rem;
             color: #71717a;
             font-size: 1rem;
             pointer-events: none;
             transition: color 0.2s;
+        }
+
+        [dir="rtl"] .input-icon {
+            right: 1rem;
+            left: auto;
+        }
+
+        [dir="ltr"] .input-icon {
+            left: 1rem;
+            right: auto;
         }
 
         .form-control {
@@ -175,7 +184,7 @@
             background-color: var(--input-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 0.75rem 2.5rem 0.75rem 1rem;
+            padding: 0.75rem 2.5rem 0.75rem 2.5rem;
             color: var(--text-primary);
             font-size: 0.95rem;
             transition: all 0.2s;
@@ -193,13 +202,22 @@
 
         .password-toggle {
             position: absolute;
-            left: 1rem;
             background: none;
             border: none;
             color: #71717a;
             cursor: pointer;
             padding: 0;
             transition: color 0.2s;
+        }
+
+        [dir="rtl"] .password-toggle {
+            left: 1rem;
+            right: auto;
+        }
+
+        [dir="ltr"] .password-toggle {
+            right: 1rem;
+            left: auto;
         }
 
         .password-toggle:hover {
@@ -261,6 +279,10 @@
 </head>
 <body>
 
+    <div style="position: fixed; top: 1.25rem; {{ app()->getLocale() === 'ar' ? 'left: 1.25rem;' : 'right: 1.25rem;' }} z-index: 9999;">
+        @include('components.lang-switcher')
+    </div>
+
     <div class="login-wrapper">
         <div class="login-card">
             
@@ -275,7 +297,7 @@
                     </div>
                 @endif
                 
-                <p class="page-title">{{ $role['title'] ?? 'بوابة تسجيل الدخول الموحدة' }}</p>
+                <p class="page-title">{{ $role['title'] ?? __('messages.login_title_unified') }}</p>
             </div>
 
             @if (session('success'))
@@ -310,17 +332,17 @@
                 @csrf
 
                 <div class="form-group">
-                    <label class="form-label">بيانات الحساب</label>
+                    <label class="form-label">{{ __('messages.account_credentials') }}</label>
                     <div class="input-group">
                         <i class="fa-solid fa-user input-icon"></i>
                         <input type="text" name="login" class="form-control" 
-                               placeholder="{{ ($role['key'] ?? '') === 'student' ? 'الرقم الجامعي أو اسم المستخدم' : 'اسم المستخدم، البريد، أو الهاتف' }}" 
+                               placeholder="{{ ($role['key'] ?? '') === 'student' ? __('messages.login_placeholder_student') : __('messages.login_placeholder_generic') }}" 
                                value="{{ old('login') }}" required autofocus>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">كلمة المرور</label>
+                    <label class="form-label">{{ __('messages.password') }}</label>
                     <div class="input-group">
                         <i class="fa-solid fa-lock input-icon"></i>
                         <input type="password" name="password" id="password_input" class="form-control" 
@@ -334,24 +356,24 @@
                 <div class="remember-row" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; margin-bottom: 0.5rem; gap: 0.5rem; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <input type="checkbox" name="remember" id="remember" style="accent-color: var(--accent-yellow); width: 16px; height: 16px; cursor: pointer;">
-                        <label for="remember" style="color: #e4e4e7; font-size: 0.85rem; cursor: pointer; user-select: none;">تذكرني (Remember Me)</label>
+                        <label for="remember" style="color: #e4e4e7; font-size: 0.85rem; cursor: pointer; user-select: none;">{{ __('messages.remember_me') }}</label>
                     </div>
                     <a href="javascript:void(0)" onclick="openResetPasswordModal()" style="color: var(--accent-yellow); font-size: 0.85rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 0.3rem; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
                         <i class="fa-solid fa-key"></i>
-                        <span>نسيت كلمة المرور؟</span>
+                        <span>{{ __('messages.forgot_password') }}</span>
                     </a>
                 </div>
 
                 <button type="submit" class="btn-submit">
-                    تسجيل الدخول
-                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>{{ __('messages.sign_in') }}</span>
+                    <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}"></i>
                 </button>
 
                 <div style="text-align: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-                    <span style="color: #a1a1aa; font-size: 0.88rem;">ليس لديك حساب؟ </span>
+                    <span style="color: #a1a1aa; font-size: 0.88rem;">{{ __('messages.dont_have_account') }} </span>
                     <a href="javascript:void(0)" onclick="openRegisterModal()" style="color: var(--accent-yellow); font-weight: 700; text-decoration: none; font-size: 0.92rem; margin-right: 4px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-                        <i class="fa-solid fa-user-plus" style="margin-left: 3px;"></i>
-                        إنشاء حساب جديد
+                        <i class="fa-solid fa-user-plus" style="{{ app()->getLocale() === 'ar' ? 'margin-left: 3px;' : 'margin-right: 3px;' }}"></i>
+                        {{ __('messages.create_new_account') }}
                     </a>
                 </div>
             </form>
@@ -359,7 +381,7 @@
         </div>
         
         <div class="footer">
-            جميع الحقوق محفوظة &copy; {{ date('Y') }} EduBridge System
+            {{ __('messages.all_rights_reserved') }} &copy; {{ date('Y') }} EduBridge System
         </div>
     </div>
 
@@ -367,7 +389,7 @@
     <div id="resetPasswordModal" class="reset-modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
         <div class="reset-modal-card" style="background: #18181b; border: 1px solid #27272a; border-radius: 20px; width: 100%; max-width: 460px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); position: relative; animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
             
-            <!-- الشريط العلوي للأنيق -->
+            <!-- الشريط العلوي الأنيق -->
             <div style="height: 4px; background: linear-gradient(90deg, #facc15, #eab308);"></div>
             
             <div style="padding: 1.8rem;">
@@ -377,8 +399,8 @@
                             <i class="fa-brands fa-telegram"></i>
                         </div>
                         <div>
-                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 800; margin: 0;">استعادة كلمة المرور</h3>
-                            <p style="color: #a1a1aa; font-size: 0.8rem; margin: 0;">عبر رمز OTP التليجرام الآمن</p>
+                            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 800; margin: 0;">{{ __('messages.reset_password_title') }}</h3>
+                            <p style="color: #a1a1aa; font-size: 0.8rem; margin: 0;">{{ __('messages.reset_password_subtitle') }}</p>
                         </div>
                     </div>
                     <button onclick="closeResetPasswordModal()" style="background: rgba(255, 255, 255, 0.05); border: none; color: #a1a1aa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#a1a1aa';">
@@ -395,41 +417,41 @@
                 <!-- الخطوة 1: اختيار الصفة وإدخال المعرفات -->
                 <div id="step-1-form">
                     <div style="margin-bottom: 1.2rem;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.6rem;">اختر صفة الحساب:</label>
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.6rem;">{{ __('messages.select_account_role') }}</label>
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; background: #09090b; padding: 4px; border-radius: 10px; border: 1px solid #27272a;">
                             <button type="button" class="role-tab-btn active" data-role="student" onclick="selectRoleForReset('student')" style="padding: 0.5rem; border: none; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; background: var(--accent-yellow); color: #000;">
-                                <i class="fa-solid fa-graduation-cap"></i> طالب
+                                <i class="fa-solid fa-graduation-cap"></i> {{ __('messages.role_student') }}
                             </button>
                             <button type="button" class="role-tab-btn" data-role="parent" onclick="selectRoleForReset('parent')" style="padding: 0.5rem; border: none; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; background: transparent; color: #a1a1aa;">
-                                <i class="fa-solid fa-users"></i> ولي أمر
+                                <i class="fa-solid fa-users"></i> {{ __('messages.role_parent') }}
                             </button>
                             <button type="button" class="role-tab-btn" data-role="teacher" onclick="selectRoleForReset('teacher')" style="padding: 0.5rem; border: none; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; background: transparent; color: #a1a1aa;">
-                                <i class="fa-solid fa-chalkboard-user"></i> أستاذ
+                                <i class="fa-solid fa-chalkboard-user"></i> {{ __('messages.role_teacher') }}
                             </button>
                         </div>
                     </div>
 
                     <div style="margin-bottom: 1.2rem;">
-                        <label id="identifier-label" style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">الرقم الجامعي أو رقم الجوال:</label>
+                        <label id="identifier-label" style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">{{ __('messages.univ_id_or_phone') }}</label>
                         <div class="input-group">
                             <i id="identifier-icon" class="fa-solid fa-id-card input-icon"></i>
-                            <input type="text" id="reset-identifier" class="form-control" placeholder="أدخل الرقم الجامعي أو رقم الجوال..." required>
+                            <input type="text" id="reset-identifier" class="form-control" placeholder="{{ __('messages.enter_univ_id_or_phone') }}" required>
                         </div>
                     </div>
 
                     <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">معرف التليجرام أو Chat ID:</label>
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">{{ __('messages.telegram_id_label') }}</label>
                         <div class="input-group">
                             <i class="fa-brands fa-telegram input-icon" style="color: #38bdf8;"></i>
-                            <input type="text" id="reset-telegram" class="form-control" placeholder="مثال: @username أو Chat ID" required>
+                            <input type="text" id="reset-telegram" class="form-control" placeholder="{{ __('messages.telegram_id_placeholder') }}" required>
                         </div>
                         <p style="font-size: 0.75rem; color: #71717a; margin-top: 0.4rem;">
-                            💡 سيتم إرسال رمز OTP مكون من 6 أرقام إلى حسابك عبر بوت التليجرام.
+                            💡 {{ __('messages.telegram_otp_note') }}
                         </p>
                     </div>
 
                     <button type="button" id="btn-send-otp" onclick="submitSendOtp()" class="btn-submit" style="margin-top: 0;">
-                        <span>إرسال رمز OTP عبر تليجرام</span>
+                        <span>{{ __('messages.send_otp_btn') }}</span>
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </div>
@@ -440,8 +462,8 @@
                         <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(34, 197, 94, 0.1); color: #4ade80; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.6rem;">
                             <i class="fa-solid fa-shield-cat"></i>
                         </div>
-                        <h4 style="color: #fff; font-size: 1rem; font-weight: 700; margin-bottom: 0.2rem;">أدخل رمز التحقق (OTP)</h4>
-                        <p style="color: #a1a1aa; font-size: 0.8rem;">أدخل الرمز المكون من 6 أرقام المرسل إلى تليجرام</p>
+                        <h4 style="color: #fff; font-size: 1rem; font-weight: 700; margin-bottom: 0.2rem;">{{ __('messages.enter_otp_code') }}</h4>
+                        <p style="color: #a1a1aa; font-size: 0.8rem;">{{ __('messages.enter_otp_hint') }}</p>
                     </div>
 
                     <!-- 6 حقول إدخال للأرقام -->
@@ -455,12 +477,12 @@
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; font-size: 0.8rem; color: #a1a1aa;">
-                        <span id="resend-timer-text">إعادة الإرسال خلال: <b id="countdown-sec" style="color: var(--accent-yellow);">60</b> ثانية</span>
-                        <button type="button" id="btn-resend-otp" onclick="submitSendOtp()" disabled style="background: none; border: none; color: #71717a; font-weight: 700; cursor: not-allowed;">إعادة إرسال الرمز</button>
+                        <span id="resend-timer-text">{{ __('messages.resend_in') }}: <b id="countdown-sec" style="color: var(--accent-yellow);">60</b> {{ __('messages.seconds') }}</span>
+                        <button type="button" id="btn-resend-otp" onclick="submitSendOtp()" disabled style="background: none; border: none; color: #71717a; font-weight: 700; cursor: not-allowed;">{{ __('messages.resend_otp_btn') }}</button>
                     </div>
 
                     <button type="button" id="btn-verify-otp" onclick="submitVerifyOtp()" class="btn-submit" style="margin-top: 0;">
-                        <span>تأكيد الرمز وتغيير كلمة السر</span>
+                        <span>{{ __('messages.confirm_otp_and_change_pwd') }}</span>
                         <i class="fa-solid fa-check-double"></i>
                     </button>
                 </div>
@@ -468,7 +490,7 @@
                 <!-- الخطوة 3: تعيين كلمة المرور الجديدة -->
                 <div id="step-3-form" style="display: none;">
                     <div style="margin-bottom: 1.2rem;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">كلمة المرور الجديدة:</label>
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">{{ __('messages.new_password') }}:</label>
                         <div class="input-group">
                             <i class="fa-solid fa-lock input-icon"></i>
                             <input type="password" id="new-password-input" class="form-control" placeholder="••••••••" required>
@@ -476,7 +498,7 @@
                     </div>
 
                     <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">تأكيد كلمة المرور الجديدة:</label>
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #e4e4e7; margin-bottom: 0.4rem;">{{ __('messages.confirm_new_password') }}:</label>
                         <div class="input-group">
                             <i class="fa-solid fa-shield-halved input-icon"></i>
                             <input type="password" id="new-password-confirm" class="form-control" placeholder="••••••••" required>
@@ -484,7 +506,7 @@
                     </div>
 
                     <button type="button" id="btn-save-password" onclick="submitResetPassword()" class="btn-submit" style="margin-top: 0;">
-                        <span>تحديث كلمة المرور في النظام</span>
+                        <span>{{ __('messages.update_password_btn') }}</span>
                         <i class="fa-solid fa-floppy-disk"></i>
                     </button>
                 </div>
@@ -506,8 +528,8 @@
                             <i class="fa-solid fa-user-plus" style="font-size: 1.1rem;"></i>
                         </div>
                         <div>
-                            <h3 style="margin: 0; color: #fff; font-size: 1.15rem; font-weight: 700;">إنشاء حساب جديد</h3>
-                            <p style="margin: 2px 0 0 0; color: #71717a; font-size: 0.8rem;">سجل حساب جديد للوصول إلى المنصة</p>
+                            <h3 style="margin: 0; color: #fff; font-size: 1.15rem; font-weight: 700;">{{ __('messages.register_title') }}</h3>
+                            <p style="margin: 2px 0 0 0; color: #71717a; font-size: 0.8rem;">{{ __('messages.register_subtitle') }}</p>
                         </div>
                     </div>
                     <button onclick="closeRegisterModal()" style="background: rgba(255, 255, 255, 0.05); border: none; color: #a1a1aa; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
@@ -518,10 +540,10 @@
                 <!-- اختيار نوع الحساب -->
                 <div style="display: flex; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 4px; margin-bottom: 1.2rem;">
                     <button type="button" id="regTabStudent" onclick="switchRegRole('student')" style="flex: 1; padding: 8px; border: none; border-radius: 9px; background: #facc15; color: #000; font-weight: bold; cursor: pointer; font-family: inherit; transition: all 0.2s;">
-                        <i class="fa-solid fa-graduation-cap"></i> طالب
+                        <i class="fa-solid fa-graduation-cap"></i> {{ __('messages.role_student') }}
                     </button>
                     <button type="button" id="regTabParent" onclick="switchRegRole('parent')" style="flex: 1; padding: 8px; border: none; border-radius: 9px; background: transparent; color: #a1a1aa; font-weight: bold; cursor: pointer; font-family: inherit; transition: all 0.2s;">
-                        <i class="fa-solid fa-users"></i> ولي أمر
+                        <i class="fa-solid fa-users"></i> {{ __('messages.role_parent') }}
                     </button>
                 </div>
 
@@ -537,43 +559,43 @@
                                 <i id="avatarPlaceholderIcon" class="fa-solid fa-user" style="font-size: 2.5rem; color: #71717a;"></i>
                                 <img id="avatarPreviewImg" src="" style="display: none; width: 100%; height: 100%; object-fit: cover;">
                             </div>
-                            <div style="position: absolute; bottom: 0; right: 0; background: #facc15; color: #000; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
+                            <div style="position: absolute; bottom: 0; {{ app()->getLocale() === 'ar' ? 'right: 0;' : 'left: 0;' }} background: #facc15; color: #000; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
                                 <i class="fa-solid fa-camera" style="font-size: 0.85rem;"></i>
                             </div>
                             <input type="file" id="regAvatar" accept="image/*" onchange="previewRegAvatar(event)" style="display: none;">
                         </label>
-                        <p style="margin: 6px 0 0 0; color: #ef4444; font-size: 0.78rem; font-weight: 600;">* صورة البروفايل إجبارية</p>
+                        <p style="margin: 6px 0 0 0; color: #ef4444; font-size: 0.78rem; font-weight: 600;">{{ __('messages.profile_picture_required') }}</p>
                     </div>
 
                     <!-- الاسم الأول والاسم الأخير -->
                     <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
                         <div style="flex: 1;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الاسم الأول <span style="color:#ef4444">*</span></label>
-                            <input type="text" id="regFirstName" required placeholder="أحمد" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.first_name') }} <span style="color:#ef4444">*</span></label>
+                            <input type="text" id="regFirstName" required placeholder="{{ app()->getLocale() === 'en' ? 'John' : 'أحمد' }}" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                         </div>
                         <div style="flex: 1;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الاسم الأخير <span style="color:#ef4444">*</span></label>
-                            <input type="text" id="regLastName" required placeholder="محمد" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.last_name') }} <span style="color:#ef4444">*</span></label>
+                            <input type="text" id="regLastName" required placeholder="{{ app()->getLocale() === 'en' ? 'Doe' : 'محمد' }}" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                         </div>
                     </div>
 
                     <!-- معرف التليغرام -->
                     <div style="margin-bottom: 0.8rem;">
-                        <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">معرّف التليغرام (Telegram ID) <span style="color:#ef4444">*</span></label>
+                        <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.telegram_id') }} <span style="color:#ef4444">*</span></label>
                         <input type="text" id="regTelegramId" required value="7821980919" placeholder="7821980919" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                     </div>
 
                     <!-- الجنس وتاريخ الميلاد -->
                     <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
                         <div style="flex: 1;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الجنس <span style="color:#ef4444">*</span></label>
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.gender') }} <span style="color:#ef4444">*</span></label>
                             <select id="regGender" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
-                                <option value="ذكر">ذكر</option>
-                                <option value="أنثى">أنثى</option>
+                                <option value="ذكر">{{ __('messages.male') }}</option>
+                                <option value="أنثى">{{ __('messages.female') }}</option>
                             </select>
                         </div>
                         <div style="flex: 1;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">تاريخ الميلاد (العمر 18 - 23) <span style="color:#ef4444">*</span></label>
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.birth_date') }} <span style="color:#ef4444">*</span></label>
                             <input type="date" id="regBirthDate" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                         </div>
                     </div>
@@ -581,11 +603,11 @@
                     <!-- رقم الهاتف والبريد الإلكتروني -->
                     <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
                         <div style="flex: 1;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">رقم الهاتف <span style="color:#ef4444">*</span></label>
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.phone') }} <span style="color:#ef4444">*</span></label>
                             <input type="text" id="regPhone" required placeholder="09xxxxxxx" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                         </div>
                         <div style="flex: 1;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.email') }} <span style="color:#ef4444">*</span></label>
                             <input type="email" id="regEmail" required placeholder="example@domain.com" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                         </div>
                     </div>
@@ -594,19 +616,19 @@
                     <div id="studentRegFields">
                         <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
                             <div style="flex: 1;">
-                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">القسم <span style="color:#ef4444">*</span></label>
+                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.department') }} <span style="color:#ef4444">*</span></label>
                                 <select id="regDept" onchange="updateRegBranches()" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
-                                    <option value="نظم معلومات">نظم معلومات</option>
-                                    <option value="طبي">طبي</option>
-                                    <option value="تجاري">تجاري</option>
-                                    <option value="هندسي">هندسي</option>
+                                    <option value="نظم معلومات">{{ app()->getLocale() === 'en' ? 'Information Systems' : 'نظم معلومات' }}</option>
+                                    <option value="طبي">{{ app()->getLocale() === 'en' ? 'Medical' : 'طبي' }}</option>
+                                    <option value="تجاري">{{ app()->getLocale() === 'en' ? 'Commercial' : 'تجاري' }}</option>
+                                    <option value="هندسي">{{ app()->getLocale() === 'en' ? 'Engineering' : 'هندسي' }}</option>
                                 </select>
                             </div>
                             <div style="flex: 1;">
-                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الدورة / الفرع <span style="color:#ef4444">*</span></label>
+                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.branch_course') }} <span style="color:#ef4444">*</span></label>
                                 <select id="regBranch" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
-                                    <option value="معلوماتي">معلوماتي</option>
-                                    <option value="اتصالات">اتصالات</option>
+                                    <option value="معلوماتي">{{ app()->getLocale() === 'en' ? 'Informatics' : 'معلوماتي' }}</option>
+                                    <option value="اتصالات">{{ app()->getLocale() === 'en' ? 'Telecom' : 'اتصالات' }}</option>
                                 </select>
                             </div>
                         </div>
@@ -615,19 +637,19 @@
                     <!-- حقول خاصة بولي الأمر -->
                     <div id="parentRegFields" style="display: none; margin-bottom: 0.8rem;">
                         <div style="margin-bottom: 0.8rem;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">عدد الأبناء في الجامعة / المعهد <span style="color:#ef4444">*</span></label>
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.child_count_in_univ') }} <span style="color:#ef4444">*</span></label>
                             <select id="regChildCount" onchange="updateParentChildFields()" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
-                                <option value="1">ولد واحد (1)</option>
-                                <option value="2">ابنان (2)</option>
-                                <option value="3">ثلاثة أبناء (3)</option>
-                                <option value="4">أربعة أبناء (4)</option>
-                                <option value="5">خمسة أبناء (5)</option>
+                                <option value="1">{{ __('messages.child_count_1') }}</option>
+                                <option value="2">{{ __('messages.child_count_2') }}</option>
+                                <option value="3">{{ __('messages.child_count_3') }}</option>
+                                <option value="4">{{ __('messages.child_count_4') }}</option>
+                                <option value="5">{{ __('messages.child_count_5') }}</option>
                             </select>
                         </div>
                         <div id="parentChildIdsContainer">
                             <div style="margin-bottom: 0.6rem;">
-                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الرقم الجامعي للابن 1 <span style="color:#ef4444">*</span></label>
-                                <input type="text" class="reg-child-id-input" placeholder="مثال: 2026101" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                                <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.child_univ_id') }} 1 <span style="color:#ef4444">*</span></label>
+                                <input type="text" class="reg-child-id-input" placeholder="{{ app()->getLocale() === 'en' ? 'e.g. 2026101' : 'مثال: 2026101' }}" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                             </div>
                         </div>
                     </div>
@@ -635,18 +657,18 @@
                     <!-- كلمة المرور وتأكيدها -->
                     <div style="display: flex; gap: 0.8rem; margin-bottom: 1.2rem;">
                         <div style="flex: 1;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">كلمة المرور <span style="color:#ef4444">*</span></label>
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.password') }} <span style="color:#ef4444">*</span></label>
                             <input type="password" id="regPassword" required placeholder="••••••••" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                         </div>
                         <div style="flex: 1;">
-                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">تأكيد كلمة المرور <span style="color:#ef4444">*</span></label>
+                            <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">{{ __('messages.confirm_new_password') }} <span style="color:#ef4444">*</span></label>
                             <input type="password" id="regConfirmPassword" required placeholder="••••••••" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                         </div>
                     </div>
 
                     <button type="submit" id="btnSubmitRegister" style="width: 100%; background: #facc15; color: #000; border: none; padding: 11px; border-radius: 10px; font-weight: bold; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit;">
-                        <span>تقديم طلب إنشاء الحساب</span>
-                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>{{ __('messages.submit_registration_btn') }}</span>
+                        <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}"></i>
                     </button>
                 </form>
             </div>
@@ -665,6 +687,7 @@
     </style>
 
     <script>
+        const isEn = {{ app()->getLocale() === 'en' ? 'true' : 'false' }};
         let selectedRole = "{{ $role['key'] ?? 'student' }}";
         if (selectedRole === 'unified') selectedRole = 'student';
         let countdownInterval = null;
@@ -711,14 +734,14 @@
             const placeholder = document.getElementById('reset-identifier');
             
             if (role === 'student') {
-                label.textContent = 'الرقم الجامعي أو رقم الجوال:';
-                placeholder.placeholder = 'أدخل الرقم الجامعي أو رقم الجوال...';
+                label.textContent = isEn ? 'University ID or Phone Number:' : 'الرقم الجامعي أو رقم الجوال:';
+                placeholder.placeholder = isEn ? 'Enter University ID or Phone...' : 'أدخل الرقم الجامعي أو رقم الجوال...';
             } else if (role === 'parent') {
-                label.textContent = 'رقم الجوال الخاص بولي الأمر:';
-                placeholder.placeholder = 'أدخل رقم الجوال...';
+                label.textContent = isEn ? 'Parent Phone Number:' : 'رقم الجوال الخاص بولي الأمر:';
+                placeholder.placeholder = isEn ? 'Enter Phone Number...' : 'أدخل رقم الجوال...';
             } else {
-                label.textContent = 'رقم الجوال أو اسم المستخدم للأستاذ:';
-                placeholder.placeholder = 'أدخل الرقم أو البريد...';
+                label.textContent = isEn ? 'Teacher Phone or Username:' : 'رقم الجوال أو اسم المستخدم للأستاذ:';
+                placeholder.placeholder = isEn ? 'Enter Phone or Username...' : 'أدخل الرقم أو البريد...';
             }
         }
 
@@ -760,12 +783,14 @@
             const btn = document.getElementById('btn-send-otp');
 
             if (!identifier || !telegramIdentifier) {
-                showResetAlert('يرجى ملء كافة الحقول المطلوبة (الرقم/الجوال ومعرف تليجرام).');
+                showResetAlert(isEn ? 'Please fill in all required fields (ID/Phone and Telegram).' : 'يرجى ملء كافة الحقول المطلوبة (الرقم/الجوال ومعرف تليجرام).');
                 return;
             }
 
             btn.disabled = true;
-            btn.innerHTML = '<span>جاري الإرسال عبر تليجرام...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.innerHTML = isEn 
+                ? '<span>Sending via Telegram...</span> <i class="fa-solid fa-spinner fa-spin"></i>'
+                : '<span>جاري الإرسال عبر تليجرام...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
             hideResetAlert();
 
             try {
@@ -785,7 +810,9 @@
 
                 const res = await response.json();
                 btn.disabled = false;
-                btn.innerHTML = '<span>إرسال رمز OTP عبر تليجرام</span> <i class="fa-solid fa-paper-plane"></i>';
+                btn.innerHTML = isEn 
+                    ? '<span>Send OTP via Telegram</span> <i class="fa-solid fa-paper-plane"></i>'
+                    : '<span>{{ __('messages.send_otp_btn') }}</span> <i class="fa-solid fa-paper-plane"></i>';
 
                 if (res.success) {
                     showStep(2);
@@ -793,12 +820,14 @@
                     startCountdownTimer();
                     setupOtpInputs();
                 } else {
-                    showResetAlert(res.message || 'حدث خطأ أثناء إرسال رمز OTP.');
+                    showResetAlert(res.message || (isEn ? 'An error occurred while sending OTP.' : 'حدث خطأ أثناء إرسال رمز OTP.'));
                 }
             } catch (e) {
                 btn.disabled = false;
-                btn.innerHTML = '<span>إرسال رمز OTP عبر تليجرام</span> <i class="fa-solid fa-paper-plane"></i>';
-                showResetAlert('فشل الاتصال بالسيرفر: ' + e.message);
+                btn.innerHTML = isEn 
+                    ? '<span>Send OTP via Telegram</span> <i class="fa-solid fa-paper-plane"></i>'
+                    : '<span>{{ __('messages.send_otp_btn') }}</span> <i class="fa-solid fa-paper-plane"></i>';
+                showResetAlert((isEn ? 'Server connection error: ' : 'فشل الاتصال بالسيرفر: ') + e.message);
             }
         }
 
@@ -860,13 +889,15 @@
             inputs.forEach(i => otp += i.value.trim());
 
             if (otp.length !== 6) {
-                showResetAlert('يرجى كتابة رمز OTP الكامل المكون من 6 أرقام.');
+                showResetAlert(isEn ? 'Please enter the complete 6-digit OTP code.' : 'يرجى كتابة رمز OTP الكامل المكون من 6 أرقام.');
                 return;
             }
 
             const btn = document.getElementById('btn-verify-otp');
             btn.disabled = true;
-            btn.innerHTML = '<span>جاري التحقق من الرمز...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.innerHTML = isEn 
+                ? '<span>Verifying code...</span> <i class="fa-solid fa-spinner fa-spin"></i>'
+                : '<span>جاري التحقق من الرمز...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
             hideResetAlert();
 
             try {
@@ -882,18 +913,22 @@
 
                 const res = await response.json();
                 btn.disabled = false;
-                btn.innerHTML = '<span>تأكيد الرمز وتغيير كلمة السر</span> <i class="fa-solid fa-check-double"></i>';
+                btn.innerHTML = isEn 
+                    ? '<span>Verify Code & Set Password</span> <i class="fa-solid fa-check-double"></i>'
+                    : '<span>{{ __('messages.confirm_otp_and_change_pwd') }}</span> <i class="fa-solid fa-check-double"></i>';
 
                 if (res.success) {
                     showStep(3);
                     showResetAlert(res.message, 'success');
                 } else {
-                    showResetAlert(res.message || 'رمز OTP غير صحيح.');
+                    showResetAlert(res.message || (isEn ? 'Invalid OTP code.' : 'رمز OTP غير صحيح.'));
                 }
             } catch (e) {
                 btn.disabled = false;
-                btn.innerHTML = '<span>تأكيد الرمز وتغيير كلمة السر</span> <i class="fa-solid fa-check-double"></i>';
-                showResetAlert('خطأ في الاتصال بالسيرفر: ' + e.message);
+                btn.innerHTML = isEn 
+                    ? '<span>Verify Code & Set Password</span> <i class="fa-solid fa-check-double"></i>'
+                    : '<span>{{ __('messages.confirm_otp_and_change_pwd') }}</span> <i class="fa-solid fa-check-double"></i>';
+                showResetAlert((isEn ? 'Server connection error: ' : 'خطأ في الاتصال بالسيرفر: ') + e.message);
             }
         }
 
@@ -903,18 +938,20 @@
             const confirm = document.getElementById('new-password-confirm').value;
 
             if (!pass || pass.length < 6) {
-                showResetAlert('كلمة المرور يجب أن لا تقل عن 6 أحرف أو أرقام.');
+                showResetAlert(isEn ? 'Password must be at least 6 characters.' : 'كلمة المرور يجب أن لا تقل عن 6 أحرف أو أرقام.');
                 return;
             }
 
             if (pass !== confirm) {
-                showResetAlert('تأكيد كلمة المرور غير مطابِق لكلمة المرور المدخلة.');
+                showResetAlert(isEn ? 'Password confirmation does not match.' : 'تأكيد كلمة المرور غير مطابِق لكلمة المرور المدخلة.');
                 return;
             }
 
             const btn = document.getElementById('btn-save-password');
             btn.disabled = true;
-            btn.innerHTML = '<span>جاري تحديث كلمة المرور في قاعدة البيانات...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.innerHTML = isEn 
+                ? '<span>Updating password in database...</span> <i class="fa-solid fa-spinner fa-spin"></i>'
+                : '<span>جاري تحديث كلمة المرور في قاعدة البيانات...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
             hideResetAlert();
 
             try {
@@ -933,7 +970,9 @@
 
                 const res = await response.json();
                 btn.disabled = false;
-                btn.innerHTML = '<span>تحديث كلمة المرور في النظام</span> <i class="fa-solid fa-floppy-disk"></i>';
+                btn.innerHTML = isEn 
+                    ? '<span>Update Password & Login</span> <i class="fa-solid fa-floppy-disk"></i>'
+                    : '<span>{{ __('messages.update_password_btn') }}</span> <i class="fa-solid fa-floppy-disk"></i>';
 
                 if (res.success) {
                     showResetAlert(res.message, 'success');
@@ -942,20 +981,34 @@
                         window.location.reload();
                     }, 2000);
                 } else {
-                    showResetAlert(res.message || 'حدث خطأ أثناء تحديث كلمة المرور.');
+                    showResetAlert(res.message || (isEn ? 'An error occurred while updating password.' : 'حدث خطأ أثناء تحديث كلمة المرور.'));
                 }
             } catch (e) {
                 btn.disabled = false;
-                btn.innerHTML = '<span>تحديث كلمة المرور في النظام</span> <i class="fa-solid fa-floppy-disk"></i>';
-                showResetAlert('خطأ في الاتصال بالسيرفر: ' + e.message);
+                btn.innerHTML = isEn 
+                    ? '<span>Update Password & Login</span> <i class="fa-solid fa-floppy-disk"></i>'
+                    : '<span>{{ __('messages.update_password_btn') }}</span> <i class="fa-solid fa-floppy-disk"></i>';
+                showResetAlert((isEn ? 'Server connection error: ' : 'خطأ في الاتصال بالسيرفر: ') + e.message);
             }
         }
 
         const deptBranchesMap = {
-            'نظم معلومات': ['معلوماتي', 'اتصالات'],
-            'طبي': ['صيدلة', 'مخابر'],
-            'تجاري': ['ادارة اعمال', 'محاسبة'],
-            'هندسي': ['هندسة عمارة', 'ديكور']
+            'نظم معلومات': [
+                { value: 'معلوماتي', label: isEn ? 'Informatics' : 'معلوماتي' },
+                { value: 'اتصالات', label: isEn ? 'Telecom' : 'اتصالات' }
+            ],
+            'طبي': [
+                { value: 'صيدلة', label: isEn ? 'Pharmacy' : 'صيدلة' },
+                { value: 'مخابر', label: isEn ? 'Laboratories' : 'مخابر' }
+            ],
+            'تجاري': [
+                { value: 'ادارة اعمال', label: isEn ? 'Business Admin' : 'ادارة اعمال' },
+                { value: 'محاسبة', label: isEn ? 'Accounting' : 'محاسبة' }
+            ],
+            'هندسي': [
+                { value: 'هندسة عمارة', label: isEn ? 'Architecture' : 'هندسة عمارة' },
+                { value: 'ديكور', label: isEn ? 'Interior Design' : 'ديكور' }
+            ]
         };
 
         function updateRegBranches() {
@@ -968,8 +1021,8 @@
             branchSelect.innerHTML = '';
             branches.forEach(b => {
                 const opt = document.createElement('option');
-                opt.value = b;
-                opt.textContent = b;
+                opt.value = b.value;
+                opt.textContent = b.label;
                 branchSelect.appendChild(opt);
             });
         }
@@ -997,9 +1050,11 @@
             for (let i = 1; i <= count; i++) {
                 const div = document.createElement('div');
                 div.style.marginBottom = '0.6rem';
+                const lbl = isEn ? `Child University ID ${i}` : `{{ __('messages.child_univ_id') }} ${i}`;
+                const plh = isEn ? `e.g. 202610${i}` : `مثال: 202610${i}`;
                 div.innerHTML = `
-                    <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">الرقم الجامعي للابن ${i} <span style="color:#ef4444">*</span></label>
-                    <input type="text" class="reg-child-id-input" placeholder="مثال: 202610${i}" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
+                    <label style="display: block; color: #d4d4d8; font-size: 0.8rem; margin-bottom: 4px;">${lbl} <span style="color:#ef4444">*</span></label>
+                    <input type="text" class="reg-child-id-input" placeholder="${plh}" style="width: 100%; background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; font-family: inherit;">
                 `;
                 container.appendChild(div);
             }
@@ -1049,7 +1104,7 @@
                 alertBox.style.display = 'block';
                 alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
                 alertBox.style.color = '#f87171';
-                alertBox.innerText = 'كلمات المرور غير متطابقة!';
+                alertBox.innerText = isEn ? 'Passwords do not match!' : 'كلمات المرور غير متطابقة!';
                 return;
             }
 
@@ -1063,7 +1118,7 @@
                 alertBox.style.display = 'block';
                 alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
                 alertBox.style.color = '#f87171';
-                alertBox.innerText = 'يرجى تحميل صورة البروفايل (الصورة إجبارية للطالب)';
+                alertBox.innerText = isEn ? 'Please upload a profile photo (required for students)' : 'يرجى تحميل صورة البروفايل (الصورة إجبارية للطالب)';
                 return;
             }
 
@@ -1074,7 +1129,7 @@
                     alertBox.style.display = 'block';
                     alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
                     alertBox.style.color = '#f87171';
-                    alertBox.innerText = 'يرجى إدخال تاريخ الميلاد';
+                    alertBox.innerText = isEn ? 'Please enter your date of birth' : 'يرجى إدخال تاريخ الميلاد';
                     return;
                 }
                 const birthDate = new Date(birthVal);
@@ -1087,7 +1142,9 @@
                     alertBox.style.display = 'block';
                     alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
                     alertBox.style.color = '#f87171';
-                    alertBox.innerText = `عذراً، يجب أن يكون العمر بين 18 و 23 سنة (العمر الحالي: ${age} سنة).`;
+                    alertBox.innerText = isEn 
+                        ? `Sorry, age must be between 18 and 23 years (current age: ${age} years).` 
+                        : `عذراً، يجب أن يكون العمر بين 18 و 23 سنة (العمر الحالي: ${age} سنة).`;
                     return;
                 }
             }
@@ -1126,13 +1183,13 @@
                     alertBox.style.display = 'block';
                     alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
                     alertBox.style.color = '#f87171';
-                    alertBox.innerText = 'يرجى إدخال الرقم الجامعي لكل ابن من الأبناء.';
+                    alertBox.innerText = isEn ? 'Please enter the university ID for each child.' : 'يرجى إدخال الرقم الجامعي لكل ابن من الأبناء.';
                     return;
                 }
             }
 
             btn.disabled = true;
-            btn.innerText = 'جاري تقديم الطلب...';
+            btn.innerText = isEn ? 'Submitting registration...' : 'جاري تقديم الطلب...';
 
             try {
                 const res = await fetch('/api/register', {
@@ -1142,27 +1199,29 @@
                 });
                 const data = await res.json();
                 btn.disabled = false;
-                btn.innerHTML = '<span>تقديم طلب إنشاء الحساب</span> <i class="fa-solid fa-arrow-left"></i>';
+                btn.innerHTML = `<span>${isEn ? 'Submit Account Registration Request' : '{{ __('messages.submit_registration_btn') }}'}</span> <i class="fa-solid ${isEn ? 'fa-arrow-right' : 'fa-arrow-left'}"></i>`;
 
                 if (res.ok || data.success) {
                     alertBox.style.display = 'block';
                     alertBox.style.background = 'rgba(34, 197, 94, 0.15)';
                     alertBox.style.color = '#4ade80';
-                    alertBox.innerText = 'تم تقديم طلب إنشاء الحساب بنجاح! يرجى الانتظار لحين اعتماد حسابك من قبل الإدارة.';
+                    alertBox.innerText = isEn 
+                        ? 'Registration request submitted successfully! Please wait for admin approval.' 
+                        : 'تم تقديم طلب إنشاء الحساب بنجاح! يرجى الانتظار لحين اعتماد حسابك من قبل الإدارة.';
                     setTimeout(() => { closeRegisterModal(); }, 3000);
                 } else {
                     alertBox.style.display = 'block';
                     alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
                     alertBox.style.color = '#f87171';
-                    alertBox.innerText = data.message || 'حدث خطأ في تقديم الطلب.';
+                    alertBox.innerText = data.message || (isEn ? 'An error occurred while submitting the request.' : 'حدث خطأ في تقديم الطلب.');
                 }
             } catch (err) {
                 btn.disabled = false;
-                btn.innerHTML = '<span>تقديم طلب إنشاء الحساب</span> <i class="fa-solid fa-arrow-left"></i>';
+                btn.innerHTML = `<span>${isEn ? 'Submit Account Registration Request' : '{{ __('messages.submit_registration_btn') }}'}</span> <i class="fa-solid ${isEn ? 'fa-arrow-right' : 'fa-arrow-left'}"></i>`;
                 alertBox.style.display = 'block';
                 alertBox.style.background = 'rgba(239, 68, 68, 0.15)';
                 alertBox.style.color = '#f87171';
-                alertBox.innerText = 'عذراً، يتعذر الاتصال بالسيرفر حالياً.';
+                alertBox.innerText = isEn ? 'Sorry, unable to connect to server at the moment.' : 'عذراً، يتعذر الاتصال بالسيرفر حالياً.';
             }
         }
     </script>

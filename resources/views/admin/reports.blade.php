@@ -1,14 +1,14 @@
 @extends('layouts.admin')
 
-@section('title', 'سجل التقارير الإدارية')
-@section('header-title', 'سجل التقارير والإحصائيات')
-@section('header-subtitle', 'سجل وثائق وتقارير أداء وحضور المعهد التقني')
+@section('title', __('messages.admin_reports_log'))
+@section('header-title', __('messages.reports_title'))
+@section('header-subtitle', __('messages.reports_subtitle'))
 
 @section('header-actions')
     <div class="flex items-center gap-3">
         {{-- Back Button --}}
         <a href="{{ route('admin.dashboard') }}" class="w-10 h-10 rounded-2xl bg-surface-light dark:bg-surface-dark border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft">
-            <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+            <span class="material-symbols-outlined text-[22px] {{ app()->getLocale() == 'ar' ? 'rotate-0' : 'rotate-180' }}">arrow_forward</span>
         </a>
     </div>
 @endsection
@@ -55,13 +55,13 @@
     <div class="flex items-center justify-start mb-4 no-print">
         <button onclick="openReportModal()" class="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-content font-black shadow-glow hover:bg-primary-dark transition-all active:scale-95 cursor-pointer">
             <span class="material-symbols-outlined font-black text-2xl">add</span>
-            <span class="text-sm font-extrabold">تقرير جديد</span>
+            <span class="text-sm font-extrabold">{{ __('messages.new_report_btn') }}</span>
         </button>
     </div>
 
     {{-- ===== MODAL DIALOG (+) FOR GENERATING NEW REPORT ===== --}}
     <div id="report-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto no-print">
-        <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 md:p-8 w-full max-w-2xl relative my-8" dir="rtl">
+        <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 md:p-8 w-full max-w-2xl relative my-8 font-Cairo">
             
             {{-- Modal Header --}}
             <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-5">
@@ -70,8 +70,8 @@
                         <span class="material-symbols-outlined text-2xl">post_add</span>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-slate-800 dark:text-white">توليد تقرير إداري جديد</h3>
-                        <p class="text-xs text-slate-400">حدد نوع ومعايير التصفية للتقرير المطلوب</p>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-white">{{ __('messages.generate_new_admin_report') }}</h3>
+                        <p class="text-xs text-slate-400">{{ __('messages.generate_report_modal_sub') }}</p>
                     </div>
                 </div>
                 <button onclick="closeReportModal()" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer">
@@ -91,7 +91,7 @@
 
                 {{-- 1. Report Type Selection --}}
                 <div class="flex flex-col gap-2">
-                    <label class="text-xs font-bold text-slate-700 dark:text-slate-200">نوع التقرير</label>
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-200">{{ __('messages.report_type_label') }}</label>
                     <div class="grid grid-cols-2 gap-3">
                         {{-- Attendance --}}
                         <label class="relative cursor-pointer group">
@@ -101,7 +101,7 @@
                                 <div class="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-1.5 transition-colors peer-checked:bg-primary">
                                     <span class="material-symbols-outlined text-emerald-500 text-xl">co_present</span>
                                 </div>
-                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">نسب الحضور</span>
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ __('messages.attendance_rates') }}</span>
                             </div>
                         </label>
 
@@ -113,7 +113,7 @@
                                 <div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-1.5 transition-colors peer-checked:bg-primary">
                                     <span class="material-symbols-outlined text-blue-500 text-xl">monitoring</span>
                                 </div>
-                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">أداء الطلاب</span>
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ __('messages.student_performance') }}</span>
                             </div>
                         </label>
                     </div>
@@ -121,14 +121,14 @@
 
                 {{-- Filters Container --}}
                 <div class="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4 flex flex-col gap-3 border border-slate-100 dark:border-slate-800">
-                    <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300">معايير التصفية والفرز</h4>
+                    <h4 class="text-xs font-bold text-slate-600 dark:text-slate-300">{{ __('messages.filter_and_sort_criteria') }}</h4>
 
                     {{-- 2. Department --}}
                     <div class="flex flex-col gap-1">
-                        <label class="text-[11px] font-semibold text-slate-400">القسم</label>
+                        <label class="text-[11px] font-semibold text-slate-400">{{ __('messages.academic_dept') }}</label>
                         <select name="department_id" id="department-select"
                                 class="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 py-2.5 px-3 text-xs font-semibold text-slate-800 dark:text-white outline-none">
-                            <option value="">جميع الأقسام</option>
+                            <option value="">{{ __('messages.all_departments') }}</option>
                             @foreach($departments as $dept)
                                 <option value="{{ $dept->department_id }}" {{ request('department_id') == $dept->department_id ? 'selected' : '' }}>{{ $dept->name }}</option>
                             @endforeach
@@ -137,10 +137,10 @@
 
                     {{-- 3. Program / Course --}}
                     <div class="flex flex-col gap-1">
-                        <label class="text-[11px] font-semibold text-slate-400">الدورة</label>
+                        <label class="text-[11px] font-semibold text-slate-400">{{ __('messages.course_or_program') }}</label>
                         <select name="program_id" id="program-select"
                                 class="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 py-2.5 px-3 text-xs font-semibold text-slate-800 dark:text-white outline-none">
-                            <option value="">جميع الدورات</option>
+                            <option value="">{{ __('messages.all_courses') }}</option>
                             @foreach($programs as $prog)
                                 <option value="{{ $prog->id }}" data-dept-id="{{ $prog->department_id }}" {{ request('program_id') == $prog->id ? 'selected' : '' }}>{{ $prog->name }}</option>
                             @endforeach
@@ -149,13 +149,13 @@
 
                     {{-- 4. Semester --}}
                     <div class="flex flex-col gap-1">
-                        <label class="text-[11px] font-semibold text-slate-400">الفصل الدراسي</label>
+                        <label class="text-[11px] font-semibold text-slate-400">{{ __('messages.academic_semester') }}</label>
                         <select name="semester_id"
                                 class="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 py-2.5 px-3 text-xs font-semibold text-slate-800 dark:text-white outline-none">
-                            <option value="">جميع الفصول</option>
+                            <option value="">{{ __('messages.all_semesters') }}</option>
                             @foreach($semesters as $sem)
                                 @php
-                                    $semCleanName = trim(preg_replace('/\d+/', '', $sem->name));
+                                    $semCleanName = str_contains($sem->name, 'ثاني') ? __('messages.second_semester') : (str_contains($sem->name, 'أول') ? __('messages.first_semester') : trim(preg_replace('/\d+/', '', $sem->name)));
                                 @endphp
                                 <option value="{{ $sem->semester_id }}" {{ request('semester_id') == $sem->semester_id ? 'selected' : '' }}>{{ $semCleanName }}</option>
                             @endforeach
@@ -165,12 +165,12 @@
                     {{-- 5. Dates --}}
                     <div class="grid grid-cols-2 gap-3">
                         <div class="flex flex-col gap-1">
-                            <label class="text-[11px] font-semibold text-slate-400">من تاريخ</label>
+                            <label class="text-[11px] font-semibold text-slate-400">{{ __('messages.from_date') }}</label>
                             <input id="from_date_input" name="from_date" type="date" value="{{ request('from_date') }}" max="{{ date('Y-m-d') }}"
                                    class="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 py-2.5 px-3 text-xs font-semibold text-slate-800 dark:text-white outline-none" />
                         </div>
                         <div class="flex flex-col gap-1">
-                            <label class="text-[11px] font-semibold text-slate-400">إلى تاريخ</label>
+                            <label class="text-[11px] font-semibold text-slate-400">{{ __('messages.to_date') }}</label>
                             <input id="to_date_input" name="to_date" type="date" value="{{ request('to_date') }}" max="{{ date('Y-m-d') }}"
                                    class="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 py-2.5 px-3 text-xs font-semibold text-slate-800 dark:text-white outline-none" />
                         </div>
@@ -180,10 +180,10 @@
                 {{-- 6. Submit Button --}}
                 <div class="flex gap-3 pt-2">
                     <button type="submit" class="flex-1 py-3 rounded-2xl bg-primary text-primary-content font-extrabold text-sm hover:bg-primary-dark transition-all shadow-glow active:scale-95 cursor-pointer">
-                        توليد التقرير الان
+                        {{ __('messages.generate_report_now_btn') }}
                     </button>
                     <button type="button" onclick="closeReportModal()" class="px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 transition-all cursor-pointer">
-                        إلغاء
+                        {{ __('messages.cancel') }}
                     </button>
                 </div>
             </form>
@@ -200,12 +200,12 @@
                         <span class="material-symbols-outlined text-2xl">assessment</span>
                     </div>
                     <div>
-                        <h3 class="text-lg font-extrabold text-slate-800 dark:text-white">سجل التقارير الإدارية</h3>
-                        <p class="text-xs text-slate-400">عرض كافة التقارير المُنشأة مسبقاً وإمكانية استعراضها أو تحميلها</p>
+                        <h3 class="text-lg font-extrabold text-slate-800 dark:text-white">{{ __('messages.admin_reports_log') }}</h3>
+                        <p class="text-xs text-slate-400">{{ __('messages.admin_reports_log_subtitle') }}</p>
                     </div>
                 </div>
                 <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                    إجمالي التقارير: {{ count($savedReports) }}
+                    {{ __('messages.total_reports_count', ['count' => count($savedReports)]) }}
                 </span>
             </div>
 
@@ -215,13 +215,13 @@
                     <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 shadow-glow">
                         <span class="material-symbols-outlined text-4xl">folder_off</span>
                     </div>
-                    <h3 class="text-lg font-extrabold text-slate-800 dark:text-white mb-2">لا توجد تقارير محفوظة بالسجل حالياً</h3>
+                    <h3 class="text-lg font-extrabold text-slate-800 dark:text-white mb-2">{{ __('messages.no_saved_reports_title') }}</h3>
                     <p class="text-xs text-slate-400 dark:text-slate-500 max-w-md mb-6 leading-relaxed">
-                        قم بالنقر على زر "+ تقرير جديد" في الأعلى لتوليد تقرير إداري جديد وحفظه تلقائياً في السجل.
+                        {{ __('messages.no_saved_reports_desc') }}
                     </p>
                     <button onclick="openReportModal()" class="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-content font-black text-xs shadow-glow hover:bg-primary-dark transition-all cursor-pointer">
                         <span class="material-symbols-outlined text-lg">add</span>
-                        <span>توليد تقرير جديد الان</span>
+                        <span>{{ __('messages.generate_report_now_btn') }}</span>
                     </button>
                 </div>
             @else
@@ -239,22 +239,22 @@
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <h4 class="text-base font-extrabold text-slate-800 dark:text-white">{{ $report->title }}</h4>
                                         <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full {{ $report->report_type === 'attendance' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' }}">
-                                            {{ $report->report_type === 'attendance' ? 'نسب الحضور' : 'أداء الطلاب' }}
+                                            {{ $report->report_type === 'attendance' ? __('messages.attendance_rates') : __('messages.student_performance') }}
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-3 text-xs font-semibold text-slate-400 flex-wrap">
-                                        <span><strong class="text-slate-600 dark:text-slate-300">القسم:</strong> {{ $report->department_name ?? 'جميع الأقسام' }}</span>
+                                        <span><strong class="text-slate-600 dark:text-slate-300">{{ __('messages.academic_dept') }}:</strong> {{ $report->department_name ?? __('messages.all_departments') }}</span>
                                         <span>•</span>
-                                        <span><strong class="text-slate-600 dark:text-slate-300">الدورة:</strong> {{ $report->program_name ?? 'جميع الدورات' }}</span>
+                                        <span><strong class="text-slate-600 dark:text-slate-300">{{ __('messages.course_or_program') }}:</strong> {{ $report->program_name ?? __('messages.all_courses') }}</span>
                                         <span>•</span>
-                                        <span><strong class="text-slate-600 dark:text-slate-300">الفصل:</strong> {{ $report->semester_name ?? 'جميع الفصول' }}</span>
+                                        <span><strong class="text-slate-600 dark:text-slate-300">{{ __('messages.academic_semester') }}:</strong> {{ $report->semester_name ?? __('messages.all_semesters') }}</span>
                                         @if($report->from_date || $report->to_date)
                                             <span>•</span>
-                                            <span><strong class="text-slate-600 dark:text-slate-300">الفترة:</strong> {{ $report->from_date ?? 'البداية' }} إلى {{ $report->to_date ?? 'الآن' }}</span>
+                                            <span><strong class="text-slate-600 dark:text-slate-300">{{ __('messages.from_date') }}:</strong> {{ $report->from_date ?? '-' }} {{ __('messages.to_date') }}: {{ $report->to_date ?? '-' }}</span>
                                         @endif
                                     </div>
                                     <span class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                                        تم الإصدار: {{ \Carbon\Carbon::parse($report->created_at)->diffForHumans() }} ({{ \Carbon\Carbon::parse($report->created_at)->format('Y-m-d H:i') }})
+                                        {{ __('messages.issued_ago', ['time' => \Carbon\Carbon::parse($report->created_at)->diffForHumans()]) }} ({{ \Carbon\Carbon::parse($report->created_at)->format('Y-m-d H:i') }})
                                     </span>
                                 </div>
                             </div>
@@ -265,7 +265,7 @@
                                 <a href="{{ route('admin.reports', ['view_id' => $report->id]) }}" 
                                    class="px-3.5 py-2 rounded-xl bg-primary text-primary-content font-extrabold text-xs shadow-glow hover:bg-primary-dark transition-all flex items-center gap-1.5 cursor-pointer">
                                     <span class="material-symbols-outlined text-base">visibility</span>
-                                    <span>رؤية التقرير</span>
+                                    <span>{{ __('messages.view_report_btn') }}</span>
                                 </a>
 
                                 {{-- 🟢 Download Excel Button --}}
@@ -282,7 +282,7 @@
                                     <button type="submit" 
                                             class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-glow transition-all flex items-center gap-1.5 cursor-pointer">
                                         <span class="material-symbols-outlined text-base">table_chart</span>
-                                        <span>تنزيل Excel</span>
+                                        <span>{{ __('messages.download_excel_btn') }}</span>
                                     </button>
                                 </form>
 
@@ -300,16 +300,16 @@
                                     <button type="submit" 
                                             class="px-3.5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs shadow-glow transition-all flex items-center gap-1.5 cursor-pointer">
                                         <span class="material-symbols-outlined text-base">picture_as_pdf</span>
-                                        <span>تنزيل PDF</span>
+                                        <span>{{ __('messages.download_pdf_btn') }}</span>
                                     </button>
                                 </form>
 
                                 {{-- 🗑️ Delete Button --}}
-                                <form action="{{ route('admin.reports.delete', $report->id) }}" method="POST" class="inline" onsubmit="return confirm('هل أنت تأكد من رغبتك في حذف هذا التقرير من السجل؟');">
+                                <form action="{{ route('admin.reports.delete', $report->id) }}" method="POST" class="inline" onsubmit="return confirm('{{ __('messages.delete_from_log_prompt') }}');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" 
-                                            class="p-2 rounded-xl bg-slate-100 hover:bg-rose-500 hover:text-white dark:bg-slate-800 text-slate-400 font-bold text-xs transition-all flex items-center justify-center cursor-pointer" title="حذف من السجل">
+                                            class="p-2 rounded-xl bg-slate-100 hover:bg-rose-500 hover:text-white dark:bg-slate-800 text-slate-400 font-bold text-xs transition-all flex items-center justify-center cursor-pointer" title="{{ __('messages.delete_from_log') }}">
                                         <span class="material-symbols-outlined text-lg">delete</span>
                                     </button>
                                 </form>
@@ -325,21 +325,21 @@
         <div class="flex flex-col gap-6">
             {{-- Official Print Header --}}
             <div class="hidden print:block text-center mb-6 border-b-2 border-slate-300 pb-4">
-                <h2 class="text-xl font-bold text-slate-900">مؤسسة إيدوبريدج الأكاديمية (EduBridge)</h2>
-                <h3 class="text-sm font-semibold text-slate-500 mt-1">تقرير إداري رسمي وشامل</h3>
-                <p class="text-[10px] text-slate-400 mt-2">تاريخ إصدار التقرير: {{ date('Y-m-d H:i') }}</p>
+                <h2 class="text-xl font-bold text-slate-900">EduBridge Academic Management</h2>
+                <h3 class="text-sm font-semibold text-slate-500 mt-1">{{ __('messages.reports_subtitle') }}</h3>
+                <p class="text-[10px] text-slate-400 mt-2">{{ date('Y-m-d H:i') }}</p>
             </div>
 
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print bg-surface-light dark:bg-surface-dark p-4 rounded-3xl border border-slate-100 dark:border-slate-800">
                 <div class="flex items-center gap-3">
-                    <a href="{{ route('admin.reports') }}" class="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all cursor-pointer" title="العودة لسجل التقارير">
-                        <span class="material-symbols-outlined text-xl">arrow_forward</span>
+                    <a href="{{ route('admin.reports') }}" class="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all cursor-pointer" title="{{ __('messages.admin_reports_log') }}">
+                        <span class="material-symbols-outlined text-xl {{ app()->getLocale() == 'ar' ? 'rotate-0' : 'rotate-180' }}">arrow_forward</span>
                     </a>
                     <div>
                         <h3 class="text-base font-extrabold text-slate-800 dark:text-white">
-                            معاينة: {{ $previewReport->title }}
+                            {{ __('messages.preview_report_title', ['title' => $previewReport->title]) }}
                         </h3>
-                        <p class="text-xs text-slate-400">نوع التقرير: {{ $reportType === 'attendance' ? 'نسب الحضور والغياب' : 'أداء ودرجات الطلاب' }}</p>
+                        <p class="text-xs text-slate-400">{{ __('messages.report_type_preview_sub', ['type' => $reportType === 'attendance' ? __('messages.attendance_and_absence_rates') : __('messages.student_grades_and_performance')]) }}</p>
                     </div>
                 </div>
                 
@@ -347,7 +347,7 @@
                     {{-- Print Button --}}
                     <button onclick="window.print()" class="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-soft transition-all flex items-center gap-1.5 cursor-pointer">
                         <span class="material-symbols-outlined text-base">print</span>
-                        <span>طباعة مباشرة</span>
+                        <span>{{ __('messages.direct_print') }}</span>
                     </button>
 
                     {{-- 🟢 Export Excel --}}
@@ -363,7 +363,7 @@
                         
                         <button type="submit" class="px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs shadow-glow transition-all flex items-center gap-1.5 cursor-pointer">
                             <span class="material-symbols-outlined text-base">table_chart</span>
-                            <span>تنزيل Excel</span>
+                            <span>{{ __('messages.download_excel_btn') }}</span>
                         </button>
                     </form>
 
@@ -380,13 +380,13 @@
                         
                         <button type="submit" class="px-4 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white font-bold text-xs shadow-glow transition-all flex items-center gap-1.5 cursor-pointer">
                             <span class="material-symbols-outlined text-base">picture_as_pdf</span>
-                            <span>تنزيل PDF</span>
+                            <span>{{ __('messages.download_pdf_btn') }}</span>
                         </button>
                     </form>
 
                     {{-- Close preview button --}}
                     <a href="{{ route('admin.reports') }}" class="px-4 py-2.5 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-300 transition-all">
-                        إغلاق المعاينة
+                        {{ __('messages.close_preview') }}
                     </a>
                 </div>
             </div>
@@ -417,7 +417,7 @@
                     <!-- Card 1: Attendance Average -->
                     <div class="bg-surface-light dark:bg-surface-dark p-5 rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-soft flex items-center justify-between transition-all hover:translate-y-[-2px]">
                         <div class="flex flex-col gap-1">
-                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">متوسط نسبة الحضور</span>
+                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">{{ __('messages.avg_attendance_rate') }}</span>
                             <span class="text-2xl font-black text-emerald-500">{{ $avgAttendanceRate }}%</span>
                         </div>
                         <div class="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
@@ -428,8 +428,8 @@
                     <!-- Card 2: Total Records -->
                     <div class="bg-surface-light dark:bg-surface-dark p-5 rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-soft flex items-center justify-between transition-all hover:translate-y-[-2px]">
                         <div class="flex flex-col gap-1">
-                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">إجمالي الجلسات المرصودة</span>
-                            <span class="text-2xl font-black text-primary">{{ $totalSessionsSum }} محاضرة</span>
+                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">{{ __('messages.total_monitored_sessions') }}</span>
+                            <span class="text-2xl font-black text-primary">{{ __('messages.sessions_count_unit', ['count' => $totalSessionsSum]) }}</span>
                         </div>
                         <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                             <span class="material-symbols-outlined text-2xl">event_available</span>
@@ -439,8 +439,8 @@
                     <!-- Card 3: Warning Students -->
                     <div class="bg-surface-light dark:bg-surface-dark p-5 rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-soft flex items-center justify-between transition-all hover:translate-y-[-2px]">
                         <div class="flex flex-col gap-1">
-                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">طلاب منذرين (حضور < 75%)</span>
-                            <span class="text-2xl font-black text-red-500">{{ $lowAttendanceWarningCount }} طالب</span>
+                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">{{ __('messages.warning_students_count') }}</span>
+                            <span class="text-2xl font-black text-red-500">{{ __('messages.students_count_unit', ['count' => $lowAttendanceWarningCount]) }}</span>
                         </div>
                         <div class="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center text-red-500">
                             <span class="material-symbols-outlined text-2xl">error</span>
@@ -472,7 +472,7 @@
                     <!-- Card 1: Average Grade -->
                     <div class="bg-surface-light dark:bg-surface-dark p-5 rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-soft flex items-center justify-between transition-all hover:translate-y-[-2px]">
                         <div class="flex flex-col gap-1">
-                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">متوسط درجات الطلاب</span>
+                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">{{ __('messages.avg_student_grades') }}</span>
                             <span class="text-2xl font-black text-primary">{{ $avgGrade }} / 100</span>
                         </div>
                         <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -483,7 +483,7 @@
                     <!-- Card 2: Highest Score -->
                     <div class="bg-surface-light dark:bg-surface-dark p-5 rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-soft flex items-center justify-between transition-all hover:translate-y-[-2px]">
                         <div class="flex flex-col gap-1">
-                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">أعلى درجة مسجلة</span>
+                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">{{ __('messages.highest_grade_recorded') }}</span>
                             <span class="text-2xl font-black text-emerald-500">{{ $maxGrade }}%</span>
                         </div>
                         <div class="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
@@ -494,7 +494,7 @@
                     <!-- Card 3: Success Rate -->
                     <div class="bg-surface-light dark:bg-surface-dark p-5 rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-soft flex items-center justify-between transition-all hover:translate-y-[-2px]">
                         <div class="flex flex-col gap-1">
-                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">نسبة النجاح العامة (درجة >= 60)</span>
+                            <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500">{{ __('messages.overall_success_rate') }}</span>
                             <span class="text-2xl font-black text-blue-500">{{ $successRate }}%</span>
                         </div>
                         <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500">
@@ -513,10 +513,10 @@
                             <div class="flex items-center gap-2">
                                 <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
                                 <h4 class="text-sm font-extrabold text-slate-800 dark:text-white">
-                                    {{ $reportType === 'attendance' ? 'التوزيع النسبي العام لنسب الحضور والغياب' : 'توزيع درجات وأداء الطلاب' }}
+                                    {{ $reportType === 'attendance' ? __('messages.general_attendance_dist_chart') : __('messages.grades_dist_chart') }}
                                 </h4>
                             </div>
-                            <span class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400">رسم بياني دائري</span>
+                            <span class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400">{{ __('messages.doughnut_chart_badge') }}</span>
                         </div>
                         <div class="relative w-full h-64 flex items-center justify-center p-2">
                             <canvas id="reportDoughnutChart"></canvas>
@@ -529,10 +529,10 @@
                             <div class="flex items-center gap-2">
                                 <span class="w-3 h-3 rounded-full bg-blue-500"></span>
                                 <h4 class="text-sm font-extrabold text-slate-800 dark:text-white">
-                                    {{ $reportType === 'attendance' ? 'مقارنة نسبة الحضور حسب المواد' : 'معدل درجات المواد الدراسية' }}
+                                    {{ $reportType === 'attendance' ? __('messages.attendance_by_subject_chart') : __('messages.avg_grades_by_subject_chart') }}
                                 </h4>
                             </div>
-                            <span class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400">رسم بياني أعمدة</span>
+                            <span class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400">{{ __('messages.bar_chart_badge') }}</span>
                         </div>
                         <div class="relative w-full h-64 flex items-center justify-center p-2">
                             <canvas id="reportBarChart"></canvas>
@@ -551,15 +551,15 @@
                                 <thead>
                                     <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700/50">
                                         <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">#</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">اسم الطالب</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">القسم</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">الدورة / البرنامج</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">المادة</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">الفصل</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">حاضر</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">غائب</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">الإجمالي</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">نسبة الحضور</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">{{ __('messages.col_student_name') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">{{ __('messages.academic_dept') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">{{ __('messages.course_or_program') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">{{ __('messages.col_subject') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.academic_semester') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.col_present') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.col_absent') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.col_total') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.col_attendance_rate') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -570,10 +570,10 @@
                                         <tr class="border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                                             <td class="p-4 text-xs font-bold text-slate-400 text-center">{{ $index + 1 }}</td>
                                             <td class="p-4 text-xs font-bold text-slate-800 dark:text-white">{{ $row->full_name }}</td>
-                                            <td class="p-4 text-xs font-bold text-primary">{{ $row->department_name ?? 'عام' }}</td>
-                                            <td class="p-4 text-xs text-slate-500">{{ $row->program_name ?? 'عام' }}</td>
+                                            <td class="p-4 text-xs font-bold text-primary">{{ $row->department_name ?? '-' }}</td>
+                                            <td class="p-4 text-xs text-slate-500">{{ $row->program_name ?? '-' }}</td>
                                             <td class="p-4 text-xs text-slate-600 dark:text-slate-300 font-semibold">{{ $row->course_title }}</td>
-                                            <td class="p-4 text-xs text-slate-400 text-center">{{ $row->semester_name ?? 'عام' }}</td>
+                                            <td class="p-4 text-xs text-slate-400 text-center">{{ $row->semester_name ?? '-' }}</td>
                                             <td class="p-4 text-xs font-bold text-emerald-500 text-center">{{ $row->present_count }}</td>
                                             <td class="p-4 text-xs font-bold text-rose-500 text-center">{{ $row->absent_count }}</td>
                                             <td class="p-4 text-xs font-bold text-slate-500 text-center">{{ $row->total_sessions }}</td>
@@ -590,33 +590,33 @@
                                 <thead>
                                     <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700/50">
                                         <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">#</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">اسم الطالب</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">القسم</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">الدورة / البرنامج</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">المادة</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">الفصل</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">الدرجة</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">التقدير</th>
-                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">النتيجة</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">{{ __('messages.col_student_name') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">{{ __('messages.academic_dept') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">{{ __('messages.course_or_program') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase">{{ __('messages.col_subject') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.academic_semester') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.col_grade') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.col_rating') }}</th>
+                                        <th class="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">{{ __('messages.col_result') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($reportData as $index => $row)
                                         @php
                                             $g = $row->grade;
-                                            if ($g >= 90) { $rating = 'ممتاز'; $pass = 'ناجح'; $badge = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'; }
-                                            elseif ($g >= 80) { $rating = 'جيد جداً'; $pass = 'ناجح'; $badge = 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'; }
-                                            elseif ($g >= 70) { $rating = 'جيد'; $pass = 'ناجح'; $badge = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'; }
-                                            elseif ($g >= 60) { $rating = 'مقبول'; $pass = 'ناجح'; $badge = 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'; }
-                                            else { $rating = 'راسب'; $pass = 'راسب'; $badge = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 font-bold'; }
+                                            if ($g >= 90) { $rating = __('messages.excellent'); $pass = __('messages.passed'); $badge = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'; }
+                                            elseif ($g >= 80) { $rating = __('messages.very_good'); $pass = __('messages.passed'); $badge = 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'; }
+                                            elseif ($g >= 70) { $rating = __('messages.good'); $pass = __('messages.passed'); $badge = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'; }
+                                            elseif ($g >= 60) { $rating = __('messages.acceptable'); $pass = __('messages.passed'); $badge = 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'; }
+                                            else { $rating = __('messages.failed'); $pass = __('messages.failed'); $badge = 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 font-bold'; }
                                         @endphp
                                         <tr class="border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                                             <td class="p-4 text-xs font-bold text-slate-400 text-center">{{ $index + 1 }}</td>
                                             <td class="p-4 text-xs font-bold text-slate-800 dark:text-white">{{ $row->full_name }}</td>
-                                            <td class="p-4 text-xs font-bold text-primary">{{ $row->department_name ?? 'عام' }}</td>
-                                            <td class="p-4 text-xs text-slate-500">{{ $row->program_name ?? 'عام' }}</td>
+                                            <td class="p-4 text-xs font-bold text-primary">{{ $row->department_name ?? '-' }}</td>
+                                            <td class="p-4 text-xs text-slate-500">{{ $row->program_name ?? '-' }}</td>
                                             <td class="p-4 text-xs text-slate-600 dark:text-slate-300 font-semibold">{{ $row->course_title }}</td>
-                                            <td class="p-4 text-xs text-slate-400 text-center">{{ $row->semester ?? 'عام' }}</td>
+                                            <td class="p-4 text-xs text-slate-400 text-center">{{ $row->semester ?? '-' }}</td>
                                             <td class="p-4 text-xs font-black text-slate-800 dark:text-white text-center">{{ $row->grade }}</td>
                                             <td class="p-4 text-center">
                                                 <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg {{ $badge }}">
@@ -637,7 +637,7 @@
                 @else
                     <div class="flex flex-col items-center justify-center py-12 gap-3">
                         <span class="material-symbols-outlined text-4xl text-slate-300">search_off</span>
-                        <p class="text-sm font-bold text-slate-400">لا توجد بيانات مطابقة ضمن المعايير المحددة</p>
+                        <p class="text-sm font-bold text-slate-400">{{ __('messages.no_data_matched_filters') }}</p>
                     </div>
                 @endif
             </div>

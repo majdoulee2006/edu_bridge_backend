@@ -43,13 +43,18 @@ body {
     font-family: var(--font-family);
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    direction: rtl; /* Default Arabic */
     transition: background-color 0.3s, color 0.3s;
     overflow-x: hidden;
 }
 
-[dir="ltr"] {
+html[dir="rtl"], html[dir="rtl"] body {
+    direction: rtl;
+    text-align: right;
+}
+
+html[dir="ltr"], html[dir="ltr"] body {
     direction: ltr;
+    text-align: left;
 }
 
 /* Layout */
@@ -524,15 +529,19 @@ img, video, canvas, iframe, svg {
 .mobile-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 990;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 99990 !important;
     display: none;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     transition: opacity 0.3s ease;
 }
 
 .mobile-overlay.active {
-    display: block;
+    display: block !important;
 }
 
 /* Responsive Modals Globally (the actual 95vw width cap for small screens
@@ -555,18 +564,27 @@ input, select, textarea, button {
 
 /* Tablet & Mobile Screens (<= 1024px) */
 @media (max-width: 1024px) {
-    .sidebar {
+    .sidebar,
+    #sidebar {
         transform: translateX(100%);
-        box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
-        z-index: 1000;
+        box-shadow: 0 0 35px rgba(0, 0, 0, 0.85);
+        z-index: 100000 !important;
         max-width: 85vw !important;
+        width: 290px !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        border-radius: 0 !important;
     }
     
-    [dir="ltr"] .sidebar {
+    [dir="ltr"] .sidebar,
+    [dir="ltr"] #sidebar {
         transform: translateX(-100%);
     }
 
-    .sidebar.active {
+    .sidebar.active,
+    #sidebar.active {
         transform: translateX(0) !important;
     }
 
@@ -765,18 +783,25 @@ input, select, textarea, button {
 
 
 @media (max-width: 768px) {
-    .bottom-nav {
+    .bottom-nav,
+    .admin-bottom-nav {
         display: flex !important;
+        z-index: 1000 !important;
     }
     /* Push main content up so it's not hidden behind the bottom bar */
-    .main-content {
+    .main-content,
+    .admin-main-content {
         padding-bottom: 85px !important;
     }
-    /* Sidebar stops ABOVE the bottom nav bar, not behind it */
-    .sidebar {
-        bottom: 70px !important;
-        border-bottom-right-radius: 20px !important;
-        border-bottom-left-radius: 20px !important;
+    /* Sidebar slides above the bottom nav full-height */
+    .sidebar,
+    #sidebar {
+        bottom: 0 !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        z-index: 100000 !important;
+        border-bottom-right-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
     }
 }
 /* Lock background scroll when sidebar is open on mobile */
@@ -1244,4 +1269,107 @@ html:not(.dark) button[onclick="showSidebarOnMobile()"], html[data-theme="light"
 html:not(.dark) #contacts-sidebar-pane div[class*="text-slate-400"], html[data-theme="light"] #contacts-sidebar-pane div[class*="text-slate-400"], [data-theme="light"] #contacts-sidebar-pane div[class*="text-slate-400"] { color: #64748b !important; }
 html:not(.dark) #messages-feed .text-slate-400, html[data-theme="light"] #messages-feed .text-slate-400, [data-theme="light"] #messages-feed .text-slate-400 { color: #64748b !important; }
 html:not(.dark) #messages-feed .text-slate-600, html[data-theme="light"] #messages-feed .text-slate-600, [data-theme="light"] #messages-feed .text-slate-600 { color: #94a3b8 !important; }
+
+/* ==========================================================================
+   Responsive Notification Dropdown (Universal Theme & Mobile Support)
+   ========================================================================== */
+.notif-dropdown-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+}
+html.dark .notif-dropdown-card,
+[data-theme="dark"] .notif-dropdown-card {
+    background: #121212 !important;
+    border-color: #2a2a2a !important;
+    color: #ffffff !important;
+}
+
+.notif-card-header {
+    background: #ffffff !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+html.dark .notif-card-header,
+[data-theme="dark"] .notif-card-header {
+    background: #181818 !important;
+    border-bottom-color: #2a2a2a !important;
+}
+
+.notif-card-tabs {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+html.dark .notif-card-tabs,
+[data-theme="dark"] .notif-card-tabs {
+    background: #181818 !important;
+    border-bottom-color: #2a2a2a !important;
+}
+
+.notif-card-footer {
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+html.dark .notif-card-footer,
+[data-theme="dark"] .notif-card-footer {
+    background: #181818 !important;
+    border-top-color: #2a2a2a !important;
+}
+
+.notif-card-item {
+    background: #ffffff !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    color: #0f172a !important;
+}
+.notif-card-item:hover {
+    background: #f8fafc !important;
+}
+.notif-card-item.is-unread {
+    background: #fefce8 !important;
+}
+html.dark .notif-card-item,
+[data-theme="dark"] .notif-card-item {
+    background: #121212 !important;
+    border-bottom-color: #242424 !important;
+    color: #ffffff !important;
+}
+html.dark .notif-card-item:hover,
+[data-theme="dark"] .notif-card-item:hover {
+    background: #1a1a1a !important;
+}
+html.dark .notif-card-item.is-unread,
+[data-theme="dark"] .notif-card-item.is-unread {
+    background: rgba(242, 242, 13, 0.06) !important;
+}
+
+@media (max-width: 640px) {
+    .notif-dropdown-card {
+        position: fixed !important;
+        top: 68px !important;
+        left: 12px !important;
+        right: 12px !important;
+        width: auto !important;
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100vh - 90px) !important;
+        transform-origin: top center !important;
+        border-radius: 1.25rem !important;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+        z-index: 999999 !important;
+    }
+
+    .notif-dropdown-card .notif-card-body,
+    .notif-dropdown-card .notif-card-list,
+    .notif-card-body {
+        max-height: calc(100vh - 240px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+}
+
+@media (min-width: 641px) {
+    [dir="rtl"] .notif-dropdown-card,
+    html[lang="ar"] .notif-dropdown-card {
+        left: 0;
+        right: auto;
+    }
+}
 

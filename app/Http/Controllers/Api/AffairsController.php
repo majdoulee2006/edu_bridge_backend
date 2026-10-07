@@ -1210,7 +1210,7 @@ class AffairsController extends Controller
         // حذف الصورة القديمة وتحديث الـ avatar وصورة التحقق من الوجه للطالب
         if ($req->old_photo) Storage::disk('public')->delete($req->old_photo);
         DB::table('users')->where('user_id', $req->user_id)->update(['avatar' => $req->new_photo]);
-        DB::table('students')->where('user_id', $req->user_id)->update(['reference_photo' => $req->new_photo]);
+        DB::table('students')->where('user_id', $req->user_id)->update(['reference_photo' => $req->new_photo, 'face_embedding' => null]);
         DB::table('photo_change_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
 
         // إرسال إشعار للطالب
