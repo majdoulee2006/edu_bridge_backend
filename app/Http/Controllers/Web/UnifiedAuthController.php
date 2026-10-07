@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Parents;
@@ -378,25 +379,18 @@ class UnifiedAuthController extends Controller
             }
         }
 
-        if (!$user && ($role === 'parent' || $role === 'unified')) {
-            $parent = Parents::where('phone', $input)->first();
-            if ($parent && $parent->user) {
-                $user = $parent->user;
-            }
-        }
+        // (رقم هاتف ولي الأمر محفوظ في users.phone وقد فُحص أعلاه؛ جدول parents لا يحوي عمود phone،
+        //  والاستعلام عنه كان يرمي خطأ SQL 500 لكل معرّف غير موجود.)
 
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => __('messages.account_not_found')
-            ], 404);
-        }
+        // رد واحد موحّد لكل حالات الفشل (حساب غير موجود / موقوف / غير مربوط بتيليغرام / فشل الإرسال)،
+        // وإلا يمكن لأي شخص معرفة أي الأرقام الجامعية لها حسابات من اختلاف الرد (account enumeration).
+        $cannotSend = fn () => response()->json([
+            'success' => false,
+            'message' => __('messages.reset_telegram_not_linked'),
+        ], 422);
 
-        if ($user->status !== 'active') {
-            return response()->json([
-                'success' => false,
-                'message' => __('messages.account_inactive_contact_affairs')
-            ], 403);
+        if (!$user || $user->status !== 'active') {
+            return $cannotSend();
         }
 
         // الرمز يُرسل فقط إلى حساب تيليغرام المربوط مسبقاً بهذا الحساب (يربطه صاحبه من البوت بكلمة سره).
@@ -405,10 +399,7 @@ class UnifiedAuthController extends Controller
         $chatId = $user->telegram_chat_id;
 
         if (!$chatId) {
-            return response()->json([
-                'success' => false,
-                'message' => __('messages.reset_telegram_not_linked'),
-            ], 422);
+            return $cannotSend();
         }
 
         // توليد رمز OTP مكون من 6 أرقام
@@ -419,10 +410,8 @@ class UnifiedAuthController extends Controller
 
         if (!$sent) {
             // لا نُرجع الرمز في الجواب أبداً، ولا نفتح جلسة استعادة بدون رمز وصل فعلاً
-            return response()->json([
-                'success' => false,
-                'message' => __('messages.otp_send_failed'),
-            ], 503);
+            Log::warning('Password reset OTP could not be delivered via Telegram', ['user_id' => $user->user_id]);
+            return $cannotSend();
         }
 
         // حفظ الرمز في الجلسة بعد نجاح الإرسال فقط
