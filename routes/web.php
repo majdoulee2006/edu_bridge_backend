@@ -7,6 +7,10 @@ use App\Http\Controllers\Web\HODWebController;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Web\UnifiedAuthController;
 use App\Http\Controllers\Web\TeacherWebController;
+use App\Http\Controllers\LocaleController;
+
+// Language Switcher Route
+Route::get('/lang/{locale}', [LocaleController::class, 'switchLanguage'])->name('lang.switch');
 
 // صفحة تحميل التطبيق (للمشاركة مع أولياء الأمور) + تحميل مباشر
 Route::get('/app', [\App\Http\Controllers\AppReleaseController::class, 'page']);
@@ -267,6 +271,10 @@ Route::prefix('affairs')->middleware(['affairs'])->group(function () {
     Route::post('/calendar/events/delete/{id}', [AffairsWebController::class, 'deleteCalendarEvent'])->name('affairs.calendar.delete');
     Route::get('/activities', [AffairsWebController::class, 'activities'])->name('affairs.activities');
     
+    // إعدادات الفصول والترفيع المدمجة
+    Route::post('/semester/activate', [AffairsWebController::class, 'activateSemester'])->name('affairs.semester.activate');
+    Route::post('/promote/year2', [AffairsWebController::class, 'promoteYear2'])->name('affairs.promote.year2');
+
     // تثقيلات المواد ونتائج الطلاب
     Route::get('/course-weights', [AffairsWebController::class, 'courseWeights'])->name('affairs.course_weights');
     Route::post('/course-weights/student-decision', [AffairsWebController::class, 'studentAcademicDecision'])->name('affairs.course_weights.student_decision');
@@ -471,6 +479,8 @@ Route::prefix('admin')->middleware(['admin'])->group(function () {
 
     // المحاضرات
     Route::get('/lectures', [AdminAcademicController::class, 'lectures'])->name('admin.lectures');
+    Route::get('/lectures/{id}/preview', [AdminAcademicController::class, 'previewLecture'])->name('admin.lectures.preview');
+    Route::get('/lectures/{id}/download', [AdminAcademicController::class, 'downloadLecture'])->name('admin.lectures.download');
 
     // التقارير
     Route::get('/reports', [AdminReportController::class, 'reports'])->name('admin.reports');

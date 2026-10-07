@@ -349,7 +349,7 @@
     <!-- Grid -->
     <div class="activities-grid" id="activitiesGrid">
 
-        @forelse($events as $event)
+        @forelse([] as $event)
             @php
                 $today     = \Carbon\Carbon::today();
                 $eventDate = \Carbon\Carbon::parse($event->event_date)->startOfDay();

@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+
+use App\Services\PhotoChangeService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -327,7 +329,7 @@ class StudentController extends Controller
                 'semester' => $activeSemesterName,
                 'active_semester' => $activeSemesterName,
                 'avatar' => $user->avatar ? storageUrl($user->avatar) : null,
-                'reference_photo_url' => $student?->reference_photo ? url('storage/' . $student->reference_photo) : null,
+                'reference_photo_url' => $student?->reference_photo ? url('storage/' . $student->reference_photo) : ($student?->user?->avatar ? url('storage/' . $student->user->avatar) : null),
                 'has_face_embedding' => (!empty($student?->face_embedding) && !$student?->requires_face_reset),
                 'advisor_teacher' => $advisorTeacher,
             ]
@@ -400,10 +402,14 @@ class StudentController extends Controller
 
         $student = $request->user()->student;
 
+                if (!$student->reference_photo && $student->user?->avatar) {
+            $student->update(['reference_photo' => $student->user->avatar]);
+        }
+
         if (!$student->reference_photo) {
             return response()->json([
                 'success' => false,
-                'message' => 'لا توجد صورة مرجعية مرفوعة من الشؤون لك، يرجى مراجعة إدارة شؤون الطلاب.',
+                'message' => 'لا توجد صورة شخصية مسجلة لحسابك. يرجى التقاط صورتك أولاً.',
             ], 400);
         }
 
@@ -1727,13 +1733,28 @@ class StudentController extends Controller
         );
 
         // إشعار المعلم بتسليم الواجب
-        $teacherUserId = \DB::table('teachers')
-            ->where('teacher_id', $assignment->teacher_id)
-            ->value('user_id');
-        if ($teacherUserId) {
-            $studentUser = $request->user();
-            $title   = 'تسليم واجب جديد';
-            $message = 'سلّم الطالب ' . $studentUser->full_name . ' الواجب: ' . $assignment->title;
+        $teacherUserIds = [];
+        if (!empty($assignment->teacher_id)) {
+            $tUserId = \DB::table('teachers')
+                ->where('teacher_id', $assignment->teacher_id)
+                ->value('user_id');
+            if ($tUserId) {
+                $teacherUserIds[] = $tUserId;
+            }
+        }
+        if (empty($teacherUserIds) && !empty($assignment->course_id)) {
+            $teacherUserIds = \DB::table('course_teachers')
+                ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+                ->where('course_teachers.course_id', $assignment->course_id)
+                ->pluck('teachers.user_id')
+                ->toArray();
+        }
+
+        $studentUser = $request->user();
+        $title   = 'تسليم واجب جديد';
+        $message = 'سلّم الطالب ' . $studentUser->full_name . ' الواجب: ' . $assignment->title;
+
+        foreach ($teacherUserIds as $teacherUserId) {
             \DB::table('notifications')->insert([
                 'user_id'    => $teacherUserId,
                 'sender_id'  => $studentUser->user_id,
@@ -1746,9 +1767,13 @@ class StudentController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            \App\Services\FcmService::sendToUser($teacherUserId, $title, $message, [
-                'type' => 'assignment', 'related_id' => (string) $assignmentId,
-            ]);
+            try {
+                \App\Services\FcmService::sendToUser($teacherUserId, $title, $message, [
+                    'type' => 'assignment', 'related_id' => (string) $assignmentId,
+                ]);
+            } catch (\Throwable $e) {
+                \Log::warning('FCM error: ' . $e->getMessage());
+            }
         }
 
         \App\Models\UserActivity::log('تسليم واجب (تطبيق)', "قام الطالب بتسليم الواجب: {$assignment->title}");
@@ -2735,6 +2760,32 @@ class StudentController extends Controller
         // يمكن التصفية بناءً على النوع (type) إذا تم تمريره كمعامل
         $type = $request->query('type');
         
+        if ($type === 'face_photo') {
+            $photoRequests = DB::table('photo_change_requests')
+                ->where('user_id', $user->user_id)
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function($r) {
+                    return [
+                        'id' => $r->id,
+                        'type' => 'face_photo',
+                        'details' => 'طلب تحديث صورة بصمة الوجه للتحقق من الحضور',
+                        'status' => $r->status,
+                        'affairs_decision' => $r->status,
+                        'hod_decision' => null,
+                        'admin_decision' => null,
+                        'admin_notes' => null,
+                        'created_at' => $r->created_at,
+                        'created_at_human' => \Carbon\Carbon::parse($r->created_at)->diffForHumans(),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $photoRequests
+            ]);
+        }
+
         $query = StudentRequest::where('student_id', $user->student->student_id);
         
         if ($type) {

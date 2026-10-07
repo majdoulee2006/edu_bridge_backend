@@ -386,35 +386,52 @@
 <div class="announcements-list">
     @forelse($announcements as $ann)
         @php
-            $firstImg = $ann->image ?? null;
-            if (!$firstImg && !empty($ann->images)) {
+            $imgsArr = [];
+            if (!empty($ann->images)) {
                 $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
-                if (is_array($imgsArr) && !empty($imgsArr)) {
-                    $firstImg = $imgsArr[0];
+            }
+            if (empty($imgsArr) && !empty($ann->image)) {
+                $imgsArr = [$ann->image];
+            }
+
+            $formattedImgs = [];
+            if (is_array($imgsArr)) {
+                foreach ($imgsArr as $img) {
+                    if ($img) {
+                        $formattedImgs[] = str_starts_with($img, 'http') ? $img : asset('storage/' . ltrim($img, '/'));
+                    }
                 }
             }
-            $imgUrl = null;
-            if ($firstImg) {
-                $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
-            }
         @endphp
-        <div class="announcement-item">
-            @if($imgUrl)
-                <div class="announcement-icon" style="width:70px; height:70px; padding:0; overflow:hidden; border-radius:0.75rem;">
-                    <img src="{{ $imgUrl }}" style="width:100%; height:100%; object-fit:cover;">
+        <div style="background: var(--bg-secondary); border: 1px solid rgba(128,128,128,0.2); border-radius: 1rem; margin-bottom: 1.5rem; padding: 1.25rem; display: flex; gap: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <!-- Avatar column -->
+            <div style="flex-shrink: 0;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background-color: var(--accent-color, #1d9bf0); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 1.1rem;">
+                    إ
                 </div>
-            @else
-                <div class="announcement-icon">
-                    <i class="fa-solid fa-bell"></i>
+            </div>
+            
+            <!-- Content column -->
+            <div style="flex: 1; min-width: 0;">
+                <!-- Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">الإدارة</span>
+                        <i class="fa-solid fa-circle-check" style="color: #1d9bf0; font-size: 0.85rem;"></i>
+                        <span style="color: var(--text-muted); font-size: 0.9rem;" dir="ltr">@admin · {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans(null, true) }}</span>
+                    </div>
                 </div>
-            @endif
-            <div class="announcement-details flex-1">
-                <h4>{{ $ann->title }}</h4>
-                <p>{{ $ann->content ?? $ann->body }}</p>
-                <div class="announcement-date">
-                    <i class="fa-regular fa-clock" style="margin-left: 0.25rem;"></i>
-                    {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}
+
+                <!-- Text Content -->
+                <div style="color: var(--text-dark); font-size: 0.95rem; line-height: 1.6; margin-bottom: 0.75rem; white-space: pre-wrap;">
+                    @if($ann->title)
+                    <strong style="display: block; margin-bottom: 0.25rem; font-size: 1.05rem;">{{ $ann->title }}</strong>
+                    @endif
+                    {{ $ann->content ?? $ann->body }}
                 </div>
+
+                <!-- Image Attachment -->
+                @include('partials.image_slider', ['images' => $formattedImgs])
             </div>
         </div>
     @empty

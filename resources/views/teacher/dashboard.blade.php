@@ -339,103 +339,69 @@
 
     @forelse($announcements as $ann)
         @php
-            $firstImg = $ann->image ?? null;
-            if (!$firstImg && !empty($ann->images)) {
+            $imgsArr = [];
+            if (!empty($ann->images)) {
                 $imgsArr = is_string($ann->images) ? json_decode($ann->images, true) : $ann->images;
-                if (is_array($imgsArr) && !empty($imgsArr)) {
-                    $firstImg = $imgsArr[0];
-                }
             }
-            $imgUrl = null;
-            if ($firstImg) {
-                $imgUrl = str_starts_with($firstImg, 'http') ? $firstImg : asset('storage/' . ltrim($firstImg, '/'));
+            if (empty($imgsArr) && !empty($ann->image)) {
+                $imgsArr = [$ann->image];
+            }
+
+            $formattedImgs = [];
+            if (is_array($imgsArr)) {
+                foreach ($imgsArr as $img) {
+                    if ($img) {
+                        $formattedImgs[] = str_starts_with($img, 'http') ? $img : asset('storage/' . ltrim($img, '/'));
+                    }
+                }
             }
             $isOwner = isset($ann->user_id) && $ann->user_id == Auth::id();
             $annId   = $ann->announcement_id ?? $ann->id;
         @endphp
 
-        @if($loop->first)
-        {{-- كارت كبير --}}
-        <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 1.25rem; min-height: 200px;">
-            {{-- صورة يسار --}}
-            <div style="width: 38%; flex-shrink: 0; background: var(--bg-primary); position: relative; overflow: hidden;">
-                @if($imgUrl)
-                    <a href="{{ $imgUrl }}" target="_blank" download style="display: block; position: absolute; inset: 0;">
-                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: fill;">
-                        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0); transition: background 0.2s;"
-                             onmouseover="this.style.background='rgba(0,0,0,0.35)'"
-                             onmouseout="this.style.background='rgba(0,0,0,0)'">
-                            <i class="fa-solid fa-download" style="color: white; font-size: 1.8rem; opacity: 0;"></i>
-                        </div>
-                    </a>
-                @else
-                    <i class="fa-solid fa-bullhorn" style="position: absolute; inset: 0; margin: auto; font-size: 4rem; color: rgba(255,255,255,0.08); width: fit-content; height: fit-content;"></i>
-                @endif
+        <div style="background: var(--bg-secondary); border: 1px solid rgba(128,128,128,0.2); border-radius: 1rem; margin-bottom: 1.5rem; padding: 1.25rem; display: flex; gap: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <!-- Avatar column -->
+            <div style="flex-shrink: 0;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background-color: var(--accent-color, #1d9bf0); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 1.1rem;">
+                    {{ mb_substr($ann->user->full_name ?? 'إدارة', 0, 1) }}
+                </div>
             </div>
-            {{-- نص يمين --}}
-            <div style="flex: 1; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <span style="background: var(--accent-color); color: #1a1a1a; padding: 0.2rem 0.75rem; border-radius: 2rem; font-size: 0.78rem; font-weight: 700;">إعلان هام</span>
+            
+            <!-- Content column -->
+            <div style="flex: 1; min-width: 0;">
+                <!-- Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ $ann->user->full_name ?? 'الإدارة' }}</span>
+                        @if(isset($ann->user) && in_array($ann->user->role, ['admin', 'hod', 'affairs']))
+                            <i class="fa-solid fa-circle-check" style="color: #1d9bf0; font-size: 0.85rem;"></i>
+                        @endif
+                        <span style="color: var(--text-muted); font-size: 0.9rem;">@admin</span>
+                        <span style="color: var(--text-muted); font-size: 0.9rem;">· {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans(null, true) }}</span>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
                         @if($isOwner)
-                        <div style="display: flex; gap: 0.5rem;">
-                            <a href="{{ route('teacher.announcements.edit', $annId) }}"
-                               style="display: flex; align-items: center; gap: 0.25rem; padding: 0.3rem 0.6rem; border-radius: 0.5rem; background: #eff6ff; color: #1d4ed8; font-size: 0.75rem; font-weight: 700; text-decoration: none;">
-                                <i class="fa-solid fa-pen" style="font-size: 0.7rem;"></i> تعديل
-                            </a>
-                            <form action="{{ route('teacher.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف الإعلان؟')" style="margin: 0;">
+                            <a href="{{ route('teacher.announcements.edit', $annId) }}" style="color: #1d4ed8; background: #eff6ff; padding: 0.15rem 0.4rem; border-radius: 0.3rem; font-size: 0.8rem;"><i class="fa-solid fa-pen"></i></a>
+                            <form action="{{ route('teacher.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin: 0;">
                                 @csrf
-                                <button type="submit" style="display: flex; align-items: center; gap: 0.25rem; padding: 0.3rem 0.6rem; border-radius: 0.5rem; background: #fef2f2; color: #dc2626; font-size: 0.75rem; font-weight: 700; border: none; cursor: pointer; font-family: inherit;">
-                                    <i class="fa-solid fa-trash" style="font-size: 0.7rem;"></i> حذف
-                                </button>
+                                <button type="submit" style="background: #fef2f2; border: none; color: #dc2626; cursor: pointer; padding: 0.15rem 0.4rem; border-radius: 0.3rem; font-size: 0.8rem;"><i class="fa-solid fa-trash"></i></button>
                             </form>
-                        </div>
                         @endif
                     </div>
-                    <h4 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-primary);">{{ $ann->title }}</h4>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">{{ Str::limit($ann->content, 200) }}</p>
                 </div>
-                <div style="margin-top: 0.75rem; font-size: 0.78rem; color: var(--text-secondary);">
-                    <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}
-                </div>
-            </div>
-        </div>
-        @else
-        {{-- كروت أخرى --}}
-        <div style="display: flex; flex-direction: row-reverse; border-radius: 1.25rem; overflow: hidden; background: var(--bg-secondary); box-shadow: var(--shadow); margin-bottom: 0.75rem; min-height: 110px;">
-            <div style="width: 150px; flex-shrink: 0; background: var(--bg-primary); position: relative; overflow: hidden;">
-                @if($imgUrl)
-                    <a href="{{ $imgUrl }}" target="_blank" download style="display: block; position: absolute; inset: 0;">
-                        <img src="{{ $imgUrl }}" style="width: 100%; height: 100%; object-fit: fill;">
-                    </a>
-                @else
-                    <i class="fa-solid fa-bullhorn" style="position: absolute; inset: 0; margin: auto; font-size: 2rem; color: rgba(255,255,255,0.1); width: fit-content; height: fit-content;"></i>
-                @endif
-            </div>
-            <div style="flex: 1; padding: 1rem 1.25rem; display: flex; flex-direction: column; justify-content: center;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
-                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary);">إداري</span>
-                    @if($isOwner)
-                    <div style="display: flex; gap: 0.4rem;">
-                        <a href="{{ route('teacher.announcements.edit', $annId) }}"
-                           style="padding: 0.25rem 0.5rem; border-radius: 0.4rem; background: #eff6ff; color: #1d4ed8; font-size: 0.7rem; text-decoration: none;">
-                            <i class="fa-solid fa-pen"></i>
-                        </a>
-                        <form action="{{ route('teacher.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin: 0;">
-                            @csrf
-                            <button type="submit" style="padding: 0.25rem 0.5rem; border-radius: 0.4rem; background: #fef2f2; color: #dc2626; font-size: 0.7rem; border: none; cursor: pointer;">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </form>
-                    </div>
+
+                <!-- Text Content -->
+                <div style="color: var(--text-dark); font-size: 0.95rem; line-height: 1.6; margin-bottom: 0.75rem; white-space: pre-line;">
+                    @if($ann->title)
+                    <strong style="display: block; margin-bottom: 0.25rem; font-size: 1.05rem;">{{ $ann->title }}</strong>
                     @endif
+                    {{ $ann->content }}
                 </div>
-                <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.3rem;">{{ $ann->title }}</h4>
-                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.3rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ $ann->content }}</p>
-                <span style="font-size: 0.75rem; color: var(--text-secondary);">{{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans() }}</span>
+
+                <!-- Image Attachment -->
+                @include('partials.image_slider', ['images' => $formattedImgs])
             </div>
         </div>
-        @endif
     @empty
         <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
             <i class="fa-solid fa-bullhorn" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>

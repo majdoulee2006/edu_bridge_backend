@@ -686,6 +686,59 @@ class StudentWebController extends Controller
             'updated_at'    => now(),
         ]);
 
+        // إشعار المعلم بتسليم الواجب
+        $teacherUserIds = [];
+        if (!empty($assignment->teacher_id)) {
+            $tUserId = DB::table('teachers')
+                ->where('teacher_id', $assignment->teacher_id)
+                ->value('user_id');
+            if ($tUserId) {
+                $teacherUserIds[] = $tUserId;
+            }
+        }
+        if (empty($teacherUserIds) && !empty($assignment->course_id)) {
+            $teacherUserIds = DB::table('course_teachers')
+                ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
+                ->where('course_teachers.course_id', $assignment->course_id)
+                ->pluck('teachers.user_id')
+                ->toArray();
+        }
+
+        $studentUser = Auth::user();
+        $studentName = $studentUser->full_name ?? ($studentUser->first_name . ' ' . $studentUser->last_name);
+        $notifTitle   = 'تسليم واجب جديد';
+        $notifMessage = 'قام الطالب ' . $studentName . ' بتسليم واجب: ' . $assignment->title;
+
+        foreach ($teacherUserIds as $teacherUserId) {
+            DB::table('notifications')->insert([
+                'user_id'    => $teacherUserId,
+                'sender_id'  => $studentUser->user_id ?? null,
+                'title'      => $notifTitle,
+                'message'    => $notifMessage,
+                'type'       => 'assignment',
+                'category'   => 'academic',
+                'related_id' => $assignmentId,
+                'is_read'    => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            try {
+                if (class_exists(\App\Services\FcmService::class)) {
+                    \App\Services\FcmService::sendToUser($teacherUserId, $notifTitle, $notifMessage, [
+                        'type'       => 'assignment',
+                        'related_id' => (string) $assignmentId,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('FCM send failed for assignment submission: ' . $e->getMessage());
+            }
+        }
+
+        if (class_exists(\App\Models\UserActivity::class)) {
+            \App\Models\UserActivity::log('تسليم واجب', "قام الطالب بتسليم الواجب: {$assignment->title}");
+        }
+
         return back()->with('success', 'تم تسليم الواجب بنجاح!');
     }
 

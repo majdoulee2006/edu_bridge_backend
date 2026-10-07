@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 
-@section('title', 'إدارة الحسابات')
-@section('header-title', 'الحسابات')
-@section('header-subtitle', 'عرض وإدارة مستخدمي النظام بكل سهولة')
+@section('title', __('messages.manage_accounts'))
+@section('header-title', __('messages.accounts'))
+@section('header-subtitle', __('messages.accounts_subtitle'))
 
 @section('content')
 <div class="space-y-5">
@@ -15,19 +15,19 @@
             </div>
             <div>
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    كافة الحسابات
+                    {{ __('messages.all_accounts') }}
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-primary/20 text-slate-900 dark:text-primary">
                         {{ $counts['all'] ?? 0 }}
                     </span>
                 </h2>
-                <p class="text-xs text-slate-400">قائمة بجميع المستخدمين المسجلين في المنصة</p>
+                <p class="text-xs text-slate-400">{{ __('messages.all_accounts_desc') }}</p>
             </div>
         </div>
 
         <!-- Single Create Account Button (+) -->
         <button type="button" onclick="openModal('createAccountModal')" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-slate-950 font-bold text-xs hover:bg-primary-hover transition-all shadow-md shadow-primary/20 active:scale-95 cursor-pointer shrink-0">
             <span class="material-symbols-outlined font-black text-lg">add</span>
-            <span>إنشاء حساب جديد</span>
+            <span>{{ __('messages.create_new_account') }}</span>
         </button>
     </div>
 
@@ -39,12 +39,12 @@
                     <span class="material-symbols-outlined text-amber-500 text-2xl animate-pulse">pending_actions</span>
                     <div>
                         <h3 class="text-sm font-bold text-amber-900 dark:text-amber-300 flex items-center gap-2">
-                            طلبات إنشاء الحسابات بانتظار الاعتماد
+                            {{ __('messages.pending_approval_requests') }}
                             <span class="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950">
                                 {{ count($pendingUsers) }}
                             </span>
                         </h3>
-                        <p class="text-xs text-amber-700/80 dark:text-amber-400/80">طلبات جديدة تم تقديمها من الويب/التطبيق وبانتظار موافقة الإدارة</p>
+                        <p class="text-xs text-amber-700/80 dark:text-amber-400/80">{{ __('messages.pending_approval_desc') }}</p>
                     </div>
                 </div>
             </div>
@@ -61,7 +61,7 @@
                                     <h4 class="text-xs font-bold text-slate-900 dark:text-white">{{ $pUser->full_name }}</h4>
                                     <p class="text-[11px] text-slate-400">{{ $pUser->email ?? $pUser->phone }}</p>
                                     <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                                        {{ $pUser->role_id == 3 ? 'طالب' : ($pUser->role_id == 4 ? 'ولي أمر' : 'مستخدم') }}
+                                        {{ $pUser->role_id == 3 ? __('messages.role_student') : ($pUser->role_id == 4 ? __('messages.role_parent') : __('messages.role_user')) }}
                                     </span>
                                 </div>
                             </div>
@@ -73,7 +73,7 @@
                                 @csrf
                                 <button type="submit" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1">
                                     <span class="material-symbols-outlined text-sm">check_circle</span>
-                                    <span>اعتماد الحساب</span>
+                                    <span>{{ __('messages.approve_account') }}</span>
                                 </button>
                             </form>
                         </div>
@@ -91,86 +91,85 @@
             <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                 <a href="{{ route('admin.accounts', ['role' => 'all', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'all' ? 'bg-primary text-slate-950 font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>الكل</span>
+                    <span>{{ __('messages.all') }}</span>
                     <span class="opacity-75">({{ $counts['all'] }})</span>
                 </a>
 
                 <a href="{{ route('admin.accounts', ['role' => 'student', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'student' ? 'bg-blue-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>الطلاب</span>
+                    <span>{{ __('messages.students') }}</span>
                     <span class="opacity-75">({{ $counts['student'] }})</span>
                 </a>
 
                 <a href="{{ route('admin.accounts', ['role' => 'teacher', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'teacher' ? 'bg-emerald-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>المعلمون</span>
+                    <span>{{ __('messages.teachers') }}</span>
                     <span class="opacity-75">({{ $counts['teacher'] }})</span>
                 </a>
 
                 <a href="{{ route('admin.accounts', ['role' => 'hod', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'hod' ? 'bg-purple-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>رؤساء الأقسام</span>
+                    <span>{{ __('messages.department_heads') }}</span>
                     <span class="opacity-75">({{ $counts['hod'] }})</span>
                 </a>
 
                 <a href="{{ route('admin.accounts', ['role' => 'parent', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'parent' ? 'bg-orange-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>أولياء الأمور</span>
+                    <span>{{ __('messages.parents') }}</span>
                     <span class="opacity-75">({{ $counts['parent'] }})</span>
                 </a>
 
                 <a href="{{ route('admin.accounts', ['role' => 'affairs', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'affairs' ? 'bg-rose-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>الشؤون</span>
+                    <span>{{ __('messages.affairs_staff') }}</span>
                     <span class="opacity-75">({{ $counts['affairs'] }})</span>
                 </a>
             </div>
 
             {{-- زر حذف الكل مخصص لمختلف التبويبات عند وجود حسابات فيها --}}
-            {{-- إجراء نهائي لا يمكن التراجع عنه: نطلب من الأدمن كتابة العدد الحالي للحسابات بالضبط كتأكيد إضافي بجانب فحص العدد على السيرفر --}}
             @if($roleFilter === 'student' && ($counts['student'] ?? 0) > 0)
                 <form id="deleteAllStudentsForm" action="{{ route('admin.accounts.delete_all', 'student') }}" method="POST">
                     @csrf
                     <input type="hidden" name="confirm_count" value="">
-                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllStudentsForm', {{ (int) $counts['student'] }}, 'جميع حسابات الطلاب')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllStudentsForm', {{ (int) $counts['student'] }}, '{{ __('messages.students') }}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
                         <span class="material-symbols-outlined text-base">delete_sweep</span>
-                        <span>حذف الكل</span>
+                        <span>{{ __('messages.delete_all') }}</span>
                     </button>
                 </form>
             @elseif($roleFilter === 'teacher' && ($counts['teacher'] ?? 0) > 0)
                 <form id="deleteAllTeachersForm" action="{{ route('admin.accounts.delete_all', 'teacher') }}" method="POST">
                     @csrf
                     <input type="hidden" name="confirm_count" value="">
-                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllTeachersForm', {{ (int) $counts['teacher'] }}, 'جميع حسابات المعلمين')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllTeachersForm', {{ (int) $counts['teacher'] }}, '{{ __('messages.teachers') }}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
                         <span class="material-symbols-outlined text-base">delete_sweep</span>
-                        <span>حذف الكل</span>
+                        <span>{{ __('messages.delete_all') }}</span>
                     </button>
                 </form>
             @elseif($roleFilter === 'hod' && ($counts['hod'] ?? 0) > 0)
                 <form id="deleteAllHodForm" action="{{ route('admin.accounts.delete_all', 'hod') }}" method="POST">
                     @csrf
                     <input type="hidden" name="confirm_count" value="">
-                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllHodForm', {{ (int) $counts['hod'] }}, 'جميع حسابات رؤساء الأقسام')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllHodForm', {{ (int) $counts['hod'] }}, '{{ __('messages.department_heads') }}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
                         <span class="material-symbols-outlined text-base">delete_sweep</span>
-                        <span>حذف الكل</span>
+                        <span>{{ __('messages.delete_all') }}</span>
                     </button>
                 </form>
             @elseif($roleFilter === 'parent' && ($counts['parent'] ?? 0) > 0)
                 <form id="deleteAllParentsForm" action="{{ route('admin.accounts.delete_all', 'parent') }}" method="POST">
                     @csrf
                     <input type="hidden" name="confirm_count" value="">
-                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllParentsForm', {{ (int) $counts['parent'] }}, 'جميع حسابات أولياء الأمور')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllParentsForm', {{ (int) $counts['parent'] }}, '{{ __('messages.parents') }}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
                         <span class="material-symbols-outlined text-base">delete_sweep</span>
-                        <span>حذف الكل</span>
+                        <span>{{ __('messages.delete_all') }}</span>
                     </button>
                 </form>
             @elseif($roleFilter === 'affairs' && ($counts['affairs'] ?? 0) > 0)
                 <form id="deleteAllAffairsForm" action="{{ route('admin.accounts.delete_all', 'affairs') }}" method="POST">
                     @csrf
                     <input type="hidden" name="confirm_count" value="">
-                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllAffairsForm', {{ (int) $counts['affairs'] }}, 'جميع حسابات موظفي الشؤون')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
+                    <button type="button" onclick="confirmDeleteAllAccounts('deleteAllAffairsForm', {{ (int) $counts['affairs'] }}, '{{ __('messages.affairs_staff') }}')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0">
                         <span class="material-symbols-outlined text-base">delete_sweep</span>
-                        <span>حذف الكل</span>
+                        <span>{{ __('messages.delete_all') }}</span>
                     </button>
                 </form>
             @endif
@@ -179,21 +178,21 @@
         <!-- Search Bar Input -->
         <form action="{{ route('admin.accounts') }}" method="GET" class="relative">
             <input type="hidden" name="role" value="{{ $roleFilter }}">
-            <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+            <span class="material-symbols-outlined absolute {{ app()->getLocale() === 'en' ? 'left-3.5' : 'right-3.5' }} top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
             <input type="text" 
                    name="search" 
                    value="{{ $search }}" 
-                   placeholder="بحث بالاسم، اسم المستخدم، البريد، أو الهاتف..." 
-                   class="w-full pr-10 pl-20 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary transition-colors">
+                   placeholder="{{ __('messages.search_accounts_placeholder') }}" 
+                   class="w-full {{ app()->getLocale() === 'en' ? 'pl-10 pr-20' : 'pr-10 pl-20' }} py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary transition-colors">
             
-            <div class="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <div class="absolute {{ app()->getLocale() === 'en' ? 'right-2' : 'left-2' }} top-1/2 -translate-y-1/2 flex items-center gap-1">
                 @if(!empty($search))
                     <a href="{{ route('admin.accounts', ['role' => $roleFilter]) }}" class="px-2 py-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        إلغاء
+                        {{ __('messages.cancel') }}
                     </a>
                 @endif
                 <button type="submit" class="px-3 py-1 bg-slate-800 text-white dark:bg-primary dark:text-slate-950 rounded-lg text-[11px] font-bold">
-                    بحث
+                    {{ __('messages.search') }}
                 </button>
             </div>
         </form>
@@ -202,15 +201,15 @@
     <!-- Accounts Minimal Clean Table -->
     <div class="bg-white dark:bg-surface-dark rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-right border-collapse">
+            <table class="w-full {{ app()->getLocale() === 'en' ? 'text-left' : 'text-right' }} border-collapse">
                 <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-                        <th class="py-3 px-4">المستخدم والنوع</th>
-                        <th class="py-3 px-4">معرف الحساب</th>
-                        <th class="py-3 px-4">بيانات التواصل</th>
-                        <th class="py-3 px-4 text-center">الحالة</th>
-                        <th class="py-3 px-4 text-center">التاريخ</th>
-                        <th class="py-3 px-4 text-center">إجراءات</th>
+                        <th class="py-3 px-4">{{ __('messages.col_user_role') }}</th>
+                        <th class="py-3 px-4">{{ __('messages.col_username') }}</th>
+                        <th class="py-3 px-4">{{ __('messages.col_contact') }}</th>
+                        <th class="py-3 px-4 text-center">{{ __('messages.col_status') }}</th>
+                        <th class="py-3 px-4 text-center">{{ __('messages.col_date') }}</th>
+                        <th class="py-3 px-4 text-center">{{ __('messages.col_actions') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
@@ -243,12 +242,12 @@
                                             {{ $usr->full_name }}
                                         </div>
                                         <span class="text-[10px] font-semibold text-slate-400">
-                                            @if($usr->role_id == 3) طالب
-                                            @elseif($usr->role_id == 2) معلم / مدرب
-                                            @elseif($usr->role_id == 5) رئيس قسم
-                                            @elseif($usr->role_id == 4) ولي أمر
-                                            @elseif($usr->role_id == 6) موظف شؤون
-                                            @else مستخدم
+                                            @if($usr->role_id == 3) {{ __('messages.role_student') }}
+                                            @elseif($usr->role_id == 2) {{ __('messages.role_teacher') }}
+                                            @elseif($usr->role_id == 5) {{ __('messages.role_hod') }}
+                                            @elseif($usr->role_id == 4) {{ __('messages.role_parent') }}
+                                            @elseif($usr->role_id == 6) {{ __('messages.role_affairs') }}
+                                            @else {{ __('messages.role_user') }}
                                             @endif
                                         </span>
                                     </div>
@@ -275,7 +274,7 @@
                             <td class="py-3.5 px-4 text-center">
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold {{ $usr->status === 'active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500' }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $usr->status === 'active' ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
-                                    {{ $usr->status === 'active' ? 'نشط' : 'معلق' }}
+                                    {{ $usr->status === 'active' ? __('messages.status_active') : __('messages.status_pending') }}
                                 </span>
                             </td>
 
@@ -286,12 +285,12 @@
 
                             <!-- Actions -->
                             <td class="py-3.5 px-4 text-center">
-                                <a href="{{ route('admin.accounts.edit', $usr->user_id) }}" class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors inline-flex items-center justify-center ml-1" title="تعديل الحساب">
+                                <a href="{{ route('admin.accounts.edit', $usr->user_id) }}" class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors inline-flex items-center justify-center {{ app()->getLocale() === 'en' ? 'mr-1' : 'ml-1' }}" title="{{ __('messages.edit_account') }}">
                                     <span class="material-symbols-outlined text-base">edit</span>
                                 </a>
-                                <form action="{{ route('admin.accounts.delete_single', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('هل أنت متأكد من حذف حساب ({{ $usr->full_name }})؟')">
+                                <form action="{{ route('admin.accounts.delete_single', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('{{ app()->getLocale() === 'en' ? 'Are you sure you want to delete account (' . $usr->full_name . ')?' : 'هل أنت متأكد من حذف حساب (' . $usr->full_name . ')؟' }}')">
                                     @csrf
-                                    <button type="submit" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors inline-flex items-center justify-center" title="حذف الحساب">
+                                    <button type="submit" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors inline-flex items-center justify-center" title="{{ __('messages.delete_account') }}">
                                         <span class="material-symbols-outlined text-base">delete</span>
                                     </button>
                                 </form>
@@ -301,7 +300,7 @@
                         <tr>
                             <td colspan="6" class="py-12 text-center text-slate-400">
                                 <span class="material-symbols-outlined text-4xl mb-2 text-slate-500">search_off</span>
-                                <p class="text-xs font-bold">لا توجد حسابات مسجلة تطابق التصفية الحالية</p>
+                                <p class="text-xs font-bold">{{ __('messages.no_accounts_found') }}</p>
                             </td>
                         </tr>
                     @endforelse
@@ -327,7 +326,7 @@
         <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary text-xl">person_add</span>
-                اختر نوع الحساب المراد إنشاؤه
+                {{ __('messages.select_account_type_modal') }}
             </h3>
             <button onclick="closeModal('createAccountModal')" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
                 <span class="material-symbols-outlined text-lg">close</span>
@@ -342,11 +341,11 @@
                         <span class="material-symbols-outlined">school</span>
                     </div>
                     <div>
-                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-blue-500 transition-colors">حساب طالب</h4>
-                        <p class="text-[10px] text-slate-400">تحديد المواد والصفوف والرقم الجامعي</p>
+                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-blue-500 transition-colors">{{ __('messages.account_student_title') }}</h4>
+                        <p class="text-[10px] text-slate-400">{{ __('messages.account_student_desc') }}</p>
                     </div>
                 </div>
-                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">arrow_back</span>
+                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">{{ app()->getLocale() === 'en' ? 'arrow_forward' : 'arrow_back' }}</span>
             </a>
 
             <!-- Parent -->
@@ -356,11 +355,11 @@
                         <span class="material-symbols-outlined">family_restroom</span>
                     </div>
                     <div>
-                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-orange-500 transition-colors">حساب ولي أمر</h4>
-                        <p class="text-[10px] text-slate-400">ربطه بالأبناء وتحديد البيانات</p>
+                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-orange-500 transition-colors">{{ __('messages.account_parent_title') }}</h4>
+                        <p class="text-[10px] text-slate-400">{{ __('messages.account_parent_desc') }}</p>
                     </div>
                 </div>
-                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">arrow_back</span>
+                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">{{ app()->getLocale() === 'en' ? 'arrow_forward' : 'arrow_back' }}</span>
             </a>
 
             <!-- Teacher -->
@@ -370,11 +369,11 @@
                         <span class="material-symbols-outlined">sports</span>
                     </div>
                     <div>
-                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-emerald-500 transition-colors">حساب مدرب / معلم</h4>
-                        <p class="text-[10px] text-slate-400">إضافة الكادر التدريسي والمواد</p>
+                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-emerald-500 transition-colors">{{ __('messages.account_teacher_title') }}</h4>
+                        <p class="text-[10px] text-slate-400">{{ __('messages.account_teacher_desc') }}</p>
                     </div>
                 </div>
-                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">arrow_back</span>
+                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">{{ app()->getLocale() === 'en' ? 'arrow_forward' : 'arrow_back' }}</span>
             </a>
 
             <!-- HOD -->
@@ -384,11 +383,11 @@
                         <span class="material-symbols-outlined">supervisor_account</span>
                     </div>
                     <div>
-                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-purple-500 transition-colors">حساب رئيس قسم</h4>
-                        <p class="text-[10px] text-slate-400">تعيين قسم وإسناد المهام</p>
+                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-purple-500 transition-colors">{{ __('messages.account_hod_title') }}</h4>
+                        <p class="text-[10px] text-slate-400">{{ __('messages.account_hod_desc') }}</p>
                     </div>
                 </div>
-                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">arrow_back</span>
+                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">{{ app()->getLocale() === 'en' ? 'arrow_forward' : 'arrow_back' }}</span>
             </a>
 
             <!-- Affairs -->
@@ -398,11 +397,11 @@
                         <span class="material-symbols-outlined">badge</span>
                     </div>
                     <div>
-                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-rose-500 transition-colors">حساب موظف شؤون</h4>
-                        <p class="text-[10px] text-slate-400">منحه صلاحيات إدارة الطلاب</p>
+                        <h4 class="font-bold text-xs text-slate-900 dark:text-white group-hover:text-rose-500 transition-colors">{{ __('messages.account_affairs_title') }}</h4>
+                        <p class="text-[10px] text-slate-400">{{ __('messages.account_affairs_desc') }}</p>
                     </div>
                 </div>
-                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">arrow_back</span>
+                <span class="material-symbols-outlined text-slate-400 group-hover:translate-x-[-4px] transition-transform text-lg">{{ app()->getLocale() === 'en' ? 'arrow_forward' : 'arrow_back' }}</span>
             </a>
         </div>
 

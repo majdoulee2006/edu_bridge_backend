@@ -46,14 +46,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'single.session' => \App\Http\Middleware\EnsureSingleApiSession::class,
         ]);
 
-        // يمنع تسجيل الدخول المتزامن لنفس الحساب من أكثر من متصفح على الويب
+        // يمنع تسجيل الدخول المتزامن لنفس الحساب من أكثر من متصفح على الويب وضبط اللغة التلقائي
         $middleware->web(append: [
+            \App\Http\Middleware\SetLocaleMiddleware::class,
             \App\Http\Middleware\EnsureSingleWebSession::class,
         ]);
 
         // لا استثناءات CSRF: كل نماذج الويب ترسل @csrf (كان مسار affairs/accounts مستثنى دون مبرر).
 
         $middleware->api(prepend: [
+            \App\Http\Middleware\SetLocaleMiddleware::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
         ]);
 

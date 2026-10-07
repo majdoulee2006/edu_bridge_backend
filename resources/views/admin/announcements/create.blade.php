@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-@section('title', 'إنشاء إعلان جديد')
+@section('title', __('messages.create_new_announcement'))
 
 @section('content')
 
@@ -8,11 +8,11 @@
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.dashboard') }}"
                class="w-10 h-10 rounded-2xl bg-white dark:bg-surface-dark border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft">
-                <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+                <span class="material-symbols-outlined text-[22px]">{{ app()->getLocale() === 'en' ? 'arrow_back' : 'arrow_forward' }}</span>
             </a>
             <div>
-                <h2 class="text-xl font-bold text-slate-800 dark:text-white">إنشاء إعلان جديد</h2>
-                <span class="text-xs text-slate-400 dark:text-slate-500">نشر إعلان لجميع المستخدمين أو قسم محدد</span>
+                <h2 class="text-xl font-bold text-slate-800 dark:text-white">{{ __('messages.create_new_announcement') }}</h2>
+                <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('messages.announcement_subtitle') }}</span>
             </div>
         </div>
     </div>
@@ -26,29 +26,29 @@
             {{-- صف 1: العنوان + الجمهور --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">العنوان *</label>
+                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.announcement_title_label') }}</label>
                     <input type="text" name="title" value="{{ old('title') }}" required
-                           placeholder="عنوان الإعلان..."
+                           placeholder="{{ __('messages.announcement_title_placeholder') }}"
                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/20 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white outline-none transition-all">
                     @error('title')<p class="text-xs text-red-500 px-1 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">الجمهور المستهدف</label>
+                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.target_audience') }}</label>
                     <select name="target_audience" id="targetAudience" onchange="toggleDept()"
                             class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white outline-none appearance-none transition-all">
-                        <option value="all" {{ old('target_audience','all')=='all' ? 'selected' : '' }}>الجميع — كل المعهد</option>
-                        <option value="department" {{ old('target_audience')=='department' ? 'selected' : '' }}>قسم معين</option>
+                        <option value="all" {{ old('target_audience','all')=='all' ? 'selected' : '' }}>{{ __('messages.audience_all') }}</option>
+                        <option value="department" {{ old('target_audience')=='department' ? 'selected' : '' }}>{{ __('messages.audience_department') }}</option>
                     </select>
                 </div>
             </div>
 
             {{-- القسم (يظهر عند اختيار "قسم معين") --}}
             <div id="deptDiv" class="hidden flex flex-col gap-1.5">
-                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">القسم</label>
+                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.department') }}</label>
                 <select name="department_id"
                         class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white outline-none appearance-none transition-all">
-                    <option value="">-- اختر القسم --</option>
+                    <option value="">{{ __('messages.select_department') }}</option>
                     @foreach(\App\Models\Department::all() as $dept)
                         <option value="{{ $dept->department_id }}" {{ old('department_id')==$dept->department_id ? 'selected' : '' }}>{{ $dept->name }}</option>
                     @endforeach
@@ -57,9 +57,9 @@
 
             {{-- المحتوى --}}
             <div class="flex flex-col gap-1.5">
-                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">المحتوى *</label>
+                <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.announcement_content_label') }}</label>
                 <textarea name="content" rows="6" required
-                          placeholder="اكتب نص الإعلان هنا..."
+                          placeholder="{{ __('messages.announcement_content_placeholder') }}"
                           class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/20 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white outline-none transition-all resize-none">{{ old('content') }}</textarea>
                 @error('content')<p class="text-xs text-red-500 px-1 mt-1">{{ $message }}</p>@enderror
             </div>
@@ -68,7 +68,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {{-- رفع صورة / صور --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">صور مرفقة <span class="normal-case">(اختياري)</span></label>
+                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.attached_images') }} <span class="normal-case">{{ __('messages.optional') }}</span></label>
                     
                     {{-- Hidden file input for form submit --}}
                     <input type="file" name="images[]" id="finalImagesInput" multiple class="hidden">
@@ -84,8 +84,8 @@
                         
                         <div id="upload-placeholder" class="flex flex-col items-center cursor-pointer" onclick="document.getElementById('imgSelectorInput').click()">
                             <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600 mb-2">add_photo_alternate</span>
-                            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">اسحب الصور هنا أو اضغط لاختيار صورة/عدة صور</p>
-                            <p class="text-xs text-slate-400 mt-1">يمكنك قص وتعديل أو حذف أي صورة بعد اختيارها</p>
+                            <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">{{ __('messages.drag_drop_images') }}</p>
+                            <p class="text-xs text-slate-400 mt-1">{{ __('messages.crop_edit_hint') }}</p>
                         </div>
 
                         <div id="img-preview-container" class="hidden w-full flex flex-col items-center gap-3">
@@ -95,7 +95,7 @@
                                 <span id="preview-count" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800"></span>
                                 <button type="button" onclick="document.getElementById('imgSelectorInput').click()"
                                         class="flex items-center gap-1 text-xs font-bold text-primary hover:underline">
-                                    <span class="material-symbols-outlined text-sm">add_circle</span> إضافة المزيد
+                                    <span class="material-symbols-outlined text-sm">add_circle</span> {{ __('messages.add_more') }}
                                 </button>
                             </div>
                         </div>
@@ -105,7 +105,7 @@
 
                 {{-- رابط خارجي --}}
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">رابط خارجي <span class="normal-case">(اختياري)</span></label>
+                    <label class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-1">{{ __('messages.external_link') }} <span class="normal-case">{{ __('messages.optional') }}</span></label>
                     <input type="url" name="link_url" value="{{ old('link_url') }}" placeholder="https://..."
                            class="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/20 py-3.5 px-4 text-sm font-semibold text-slate-800 dark:text-white outline-none transition-all" dir="ltr">
                     @error('link_url')<p class="text-xs text-red-500 px-1 mt-1">{{ $message }}</p>@enderror
@@ -117,11 +117,11 @@
                 <button type="submit"
                         class="flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm bg-primary text-primary-content shadow-glow hover:scale-105 active:scale-95 transition-all">
                     <span class="material-symbols-outlined text-[18px]">send</span>
-                    نشر الإعلان
+                    {{ __('messages.publish_announcement') }}
                 </button>
                 <a href="{{ route('admin.dashboard') }}"
                    class="px-5 py-3 rounded-2xl text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
-                    إلغاء
+                    {{ __('messages.cancel') }}
                 </a>
             </div>
 
@@ -171,7 +171,7 @@ function syncAdminImagesUI() {
     if (adminImagesStore.length > 0) {
         placeholder.classList.add('hidden');
         container.classList.remove('hidden');
-        countSpan.textContent = 'تم اختيار ' + adminImagesStore.length + ' صور';
+        countSpan.textContent = '{{ app()->getLocale() === "en" ? "Selected: " : "تم اختيار: " }}' + adminImagesStore.length + '{{ app()->getLocale() === "en" ? " image(s)" : " صور" }}';
 
         adminImagesStore.forEach((item, index) => {
             const card = document.createElement('div');

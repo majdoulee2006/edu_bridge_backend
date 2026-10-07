@@ -1,12 +1,12 @@
 @extends('layouts.admin')
 
-@section('title', 'تخصيص رؤساء الأقسام')
-@section('header-title', 'تخصيص وإدارة رؤساء الأقسام')
-@section('header-subtitle', 'استعراض كافة الأقسام ورؤساء الأقسام وتحديد أو إضافة رؤساء أقسام جدد')
+@section('title', __('messages.assign_dept_head'))
+@section('header-title', __('messages.assign_dept_head'))
+@section('header-subtitle', __('messages.courses_subtitle'))
 
 @section('header-actions')
-    <a href="{{ route('admin.courses') }}" class="w-10 h-10 rounded-2xl bg-surface-light dark:bg-surface-dark border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft" title="رجوع للدورات">
-        <span class="material-symbols-outlined text-[22px]">arrow_forward</span>
+    <a href="{{ route('admin.courses') }}" class="w-10 h-10 rounded-2xl bg-surface-light dark:bg-surface-dark border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-soft" title="{{ __('messages.courses') }}">
+        <span class="material-symbols-outlined text-[22px] rtl:rotate-0 ltr:rotate-180">arrow_forward</span>
     </a>
 @endsection
 

@@ -101,9 +101,10 @@ class AdminCommunicationController extends Controller
             ->firstOrFail();
 
         $request->validate([
-            'title'   => 'required|string|max:255',
-            'content' => 'required|string|max:5000',
-            'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'title'    => 'required|string|max:255',
+            'content'  => 'required|string|max:5000',
+            'image'    => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $updates = [
@@ -112,11 +113,33 @@ class AdminCommunicationController extends Controller
             'updated_at' => now(),
         ];
 
-        if ($request->hasFile('image')) {
+        $imagesList = [];
+        if ($request->hasFile('images')) {
+            $files = is_array($request->file('images')) ? $request->file('images') : [$request->file('images')];
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    $imagesList[] = $file->store('announcements', 'public');
+                }
+            }
+        }
+        if (empty($imagesList) && $request->hasFile('image')) {
+            $imagesList[] = $request->file('image')->store('announcements', 'public');
+        }
+
+        if (!empty($imagesList)) {
             if ($announcement->image) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
             }
-            $updates['image'] = $request->file('image')->store('announcements', 'public');
+            if (!empty($announcement->images)) {
+                $oldList = is_string($announcement->images) ? json_decode($announcement->images, true) : $announcement->images;
+                if (is_array($oldList)) {
+                    foreach ($oldList as $oldImg) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($oldImg);
+                    }
+                }
+            }
+            $updates['image']  = $imagesList[0];
+            $updates['images'] = $imagesList;
         }
 
         $announcement->update($updates);

@@ -101,28 +101,57 @@
 @section('content')
 
 @php
+    $allCount = $assignments->count();
     $pendingCount = 0;
+    $submittedCount = 0;
+    $gradedCount = 0;
+    $overdueCount = 0;
+
     foreach($assignments as $item) {
         $dDate = \Carbon\Carbon::parse($item->due_date);
-        if (!$item->submission_id && !$dDate->isPast()) {
-            $pendingCount++;
-        }
+        $isOverdue   = $dDate->isPast() && !$item->submission_id;
+        $isSubmitted = $item->submission_id && !$item->grade;
+        $isGraded    = $item->grade !== null;
+        $isPending   = !$item->submission_id && !$isOverdue;
+
+        if ($isGraded) $gradedCount++;
+        elseif ($isSubmitted) $submittedCount++;
+        elseif ($isOverdue) $overdueCount++;
+        elseif ($isPending) $pendingCount++;
     }
     $groupedAssignments = $assignments->groupBy('course_id');
 @endphp
 
 <!-- Filter Tabs -->
-<div class="filter-tabs" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
-    <button class="filter-btn active" data-filter="all" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">عرض الكل</button>
-    <button class="filter-btn" data-filter="pending" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
+<div class="filter-tabs" style="display: flex; gap: 0.6rem; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
+    <button class="filter-btn active" data-filter="all" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
+        عرض الكل
+        <span class="filter-tab-count" style="background: rgba(0,0,0,0.08); font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $allCount }}</span>
+    </button>
+    <button class="filter-btn" data-filter="pending" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
         نشط (بانتظار التسليم)
         @if($pendingCount > 0)
-            <span style="background: #ef4444; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.45rem; border-radius: 1rem; min-width: 18px; text-align: center; line-height: 1.2;">{{ $pendingCount }}</span>
+            <span class="filter-tab-count" style="background: #ef4444; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $pendingCount }}</span>
         @endif
     </button>
-    <button class="filter-btn" data-filter="submitted" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">تم التسليم</button>
-    <button class="filter-btn" data-filter="graded" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">تم التصحيح</button>
-    <button class="filter-btn" data-filter="overdue" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1.25rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">منتهي</button>
+    <button class="filter-btn" data-filter="submitted" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
+        تم التسليم
+        @if($submittedCount > 0)
+            <span class="filter-tab-count" style="background: #3b82f6; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $submittedCount }}</span>
+        @endif
+    </button>
+    <button class="filter-btn" data-filter="graded" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
+        تم التصحيح
+        @if($gradedCount > 0)
+            <span class="filter-tab-count" style="background: #22c55e; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $gradedCount }}</span>
+        @endif
+    </button>
+    <button class="filter-btn" data-filter="overdue" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
+        منتهي
+        @if($overdueCount > 0)
+            <span class="filter-tab-count" style="background: #64748b; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $overdueCount }}</span>
+        @endif
+    </button>
 </div>
 
 <!-- Courses Accordion List -->
@@ -158,7 +187,7 @@
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.85rem;">
-                <span style="font-size: 0.8rem; font-weight: 700; background: var(--bg-primary); padding: 0.35rem 0.85rem; border-radius: 2rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
+                <span class="course-assign-count-badge" data-total="{{ $courseAssigns->count() }}" style="font-size: 0.8rem; font-weight: 700; background: var(--bg-primary); padding: 0.35rem 0.85rem; border-radius: 2rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
                     {{ $courseAssigns->count() }} واجب{{ $courseAssigns->count() == 1 ? '' : 'ات' }}
                 </span>
                 <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
@@ -428,6 +457,17 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
                     card.style.display = 'none';
                 }
             });
+
+            // Dynamically update the count badge on the accordion header
+            const countBadge = accordion.querySelector('.course-assign-count-badge');
+            if (countBadge) {
+                if (filter === 'all') {
+                    const total = parseInt(countBadge.getAttribute('data-total') || '0');
+                    countBadge.textContent = total + (total === 1 ? ' واجب' : ' واجبات');
+                } else {
+                    countBadge.textContent = visibleCount + (visibleCount === 1 ? ' واجب' : ' واجبات');
+                }
+            }
 
             const emptyMsg = accordion.querySelector('.course-empty-msg');
 

@@ -38,6 +38,8 @@ class UnifiedAuthController extends Controller
 
         $role = $this->roleConfigs['unified'];
         $role['key'] = 'unified';
+        $role['title'] = __('messages.login_title_unified');
+        $role['badge'] = __('messages.login_badge_unified');
 
         // لا تُخزَّن صفحة الدخول (رمز CSRF قديم في الكاش = خطأ 419 عند الإرسال)
         return response()->view('login', compact('role'))
@@ -54,8 +56,8 @@ class UnifiedAuthController extends Controller
             'login'    => 'required|string',
             'password' => 'required|string',
         ], [
-            'login.required'    => 'يرجى إدخال اسم المستخدم، البريد الإلكتروني، أو الرقم الجامعي.',
-            'password.required' => 'كلمة المرور مطلوبة.',
+            'login.required'    => __('messages.login_field_required'),
+            'password.required' => __('messages.password_required'),
         ]);
 
         $input   = trim($request->login);
@@ -83,7 +85,7 @@ class UnifiedAuthController extends Controller
             $minutes = LoginThrottleGuard::lockRemainingMinutes($user);
             UserActivity::log('محاولة دخول مرفوضة', 'الحساب مقفول مؤقتاً بسبب محاولات دخول فاشلة متكررة', $user);
             return back()->withErrors([
-                'login' => "🔒 تم قفل هذا الحساب مؤقتاً بسبب محاولات دخول فاشلة متكررة. يرجى المحاولة مرة أخرى خلال {$minutes} دقيقة."
+                'login' => "🔒 " . __('messages.account_locked_temporary', ['minutes' => $minutes])
             ])->withInput($request->only('login'));
         }
 
@@ -98,8 +100,9 @@ class UnifiedAuthController extends Controller
 
             if ($user->status !== 'active') {
                 UserActivity::log('محاولة دخول مرفوضة', 'الحساب موقوف مؤقتاً', $user);
-                return back()->withErrors(['login' => 'عذراً، هذا الحساب موقوف مؤقتاً.'])->withInput($request->only('login'));
+                return back()->withErrors(['login' => __('messages.account_inactive')])->withInput($request->only('login'));
             }
+
 
             // 5. منع تسجيل الدخول المتزامن على الويب: "القديم بيضل، الجديد بينرفض"
             //    - إلا لو فاتت 20 دقيقة بدون نشاط عالجلسة القديمة (تعتبر منتهية).
@@ -112,7 +115,7 @@ class UnifiedAuthController extends Controller
                     UserActivity::log('دخول مرفوض (جلسة مسبقة)', 'محاولة تسجيل دخول بينما توجد جلسة نشطة بالفعل على جهاز آخر', $user);
                     SingleSessionGuard::notifyIntrusionAttempt($user, 'web');
                     return back()->withErrors([
-                        'login' => '⚠️ تنبيه أمني: هذا الحساب مسجل دخول حالياً على جهاز آخر. وفقاً لسياسة الأمان، يُسمح بجلسة واحدة نشطة فقط. يجب تسجيل الخروج من الجهاز الأول أولاً لتتمكن من تسجيل الدخول هنا.'
+                        'login' => __('messages.concurrent_session_warning')
                     ])->withInput($request->only('login'));
                 }
 
@@ -150,7 +153,7 @@ class UnifiedAuthController extends Controller
             return $this->redirectUserByRole($user);
         }
 
-        return back()->withErrors(['login' => 'بيانات الدخول غير صحيحة، يرجى التأكد من اسم المستخدم وكلمة المرور.'])->withInput($request->only('login'));
+        return back()->withErrors(['login' => __('messages.invalid_credentials')])->withInput($request->only('login'));
     }
 
     /**
@@ -353,8 +356,8 @@ class UnifiedAuthController extends Controller
             'telegram_identifier' => 'required|string',
             'role'                => 'nullable|string',
         ], [
-            'identifier.required'          => 'يرجى إدخال البيانات المطلوبة (الرقم الجامعي أو رقم الجوال).',
-            'telegram_identifier.required' => 'يرجى إدخال معرف التليجرام أو Chat ID.',
+            'identifier.required'          => __('messages.identifier_required'),
+            'telegram_identifier.required' => __('messages.telegram_required'),
         ]);
 
         $input        = trim($request->identifier);
@@ -371,7 +374,7 @@ class UnifiedAuthController extends Controller
             ->first();
 
         if (!$user && ($role === 'student' || $role === 'unified')) {
-            $student = Student::where('student_code', $input)->orWhere('university_id', $input)->first();
+            $student = Student::where('student_code', $input)->first();
             if ($student && $student->user) {
                 $user = $student->user;
             }
@@ -387,14 +390,14 @@ class UnifiedAuthController extends Controller
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'لم نتمكن من العثور على حساب مطابِق للبيانات المدخلة. يرجى التأكد من الرقم الجامعي أو رقم الجوال.'
+                'message' => __('messages.account_not_found')
             ], 404);
         }
 
         if ($user->status !== 'active') {
             return response()->json([
                 'success' => false,
-                'message' => 'هذا الحساب غير نشط أو موقوف مؤقتاً. يرجى مراجعة إدارة الشؤون.'
+                'message' => __('messages.account_inactive_contact_affairs')
             ], 403);
         }
 
@@ -434,14 +437,14 @@ class UnifiedAuthController extends Controller
             // في حال عدم توفر البوت أو عدم العثور على Chat ID، يتم إبلاغ المستخدم بضرورة بدء المحادثة مع البوت
             return response()->json([
                 'success' => true,
-                'message' => "تم توليد رمز التحقق OTP 🔐 (الرمز التجريبي: {$otp}). يرجى التأكد من بدء محادثة مع بوت تليجرام الجامعة لاستلام الرسائل تلقائياً.",
+                'message' => __('messages.otp_generated_note', ['otp' => $otp]),
                 'chat_id' => $chatId
             ]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال رمز OTP إلى حسابك في تليجرام بنجاح! 📲 يرجى فحص تطبيق تليجرام.'
+            'message' => __('messages.otp_sent_success')
         ]);
     }
 
@@ -453,8 +456,8 @@ class UnifiedAuthController extends Controller
         $request->validate([
             'otp' => 'required|string|size:6',
         ], [
-            'otp.required' => 'يرجى إدخال رمز OTP المكون من 6 أرقام.',
-            'otp.size'     => 'رمز OTP يجب أن يتكون من 6 أرقام تماماً.',
+            'otp.required' => __('messages.otp_required'),
+            'otp.size'     => __('messages.otp_size_exact'),
         ]);
 
         $sessionOtp     = session('pwd_reset_otp');
@@ -464,14 +467,14 @@ class UnifiedAuthController extends Controller
         if (!$sessionOtp || !$expiresAt || !$userId) {
             return response()->json([
                 'success' => false,
-                'message' => 'انتهت جلسة استعادة كلمة السر. يرجى إعادة الطلب من جديد.'
+                'message' => __('messages.reset_session_expired')
             ], 400);
         }
 
         if (now()->timestamp > $expiresAt) {
             return response()->json([
                 'success' => false,
-                'message' => 'انتهت صلاحية رمز OTP (مرت 15 دقيقة). يرجى طلب رمز جديد.'
+                'message' => __('messages.otp_expired')
             ], 400);
         }
 
@@ -482,14 +485,14 @@ class UnifiedAuthController extends Controller
                 session()->forget(['pwd_reset_otp', 'pwd_reset_expires_at', 'pwd_reset_user_id', 'pwd_reset_attempts']);
                 return response()->json([
                     'success' => false,
-                    'message' => 'تجاوزت عدد المحاولات المسموح. تم إبطال الرمز، يرجى طلب رمز جديد.'
+                    'message' => __('messages.max_attempts_exceeded')
                 ], 429);
             }
             session(['pwd_reset_attempts' => $attempts]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'رمز OTP المدخل غير صحيح. يرجى التأكد وإعادة المحاولة.'
+                'message' => __('messages.invalid_otp')
             ], 422);
         }
 
@@ -498,7 +501,7 @@ class UnifiedAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم التحقق من الرمز بنجاح! يمكنك الآن كتابة كلمة المرور الجديدة.'
+            'message' => __('messages.otp_verified_success')
         ]);
     }
 
@@ -511,9 +514,9 @@ class UnifiedAuthController extends Controller
             'password'              => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required|string|min:8',
         ], [
-            'password.required'  => 'يرجى إدخال كلمة المرور الجديدة.',
-            'password.min'       => 'كلمة المرور يجب أن لا تقل عن 6 أحرف/أرقام.',
-            'password.confirmed' => 'تأكيد كلمة المرور غير مطابِق.',
+            'password.required'  => __('messages.new_password_required'),
+            'password.min'       => __('messages.password_min_length'),
+            'password.confirmed' => __('messages.password_confirmation_mismatch'),
         ]);
 
         $verified = session('pwd_reset_verified');
@@ -522,7 +525,7 @@ class UnifiedAuthController extends Controller
         if (!$verified || !$userId) {
             return response()->json([
                 'success' => false,
-                'message' => 'جلسة غير مصرح بها. يرجى التحقق من كود OTP أولاً.'
+                'message' => __('messages.unauthorized_reset_session')
             ], 403);
         }
 
@@ -531,7 +534,7 @@ class UnifiedAuthController extends Controller
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'المستخدم غير موجود في النظام.'
+                'message' => __('messages.user_not_found')
             ], 404);
         }
 
@@ -546,7 +549,7 @@ class UnifiedAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم تحديث كلمة المرور بنجاح! ✨ يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.'
+            'message' => __('messages.password_reset_success')
         ]);
     }
 }

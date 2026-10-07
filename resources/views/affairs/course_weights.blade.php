@@ -206,6 +206,13 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
+                
+                <!-- Premium Settings Modal Button -->
+                <button onclick="document.getElementById('premiumSettingsModal').classList.remove('hidden')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-zinc-800 to-zinc-900 hover:from-zinc-700 hover:to-zinc-800 text-white text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-zinc-700/50 hover:border-zinc-600">
+                    <i class="fa-solid fa-sliders text-amber-400 text-base drop-shadow-md"></i>
+                    <span>إعدادات الفصول والترفيع</span>
+                </button>
+
                 <!-- Cohort PDF Export Button -->
                 <button onclick="exportCohortReport('pdf')" class="px-4 py-2.5 rounded-xl cw-inner-box hover:bg-zinc-200 dark:hover:bg-zinc-800 text-sm font-bold flex items-center gap-2 transition shadow-sm">
                     <i class="fa-solid fa-file-pdf text-red-500 text-base"></i>
@@ -629,6 +636,114 @@
         </div>
     </div>
 </div>
+<!-- Premium Academic Settings Modal -->
+<div id="premiumSettingsModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" dir="rtl">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+        <!-- Glassmorphism Background overlay -->
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity" aria-hidden="true" onclick="document.getElementById('premiumSettingsModal').classList.add('hidden')"></div>
+
+        <!-- Modal panel -->
+        <div class="relative inline-block w-full max-w-3xl text-right align-bottom transition-all transform bg-[#18181b] rounded-[24px] shadow-2xl sm:my-8 sm:align-middle border border-zinc-700/50 overflow-hidden ring-1 ring-white/10">
+            
+            <!-- Header with Gradient Line -->
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500"></div>
+            <div class="px-8 py-6 flex justify-between items-center bg-[#18181b]/90 border-b border-zinc-800/80">
+                <h3 class="text-xl font-black text-white flex items-center gap-3 tracking-wide" id="modal-title">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shadow-inner">
+                        <i class="fa-solid fa-sliders text-amber-400 text-lg"></i>
+                    </div>
+                    مركز الإعدادات الأكاديمية
+                </h3>
+                <button type="button" class="text-zinc-400 hover:text-white hover:bg-zinc-800 p-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-zinc-600" onclick="document.getElementById('premiumSettingsModal').classList.add('hidden')">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="px-8 py-8 space-y-8 bg-[#121214] max-h-[75vh] overflow-y-auto custom-scrollbar">
+                
+                <!-- Section 1: Semesters -->
+                <div class="bg-[#1c1c1e] rounded-2xl p-6 border border-zinc-800/80 shadow-inner relative overflow-hidden group hover:border-zinc-700/80 transition-colors">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                    
+                    <div class="flex items-center gap-3 mb-6">
+                        <i class="fa-solid fa-calendar-check text-emerald-400 text-lg"></i>
+                        <h4 class="text-lg font-bold text-white">إدارة وتفعيل الفصول الدراسية</h4>
+                    </div>
+                    
+                    <form action="{{ route('affairs.semester.activate') }}" method="POST" class="space-y-5 relative z-10">
+                        @csrf
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-400 mb-2">الفصل الدراسي المراد تفعيله:</label>
+                                <select name="semester_name" required class="w-full bg-zinc-900/80 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all outline-none">
+                                    <option value="الفصل الأول" {{ ($activeSemester->semester_name ?? '') == 'الفصل الأول' ? 'selected' : '' }}>الفصل الدراسي الأول</option>
+                                    <option value="الفصل الثاني" {{ ($activeSemester->semester_name ?? '') == 'الفصل الثاني' ? 'selected' : '' }}>الفصل الدراسي الثاني</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-400 mb-2">تاريخ بداية الفصل (من):</label>
+                                <input type="date" name="start_date" value="{{ $activeSemester->start_date ?? '' }}" required class="w-full bg-zinc-900/80 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-300 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all outline-none" style="color-scheme: dark;">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-zinc-400 mb-2">تاريخ نهاية الفصل (إلى):</label>
+                                <input type="date" name="end_date" value="{{ $activeSemester->end_date ?? '' }}" required class="w-full bg-zinc-900/80 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-300 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all outline-none" style="color-scheme: dark;">
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="px-6 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold rounded-xl text-sm transition-all flex items-center gap-2">
+                                <i class="fa-solid fa-check-double"></i>
+                                اعتماد وتفعيل الفصل
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Section 2: Promotion -->
+                <div class="bg-[#1c1c1e] rounded-2xl p-6 border border-zinc-800/80 shadow-inner relative overflow-hidden group hover:border-zinc-700/80 transition-colors">
+                    <div class="absolute top-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -ml-16 -mt-16 pointer-events-none"></div>
+                    
+                    <div class="flex items-center gap-3 mb-2">
+                        <i class="fa-solid fa-users-gear text-blue-400 text-lg"></i>
+                        <h4 class="text-lg font-bold text-white">الترحيل والترفيع الجماعي للدفعة</h4>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 ml-auto">إجراء سنوي</span>
+                    </div>
+                    <p class="text-xs text-zinc-400 mb-6 leading-relaxed">
+                        عند الضغط على الزر، سيتم تغيير المرحلة الدراسية لجميع طلاب السنة الأولى البالغ عددهم (<strong class="text-zinc-200">{{ $firstYearCount ?? 0 }} طالباً</strong>) ليكونوا في السنة الثانية تلقائياً.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 relative z-10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                                <i class="fa-solid fa-users text-blue-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs text-zinc-500 font-semibold">المستحقون للترفية حالياً</div>
+                                <div class="text-lg font-black text-white">{{ $firstYearCount ?? 0 }} <span class="text-xs font-normal text-zinc-400">طالباً</span></div>
+                            </div>
+                        </div>
+                        
+                        <form action="{{ route('affairs.promote.year2') }}" method="POST" onsubmit="return confirm('هل أنت متأكد من ترفيع جميع طلاب السنة الأولى إلى السنة الثانية؟ هذا الإجراء لا يمكن التراجع عنه بسهولة.');">
+                            @csrf
+                            <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40">
+                                <i class="fa-solid fa-graduation-cap"></i>
+                                تنفيذ الترفيع لجميع طلاب السنة الأولى
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-[#18181b] border-t border-zinc-800/80 flex justify-end">
+                <button type="button" class="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl font-bold transition-all border border-zinc-700" onclick="document.getElementById('premiumSettingsModal').classList.add('hidden')">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -814,10 +929,6 @@
             return;
         }
 
-        if (currentStudentIndex >= displayList.length) {
-            currentStudentIndex = 0;
-        }
-
         displayList.forEach((s, idx) => {
             const isActive = idx === currentStudentIndex;
             const isPass = s.summary?.standing === 'passed' || s.summary?.standing === 'graduated';
@@ -853,12 +964,17 @@
             scrollContainer.appendChild(item);
         });
 
-        const activeStudent = displayList[currentStudentIndex];
-        renderActiveStudent(activeStudent, currentStudentIndex + 1, displayList.length);
+        if (currentStudentIndex >= 0 && currentStudentIndex < displayList.length) {
+            const activeStudent = displayList[currentStudentIndex];
+            renderActiveStudent(activeStudent, currentStudentIndex + 1, displayList.length);
+        } else {
+            clearStudentDossier();
+            document.getElementById('decisionButtonsContainer').innerHTML = '<span class="text-xs cw-subtitle">الرجاء اختيار طالب من القائمة الجانبية</span>';
+        }
     }
 
     function onStudentSearch() {
-        currentStudentIndex = 0;
+        currentStudentIndex = -1; // إجبار المستخدم على اختيار الطالب لمنع الخطأ
         renderStudentWorkstation();
     }
 
@@ -873,9 +989,13 @@
         }
         if (displayList.length === 0) return;
 
-        currentStudentIndex += delta;
-        if (currentStudentIndex < 0) currentStudentIndex = displayList.length - 1;
-        if (currentStudentIndex >= displayList.length) currentStudentIndex = 0;
+        if (currentStudentIndex === -1) {
+            currentStudentIndex = 0;
+        } else {
+            currentStudentIndex += delta;
+            if (currentStudentIndex < 0) currentStudentIndex = displayList.length - 1;
+            if (currentStudentIndex >= displayList.length) currentStudentIndex = 0;
+        }
 
         renderStudentWorkstation();
     }
@@ -1498,7 +1618,7 @@
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>إعادة السنة الثانية</span>
+                            <span>رسوب (بقاء في السنة الثانية)</span>
                         </button>
                     `;
                 } else if (failedCount <= 4) {
@@ -1509,14 +1629,14 @@
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>إعادة السنة الثانية</span>
+                            <span>رسوب (بقاء في السنة الثانية)</span>
                         </button>
                     `;
                 } else {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>راسب سنة ثانية (إعادة كاملة)</span>
+                            <span>راسب سنة ثانية (بقاء في السنة الثانية)</span>
                         </button>
                     `;
                 }
@@ -1530,7 +1650,7 @@
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>إعادة السنة الثانية</span>
+                            <span>رسوب (بقاء في السنة الثانية)</span>
                         </button>
                     `;
                 } else if (failedCount <= 4) {
@@ -1541,14 +1661,14 @@
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>إعادة السنة الثانية</span>
+                            <span>رسوب (بقاء في السنة الثانية)</span>
                         </button>
                     `;
                 } else {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>راسب سنة ثانية (إعادة كاملة)</span>
+                            <span>راسب فصل ثالث (بقاء في السنة الثانية)</span>
                         </button>
                     `;
                 }

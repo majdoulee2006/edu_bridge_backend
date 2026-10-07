@@ -16,4 +16,4 @@ Artisan::command('logs:clean {--days=90}', function ($days = 90) {
 })->purpose('تنظيف سجلات الحركة القديمة لحفظ كفاءة وسرعة قاعدة البيانات');
 
 Schedule::command('logs:clean --days=90')->daily();
-
+Schedule::command('academic:check-semesters')->daily();
