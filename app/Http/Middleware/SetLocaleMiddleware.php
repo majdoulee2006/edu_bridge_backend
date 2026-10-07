@@ -39,8 +39,10 @@ class SetLocaleMiddleware
             }
         }
         // 4. Check Authenticated User preference
-        elseif ($request->user() && in_array($request->user()->locale, ['ar', 'en'])) {
-            $locale = $request->user()->locale;
+        // على مسارات الـ API يعمل هذا الـ middleware قبل المصادقة، فـ $request->user() فارغ؛
+        // نطلب المستخدم صراحةً من حارس sanctum حتى يُطبَّق تفضيل اللغة المحفوظ.
+        elseif (($authUser = $request->user('sanctum') ?? $request->user()) && in_array($authUser->locale, ['ar', 'en'])) {
+            $locale = $authUser->locale;
         }
 
         App::setLocale($locale);
