@@ -953,10 +953,18 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        $requests = DB::table('absence_requests')
-            ->where('student_id', $student->student_id)
-            ->orderByDesc('created_at')
-            ->get();
+        // الطلبات الجديدة في leave_requests (المسار الموحّد مع التطبيق والبوت) + السجلات القديمة في absence_requests
+        $current = DB::table('leave_requests')
+            ->where('student_id', $student->user_id)
+            ->get()
+            ->map(fn ($l) => (object) [
+                'id' => $l->id, 'request_id' => null, 'date' => $l->date, 'reason' => $l->reason,
+                'document' => $l->attachment, 'status' => $l->status, 'created_at' => $l->created_at,
+            ]);
+
+        $legacy = DB::table('absence_requests')->where('student_id', $student->student_id)->get();
+
+        $requests = $current->concat($legacy)->sortByDesc('created_at')->values();
 
         return view('student.leave_requests', compact('requests', 'student'));
     }
@@ -1002,9 +1010,10 @@ class StudentWebController extends Controller
             $reasonText = "[إذن يومي - وقت الإذن: " . $leaveTime . "] - " . $request->reason;
         }
 
-        // 🔒 حماية الباك إند: منع التكرار المتزامن (Double-submit prevention within 30 seconds)
-        $existingRecent = DB::table('absence_requests')
-            ->where('student_id', $student->student_id)
+        // 🔒 منع التكرار المتزامن (نفس التاريخ خلال 30 ثانية)
+        $authUser = auth()->user();
+        $existingRecent = DB::table('leave_requests')
+            ->where('student_id', $authUser->user_id)
             ->where('date', $request->date)
             ->where('created_at', '>=', now()->subSeconds(30))
             ->first();
@@ -1012,55 +1021,16 @@ class StudentWebController extends Controller
         if ($existingRecent) {
             return back()->with('success', 'تم تقديم طلب الإذن بنجاح سابقاً، وهو قيد المراجعة.');
         }
-        $requestId = DB::table('absence_requests')->insertGetId([
-            'student_id' => $student->student_id,
-            'reason'     => $reasonText,
-            'date'       => $request->date,
-            'document'   => $filePath,
-            'status'     => 'pending_parent',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
 
-        $authUser    = auth()->user();
-        $studentName = $authUser->full_name ?? 'الطالب';
-        $notifTitle  = 'طلب إذن جديد من الابن';
-        $notifMsg    = 'قام ابنكم ' . $studentName . ' بتقديم طلب إذن غياب بتاريخ ' . $request->date . '، يرجى مراجعته والموافقة عليه.';
-
-        // الخطوة 1 في المسار المتسلسل: إرسال الإشعار لولي الأمر أولاً — parent_students.parent_id/student_id هما FK على users.user_id
-        $parentUserIds = DB::table('parent_students')
-            ->join('parents', function($j) {
-                $j->on('parent_students.parent_id', '=', 'parents.user_id')
-                  ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
-            })
-            ->where(function($q) use ($student) {
-                $q->where('parent_students.student_id', $student->user_id)
-                  ->orWhere('parent_students.student_id', $student->student_id);
-            })
-            ->pluck('parents.user_id');
-
-        foreach ($parentUserIds as $pId) {
-            if ($pId) {
-                DB::table('notifications')->insert([
-                    'user_id'    => $pId,
-                    'sender_id'  => $authUser?->user_id,
-                    'title'      => $notifTitle,
-                    'message'    => $notifMsg,
-                    'type'       => 'leave_request',
-                    'category'   => 'administrative',
-                    'related_id' => $requestId,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser(
-                    $pId,
-                    $notifTitle,
-                    $notifMsg,
-                    ['type' => 'leave_request', 'related_id' => (string)$requestId]
-                );
-            }
-        }
+        // المسار الموحّد لكل القنوات (تطبيق/ويب/بوت): ولي الأمر ثم رئيس القسم ثم شؤون الطلاب
+        $leave = \App\Services\LeaveWorkflow::submit(
+            $authUser,
+            $request->type === 'hourly' ? 'hourly' : 'full_day',
+            $request->date,
+            $reasonText,
+            $filePath
+        );
+        $requestId = $leave->id;
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -1072,7 +1042,7 @@ class StudentWebController extends Controller
                     'date'       => $request->date,
                     'reason'     => $reasonText,
                     'document'   => $filePath,
-                    'status'     => 'pending_parent',
+                    'status'     => $leave->status,
                     'created_at' => now()->format('Y-m-d H:i:s'),
                 ]
             ]);

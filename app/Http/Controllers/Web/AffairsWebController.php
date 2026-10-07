@@ -3128,6 +3128,19 @@ class AffairsWebController extends Controller
         $status = $request->status;
         $sourceTable = $request->input('source_table', 'absence_requests');
 
+        // طلبات المسار الموحّد (leave_requests): القرار النهائي في مرحلة pending_affairs فقط (LeaveWorkflow::affairsRespond)
+        if ($sourceTable === 'leave_requests' && in_array($status, ['approved', 'rejected'], true)) {
+            $result = \App\Services\LeaveWorkflow::affairsRespond(Auth::user(), (int) $id, $status);
+
+            if (!$result['ok']) {
+                return back()->with('error', $result['error'] === 'stage'
+                    ? 'تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.'
+                    : 'الطلب غير موجود.');
+            }
+
+            return back()->with('success', 'تم تحديث حالة طلب الإجازة وإشعار الطالب وولي الأمر ورئيس القسم بالنتيجة النهائية.');
+        }
+
         if ($sourceTable === 'leave_requests') {
             $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
             if ($leaveRequest) {
