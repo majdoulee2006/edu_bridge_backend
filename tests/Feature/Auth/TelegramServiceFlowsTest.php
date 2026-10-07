@@ -79,17 +79,20 @@ class TelegramServiceFlowsTest extends TestCase
         $parent  = $this->makeParent();
         $this->linkParent($parent['user'], $student['user']);
         $this->actingChat($student['user']);
+        $date = now()->addDays(3)->toDateString();
 
         $this->press('leave_type_full_day');
-        $this->say('2026-12-01');
+        $this->say($date);
         $this->say('مراجعة طبية');
 
-        $row = DB::table('absence_requests')->where('student_id', $student['student_id'])->first();
-        $this->assertNotNull($row, 'no leave request was stored');
+        $row = DB::table('leave_requests')->where('student_id', $student['user']->user_id)->first();
+        $this->assertNotNull($row, 'no leave request was stored in leave_requests (the table the mobile app uses)');
         $this->assertSame('pending_parent', $row->status);
-        $this->assertSame('2026-12-01', (string) $row->date);
+        $this->assertSame('full_day', $row->type);
+        $this->assertSame($date, (string) $row->date);
         $this->assertStringContainsString('مراجعة طبية', $row->reason);
         $this->assertSame(1, $this->notifications($parent['user']->user_id, 'leave_request'));
+        $this->assertSame(0, DB::table('absence_requests')->count(), 'the legacy table must not be used for new requests');
         $this->assertNull(Cache::get("telegram_state_{$this->chat}"));
     }
 
@@ -99,24 +102,160 @@ class TelegramServiceFlowsTest extends TestCase
         $this->actingChat($student['user']);
 
         $this->press('leave_type_hourly');
-        $this->say('2026-12-02');
+        $this->say(now()->addDay()->toDateString());
         $this->press('leave_hours_10:00 - 12:00');
         $this->say('موعد رسمي');
 
-        $reason = DB::table('absence_requests')->where('student_id', $student['student_id'])->value('reason');
-        $this->assertStringContainsString('10:00 - 12:00', (string) $reason);
+        $row = DB::table('leave_requests')->where('student_id', $student['user']->user_id)->first();
+        $this->assertSame('hourly', $row->type);
+        $this->assertStringContainsString('10:00 - 12:00', (string) $row->reason);
     }
 
-    public function test_student_leave_rejects_an_invalid_date(): void
+    public function test_student_leave_rejects_an_invalid_or_past_date_and_a_too_short_reason(): void
     {
         $student = $this->makeStudent();
         $this->actingChat($student['user']);
 
         $this->press('leave_type_full_day');
         $this->say('not a date');
-
         $this->assertSame('awaiting_leave_date', Cache::get("telegram_state_{$this->chat}"));
-        $this->assertSame(0, DB::table('absence_requests')->count());
+
+        $this->say(now()->subDays(2)->toDateString());   // تاريخ سابق
+        $this->assertSame('awaiting_leave_date', Cache::get("telegram_state_{$this->chat}"));
+
+        $this->say(now()->addDay()->toDateString());
+        $this->say('ab');                                  // أقل من 3 أحرف
+        $this->assertSame('awaiting_leave_reason', Cache::get("telegram_state_{$this->chat}"));
+        $this->assertSame(0, DB::table('leave_requests')->count());
+    }
+
+    public function test_student_without_a_parent_goes_to_the_department_head(): void
+    {
+        $head = $this->makeHead($this->makeDepartment($this->dept), ['department' => $this->dept])['user'];
+        $student = $this->makeStudent(['department' => $this->dept]);
+        $this->actingChat($student['user']);
+
+        $this->press('leave_type_full_day');
+        $this->say(now()->addDay()->toDateString());
+        $this->say('ظرف خاص');
+
+        $this->assertSame('pending_hod', DB::table('leave_requests')->where('student_id', $student['user']->user_id)->value('status'));
+        $this->assertSame(1, $this->notifications($head->user_id, 'leave_request'));
+    }
+
+    public function test_student_sees_the_stage_of_his_leave_requests(): void
+    {
+        $student = $this->makeStudent();
+        $this->actingChat($student['user']);
+        foreach (['pending_parent', 'pending_hod', 'pending_affairs', 'approved', 'rejected'] as $status) {
+            DB::table('leave_requests')->insert([
+                'student_id' => $student['user']->user_id, 'type' => 'full_day', 'date' => now()->toDateString(),
+                'reason' => "reason $status", 'status' => $status, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $this->say('إجازاتي');
+        $out = $this->sent();
+
+        foreach (['بانتظار موافقة ولي الأمر', 'بانتظار رئيس القسم', 'بانتظار شؤون الطلاب', 'موافق عليها نهائياً', 'مرفوضة'] as $label) {
+            $this->assertStringContainsString($label, $out);
+        }
+    }
+
+    public function test_parent_approves_a_childs_leave_from_the_bot_and_the_head_is_notified(): void
+    {
+        $head = $this->makeHead($this->makeDepartment($this->dept), ['department' => $this->dept])['user'];
+        $student = $this->makeStudent(['department' => $this->dept, 'full_name' => 'ChildOne']);
+        $parent = $this->makeParent();
+        $this->linkParent($parent['user'], $student['user']);
+        $this->actingChat($parent['user']);
+        $id = DB::table('leave_requests')->insertGetId([
+            'student_id' => $student['user']->user_id, 'type' => 'full_day', 'date' => now()->toDateString(),
+            'reason' => 'r', 'status' => 'pending_parent', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->say('إجازات أبنائي');
+        $this->assertStringContainsString("parent_leave_approve_{$id}", $this->sent());
+        $this->assertStringContainsString('ChildOne', $this->sent());
+
+        $this->press("parent_leave_approve_{$id}");
+
+        $this->assertSame('pending_hod', DB::table('leave_requests')->where('id', $id)->value('status'));
+        $this->assertSame(1, $this->notifications($head->user_id, 'leave_request'));
+
+        $this->press("parent_leave_reject_{$id}");   // لا يعاد البتّ
+        $this->assertSame('pending_hod', DB::table('leave_requests')->where('id', $id)->value('status'));
+    }
+
+    public function test_parent_rejection_from_the_bot_ends_the_request(): void
+    {
+        $student = $this->makeStudent();
+        $parent = $this->makeParent();
+        $this->linkParent($parent['user'], $student['user']);
+        $this->actingChat($parent['user']);
+        $id = DB::table('leave_requests')->insertGetId([
+            'student_id' => $student['user']->user_id, 'type' => 'hourly', 'date' => now()->toDateString(),
+            'reason' => 'r', 'status' => 'pending_parent', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->press("parent_leave_reject_{$id}");
+
+        $this->assertSame('rejected', DB::table('leave_requests')->where('id', $id)->value('status'));
+        $this->assertSame(1, $this->notifications($student['user']->user_id, 'leave_request'));
+    }
+
+    public function test_parent_cannot_answer_another_familys_leave_from_the_bot(): void
+    {
+        $other = $this->makeStudent();
+        $parent = $this->makeParent();            // ليس ولي أمر $other
+        $this->actingChat($parent['user']);
+        $id = DB::table('leave_requests')->insertGetId([
+            'student_id' => $other['user']->user_id, 'type' => 'full_day', 'date' => now()->toDateString(),
+            'reason' => 'r', 'status' => 'pending_parent', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->press("parent_leave_approve_{$id}");
+
+        $this->assertSame('pending_parent', DB::table('leave_requests')->where('id', $id)->value('status'));
+    }
+
+    public function test_the_whole_leave_scenario_can_be_completed_through_the_bot(): void
+    {
+        $deptId = $this->makeDepartment($this->dept);
+        $head = $this->makeHead($deptId, ['department' => $this->dept])['user'];
+        $affairs = $this->makeUser('affairs');
+        $student = $this->makeStudent(['department' => $this->dept]);
+        $parent = $this->makeParent();
+        $this->linkParent($parent['user'], $student['user']);
+
+        // 1) الطالب
+        $this->actingChat($student['user']);
+        $this->press('leave_type_full_day');
+        $this->say(now()->addDay()->toDateString());
+        $this->say('سبب كافٍ');
+        $id = (int) DB::table('leave_requests')->where('student_id', $student['user']->user_id)->value('id');
+
+        // 2) ولي الأمر
+        $parent['user']->forceFill(['telegram_chat_id' => '9501'])->save();
+        $student['user']->forceFill(['telegram_chat_id' => null])->save();
+        $this->chat = 9501;
+        $this->press("parent_leave_approve_{$id}");
+
+        // 3) رئيس القسم
+        $parent['user']->forceFill(['telegram_chat_id' => null])->save();
+        $head->forceFill(['telegram_chat_id' => '9502'])->save();
+        $this->chat = 9502;
+        $this->press("hod_approve_leave_{$id}");
+        $this->assertSame('pending_affairs', DB::table('leave_requests')->where('id', $id)->value('status'));
+
+        // 4) شؤون الطلاب
+        $head->forceFill(['telegram_chat_id' => null])->save();
+        $affairs->forceFill(['telegram_chat_id' => '9503'])->save();
+        $this->chat = 9503;
+        $this->press("affairs_approve_leave_leave_requests_{$id}");
+
+        $this->assertSame('approved', DB::table('leave_requests')->where('id', $id)->value('status'));
+        $this->assertGreaterThanOrEqual(1, $this->notifications($student['user']->user_id, 'leave_request'));
     }
 
     public function test_student_excuse_flow_marks_the_absence_pending_and_notifies_affairs(): void

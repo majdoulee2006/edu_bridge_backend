@@ -314,6 +314,8 @@ class TelegramBotHandler
                 $this->handleAttendance($user, $chatId);
             } elseif (str_contains($text, 'محاضر')) {
                 $this->handleCoursesMenu($user, $chatId);
+            } elseif (str_contains($text, 'إجازاتي') || str_contains($text, 'اجازاتي')) {
+                $this->handleMyLeaves($user, $chatId);
             } elseif (str_contains($text, 'إجازة') || str_contains($text, 'اجازة')) {
                 $this->handleLeaveMenu($chatId);
             } elseif (str_contains($text, 'حضور')) {
@@ -324,7 +326,9 @@ class TelegramBotHandler
                 $this->sendStudentMainMenu($chatId);
             }
         } elseif ($user && $user->role === 'parent') {
-            if (str_contains($text, 'علامات')) {
+            if (str_contains($text, 'إجاز') || str_contains($text, 'اجاز')) {
+                $this->handleParentLeaves($user, $chatId);
+            } elseif (str_contains($text, 'علامات')) {
                 $this->handleParentGrades($user, $chatId);
             } elseif (str_contains($text, 'غياب')) {
                 $this->handleParentAttendance($user, $chatId);
@@ -509,6 +513,12 @@ class TelegramBotHandler
             Cache::put("telegram_leave_hours_{$chatId}", $hours, 1800);
             Cache::put("telegram_state_{$chatId}", 'awaiting_leave_reason', 1800);
             $this->sendMessage($chatId, "✍️ **سبب طلب الإجازة**\n\nتم اختيار الفترة: ({$hours})\nيرجى كتابة وتوضيح سبب طلب الإجازة الساعية:");
+            $this->answerCallbackQuery($queryId);
+        } elseif (str_starts_with($data, 'parent_leave_approve_')) {
+            $this->parentDecideLeave($user, $chatId, (int) str_replace('parent_leave_approve_', '', $data), 'approved');
+            $this->answerCallbackQuery($queryId);
+        } elseif (str_starts_with($data, 'parent_leave_reject_')) {
+            $this->parentDecideLeave($user, $chatId, (int) str_replace('parent_leave_reject_', '', $data), 'rejected');
             $this->answerCallbackQuery($queryId);
         } elseif (str_starts_with($data, 'parent_student_grades_')) {
             $studentId = str_replace('parent_student_grades_', '', $data);

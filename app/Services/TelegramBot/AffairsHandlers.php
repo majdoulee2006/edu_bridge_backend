@@ -23,6 +23,7 @@ use App\Models\StudentRequest;
 use App\Models\Program;
 use App\Services\FcmService;
 use App\Support\LoginThrottleGuard;
+use App\Services\LeaveWorkflow;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -210,103 +211,67 @@ trait AffairsHandlers
 
     private function handleAffairsApproveLeave(User $user, $chatId, string $src, int $id)
     {
-        $studentUserId = null;
-        $leaveDate = now()->format('Y-m-d');
-
         if ($src === 'leave_requests') {
-            $rec = DB::table('leave_requests')->where('id', $id)->first();
-            if (!$rec) {
-                $this->sendMessage($chatId, "❌ طلب الإجازة غير موجود.");
-                return;
-            }
-            if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
-                $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
-                return;
-            }
-            DB::table('leave_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
-            $studentUserId = $rec->student_id;
-            $leaveDate = $rec->date ?? $leaveDate;
-        } else {
-            $rec = DB::table('absence_requests')->where('request_id', $id)->first();
-            if (!$rec) {
-                $this->sendMessage($chatId, "❌ عذر الغياب غير موجود.");
-                return;
-            }
-            if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
-                $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
-                return;
-            }
-            DB::table('absence_requests')->where('request_id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
-            $studentUserId = DB::table('students')->where('student_id', $rec->student_id)->value('user_id') ?? $rec->student_id;
-            $leaveDate = $rec->date ?? $leaveDate;
+            $this->affairsDecideLeave($user, $chatId, $id, 'approved');
+            return;
         }
 
-        if ($studentUserId) {
-            $studentUser = User::find($studentUserId);
-            $title = 'تمت الموافقة النهائية على طلب الإجازة ✓';
-            $message = "تهانينا، تمت الموافقة النهائية على طلب إجازتك/عذرك لتاريخ {$leaveDate} من قِبل إدارة شؤون الطلاب.";
-
-            Notification::create([
-                'user_id'    => $studentUserId,
-                'sender_id'  => $user->user_id,
-                'title'      => $title,
-                'message'    => $message,
-                'type'       => 'leave_request',
-                'category'   => 'administrative',
-                'related_id' => $id,
-                'is_read'    => false,
-            ]);
-
-            FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request', 'related_id' => (string)$id]);
-
-            if ($studentUser && $studentUser->telegram_chat_id) {
-                $this->sendMessage(
-                    $studentUser->telegram_chat_id,
-                    "✅ **إشعار من شؤون الطلاب** 🏢\n\nتمت **الموافقة النهائية** على طلب الإجازة لتاريخ `{$leaveDate}` بنجاح."
-                );
-            }
-        }
-
-        $this->sendMessage($chatId, "✅ **تمت الموافقة على طلب الإجازة بنجاح وإشعار الطالب فورياً.**");
+        $this->handleAffairsLegacyAbsenceDecision($user, $chatId, $id, 'approved');
     }
 
     private function handleAffairsRejectLeave(User $user, $chatId, string $src, int $id)
     {
-        $studentUserId = null;
-        $leaveDate = now()->format('Y-m-d');
-
         if ($src === 'leave_requests') {
-            $rec = DB::table('leave_requests')->where('id', $id)->first();
-            if (!$rec) {
-                $this->sendMessage($chatId, "❌ طلب الإجازة غير موجود.");
-                return;
-            }
-            if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
-                $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
-                return;
-            }
-            DB::table('leave_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => now()]);
-            $studentUserId = $rec->student_id;
-            $leaveDate = $rec->date ?? $leaveDate;
-        } else {
-            $rec = DB::table('absence_requests')->where('request_id', $id)->first();
-            if (!$rec) {
-                $this->sendMessage($chatId, "❌ عذر الغياب غير موجود.");
-                return;
-            }
-            if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
-                $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
-                return;
-            }
-            DB::table('absence_requests')->where('request_id', $id)->update(['status' => 'rejected', 'updated_at' => now()]);
-            $studentUserId = DB::table('students')->where('student_id', $rec->student_id)->value('user_id') ?? $rec->student_id;
-            $leaveDate = $rec->date ?? $leaveDate;
+            $this->affairsDecideLeave($user, $chatId, $id, 'rejected');
+            return;
         }
 
+        $this->handleAffairsLegacyAbsenceDecision($user, $chatId, $id, 'rejected');
+    }
+
+    /** نفس المسار والإشعارات في الويب والتطبيق: LeaveWorkflow::affairsRespond (مرحلة pending_affairs فقط). */
+    private function affairsDecideLeave(User $user, $chatId, int $id, string $decision): void
+    {
+        $result = LeaveWorkflow::affairsRespond($user, $id, $decision);
+
+        if (!$result['ok']) {
+            $this->sendMessage($chatId, match ($result['error']) {
+                'stage' => "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.",
+                default => "❌ طلب الإجازة غير موجود.",
+            });
+            return;
+        }
+
+        $this->sendMessage($chatId, $decision === 'approved'
+            ? "✅ **تمت الموافقة النهائية على الإجازة.** تم إشعار الطالب وولي الأمر ورئيس القسم."
+            : "🛑 **تم رفض الإجازة.** تم إشعار الطالب وولي الأمر ورئيس القسم.");
+    }
+
+    /**
+     * السجلات القديمة في absence_requests (كانت تُنشأ من الويب والبوت قبل توحيد المسار على leave_requests):
+     * قرار الشؤون عليها يبقى متاحاً، لكن في مرحلتها فقط.
+     */
+    private function handleAffairsLegacyAbsenceDecision(User $user, $chatId, int $id, string $decision): void
+    {
+        $rec = DB::table('absence_requests')->where('request_id', $id)->first();
+        if (!$rec) {
+            $this->sendMessage($chatId, "❌ عذر الغياب غير موجود.");
+            return;
+        }
+        if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
+            $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
+            return;
+        }
+
+        DB::table('absence_requests')->where('request_id', $id)->update(['status' => $decision, 'updated_at' => now()]);
+
+        $studentUserId = DB::table('students')->where('student_id', $rec->student_id)->value('user_id');
         if ($studentUserId) {
-            $studentUser = User::find($studentUserId);
-            $title = 'تم رفض طلب الإجازة';
-            $message = "نعتذر، تم رفض طلب إجازتك لتاريخ {$leaveDate} من قِبل إدارة شؤون الطلاب.";
+            $approved = $decision === 'approved';
+            $title = $approved ? 'تمت الموافقة النهائية على طلب الإذن' : 'تم رفض طلب الإذن';
+            $message = $approved
+                ? "تمت الموافقة على طلب إذنك بتاريخ {$rec->date} نهائياً من قِبل شؤون الطلاب."
+                : "نعتذر، تم رفض طلب إذنك بتاريخ {$rec->date} من قِبل إدارة شؤون الطلاب.";
 
             Notification::create([
                 'user_id'    => $studentUserId,
@@ -318,19 +283,12 @@ trait AffairsHandlers
                 'related_id' => $id,
                 'is_read'    => false,
             ]);
-
-            FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request', 'related_id' => (string)$id]);
-
-            if ($studentUser && $studentUser->telegram_chat_id) {
-                $this->sendMessage(
-                    $studentUser->telegram_chat_id,
-                    "⚠️ **إشعار من شؤون الطلاب** 🏢\n\nنعتذر، تم **رفض طلب الإجازة** لتاريخ `{$leaveDate}` من قِبل إدارة شؤون الطلاب."
-                );
-            }
+            FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request', 'related_id' => (string) $id]);
         }
 
-        $this->sendMessage($chatId, "🛑 **تم رفض طلب الإجازة وإشعار الطالب.**");
+        $this->sendMessage($chatId, $decision === 'approved' ? "✅ **تمت الموافقة النهائية على الطلب.**" : "🛑 **تم رفض الطلب.**");
     }
+
 
     private function handleAffairsPhotoRequests(User $user, $chatId)
     {

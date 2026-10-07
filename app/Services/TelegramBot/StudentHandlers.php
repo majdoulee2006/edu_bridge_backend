@@ -22,6 +22,7 @@ use App\Models\AbsenceRequest;
 use App\Models\StudentRequest;
 use App\Models\Program;
 use App\Services\FcmService;
+use App\Services\LeaveWorkflow;
 use App\Support\LoginThrottleGuard;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -46,8 +47,8 @@ trait StudentHandlers
             'keyboard' => [
                 [['text' => '📅 جدولي'], ['text' => '💯 علاماتي']],
                 [['text' => '🛑 غياباتي'], ['text' => '📚 محاضراتي']],
-                [['text' => '✈️ طلب إجازة'], ['text' => '📷 تسجيل حضور']],
-                [['text' => '🚪 تسجيل خروج']]
+                [['text' => '✈️ طلب إجازة'], ['text' => '📋 إجازاتي']],
+                [['text' => '📷 تسجيل حضور'], ['text' => '🚪 تسجيل خروج']]
             ],
             'resize_keyboard' => true,
             'one_time_keyboard' => false
@@ -58,7 +59,8 @@ trait StudentHandlers
             . "• 💯 **علاماتي**: استعراض كافة درجاتك وامتحاناتك المسجلة\n"
             . "• 🛑 **غياباتي**: متابعة نسبة الحضور والإنذارات وتقديم الأعذار\n"
             . "• 📚 **محاضراتي**: تصفح المواد والمحاضرات والملفات المرفقة\n"
-            . "• ✈️ **طلب إجازة**: تقديم إذن غياب يومي أو ساعي لولي الأمر\n"
+            . "• ✈️ **طلب إجازة**: تقديم إذن غياب يومي أو ساعي (ولي الأمر ثم رئيس القسم ثم الشؤون)\n"
+            . "• 📋 **إجازاتي**: متابعة حالة طلبات إجازتك ومرحلتها\n"
             . "• 📷 **تسجيل حضور**: مسح كود الـ QR والتحقق بالكاميرا\n"
             . "• 🚪 **تسجيل خروج**: فك ربط الحساب من هذا الجهاز\n\n"
             . "👇 اختر الخدمة المطلوبة من الأزرار أدناه:";
@@ -445,6 +447,11 @@ trait StudentHandlers
         }
 
         $date = date('Y-m-d', $time);
+        if ($date < now()->toDateString()) {
+            $this->sendMessage($chatId, "❌ لا يمكن تقديم إجازة بتاريخ سابق. يرجى إرسال تاريخ اليوم أو تاريخ لاحق بصيغة YYYY-MM-DD.");
+            return;
+        }
+
         Cache::put("telegram_leave_date_{$chatId}", $date, 1800);
         $type = Cache::get("telegram_leave_type_{$chatId}", 'full_day');
 
@@ -527,69 +534,96 @@ trait StudentHandlers
             return;
         }
 
+        $reason = trim($text);
+        if (mb_strlen($reason) < 3 || mb_strlen($reason) > 500) {
+            $this->sendMessage($chatId, "❌ سبب الإجازة يجب أن يكون بين 3 و500 حرف. يرجى إعادة كتابته:");
+            return;
+        }
+
         $type = Cache::get("telegram_leave_type_{$chatId}", 'full_day');
         $date = Cache::get("telegram_leave_date_{$chatId}", now()->toDateString());
         $hours = Cache::get("telegram_leave_hours_{$chatId}", '');
-        $reason = trim($text);
 
+        // نفس صيغة نص الإذن في الويب: النوع والفترة داخل السبب
         $reasonText = $type === 'hourly'
-            ? "[إذن ساعي: {$hours}] - {$reason}"
+            ? "[إذن ساعي - الفترة: {$hours}] - {$reason}"
             : "[إذن يومي] - {$reason}";
 
         try {
-            $requestId = DB::table('absence_requests')->insertGetId([
-                'student_id' => $student->student_id,
-                'reason'     => $reasonText,
-                'date'       => $date,
-                'status'     => 'pending_parent',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // منع التكرار المتزامن (كما في الويب: نفس التاريخ خلال 30 ثانية)
+            $duplicate = DB::table('leave_requests')
+                ->where('student_id', $user->user_id)
+                ->where('date', $date)
+                ->where('created_at', '>=', now()->subSeconds(30))
+                ->exists();
 
-            // إشعار ولي الأمر للموافقة — يدعم الربط عبر student_id أو user_id
-            $parentUserId = DB::table('parent_students')
-                ->where(function($q) use ($student) {
-                    $q->where('student_id', $student->user_id)
-                      ->orWhere('student_id', $student->student_id);
-                })
-                ->join('parents', function($j) {
-                    $j->on('parent_students.parent_id', '=', 'parents.user_id')
-                      ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
-                })
-                ->value('parents.user_id');
-
-            if ($parentUserId) {
-                $studentName = $user->full_name ?? 'ابنكم';
-                $pTitle = 'طلب إذن جديد من الابن';
-                $pMsg = "قام ابنكم {$studentName} بتقديم طلب إذن غياب بتاريخ {$date} عبر التيليغرام، يرجى مراجعته والموافقة عليه.";
-
-                Notification::create([
-                    'user_id'    => $parentUserId,
-                    'sender_id'  => $user->user_id,
-                    'title'      => $pTitle,
-                    'message'    => $pMsg,
-                    'type'       => 'leave_request',
-                    'category'   => 'administrative',
-                    'related_id' => $requestId,
-                    'is_read'    => false,
-                ]);
-
-                FcmService::sendToUser($parentUserId, $pTitle, $pMsg, [
-                    'type'       => 'leave_request',
-                    'related_id' => (string)$requestId,
-                ]);
-            }
-
-            Cache::forget("telegram_state_{$chatId}");
-            Cache::forget("telegram_leave_type_{$chatId}");
-            Cache::forget("telegram_leave_date_{$chatId}");
-            Cache::forget("telegram_leave_hours_{$chatId}");
-
-            $this->sendMessage($chatId, "✅ **تم تقديم طلب الإجازة بنجاح!**\n\n📌 **النوع:** " . ($type === 'hourly' ? "إجازة ساعية ({$hours})" : "إجازة يوم كامل") . "\n📅 **التاريخ:** {$date}\n📝 **السبب:** {$reason}\n\n📨 تم إرسال الطلب إلى ولي أمرك للموافقة عليه أولاً.");
+            // المسار الموحّد (التطبيق/الويب/البوت): ولي الأمر ثم رئيس القسم ثم شؤون الطلاب
+            $leave = $duplicate ? null : LeaveWorkflow::submit($user, $type, $date, $reasonText);
         } catch (\Exception $e) {
             Log::error("Failed to submit leave request from Telegram: " . $e->getMessage());
             $this->sendMessage($chatId, "❌ حدث خطأ أثناء حفظ طلب الإجازة. يرجى المحاولة مرة أخرى لاحقاً.");
+            return;
         }
+
+        Cache::forget("telegram_state_{$chatId}");
+        Cache::forget("telegram_leave_type_{$chatId}");
+        Cache::forget("telegram_leave_date_{$chatId}");
+        Cache::forget("telegram_leave_hours_{$chatId}");
+
+        $typeLabel = $type === 'hourly' ? "إجازة ساعية ({$hours})" : "إجازة يوم كامل";
+        $next = ($leave && $leave->status === LeaveWorkflow::STAGE_HOD)
+            ? "لا يوجد ولي أمر مربوط بحسابك، فتم تحويل الطلب مباشرة إلى رئيس القسم."
+            : "تم إرسال الطلب إلى **ولي أمرك** للموافقة أولاً، ثم رئيس القسم، ثم شؤون الطلاب للاعتماد النهائي.";
+
+        $this->sendMessage(
+            $chatId,
+            "✅ **تم تقديم طلب الإجازة بنجاح!**\n\n📌 **النوع:** {$typeLabel}\n📅 **التاريخ:** `{$date}`\n📝 **السبب:** {$reason}\n\n{$next}\nيمكنك متابعة المرحلة من زر **إجازاتي**."
+        );
+    }
+
+    /** حالة طلبات إجازة الطالب ومرحلة كل طلب (نفس معنى الحالات في التطبيق والويب). */
+    private function handleMyLeaves(User $user, $chatId)
+    {
+        $labels = [
+            'pending_parent'  => '⏳ بانتظار موافقة ولي الأمر',
+            'pending_hod'     => '⏳ بانتظار رئيس القسم',
+            'pending_affairs' => '⏳ بانتظار شؤون الطلاب (الاعتماد النهائي)',
+            'pending'         => '⏳ قيد المراجعة',
+            'approved'        => '✅ موافق عليها نهائياً',
+            'rejected'        => '❌ مرفوضة',
+        ];
+
+        $rows = DB::table('leave_requests')
+            ->where('student_id', $user->user_id)
+            ->select('type', 'date', 'reason', 'status', 'created_at')
+            ->get();
+
+        // السجلات القديمة (جدول absence_requests) تبقى ظاهرة للطالب
+        $studentId = $user->student->student_id ?? null;
+        if ($studentId) {
+            $rows = $rows->concat(
+                DB::table('absence_requests')->where('student_id', $studentId)
+                    ->select(DB::raw("'full_day' as type"), 'date', 'reason', 'status', 'created_at')->get()
+            );
+        }
+
+        $rows = $rows->sortByDesc('created_at')->take(6)->values();
+
+        if ($rows->isEmpty()) {
+            $this->sendMessage($chatId, "📋 لم تقدّم أي طلب إجازة بعد.\nاستخدم زر **طلب إجازة** لتقديم طلب جديد.");
+            return;
+        }
+
+        $msg = "📋 **طلبات إجازتك الأخيرة:**\n\n";
+        foreach ($rows as $i => $r) {
+            $typeLabel = $r->type === 'hourly' ? 'ساعية' : 'يوم كامل';
+            $msg .= ($i + 1) . ". 📅 `{$r->date}` | {$typeLabel}\n";
+            $msg .= "   " . ($labels[$r->status] ?? $r->status) . "\n";
+            $msg .= "   📝 " . mb_substr((string) $r->reason, 0, 80) . "\n";
+            $msg .= "─────────────\n";
+        }
+
+        $this->sendMessage($chatId, $msg);
     }
 
     private function handleQrAttendanceMenu($chatId)

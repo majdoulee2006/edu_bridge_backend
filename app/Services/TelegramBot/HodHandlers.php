@@ -24,6 +24,7 @@ use App\Models\Program;
 use App\Services\FcmService;
 use App\Support\LoginThrottleGuard;
 use App\Support\Access;
+use App\Services\LeaveWorkflow;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -444,108 +445,32 @@ trait HodHandlers
 
     private function handleHodApproveLeave(User $user, $chatId, int $leaveId)
     {
-        $leave = $this->hodFindActionableLeave($user, $chatId, $leaveId);
-        if (!$leave) {
-            return;
-        }
-
-        // رئيس القسم يمرّر الطلب لشؤون الطلاب للاعتماد النهائي (كما في الويب)، ولا يعتمده بنفسه.
-        DB::table('leave_requests')->where('id', $leaveId)->update([
-            'status'     => 'pending_affairs',
-            'updated_at' => now(),
-        ]);
-
-        $affairsTitle = 'طلب إذن جديد بانتظار الاعتماد النهائي';
-        $affairsMsg = "وافق رئيس القسم ({$user->full_name}) على طلب إجازة بتاريخ ({$leave->date})، يرجى الاعتماد النهائي.";
-        foreach (DB::table('users')->where('role_id', 6)->pluck('user_id') as $affairsId) {
-            Notification::create([
-                'user_id'    => $affairsId,
-                'sender_id'  => $user->user_id,
-                'title'      => $affairsTitle,
-                'message'    => $affairsMsg,
-                'type'       => 'leave_request',
-                'category'   => 'administrative',
-                'related_id' => $leaveId,
-                'is_read'    => false,
-            ]);
-            FcmService::sendToUser($affairsId, $affairsTitle, $affairsMsg, ['type' => 'leave_request', 'related_id' => (string) $leaveId]);
-        }
-
-        // إشعار صاحب الطلب
-        $applicantUserId = $leave->student_id;
-        if (!$applicantUserId && $leave->teacher_id) {
-            $applicantUserId = DB::table('teachers')->where('teacher_id', $leave->teacher_id)->value('user_id');
-        }
-
-        if ($applicantUserId) {
-            $appUser = User::find($applicantUserId);
-            $notifTitle = "وافق رئيس القسم على طلب الإجازة";
-            $notifMsg = "وافق رئيس القسم ({$user->full_name}) على طلب إجازتك بتاريخ ({$leave->date}) وتم تحويله لشؤون الطلاب للاعتماد النهائي.";
-
-            Notification::create([
-                'user_id'    => $applicantUserId,
-                'sender_id'  => $user->user_id,
-                'title'      => $notifTitle,
-                'message'    => $notifMsg,
-                'type'       => 'leave_approved',
-                'category'   => 'administrative',
-                'related_id' => $leaveId,
-                'is_read'    => false,
-            ]);
-
-            FcmService::sendToUser($applicantUserId, $notifTitle, $notifMsg, ['type' => 'leave_approved']);
-
-            if ($appUser && $appUser->telegram_chat_id) {
-                $this->sendMessage($appUser->telegram_chat_id, "✅ **تمت الموافقة على طلب إجازتك!** ✈️\n\nوافق رئيس القسم ({$user->full_name}) على طلب إجازتك بتاريخ `{$leave->date}`.");
-            }
-        }
-
-        $this->sendMessage($chatId, "✅ **تمت الموافقة على طلب الإجازة بنجاح!**\nتم تحديث حالة الطلب وإشعار صاحب العلاقة فوراً.");
+        $this->hodDecideLeave($user, $chatId, $leaveId, 'approved');
     }
 
     private function handleHodRejectLeave(User $user, $chatId, int $leaveId)
     {
-        $leave = $this->hodFindActionableLeave($user, $chatId, $leaveId);
-        if (!$leave) {
+        $this->hodDecideLeave($user, $chatId, $leaveId, 'rejected');
+    }
+
+    /** نفس المسار والإشعارات في الويب والتطبيق: LeaveWorkflow::hodRespond (قسم الطالب + مرحلة pending_hod). */
+    private function hodDecideLeave(User $user, $chatId, int $leaveId, string $decision): void
+    {
+        $result = LeaveWorkflow::hodRespond($user, $leaveId, $decision);
+
+        if (!$result['ok']) {
+            $this->sendMessage($chatId, match ($result['error']) {
+                'stage' => "ℹ️ لا يمكن معالجة هذا الطلب في مرحلته الحالية، أو تم البتّ فيه مسبقاً.",
+                default => "❌ الطلب غير موجود.",
+            });
             return;
         }
 
-        DB::table('leave_requests')->where('id', $leaveId)->update([
-            'status'     => 'rejected',
-            'updated_at' => now(),
-        ]);
-
-        // إشعار صاحب الطلب
-        $applicantUserId = $leave->student_id;
-        if (!$applicantUserId && $leave->teacher_id) {
-            $applicantUserId = DB::table('teachers')->where('teacher_id', $leave->teacher_id)->value('user_id');
-        }
-
-        if ($applicantUserId) {
-            $appUser = User::find($applicantUserId);
-            $notifTitle = "تم رفض طلب الإجازة";
-            $notifMsg = "تم رفض طلب إجازتك بتاريخ ({$leave->date}) من قبل رئيس القسم.";
-
-            Notification::create([
-                'user_id'    => $applicantUserId,
-                'sender_id'  => $user->user_id,
-                'title'      => $notifTitle,
-                'message'    => $notifMsg,
-                'type'       => 'leave_rejected',
-                'category'   => 'administrative',
-                'related_id' => $leaveId,
-                'is_read'    => false,
-            ]);
-
-            FcmService::sendToUser($applicantUserId, $notifTitle, $notifMsg, ['type' => 'leave_rejected']);
-
-            if ($appUser && $appUser->telegram_chat_id) {
-                $this->sendMessage($appUser->telegram_chat_id, "❌ **تم رفض طلب الإجازة**\n\nنعتذر، لم تتم الموافقة على طلب إجازتك بتاريخ `{$leave->date}` من قبل رئيس القسم.");
-            }
-        }
-
-        $this->sendMessage($chatId, "🛑 **تم رفض طلب الإجازة.**\nتم تحديث حالة الطلب وإشعار صاحب العلاقة.");
+        $this->sendMessage($chatId, $decision === 'approved'
+            ? "✅ **تمت موافقتك على طلب الإجازة.**\nتم تحويله لشؤون الطلاب للاعتماد النهائي، وسيصل الطالب إشعار بالنتيجة."
+            : "🛑 **تم رفض طلب الإجازة.**\nتم إيقاف الطلب وإشعار الطالب.");
     }
+
 
     private function handleHodStudentRequests(User $user, $chatId)
     {
