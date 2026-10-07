@@ -362,7 +362,8 @@ class HODWebController extends Controller
                 'leave_requests.updated_at',
                 DB::raw('COALESCE(su.full_name, tu.full_name, "غير محدد") as student_name'),
                 'students.level',
-                'students.student_code'
+                'students.student_code',
+                DB::raw("'leave_requests' as source_table")
             )
             ->where('leave_requests.status', '!=', 'pending_parent')
             ->get();
@@ -380,7 +381,8 @@ class HODWebController extends Controller
                 'absence_requests.updated_at',
                 'users.full_name as student_name',
                 'students.level',
-                'students.student_code'
+                'students.student_code',
+                DB::raw("'absence_requests' as source_table")
             )
             ->where('absence_requests.status', '!=', 'pending_parent')
             ->get();
@@ -396,6 +398,23 @@ class HODWebController extends Controller
     public function updateLeaveStatus(Request $request, $id)
     {
         $status = $request->input('status'); // 'approved' or 'rejected'
+
+        // طلبات المسار الموحّد (leave_requests): قسم الطالب ومرحلة pending_hod (LeaveWorkflow::hodRespond)
+        // الرقمان في الجدولين يتشابهان، فالجدول يُحدَّد صراحةً (source_table) بدل التخمين بالرقم.
+        if ($request->input('source_table') === 'leave_requests' && in_array($status, ['approved', 'rejected'], true)) {
+            $result = \App\Services\LeaveWorkflow::hodRespond(Auth::user(), (int) $id, $status);
+
+            if (!$result['ok']) {
+                if ($result['error'] === 'forbidden') {
+                    abort(403, 'هذا الطلب لا يخص طلاب قسمك.');
+                }
+                return back()->with('error', $result['error'] === 'stage' ? 'لا يمكن معالجة هذا الطلب في مرحلته الحالية.' : 'الطلب غير موجود.');
+            }
+
+            return back()->with('success', $status === 'approved'
+                ? 'تمت موافقة رئيس القسم بنجاح وتحويل الطلب لشؤون الطلاب للاعتماد النهائي.'
+                : 'تم رفض طلب الإذن وإيقاف مساره بنجاح.');
+        }
 
         $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
         $table = 'leave_requests';

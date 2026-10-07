@@ -485,6 +485,23 @@ class ParentWebController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
 
+        // طلبات المسار الموحّد (leave_requests): ابنه فقط، ومرحلة pending_parent فقط
+        if ($request->input('source_table') === 'leave_requests') {
+            $result = \App\Services\LeaveWorkflow::parentRespond(auth()->user(), (int) $id, $request->status);
+
+            if (!$result['ok']) {
+                return back()->with('error', match ($result['error']) {
+                    'forbidden' => 'غير مصرح لك بالرد على هذا الطلب.',
+                    'stage'     => 'تم الرد على هذا الطلب مسبقاً.',
+                    default     => 'الطلب غير موجود.',
+                });
+            }
+
+            return back()->with('success', $request->status === 'approved'
+                ? 'تمت موافقة ولي الأمر بنجاح وتحويل الطلب لرئيس القسم.'
+                : 'تم رفض طلب الإذن وإيقاف المسار.');
+        }
+
         $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
         if (!$absenceRequest) {
             return back()->with('error', 'الطلب غير موجود.');
@@ -643,59 +660,16 @@ class ParentWebController extends Controller
             $reasonText = '[إذن ساعي] ' . $reasonText;
         }
 
-        // 1. الإدراج الرئيسي في جدول absence_requests الرئيسي بالتطبيق
-        $absenceId = DB::table('absence_requests')->insertGetId([
-            'student_id' => $request->student_id,
-            'date'       => $request->date,
-            'reason'     => $reasonText,
-            'status'     => 'pending_hod',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        // 2. إدراج احتياطي في جدول leave_requests إن وجد للتوافق
-        if (\Illuminate\Support\Facades\Schema::hasTable('leave_requests')) {
-            try {
-                DB::table('leave_requests')->insert([
-                    'student_id' => $studentUser ? $studentUser->user_id : $request->student_id,
-                    'type'       => $request->type,
-                    'date'       => $request->date,
-                    'reason'     => $reasonText,
-                    'status'     => 'pending_hod',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } catch (\Exception $e) {
-                // تجاهل أي خطأ فني بالجدول الثانوي
-            }
-        }
-
-        // Notify all HOD users
-        $headUserIds = DB::table('users')->where('role_id', 5)
-            ->pluck('user_id')
-            ->merge(DB::table('heads')->pluck('user_id'))
-            ->unique();
-
-        foreach ($headUserIds as $headUserId) {
-            if ($headUserId) {
-                DB::table('notifications')->insert([
-                    'user_id'    => $headUserId,
-                    'title'      => 'طلب إجازة من ولي الأمر',
-                    'message'    => 'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
-                    'type'       => 'leave_request',
-                    'related_id' => $absenceId,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                \App\Services\FcmService::sendToUser(
-                    $headUserId,
-                    'طلب إجازة من ولي الأمر',
-                    'قدّم ولي أمر الطالب ' . ($studentUser->full_name ?? 'الطالب') . ' طلب إجازة بتاريخ ' . $request->date,
-                    ['type' => 'leave_request', 'related_id' => (string)$absenceId]
-                );
-            }
-        }
+        // المسار الموحّد: سجل واحد في leave_requests (كان يُدخل في جدولين معاً فيظهر مرتين لرئيس القسم)
+        // ويُنبَّه رئيس قسم الطالب فقط
+        $leave = \App\Services\LeaveWorkflow::submitByParent(
+            $user,
+            \App\Models\User::find($studentUser->user_id),
+            $request->type,
+            $request->date,
+            $reasonText
+        );
+        $absenceId = $leave->id;
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
