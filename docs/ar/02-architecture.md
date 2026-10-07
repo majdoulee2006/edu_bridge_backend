@@ -53,7 +53,7 @@ flowchart LR
 | المسارات | `routes/api.php`, `routes/web.php`, `routes/channels.php`, `routes/console.php` | تعريف الواجهات، وربط الـ middleware (دور، جلسة واحدة، throttle) |
 | Middleware | `app/Http/Middleware/` | `RoleMiddleware` (API)، `Check*Role` (ويب)، `EnsureSingleApiSession`، `EnsureSingleWebSession` |
 | Controllers | `app/Http/Controllers/{Api,Web,WebHead}` | منطق الطلبات. **ضخمة** وتمزج المنطق مع العرض (انظر القسم 5 من حالة المشروع) |
-| Services | `app/Services/` | `FcmService`، `TelegramService`، `TelegramBotHandler`، `AbsenceWarningService`، `StudentAcademicService`، خدمات PDF/Excel/صور الجداول |
+| Services | `app/Services/` | `FcmService`، `TelegramService`، `TelegramBotHandler` (+ traits الأدوار في `app/Services/TelegramBot/`)، `AbsenceWarningService`، `StudentAcademicService`، خدمات PDF/Excel/صور الجداول |
 | Observers | `app/Observers/` | `AttendanceObserver` (إنذارات الغياب + إشعار Telegram)، `GradeObserver` (إشعار العلامات) |
 | Support | `app/Support/` | `SingleSessionGuard`، `LoginThrottleGuard` |
 | Traits | `app/Traits/` | `FaceRecognitionTrait`، `HandlesMessagesTrait`، `NormalizesAccountCredentialsTrait` |

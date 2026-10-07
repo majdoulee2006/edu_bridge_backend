@@ -67,3 +67,23 @@ The six layers (rotating QR, bound device, location, face, eligibility, no dupli
 3. Any file upload: a `mimes:` allow-list, and the extension taken from the content, not the file name.
 4. Never put keys in code or the repository.
 5. Add a Feature test for every new route verifying that another role gets `403`.
+
+## 9) Telegram bot and password reset hardening (2026-10-07)
+
+The bot and the password reset were reviewed after the AR/EN and bot suite merge. Fixed, each with feature tests that fail on the old code:
+
+| Area | Problem | Now |
+|---|---|---|
+| Password reset (`sendResetOtp`) | For an account with no linked Telegram, the id typed in the request was saved on the account and the OTP was sent to it (account takeover). The OTP was also returned in the JSON when delivery failed. | The OTP goes only to the chat already linked to the account (linked from the bot with the password) and is never returned. Unknown / inactive / not-linked / failed delivery return the same 422 (no account enumeration). |
+| Bot sign-up | Any university id not already used was accepted; a parent only needed a student's university id. | The id must exist in `university_ids` and be unused; the parent's family name must match the student's (same rule as the app). Passwords: 8 characters. |
+| Bot sign-in | No brute-force protection. | `LoginThrottleGuard` (5 failures = 15 min lock, shared with the web login). |
+| Bot buttons | Role-gated menus only; the action handlers never checked the caller. | Central role guard by button prefix (`admin_`, `affairs_`, `hod_`, `teacher_`, `parent_`) **and** ownership checks (`CallbackAuthorization`): parent to own children, student to own absences and enrolled courses, teacher to own courses/sessions/submissions, head to his department's requests. |
+| Admin lectures | `content_url` (free text written by the teacher) could point to any server file, and a hard-coded CV was served for missing files. | Files must resolve (realpath) under `storage/app/public`, `public/storage` or `public/uploads`; no fallback file. |
+| Semesters / promotion | `semester_name` column did not exist (SQL error); the two promotion routes behaved differently. | One shared promotion routine (level, academic year, auto-enrolment, one transaction per student, activity log). |
+| Notifications | Every app notification is copied to Telegram. | Kept, but `TELEGRAM_FORWARD_NOTIFICATIONS=false` turns it off. |
+
+**Still open (not fixable by code):**
+
+1. A Telegram bot token committed in June 2026 and removed in September is still in the Git history of a **public** repository. Revoke it with BotFather (`/revoke`) and keep the new token only in `.env`.
+2. The institute server is served over plain HTTP.
+3. `TelegramBotHandler` was split into role traits under `app/Services/TelegramBot/`; the bot still has little test coverage outside sign-up, sign-in, role and ownership checks.
