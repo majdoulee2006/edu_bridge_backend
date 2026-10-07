@@ -76,8 +76,25 @@ class PasswordResetOtpTest extends TestCase
 
         $response = $this->postJson(self::URL, ['identifier' => '2026999']);
 
-        $response->assertStatus(503)->assertJson(['success' => false]);
+        $response->assertStatus(422)->assertJson(['success' => false]);
         $this->assertNull(session('pwd_reset_otp'));
         $this->assertDoesNotMatchRegularExpression('/\b\d{6}\b/', $response->getContent());
+    }
+
+    public function test_response_does_not_reveal_whether_the_account_exists(): void
+    {
+        $this->makeUser('student', ['university_id' => '2026555', 'status' => 'inactive', 'telegram_chat_id' => '1']);
+        $this->makeUser('student', ['university_id' => '2026556']); // موجود لكن غير مربوط بتيليغرام
+
+        $this->mock(TelegramService::class, fn ($m) => $m->shouldReceive('sendOtpSync')->andReturn(false));
+
+        $responses = [];
+        foreach (['0000000', '2026555', '2026556'] as $identifier) { // غير موجود / موقوف / غير مربوط
+            $r = $this->postJson(self::URL, ['identifier' => $identifier]);
+            $responses[] = [$r->getStatusCode(), $r->getContent()];
+        }
+
+        $this->assertCount(1, array_unique(array_map('json_encode', $responses)), 'the three failures must look identical');
+        $this->assertSame(422, $responses[0][0]);
     }
 }
