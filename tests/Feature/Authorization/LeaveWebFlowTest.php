@@ -64,7 +64,6 @@ class LeaveWebFlowTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame('pending_parent', $row->status);
         $this->assertSame(1, $this->notices($this->parent['user']));
-        $this->assertSame(0, DB::table('absence_requests')->count(), 'the legacy table must not receive new requests');
     }
 
     public function test_parent_web_submission_creates_a_single_record_for_the_department_head_only(): void
@@ -75,7 +74,7 @@ class LeaveWebFlowTest extends TestCase
         ])->assertRedirect();
 
         $this->assertSame(1, DB::table('leave_requests')->where('student_id', $this->student['user']->user_id)->count());
-        $this->assertSame(0, DB::table('absence_requests')->count(), 'it used to be inserted in both tables');
+        $this->assertSame(1, DB::table('leave_requests')->count(), 'it used to be inserted in both tables');
         $this->assertSame('pending_hod', DB::table('leave_requests')->value('status'));
         $this->assertSame(1, $this->notices($this->head));
         $this->assertSame(0, $this->notices($this->otherHead));
@@ -137,13 +136,9 @@ class LeaveWebFlowTest extends TestCase
         $this->assertSame('approved', $this->leaveStatus($mine));
     }
 
-    public function test_web_pages_show_only_the_unified_table(): void
+    public function test_web_pages_list_the_requests_of_the_unified_table(): void
     {
         $this->leave('pending_parent');
-        DB::table('absence_requests')->insert([
-            'student_id' => $this->student['student_id'], 'reason' => 'legacy one', 'date' => now()->toDateString(),
-            'status' => 'pending_hod', 'created_at' => now(), 'updated_at' => now(),
-        ]);
 
         $this->assertCount(1, $this->actingAs($this->student['user'])->get('/student/leave-requests')->assertOk()->viewData('requests'));
         $this->assertCount(1, $this->actingAs($this->parent['user'])->get('/parent/permissions')->assertOk()->viewData('requests'));

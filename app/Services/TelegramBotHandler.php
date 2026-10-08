@@ -18,7 +18,6 @@ use App\Models\AssignmentSubmission;
 use App\Models\Exam;
 use App\Models\Announcement;
 use App\Models\Notification;
-use App\Models\AbsenceRequest;
 use App\Models\StudentRequest;
 use App\Models\Program;
 use App\Services\FcmService;
@@ -694,7 +693,7 @@ class TelegramBotHandler
         } elseif (str_starts_with($data, 'affairs_approve_leave_')) {
             // الصيغة: affairs_approve_leave_{جدول}_{رقم} والجدول نفسه يحوي شرطة سفلية (leave_requests / absence_requests)
             $payload = str_replace('affairs_approve_leave_', '', $data);
-            preg_match('/^(leave_requests|absence_requests)_(\d+)$/', $payload, $m);
+            preg_match('/^(leave_requests)_(\d+)$/', $payload, $m);
             $src = $m[1] ?? 'leave_requests';
             $id = (int) ($m[2] ?? 0);
             $this->handleAffairsApproveLeave($user, $chatId, $src, $id);
@@ -702,7 +701,7 @@ class TelegramBotHandler
         } elseif (str_starts_with($data, 'affairs_reject_leave_')) {
             // الصيغة: affairs_reject_leave_{جدول}_{رقم} والجدول نفسه يحوي شرطة سفلية (leave_requests / absence_requests)
             $payload = str_replace('affairs_reject_leave_', '', $data);
-            preg_match('/^(leave_requests|absence_requests)_(\d+)$/', $payload, $m);
+            preg_match('/^(leave_requests)_(\d+)$/', $payload, $m);
             $src = $m[1] ?? 'leave_requests';
             $id = (int) ($m[2] ?? 0);
             $this->handleAffairsRejectLeave($user, $chatId, $src, $id);

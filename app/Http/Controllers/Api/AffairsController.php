@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\CalendarEvent;
-use App\Models\AbsenceRequest;
 use App\Models\Announcement;
 use App\Models\Message;
 use App\Models\Notification;
