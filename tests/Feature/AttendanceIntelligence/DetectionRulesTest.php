@@ -313,4 +313,18 @@ class DetectionRulesTest extends TestCase
 
         $this->assertEquals($before, (array) DB::table('attendance')->where('attendance_id', $a)->first());
     }
+
+    public function test_history_rules_only_look_at_earlier_sessions(): void
+    {
+        $student = $this->makeStudent()['student_id'];
+        $old = $this->newSession();
+        $oldScan = $this->scan($old, ['face_score' => 100.0], $student);
+        foreach (range(1, 2) as $_) { // جلسات لاحقة بنفس الدرجة لا تؤثر على تحليل الأقدم
+            $this->scan($this->newSession($this->newLesson()), ['face_score' => 100.0], $student);
+        }
+
+        $this->analyze($old);
+
+        $this->assertSame(['replayed_face_score' => 'medium'], $this->flagsFor($oldScan)); // مثالية فقط، بلا تكرار
+    }
 }
