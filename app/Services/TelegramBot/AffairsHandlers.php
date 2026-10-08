@@ -567,15 +567,21 @@ trait AffairsHandlers
             return;
         }
 
+        // نفس سلوك الويب والتطبيق: رفض فك قفل الجهاز نهائي، أما غيره فرأي أولي من الشؤون
+        // والطلب يكمل لرئيس القسم ثم الإدارة (القرار النهائي ليس للشؤون).
+        $final = $studentReq->type === 'device_reset';
+
         $studentReq->affairs_decision = 'rejected';
         $studentReq->affairs_notes = 'تم رفض الطلب من قِبل موظف شؤون الطلاب عبر بوت تليجرام.';
-        $studentReq->status = 'rejected';
+        $studentReq->status = $final ? 'rejected' : 'pending_hod';
         $studentReq->save();
 
         $stUser = $studentReq->student->user ?? null;
         if ($stUser) {
             $title = 'تحديث حول طلب الخدمة الطلابية';
-            $message = "نعتذر، تم رفض طلبك (#{$reqId}) من قِبل إدارة شؤون الطلاب.";
+            $message = $final
+                ? "نعتذر، تم رفض طلبك (#{$reqId}) من قِبل إدارة شؤون الطلاب."
+                : "أبدت شؤون الطلاب رأياً بعدم الموافقة المبدئية على طلبك (#{$reqId})، وتم تحويله لرئيس القسم لاستكمال الدراسة.";
 
             Notification::create([
                 'user_id'    => $stUser->user_id,
@@ -589,16 +595,11 @@ trait AffairsHandlers
             ]);
 
             FcmService::sendToUser($stUser->user_id, $title, $message, ['type' => 'student_service']);
-
-            if ($stUser->telegram_chat_id) {
-                $this->sendMessage(
-                    $stUser->telegram_chat_id,
-                    "⚠️ **إشعار من شؤون الطلاب** 🏢\n\nنعتذر، تم **رفض طلبك** (#{$reqId}) من قِبل إدارة شؤون الطلاب."
-                );
-            }
         }
 
-        $this->sendMessage($chatId, "🛑 **تم رفض الطلب وإشعار الطالب.**");
+        $this->sendMessage($chatId, $final
+            ? "🛑 **تم رفض الطلب وإشعار الطالب.**"
+            : "🛑 **تم تدوين رأي الشؤون بعدم الموافقة المبدئية وتحويل الطلب لرئيس القسم.**");
     }
 
     private function handleAffairsStudentSearchStart(User $user, $chatId)

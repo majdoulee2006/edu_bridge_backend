@@ -419,6 +419,27 @@ class TelegramServiceFlowsTest extends TestCase
         $this->assertSame('approved', DB::table('student_requests')->where('id', $normal)->value('affairs_decision'));
     }
 
+    public function test_affairs_rejection_of_a_normal_request_is_advisory_like_the_web_and_the_app(): void
+    {
+        $this->actingChat($this->makeUser('affairs'));
+        $student = $this->makeStudent();
+        $mk = fn (string $type) => DB::table('student_requests')->insertGetId([
+            'student_id' => $student['student_id'], 'type' => $type, 'details' => 'd', 'status' => 'pending_affairs',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $normal = $mk('certificate');
+        $device = $mk('device_reset');
+
+        $this->press("affairs_reject_req_{$normal}");
+        $this->press("affairs_reject_req_{$device}");
+
+        // طلب عادي: يكمل لرئيس القسم مع رأي الشؤون (لا ينتهي هنا)
+        $this->assertSame('pending_hod', DB::table('student_requests')->where('id', $normal)->value('status'));
+        $this->assertSame('rejected', DB::table('student_requests')->where('id', $normal)->value('affairs_decision'));
+        // فك قفل الجهاز: القرار نهائي
+        $this->assertSame('rejected', DB::table('student_requests')->where('id', $device)->value('status'));
+    }
+
     public function test_affairs_device_reset_request_unlocks_the_device(): void
     {
         $this->actingChat($this->makeUser('affairs'));
