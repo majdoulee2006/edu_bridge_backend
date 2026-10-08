@@ -19,7 +19,7 @@ class SessionContext
     }
 
     /**
-     * آخر مسوحات الطالب في جلسات أخرى (الأحدث أولًا). تُستعمل للقواعد التي تبحث عن نمط متكرر.
+     * آخر مسوحات الطالب في الجلسات السابقة لهذه الجلسة (الأحدث أولًا). تُستعمل للقواعد التي تبحث عن نمط متكرر.
      *
      * @return Collection<int,\stdClass>
      */
@@ -28,7 +28,7 @@ class SessionContext
         return DB::table('attendance')
             ->where('student_id', $studentId)
             ->whereNotNull('session_id')
-            ->where('session_id', '!=', $this->session->id)
+            ->where('session_id', '<', $this->session->id) // التاريخ = ما قبل هذه الجلسة فقط
             ->whereIn('status', ['present', 'late'])
             ->orderByDesc('attendance_id')
             ->limit($limit)

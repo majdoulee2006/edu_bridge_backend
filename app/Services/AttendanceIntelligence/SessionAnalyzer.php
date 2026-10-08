@@ -73,7 +73,12 @@ class SessionAnalyzer
             $this->dropStaleOpenFlags($session, $produced);
         }
 
-        $session->forceFill(['analyzed_at' => now()])->save();
+        // expires_at يملك ON UPDATE CURRENT_TIMESTAMP في MySQL: نثبّته صراحةً كي لا يتغير بحفظ analyzed_at
+        DB::table('attendance_sessions')->where('id', $session->id)->update([
+            'analyzed_at' => now(),
+            'expires_at'  => DB::raw('`expires_at`'),
+        ]);
+        $session->analyzed_at = now();
 
         if ($created > 0 && $lesson) {
             $this->notifyTeacher($session, $lesson, $created);
