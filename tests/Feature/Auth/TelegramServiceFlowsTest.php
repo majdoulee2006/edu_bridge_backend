@@ -92,7 +92,6 @@ class TelegramServiceFlowsTest extends TestCase
         $this->assertSame($date, (string) $row->date);
         $this->assertStringContainsString('مراجعة طبية', $row->reason);
         $this->assertSame(1, $this->notifications($parent['user']->user_id, 'leave_request'));
-        $this->assertSame(0, DB::table('absence_requests')->count(), 'the legacy table must not be used for new requests');
         $this->assertNull(Cache::get("telegram_state_{$this->chat}"));
     }
 
@@ -378,27 +377,6 @@ class TelegramServiceFlowsTest extends TestCase
 
         $this->press("affairs_reject_leave_leave_requests_{$mine}"); // لا يمكن قلب القرار
         $this->assertSame('approved', DB::table('leave_requests')->where('id', $mine)->value('status'));
-    }
-
-    public function test_affairs_leave_list_shows_only_the_unified_table(): void
-    {
-        // السجلات القديمة (absence_requests) تُنقل بالمايغريشن ولا تُعرض من الجدول القديم بعد الآن
-        $this->actingChat($this->makeUser('affairs'));
-        $student = $this->makeStudent(['full_name' => 'Unified Student']);
-        $legacyStudent = $this->makeStudent(['full_name' => 'Legacy Student']);
-        DB::table('leave_requests')->insert([
-            'student_id' => $student['user']->user_id, 'type' => 'full_day', 'date' => now()->toDateString(),
-            'reason' => 'r', 'status' => 'pending_affairs', 'created_at' => now(), 'updated_at' => now(),
-        ]);
-        DB::table('absence_requests')->insert([
-            'student_id' => $legacyStudent['student_id'], 'date' => now()->toDateString(), 'reason' => 'r',
-            'status' => 'pending_affairs', 'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        $this->say('إجازات وأعذار الطلاب');
-
-        $this->assertStringContainsString('Unified Student', $this->sent());
-        $this->assertStringNotContainsString('Legacy Student', $this->sent());
     }
 
     public function test_affairs_student_request_decisions_follow_the_workflow(): void

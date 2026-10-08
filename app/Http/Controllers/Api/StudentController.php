@@ -17,7 +17,6 @@ use App\Models\AttendanceSession;
 use App\Models\Grade;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
-use App\Models\AbsenceRequest;
 use App\Models\LeaveRequest;
 use App\Models\Enrollment;
 use App\Models\Exam;

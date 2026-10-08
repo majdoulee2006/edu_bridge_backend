@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\Cache;
 use App\Models\User;
 use App\Models\Notification;
 use App\Models\Message;
-use App\Models\AbsenceRequest;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\CalendarEvent;

@@ -269,8 +269,6 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/attendance/{courseId}', [TeacherController::class, 'getAttendance']);
 
         // طلبات الغياب
-        Route::get('/absence-requests', [TeacherController::class, 'getAbsenceRequests']);
-        Route::put('/absence-requests/{requestId}/respond', [TeacherController::class, 'respondAbsenceRequest']);
 
         // العلامات
         Route::post('/grades', [TeacherController::class, 'enterGrades']);
@@ -482,8 +480,6 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/reports/history', [ParentController::class, 'getReportsHistory']);
         Route::get('/performance/{studentId}', [StudentParentController::class, 'getFullPerformance']);
         Route::get('/student/{studentId}/assignments', [StudentParentController::class, 'getAssignments']);
-        Route::get('/student/{studentId}/permissions', [StudentParentController::class, 'getPermissions']);
-        Route::post('/permissions/{requestId}/respond', [StudentParentController::class, 'respondPermission']);
         Route::get('/leave-requests', [StudentParentController::class, 'getLeaveRequests']);
         Route::post('/leave-requests/{id}/respond', [StudentParentController::class, 'respondLeaveRequest']);
         Route::post('/leave-requests/submit', [StudentParentController::class, 'submitParentLeaveRequest']);

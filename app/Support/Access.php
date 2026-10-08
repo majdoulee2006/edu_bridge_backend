@@ -266,15 +266,12 @@ class Access
     }
 
     /**
-     * هل لدى الطالب إجازة أو إذن غياب معتمد في هذا التاريخ؟
-     * leave_requests.student_id = users.user_id ، و absence_requests.student_id = students.student_id
+     * هل لدى الطالب إجازة أو إذن غياب معتمد في هذا التاريخ؟ (leave_requests.student_id = users.user_id)
      */
     public static function studentHasApprovedLeave($studentId, $studentUserId, string $date): bool
     {
         return DB::table('leave_requests')
-                ->where('student_id', $studentUserId)->where('date', $date)->where('status', 'approved')->exists()
-            || DB::table('absence_requests')
-                ->where('student_id', $studentId)->where('date', $date)->where('status', 'approved')->exists();
+            ->where('student_id', $studentUserId)->where('date', $date)->where('status', 'approved')->exists();
     }
 
     /** هل الطالب (students.student_id) مسجَّل في هذا المقرر؟ */

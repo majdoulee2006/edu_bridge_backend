@@ -17,7 +17,6 @@ use App\Models\Student;
 use App\Models\Lesson;
 use App\Models\Notification;
 use App\Models\Schedule;
-use App\Models\AbsenceRequest;
 use App\Models\Message;
 use App\Services\StudentAcademicService;
 
@@ -1992,66 +1991,6 @@ class TeacherController extends Controller
     // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     //  ط�™بات ا�™غ�™`اب
     // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-
-    public function getAbsenceRequests(Request $request)
-    {
-        $teacher    = $request->user()->teacher;
-        $studentIds = $teacher->courses()
-            ->with('students')
-            ->get()
-            ->pluck('students')
-            ->flatten()
-            ->pluck('student_id')
-            ->unique();
-
-        $requests = AbsenceRequest::whereIn('student_id', $studentIds)
-            ->with('student.user')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function($req) {
-                return [
-                    'id'           => $req->request_id,
-                    'student_id'   => $req->student_id,
-                    'student_name' => $req->student->user->full_name,
-                    'date'         => $req->date->format('Y-m-d'),
-                    'reason'       => $req->reason,
-                    'status'       => $req->status,
-                    'created_at'   => $req->created_at->format('Y-m-d'),
-                ];
-            });
-
-        return response()->json(['success' => true, 'data' => $requests], 200);
-    }
-
-    public function respondAbsenceRequest(Request $request, $requestId)
-    {
-        $validator = Validator::make($request->all(), [
-            'status' => 'required|in:approved,rejected',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-        }
-
-        $absenceRequest = AbsenceRequest::find($requestId);
-
-        if (!$absenceRequest) {
-            return response()->json(['success' => false, 'message' => 'الطلب غير موجود'], 404);
-        }
-
-        // المعلّم يرد فقط على طلبات طلاب مقرراته (نفس شرط القراءة في getAbsenceRequests)
-        $teacher = $request->user()->teacher;
-        if (!$teacher || !\App\Support\Access::teacherTeachesStudent($teacher->teacher_id, $absenceRequest->student_id)) {
-            return response()->json(['success' => false, 'message' => 'هذا الطلب لا يخص أحد طلاب مقرراتك'], 403);
-        }
-
-        $absenceRequest->update([
-            'status'      => $request->status,
-            'reviewed_by' => $request->user()->user_id,
-        ]);
-
-        return response()->json(['success' => true, 'message' => 'تم الرد على الطلب بنجاح'], 200);
-    }
 
     // ============================================================
     // تصدير كشف الحضور (للمعلم — مواده فقط)

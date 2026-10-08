@@ -18,7 +18,6 @@ use App\Models\AssignmentSubmission;
 use App\Models\Exam;
 use App\Models\Announcement;
 use App\Models\Notification;
-use App\Models\AbsenceRequest;
 use App\Models\StudentRequest;
 use App\Models\Program;
 use App\Services\FcmService;

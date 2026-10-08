@@ -109,30 +109,6 @@ class DummyDataSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
-        // 5. Create Absence Requests
-        DB::table('absence_requests')->insert([
-            [
-                'student_id' => $studentId,
-                'date' => Carbon::now()->subDays(1)->toDateString(),
-                'reason' => 'يعاني الطالب من وعكة صحية مفاجئة ويحتاج للراحة. مرفق صورة عن التقرير الطبي.',
-                'document' => null,
-                'status' => 'pending',
-                'reviewed_by' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'student_id' => $studentId,
-                'date' => Carbon::now()->subDays(5)->toDateString(),
-                'reason' => 'خروج مبكر لظرف عائلي',
-                'document' => null,
-                'status' => 'approved',
-                'reviewed_by' => 1,
-                'created_at' => now()->subDays(5),
-                'updated_at' => now()->subDays(5),
-            ]
-        ]);
-        
         // 6. Create exams and grades
         
         $examId = DB::table('exams')->insertGetId([

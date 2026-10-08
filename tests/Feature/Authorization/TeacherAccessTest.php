@@ -131,24 +131,6 @@ class TeacherAccessTest extends TestCase
 
     // ── طلبات الغياب (N-02) ─────────────────────────────────────────
 
-    public function test_teacher_cannot_answer_absence_request_of_foreign_student(): void
-    {
-        $requestId = DB::table('absence_requests')->insertGetId([
-            'student_id' => $this->student['student_id'],   // طالب مقرر A
-            'date'       => now()->toDateString(),
-            'reason'     => 'x',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        $before = DB::table('absence_requests')->where('request_id', $requestId)->value('status');
-
-        $this->actAs($this->teacherB['user'])
-            ->putJson("/api/teacher/absence-requests/$requestId/respond", ['status' => 'approved'])
-            ->assertStatus(403);
-
-        $this->assertSame($before, DB::table('absence_requests')->where('request_id', $requestId)->value('status'));
-    }
-
     // ── تسجيل الحضور اليدوي (N-04) ──────────────────────────────────
 
     public function test_manual_attendance_rejects_lesson_of_another_course(): void
