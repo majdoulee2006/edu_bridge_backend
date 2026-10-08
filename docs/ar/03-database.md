@@ -49,7 +49,6 @@ erDiagram
 
 | الجدول | النوع | الوصف |
 |---|---|---|
-| [`absence_requests`](#absence_requests) | جدول | طلبات إذن الغياب |
 | [`admin_generated_reports`](#admin_generated_reports) | جدول | سجل التقارير التي أنشأتها الإدارة |
 | [`admin_profile_stats_view`](#admin_profile_stats_view) | View | View: إحصاءات ملف الأدمن |
 | [`admins`](#admins) | جدول | ملف الإدارة |
@@ -116,24 +115,6 @@ erDiagram
 | [`users`](#users) | جدول | الحسابات الأساسية لكل الأدوار (الدخول، الدور، الحالة، الجلسة، قفل الحساب، توكن FCM، معرّف تيليغرام) |
 
 ---
-
-## absence_requests
-
-طلبات إذن الغياب
-
-| العمود | النوع | Null | افتراضي | مفتاح | ملاحظات |
-|---|---|---|---|---|---|
-| `request_id` | `bigint(20) unsigned` | لا |  | PK | auto-increment |
-| `student_id` | `bigint(20) unsigned` | لا |  | INDEX |  |
-| `date` | `date` | لا |  |  |  |
-| `reason` | `text` | لا |  |  |  |
-| `document` | `varchar(255)` | نعم | NULL |  |  |
-| `status` | `varchar(50)` | لا | 'pending_parent' |  |  |
-| `reviewed_by` | `bigint(20) unsigned` | نعم | NULL | INDEX |  |
-| `created_at` | `timestamp` | نعم | NULL |  |  |
-| `updated_at` | `timestamp` | نعم | NULL |  |  |
-
-**مفاتيح أجنبية:** `student_id` ← `students.student_id`، `reviewed_by` ← `users.user_id`
 
 ## admin_generated_reports
 

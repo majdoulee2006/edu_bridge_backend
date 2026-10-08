@@ -118,8 +118,6 @@
 
 | Method | Path | Handler | Access |
 |---|---|---|---|
-| GET | `/api/teacher/absence-requests` | `Api\TeacherController@getAbsenceRequests` | Auth + role: teacher |
-| PUT | `/api/teacher/absence-requests/{requestId}/respond` | `Api\TeacherController@respondAbsenceRequest` | Auth + role: teacher |
 | GET | `/api/teacher/announcements` | `Api\TeacherController@getAnnouncements` | Auth + role: teacher |
 | POST | `/api/teacher/announcements` | `Api\TeacherController@createAnnouncement` | Auth + role: teacher |
 | GET | `/api/teacher/assignments` | `Api\TeacherController@getAssignments` | Auth + role: teacher |
@@ -313,13 +311,11 @@
 | DELETE | `/api/parent/notifications/{id}` | `NotificationController@deleteNotification` | Auth + role: parent |
 | PUT | `/api/parent/notifications/{id}/read` | `NotificationController@markAsRead` | Auth + role: parent |
 | GET | `/api/parent/performance/{studentId}` | `StudentParentController@getFullPerformance` | Auth + role: parent |
-| POST | `/api/parent/permissions/{requestId}/respond` | `StudentParentController@respondPermission` | Auth + role: parent |
 | GET | `/api/parent/reports/history` | `Api\ParentController@getReportsHistory` | Auth + role: parent |
 | POST | `/api/parent/request-meeting` | `Api\ParentController@requestMeeting` | Auth + role: parent |
 | POST | `/api/parent/request-report` | `Api\ParentController@requestReport` | Auth + role: parent |
 | DELETE | `/api/parent/student/notifications/{id}` | `NotificationController@deleteNotification` | Auth + role: parent |
 | GET | `/api/parent/student/{studentId}/assignments` | `StudentParentController@getAssignments` | Auth + role: parent |
-| GET | `/api/parent/student/{studentId}/permissions` | `StudentParentController@getPermissions` | Auth + role: parent |
 | GET | `/api/parent/summons` | `Api\ParentController@getMySummons` | Auth + role: parent |
 | POST | `/api/parent/summons/{id}/respond` | `Api\ParentMeetingController@respondToSummon` | Auth + role: parent |
 | DELETE | `/api/parent/teacher/notifications/{id}` | `NotificationController@deleteNotification` | Auth + role: parent |
