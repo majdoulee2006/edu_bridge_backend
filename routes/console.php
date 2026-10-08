@@ -17,3 +17,14 @@ Artisan::command('logs:clean {--days=90}', function ($days = 90) {
 
 Schedule::command('logs:clean --days=90')->daily();
 Schedule::command('academic:check-semesters')->daily();
+
+// الملخص الأسبوعي لأولياء الأمور: مرة كل أسبوع في اليوم/الوقت المحددين في config/digest.php
+// (يتطلب cron لـ schedule:run وعامل طابور queue:work لأن الإرسال يمرّ عبر الطابور)
+if (config('digest.enabled')) {
+    Schedule::command('digest:send')
+        ->weeklyOn(
+            \Carbon\Carbon::parse(config('digest.send_day', 'thursday'))->dayOfWeek,
+            config('digest.send_time', '18:00')
+        )
+        ->withoutOverlapping();
+}
