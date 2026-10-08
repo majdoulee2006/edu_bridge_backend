@@ -625,6 +625,9 @@ class TeacherController extends Controller
             'closed_at' => now(),
         ]);
 
+        // تحليل الأنماط المشبوهة للجلسة (في الطابور؛ والأمر المجدول attendance:analyze شبكة أمان إن لم يعمل الطابور)
+        \App\Jobs\AnalyzeAttendanceSessionJob::dispatch($session->id);
+
         return response()->json([
             'success' => true,
             'message' => 'تم إنهاء الجلسة وتسجيل الغياب',
