@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Edu Bridge — بروشور</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* A4 landscape = 3 panels of 99mm; print with background graphics ON */
+  @page { size: 297mm 210mm; margin: 0; }
+  /* brand colors from the website: bg #121212, accent #FFCC00 */
+  :root{
+    --bg:#121212; --card:#1e1e1e; --line:rgba(255,255,255,.10);
+    --y:#FFCC00; --y-soft:#FFE082; --green:#2E7D32;
+    --t:#fff; --g:#a0a0a0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#555}
+  body{font-family:'Cairo','Tajawal',sans-serif;color:var(--t);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  svg.i{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  /* one printed side (297x210mm) */
+  .sheet{width:297mm;height:210mm;display:flex;flex-direction:row;overflow:hidden;page-break-after:always;break-after:page;background:var(--bg)}
+  /* one fold (99x210mm) */
+  .panel{width:99mm;height:210mm;position:relative;padding:12mm 10mm;overflow:hidden;background:var(--bg);display:flex;flex-direction:column}
+  .panel::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:7mm 7mm;pointer-events:none}
+  .panel > *{position:relative}
+  /* soft yellow light blobs (decorative) */
+  .glow{position:absolute!important;border-radius:50%;filter:blur(40px);pointer-events:none;z-index:0}
+  .g-y{background:rgba(255,204,0,.16)}
+  .g-g{background:rgba(46,125,50,.24)}
+
+  /* small section label above each heading */
+  .eyebrow{font-size:8.5pt;font-weight:700;color:var(--y);margin-bottom:2mm;display:flex;align-items:center;gap:2mm}
+  .eyebrow::before{content:"";width:6mm;height:.6mm;background:var(--y)}
+  /* h2 em = yellow word in headings */
+  h2{font-size:17pt;font-weight:900;line-height:1.35;margin-bottom:3mm}
+  h2 em,h1 em{font-style:normal;color:var(--y)}
+  p.lead{font-size:9pt;line-height:1.9;color:#d2d2d2}
+  .rule{width:14mm;height:1mm;border-radius:2mm;background:var(--y);margin:4mm 0 5mm}
+
+  /* FRONT COVER */
+  .cover{align-items:center;text-align:center;justify-content:space-between;padding-top:15mm}
+  .cover .logo{width:52mm}
+  h1{font-size:20pt;font-weight:900;line-height:1.5}
+  .cover .sub{font-size:9.3pt;line-height:1.95;color:#cfcfcf;margin-top:3mm}
+  .bridge{width:100%;height:30mm}
+  .chip{display:inline-block;border:1px solid var(--y);color:var(--y);font-weight:700;font-size:8.5pt;padding:1.2mm 4.5mm;border-radius:1.5mm;background:rgba(255,204,0,.07)}
+  .cover .foot{font-size:8pt;color:var(--g);line-height:1.8;margin-top:3mm}
+
+  /* PROBLEMS */
+  .prob{display:flex;flex-direction:column;gap:3mm}
+  .prob div{display:flex;gap:3.5mm;align-items:flex-start;font-size:8.8pt;line-height:1.7;color:#d9d9d9;padding-bottom:3mm;border-bottom:1px solid var(--line)}
+  .prob div:last-child{border-bottom:0}
+  .prob b{flex:none;font-size:9pt;font-weight:900;color:var(--y);width:6mm}
+  .loop{margin-top:auto;border-right:1.2mm solid var(--y);border-radius:2mm;padding:4mm 4.5mm;background:var(--card)}
+  .loop b{display:block;color:var(--y);font-size:10pt;margin-bottom:1.5mm}
+  .loop span{font-size:8.6pt;line-height:1.85;color:#e6e6e6}
+
+  /* TEAM */
+  .list{display:flex;flex-direction:column}
+  .person{padding:1.5mm 3.5mm;margin-bottom:1.4mm;background:var(--card);border:1px solid var(--line);border-right:1.2mm solid var(--y);border-radius:1.5mm}
+  .person b{display:block;font-size:9.4pt;font-weight:800;line-height:1.5;color:#fff}
+  .person span{display:block;font-size:7.8pt;line-height:1.6;color:var(--g)}
+  /* "الإشراف" sub-heading on the back cover */
+  .sec{font-size:8.5pt;font-weight:800;color:var(--y);margin:2mm 0 1.6mm}
+
+  /* CONTACT */
+  .contact{margin-top:auto;background:var(--card);border:1px solid var(--y);border-radius:2mm;padding:3.5mm 4mm}
+  .contact h3{font-size:10.5pt;font-weight:900;color:var(--y);margin-bottom:2.5mm}
+  .crow{display:flex;gap:3mm;align-items:center;font-size:8.4pt;line-height:1.4;margin-bottom:1.4mm;color:#e8e8e8}
+  .crow .ci{flex:none;width:5mm;height:5mm;color:var(--y)}
+  .ltr{direction:ltr;unicode-bidi:isolate;font-weight:600}
+  .qrline{display:flex;gap:3.5mm;align-items:center;margin-top:2.5mm;padding-top:2.5mm;border-top:1px solid var(--line)}
+  .qr{flex:none;width:18mm;height:18mm;background:#fff;border-radius:1.5mm;padding:1.6mm}
+  .qr svg{width:100%;height:100%;display:block}
+  .qrline span{font-size:7.8pt;line-height:1.7;color:#cfcfcf}
+
+  /* PLATFORMS + ROLES */
+  .plat{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm;margin-bottom:4mm}
+  .pl{background:var(--card);border:1px solid var(--line);border-radius:2mm;padding:2.6mm 1.5mm;text-align:center}
+  .pl .ic{width:6.5mm;height:6.5mm;color:var(--y);margin:0 auto 1.4mm}
+  .pl b{display:block;font-size:7.8pt;font-weight:700;line-height:1.5}
+  .roles{display:grid;grid-template-columns:1fr 1fr;gap:2.4mm}
+  .role{background:var(--card);border:1px solid var(--line);border-radius:2mm;padding:3.2mm;min-height:35mm}
+  .role .ic{width:6.5mm;height:6.5mm;color:var(--y);margin-bottom:2mm}
+  .role b{font-size:9.2pt;display:block;margin-bottom:1mm}
+  .role span{font-size:7.5pt;line-height:1.7;color:var(--g);display:block}
+
+  /* ATTENDANCE */
+  /* numbered steps: numbers come from the CSS counter */
+  .steps{display:flex;flex-direction:column;gap:2mm;counter-reset:s}
+  .step{display:flex;gap:3mm;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:2mm;padding:2.6mm 3.2mm;font-size:8.5pt;line-height:1.5}
+  .step::before{counter-increment:s;content:"0" counter(s);flex:none;font-weight:900;font-size:9pt;color:var(--y);width:6mm}
+  .step b{color:var(--y-soft)}
+  .alerts{margin-top:4mm;display:grid;grid-template-columns:repeat(3,1fr);gap:2mm}
+  .al{border-radius:2mm;background:var(--card);border:1px solid var(--line);padding:3mm 1.5mm;text-align:center}
+  .al strong{display:block;font-size:15pt;font-weight:900;color:var(--y);line-height:1.1}
+  .al small{display:block;font-size:7pt;color:#cfcfcf;line-height:1.6;margin-top:1mm}
+  .note{margin-top:auto;border-right:1.2mm solid var(--y);border-radius:2mm;padding:3.5mm 4mm;background:var(--card);font-size:8.3pt;line-height:1.85;color:#e2e2e2}
+  .note b{color:var(--y);display:block;font-size:9.4pt;margin-bottom:1mm}
+
+  /* FEATURES */
+  .feat{display:flex;flex-direction:column}
+  .feat div{display:flex;gap:3.5mm;align-items:flex-start;font-size:8.6pt;line-height:1.75;color:#dcdcdc;padding:4mm 0;border-bottom:1px solid var(--line)}
+  .feat div:last-child{border-bottom:0}
+  .feat .ic{flex:none;width:6mm;height:6mm;color:var(--y);margin-top:.6mm}
+  .feat b{color:#fff;display:block;font-size:9pt}
+  /* tech tags stay LTR; .hot = highlighted */
+  .tags{margin-top:auto;display:flex;flex-wrap:wrap;gap:1.6mm;direction:ltr}
+  .tags span{border:1px solid var(--line);background:var(--card);border-radius:1.5mm;padding:.9mm 3mm;font-size:7.6pt;font-weight:600;color:#e8e8e8}
+  .tags span.hot{border-color:var(--y);color:var(--y)}
+</style>
+</head>
+<body>
+
+<!-- icon sprite: use with <svg class="i"><use href="#name"/></svg> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="settings" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="building" viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5M9 11h6"/></symbol>
+    <symbol id="clip" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 2h6v4H9zM9 12h6M9 16h6"/></symbol>
+    <symbol id="board" viewBox="0 0 24 24"><path d="M2 3h20v13H2zM8 21h8M12 16v5"/></symbol>
+    <symbol id="cap" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5zM6 12v5c3 2 9 2 12 0v-5"/></symbol>
+    <symbol id="users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M21 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+    <symbol id="phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+    <symbol id="monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+    <symbol id="bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+    <symbol id="shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4"/></symbol>
+    <symbol id="file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8"/></symbol>
+    <symbol id="mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></symbol>
+    <symbol id="tel" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+    <symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></symbol>
+    <symbol id="pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  </defs>
+</svg>
+
+<!-- ===================== OUTSIDE (paper order, left to right: flap | back | front) ===================== -->
+<section class="sheet" dir="ltr">
+
+  <!-- inner flap -->
+  <div class="panel" dir="rtl">
+    <div class="eyebrow">لماذا <bdi>Edu Bridge</bdi>؟</div>
+    <h2>تحديات <em>تقليدية</em><br>تعطّل العملية التعليمية</h2>
+    <p class="lead">تعاني المنظومات المدرسية من عقبات تؤثر سلباً على أداء الطلاب وسرعة اتخاذ القرار. درسنا هذه المشاكل وبنينا حلاً يربط السيرفر بتطبيق المستخدم مباشرة.</p>
+    <div class="rule"></div>
+    <div class="prob">
+      <div><b>01</b><span>تلاعب في كشوف الحضور والغياب اليدوية وغياب المصداقية.</span></div>
+      <div><b>02</b><span>تأخر وصول التنبيهات الهامة لأولياء الأمور حول سلوك ودرجات الأبناء.</span></div>
+      <div><b>03</b><span>تشتّت مستندات الإدارة والدرجات بين ملفات الإكسل وغياب التكامل البرمجي.</span></div>
+      <div><b>04</b><span>بطء المعاملات الإدارية وتعدّد الخطوات الورقية لكل طلب.</span></div>
+    </div>
+    <div class="loop">
+      <b>حلقة تواصل مغلقة ومترابطة</b>
+      <span>الحدث الذي يقوم به المعلّم يراه فوراً الطالب وولي الأمر، والطلب الذي يقدّمه ولي الأمر يبتّ فيه شؤون الطلاب ورئيس القسم تحت إشراف مدير النظام.</span>
+    </div>
+  </div>
+
+  <!-- back cover -->
+  <div class="panel" dir="rtl" style="padding-top:9mm;padding-bottom:8mm">
+    <div class="glow g-y" style="width:50mm;height:50mm;right:-18mm;bottom:20mm"></div>
+    <div class="eyebrow">فريق التطوير</div>
+    <h2>صُنِعَ <em>بأيدينا</em></h2>
+    <div class="list" style="margin-top:2mm">
+      <div class="person"><b>مجدولين محمود</b><span>قائدة الفريق ومسؤولة الربط البرمجي</span></div>
+      <div class="person"><b>اسراء منوّر</b><span>مطوّرة خادم ومصممة واجهات برمجية (Backend)</span></div>
+      <div class="person"><b>محمود غنام</b><span>مطوّر واجهات تطبيق الموبايل (Flutter)</span></div>
+      <div class="person"><b>هبة الله عيسى</b><span>مطوّرة لوحة التحكم والإدارة (Web)</span></div>
+      <div class="person"><b>شهد زريقي</b><span>محللة قواعد بيانات ومطوّرة واجهات</span></div>
+    </div>
+    <div class="sec">الإشراف</div>
+    <div class="list">
+      <div class="person"><b>المهندس خالد اسماعيل</b><span>مشرف المشروع والمرشد الأكاديمي</span></div>
+      <div class="person"><b>المهندس وسيم الماضي</b><span>مشرف — رئيس قسم الكمبيوتر ونظم المعلومات</span></div>
+    </div>
+    <!-- contact details taken from the website and the app -->
+    <div class="contact">
+      <h3>تواصل معنا</h3>
+      <div class="crow"><span class="ci"><svg class="i"><use href="#mail"/></svg></span><span class="ltr">edubridge2006@gmail.com</span></div>
+      <div class="crow"><span class="ci"><svg class="i"><use href="#tel"/></svg></span><span class="ltr">0959 031 594 (WhatsApp)</span></div>
+      <div class="crow"><span class="ci"><svg class="i"><use href="#globe"/></svg></span><span class="ltr">edu-bradge.netlify.app</span></div>
+      <div class="crow" style="margin-bottom:0"><span class="ci"><svg class="i"><use href="#pin"/></svg></span><span>سوريا، دمشق</span></div>
+      <div class="qrline"><div class="qr"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><path  stroke="#121212" d="M0 0.5h7m3 0h2m3 0h2m1 0h3m1 0h7m-29 1h1m5 0h1m1 0h1m2 0h1m1 0h1m3 0h2m1 0h1m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h3m2 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h1m1 0h2m3 0h5m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h2m1 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m4 0h3m2 0h1m2 0h1m2 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-20 1h1m6 0h3m-18 1h3m1 0h2m3 0h1m1 0h1m1 0h2m1 0h3m6 0h2m-28 1h1m3 0h2m3 0h1m2 0h2m3 0h1m1 0h1m1 0h5m2 0h1m-29 1h4m2 0h5m1 0h1m1 0h5m3 0h2m1 0h3m-28 1h1m1 0h1m2 0h1m1 0h5m6 0h2m3 0h1m1 0h1m2 0h1m-26 1h1m2 0h1m3 0h1m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m2 0h3m-29 1h1m1 0h2m1 0h1m1 0h3m1 0h7m1 0h1m2 0h2m1 0h2m1 0h1m-29 1h1m1 0h2m1 0h2m1 0h1m2 0h2m1 0h1m4 0h3m1 0h3m1 0h2m-29 1h1m2 0h1m4 0h2m1 0h3m4 0h1m1 0h2m2 0h2m2 0h1m-27 1h1m1 0h3m1 0h1m2 0h1m1 0h3m2 0h1m2 0h1m2 0h2m1 0h1m-27 1h3m3 0h1m4 0h3m3 0h1m1 0h1m2 0h1m2 0h1m-27 1h1m1 0h1m2 0h2m1 0h1m1 0h1m1 0h3m2 0h2m3 0h3m1 0h1m-20 1h5m2 0h4m1 0h1m1 0h2m2 0h2m1 0h1m-28 1h1m3 0h2m3 0h2m3 0h13m-20 1h1m1 0h1m3 0h1m1 0h1m3 0h1m3 0h2m1 0h2m-29 1h7m4 0h2m1 0h1m1 0h2m1 0h2m1 0h1m1 0h1m1 0h2m-28 1h1m5 0h1m1 0h2m1 0h1m1 0h1m2 0h1m3 0h1m3 0h1m3 0h1m-29 1h1m1 0h3m1 0h1m2 0h4m2 0h1m2 0h1m1 0h7m-27 1h1m1 0h3m1 0h1m1 0h2m1 0h1m2 0h1m2 0h1m1 0h1m4 0h2m1 0h1m-28 1h1m1 0h3m1 0h1m1 0h1m3 0h2m2 0h2m2 0h1m2 0h1m1 0h2m1 0h1m-29 1h1m5 0h1m1 0h1m3 0h4m2 0h1m1 0h3m1 0h2m1 0h1m-28 1h7m3 0h1m2 0h2m3 0h4m1 0h1m3 0h1"/></svg>
+</div><span>امسح الرمز لزيارة الموقع التعريفي للمنصة.</span></div>
+    </div>
+  </div>
+
+  <!-- front cover -->
+  <div class="panel cover" dir="rtl">
+    <div><img class="logo" src="assets/edubridge_official_transparent.png" alt="Edu Bridge"></div>
+    <div>
+      <h1>جسر تقني ذكي نحو<br><em>تعليم متكامل</em></h1>
+      <p class="sub">النظام المتكامل لإدارة وأتمتة المدارس والمعاهد، يربط الإدارة والمعلّمين والطلاب وأولياء الأمور بمزامنة فورية.</p>
+    </div>
+    <svg class="bridge" viewBox="0 0 300 100" fill="none" stroke="#FFCC00" stroke-width="1" stroke-linecap="round">
+      <path d="M0 70 H300" stroke-opacity=".5"/>
+      <path d="M0 70 Q75 70 75 18 M300 70 Q225 70 225 18" stroke-width="1.2"/>
+      <path d="M75 18 Q150 78 225 18" stroke-width="1.4"/>
+      <g stroke-opacity=".45"><path d="M95 66 V37 M115 66 V47 M135 66 V55 M155 66 V57 M175 66 V55 M195 66 V47 M215 66 V37"/>
+      <path d="M0 70 L40 84 L80 70 L120 84 L160 70 L200 84 L240 70 L280 84 L300 76"/></g>
+      <g fill="#FFCC00" stroke="none"><circle cx="75" cy="18" r="2.6"/><circle cx="225" cy="18" r="2.6"/><circle cx="150" cy="58" r="2"/><circle cx="40" cy="84" r="1.5"/><circle cx="120" cy="84" r="1.5"/><circle cx="200" cy="84" r="1.5"/><circle cx="280" cy="84" r="1.5"/></g>
+    </svg>
+    <div>
+      <span class="chip">مشروع التخرج المتميّز 2026</span>
+      <div class="foot">معهد دمشق التقاني المتوسط<br>قسم الكمبيوتر ونظم المعلومات</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== INSIDE (RTL: read from the rightmost panel) ===================== -->
+<section class="sheet" dir="rtl">
+
+  <!-- panel 1 (right): platform + roles -->
+  <div class="panel">
+    <div class="glow g-y" style="width:55mm;height:55mm;right:-20mm;top:-12mm"></div>
+    <div class="eyebrow">عن المنصة</div>
+    <h2>منظومة واحدة<br>لـ <em>ستة أدوار</em></h2>
+    <p class="lead" style="font-size:8.8pt">لوحة تحكم ويب، وتطبيق للموبايل، وبوت تيليجرام للطالب، كلها على قاعدة بيانات واحدة ومزامنة فورية.</p>
+    <div class="rule" style="margin:3.5mm 0 4mm"></div>
+    <div class="plat">
+      <div class="pl"><div class="ic"><svg class="i"><use href="#phone"/></svg></div><b>تطبيق<br>Flutter</b></div>
+      <div class="pl"><div class="ic"><svg class="i"><use href="#monitor"/></svg></div><b>لوحة ويب<br>Laravel</b></div>
+      <div class="pl"><div class="ic"><svg class="i"><use href="#send"/></svg></div><b>بوت<br>تيليجرام</b></div>
+    </div>
+    <div class="roles">
+      <div class="role"><div class="ic"><svg class="i"><use href="#settings"/></svg></div><b>الإدارة</b><span>الحسابات، الأقسام والمقررات، التقارير، الإعلانات وسجل النشاط.</span></div>
+      <div class="role"><div class="ic"><svg class="i"><use href="#building"/></svg></div><b>رئيس القسم</b><span>الجداول والامتحانات، اعتماد الإجازات والخدمات، الاستدعاءات.</span></div>
+      <div class="role"><div class="ic"><svg class="i"><use href="#clip"/></svg></div><b>شؤون الطلاب</b><span>اعتماد الحسابات، الفصول والترقية، كشوف العلامات، فك قفل الأجهزة.</span></div>
+      <div class="role"><div class="ic"><svg class="i"><use href="#board"/></svg></div><b>المعلّم</b><span>جلسات الحضور بالـ QR، الواجبات، العلامات والتقارير.</span></div>
+      <div class="role"><div class="ic"><svg class="i"><use href="#cap"/></svg></div><b>الطالب</b><span>الجدول، الحضور، العلامات، الطلبات، الدردشة والمساعد الذكي.</span></div>
+      <div class="role"><div class="ic"><svg class="i"><use href="#users"/></svg></div><b>ولي الأمر</b><span>متابعة الأبناء لحظة بلحظة والموافقة على الأذونات.</span></div>
+    </div>
+  </div>
+
+  <!-- panel 2: smart attendance -->
+  <div class="panel">
+    <div class="eyebrow">الميزة الأبرز</div>
+    <h2>الحضور <em>الذكي</em><br>بلا تلاعب</h2>
+    <p class="lead" style="font-size:8.6pt">يفتح المعلّم جلسة فيتولّد رمز QR يتجدّد كل 30 ثانية. يمسحه الطالب من التطبيق، ويتحقق السيرفر من:</p>
+    <div class="rule" style="margin:3.5mm 0 4mm"></div>
+    <div class="steps">
+      <div class="step"><span><b>صلاحية الرمز</b> ووقت المسح</span></div>
+      <div class="step"><span><b>أهلية الطالب</b> للمقرر ومنع تكرار التسجيل</span></div>
+      <div class="step"><span><b>ربط الجهاز</b> — جهاز واحد لكل طالب</span></div>
+      <div class="step"><span><b>الموقع الجغرافي</b> ضمن نطاق القاعة</span></div>
+      <div class="step"><span><b>مطابقة الوجه</b> على الجهاز نفسه</span></div>
+    </div>
+    <!-- absence alerts: 7 / 10 / 15 days -->
+    <div class="alerts">
+      <div class="al"><strong>7</strong><small>أيام غياب<br>إنذار أول</small></div>
+      <div class="al"><strong>10</strong><small>إنذار ثانٍ واستدعاء ولي أمر تلقائي</small></div>
+      <div class="al"><strong>15</strong><small>إنذار نهائي وإحالة للإدارة</small></div>
+    </div>
+    <div class="note"><b>تحضير بدون إنترنت</b>يحفظ التطبيق وقت المسح ويزامنه لاحقاً وفق سياسة القسم، لضمان استمرارية العمل في أي ظرف.</div>
+  </div>
+
+  <!-- panel 3 (left): capabilities -->
+  <div class="panel">
+    <div class="glow g-y" style="width:55mm;height:55mm;left:-20mm;top:20mm"></div>
+    <div class="eyebrow">مصمّم ليكبر</div>
+    <h2>تواصل، أمان،<br>و<em>ذكاء</em> مدمج</h2>
+    <div class="rule" style="margin:2mm 0 3mm"></div>
+    <div class="feat">
+      <div><span class="ic"><svg class="i"><use href="#chat"/></svg></span><span><b>دردشة لحظية</b>مرفقات وتسجيل صوتي ومجموعات، ضمن مصفوفة صلاحيات تحدد من يراسل من.</span></div>
+      <div><span class="ic"><svg class="i"><use href="#cpu"/></svg></span><span><b>مساعد ذكي</b>مدعوم بـ Google Gemini ويعرف سياق بيانات المستخدم.</span></div>
+      <div><span class="ic"><svg class="i"><use href="#bell"/></svg></span><span><b>إشعارات فورية</b>داخل التطبيق وعبر FCM وتيليجرام.</span></div>
+      <div><span class="ic"><svg class="i"><use href="#shield"/></svg></span><span><b>أمان متعدد الطبقات</b>جلسة نشطة واحدة لكل قناة، قفل الحساب بعد المحاولات الفاشلة، وسجل تدقيق للعمليات.</span></div>
+      <div><span class="ic"><svg class="i"><use href="#file"/></svg></span><span><b>تقارير وتصدير</b>كشوف العلامات والجداول وتقارير الحضور بصيغتي PDF وExcel.</span></div>
+    </div>
+    <div class="tags">
+      <span class="hot">Laravel</span><span class="hot">Flutter</span><span>MySQL</span><span>REST API</span><span>Firebase</span><span>Pusher</span><span>Telegram Bot</span><span>Gemini AI</span>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
