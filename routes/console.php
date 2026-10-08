@@ -28,3 +28,6 @@ if (config('digest.enabled')) {
         )
         ->withoutOverlapping();
 }
+
+// تحليل جلسات الحضور المنتهية بحثًا عن الأنماط المشبوهة (شبكة أمان لمن لا يعمل عنده الطابور)
+Schedule::command('attendance:analyze')->everyTenMinutes()->withoutOverlapping();
