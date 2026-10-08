@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
  * مع سيناريوهات اشتباه في آخر جلسة تُنتج حالات للمراجعة عند المعلّم، وطالب هبط حضوره فجأة.
  *
  *   معلّم العرض:  samerkhatib-trainer@edu-bridge.com / pass123   (يرى الحالات ويراجعها)
+ *   مسح حقيقي:   ليان (2026017) وعمر (2026018) مسجّلان في مقرر الويب إن كانت عائلة الحداد موجودة
  *   رئيس القسم:   waseemalmady-head@edu-bridge.com  (يرى الخريطة، فالمقرران ضمن برنامج "معلوماتية")
  *
  * التشغيل:  php artisan db:seed --class=AttendanceIntelligenceDemoSeeder
@@ -106,6 +107,16 @@ class AttendanceIntelligenceDemoSeeder extends Seeder
                 DB::table('enrollments')->insert(['student_id' => $studentId, 'course_id' => $cid, 'enrollment_date' => now()->toDateString(), 'status' => 'active']);
             }
             $students[$i] = ['student_id' => $studentId, 'factor' => [0.97, 0.9, 1.0, 0.8, 0.95, 0.85][$i % 6]];
+        }
+
+        // ابنا عائلة الحداد (من DigestDemoSeeder، إن وُجدا): تسجيلهما في مقرر الويب يتيح تجربة مسح حقيقي
+        // بحسابين على هاتف واحد (لهما ولي أمر، وهو شرط دخول الطالب إلى التطبيق)
+        foreach (['2026017', '2026018'] as $uid) {
+            $sid = DB::table('students')->join('users', 'users.user_id', '=', 'students.user_id')
+                ->where('users.username', $uid)->value('students.student_id');
+            if ($sid) {
+                DB::table('enrollments')->insert(['student_id' => $sid, 'course_id' => $course['web'], 'enrollment_date' => now()->toDateString(), 'status' => 'active']);
+            }
         }
 
         // --- الجلسات من الأقدم إلى الأحدث ---
