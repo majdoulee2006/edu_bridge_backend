@@ -421,6 +421,10 @@
                     <i class="fa-solid fa-calendar-check"></i>
                     المواعيد والاستدعاءات
                 </a>
+                <a href="{{ url('/parent/digests') }}" class="nav-item {{ Request::is('parent/digests*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    الملخص الأسبوعي
+                </a>
                 <a href="{{ url('/parent/reports') }}" class="nav-item {{ Request::is('parent/reports') ? 'active' : '' }}">
                     <i class="fa-solid fa-chart-line"></i>
                     تقارير الأداء

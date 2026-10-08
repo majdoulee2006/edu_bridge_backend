@@ -595,6 +595,12 @@ Route::prefix('parent')->middleware(['web', 'parent'])->group(function () {
     Route::get('/academic-card/export-pdf', [ParentWebController::class, 'exportAcademicCardPdf'])->name('parent.academic_card.pdf');
     Route::get('/academic-card/export-excel', [ParentWebController::class, 'exportAcademicCardExcel'])->name('parent.academic_card.excel');
     
+    // الملخص الأسبوعي
+    Route::get('/digests', [ParentWebController::class, 'digests'])->name('parent.digests');
+    Route::get('/digests/{id}', [ParentWebController::class, 'digestShow'])->name('parent.digests.show');
+    Route::get('/digests/{id}/pdf', [ParentWebController::class, 'digestPdf'])->name('parent.digests.pdf');
+    Route::post('/digest-settings', [ParentWebController::class, 'digestSettings'])->name('parent.digests.settings');
+
     // الأذونات والطلبات
     Route::get('/permissions', [ParentWebController::class, 'permissions'])->name('parent.permissions');
     Route::get('/leaves', fn() => redirect()->route('parent.permissions'));

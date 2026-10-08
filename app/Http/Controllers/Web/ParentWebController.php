@@ -1255,4 +1255,72 @@ class ParentWebController extends Controller
     {
         return $this->parentView('parent.settings');
     }
+
+    // ────────────────────────────────────────────────────────────
+    //  WEEKLY DIGEST (الملخص الأسبوعي)
+    // ────────────────────────────────────────────────────────────
+
+    private function findOwnedDigest($id): \App\Models\ParentDigest
+    {
+        return \App\Models\ParentDigest::with('student.user:user_id,full_name')
+            ->where('parent_user_id', auth()->user()->user_id)
+            ->whereNotNull('sent_at')
+            ->findOrFail($id);
+    }
+
+    public function digests()
+    {
+        $digests = \App\Models\ParentDigest::with('student.user:user_id,full_name')
+            ->where('parent_user_id', auth()->user()->user_id)
+            ->whereNotNull('sent_at')
+            ->orderByDesc('week_start')
+            ->paginate(10);
+
+        $parent = $this->getParentRecord();
+
+        return $this->parentView('parent.digests', [
+            'digests'       => $digests,
+            'digestEnabled' => (bool) ($parent->digest_enabled ?? true),
+        ]);
+    }
+
+    public function digestShow($id)
+    {
+        $digest = $this->findOwnedDigest($id);
+
+        if (!$digest->read_at) {
+            $digest->update(['read_at' => now()]);
+        }
+
+        return $this->parentView('parent.digest_show', ['digest' => $digest]);
+    }
+
+    public function digestPdf($id, \App\Services\Digest\DigestPdfService $pdf)
+    {
+        $digest  = $this->findOwnedDigest($id);
+        $content = $pdf->render($digest);
+
+        if ($content === '') {
+            return back()->with('error', 'تعذّر إنشاء ملف PDF، حاول لاحقًا.');
+        }
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $pdf->fileName($digest) . '"',
+            'Cache-Control'       => 'private, no-store',
+        ]);
+    }
+
+    public function digestSettings(Request $request)
+    {
+        $request->validate(['digest_enabled' => 'required|boolean']);
+
+        DB::table('parents')
+            ->where('user_id', auth()->user()->user_id)
+            ->update(['digest_enabled' => $request->boolean('digest_enabled'), 'updated_at' => now()]);
+
+        return back()->with('success', $request->boolean('digest_enabled')
+            ? 'تم تفعيل الملخص الأسبوعي.'
+            : 'تم إيقاف الملخص الأسبوعي.');
+    }
 }
