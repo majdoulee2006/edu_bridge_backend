@@ -2,7 +2,10 @@
 
 namespace App\Services\AttendanceIntelligence;
 
+use App\Models\User;
+use App\Support\Access;
 use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -43,6 +46,40 @@ class AttendanceAnalyticsService
             'behavior_changes' => $this->behaviorChanges($courseIds, $to),
             'flags'    => $this->flagSummary($courseIds, $from, $to),
         ];
+    }
+
+    /**
+     * المقررات المسموح للمستخدم بتحليلها: رئيس القسم = مقررات برامج قسمه، الأدمن = الكل (null).
+     * ثم يُطبَّق فلتر البرنامج/المقرر ضمن هذا النطاق فقط، فلا يتسع النطاق بفلتر.
+     *
+     * @return int[]|null null = كل المقررات
+     * @throws AuthorizationException إذا طُلب مقرر خارج النطاق
+     */
+    public function scopeCourseIds(User $user, ?int $programId = null, ?int $courseId = null): ?array
+    {
+        $scope = null;
+
+        if ((int) $user->role_id === 5) {
+            $deptId = Access::headDepartment($user)['id'];
+            $scope = $deptId
+                ? DB::table('course_program')->join('programs', 'course_program.program_id', '=', 'programs.id')
+                    ->where('programs.department_id', $deptId)->pluck('course_program.course_id')->unique()->values()->all()
+                : [];
+        }
+
+        if ($programId) {
+            $programCourses = DB::table('course_program')->where('program_id', $programId)->pluck('course_id')->all();
+            $scope = $scope === null ? $programCourses : array_values(array_intersect($scope, $programCourses));
+        }
+
+        if ($courseId) {
+            if ($scope !== null && !in_array($courseId, $scope, true)) {
+                throw new AuthorizationException('هذا المقرر خارج نطاقك');
+            }
+            $scope = [$courseId];
+        }
+
+        return $scope;
     }
 
     // ------------------------------------------------------------------ أساس الاستعلام

@@ -76,36 +76,20 @@ class AttendanceInsightsController extends Controller
     }
 
     /**
-     * يحدد المقررات المسموح بتحليلها: رئيس القسم = مقررات برامج قسمه، الأدمن = الكل (null).
-     * ثم يطبّق فلتر البرنامج/المقرر ضمن هذا النطاق فقط.
+     * نطاق المقررات المسموح للمستخدم الحالي (انظر AttendanceAnalyticsService::scopeCourseIds).
      *
      * @return array{0: ?array, 1: ?\Illuminate\Http\JsonResponse}
      */
     private function resolveScope(Request $request): array
     {
-        $user = $request->user();
-        $scope = null;
-
-        if ((int) $user->role_id === 5) {
-            $deptId = Access::headDepartment($user)['id'];
-            $scope = $deptId
-                ? DB::table('course_program')->join('programs', 'course_program.program_id', '=', 'programs.id')
-                    ->where('programs.department_id', $deptId)->pluck('course_program.course_id')->unique()->values()->all()
-                : [];
-        }
-
-        if ($request->filled('program_id')) {
-            $programCourses = DB::table('course_program')->where('program_id', (int) $request->program_id)
-                ->pluck('course_id')->all();
-            $scope = $scope === null ? $programCourses : array_values(array_intersect($scope, $programCourses));
-        }
-
-        if ($request->filled('course_id')) {
-            $cid = (int) $request->course_id;
-            if ($scope !== null && !in_array($cid, $scope, true)) {
-                return [null, response()->json(['success' => false, 'message' => 'هذا المقرر خارج نطاقك'], 403)];
-            }
-            $scope = [$cid];
+        try {
+            $scope = app(AttendanceAnalyticsService::class)->scopeCourseIds(
+                $request->user(),
+                $request->filled('program_id') ? (int) $request->program_id : null,
+                $request->filled('course_id') ? (int) $request->course_id : null,
+            );
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            return [null, response()->json(['success' => false, 'message' => $e->getMessage()], 403)];
         }
 
         return [$scope, null];
