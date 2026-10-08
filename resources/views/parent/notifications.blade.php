@@ -115,6 +115,7 @@
                 'leave'            => ['icon' => 'fa-calendar-days',        'color' => '#3b82f6', 'bg' => '#eff6ff'],
                 'message'          => ['icon' => 'fa-envelope',             'color' => '#3b82f6', 'bg' => '#eff6ff'],
                 'admin'            => ['icon' => 'fa-bullhorn',             'color' => '#8b5cf6', 'bg' => '#f5f3ff'],
+                'weekly_digest'    => ['icon' => 'fa-chart-pie',            'color' => '#2e7d32', 'bg' => '#ecfdf5'],
                 'general'          => ['icon' => 'fa-bell',                 'color' => '#f59e0b', 'bg' => '#fffbeb'],
             ];
             $style = $iconMap[$type] ?? $iconMap['general'];
@@ -129,6 +130,9 @@
                 'general'          => '/parent/notifications',
             ];
             $link = $linkMap[$type] ?? '/parent/notifications';
+            if ($type === 'weekly_digest' && !empty($n->related_id)) {
+                $link = '/parent/digests/' . (int) $n->related_id;
+            }
         @endphp
         <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="handleNotifClick(event, '{{ $link }}', {{ $n->id }}, {{ !$isRead ? 'true' : 'false' }})">
             <div class="notif-icon" style="background: {{ $style['bg'] }}; color: {{ $style['color'] }};">
