@@ -14,7 +14,7 @@ class ProgramCoursesSeeder extends Seeder
     protected array $latinNames = [
         'ديمة اللحام' => 'dimaallaham', 'نهيل' => 'nahil', 'نرجس' => 'narjis', 'دارين' => 'darin',
         'سمير' => 'samir', 'ريم' => 'reem', 'أسعد' => 'asaad', 'محمد درويش' => 'mohamaddarwish',
-        'شريف علي' => 'sharifali', 'عثمان' => 'othman', 'لينا' => 'lina',
+        'شريف علي' => 'sharifali', 'عثمان' => 'othman', 'لينا' => 'lina', 'عدنان' => 'adnan',
     ];
 
     public function run(): void
