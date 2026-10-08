@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Services\Digest\DigestBuilder;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -134,7 +135,10 @@ class DigestDemoSeeder extends Seeder
         $this->grade($course['omar'], $teacherId, $O, 'اختبار قصير', 20, 9, $day(2));
         $this->grade($course['omar'], $teacherId, $O, 'اختبار سابق', 20, 15, $day(2)->subDays(7));
 
-        $this->command?->info('تم إنشاء حسابات العائلة ونشاط الأسبوع الحالي.');
+        // توليد ملخصات الأسبوع لولي الأمر فورًا، فتظهر في التطبيق والويب بعد الـ seed مباشرة
+        Artisan::call('digest:send', ['--parent' => $parentUserId, '--now' => true]);
+
+        $this->command?->info('تم إنشاء حسابات العائلة ونشاط الأسبوع الحالي وملخصاتها.');
         $this->command?->table(['الحساب', 'اسم الدخول', 'كلمة السر'], [
             ['ولي الأمر - ' . self::PARENT['name'], self::PARENT['username'], self::PASSWORD],
             ['الابنة - ' . self::KIDS['layan']['name'], self::KIDS['layan']['uid'], self::PASSWORD],
