@@ -902,7 +902,8 @@ class StudentWebController extends Controller
 
     public function scanAttendanceWeb(Request $request)
     {
-        $apiReq = new Request($request->all());
+        // createFrom يحتفظ ببيانات الاتصال (IP ونوع الجهاز) المطلوبة لبصمة المسح، بخلاف new Request(...)
+        $apiReq = Request::createFrom($request);
         $apiReq->setUserResolver(fn() => Auth::user());
 
         $apiController = app(\App\Http\Controllers\Api\StudentController::class);
