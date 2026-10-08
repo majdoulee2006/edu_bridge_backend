@@ -8,11 +8,23 @@ use Illuminate\Support\Facades\Hash;
 
 class ProgramCoursesSeeder extends Seeder
 {
-    private array $teacherCache = [];
+    protected array $teacherCache = [];
+
+    /** كتابة لاتينية مقروءة لأسماء المعلمين (بدل التحويل الحرفي بدون حركات). */
+    protected array $latinNames = [
+        'ديمة اللحام' => 'dimaallaham', 'نهيل' => 'nahil', 'نرجس' => 'narjis', 'دارين' => 'darin',
+        'سمير' => 'samir', 'ريم' => 'reem', 'أسعد' => 'asaad', 'محمد درويش' => 'mohamaddarwish',
+        'شريف علي' => 'sharifali', 'عثمان' => 'othman', 'لينا' => 'lina',
+    ];
 
     public function run(): void
     {
-        $plans = [
+        $this->apply($this->plans());
+    }
+
+    protected function plans(): array
+    {
+        return [
             'ai' => [
                 'program_like' => ['ذكاء', 'Artificial'],
                 'plan' => [
@@ -116,7 +128,10 @@ class ProgramCoursesSeeder extends Seeder
                 ],
             ],
         ];
+    }
 
+    protected function apply(array $plans): void
+    {
         DB::transaction(function () use ($plans) {
             $semesters = [1 => $this->resolveSemester(1), 2 => $this->resolveSemester(2)];
 
@@ -144,7 +159,7 @@ class ProgramCoursesSeeder extends Seeder
         });
     }
 
-    private function resolveSemester(int $term): int
+    protected function resolveSemester(int $term): int
     {
         $needles = $term === 1 ? ['الأول', 'الاول'] : ['الثاني', 'التاني'];
         foreach ($needles as $needle) {
@@ -163,7 +178,7 @@ class ProgramCoursesSeeder extends Seeder
         ]);
     }
 
-    private function resolveProgram(array $needles): ?int
+    protected function resolveProgram(array $needles): ?int
     {
         foreach ($needles as $needle) {
             $id = DB::table('programs')->where('name', 'like', "%$needle%")->value('id');
@@ -174,7 +189,7 @@ class ProgramCoursesSeeder extends Seeder
         return null;
     }
 
-    private function upsertCourse(string $title, int $year, int $semesterId, int $programId): int
+    protected function upsertCourse(string $title, int $year, int $semesterId, int $programId): int
     {
         $existing = DB::table('courses')
             ->join('course_program', 'course_program.course_id', '=', 'courses.course_id')
@@ -208,7 +223,7 @@ class ProgramCoursesSeeder extends Seeder
         return $courseId;
     }
 
-    private function resolveTeacher(string $name): int
+    protected function resolveTeacher(string $name): int
     {
         if (isset($this->teacherCache[$name])) {
             return $this->teacherCache[$name];
@@ -248,8 +263,11 @@ class ProgramCoursesSeeder extends Seeder
     }
 
     /** تحويل بسيط للاسم العربي إلى أحرف لاتينية صغيرة بدون فراغات (للمراجعة اليدوية عند الحاجة). */
-    private function latinSlug(string $name): string
+    protected function latinSlug(string $name): string
     {
+        if (isset($this->latinNames[$name])) {
+            return $this->latinNames[$name];
+        }
         $map = [
             'ا' => 'a', 'أ' => 'a', 'إ' => 'i', 'آ' => 'a', 'ب' => 'b', 'ت' => 't', 'ث' => 'th', 'ج' => 'j',
             'ح' => 'h', 'خ' => 'kh', 'د' => 'd', 'ذ' => 'dh', 'ر' => 'r', 'ز' => 'z', 'س' => 's', 'ش' => 'sh',
@@ -262,7 +280,7 @@ class ProgramCoursesSeeder extends Seeder
         return $latin !== '' ? $latin : 'teacher' . substr(md5($name), 0, 4);
     }
 
-    private function attachTeacher(int $courseId, int $teacherId, string $role): void
+    protected function attachTeacher(int $courseId, int $teacherId, string $role): void
     {
         $exists = DB::table('course_teachers')
             ->where('course_id', $courseId)
