@@ -89,6 +89,9 @@
 <script>
 (function() {
     const seenNotifIds = new Set(JSON.parse(sessionStorage.getItem('seen_web_notif_ids') || '[]'));
+    // أول فحص في هذا التبويب لا يُظهر القديم. نتتبعه بعلامة مستقلة لا بحجم المجموعة:
+    // كان الصندوق الفارغ يُبقي المجموعة فارغة فيُعامَل أول إشعار جديد على أنه "قديم" ويُبتلع بصمت.
+    let initialized = sessionStorage.getItem('web_notif_initialized') === '1';
 
     function getLinkForType(notif) {
         if (notif.link_url) return notif.link_url;
@@ -104,6 +107,10 @@
 
         const type = notif.type || '';
         const titleText = ((notif.title || '') + ' ' + (notif.message || notif.body || '')).toLowerCase();
+
+        // الأنواع الصريحة أولًا: نصوصها تحتوي كلمات (حضور، علامات، واجب) تطابق فحوصات الكلمات أدناه فتُحوَّل لصفحة خاطئة
+        if (type === 'attendance_flags') return '/teacher/attendance-flags';
+        if (type === 'weekly_digest') return notif.related_id ? ('/parent/digests/' + notif.related_id) : '/parent/digests';
 
         // كشف علامات للشؤون -> توجيه فوري للمسار الأكاديمي مع فلترة الطالب
         if (prefix === '/affairs' && (type === 'transcript_approved' || titleText.includes('كشف علامات') || titleText.includes('كشف درجات'))) {
@@ -231,7 +238,7 @@
             .then(data => {
                 if (!data || !data.latest) return;
 
-                let isFirstRun = seenNotifIds.size === 0;
+                const isFirstRun = !initialized;
 
                 data.latest.forEach(n => {
                     if (!seenNotifIds.has(n.id)) {
@@ -243,6 +250,8 @@
                     }
                 });
 
+                initialized = true;
+                sessionStorage.setItem('web_notif_initialized', '1');
                 sessionStorage.setItem('seen_web_notif_ids', JSON.stringify(Array.from(seenNotifIds)));
             })
             .catch(() => {});

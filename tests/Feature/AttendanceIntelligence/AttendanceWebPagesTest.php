@@ -226,4 +226,23 @@ class AttendanceWebPagesTest extends TestCase
         $this->assertNotEmpty($row->ip_address);
         $this->assertSame(8, (int) $row->qr_age_seconds);
     }
+
+    // ----------------------------------------------------------- إشعار الاشتباهات وروابطه
+
+    public function test_flags_notification_opens_the_flags_page_not_the_qr_page(): void
+    {
+        $teacherUser = $this->a['teacher']['user'];
+        DB::table('notifications')->insert([
+            ['user_id' => $teacherUser->user_id, 'title' => '🔎 حالات حضور تحتاج مراجعة', 'message' => 'رُصد 2 اشتباه في جلسة حضور مغلقة',
+             'type' => 'attendance_flags', 'category' => 'administrative', 'is_read' => 0, 'created_at' => now(), 'updated_at' => now()],
+            ['user_id' => $teacherUser->user_id, 'title' => 'جلسة حضور', 'message' => 'بدأت جلسة',
+             'type' => 'attendance', 'category' => 'administrative', 'is_read' => 0, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        $this->actingAs($teacherUser);
+
+        $html = $this->get('/teacher/notifications')->assertOk()->getContent();
+
+        $this->assertStringContainsString("handleNotifClick(event, '/teacher/attendance-flags'", $html);
+        $this->assertStringContainsString("handleNotifClick(event, '/teacher/attendance'", $html); // الحضور العادي كما كان
+    }
 }

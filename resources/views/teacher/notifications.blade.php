@@ -128,7 +128,11 @@
             ];
             $style = $iconMap[$type] ?? ($isLectureRelated ? ['icon' => 'fa-file-video', 'color' => '#8b5cf6', 'bg' => '#f5f3ff'] : $iconMap['general']);
 
-            if ($isLectureRelated) {
+            if ($type === 'attendance_flags') {
+                // نوع صريح قبل فحوص الكلمات: عنوانه يحتوي "حضور" فكان يُفتح على صفحة توليد الـ QR
+                $link = '/teacher/attendance-flags';
+                $style = ['icon' => 'fa-magnifying-glass-chart', 'color' => '#e65100', 'bg' => '#fff3e0'];
+            } elseif ($isLectureRelated) {
                 $link = '/teacher/lectures';
             } elseif ($isAssignmentRelated || $isGradeRelated) {
                 $link = '/teacher/assignments';
