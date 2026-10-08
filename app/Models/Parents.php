@@ -10,7 +10,9 @@ class Parents extends Model
     protected $primaryKey = 'parent_id';
     public $timestamps = true;
 
-    protected $fillable = ['user_id'];
+    protected $fillable = ['user_id', 'digest_enabled'];
+
+    protected $casts = ['digest_enabled' => 'boolean'];
 
     // علاقة باليوزر
     public function user()
