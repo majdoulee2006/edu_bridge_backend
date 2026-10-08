@@ -392,6 +392,9 @@ class TeacherWebController extends Controller
                 'updated_at' => now()
             ]);
 
+        // تحليل الأنماط المشبوهة للجلسة (الأمر المجدول attendance:analyze شبكة أمان إن لم يعمل الطابور)
+        \App\Jobs\AnalyzeAttendanceSessionJob::dispatch((int) $id);
+
         // ==========================================
         // إضافة سجل "غائب" لجميع الطلاب الذين لم يحضروا
         // ==========================================
