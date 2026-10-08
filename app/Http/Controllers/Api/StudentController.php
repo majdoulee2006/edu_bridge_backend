@@ -2303,7 +2303,7 @@ class StudentController extends Controller
                 'face_image'    => $savedFaceImagePath,
                 'face_score'    => $faceScore,
                 'face_status'   => $faceStatus,
-            ]
+            ] + \App\Support\ScanFingerprint::capture($request, $session, $scannedAt) // بصمة المسح لتحليل الأنماط المشبوهة
         );
 
         // تعيين تاريخ وساعة التسجيل الفعلي محلياً لتسجيل دقيق في قاعدة البيانات
