@@ -118,8 +118,6 @@
 
 | الطريقة | المسار | المعالج | الصلاحية |
 |---|---|---|---|
-| GET | `/api/teacher/absence-requests` | `Api\TeacherController@getAbsenceRequests` | مصادقة + دور: teacher |
-| PUT | `/api/teacher/absence-requests/{requestId}/respond` | `Api\TeacherController@respondAbsenceRequest` | مصادقة + دور: teacher |
 | GET | `/api/teacher/announcements` | `Api\TeacherController@getAnnouncements` | مصادقة + دور: teacher |
 | POST | `/api/teacher/announcements` | `Api\TeacherController@createAnnouncement` | مصادقة + دور: teacher |
 | GET | `/api/teacher/assignments` | `Api\TeacherController@getAssignments` | مصادقة + دور: teacher |
@@ -313,13 +311,11 @@
 | DELETE | `/api/parent/notifications/{id}` | `NotificationController@deleteNotification` | مصادقة + دور: parent |
 | PUT | `/api/parent/notifications/{id}/read` | `NotificationController@markAsRead` | مصادقة + دور: parent |
 | GET | `/api/parent/performance/{studentId}` | `StudentParentController@getFullPerformance` | مصادقة + دور: parent |
-| POST | `/api/parent/permissions/{requestId}/respond` | `StudentParentController@respondPermission` | مصادقة + دور: parent |
 | GET | `/api/parent/reports/history` | `Api\ParentController@getReportsHistory` | مصادقة + دور: parent |
 | POST | `/api/parent/request-meeting` | `Api\ParentController@requestMeeting` | مصادقة + دور: parent |
 | POST | `/api/parent/request-report` | `Api\ParentController@requestReport` | مصادقة + دور: parent |
 | DELETE | `/api/parent/student/notifications/{id}` | `NotificationController@deleteNotification` | مصادقة + دور: parent |
 | GET | `/api/parent/student/{studentId}/assignments` | `StudentParentController@getAssignments` | مصادقة + دور: parent |
-| GET | `/api/parent/student/{studentId}/permissions` | `StudentParentController@getPermissions` | مصادقة + دور: parent |
 | GET | `/api/parent/summons` | `Api\ParentController@getMySummons` | مصادقة + دور: parent |
 | POST | `/api/parent/summons/{id}/respond` | `Api\ParentMeetingController@respondToSummon` | مصادقة + دور: parent |
 | DELETE | `/api/parent/teacher/notifications/{id}` | `NotificationController@deleteNotification` | مصادقة + دور: parent |

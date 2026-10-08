@@ -140,7 +140,7 @@ stateDiagram-v2
     rejected --> [*]
 ```
 
-> Exact status names differ slightly between `leave_requests` and `absence_requests`. See both tables in the data dictionary.
+> All leave requests live in `leave_requests` and run through one workflow (`LeaveWorkflow`) for the web, the Flutter app and the bot. The old `absence_requests` table was copied into it and dropped.
 
 ## 6) Chat
 

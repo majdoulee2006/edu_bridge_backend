@@ -140,7 +140,7 @@ stateDiagram-v2
     rejected --> [*]
 ```
 
-> أسماء الحالات الدقيقة تختلف قليلاً بين `leave_requests` و`absence_requests`. راجع الجدولين في قاموس البيانات.
+> كل طلبات الإجازة في `leave_requests` وتمر عبر مسار واحد (`LeaveWorkflow`) للويب وتطبيق Flutter والبوت. جدول `absence_requests` القديم نُسخ إليه ثم حُذف.
 
 ## 6) الدردشة
 
