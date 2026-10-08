@@ -486,6 +486,8 @@ class AffairsController extends Controller
             'role_id'   => 'required|integer|in:2,5', // معلم أو رئيس قسم فقط
             'password'  => 'required|min:6',
             'phone'     => 'nullable|string|max:20',
+            'gender'    => 'nullable|in:ذكر,أنثى',
+            'birth_date' => 'nullable|date|before:today',
         ]);
 
         if ($v->fails()) {
@@ -497,6 +499,9 @@ class AffairsController extends Controller
                 'department_id' => 'required|exists:departments,department_id'
             ]);
             if ($v2->fails()) return response()->json(['success' => false, 'message' => $v2->errors()->first()], 422);
+            if (DB::table('heads')->where('department_id', $request->department_id)->exists()) {
+                return response()->json(['success' => false, 'message' => 'هذا القسم له رئيس بالفعل. غيّر رئيس القسم من لوحة الأدمن.'], 422);
+            }
         } elseif ($request->role_id == 2) {
             $v3 = Validator::make($request->all(), [
                 'department_id'  => 'required|exists:departments,department_id',
@@ -520,6 +525,8 @@ class AffairsController extends Controller
             'email'      => $request->email,
             'phone'      => $request->phone,
             'role_id'    => $request->role_id,
+            'gender'     => $request->gender,
+            'birth_date' => $request->birth_date,
             'department' => $dept ? $dept->name : null,
             'password'   => Hash::make($request->password),
             'status'     => 'active',
