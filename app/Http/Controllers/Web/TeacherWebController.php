@@ -2448,4 +2448,51 @@ class TeacherWebController extends Controller
         $teacher = $this->getTeacher();
         return view('teacher.settings', compact('teacher'));
     }
+
+    // ────────────────────────────────────────────────────────────
+    //  ATTENDANCE FLAGS (اشتباهات الحضور: طابور مراجعة المعلّم)
+    // ────────────────────────────────────────────────────────────
+
+    public function attendanceFlags(Request $request, \App\Services\AttendanceIntelligence\FlagReviewService $flags)
+    {
+        $teacher   = $this->getTeacher();
+        $courseIds = $teacher ? DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id')->all() : [];
+
+        $status   = in_array($request->query('status'), ['open', 'confirmed', 'dismissed', 'all'], true) ? $request->query('status') : 'open';
+        $severity = in_array($request->query('severity'), ['low', 'medium', 'high'], true) ? $request->query('severity') : null;
+
+        $items = $flags->queryForCourses($courseIds, $status, $severity)->paginate(15)->withQueryString();
+
+        return view('teacher.attendance_flags', [
+            'items'    => $items,
+            'summary'  => $flags->openSummary($courseIds),
+            'status'   => $status,
+            'severity' => $severity,
+        ]);
+    }
+
+    public function reviewAttendanceFlag(Request $request, $id, \App\Services\AttendanceIntelligence\FlagReviewService $flags)
+    {
+        $data = $request->validate([
+            'decision'    => 'required|in:confirmed,dismissed',
+            'note'        => 'nullable|string|max:500',
+            'mark_absent' => 'nullable|boolean',
+        ]);
+
+        $teacher = $this->getTeacher();
+        $flag    = \App\Models\AttendanceFlag::find($id);
+
+        // اشتباه خارج مقرراتك يبدو غير موجود
+        abort_unless($flag && $teacher && \App\Support\Access::teacherTeachesCourse((int) $teacher->teacher_id, $flag->course_id), 404);
+
+        try {
+            $flags->review($flag, Auth::user(), $data['decision'], $data['note'] ?? null, $request->boolean('mark_absent'));
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', $data['decision'] === 'confirmed'
+            ? ($request->boolean('mark_absent') ? 'تم تأكيد الاشتباه وتسجيل الطالب غائبًا.' : 'تم تأكيد الاشتباه.')
+            : 'تم رفض الاشتباه (اعتُبر سلوكًا طبيعيًا).');
+    }
 }

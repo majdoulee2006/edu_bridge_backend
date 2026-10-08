@@ -438,6 +438,10 @@
                     <i class="fa-solid fa-sitemap"></i>
                     التنظيم
                 </a>
+                <a href="{{ url('/hod/attendance-insights') }}" class="nav-item {{ Request::is('hod/attendance-insights*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-chart-column"></i>
+                    تحليل الحضور
+                </a>
                 <a href="{{ url('/hod/accounts') }}" class="nav-item {{ Request::is('hod/accounts') ? 'active' : '' }}">
                     <i class="fa-solid fa-users"></i>
                     الحسابات

@@ -1986,4 +1986,42 @@ class HODWebController extends Controller
 
         return back()->with('success', 'تم حفظ رأي رئيس القسم بنجاح وتحويل الطلب إلى الإدارة.');
     }
+
+    // ────────────────────────────────────────────────────────────
+    //  ATTENDANCE INSIGHTS (تحليل الحضور: خريطة حرارية وترتيب، لقسم الرئيس فقط)
+    // ────────────────────────────────────────────────────────────
+
+    public function attendanceInsights(Request $request, \App\Services\AttendanceIntelligence\AttendanceAnalyticsService $analytics, \App\Services\AttendanceIntelligence\FlagReviewService $flags)
+    {
+        $request->validate([
+            'from'       => 'nullable|date',
+            'to'         => 'nullable|date|after_or_equal:from',
+            'program_id' => 'nullable|integer',
+        ]);
+
+        $user  = Auth::user();
+        $scope = $analytics->scopeCourseIds($user, $request->filled('program_id') ? (int) $request->program_id : null);
+
+        $to   = $request->filled('to') ? \Carbon\Carbon::parse($request->to) : now();
+        $from = $request->filled('from')
+            ? \Carbon\Carbon::parse($request->from)
+            : $to->copy()->subDays((int) config('attendance_intelligence.analytics.default_days', 42));
+
+        $deptId   = \App\Support\Access::headDepartment($user)['id'];
+        $programs = DB::table('programs')->when($deptId, fn ($q) => $q->where('department_id', $deptId))->orderBy('name')->get(['id', 'name']);
+
+        // آخر الاشتباهات المفتوحة في القسم (قراءة فقط؛ القرار للمعلّم)
+        $openFlags = ($scope === null || count($scope))
+            ? $flags->queryForCourses($scope ?? DB::table('courses')->pluck('course_id')->all(), 'open')->limit(8)->get()
+            : collect();
+
+        return view('hod.attendance_insights', [
+            'data'      => $analytics->build($scope, $from, $to),
+            'programs'  => $programs,
+            'programId' => $request->program_id,
+            'from'      => $from->toDateString(),
+            'to'        => $to->toDateString(),
+            'openFlags' => $openFlags,
+        ]);
+    }
 }
