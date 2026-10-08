@@ -356,14 +356,9 @@ class TeacherWebController extends Controller
         }
 
         $newToken = \Illuminate\Support\Str::random(32);
-        
-        DB::table('attendance_sessions')
-            ->where('id', $id)
-            ->update([
-                'qr_token'   => $newToken,
-                'expires_at' => now()->addSeconds(30),
-                'updated_at' => now(),
-            ]);
+
+        // يحتفظ بالرمز السابق مدة سماح قصيرة (انظر QrTokens) لتحمّل بطء خطوة الوجه عند الطالب
+        \App\Support\QrTokens::rotate((int) $id, $newToken);
 
         return response()->json([
             'success' => true,
