@@ -94,7 +94,6 @@
     @if($isPending && !empty($leave->id))
     <div class="leave-actions" style="display:flex;gap:1rem;">
         <form action="{{ route('hod.leaves.status', $leave->id) }}" method="POST" style="flex:1;">
-            <input type="hidden" name="source_table" value="{{ $leave->source_table ?? '' }}">
             @csrf
             <input type="hidden" name="status" value="rejected">
             <button type="submit" class="btn-reject" style="width:100%;">
@@ -102,7 +101,6 @@
             </button>
         </form>
         <form action="{{ route('hod.leaves.status', $leave->id) }}" method="POST" style="flex:1;">
-            <input type="hidden" name="source_table" value="{{ $leave->source_table ?? '' }}">
             @csrf
             <input type="hidden" name="status" value="approved">
             <button type="submit" class="btn-approve" style="width:100%;">

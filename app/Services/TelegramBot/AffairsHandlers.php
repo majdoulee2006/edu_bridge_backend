@@ -65,8 +65,7 @@ trait AffairsHandlers
         $totalStaff    = User::where('role_id', 6)->count();
         $totalParents  = Parents::count();
 
-        $pendingLeaves = DB::table('leave_requests')->whereIn('status', ['pending_affairs', 'pending'])->count()
-            + DB::table('absence_requests')->whereIn('status', ['pending_affairs', 'pending'])->count();
+        $pendingLeaves = DB::table('leave_requests')->where('status', 'pending_affairs')->count();
 
         $pendingPhotos = DB::table('photo_change_requests')->where('status', 'pending')->count();
         $pendingReqs   = StudentRequest::whereIn('status', ['pending_affairs', 'pending'])->count();
@@ -126,30 +125,10 @@ trait AffairsHandlers
                 'programs.name as program_name',
                 DB::raw("'leave_requests' as src_table")
             )
-            ->whereIn('leave_requests.status', ['pending_affairs', 'pending']);
+            ->where('leave_requests.status', LeaveWorkflow::STAGE_AFFAIRS)
+            ->orderByDesc('leave_requests.created_at');
 
-        // 2. absence_requests
-        $q2 = DB::table('absence_requests')
-            ->join('students', 'absence_requests.student_id', '=', 'students.student_id')
-            ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-            ->select(
-                'absence_requests.request_id as id',
-                'students.user_id as student_id',
-                DB::raw("'full_day' as type"),
-                'absence_requests.date',
-                'absence_requests.reason',
-                'absence_requests.status',
-                'absence_requests.created_at',
-                'users.full_name as student_name',
-                'students.level',
-                'students.student_code',
-                'programs.name as program_name',
-                DB::raw("'absence_requests' as src_table")
-            )
-            ->whereIn('absence_requests.status', ['pending_affairs', 'pending']);
-
-        $allLeaves = $q1->take(6)->get()->concat($q2->take(6)->get())->sortByDesc('created_at')->take(8);
+        $allLeaves = $q1->take(8)->get();
 
         if ($allLeaves->isEmpty()) {
             $this->sendMessage($chatId, "🌟 **لا توجد أي طلبات إجازة أو أعذار معلقة بانتظار موافقة الشؤون حالياً.**");
@@ -211,22 +190,12 @@ trait AffairsHandlers
 
     private function handleAffairsApproveLeave(User $user, $chatId, string $src, int $id)
     {
-        if ($src === 'leave_requests') {
-            $this->affairsDecideLeave($user, $chatId, $id, 'approved');
-            return;
-        }
-
-        $this->handleAffairsLegacyAbsenceDecision($user, $chatId, $id, 'approved');
+        $this->affairsDecideLeave($user, $chatId, $id, 'approved');
     }
 
     private function handleAffairsRejectLeave(User $user, $chatId, string $src, int $id)
     {
-        if ($src === 'leave_requests') {
-            $this->affairsDecideLeave($user, $chatId, $id, 'rejected');
-            return;
-        }
-
-        $this->handleAffairsLegacyAbsenceDecision($user, $chatId, $id, 'rejected');
+        $this->affairsDecideLeave($user, $chatId, $id, 'rejected');
     }
 
     /** نفس المسار والإشعارات في الويب والتطبيق: LeaveWorkflow::affairsRespond (مرحلة pending_affairs فقط). */
@@ -246,49 +215,6 @@ trait AffairsHandlers
             ? "✅ **تمت الموافقة النهائية على الإجازة.** تم إشعار الطالب وولي الأمر ورئيس القسم."
             : "🛑 **تم رفض الإجازة.** تم إشعار الطالب وولي الأمر ورئيس القسم.");
     }
-
-    /**
-     * السجلات القديمة في absence_requests (كانت تُنشأ من الويب والبوت قبل توحيد المسار على leave_requests):
-     * قرار الشؤون عليها يبقى متاحاً، لكن في مرحلتها فقط.
-     */
-    private function handleAffairsLegacyAbsenceDecision(User $user, $chatId, int $id, string $decision): void
-    {
-        $rec = DB::table('absence_requests')->where('request_id', $id)->first();
-        if (!$rec) {
-            $this->sendMessage($chatId, "❌ عذر الغياب غير موجود.");
-            return;
-        }
-        if (!in_array($rec->status, ['pending_affairs', 'pending'], true)) {
-            $this->sendMessage($chatId, "ℹ️ تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.");
-            return;
-        }
-
-        DB::table('absence_requests')->where('request_id', $id)->update(['status' => $decision, 'updated_at' => now()]);
-
-        $studentUserId = DB::table('students')->where('student_id', $rec->student_id)->value('user_id');
-        if ($studentUserId) {
-            $approved = $decision === 'approved';
-            $title = $approved ? 'تمت الموافقة النهائية على طلب الإذن' : 'تم رفض طلب الإذن';
-            $message = $approved
-                ? "تمت الموافقة على طلب إذنك بتاريخ {$rec->date} نهائياً من قِبل شؤون الطلاب."
-                : "نعتذر، تم رفض طلب إذنك بتاريخ {$rec->date} من قِبل إدارة شؤون الطلاب.";
-
-            Notification::create([
-                'user_id'    => $studentUserId,
-                'sender_id'  => $user->user_id,
-                'title'      => $title,
-                'message'    => $message,
-                'type'       => 'leave_request',
-                'category'   => 'administrative',
-                'related_id' => $id,
-                'is_read'    => false,
-            ]);
-            FcmService::sendToUser($studentUserId, $title, $message, ['type' => 'leave_request', 'related_id' => (string) $id]);
-        }
-
-        $this->sendMessage($chatId, $decision === 'approved' ? "✅ **تمت الموافقة النهائية على الطلب.**" : "🛑 **تم رفض الطلب.**");
-    }
-
 
     private function handleAffairsPhotoRequests(User $user, $chatId)
     {

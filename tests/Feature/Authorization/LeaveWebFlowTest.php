@@ -137,16 +137,16 @@ class LeaveWebFlowTest extends TestCase
         $this->assertSame('approved', $this->leaveStatus($mine));
     }
 
-    public function test_student_web_page_lists_unified_and_legacy_requests(): void
+    public function test_web_pages_show_only_the_unified_table(): void
     {
         $this->leave('pending_parent');
         DB::table('absence_requests')->insert([
             'student_id' => $this->student['student_id'], 'reason' => 'legacy one', 'date' => now()->toDateString(),
-            'status' => 'approved', 'created_at' => now(), 'updated_at' => now(),
+            'status' => 'pending_hod', 'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        $response = $this->actingAs($this->student['user'])->get('/student/leave-requests')->assertOk();
-
-        $this->assertCount(2, $response->viewData('requests'));
+        $this->assertCount(1, $this->actingAs($this->student['user'])->get('/student/leave-requests')->assertOk()->viewData('requests'));
+        $this->assertCount(1, $this->actingAs($this->parent['user'])->get('/parent/permissions')->assertOk()->viewData('requests'));
+        $this->assertCount(0, $this->actingAs($this->head)->get('/hod/leaves')->assertOk()->viewData('allLeaves'), 'only pending_parent exists in the new table, which the head must not see yet');
     }
 }

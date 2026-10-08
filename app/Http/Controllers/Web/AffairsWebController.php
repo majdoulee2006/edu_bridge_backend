@@ -3047,41 +3047,16 @@ class AffairsWebController extends Controller
             )
             ->whereIn('leave_requests.status', ['pending_affairs', 'approved', 'rejected']);
 
-        // Query 2: absence_requests
-        $q2 = DB::table('absence_requests')
-            ->join('students', 'absence_requests.student_id', '=', 'students.student_id')
-            ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
-            ->select(
-                'absence_requests.request_id as id',
-                'students.user_id as student_id',
-                DB::raw("'full_day' as type"),
-                'absence_requests.date',
-                'absence_requests.reason',
-                'absence_requests.status',
-                'absence_requests.created_at',
-                'absence_requests.updated_at',
-                'users.full_name as student_name',
-                'students.level',
-                'students.student_code',
-                'programs.name as program_name',
-                DB::raw("'absence_requests' as source_table")
-            )
-            ->whereIn('absence_requests.status', ['pending_affairs', 'approved', 'rejected']);
-
         // Department Filter
         if (!empty($deptId)) {
             $q1->where('programs.department_id', $deptId);
-            $q2->where('programs.department_id', $deptId);
         }
 
         // Date Filters
         if ($dateMode === 'single_date' && !empty($singleDate)) {
             $q1->whereDate('leave_requests.date', $singleDate);
-            $q2->whereDate('absence_requests.date', $singleDate);
         } elseif ($dateMode === 'date_range' && !empty($startDate) && !empty($endDate)) {
             $q1->whereBetween('leave_requests.date', [$startDate, $endDate]);
-            $q2->whereBetween('absence_requests.date', [$startDate, $endDate]);
         } elseif ($dateMode === 'week' && !empty($weekDate)) {
             try {
                 $carbonDate = \Carbon\Carbon::parse($weekDate);
@@ -3089,19 +3064,13 @@ class AffairsWebController extends Controller
                 $endOfWeek   = $carbonDate->copy()->endOfWeek(\Carbon\Carbon::SATURDAY)->format('Y-m-d');
 
                 $q1->whereBetween('leave_requests.date', [$startOfWeek, $endOfWeek]);
-                $q2->whereBetween('absence_requests.date', [$startOfWeek, $endOfWeek]);
             } catch (\Exception $e) {
                 // In case of invalid date input
             }
         }
 
-        $res1 = $q1->orderBy('leave_requests.created_at', 'desc')->take(10)->get();
-        $res2 = $q2->orderBy('absence_requests.created_at', 'desc')->take(10)->get();
-
-        $allMerged = $res1->concat($res2)->sortByDesc('created_at');
-
-        // Limit strictly to 10 latest records for server efficiency
-        $leaves = $allMerged->take(10);
+        // أحدث 10 طلبات (المسار الموحّد leave_requests)
+        $leaves = $q1->orderBy('leave_requests.created_at', 'desc')->take(10)->get();
 
         $pendingCount  = $leaves->whereIn('status', ['pending', 'pending_affairs'])->count();
         $approvedCount = $leaves->where('status', 'approved')->count();
@@ -3124,74 +3093,19 @@ class AffairsWebController extends Controller
 
     public function updateLeaveStatus(Request $request, $id)
     {
-        $request->validate(['status' => 'required|in:approved,rejected,recorded']);
+        $request->validate(['status' => 'required|in:approved,rejected']);
         $status = $request->status;
-        $sourceTable = $request->input('source_table', 'absence_requests');
 
-        // طلبات المسار الموحّد (leave_requests): القرار النهائي في مرحلة pending_affairs فقط (LeaveWorkflow::affairsRespond)
-        if ($sourceTable === 'leave_requests' && in_array($status, ['approved', 'rejected'], true)) {
-            $result = \App\Services\LeaveWorkflow::affairsRespond(Auth::user(), (int) $id, $status);
+        // المسار الموحّد: القرار النهائي في مرحلة pending_affairs فقط (LeaveWorkflow::affairsRespond)
+        $result = \App\Services\LeaveWorkflow::affairsRespond(Auth::user(), (int) $id, $status);
 
-            if (!$result['ok']) {
-                return back()->with('error', $result['error'] === 'stage'
-                    ? 'تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.'
-                    : 'الطلب غير موجود.');
-            }
-
-            return back()->with('success', 'تم تحديث حالة طلب الإجازة وإشعار الطالب وولي الأمر ورئيس القسم بالنتيجة النهائية.');
+        if (!$result['ok']) {
+            return back()->with('error', $result['error'] === 'stage'
+                ? 'تم البتّ في هذا الطلب مسبقاً أو لم يصل مرحلة الشؤون بعد.'
+                : 'الطلب غير موجود.');
         }
 
-        if ($sourceTable === 'leave_requests') {
-            $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
-            if ($leaveRequest) {
-                DB::table('leave_requests')->where('id', $id)->update(['status' => $status, 'updated_at' => now()]);
-            }
-        } else {
-            $leaveRequest = DB::table('absence_requests')->where('request_id', $id)->first();
-            if ($leaveRequest) {
-                DB::table('absence_requests')->where('request_id', $id)->update(['status' => $status, 'updated_at' => now()]);
-            }
-        }
-
-        if (!$leaveRequest) {
-            return back()->with('error', 'الطلب غير موجود.');
-        }
-
-        // تحديد الطالب المستهدف لإشعاره بالقرار النهائي
-        $studentUserId = null;
-        if (isset($leaveRequest->student_id)) {
-            // إذا كان المعرف يخزن student_id الخاص بجدول الطلاب
-            $stUser = DB::table('students')->where('student_id', $leaveRequest->student_id)->value('user_id');
-            $studentUserId = $stUser ?? $leaveRequest->student_id;
-        }
-
-        // الخطوة الأهم: إرسال الإشعار النهائي للطالب فقط عند موافقة أو رفض شؤون الطلاب
-        if ($studentUserId) {
-            $title   = $status === 'approved' ? 'تمت الموافقة النهائية على طلب الإذن ✓' : 'تم رفض طلب الإذن';
-            $message = $status === 'approved'
-                ? 'تهانينا، تمت الموافقة على طلب إذنك بتاريخ ' . $leaveRequest->date . ' نهائياً من قِبل ولي الأمر ورئيس القسم وشؤون الطلاب!'
-                : 'نعتذر، تم رفض طلب إذنك بتاريخ ' . $leaveRequest->date . ' من قِبل إدارة شؤون الطلاب.';
-
-            DB::table('notifications')->insert([
-                'user_id'    => $studentUserId,
-                'title'      => $title,
-                'message'    => $message,
-                'type'       => 'leave_request',
-                'related_id' => $id,
-                'is_read'    => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            \App\Services\FcmService::sendToUser(
-                $studentUserId,
-                $title,
-                $message,
-                ['type' => 'leave_request', 'related_id' => (string) $id]
-            );
-        }
-
-        return back()->with('success', 'تم تحديث حالة طلب الإجازة وإشعار الطالب بالنتيجة النهائية.');
+        return back()->with('success', 'تم تحديث حالة طلب الإجازة وإشعار الطالب وولي الأمر ورئيس القسم بالنتيجة النهائية.');
     }
 
     // ─────────────────────────── Messages ───────────────────────────

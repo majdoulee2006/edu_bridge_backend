@@ -732,7 +732,7 @@ class AiContextBuilder
             'latest'         => $latest,
             'device_resets'  => $deviceResets,
             'leaves'         => DB::table('leave_requests')->whereIn('status', ['pending_affairs', 'pending'])->count(),
-            'absence_excuses' => DB::table('absence_requests')->whereIn('status', ['pending_affairs', 'pending'])->count(),
+            'absence_excuses' => DB::table('leave_requests')->where('status', 'pending_affairs')->count(),
             'photo_changes'  => DB::table('photo_change_requests')->where('status', 'pending')->count(),
             'accounts'       => DB::table('users')->whereIn('role_id', [3, 4])->where('status', 'inactive')->count(),
         ]];

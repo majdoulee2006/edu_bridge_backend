@@ -311,7 +311,6 @@
                         <div class="action-buttons">
                             <form action="{{ route('parent.permissions.respond', $reqId) }}" method="POST" style="margin: 0;">
                                 @csrf
-                                <input type="hidden" name="source_table" value="{{ isset($req->request_id) ? 'absence_requests' : 'leave_requests' }}">
                                 <input type="hidden" name="status" value="approved">
                                 <button type="submit" class="btn-approve">
                                     <i class="fa-solid fa-check"></i> موافقة
@@ -320,7 +319,6 @@
                             
                             <form action="{{ route('parent.permissions.respond', $reqId) }}" method="POST" style="margin: 0;">
                                 @csrf
-                                <input type="hidden" name="source_table" value="{{ isset($req->request_id) ? 'absence_requests' : 'leave_requests' }}">
                                 <input type="hidden" name="status" value="rejected">
                                 <button type="submit" class="btn-reject">
                                     <i class="fa-solid fa-xmark"></i> رفض

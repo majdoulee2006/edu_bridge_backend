@@ -380,23 +380,25 @@ class TelegramServiceFlowsTest extends TestCase
         $this->assertSame('approved', DB::table('leave_requests')->where('id', $mine)->value('status'));
     }
 
-    public function test_affairs_can_decide_absence_requests_through_the_bot(): void
+    public function test_affairs_leave_list_shows_only_the_unified_table(): void
     {
-        // الزر يحمل اسم الجدول (absence_requests) ثم الرقم؛ كان الفصل بـ explode('_') يعطي مصدراً خاطئاً ورقماً صفر
+        // السجلات القديمة (absence_requests) تُنقل بالمايغريشن ولا تُعرض من الجدول القديم بعد الآن
         $this->actingChat($this->makeUser('affairs'));
-        $student = $this->makeStudent();
-        $mk = fn () => DB::table('absence_requests')->insertGetId([
-            'student_id' => $student['student_id'], 'date' => now()->toDateString(), 'reason' => 'r',
+        $student = $this->makeStudent(['full_name' => 'Unified Student']);
+        $legacyStudent = $this->makeStudent(['full_name' => 'Legacy Student']);
+        DB::table('leave_requests')->insert([
+            'student_id' => $student['user']->user_id, 'type' => 'full_day', 'date' => now()->toDateString(),
+            'reason' => 'r', 'status' => 'pending_affairs', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('absence_requests')->insert([
+            'student_id' => $legacyStudent['student_id'], 'date' => now()->toDateString(), 'reason' => 'r',
             'status' => 'pending_affairs', 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $toApprove = $mk();
-        $toReject  = $mk();
 
-        $this->press("affairs_approve_leave_absence_requests_{$toApprove}");
-        $this->press("affairs_reject_leave_absence_requests_{$toReject}");
+        $this->say('إجازات وأعذار الطلاب');
 
-        $this->assertSame('approved', DB::table('absence_requests')->where('request_id', $toApprove)->value('status'));
-        $this->assertSame('rejected', DB::table('absence_requests')->where('request_id', $toReject)->value('status'));
+        $this->assertStringContainsString('Unified Student', $this->sent());
+        $this->assertStringNotContainsString('Legacy Student', $this->sent());
     }
 
     public function test_affairs_student_request_decisions_follow_the_workflow(): void
