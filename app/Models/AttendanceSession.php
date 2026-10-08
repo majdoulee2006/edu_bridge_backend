@@ -24,6 +24,7 @@ class AttendanceSession extends Model
         'expires_at'         => 'datetime',
         'session_expires_at' => 'datetime',
         'is_active'          => 'boolean',
+        'previous_tokens'    => 'array',
         'closed_at'          => 'datetime',
         'analyzed_at'        => 'datetime',
     ];

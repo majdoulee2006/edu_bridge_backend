@@ -2060,7 +2060,8 @@ class StudentController extends Controller
             $token = $json['token'] ?? $json['qr_token'] ?? $token;
         }
 
-        $session = AttendanceSession::where('qr_token', $token)->first();
+        // الرمز الحالي، أو سابق استُبدل منذ أقل من مهلة السماح (الطالب يبطئ في خطوة الوجه بعد قراءة الـ QR)
+        $session = \App\Support\QrTokens::resolve($token);
 
         if (!$session) {
             return response()->json([
