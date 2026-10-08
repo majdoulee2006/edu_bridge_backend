@@ -458,25 +458,12 @@ class ParentWebController extends Controller
             return $this->parentView('parent.permissions', ['requests' => collect()]);
         }
 
-        $absenceRequests = DB::table('absence_requests')
-            ->where('student_id', $studentId)
+        $leaveRequests = DB::table('leave_requests')
+            ->where('student_id', $student->user_id ?? DB::table('students')->where('student_id', $studentId)->value('user_id'))
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $studentUser = DB::table('students')->where('student_id', $studentId)->first();
-        $leaveRequests = collect();
-        if (\Illuminate\Support\Facades\Schema::hasTable('leave_requests')) {
-            $query = DB::table('leave_requests')->where('student_id', $studentId);
-            if ($studentUser && $studentUser->user_id) {
-                $query->orWhere('student_id', $studentUser->user_id);
-            }
-            $leaveRequests = $query->orderBy('created_at', 'desc')->get();
-        }
-
-        $requests = $absenceRequests->concat($leaveRequests)->unique(function ($item) {
-            $id = $item->request_id ?? $item->id ?? 0;
-            return ($item->date ?? '') . '_' . ($item->reason ?? '') . '_' . $id;
-        })->sortByDesc('created_at')->values();
+        $requests = $leaveRequests->sortByDesc('created_at')->values();
 
         return $this->parentView('parent.permissions', compact('requests', 'student'));
     }
@@ -485,129 +472,20 @@ class ParentWebController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
 
-        // طلبات المسار الموحّد (leave_requests): ابنه فقط، ومرحلة pending_parent فقط
-        if ($request->input('source_table') === 'leave_requests') {
-            $result = \App\Services\LeaveWorkflow::parentRespond(auth()->user(), (int) $id, $request->status);
+        // المسار الموحّد: ابنه فقط، ومرحلة pending_parent فقط
+        $result = \App\Services\LeaveWorkflow::parentRespond(auth()->user(), (int) $id, $request->status);
 
-            if (!$result['ok']) {
-                return back()->with('error', match ($result['error']) {
-                    'forbidden' => 'غير مصرح لك بالرد على هذا الطلب.',
-                    'stage'     => 'تم الرد على هذا الطلب مسبقاً.',
-                    default     => 'الطلب غير موجود.',
-                });
-            }
-
-            return back()->with('success', $request->status === 'approved'
-                ? 'تمت موافقة ولي الأمر بنجاح وتحويل الطلب لرئيس القسم.'
-                : 'تم رفض طلب الإذن وإيقاف المسار.');
+        if (!$result['ok']) {
+            return back()->with('error', match ($result['error']) {
+                'forbidden' => 'غير مصرح لك بالرد على هذا الطلب.',
+                'stage'     => 'تم الرد على هذا الطلب مسبقاً.',
+                default     => 'الطلب غير موجود.',
+            });
         }
 
-        $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
-        if (!$absenceRequest) {
-            return back()->with('error', 'الطلب غير موجود.');
-        }
-
-        $parent = $this->getParentRecord();
-        $user = auth()->user();
-        // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
-        $absenceStudentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
-        $linked = DB::table('parent_students')
-            ->where(function ($q) use ($user, $parent) {
-                $q->where('parent_id', $user->user_id);
-                if ($parent) {
-                    $q->orWhere('parent_id', $parent->parent_id);
-                }
-            })
-            ->where(function ($q) use ($absenceRequest, $absenceStudentUserId) {
-                $q->where('student_id', $absenceRequest->student_id);
-                if ($absenceStudentUserId) {
-                    $q->orWhere('student_id', $absenceStudentUserId);
-                }
-            })
-            ->exists();
-
-        if (!$linked) {
-            return back()->with('error', 'غير مصرح لك بالرد على هذا الطلب.');
-        }
-
-        if ($request->status === 'rejected') {
-            // إذا رفض ولي الأمر: إيقاف المسار وإشعار للطالب فقط
-            DB::table('absence_requests')
-                ->where('request_id', $id)
-                ->update([
-                    'status'     => 'rejected',
-                    'updated_at' => now(),
-                ]);
-
-            if ($absenceRequest->student_id) {
-                $studentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
-                if ($studentUserId) {
-                    DB::table('notifications')->insert([
-                        'user_id'    => $studentUserId,
-                        'title'      => 'تم رفض طلب الإذن',
-                        'message'    => 'تم رفض طلب إذنك بتاريخ ' . $absenceRequest->date . ' من قِبل ولي الأمر.',
-                        'type'       => 'leave_request',
-                        'related_id' => $id,
-                        'is_read'    => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-            }
-
-            return back()->with('success', 'تم رفض طلب الإذن وإيقاف المسار.');
-        } else {
-            // إذا وافق ولي الأمر: تحويل الطلب لرئيس القسم (pending_hod)
-            DB::table('absence_requests')
-                ->where('request_id', $id)
-                ->update([
-                    'status'     => 'pending_hod',
-                    'updated_at' => now(),
-                ]);
-
-            $studentName = 'الطالب';
-            if ($absenceRequest->student_id) {
-                $studentUser = DB::table('students')
-                    ->join('users', 'students.user_id', '=', 'users.user_id')
-                    ->where('students.student_id', $absenceRequest->student_id)
-                    ->select('users.user_id', 'users.full_name')
-                    ->first();
-
-                if ($studentUser) {
-                    $studentName = $studentUser->full_name;
-                }
-            }
-
-            // إرسال الإشعار لرؤساء الأقسام (HOD) - الخطوة 2 في المسار
-            $hodUserIds = DB::table('users')->where('role_id', 5)
-                ->pluck('user_id')
-                ->merge(DB::table('heads')->pluck('user_id'))
-                ->unique();
-
-            foreach ($hodUserIds as $hId) {
-                if ($hId) {
-                    DB::table('notifications')->insert([
-                        'user_id'    => $hId,
-                        'title'      => 'طلب إذن بانتظار موافقتك',
-                        'message'    => 'وافق ولي الأمر على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $absenceRequest->date . '، يرجى مراجعته والموافقة عليه.',
-                        'type'       => 'leave_request',
-                        'category'   => 'administrative',
-                        'related_id' => $id,
-                        'is_read'    => 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    \App\Services\FcmService::sendToUser(
-                        $hId,
-                        'طلب إذن بانتظار موافقتك',
-                        'وافق ولي الأمر على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $absenceRequest->date . '، يرجى مراجعته والموافقة عليه.',
-                        ['type' => 'leave_request', 'related_id' => (string)$id]
-                    );
-                }
-            }
-
-            return back()->with('success', 'تمت موافقة ولي الأمر بنجاح وتحويل الطلب لرئيس القسم.');
-        }
+        return back()->with('success', $request->status === 'approved'
+            ? 'تمت موافقة ولي الأمر بنجاح وتحويل الطلب لرئيس القسم.'
+            : 'تم رفض طلب الإذن وإيقاف المسار.');
     }
 
     public function submitLeaveRequest(Request $request)

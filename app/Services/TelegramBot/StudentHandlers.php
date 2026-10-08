@@ -598,15 +598,6 @@ trait StudentHandlers
             ->select('type', 'date', 'reason', 'status', 'created_at')
             ->get();
 
-        // السجلات القديمة (جدول absence_requests) تبقى ظاهرة للطالب
-        $studentId = $user->student->student_id ?? null;
-        if ($studentId) {
-            $rows = $rows->concat(
-                DB::table('absence_requests')->where('student_id', $studentId)
-                    ->select(DB::raw("'full_day' as type"), 'date', 'reason', 'status', 'created_at')->get()
-            );
-        }
-
         $rows = $rows->sortByDesc('created_at')->take(6)->values();
 
         if ($rows->isEmpty()) {

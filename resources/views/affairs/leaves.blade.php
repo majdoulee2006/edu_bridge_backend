@@ -364,13 +364,11 @@
                     @if(in_array($leave->status, ['pending', 'pending_hod', 'pending_affairs', 'pending_parent']))
                         <form method="POST" action="{{ route('affairs.leaves.status', $leave->id) }}" style="flex:1;">
                             @csrf
-                            <input type="hidden" name="source_table" value="{{ $leave->source_table ?? 'absence_requests' }}">
                             <input type="hidden" name="status" value="approved">
                             <button type="submit" class="btn-action btn-approve" style="width:100%;"><i class="fa-solid fa-check"></i> اعتماد المبرر</button>
                         </form>
                         <form method="POST" action="{{ route('affairs.leaves.status', $leave->id) }}" style="flex:1;">
                             @csrf
-                            <input type="hidden" name="source_table" value="{{ $leave->source_table ?? 'absence_requests' }}">
                             <input type="hidden" name="status" value="rejected">
                             <button type="submit" class="btn-action btn-reject" style="width:100%;"><i class="fa-solid fa-xmark"></i> رفض</button>
                         </form>

@@ -403,7 +403,7 @@
                     <i class="fa-solid fa-calendar-check"></i>
                     طلبات الإجازة
                     @php
-                        $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('absence_requests')->where('status', 'pending_hod')->count();
+                        $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('leave_requests')->where('status', 'pending_hod')->count();
                     @endphp
                     @if($pendingLeavesCount > 0)
                         <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $pendingLeavesCount }}</span>

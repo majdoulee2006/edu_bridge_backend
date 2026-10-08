@@ -368,26 +368,7 @@ class HODWebController extends Controller
             ->where('leave_requests.status', '!=', 'pending_parent')
             ->get();
 
-        $fromAbsenceTable = DB::table('absence_requests')
-            ->join('students', 'absence_requests.student_id', '=', 'students.student_id')
-            ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->select(
-                'absence_requests.request_id as id',
-                DB::raw('"طلب غياب" as type'),
-                'absence_requests.date',
-                'absence_requests.reason',
-                'absence_requests.status',
-                'absence_requests.created_at',
-                'absence_requests.updated_at',
-                'users.full_name as student_name',
-                'students.level',
-                'students.student_code',
-                DB::raw("'absence_requests' as source_table")
-            )
-            ->where('absence_requests.status', '!=', 'pending_parent')
-            ->get();
-
-        $allLeaves = $fromLeaveTable->concat($fromAbsenceTable)->sortByDesc('created_at');
+        $allLeaves = $fromLeaveTable->sortByDesc('created_at');
 
         return view('hod.leaves', compact('allLeaves'));
     }
@@ -397,119 +378,22 @@ class HODWebController extends Controller
      */
     public function updateLeaveStatus(Request $request, $id)
     {
-        $status = $request->input('status'); // 'approved' or 'rejected'
+        $request->validate(['status' => 'required|in:approved,rejected']);
+        $status = $request->input('status');
 
-        // طلبات المسار الموحّد (leave_requests): قسم الطالب ومرحلة pending_hod (LeaveWorkflow::hodRespond)
-        // الرقمان في الجدولين يتشابهان، فالجدول يُحدَّد صراحةً (source_table) بدل التخمين بالرقم.
-        if ($request->input('source_table') === 'leave_requests' && in_array($status, ['approved', 'rejected'], true)) {
-            $result = \App\Services\LeaveWorkflow::hodRespond(Auth::user(), (int) $id, $status);
+        // المسار الموحّد: قسم الطالب ومرحلة pending_hod (LeaveWorkflow::hodRespond)
+        $result = \App\Services\LeaveWorkflow::hodRespond(Auth::user(), (int) $id, $status);
 
-            if (!$result['ok']) {
-                if ($result['error'] === 'forbidden') {
-                    abort(403, 'هذا الطلب لا يخص طلاب قسمك.');
-                }
-                return back()->with('error', $result['error'] === 'stage' ? 'لا يمكن معالجة هذا الطلب في مرحلته الحالية.' : 'الطلب غير موجود.');
+        if (!$result['ok']) {
+            if ($result['error'] === 'forbidden') {
+                abort(403, 'هذا الطلب لا يخص طلاب قسمك.');
             }
-
-            return back()->with('success', $status === 'approved'
-                ? 'تمت موافقة رئيس القسم بنجاح وتحويل الطلب لشؤون الطلاب للاعتماد النهائي.'
-                : 'تم رفض طلب الإذن وإيقاف مساره بنجاح.');
+            return back()->with('error', $result['error'] === 'stage' ? 'لا يمكن معالجة هذا الطلب في مرحلته الحالية.' : 'الطلب غير موجود.');
         }
 
-        $leaveRequest = DB::table('leave_requests')->where('id', $id)->first();
-        $table = 'leave_requests';
-        $idCol = 'id';
-        $studentUserId = null;
-        $reqDate = null;
-
-        if ($leaveRequest) {
-            $studentUserId = $leaveRequest->student_id;
-            $reqDate = $leaveRequest->date;
-        } else {
-            $absenceRequest = DB::table('absence_requests')->where('request_id', $id)->first();
-            if ($absenceRequest) {
-                $leaveRequest = $absenceRequest;
-                $table = 'absence_requests';
-                $idCol = 'request_id';
-                $studentUserId = DB::table('students')->where('student_id', $absenceRequest->student_id)->value('user_id');
-                $reqDate = $absenceRequest->date;
-            } else {
-                return back()->with('error', 'الطلب غير موجود.');
-            }
-        }
-
-        // الطالب يجب أن يكون ضمن قسم رئيس القسم
-        if (!$studentUserId || !\App\Support\Access::headManagesUser(Auth::user(), $studentUserId)) {
-            abort(403, 'هذا الطلب لا يخص طلاب قسمك.');
-        }
-
-        // المرحلة الصحيحة: رئيس القسم يردّ فقط بعد موافقة ولي الأمر (لا قفز بين المراحل)
-        if (($leaveRequest->status ?? null) !== 'pending_hod') {
-            return back()->with('error', 'لا يمكن معالجة هذا الطلب في مرحلته الحالية.');
-        }
-
-        if (!in_array($status, ['approved', 'rejected'], true)) {
-            return back()->with('error', 'قيمة الحالة غير صالحة.');
-        }
-
-        if ($status === 'rejected') {
-            DB::table($table)
-                ->where($idCol, $id)
-                ->update(['status' => 'rejected', 'updated_at' => now()]);
-
-            if ($studentUserId) {
-                DB::table('notifications')->insert([
-                    'user_id'    => $studentUserId,
-                    'title'      => 'تم رفض طلب الإذن/الإجازة',
-                    'message'    => 'تم رفض طلب إذنك بتاريخ ' . $reqDate . ' من قِبل رئيس القسم.',
-                    'type'       => 'leave_request',
-                    'related_id' => (string)$id,
-                    'is_read'    => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            return back()->with('success', 'تم رفض طلب الإذن وإيقاف مساره بنجاح.');
-        } else {
-            DB::table($table)
-                ->where($idCol, $id)
-                ->update(['status' => 'pending_affairs', 'updated_at' => now()]);
-
-            $studentName = DB::table('users')->where('user_id', $studentUserId)->value('full_name') ?? 'الطالب';
-
-            $affairsUserIds = DB::table('users')->where('role_id', 6)->pluck('user_id');
-            foreach ($affairsUserIds as $aId) {
-                if ($aId) {
-                    $alreadyNotified = DB::table('notifications')
-                        ->where('user_id', $aId)
-                        ->where('type', 'leave_request')
-                        ->where('related_id', (string)$id)
-                        ->exists();
-                    if (!$alreadyNotified) {
-                        DB::table('notifications')->insert([
-                            'user_id'    => $aId,
-                            'title'      => 'طلب إذن جديد بانتظار الاعتماد النهائي',
-                            'message'    => 'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $reqDate . '، يرجى مراجعته والتثبيت النهائي.',
-                            'type'       => 'leave_request',
-                            'category'   => 'administrative',
-                            'related_id' => (string)$id,
-                            'is_read'    => 0,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                        \App\Services\FcmService::sendToUser(
-                            $aId,
-                            'طلب إذن بانتظار الاعتماد',
-                            'وافق ولي الأمر ورئيس القسم على طلب إذن الطالب ' . $studentName . ' بتاريخ ' . $reqDate . '، يرجى التثبيت.',
-                            ['type' => 'leave_request', 'related_id' => (string)$id]
-                        );
-                    }
-                }
-            }
-
-            return back()->with('success', 'تمت موافقة رئيس القسم بنجاح وتحويل الطلب لشؤون الطلاب للاعتماد النهائي.');
-        }
+        return back()->with('success', $status === 'approved'
+            ? 'تمت موافقة رئيس القسم بنجاح وتحويل الطلب لشؤون الطلاب للاعتماد النهائي.'
+            : 'تم رفض طلب الإذن وإيقاف مساره بنجاح.');
     }
 
     /**

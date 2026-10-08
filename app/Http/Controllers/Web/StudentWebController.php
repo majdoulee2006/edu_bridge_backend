@@ -953,18 +953,15 @@ class StudentWebController extends Controller
     {
         $student = $this->getStudent();
 
-        // الطلبات الجديدة في leave_requests (المسار الموحّد مع التطبيق والبوت) + السجلات القديمة في absence_requests
-        $current = DB::table('leave_requests')
+        // المسار الموحّد: leave_requests فقط (أُنقلت السجلات القديمة إليه بمايغريشن)
+        $requests = DB::table('leave_requests')
             ->where('student_id', $student->user_id)
+            ->orderByDesc('created_at')
             ->get()
             ->map(fn ($l) => (object) [
-                'id' => $l->id, 'request_id' => null, 'date' => $l->date, 'reason' => $l->reason,
+                'id' => $l->id, 'date' => $l->date, 'reason' => $l->reason,
                 'document' => $l->attachment, 'status' => $l->status, 'created_at' => $l->created_at,
             ]);
-
-        $legacy = DB::table('absence_requests')->where('student_id', $student->student_id)->get();
-
-        $requests = $current->concat($legacy)->sortByDesc('created_at')->values();
 
         return view('student.leave_requests', compact('requests', 'student'));
     }

@@ -528,7 +528,7 @@
                 </a>
                 <a href="{{ url('/affairs/leaves') }}" class="nav-item {{ Request::is('affairs/leaves') ? 'active' : '' }}" style="display:flex; align-items:center; justify-content:space-between;">
                     <span><i class="fa-solid fa-file-signature"></i> {{ __('messages.leave_requests') }}</span>
-                    @php $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('absence_requests')->where('status', 'pending_affairs')->count(); @endphp
+                    @php $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('leave_requests')->where('status', 'pending_affairs')->count(); @endphp
                     @if($pendingLeavesCount > 0)
                         <span style="background:#ef4444; color:white; border-radius:2rem; padding:0.1rem 0.55rem; font-size:0.75rem; font-weight:800;">{{ $pendingLeavesCount }}</span>
                     @endif
