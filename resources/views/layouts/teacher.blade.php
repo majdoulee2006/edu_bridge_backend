@@ -457,6 +457,10 @@
                     <i class="fa-solid fa-clipboard-user"></i>
                     الحضور والغياب
                 </a>
+                <a href="{{ url('/teacher/attendance-flags') }}" class="nav-item {{ Request::is('teacher/attendance-flags*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i>
+                    اشتباهات الحضور
+                </a>
                 <a href="{{ url('/teacher/assignments') }}" class="nav-item {{ Request::is('teacher/assignments') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-pen"></i>
                     الواجبات والمشاريع

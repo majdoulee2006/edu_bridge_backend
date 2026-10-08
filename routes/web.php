@@ -114,6 +114,9 @@ Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('t
 Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::class])->group(function () {
     Route::get('/', fn() => redirect()->route('teacher.dashboard'));
     Route::get('/dashboard', [TeacherWebController::class, 'dashboard'])->name('teacher.dashboard');
+    // اشتباهات الحضور (أنماط مشبوهة بعد إغلاق الجلسات)
+    Route::get('/attendance-flags', [TeacherWebController::class, 'attendanceFlags'])->name('teacher.attendance_flags');
+    Route::post('/attendance-flags/{id}/review', [TeacherWebController::class, 'reviewAttendanceFlag'])->name('teacher.attendance_flags.review');
 
     // الجداول
     Route::get('/schedule', [TeacherWebController::class, 'schedule'])->name('teacher.schedule');
@@ -195,6 +198,7 @@ Route::post('/hod/logout', [HODWebController::class, 'logout'])->name('hod.logou
 Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->group(function () {
     Route::get('/', function() { return redirect()->route('hod.dashboard'); });
     Route::get('/dashboard', [HODWebController::class, 'dashboard'])->name('hod.dashboard');
+    Route::get('/attendance-insights', [HODWebController::class, 'attendanceInsights'])->name('hod.attendance_insights');
     Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
     Route::post('/profile/send-otp', [HODWebController::class, 'sendOTP'])->name('hod.profile.send_otp');
