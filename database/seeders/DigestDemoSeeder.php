@@ -9,107 +9,205 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * بيانات تجريبية لتجربة الملخص الأسبوعي: ولي أمر واحد وطفلان في الأسبوع الحالي.
- *   - ليان: أسبوع جيد.
- *   - عمر: غياب متكرر وواجبات فائتة وعلامة منخفضة (نبرة "يحتاج متابعة").
+ * عائلة تجريبية لتجربة الملخص الأسبوعي، بحسابات بأسماء حقيقية على نمط ملف accounts.xlsx:
+ *   ولي الأمر: ابو عمر الحداد   (aboomaralhaddad@edu-bridge.com / pass123)
+ *   ليان الحداد (2026017): أسبوع جيد.
+ *   عمر الحداد  (2026018): غياب متكرر وواجبات فائتة وعلامة منخفضة (يحتاج متابعة).
+ *
+ * الحسابات تُنشأ أو تُحدَّث (آمن لإعادة التشغيل)، ونشاط الأسبوع الحالي يُعاد توليده في كل تشغيل
+ * داخل مادتين خاصتين بهما فقط، فلا تظهر بياناتهما لأي طالب آخر.
  *
  * التشغيل:   php artisan db:seed --class=DigestDemoSeeder
- * الحذف:     DIGEST_DEMO_CLEAN=1 php artisan db:seed --class=DigestDemoSeeder
- *
- * كل ما يُنشأ يحمل البادئة demo.digest أو DEMO في الاسم ليسهل حذفه، ولا يلمس أي بيانات حقيقية.
+ * الحذف الكامل (الحسابات والنشاط):  DIGEST_DEMO_CLEAN=1 php artisan db:seed --class=DigestDemoSeeder
  */
 class DigestDemoSeeder extends Seeder
 {
-    public const PASSWORD = 'Demo@12345';
-    private const USER_PREFIX = 'demo.digest.';
+    public const PASSWORD = 'pass123';
+
+    private const PARENT = [
+        'name' => 'ابو عمر الحداد', 'username' => 'aboomaralhaddad@edu-bridge.com',
+        'email' => 'aboomaralhaddad@gmail.com', 'phone' => '0944123456',
+    ];
+
+    private const KIDS = [
+        'layan' => ['name' => 'ليان الحداد', 'uid' => '2026017', 'gender' => 'أنثى', 'email' => 'layanalhaddad@gmail.com', 'phone' => '0944123457', 'birth' => '2007-03-14'],
+        'omar'  => ['name' => 'عمر الحداد',  'uid' => '2026018', 'gender' => 'ذكر',  'email' => 'omaralhaddad@gmail.com',  'phone' => '0944123458', 'birth' => '2006-11-02'],
+    ];
+
+    private const DEPARTMENT = 'نظم المعلومات الحاسوبية';
+    private const YEAR       = 'السنة الأولى';
+
+    /** مادتا النشاط الخاصتان بالعرض؛ تُحذفان وتُنشآن من جديد في كل تشغيل. */
+    private const COURSES = ['layan' => 'شبكات الحاسوب (حساب تجريبي)', 'omar' => 'قواعد البيانات (حساب تجريبي)'];
 
     public function run(): void
     {
-        $this->clean();
+        $this->cleanActivity();
+        $this->deleteUsers(DB::table('users')->where('username', 'like', 'demo.digest.%')->pluck('user_id')); // بقايا النسخة الأولى
 
         if (env('DIGEST_DEMO_CLEAN')) {
-            $this->command?->info('تم حذف بيانات الملخص التجريبية.');
+            $this->cleanAccounts();
+            $this->command?->info('تم حذف حسابات ونشاط الملخص التجريبي.');
 
             return;
         }
 
         $teacherId = DB::table('teachers')->orderBy('teacher_id')->value('teacher_id');
-        $programId = DB::table('programs')->orderBy('id')->value('id');
         if (!$teacherId) {
             $this->command?->error('يلزم وجود معلم واحد على الأقل في القاعدة.');
 
             return;
         }
 
-        // مادة تجريبية مستقلة: الواجبات مرتبطة بالمادة، فلا نستعمل مادة حقيقية كي لا تظهر واجبات DEMO لطلاب حقيقيين
-        // مادة لكل طفل حتى لا تظهر واجبات أحدهما في ملخص الآخر
-        $newCourse = fn (string $title) => DB::table('courses')->insertGetId([
-            'title' => $title, 'level' => '1', 'created_at' => now(), 'updated_at' => now(),
-        ]);
-        $courseL = $newCourse('DEMO شبكات الحاسوب');
-        $courseO = $newCourse('DEMO قواعد البيانات');
-
-        $week = DigestBuilder::weekStartFor(now());         // الأحد
-        $day  = fn (int $n) => $week->copy()->addDays($n);  // 0=الأحد ... 4=الخميس
+        // برنامج "معلوماتية" كما في ملف الحسابات (وإلا أول برنامج متاح)
+        $programId = DB::table('programs')->where('name', 'معلوماتية')->value('id')
+            ?? DB::table('programs')->orderBy('id')->value('id');
 
         // --- الحسابات ---
-        $parent = $this->user(4, 'parent', 'ولي أمر تجريبي');
-        DB::table('parents')->insert(['user_id' => $parent, 'created_at' => now(), 'updated_at' => now()]);
+        $parentUserId = $this->account(4, self::PARENT['name'], self::PARENT['username'], self::PARENT['email'], self::PARENT['phone']);
+        if (!DB::table('parents')->where('user_id', $parentUserId)->exists()) {
+            DB::table('parents')->insert(['user_id' => $parentUserId, 'created_at' => now(), 'updated_at' => now()]);
+        }
 
-        $layan = $this->student('layan', 'ليان التجريبية', $programId);
-        $omar  = $this->student('omar', 'عمر التجريبي', $programId);
-        foreach ([[$layan, $courseL], [$omar, $courseO]] as [$s, $cid]) {
-            DB::table('parent_students')->insert([
-                'parent_id' => $parent, 'student_id' => $s['user_id'],
-                'created_at' => now(), 'updated_at' => now(),
+        $kids = [];
+        foreach (self::KIDS as $key => $k) {
+            $userId = $this->account(3, $k['name'], $k['uid'], $k['email'], $k['phone'], [
+                'university_id' => $k['uid'], 'department' => self::DEPARTMENT, 'academic_year' => self::YEAR,
+                'gender' => $k['gender'], 'birth_date' => $k['birth'],
+            ]);
+            $studentId = DB::table('students')->where('user_id', $userId)->value('student_id')
+                ?? DB::table('students')->insertGetId([
+                    'user_id' => $userId, 'student_code' => $k['uid'], 'level' => self::YEAR,
+                    'program_id' => $programId, 'birth_date' => $k['birth'],
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+
+            DB::table('parent_students')->updateOrInsert(
+                ['parent_id' => $parentUserId, 'student_id' => $userId],
+                ['relationship' => 'father', 'created_at' => now(), 'updated_at' => now()]
+            );
+
+            $kids[$key] = ['user_id' => $userId, 'student_id' => $studentId];
+        }
+
+        // --- نشاط الأسبوع الحالي ---
+        $week = DigestBuilder::weekStartFor(now());          // الأحد
+        $day  = fn (int $n) => $week->copy()->addDays($n);   // 0=الأحد ... 4=الخميس
+
+        $course = [];
+        foreach (self::COURSES as $key => $title) {
+            $course[$key] = DB::table('courses')->insertGetId([
+                'title' => $title, 'level' => '1', 'created_at' => now(), 'updated_at' => now(),
             ]);
             DB::table('enrollments')->insert([
-                'student_id' => $s['student_id'], 'course_id' => $cid,
+                'student_id' => $kids[$key]['student_id'], 'course_id' => $course[$key],
                 'enrollment_date' => now()->toDateString(), 'status' => 'active',
             ]);
         }
 
-        // --- ليان: أسبوع جيد ---
+        // ليان: أسبوع جيد
+        $L = $kids['layan']['student_id'];
         foreach (range(0, 4) as $d) {
-            $this->attend($layan['student_id'], $courseL, 'present', $day($d));
+            $this->attend($L, $course['layan'], 'present', $day($d));
         }
         foreach ([[0, 'present'], [1, 'present'], [2, 'present'], [3, 'present'], [4, 'absent']] as [$d, $st]) {
-            $this->attend($layan['student_id'], $courseL, $st, $day($d)->subDays(7));
+            $this->attend($L, $course['layan'], $st, $day($d)->subDays(7));
         }
-        foreach ([1, 3] as $d) {
-            $a = $this->assignment($courseL, $teacherId, "DEMO واجب ليان {$d}", $day($d)->setTime(23, 59));
-            $this->submit($a, $layan['student_id'], $day($d)->setTime(10, 0));
+        foreach ([[1, 'الواجب الأول: تمديد الشبكات'], [3, 'الواجب الثاني: عناوين IP']] as [$d, $title]) {
+            $a = $this->assignment($course['layan'], $teacherId, $title, $day($d)->setTime(23, 59));
+            $this->submit($a, $L, $day($d)->setTime(10, 0));
         }
-        $this->assignment($courseL, $teacherId, 'DEMO مشروع قادم', now()->addDays(4)->setTime(12, 0));
-        $this->grade($courseL, $teacherId, $layan['student_id'], 'DEMO اختبار قصير', 20, 18, $day(2));
+        $this->assignment($course['layan'], $teacherId, 'مشروع تصميم شبكة', now()->addDays(4)->setTime(12, 0));
+        $this->grade($course['layan'], $teacherId, $L, 'اختبار قصير', 20, 18, $day(2));
 
-        // --- عمر: يحتاج متابعة ---
+        // عمر: يحتاج متابعة
+        $O = $kids['omar']['student_id'];
         foreach ([[0, 'present'], [1, 'absent'], [2, 'absent'], [3, 'absent'], [4, 'late']] as [$d, $st]) {
-            $this->attend($omar['student_id'], $courseO, $st, $day($d));
+            $this->attend($O, $course['omar'], $st, $day($d));
         }
         foreach (range(0, 4) as $d) {
-            $this->attend($omar['student_id'], $courseO, 'present', $day($d)->subDays(7));
+            $this->attend($O, $course['omar'], 'present', $day($d)->subDays(7));
         }
-        foreach ([0, 1, 2] as $d) {
-            $this->assignment($courseO, $teacherId, "DEMO واجب عمر {$d}", $day($d)->setTime(23, 59));
+        foreach ([[0, 'الواجب الأول: النمذجة'], [1, 'الواجب الثاني: SQL'], [2, 'الواجب الثالث: الفهارس']] as [$d, $title]) {
+            $this->assignment($course['omar'], $teacherId, $title, $day($d)->setTime(23, 59));
         }
-        $this->grade($courseO, $teacherId, $omar['student_id'], 'DEMO اختبار قصير', 20, 9, $day(2));
-        $this->grade($courseO, $teacherId, $omar['student_id'], 'DEMO اختبار سابق', 20, 15, $day(2)->subDays(7));
+        $this->grade($course['omar'], $teacherId, $O, 'اختبار قصير', 20, 9, $day(2));
+        $this->grade($course['omar'], $teacherId, $O, 'اختبار سابق', 20, 15, $day(2)->subDays(7));
 
-        $this->command?->info('تم إنشاء البيانات التجريبية.');
-        $this->command?->table(['الحساب', 'اسم الدخول', 'كلمة المرور'], [
-            ['ولي الأمر', self::USER_PREFIX . 'parent', self::PASSWORD],
+        $this->command?->info('تم إنشاء حسابات العائلة ونشاط الأسبوع الحالي.');
+        $this->command?->table(['الحساب', 'اسم الدخول', 'كلمة السر'], [
+            ['ولي الأمر - ' . self::PARENT['name'], self::PARENT['username'], self::PASSWORD],
+            ['الابنة - ' . self::KIDS['layan']['name'], self::KIDS['layan']['uid'], self::PASSWORD],
+            ['الابن - ' . self::KIDS['omar']['name'], self::KIDS['omar']['uid'], self::PASSWORD],
         ]);
     }
 
-    private function clean(): void
+    // ------------------------------------------------------------------ حسابات
+
+    private function familyUserIds()
     {
-        $userIds = DB::table('users')->where('username', 'like', self::USER_PREFIX . '%')->pluck('user_id');
+        $usernames = [self::PARENT['username'], self::KIDS['layan']['uid'], self::KIDS['omar']['uid']];
+
+        return DB::table('users')->whereIn('username', $usernames)->pluck('user_id');
+    }
+
+    /** ينشئ المستخدم أو يحدّثه حسب اسم الدخول، ويرجع user_id. */
+    private function account(int $roleId, string $name, string $username, string $email, string $phone, array $extra = []): int
+    {
+        $existing = DB::table('users')->where('username', $username)->value('user_id');
+
+        $data = array_merge([
+            'role_id' => $roleId, 'full_name' => $name, 'email' => $email, 'phone' => $phone,
+            'password' => Hash::make(self::PASSWORD), 'status' => 'active', 'updated_at' => now(),
+        ], $extra);
+
+        if ($existing) {
+            DB::table('users')->where('user_id', $existing)->update($data);
+
+            return $existing;
+        }
+
+        return DB::table('users')->insertGetId($data + ['username' => $username, 'created_at' => now()]);
+    }
+
+    // ------------------------------------------------------------------ تنظيف
+
+    /** يحذف نشاط العرض فقط (مادتا العرض، ملخصات وإشعارات العائلة) ويُبقي الحسابات. */
+    private function cleanActivity(): void
+    {
+        $userIds = $this->familyUserIds();
 
         DB::table('notifications')->whereIn('user_id', $userIds)->delete();
         DB::table('parent_digests')->whereIn('parent_user_id', $userIds)->delete();
 
+        // حذف المادة يحذف واجباتها ودروسها وفعالياتها وتسجيلاتها بالتتالي (cascade)
+        DB::table('courses')
+            ->whereIn('title', array_values(self::COURSES))
+            ->orWhere('title', 'like', 'DEMO %') // بقايا النسخة الأولى
+            ->delete();
+
         $studentIds = DB::table('students')->whereIn('user_id', $userIds)->pluck('student_id');
+        DB::table('attendance')->whereIn('student_id', $studentIds)->delete();
+        DB::table('assignment_submissions')->whereIn('student_id', $studentIds)->delete();
+        DB::table('grade_entries')->whereIn('student_id', $studentIds)->delete();
+    }
+
+    private function cleanAccounts(): void
+    {
+        $this->deleteUsers($this->familyUserIds());
+    }
+
+    /** يحذف المستخدمين مع ملفاتهم (طالب/ولي أمر) وروابطهم وتسجيلاتهم. */
+    private function deleteUsers($userIds): void
+    {
+        if (count($userIds) === 0) {
+            return;
+        }
+
+        $studentIds = DB::table('students')->whereIn('user_id', $userIds)->pluck('student_id');
+
+        DB::table('notifications')->whereIn('user_id', $userIds)->delete();
+        DB::table('parent_digests')->whereIn('parent_user_id', $userIds)->delete();
         DB::table('attendance')->whereIn('student_id', $studentIds)->delete();
         DB::table('assignment_submissions')->whereIn('student_id', $studentIds)->delete();
         DB::table('grade_entries')->whereIn('student_id', $studentIds)->delete();
@@ -118,44 +216,14 @@ class DigestDemoSeeder extends Seeder
         DB::table('students')->whereIn('user_id', $userIds)->delete();
         DB::table('parents')->whereIn('user_id', $userIds)->delete();
         DB::table('users')->whereIn('user_id', $userIds)->delete();
-
-        // حذف المادة التجريبية يحذف واجباتها ودروسها وفعالياتها بالتتالي (cascade)
-        DB::table('courses')->where('title', 'like', 'DEMO %')->delete();
-        DB::table('assignments')->where('title', 'like', 'DEMO %')->delete();
-        DB::table('grade_events')->where('title', 'like', 'DEMO %')->delete();
-        DB::table('lessons')->where('title', 'like', 'DEMO %')->delete();
     }
 
-    private function user(int $roleId, string $key, string $name): int
-    {
-        return DB::table('users')->insertGetId([
-            'role_id'    => $roleId,
-            'full_name'  => $name,
-            'username'   => self::USER_PREFIX . $key,
-            'email'      => self::USER_PREFIX . $key . '@example.test',
-            'password'   => Hash::make(self::PASSWORD),
-            'status'     => 'active',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    }
-
-    /** @return array{user_id:int, student_id:int} */
-    private function student(string $key, string $name, ?int $programId): array
-    {
-        $userId = $this->user(3, "student.{$key}", $name);
-        $studentId = DB::table('students')->insertGetId([
-            'user_id' => $userId, 'student_code' => 'DEMO-' . strtoupper($key),
-            'program_id' => $programId, 'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        return ['user_id' => $userId, 'student_id' => $studentId];
-    }
+    // ------------------------------------------------------------------ نشاط
 
     private function attend(int $studentId, int $courseId, string $status, Carbon $date): void
     {
         $lesson = DB::table('lessons')->insertGetId([
-            'course_id' => $courseId, 'title' => 'DEMO محاضرة ' . $date->toDateString(),
+            'course_id' => $courseId, 'title' => 'محاضرة ' . $date->toDateString(),
             'created_at' => now(), 'updated_at' => now(),
         ]);
         DB::table('attendance')->insert([
