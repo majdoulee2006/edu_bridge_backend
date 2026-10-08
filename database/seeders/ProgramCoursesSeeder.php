@@ -220,11 +220,16 @@ class ProgramCoursesSeeder extends Seeder
             ->value('teachers.teacher_id');
 
         if (!$teacherId) {
-            $slug = 'teacher_' . (DB::table('users')->where('role_id', 2)->count() + 1) . '_' . substr(md5($name), 0, 6);
+            // نفس تسمية الحسابات اليدوية: <الاسم>-trainer@edu-bridge.com + <الاسم>@gmail.com
+            $slug = $this->latinSlug($name);
+            $base = $slug;
+            for ($i = 2; DB::table('users')->where('username', "$slug-trainer@edu-bridge.com")->orWhere('email', "$slug@gmail.com")->exists(); $i++) {
+                $slug = $base . $i;
+            }
             $userId = DB::table('users')->insertGetId([
                 'full_name' => $name,
-                'username' => $slug,
-                'email' => "$slug@edu-bridge.com",
+                'username' => "$slug-trainer@edu-bridge.com",
+                'email' => "$slug@gmail.com",
                 'password' => Hash::make('pass123'),
                 'role_id' => 2,
                 'status' => 'active',
@@ -240,6 +245,21 @@ class ProgramCoursesSeeder extends Seeder
         }
 
         return $this->teacherCache[$name] = $teacherId;
+    }
+
+    /** تحويل بسيط للاسم العربي إلى أحرف لاتينية صغيرة بدون فراغات (للمراجعة اليدوية عند الحاجة). */
+    private function latinSlug(string $name): string
+    {
+        $map = [
+            'ا' => 'a', 'أ' => 'a', 'إ' => 'i', 'آ' => 'a', 'ب' => 'b', 'ت' => 't', 'ث' => 'th', 'ج' => 'j',
+            'ح' => 'h', 'خ' => 'kh', 'د' => 'd', 'ذ' => 'dh', 'ر' => 'r', 'ز' => 'z', 'س' => 's', 'ش' => 'sh',
+            'ص' => 's', 'ض' => 'd', 'ط' => 't', 'ظ' => 'z', 'ع' => 'a', 'غ' => 'gh', 'ف' => 'f', 'ق' => 'q',
+            'ك' => 'k', 'ل' => 'l', 'م' => 'm', 'ن' => 'n', 'ه' => 'h', 'ة' => 'a', 'و' => 'w', 'ي' => 'y',
+            'ى' => 'a', 'ئ' => 'e', 'ؤ' => 'o', 'ء' => '',
+        ];
+        $latin = strtolower(preg_replace('/[^a-z0-9]/i', '', strtr($name, $map)));
+
+        return $latin !== '' ? $latin : 'teacher' . substr(md5($name), 0, 4);
     }
 
     private function attachTeacher(int $courseId, int $teacherId, string $role): void
