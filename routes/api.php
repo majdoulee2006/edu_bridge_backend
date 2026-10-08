@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\HODController;
 use App\Http\Controllers\Api\ParentController;
+use App\Http\Controllers\Api\ParentDigestController;
 use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
@@ -486,6 +487,14 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::post('/request-meeting', [ParentController::class, 'requestMeeting']);
         Route::get('/meeting-requests', [ParentController::class, 'getMyMeetingRequests']);
         Route::get('/summons', [ParentController::class, 'getMySummons']);
+
+        // الملخص الأسبوعي
+        Route::get('/digests', [ParentDigestController::class, 'index']);
+        Route::get('/digests/{id}', [ParentDigestController::class, 'show']);
+        Route::put('/digests/{id}/read', [ParentDigestController::class, 'markRead']);
+        Route::get('/digests/{id}/pdf', [ParentDigestController::class, 'pdf']);
+        Route::get('/digest-settings', [ParentDigestController::class, 'settings']);
+        Route::put('/digest-settings', [ParentDigestController::class, 'updateSettings']);
         Route::post('/summons/{id}/respond', [ParentMeetingController::class, 'respondToSummon']);
 
         // Notifications
