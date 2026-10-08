@@ -9,3 +9,7 @@
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# ملفات Windows batch يجب أن تبقى CRLF (نهايات LF تُخرّب goto والتسميات)
+*.bat text eol=crlf
+*.cmd text eol=crlf

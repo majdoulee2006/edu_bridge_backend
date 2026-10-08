@@ -8,13 +8,14 @@ rem
 rem  شو بيعمل بالترتيب:
 rem    1) يجهز المشروع: يمسح الكاش (config / routes / views / cache)
 rem       ويتأكد من وجود مجلدات storage المطلوبة
-rem    2) يسجل مهمتين بجدول مهام ويندوز (يشتغلوا لحالهم مع كل تشغيل للجهاز):
-rem         - EduBridge Server        -> سيرفر Laravel على بورت 8000
+rem    2) يسجل ثلاث مهام بجدول مهام ويندوز (يشتغلوا لحالهم مع كل تشغيل للجهاز):
+rem         - EduBridge Server        -> سيرفر Laravel على بورت 8000 (الأساسي)
+rem         - EduBridge Server 8001   -> نسخة ثانية على بورت 8001 (احتياطي لمن لا يستطيع استعمال 8000)
 rem         - EduBridge Telegram Bot  -> بوت تيليغرام (telegram:poll)
 rem       وكل مهمة بتعيد تشغيل نفسها تلقائياً إذا وقعت
 rem    3) يشغلهم فوراً بدون انتظار إعادة تشغيل الجهاز
 rem
-rem  (الوضعين "server" و "bot" بيستدعيهم جدول المهام تلقائياً، ما تشغلهم يدوياً)
+rem  (الأوضاع "server" و "server2" و "bot" بيستدعيهم جدول المهام تلقائياً، ما تشغلهم يدوياً)
 rem  الملف موجود جوا مجلد "سيرفر"، فبيطلع درجة لفوق لمجلد المشروع الرئيسي (فيه artisan)
 rem ============================================================
 chcp 65001 >nul
@@ -23,6 +24,7 @@ set "SCRIPT=%~f0"
 cd /d "%~dp0.."
 
 if /i "%~1"=="server" goto run_server
+if /i "%~1"=="server2" goto run_server2
 if /i "%~1"=="bot"    goto run_bot
 goto setup
 
@@ -47,6 +49,16 @@ if "%PHP_EXE%"=="" exit /b 1
 echo [%date% %time%] Server stopped unexpectedly, restarting in 3 seconds...
 timeout /t 3 /nobreak >nul
 goto server_loop
+
+rem ------------------------------------------------------------
+:run_server2
+call :find_php
+if "%PHP_EXE%"=="" exit /b 1
+:server2_loop
+"%PHP_EXE%" artisan serve --host=0.0.0.0 --port=8001
+echo [%date% %time%] Server 8001 stopped unexpectedly, restarting in 3 seconds...
+timeout /t 3 /nobreak >nul
+goto server2_loop
 
 rem ------------------------------------------------------------
 :run_bot
@@ -100,6 +112,7 @@ echo ============================================
 echo   Step 2/3 - Registering auto-start tasks
 echo ============================================
 schtasks /create /tn "EduBridge Server" /tr "\"%SCRIPT%\" server" /sc onstart /ru SYSTEM /rl highest /f
+schtasks /create /tn "EduBridge Server 8001" /tr "\"%SCRIPT%\" server2" /sc onstart /ru SYSTEM /rl highest /f
 schtasks /create /tn "EduBridge Telegram Bot" /tr "\"%SCRIPT%\" bot" /sc onstart /ru SYSTEM /rl highest /f
 
 echo.
@@ -107,12 +120,13 @@ echo ============================================
 echo   Step 3/3 - Starting them now
 echo ============================================
 schtasks /run /tn "EduBridge Server"
+schtasks /run /tn "EduBridge Server 8001"
 schtasks /run /tn "EduBridge Telegram Bot"
 
 echo.
 echo ============================================
 echo   DONE.
-echo   The server and the Telegram bot now start automatically
+echo   The server (port 8000, plus a fallback on 8001) and the Telegram bot now start automatically
 echo   with the computer and restart themselves if they stop.
 echo   Make sure MySQL is always running from XAMPP Control Panel.
 echo   If error 419 appears, close all browser tabs of the site
