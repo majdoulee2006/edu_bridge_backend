@@ -31,6 +31,15 @@ if (-not $PortCheck) {
     Write-Host "[OK] Laravel server is already running on port 8000." -ForegroundColor Green
 }
 
+# 2b. نسخة ثانية على 8001 (احتياطي لمن في الفريق لا يستطيع استعمال 8000). النفق والبوت يبقيان على 8000.
+$PortCheck2 = Get-NetTCPConnection -LocalPort 8001 -ErrorAction SilentlyContinue
+if (-not $PortCheck2) {
+    Write-Host "[INFO] Starting fallback Laravel server on port 8001..." -ForegroundColor Yellow
+    Start-Process -FilePath "php" -ArgumentList "artisan serve --host=0.0.0.0 --port=8001" -WorkingDirectory $ScriptDir -WindowStyle Minimized
+} else {
+    Write-Host "[OK] Fallback server is already running on port 8001." -ForegroundColor Green
+}
+
 # 3. Start Tunnel (ngrok or localtunnel)
 $TunnelUrl = ""
 $LocalNgrok = Join-Path $ScriptDir "ngrok.exe"
