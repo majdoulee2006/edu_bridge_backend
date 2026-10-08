@@ -10,16 +10,19 @@ rem
 rem  What it does, in order:
 rem    1) php artisan optimize:clear
 rem    2) php artisan migrate --force
-rem         (creates the weekly-digest table + parents.digest_enabled)
+rem         (weekly-digest tables + attendance-intelligence tables/columns)
 rem    3) php artisan db:seed --class=DigestDemoSeeder --force
 rem         (accounts of Abu Omar Al-Haddad + Layan + Omar, this week's
 rem          activity, and their weekly digests)
+rem    4) php artisan db:seed --class=AttendanceIntelligenceDemoSeeder --force
+rem         (demo teacher + 6 weeks of attendance + suspicious cases, so the
+rem          attendance heatmap and the flag-review queue have data)
 rem
 rem  If every step succeeds this file DELETES ITSELF.
 rem  If any step fails it stops and keeps itself, so you can fix the
 rem  problem and run it again (all steps are safe to repeat).
 rem
-rem  To add more commands: copy one of the 3 blocks below.
+rem  To add more commands: copy one of the 4 blocks below.
 rem ============================================================
 chcp 65001 >nul
 setlocal
@@ -38,23 +41,30 @@ if "%PHP_EXE%"=="" (
 )
 
 echo ============================================
-echo   [1/3] php artisan optimize:clear
+echo   [1/4] php artisan optimize:clear
 echo ============================================
 "%PHP_EXE%" artisan optimize:clear
 if errorlevel 1 goto failed
 
 echo.
 echo ============================================
-echo   [2/3] php artisan migrate --force
+echo   [2/4] php artisan migrate --force
 echo ============================================
 "%PHP_EXE%" artisan migrate --force
 if errorlevel 1 goto failed
 
 echo.
 echo ============================================
-echo   [3/3] php artisan db:seed --class=DigestDemoSeeder --force
+echo   [3/4] php artisan db:seed --class=DigestDemoSeeder --force
 echo ============================================
 "%PHP_EXE%" artisan db:seed --class=DigestDemoSeeder --force
+if errorlevel 1 goto failed
+
+echo.
+echo ============================================
+echo   [4/4] php artisan db:seed --class=AttendanceIntelligenceDemoSeeder --force
+echo ============================================
+"%PHP_EXE%" artisan db:seed --class=AttendanceIntelligenceDemoSeeder --force
 if errorlevel 1 goto failed
 
 goto success
