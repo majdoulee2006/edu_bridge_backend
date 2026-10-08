@@ -202,7 +202,7 @@ class TelegramWebhookController extends Controller
                 'face_image'      => $savedFaceImagePath ?? $existing->face_image,
                 'face_score'      => $faceScore,
                 'face_status'     => $faceStatus,
-            ]);
+            ] + \App\Support\ScanFingerprint::capture($request, $session));
         } else {
             \App\Models\Attendance::create([
                 'student_id'      => $student->student_id,
@@ -213,7 +213,7 @@ class TelegramWebhookController extends Controller
                 'face_image'      => $savedFaceImagePath,
                 'face_score'      => $faceScore,
                 'face_status'     => $faceStatus,
-            ]);
+            ] + \App\Support\ScanFingerprint::capture($request, $session));
         }
 
         // إرسال إشعار تأكيد في محادثة التيليغرام

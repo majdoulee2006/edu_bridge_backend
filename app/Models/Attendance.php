@@ -16,6 +16,7 @@ class Attendance extends Model
     protected $fillable = [
         'student_id',
         'lesson_id',
+        'session_id',
         'status',
         'attendance_date',
         'excuse_text',
@@ -25,6 +26,9 @@ class Attendance extends Model
         'latitude',
         'longitude',
         'reject_reason',
+        'ip_address',
+        'user_agent',
+        'qr_age_seconds',
         'face_image',
         'face_score',
         'face_status',

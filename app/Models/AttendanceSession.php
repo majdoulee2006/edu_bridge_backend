@@ -15,6 +15,8 @@ class AttendanceSession extends Model
         'expires_at',
         'is_active',
         'session_expires_at',
+        'closed_at',
+        'analyzed_at',
     ];
 
     // عشان يسهل علينا التعامل مع الوقت
@@ -22,6 +24,8 @@ class AttendanceSession extends Model
         'expires_at'         => 'datetime',
         'session_expires_at' => 'datetime',
         'is_active'          => 'boolean',
+        'closed_at'          => 'datetime',
+        'analyzed_at'        => 'datetime',
     ];
 
     public function lesson()
