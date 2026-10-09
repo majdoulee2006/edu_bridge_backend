@@ -206,6 +206,23 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/risk', [\App\Http\Controllers\Web\RiskWebController::class, 'index'])->name('hod.risk');
     Route::get('/risk/students/{id}', [\App\Http\Controllers\Web\RiskWebController::class, 'show'])->name('hod.risk.show');
     Route::post('/risk/students/{id}/interventions', [\App\Http\Controllers\Web\RiskWebController::class, 'storeIntervention'])->name('hod.risk.interventions');
+    Route::prefix('schedule-studio')->group(function () {
+        $c = \App\Http\Controllers\Web\ScheduleStudioWebController::class;
+        Route::get('/', [$c, 'index'])->name('hod.studio');
+        Route::post('/generate', [$c, 'generate'])->name('hod.studio.generate');
+        Route::post('/rooms', [$c, 'storeRoom'])->name('hod.studio.rooms.store');
+        Route::post('/rooms/{id}/delete', [$c, 'deleteRoom'])->name('hod.studio.rooms.delete');
+        Route::post('/availability', [$c, 'storeAvailability'])->name('hod.studio.availability.store');
+        Route::post('/availability/{id}/delete', [$c, 'deleteAvailability'])->name('hod.studio.availability.delete');
+        Route::get('/{id}', [$c, 'show'])->whereNumber('id')->name('hod.studio.show');
+        Route::post('/{id}/move', [$c, 'move'])->name('hod.studio.move');
+        Route::post('/{id}/swap', [$c, 'swap'])->name('hod.studio.swap');
+        Route::post('/{id}/lock', [$c, 'lock'])->name('hod.studio.lock');
+        Route::post('/{id}/regenerate', [$c, 'regenerate'])->name('hod.studio.regenerate');
+        Route::post('/{id}/approve', [$c, 'approve'])->name('hod.studio.approve');
+        Route::post('/{id}/discard', [$c, 'discard'])->name('hod.studio.discard');
+        Route::post('/{id}/revert', [$c, 'revert'])->name('hod.studio.revert');
+    });
     Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
     Route::post('/profile/send-otp', [HODWebController::class, 'sendOTP'])->name('hod.profile.send_otp');
