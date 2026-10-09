@@ -116,6 +116,10 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::get('/dashboard', [TeacherWebController::class, 'dashboard'])->name('teacher.dashboard');
     // اشتباهات الحضور (أنماط مشبوهة بعد إغلاق الجلسات)
     Route::get('/attendance-flags', [TeacherWebController::class, 'attendanceFlags'])->name('teacher.attendance_flags');
+    // الإنذار المبكر للتعثر (للمرشد فقط؛ الحماية داخل RiskScope)
+    Route::get('/risk', [\App\Http\Controllers\Web\RiskWebController::class, 'index'])->name('teacher.risk');
+    Route::get('/risk/students/{id}', [\App\Http\Controllers\Web\RiskWebController::class, 'show'])->name('teacher.risk.show');
+    Route::post('/risk/students/{id}/interventions', [\App\Http\Controllers\Web\RiskWebController::class, 'storeIntervention'])->name('teacher.risk.interventions');
     Route::post('/attendance-flags/{id}/review', [TeacherWebController::class, 'reviewAttendanceFlag'])->name('teacher.attendance_flags.review');
 
     // الجداول
@@ -199,6 +203,9 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/', function() { return redirect()->route('hod.dashboard'); });
     Route::get('/dashboard', [HODWebController::class, 'dashboard'])->name('hod.dashboard');
     Route::get('/attendance-insights', [HODWebController::class, 'attendanceInsights'])->name('hod.attendance_insights');
+    Route::get('/risk', [\App\Http\Controllers\Web\RiskWebController::class, 'index'])->name('hod.risk');
+    Route::get('/risk/students/{id}', [\App\Http\Controllers\Web\RiskWebController::class, 'show'])->name('hod.risk.show');
+    Route::post('/risk/students/{id}/interventions', [\App\Http\Controllers\Web\RiskWebController::class, 'storeIntervention'])->name('hod.risk.interventions');
     Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
     Route::post('/profile/send-otp', [HODWebController::class, 'sendOTP'])->name('hod.profile.send_otp');

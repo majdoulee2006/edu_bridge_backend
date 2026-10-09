@@ -457,6 +457,12 @@
                     <i class="fa-solid fa-clipboard-user"></i>
                     الحضور والغياب
                 </a>
+                @if(optional(auth()->user()->teacher)->advisor_branch)
+                <a href="{{ url('/teacher/risk') }}" class="nav-item {{ Request::is('teacher/risk*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    المعرّضون للتعثر
+                </a>
+                @endif
                 <a href="{{ url('/teacher/attendance-flags') }}" class="nav-item {{ Request::is('teacher/attendance-flags*') ? 'active' : '' }}">
                     <i class="fa-solid fa-magnifying-glass-chart"></i>
                     اشتباهات الحضور
