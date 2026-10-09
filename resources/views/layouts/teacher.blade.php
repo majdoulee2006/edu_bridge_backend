@@ -457,6 +457,10 @@
                     <i class="fa-solid fa-clipboard-user"></i>
                     الحضور والغياب
                 </a>
+                <a href="{{ url('/teacher/study') }}" class="nav-item {{ Request::is('teacher/study*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-book-open-reader"></i>
+                    رفيق المذاكرة
+                </a>
                 @if(optional(auth()->user()->teacher)->advisor_branch)
                 <a href="{{ url('/teacher/risk') }}" class="nav-item {{ Request::is('teacher/risk*') ? 'active' : '' }}">
                     <i class="fa-solid fa-triangle-exclamation"></i>

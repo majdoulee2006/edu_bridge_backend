@@ -114,6 +114,17 @@ Route::post('/teacher/logout', [TeacherWebController::class, 'logout'])->name('t
 Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::class])->group(function () {
     Route::get('/', fn() => redirect()->route('teacher.dashboard'));
     Route::get('/dashboard', [TeacherWebController::class, 'dashboard'])->name('teacher.dashboard');
+    // رفيق المذاكرة: مسودات يولّدها الذكاء الاصطناعي ويعتمدها المعلم
+    Route::prefix('study')->group(function () {
+        $c = \App\Http\Controllers\Web\StudyWebController::class;
+        Route::get('/', [$c, 'teacherIndex'])->name('teacher.study');
+        Route::post('/generate/{lessonId}', [$c, 'teacherGenerate'])->name('teacher.study.generate');
+        Route::get('/{id}', [$c, 'teacherShow'])->whereNumber('id')->name('teacher.study.show');
+        Route::post('/{id}/save', [$c, 'teacherSave'])->name('teacher.study.save');
+        Route::post('/{id}/approve', [$c, 'teacherApprove'])->name('teacher.study.approve');
+        Route::post('/{id}/unpublish', [$c, 'teacherUnpublish'])->name('teacher.study.unpublish');
+        Route::post('/{id}/export', [$c, 'teacherExport'])->name('teacher.study.export');
+    });
     // اشتباهات الحضور (أنماط مشبوهة بعد إغلاق الجلسات)
     Route::get('/attendance-flags', [TeacherWebController::class, 'attendanceFlags'])->name('teacher.attendance_flags');
     // الإنذار المبكر للتعثر (للمرشد فقط؛ الحماية داخل RiskScope)
@@ -533,6 +544,11 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::get('/schedule', [StudentWebController::class, 'schedule'])->name('student.schedule');
     Route::get('/schedule/export-image', [StudentWebController::class, 'exportScheduleImage'])->name('student.schedule.export_image');
     Route::get('/schedule/export-exam-image', [StudentWebController::class, 'exportExamScheduleImage'])->name('student.schedule.export_exam_image');
+
+    // رفيق المذاكرة (المعتمد من المعلم فقط)
+    Route::get('/study', [\App\Http\Controllers\Web\StudyWebController::class, 'studentIndex'])->name('student.study');
+    Route::get('/study/{id}', [\App\Http\Controllers\Web\StudyWebController::class, 'studentShow'])->whereNumber('id')->name('student.study.show');
+    Route::post('/study/{id}/attempt', [\App\Http\Controllers\Web\StudyWebController::class, 'studentAttempt'])->name('student.study.attempt');
 
     // المواد والمحاضرات
     Route::get('/courses', [StudentWebController::class, 'courses'])->name('student.courses');
