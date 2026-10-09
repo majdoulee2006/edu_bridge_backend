@@ -61,6 +61,8 @@ async function scenario(name, polls, path, expectToasts) {
   const checks = [
     ['attendance_flags -> flags page', await clickTarget(flagNotif, '/teacher/attendance'), '/teacher/attendance-flags'],
     ['weekly_digest -> that digest', await clickTarget(digestNotif, '/parent/dashboard'), '/parent/digests/7'],
+    ['risk_alert (advisor) -> risk list', await clickTarget({ id: 6, type: 'risk_alert', title: 'طلاب ارتفع خطر تعثرهم', message: 'ارتفع مستوى الخطر الأكاديمي لـ 1 طالب' }, '/teacher/dashboard'), '/teacher/risk'],
+    ['risk_alert (head) -> risk list', await clickTarget({ id: 7, type: 'risk_alert', title: 'طلاب ارتفع خطر تعثرهم', message: 'الحضور والعلامات' }, '/hod/dashboard'), '/hod/risk'],
     ['plain attendance still -> attendance', await clickTarget({ id: 5, type: 'attendance', title: 'حضور', message: '' }, '/teacher/dashboard'), '/teacher/attendance'],
   ];
   for (const [name, got, want] of checks) {
