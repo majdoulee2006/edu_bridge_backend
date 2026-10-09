@@ -77,12 +77,26 @@ class RiskScoreService
             ];
         }
 
-        $score      = round($score, 1);
+        $score = round($score, 1);
+
+        // الحالة الحرجة: عامل رئيسي منهار بالكامل يرفع الدرجة إلى الحد الأدنى ولا يضيع في المتوسط
+        $crit = config('risk.critical');
+        $critical = [];
+        foreach ($factors as $i => $f) {
+            if ($f['available'] && $f['weight'] >= $crit['min_weight'] && $f['score'] >= $crit['factor_score']) {
+                $factors[$i]['critical'] = true;
+                $critical[] = $f['key'];
+            }
+        }
+        if ($critical && $score < $crit['floor']) {
+            $score = (float) $crit['floor'];
+        }
+
         $confidence = $allW > 0 ? round($availW / $allW, 2) : 0.0;
         $level      = $this->level($score, $confidence);
 
         return [
-            'score' => $score, 'level' => $level, 'confidence' => $confidence,
+            'score' => $score, 'level' => $level, 'confidence' => $confidence, 'critical' => $critical,
             'factors' => $factors, 'reasons' => $this->reasons($factors, $level),
         ];
     }
@@ -155,7 +169,7 @@ class RiskScoreService
 
         $ranked = collect($factors)->where('available', true)->sortByDesc('contribution')->values();
 
-        $picked = $ranked->filter(fn ($f) => $f['contribution'] >= $min && $f['score'] >= 20)->take($max);
+        $picked = $ranked->filter(fn ($f) => ($f['contribution'] >= $min && $f['score'] >= 20) || !empty($f['critical']))->take($max);
 
         // مستوى متوسط/عالٍ لا يجوز أن يبقى بلا سبب مكتوب
         if ($picked->isEmpty() && in_array($level, ['medium', 'high'], true) && $ranked->isNotEmpty()) {
