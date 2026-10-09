@@ -505,4 +505,54 @@ class RiskScoreServiceTest extends TestCase
         $this->assertSame(2, StudentRiskHistory::where('student_id', $sid)->count());
         $this->assertSame($current->computed_on->toDateString(), StudentRiskScore::where('student_id', $sid)->first()->computed_on->toDateString());
     }
+
+    // ------------------------------------------------------------ الحالة الحرجة
+
+    private function perfectExceptAttendance(string $attendance): void
+    {
+        $this->attendOn(array_fill(0, 8, $attendance), '2026-09-22');
+        $a = $this->assignment('2026-10-01 23:59:00');
+        $b = $this->assignment('2026-10-02 23:59:00');
+        $this->submit($a, '2026-10-01 08:00:00');
+        $this->submit($b, '2026-10-02 08:00:00');
+        $this->grade(19, 20, '2026-10-01');
+        DB::table('users')->where('user_id', $this->student['user']->user_id)->update(['last_login' => '2026-10-07 09:00:00']);
+    }
+
+    public function test_a_collapsed_major_factor_is_not_diluted_by_the_healthy_ones(): void
+    {
+        $this->perfectExceptAttendance('absent');   // حضور 0% مع واجبات وعلامات ودخول ممتازة
+
+        $res = app(RiskScoreService::class)->compute($this->student['student_id'], $this->student['user']->user_id, $this->asOf);
+
+        $this->assertSame(['attendance'], $res['critical']);
+        $this->assertSame('high', $res['level']);
+        $this->assertGreaterThanOrEqual(60.0, $res['score']);
+        $this->assertTrue(collect($res['factors'])->firstWhere('key', 'attendance')['critical']);
+        $this->assertStringContainsString('حضوره 0%', $res['reasons'][0]);   // يُذكر دائمًا في الأسباب
+    }
+
+    public function test_a_merely_bad_factor_is_not_critical_and_keeps_its_weighted_score(): void
+    {
+        $this->perfectExceptAttendance('present');
+        // 5 غياب من 8 = 37.5% حضور: سيئ لكنه دون الانهيار الكامل
+        DB::table('attendance')->where('student_id', $this->student['student_id'])->limit(5)->update(['status' => 'absent']);
+
+        $res = app(RiskScoreService::class)->compute($this->student['student_id'], $this->student['user']->user_id, $this->asOf);
+
+        $this->assertSame([], $res['critical']);
+        $this->assertLessThan(60, $res['score']);
+    }
+
+    public function test_minor_factors_can_never_be_critical_alone(): void
+    {
+        $this->perfectExceptAttendance('present');
+        DB::table('users')->where('user_id', $this->student['user']->user_id)->update(['last_login' => '2026-06-01 09:00:00']); // انقطاع شديد (وزنه 10 فقط)
+
+        $res = app(RiskScoreService::class)->compute($this->student['student_id'], $this->student['user']->user_id, $this->asOf);
+
+        $this->assertEquals(100.0, collect($res['factors'])->firstWhere('key', 'engagement')['score']);
+        $this->assertSame([], $res['critical']);
+        $this->assertNotSame('high', $res['level']);
+    }
 }
