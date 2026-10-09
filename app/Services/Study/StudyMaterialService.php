@@ -60,6 +60,16 @@ class StudyMaterialService
         return $material;
     }
 
+    /** محاضرات المعلم مع حالة مادة المذاكرة وسبب عدم قابليتها للتوليد (إن وُجد). */
+    public function overview(User $teacherUser)
+    {
+        $courseIds = DB::table('course_teachers')->where('teacher_id', $teacherUser->teacher->teacher_id)->pluck('course_id');
+        $lessons = Lesson::with('course:course_id,title')->whereIn('course_id', $courseIds)->orderByDesc('lesson_id')->limit(100)->get();
+        $materials = StudyMaterial::whereIn('lesson_id', $lessons->pluck('lesson_id'))->get()->keyBy('lesson_id');
+
+        return $lessons->map(fn ($l) => ['lesson' => $l, 'material' => $materials->get($l->lesson_id), 'whyNot' => $this->generator->whyNot($l->content_url)]);
+    }
+
     /** مادة يملكها المعلم (يدرّس مقررها). */
     public function ownedBy(User $teacherUser, int $materialId): StudyMaterial
     {
