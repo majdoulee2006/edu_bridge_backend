@@ -55,7 +55,8 @@ class ComputeRiskScores extends Command
                 $counts[$row->level]++;
                 $n++;
 
-                if ($weeks === 0 && $this->shouldNotify($row)) {
+                // --no-notify لا يغيّر حالة "ما أُرسل عنه": وإلا ضاع التنبيه نهائيًا دون أن يُرسَل
+                if ($weeks === 0 && !$this->option('no-notify') && $this->shouldNotify($row)) {
                     $rises[] = ['student_id' => $st->student_id, 'name' => $st->full_name, 'level' => $row->level];
                 }
             }
