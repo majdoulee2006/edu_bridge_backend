@@ -490,6 +490,10 @@
                     <i class="fa-solid fa-book-open"></i>
                     موادي
                 </a>
+                <a href="{{ url('/student/study') }}" class="nav-item {{ Request::is('student/study*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-book-open-reader"></i>
+                    رفيق المذاكرة
+                </a>
                 <a href="{{ url('/student/assignments') }}" class="nav-item {{ Request::is('student/assignments') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-pen"></i>
                     واجباتي
