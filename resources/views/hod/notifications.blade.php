@@ -192,6 +192,7 @@
                 'attendance'     => '/hod/dashboard',
                 'grade'          => '/hod/dashboard',
                 'message'        => '/hod/messages',
+                'risk_alert'     => '/hod/risk',
                 'administrative' => $isService ? $serviceLink : '/hod/dashboard',
                 'general'        => $isService ? $serviceLink : '/hod/notifications',
             ];

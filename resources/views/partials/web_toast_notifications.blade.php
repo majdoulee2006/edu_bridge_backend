@@ -110,6 +110,7 @@
 
         // الأنواع الصريحة أولًا: نصوصها تحتوي كلمات (حضور، علامات، واجب) تطابق فحوصات الكلمات أدناه فتُحوَّل لصفحة خاطئة
         if (type === 'attendance_flags') return '/teacher/attendance-flags';
+        if (type === 'risk_alert') return prefix + '/risk';
         if (type === 'weekly_digest') return notif.related_id ? ('/parent/digests/' + notif.related_id) : '/parent/digests';
 
         // كشف علامات للشؤون -> توجيه فوري للمسار الأكاديمي مع فلترة الطالب

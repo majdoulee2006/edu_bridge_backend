@@ -189,4 +189,18 @@ class RiskWebPagesTest extends TestCase
             $this->get('/hod/risk')->assertRedirect();
         }
     }
+
+    public function test_risk_alert_notification_opens_the_risk_list_for_both_roles(): void
+    {
+        foreach ([['advisor', 'teacher'], ['head', 'hod']] as [$who, $prefix]) {
+            $user = $this->a[$who]['user'];
+            DB::table('notifications')->insert([
+                'user_id' => $user->user_id, 'title' => 'طلاب ارتفع خطر تعثرهم', 'message' => 'ارتفع مستوى الخطر الأكاديمي لـ 1 طالب: س (عالٍ)',
+                'type' => 'risk_alert', 'category' => 'administrative', 'is_read' => 0, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $this->actingAs($user);
+
+            $this->get("/{$prefix}/notifications")->assertOk()->assertSee("handleNotifClick(event, '/{$prefix}/risk'", false);
+        }
+    }
 }
