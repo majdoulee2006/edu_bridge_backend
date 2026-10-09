@@ -19,9 +19,10 @@ class GeminiClient
     /**
      * @param  string  $systemPrompt  تعليمات ثابتة (لا تحتوي رسالة المستخدم)
      * @param  array   $history       [['role' => 'user'|'model', 'text' => '...'], ...]
+     * @param  array   $options       اختياري: max_tokens, temperature, timeout, json (يطلب JSON خالصًا)
      * @return string|null  نص الرد، أو null عند فشل كل الموديلات
      */
-    public function generate(string $systemPrompt, array $history, string $message): ?string
+    public function generate(string $systemPrompt, array $history, string $message, array $options = []): ?string
     {
         if (!$this->isConfigured()) {
             return null;
@@ -34,14 +35,15 @@ class GeminiClient
             try {
                 $response = Http::withHeaders(['x-goog-api-key' => $key])
                     ->acceptJson()
-                    ->timeout((int) config('services.gemini.timeout', 12))
+                    ->timeout((int) ($options['timeout'] ?? config('services.gemini.timeout', 12)))
                     ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", [
                         'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
                         'contents'          => $contents,
-                        'generationConfig'  => [
-                            'temperature'     => 0.3,
-                            'maxOutputTokens' => 2000,
-                        ],
+                        'generationConfig'  => array_filter([
+                            'temperature'      => $options['temperature'] ?? 0.3,
+                            'maxOutputTokens'  => $options['max_tokens'] ?? 2000,
+                            'responseMimeType' => !empty($options['json']) ? 'application/json' : null,
+                        ], fn ($v) => $v !== null),
                     ]);
             } catch (\Throwable $e) {
                 Log::warning("Gemini [{$model}] request error: " . $this->scrub($e->getMessage()));
