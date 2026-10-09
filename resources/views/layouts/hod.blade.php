@@ -438,6 +438,10 @@
                     <i class="fa-solid fa-sitemap"></i>
                     التنظيم
                 </a>
+                <a href="{{ url('/hod/schedule-studio') }}" class="nav-item {{ Request::is('hod/schedule-studio*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    مولّد الجدول
+                </a>
                 <a href="{{ url('/hod/risk') }}" class="nav-item {{ Request::is('hod/risk*') ? 'active' : '' }}">
                     <i class="fa-solid fa-triangle-exclamation"></i>
                     المعرّضون للتعثر
