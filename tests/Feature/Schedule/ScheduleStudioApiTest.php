@@ -91,4 +91,29 @@ class ScheduleStudioApiTest extends TestCase
         Sanctum::actingAs($this->makeTeacher()['user']);
         $this->getJson('/api/department-head/schedule-studio')->assertForbidden();
     }
+
+    public function test_rooms_and_availability_crud_scoped_to_the_department(): void
+    {
+        $base = '/api/department-head/schedule-studio';
+        $id = $this->postJson("$base/rooms", ['name' => 'قاعة 1', 'capacity' => 30])->assertCreated()->json('data.id');
+        $set = $this->getJson("$base/settings")->assertOk();
+        $set->assertJsonPath('data.rooms.0.name', 'قاعة 1');
+        $teacher = $set->json('data.teachers.0.user_id');
+
+        $aid = $this->postJson("$base/availability", ['teacher_user_id' => $teacher, 'day' => 'Sunday', 'period' => 1, 'kind' => 'unavailable'])->assertCreated()->json('data.id');
+        $this->getJson("$base/settings")->assertJsonPath('data.availability.0.kind', 'unavailable');
+
+        $stranger = $this->makeTeacher()['user']->user_id;
+        $this->postJson("$base/availability", ['teacher_user_id' => $stranger, 'day' => 'Sunday', 'period' => 2, 'kind' => 'avoid'])->assertForbidden();
+
+        $this->deleteJson("$base/availability/$aid")->assertOk();
+        $this->deleteJson("$base/rooms/$id")->assertOk();
+        $this->getJson("$base/settings")->assertJsonPath('data.rooms', [])->assertJsonPath('data.availability', []);
+
+        // قسم آخر لا يحذف قاعاتك
+        $keep = $this->postJson("$base/rooms", ['name' => 'قاعة 2', 'capacity' => 20])->json('data.id');
+        Sanctum::actingAs($this->makeHead($this->makeDepartment('آخر'))['user']);
+        $this->deleteJson("$base/rooms/$keep")->assertOk();
+        $this->assertSame(1, DB::table('rooms')->where('id', $keep)->count());
+    }
 }
