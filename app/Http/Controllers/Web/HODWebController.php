@@ -1137,6 +1137,10 @@ class HODWebController extends Controller
             'room' => 'required|string',
         ]);
 
+        if (!\App\Support\Access::headManagesCourse(Auth::user(), $request->course_id)) {
+            abort(403, 'هذه المادة لا تتبع مقررات قسمك.');
+        }
+
         // جلب الأستاذ تلقائياً بناءً على المادة المختارة
         // schedules.teacher_id مرتبط بـ users.user_id (وليس teachers.teacher_id)، لذا نمرّ عبر جدول teachers لجلب user_id الصحيح
         $teacherId = DB::table('course_teachers')
@@ -1170,6 +1174,14 @@ class HODWebController extends Controller
             if ($conflict) {
                 return redirect()->back()->with('error', 'عذراً! لا يمكن إضافة الحصة. هذا الأستاذ لديه حصة أخرى في نفس اليوم ونفس الوقت في قسم آخر.');
             }
+        }
+
+        $sameSlot = fn () => DB::table('schedules')->where('day', $request->day)->where('start_time', 'like', $startTime . '%');
+        if ($sameSlot()->where('class_group', $classGroup)->exists()) {
+            return redirect()->back()->with('error', 'هذه الشعبة لديها حصة أخرى في نفس اليوم ونفس الوقت.');
+        }
+        if ($sameSlot()->where('room', $request->room)->exists()) {
+            return redirect()->back()->with('error', 'القاعة محجوزة في هذا الوقت لحصة أخرى.');
         }
 
         DB::table('schedules')->insert([
