@@ -174,6 +174,11 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
 #========= روابط واجهات الطالب ==========
     Route::prefix('student')->middleware('role:student')->group(function () {
         Route::get('/dashboard', [StudentController::class, 'getDashboardData']);
+        // رفيق المذاكرة (المعتمد فقط)
+        Route::get('/study', [\App\Http\Controllers\Api\StudyController::class, 'studentIndex']);
+        Route::get('/study/{id}', [\App\Http\Controllers\Api\StudyController::class, 'studentShow']);
+        Route::post('/study/{id}/attempt', [\App\Http\Controllers\Api\StudyController::class, 'attempt']);
+
         Route::get('/profile', [StudentController::class, 'getProfileData']);
         Route::post('/profile/update', [StudentController::class, 'updateProfile']);
         Route::post('/profile/initialize-face', [StudentController::class, 'initializeFaceFromPhoto']);
@@ -244,6 +249,15 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/attendance-flags', [AttendanceFlagController::class, 'index']);
         Route::put('/attendance-flags/{id}', [AttendanceFlagController::class, 'review']);
 
+
+        // رفيق المذاكرة (مسودات الذكاء الاصطناعي يعتمدها المعلم)
+        Route::get('/study', [\App\Http\Controllers\Api\StudyController::class, 'teacherIndex']);
+        Route::post('/study/generate/{lessonId}', [\App\Http\Controllers\Api\StudyController::class, 'generate']);
+        Route::get('/study/{id}', [\App\Http\Controllers\Api\StudyController::class, 'teacherShow']);
+        Route::put('/study/{id}', [\App\Http\Controllers\Api\StudyController::class, 'update']);
+        Route::post('/study/{id}/approve', [\App\Http\Controllers\Api\StudyController::class, 'approve']);
+        Route::post('/study/{id}/unpublish', [\App\Http\Controllers\Api\StudyController::class, 'unpublish']);
+        Route::post('/study/{id}/export', [\App\Http\Controllers\Api\StudyController::class, 'export']);
 
         // المحاضرات
         Route::get('/lessons', [TeacherController::class, 'getLessons']);

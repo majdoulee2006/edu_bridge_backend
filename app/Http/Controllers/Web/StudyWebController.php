@@ -26,14 +26,8 @@ class StudyWebController extends Controller
 
     public function teacherIndex()
     {
-        $teacher = Auth::user()->teacher;
-        $courseIds = DB::table('course_teachers')->where('teacher_id', $teacher->teacher_id)->pluck('course_id');
-
-        $lessons = Lesson::with('course:course_id,title')->whereIn('course_id', $courseIds)->orderByDesc('lesson_id')->limit(100)->get();
-        $materials = StudyMaterial::whereIn('lesson_id', $lessons->pluck('lesson_id'))->get()->keyBy('lesson_id');
-
         return view('study.teacher_index', [
-            'rows' => $lessons->map(fn ($l) => ['lesson' => $l, 'material' => $materials->get($l->lesson_id), 'whyNot' => $this->generator->whyNot($l->content_url)]),
+            'rows' => $this->svc->overview(Auth::user()),
             'aiReady' => app(\App\Services\Ai\GeminiClient::class)->isConfigured() && config('study.enabled'),
         ]);
     }
