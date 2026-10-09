@@ -127,6 +127,9 @@ final class PatternsFactor implements RiskFactor
             return null;
         }
 
-        return ['type' => 'streak', 'score' => $cfg['scores']['streak'], 'reason' => 'غاب ' . $best . ' أيام دوام متتالية'];
+        // العدد من 3 إلى 10 يُجمع (أيام)، وما فوقه يأتي معه المفرد (11 يوم دوام متتاليًا)
+        $text = $best <= 10 ? "غاب {$best} أيام دوام متتالية" : "غاب {$best} يوم دوام متتاليًا";
+
+        return ['type' => 'streak', 'score' => $cfg['scores']['streak'], 'reason' => $text];
     }
 }
