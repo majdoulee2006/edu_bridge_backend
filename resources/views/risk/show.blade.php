@@ -94,14 +94,16 @@
                 <h3><i class="fa-solid fa-scale-balanced"></i> كيف حُسبت الدرجة</h3>
                 @foreach($risk['factors'] as $f)
                     <div class="fc-row {{ $f['available'] ? '' : 'fc-na' }}">
-                        <div class="fc-head"><span>{{ $f['label'] }} <small>(وزنه {{ $f['weight'] }})</small></span>
-                            <span>{{ $f['available'] ? $fmt($f['score']) . ' / 100' : '—' }}</span></div>
+                        <div class="fc-head"><span>{{ $f['label'] }} <small>(وزنه {{ $f['weight'] }})</small>
+                            @if(!empty($f['critical']))<span class="rs-delta" style="color:#c62828; background: rgba(198,40,40,.14);">حالة حرجة</span>@endif</span>
+                            <span dir="ltr">{{ $f['available'] ? $fmt($f['score']) . ' / 100' : '—' }}</span></div>
                         @if($f['available'])
                             <div class="fc-bar"><i style="width: {{ $f['score'] }}%; background: {{ $f['score'] >= 60 ? '#c62828' : ($f['score'] >= 35 ? '#e65100' : '#2e7d32') }}"></i></div>
                         @endif
                         <div class="fc-reason">{{ $f['reason'] }}@if($f['available']) — مساهمته في الدرجة {{ $fmt($f['contribution']) }} @endif</div>
                     </div>
                 @endforeach
+                <p class="rs-note">إذا انهار عامل رئيسي كليًا (95 نقطة فأكثر) تُرفع الدرجة إلى 60 على الأقل ويُوسَم «حالة حرجة»، كي لا يضيع في متوسط يخففه تفوق الطالب في الباقي.</p>
                 <p class="rs-note">الدرجة = مجموع (نقاط كل عامل × وزنه) مقسومًا على أوزان العوامل المتوفرة فقط، فلا يُعاقَب الطالب على بيانات غير موجودة. هذه أداة لترتيب الأولويات وليست حكمًا.</p>
             </div>
 

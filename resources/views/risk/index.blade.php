@@ -28,7 +28,7 @@
     .rk-name { font-weight:800; color: var(--text-primary); }
     .rk-meta { font-size:.78rem; color: var(--text-secondary); margin-top:.1rem; }
     .rk-score { display:flex; align-items:center; gap:.7rem; min-width: 190px; }
-    .rk-bar { flex:1; height:8px; border-radius:6px; background: rgba(120,120,120,.2); overflow:hidden; }
+    .rk-bar { flex:1; min-width:90px; height:8px; border-radius:6px; background: rgba(120,120,120,.2); overflow:hidden; }
     .rk-bar i { display:block; height:100%; background: var(--c); border-radius:6px; }
     .rk-num { font-weight:800; font-size:1.1rem; color: var(--c); min-width: 2.6rem; text-align:left; }
     .rk-badge { padding:.2rem .7rem; border-radius:2rem; font-size:.75rem; font-weight:800; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); }
