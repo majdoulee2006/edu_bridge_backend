@@ -438,6 +438,10 @@
                     <i class="fa-solid fa-sitemap"></i>
                     التنظيم
                 </a>
+                <a href="{{ url('/hod/risk') }}" class="nav-item {{ Request::is('hod/risk*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    المعرّضون للتعثر
+                </a>
                 <a href="{{ url('/hod/attendance-insights') }}" class="nav-item {{ Request::is('hod/attendance-insights*') ? 'active' : '' }}">
                     <i class="fa-solid fa-chart-column"></i>
                     تحليل الحضور
