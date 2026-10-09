@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ParentController;
 use App\Http\Controllers\Api\ParentDigestController;
 use App\Http\Controllers\Api\AttendanceFlagController;
 use App\Http\Controllers\Api\AttendanceInsightsController;
+use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\DepartmentHeadController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentParentController;
@@ -235,6 +236,11 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/schedule', [TeacherController::class, 'getSchedule']);
 
         // مراجعة اشتباهات الحضور (أنماط مشبوهة رُصدت بعد إغلاق الجلسات)
+
+        // الإنذار المبكر للتعثر (للمرشد فقط: يُرفض من ليس مرشدًا)
+        Route::get('/risk', [RiskController::class, 'index']);
+        Route::get('/risk/students/{id}', [RiskController::class, 'show']);
+        Route::post('/risk/students/{id}/interventions', [RiskController::class, 'storeIntervention']);
         Route::get('/attendance-flags', [AttendanceFlagController::class, 'index']);
         Route::put('/attendance-flags/{id}', [AttendanceFlagController::class, 'review']);
 
@@ -376,6 +382,11 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::get('/attendance/insights', [AttendanceInsightsController::class, 'insights']);
         Route::get('/attendance/flags',    [AttendanceInsightsController::class, 'flags']);
 
+        // الإنذار المبكر للتعثر لطلاب القسم
+        Route::get('/risk', [RiskController::class, 'index']);
+        Route::get('/risk/students/{id}', [RiskController::class, 'show']);
+        Route::post('/risk/students/{id}/interventions', [RiskController::class, 'storeIntervention']);
+
         // Metadata
         Route::get('/metadata',              [DepartmentHeadController::class, 'getMetadata']);
 
@@ -408,6 +419,10 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
     Route::prefix('admin')->group(function () {
         Route::middleware('role:admin')->group(function () {
             Route::get('/dashboard', [AdminController::class, 'dashboard']);
+            // الإنذار المبكر للتعثر (كل الطلاب)
+            Route::get('/risk', [RiskController::class, 'index']);
+            Route::get('/risk/students/{id}', [RiskController::class, 'show']);
+            Route::post('/risk/students/{id}/interventions', [RiskController::class, 'storeIntervention']);
             Route::get('/attendance/insights', [AttendanceInsightsController::class, 'insights']);
             Route::get('/attendance/flags',    [AttendanceInsightsController::class, 'flags']);
             Route::get('/users', [AdminController::class, 'getUsers']);
