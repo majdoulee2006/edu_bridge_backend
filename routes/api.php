@@ -345,6 +345,11 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         // استوديو الجدول: مسودة يقترحها النظام يراجعها رئيس القسم ويعتمدها
         Route::prefix('schedule-studio')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'index']);
+            Route::get('/settings', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'settings']);
+            Route::post('/rooms', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'storeRoom']);
+            Route::delete('/rooms/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'deleteRoom']);
+            Route::post('/availability', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'storeAvailability']);
+            Route::delete('/availability/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'deleteAvailability']);
             Route::post('/generate', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'generate']);
             Route::get('/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'show']);
             Route::post('/{id}/move', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'move']);

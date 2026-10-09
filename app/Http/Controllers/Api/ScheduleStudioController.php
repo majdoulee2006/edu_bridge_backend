@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Room;
 use App\Models\ScheduleDraft;
+use App\Models\TeacherAvailability;
 use App\Services\Schedule\ScheduleDraftService;
 use App\Services\Schedule\ScheduleProblem;
 use App\Services\Schedule\ScheduleRuleException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * استوديو الجدول لرئيس القسم عبر API (تطبيق Flutter). المنطق كله في ScheduleDraftService نفسه الذي تستعمله صفحات الويب،
@@ -98,6 +101,83 @@ class ScheduleStudioController extends Controller
         return $this->guard(fn () => response()->json(['success' => true, 'message' => 'عاد الجدول كما كان قبل الاعتماد', 'data' => $this->full(
             $this->svc->revert($this->draft($request, $id), $request->user())
         )]));
+    }
+
+    // ------------------------------------------------------------------ القاعات وتوفّر المعلمين
+
+    public function settings(Request $request)
+    {
+        return $this->guard(function () use ($request) {
+            $dept = $this->svc->departmentOf($request->user());
+            $teachers = $this->teachers($dept);
+
+            return response()->json(['success' => true, 'data' => [
+                'rooms' => Room::where(fn ($q) => $q->where('department_id', $dept)->orWhereNull('department_id'))->orderBy('name')->get()
+                    ->map(fn ($r) => ['id' => $r->id, 'name' => $r->name, 'capacity' => $r->capacity, 'shared' => $r->department_id === null])->values(),
+                'teachers' => $teachers->map(fn ($t) => ['user_id' => $t->user_id, 'name' => $t->full_name])->values(),
+                'availability' => TeacherAvailability::whereIn('teacher_user_id', $teachers->pluck('user_id'))->orderBy('teacher_user_id')->get()
+                    ->map(fn ($a) => ['id' => $a->id, 'teacher_user_id' => $a->teacher_user_id, 'day' => $a->day, 'period' => $a->period, 'kind' => $a->kind])->values(),
+                'days' => config('schedule.days'), 'day_labels' => config('schedule.day_labels'), 'periods' => config('schedule.periods'), 'max_periods' => config('schedule.max_periods'),
+            ]]);
+        });
+    }
+
+    public function storeRoom(Request $request)
+    {
+        $d = $request->validate(['name' => 'required|string|max:60', 'capacity' => 'required|integer|between:1,2000']);
+
+        return $this->guard(function () use ($request, $d) {
+            $room = Room::updateOrCreate(['name' => $d['name'], 'department_id' => $this->svc->departmentOf($request->user())], ['capacity' => $d['capacity'], 'is_active' => true]);
+
+            return response()->json(['success' => true, 'data' => ['id' => $room->id]], 201);
+        });
+    }
+
+    public function deleteRoom(Request $request, $id)
+    {
+        return $this->guard(function () use ($request, $id) {
+            Room::where('department_id', $this->svc->departmentOf($request->user()))->where('id', $id)->delete();
+
+            return response()->json(['success' => true]);
+        });
+    }
+
+    public function storeAvailability(Request $request)
+    {
+        $d = $request->validate([
+            'teacher_user_id' => 'required|integer', 'day' => 'required|in:' . implode(',', config('schedule.days')),
+            'period' => 'required|integer|between:1,' . config('schedule.max_periods'), 'kind' => 'required|in:unavailable,avoid',
+        ]);
+
+        return $this->guard(function () use ($request, $d) {
+            if (!$this->teachers($this->svc->departmentOf($request->user()))->contains('user_id', (int) $d['teacher_user_id'])) {
+                return response()->json(['success' => false, 'message' => 'هذا المعلم ليس من معلمي قسمك'], 403);
+            }
+            $a = TeacherAvailability::updateOrCreate(\Illuminate\Support\Arr::only($d, ['teacher_user_id', 'day', 'period']), ['kind' => $d['kind']]);
+
+            return response()->json(['success' => true, 'data' => ['id' => $a->id]], 201);
+        });
+    }
+
+    public function deleteAvailability(Request $request, $id)
+    {
+        return $this->guard(function () use ($request, $id) {
+            $ids = $this->teachers($this->svc->departmentOf($request->user()))->pluck('user_id');
+            TeacherAvailability::whereIn('teacher_user_id', $ids)->where('id', $id)->delete();
+
+            return response()->json(['success' => true]);
+        });
+    }
+
+    private function teachers(int $deptId)
+    {
+        return DB::table('course_teachers')
+            ->join('teachers', 'teachers.teacher_id', '=', 'course_teachers.teacher_id')
+            ->join('users', 'users.user_id', '=', 'teachers.user_id')
+            ->join('course_program', 'course_program.course_id', '=', 'course_teachers.course_id')
+            ->join('programs', 'programs.id', '=', 'course_program.program_id')
+            ->where('programs.department_id', $deptId)
+            ->select('users.user_id', 'users.full_name')->distinct()->orderBy('users.full_name')->get();
     }
 
     // ------------------------------------------------------------------ تمثيل
