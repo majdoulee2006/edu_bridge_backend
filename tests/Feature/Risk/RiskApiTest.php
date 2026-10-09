@@ -435,4 +435,16 @@ class RiskApiTest extends TestCase
         $this->assertSame(0, $this->alerts($this->a));
         $this->assertSame(1, $this->alerts($this->b));
     }
+
+    public function test_no_notify_does_not_consume_the_alert(): void
+    {
+        $this->makeAtRisk($this->a, $this->student($this->a, 'متعثر'));
+
+        $this->artisan('risk:compute', ['--no-notify' => true])->assertExitCode(0);
+        $this->assertSame(0, $this->alerts($this->a));
+        $this->assertNull(StudentRiskScore::first()->notified_level, 'لم يُرسل شيء فلا يُسجَّل أنه أُرسل');
+
+        $this->artisan('risk:compute')->assertExitCode(0);
+        $this->assertSame(1, $this->alerts($this->a), 'التنبيه يصل في أول تشغيل عادي بعد ذلك');
+    }
 }
