@@ -342,6 +342,20 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
 
     #========= روابط رئيس القسم ==========
     Route::prefix('department-head')->middleware('role:head')->group(function () {
+        // استوديو الجدول: مسودة يقترحها النظام يراجعها رئيس القسم ويعتمدها
+        Route::prefix('schedule-studio')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'index']);
+            Route::post('/generate', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'generate']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'show']);
+            Route::post('/{id}/move', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'move']);
+            Route::post('/{id}/swap', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'swap']);
+            Route::post('/{id}/lock', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'lock']);
+            Route::post('/{id}/regenerate', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'regenerate']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'approve']);
+            Route::post('/{id}/discard', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'discard']);
+            Route::post('/{id}/revert', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'revert']);
+        });
+
         // Dashboard & Profile & Notifications
         Route::get('/dashboard',     [DepartmentHeadController::class, 'dashboard']);
         Route::get('/profile',       [DepartmentHeadController::class, 'getProfile']);
