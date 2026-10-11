@@ -32,6 +32,9 @@ if (config('digest.enabled')) {
 // تحليل جلسات الحضور المنتهية بحثًا عن الأنماط المشبوهة (شبكة أمان لمن لا يعمل عنده الطابور)
 Schedule::command('attendance:analyze')->everyTenMinutes()->withoutOverlapping();
 
+// إغلاق جلسات الحضور الأوفلاين وتسجيل الغياب بعد انتهاء مهلة المزامنة (المرحلة 3)
+Schedule::command('attendance:finalize-sessions')->everyTenMinutes()->withoutOverlapping();
+
 // الإنذار المبكر: حساب درجة الخطر الأكاديمي لكل طالب ليلًا (خارج ساعات الدوام)
 if (config('risk.enabled')) {
     Schedule::command('risk:compute')->dailyAt('02:30')->withoutOverlapping();
