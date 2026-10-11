@@ -1,6 +1,6 @@
 @extends('layouts.teacher')
 
-@section('title', 'أدوات المربي')
+@section('title', __('messages.advisor_tools'))
 @section('subtitle', 'إدارة الحضور والتقارير السلوكية الخاصة بالدورات التي تشرف عليها')
 
 @push('styles')
@@ -79,7 +79,7 @@
                 <form action="{{ route('teacher.advisor.report') }}" method="POST">
                     @csrf
                     <div class="form-group">
-                        <label class="form-label">الطالب <span style="color:#ef4444">*</span></label>
+                        <label class="form-label"> {{ __('messages.student') }} <span style="color:#ef4444">*</span></label>
                         <select name="student_id" required class="form-input">
                             <option value="" disabled selected>اختر الطالب</option>
                             @foreach($students as $student)
@@ -109,7 +109,7 @@
                     <div class="form-group">
                         <label class="form-label">الدورة <span style="color:#ef4444">*</span></label>
                         <select name="course_id" required class="form-input">
-                            <option value="" disabled selected>اختر الدورة</option>
+                            <option value="" disabled selected>{{ __('messages.select_course') }}</option>
                             @foreach($advisorCourses as $course)
                                 <option value="{{ $course->course_id }}">{{ $course->title }}</option>
                             @endforeach
@@ -132,13 +132,13 @@
                                     </div>
                                     <div class="attendance-toggle">
                                         <input type="radio" name="attendance[{{ $student->student_id }}]" value="present" id="att_present_{{ $student->student_id }}" checked>
-                                        <label for="att_present_{{ $student->student_id }}">حاضر</label>
+                                        <label for="att_present_{{ $student->student_id }}">{{ __('messages.present') }}</label>
                                         
                                         <input type="radio" name="attendance[{{ $student->student_id }}]" value="late" id="att_late_{{ $student->student_id }}">
                                         <label for="att_late_{{ $student->student_id }}">متأخر</label>
                                         
                                         <input type="radio" name="attendance[{{ $student->student_id }}]" value="absent" id="att_absent_{{ $student->student_id }}">
-                                        <label for="att_absent_{{ $student->student_id }}">غائب</label>
+                                        <label for="att_absent_{{ $student->student_id }}">{{ __('messages.absent') }}</label>
                                     </div>
                                 </div>
                             @endforeach

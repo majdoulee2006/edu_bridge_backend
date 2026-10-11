@@ -40,12 +40,12 @@ class StudentWebController extends Controller
             if (!$student) {
                 \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'هذا الحساب ليس حساب طالب', $user);
                 Auth::logout();
-                return back()->withErrors(['login' => 'هذا الحساب ليس حساب طالب.']);
+                return back()->withErrors(['login' => __('messages.login_not_student_account')]);
             }
             if (Auth::user()->status !== 'active') {
                 \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب الطالب موقوف مؤقتاً', $user);
                 Auth::logout();
-                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+                return back()->withErrors(['login' => __('messages.login_account_suspended')]);
             }
 
             // التحقق الإلزامي من ربط الطالب بولي الأمر
@@ -57,7 +57,7 @@ class StudentWebController extends Controller
             if (!$isLinkedToParent) {
                 \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب الطالب غير مرتبط بولي أمر', $user);
                 Auth::logout();
-                return back()->withInput()->withErrors(['login' => 'عذراً، يجب ربط حساب الطالب بولي أمر أولاً للمتابعة. يرجى مراجعة شؤون الطلاب.']);
+                return back()->withInput()->withErrors(['login' => __('messages.student_must_link_parent_first')]);
             }
 
             $request->session()->regenerate();
@@ -65,7 +65,7 @@ class StudentWebController extends Controller
             return redirect('/student/dashboard');
         }
 
-        return back()->withInput()->withErrors(['login' => 'البريد الإلكتروني أو كلمة المرور غير صحيحة.']);
+        return back()->withInput()->withErrors(['login' => __('messages.login_invalid_email_or_password')]);
     }
 
     public function logout(Request $request)
@@ -351,7 +351,7 @@ class StudentWebController extends Controller
                 'Content-Type' => 'image/png',
             ]);
         }
-        return back()->with('error', 'تعذر توليد صورة الجدول الرسمي');
+        return back()->with('error', __('messages.schedule_image_generate_failed'));
     }
 
     /**
@@ -366,7 +366,7 @@ class StudentWebController extends Controller
                 'Content-Type' => 'image/png',
             ]);
         }
-        return back()->with('error', 'تعذر توليد صورة برنامج الامتحانات');
+        return back()->with('error', __('messages.exam_schedule_image_generate_failed'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -643,7 +643,7 @@ class StudentWebController extends Controller
         $notesText = trim($request->input('student_notes', ''));
 
         if (!$request->hasFile('file') && empty($solText)) {
-            return back()->withErrors(['file' => 'يرجى كتابة نص الحل أو إرفاق ملف على الأقل لتسليم الواجب.']);
+            return back()->withErrors(['file' => __('messages.assignment_solution_or_file_required')]);
         }
 
         // التحقق من عدم التسليم المسبق
@@ -653,7 +653,7 @@ class StudentWebController extends Controller
             ->first();
 
         if ($existing) {
-            return back()->withErrors(['file' => 'لقد قمت بتسليم هذا الواجب مسبقاً.']);
+            return back()->withErrors(['file' => __('messages.assignment_already_submitted')]);
         }
 
         $assignment = DB::table('assignments')->where('assignment_id', $assignmentId)->first();
@@ -739,7 +739,7 @@ class StudentWebController extends Controller
             \App\Models\UserActivity::log('تسليم واجب', "قام الطالب بتسليم الواجب: {$assignment->title}");
         }
 
-        return back()->with('success', 'تم تسليم الواجب بنجاح!');
+        return back()->with('success', __('messages.assignment_submitted_successfully'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -943,7 +943,7 @@ class StudentWebController extends Controller
             'updated_at'    => now(),
         ]);
 
-        return back()->with('success', 'تم تقديم العذر بنجاح.');
+        return back()->with('success', __('messages.excuse_submitted_successfully'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -992,11 +992,11 @@ class StudentWebController extends Controller
         $checkTime = $request->type === 'hourly' ? ($request->from_time ?? $currentTime) : ($request->leave_time ?? $request->time ?? $currentTime);
 
         if ($checkTime > '15:00' || ($request->type === 'hourly' && ($request->to_time ?? '') > '15:00')) {
-            return back()->withErrors(['time' => 'عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).'])->withInput();
+            return back()->withErrors(['time' => __('messages.leave_time_limit_alert')])->withInput();
         }
 
         if ($request->date === $todayStr && $checkTime < $currentTime) {
-            return back()->withErrors(['time' => 'عذراً، لا يمكن اختيار وقت سابق لوقتنا الحالي لليوم!'])->withInput();
+            return back()->withErrors(['time' => __('messages.leave_time_past_alert')])->withInput();
         }
         $reasonText = $request->reason;
         if ($request->type === 'hourly') {
@@ -1017,7 +1017,7 @@ class StudentWebController extends Controller
             ->first();
 
         if ($existingRecent) {
-            return back()->with('success', 'تم تقديم طلب الإذن بنجاح سابقاً، وهو قيد المراجعة.');
+            return back()->with('success', __('messages.leave_submitted_already_review'));
         }
 
         // المسار الموحّد لكل القنوات (تطبيق/ويب/بوت): ولي الأمر ثم رئيس القسم ثم شؤون الطلاب
@@ -1033,7 +1033,7 @@ class StudentWebController extends Controller
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'تم تقديم طلب الإذن بنجاح، وهو بانتظار موافقة ولي الأمر أولاً.',
+                'message' => __('messages.leave_submitted_pending_parent'),
                 'request' => [
                     'request_id' => $requestId,
                     'id'         => $requestId,
@@ -1045,7 +1045,7 @@ class StudentWebController extends Controller
                 ]
             ]);
         }
-        return back()->with('success', 'تم تقديم طلب الإذن بنجاح، وهو بانتظار موافقة ولي الأمر أولاً.');
+        return back()->with('success', __('messages.leave_submitted_pending_parent'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1118,7 +1118,7 @@ class StudentWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'تم تقديم طلب التقرير بنجاح.');
+        return back()->with('success', __('messages.report_requested_successfully'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1148,7 +1148,7 @@ class StudentWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'تم تحديث الملف الشخصي بنجاح.');
+        return back()->with('success', __('messages.profile_updated_successfully'));
     }
 
     public function updatePassword(Request $request)
@@ -1166,7 +1166,7 @@ class StudentWebController extends Controller
         $user = Auth::user();
 
         if (!Hash::check($request->current_password, $user->password)) {
-            return back()->withErrors(['current_password' => 'كلمة المرور الحالية غير صحيحة.']);
+            return back()->withErrors(['current_password' => __('messages.current_password_incorrect')]);
         }
 
         DB::table('users')->where('user_id', $user->user_id)->update([
@@ -1174,7 +1174,7 @@ class StudentWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'تم تغيير كلمة المرور بنجاح.');
+        return back()->with('success', __('messages.password_changed_successfully'));
     }
 
     public function sendOTP(Request $request)
@@ -1300,7 +1300,7 @@ class StudentWebController extends Controller
             return response()->json(['status' => 'success']);
         }
 
-        return back()->with('success', 'تم تحديد الإشعار كمقروء.');
+        return back()->with('success', __('messages.notification_marked_read_single'));
     }
 
     public function markAllNotificationsRead()
@@ -1312,7 +1312,7 @@ class StudentWebController extends Controller
             return response()->json(['status' => 'success']);
         }
 
-        return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
+        return back()->with('success', __('messages.notification_marked_read_all'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1426,7 +1426,7 @@ class StudentWebController extends Controller
             return response()->json(['success' => true, 'message' => $message]);
         }
 
-        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+        return redirect()->back()->with('success', __('messages.message_sent_successfully'));
     }
 
     public function updateMessage(Request $request, $id)
@@ -1434,11 +1434,11 @@ class StudentWebController extends Controller
         $message = \App\Models\Message::findOrFail($id);
         
         if ($message->sender_id !== Auth::id()) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.unauthorized')], 403);
         }
 
         if ($message->attachment || $message->message === '[Voice Note]') {
-            return response()->json(['status' => 'error', 'message' => 'لا يمكن تعديل المرفقات'], 400);
+            return response()->json(['status' => 'error', 'message' => __('messages.cannot_edit_attachments')], 400);
         }
 
         $request->validate(['message' => 'required|string|max:2000']);
@@ -1455,12 +1455,12 @@ class StudentWebController extends Controller
         $message = \App\Models\Message::findOrFail($id);
 
         if ((int)$message->sender_id !== (int)$currentUserId && (int)$message->receiver_id !== (int)$currentUserId) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.unauthorized')], 403);
         }
 
         if ($type === 'everyone') {
             if ((int)$message->sender_id !== (int)$currentUserId) {
-                return response()->json(['status' => 'error', 'message' => 'يمكن لمراسل الرسالة فقط حذفها لدى الجميع'], 403);
+                return response()->json(['status' => 'error', 'message' => __('messages.only_sender_can_delete_for_everyone')], 403);
             }
             $message->deleted_for_everyone = true;
             $message->save();
@@ -1486,7 +1486,7 @@ class StudentWebController extends Controller
             }
         }
 
-        return response()->json(['status' => 'success']);
+        return response()->json(['status' => 'success', 'message' => __('messages.message_deleted_successfully')]);
     }
 
     // ─────────────────────────── Academic Card Exports ───────────────────────────
@@ -1636,7 +1636,7 @@ class StudentWebController extends Controller
             ]);
         }
 
-        return back()->with('success', 'تم إرسال طلب الخدمة الطلابية بنجاح، وستتم مراجعته من قبل شؤون الطلاب والإدارة قريباً.');
+        return back()->with('success', __('messages.student_service_request_submitted'));
     }
 
     public function settings()

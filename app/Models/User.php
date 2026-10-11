@@ -16,6 +16,8 @@ class User extends Authenticatable
     protected $fillable = [
         'role_id',
         'full_name',
+        'full_name_ar',
+        'full_name_en',
         'first_name',
         'last_name',
         'username',
@@ -42,6 +44,18 @@ class User extends Authenticatable
 
     protected $appends = ['role'];
 
+    /**
+     * Return the name matching the current locale (ar/en), falling back to the stored full_name.
+     */
+    public function getFullNameAttribute($value)
+    {
+        $localized = app()->getLocale() === 'ar'
+            ? ($this->attributes['full_name_ar'] ?? null)
+            : ($this->attributes['full_name_en'] ?? null);
+
+        return $localized ?: $value;
+    }
+
     public function getRoleAttribute()
     {
         $roles = [
@@ -53,6 +67,24 @@ class User extends Authenticatable
             6 => 'affairs',
         ];
         return $roles[$this->role_id] ?? 'student';
+    }
+
+    public function getDepartmentDisplayNameAttribute(): string
+    {
+        $dept = trim($this->department ?? '');
+        $map = [
+            'هندسي'                  => 'dept_engineering',
+            'نظم المعلومات الحاسوبية' => 'dept_cis',
+            'طبي'                    => 'dept_medical',
+            'تجاري'                  => 'dept_business',
+        ];
+
+        $key = $map[$dept] ?? null;
+        if ($key && \Illuminate\Support\Facades\Lang::has("messages.{$key}")) {
+            return __("messages.{$key}");
+        }
+
+        return $dept;
     }
 
     protected $hidden = [

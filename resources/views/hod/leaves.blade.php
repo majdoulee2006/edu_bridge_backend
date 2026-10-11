@@ -1,6 +1,6 @@
 @extends('layouts.hod')
 
-@section('title', 'طلبات الإجازة')
+@section('title', __('messages.leave_requests'))
 
 @push('styles')
 <style>
@@ -120,15 +120,15 @@
 
 @section('content')
 
-    {{-- فلتر الحالة --}}
+    {{-- Filter by Status --}}
     <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1.5rem;">
-        <button class="status-btn active" onclick="setStatus('all',      this)">الكل</button>
-        <button class="status-btn"        onclick="setStatus('pending',  this)">معلقة</button>
-        <button class="status-btn"        onclick="setStatus('approved', this)">موافق عليها</button>
-        <button class="status-btn"        onclick="setStatus('rejected', this)">مرفوضة</button>
+        <button class="status-btn active" onclick="setStatus('all',      this)">{{ __('messages.status_all') }}</button>
+        <button class="status-btn"        onclick="setStatus('pending',  this)">{{ __('messages.pending') }}</button>
+        <button class="status-btn"        onclick="setStatus('approved', this)">{{ __('messages.status_approved_label') }}</button>
+        <button class="status-btn"        onclick="setStatus('rejected', this)">{{ __('messages.status_rejected_label') }}</button>
     </div>
 
-    {{-- الكروت --}}
+    {{-- Leaves Container --}}
     <div id="leaves-container">
         @forelse($allLeaves as $leave)
             @php
@@ -145,7 +145,7 @@
 
     <div id="empty-state" style="display:none;text-align:center;padding:3rem;color:var(--text-secondary);">
         <i class="fa-regular fa-folder-open" style="font-size:2.5rem;display:block;margin-bottom:0.75rem;opacity:0.4;"></i>
-        لا توجد إجازات تطابق الفلتر المحدد.
+        {{ __('messages.no_leaves_match_filter') }}
     </div>
 
 @endsection

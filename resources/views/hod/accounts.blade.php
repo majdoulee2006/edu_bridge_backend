@@ -1,6 +1,6 @@
 @extends('layouts.hod')
 
-@section('title', 'الحسابات')
+@section('title', __('messages.accounts'))
 
 @push('styles')
 <style>
@@ -71,6 +71,7 @@
     .account-info h4 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.2rem; }
     .account-info p  { color: var(--text-secondary); font-size: 0.88rem; }
     .delete-btn-wrap { position: absolute; top: 1.25rem; left: 1.25rem; }
+    [dir="ltr"] .delete-btn-wrap { left: auto; right: 1.25rem; }
 
     .chips-container { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .chip { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.83rem; font-weight: 600; background-color: var(--bg-primary); color: var(--text-secondary); }
@@ -125,8 +126,7 @@
 @endpush
 
 @section('content')
-    <p class="page-subtitle">إدارة المستخدمين والصلاحيات</p>
-
+    <p class="page-subtitle">{{ __('messages.manage_users_permissions') }}</p>
 
     @if($errors->any())
         <div style="background:#fef2f2;color:#dc2626;padding:1rem;border-radius:0.75rem;margin-bottom:1rem;font-weight:700;">
@@ -136,31 +136,25 @@
                 @endforeach
             </ul>
         </div>
-        <script>
-            // Open the parent modal automatically if we just submitted the parent form and it failed
-            document.addEventListener('DOMContentLoaded', function() {
-                // If there's an error, and the URL has #parent, we could open it, or just show the errors
-            });
-        </script>
     @endif
 
     {{-- Tab Switcher --}}
     <div class="type-switcher">
         <button class="type-btn active" id="btn-teachers" onclick="switchTab('teachers')">
-            <i class="fa-solid fa-chalkboard-teacher"></i> مدرب
+            <i class="fa-solid fa-chalkboard-teacher"></i> {{ __('messages.teacher') }}
         </button>
         <button class="type-btn" id="btn-students" onclick="switchTab('students')">
-            <i class="fa-solid fa-user-graduate"></i> طالب
+            <i class="fa-solid fa-user-graduate"></i> {{ __('messages.student') }}
         </button>
         <button class="type-btn" id="btn-parents" onclick="switchTab('parents')">
-            <i class="fa-solid fa-people-roof"></i> ولي الأمر
+            <i class="fa-solid fa-people-roof"></i> {{ __('messages.parent') }}
         </button>
     </div>
 
     {{-- Add Button --}}
     <button id="add-account-btn" class="add-btn" onclick="openAddModal()">
         <div class="add-icon"><i class="fa-solid fa-plus"></i></div>
-        <span id="add-btn-text">إضافة حساب مدرب جديد</span>
+        <span id="add-btn-text">{{ __('messages.add_new_teacher_account') }}</span>
     </button>
 
     {{-- ===== Tab: Teachers ===== --}}
@@ -170,7 +164,7 @@
         <div class="account-card">
             <div class="delete-btn-wrap" style="display:flex; gap:0.5rem;">
                 <button type="button" onclick="openEditModal({{ $teacher->user_id }}, '{{ addslashes($teacher->full_name) }}', '{{ addslashes($teacher->email) }}', '{{ addslashes($teacher->phone) }}', 'teacher', {{ json_encode($teacher->course_ids) }})" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-pen"></i></button>
-                <form action="{{ route('hod.accounts.delete', $teacher->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
+                <form action="{{ route('hod.accounts.delete', $teacher->user_id) }}" method="POST" onsubmit="return confirm('{{ __('messages.delete_confirm') }}')">
                     @csrf
                     <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
                 </form>
@@ -186,23 +180,23 @@
                 @if($teacher->email)<span class="chip">{{ $teacher->email }}</span>@endif
                 @if($teacher->phone)<span class="chip">{{ $teacher->phone }}</span>@endif
                 @if($teacher->is_advisor)
-                    <span class="chip" style="background:#fdf4ff;color:#9333ea;border:1px solid #f3e8ff;font-weight:700;"><i class="fa-solid fa-star"></i> مربي دورة: {{ $teacher->advisor_course_title }}</span>
+                    <span class="chip" style="background:#fdf4ff;color:#9333ea;border:1px solid #f3e8ff;font-weight:700;"><i class="fa-solid fa-star"></i> {{ __('messages.course_advisor_badge') }}: {{ $teacher->advisor_course_title }}</span>
                 @endif
                 @forelse($teacher->courses ?? [] as $course)
                     <span class="chip chip-accent">{{ $course }}</span>
                 @empty
-                    <span class="chip" style="border:1px dashed var(--border-color);background:transparent;">لا توجد مواد مسندة</span>
+                    <span class="chip" style="border:1px dashed var(--border-color);background:transparent;">{{ __('messages.no_assigned_courses') }}</span>
                 @endforelse
             </div>
             
             <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border-color); display: flex; gap: 0.5rem;">
                 <button onclick="openAdvisorModal({{ $teacher->teacher_id }}, '{{ $teacher->full_name }}', {{ $teacher->is_advisor ? 'true' : 'false' }})" style="background: var(--bg-primary); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 0.5rem; font-family: inherit; font-weight: 700; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
-                    <i class="fa-solid fa-user-tie"></i> إدارة مربي الدورة
+                    <i class="fa-solid fa-user-tie"></i> {{ __('messages.manage_course_advisor') }}
                 </button>
             </div>
         </div>
         @empty
-        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">لا توجد حسابات مدربين حالياً.</div>
+        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">{{ __('messages.no_teachers_found') }}</div>
         @endforelse
     </div>
 
@@ -213,7 +207,7 @@
         <div class="account-card">
             <div class="delete-btn-wrap" style="display:flex; gap:0.5rem;">
                 <button type="button" onclick="openEditModal({{ $student->user_id }}, '{{ addslashes($student->full_name) }}', '{{ addslashes($student->email) }}', '{{ addslashes($student->phone) }}')" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-pen"></i></button>
-                <form action="{{ route('hod.accounts.delete', $student->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
+                <form action="{{ route('hod.accounts.delete', $student->user_id) }}" method="POST" onsubmit="return confirm('{{ __('messages.delete_confirm') }}')">
                     @csrf
                     <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
                 </form>
@@ -234,7 +228,7 @@
             </div>
         </div>
         @empty
-        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">لا توجد حسابات طلاب حالياً.</div>
+        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">{{ __('messages.no_students_found') }}</div>
         @endforelse
     </div>
 
@@ -245,7 +239,7 @@
         <div class="account-card">
             <div class="delete-btn-wrap" style="display:flex; gap:0.5rem;">
                 <button type="button" onclick="openEditModal({{ $parent->user_id }}, '{{ addslashes($parent->full_name) }}', '{{ addslashes($parent->email) }}', '{{ addslashes($parent->phone) }}')" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-pen"></i></button>
-                <form action="{{ route('hod.accounts.delete', $parent->user_id) }}" method="POST" onsubmit="return confirm('حذف هذا الحساب؟')">
+                <form action="{{ route('hod.accounts.delete', $parent->user_id) }}" method="POST" onsubmit="return confirm('{{ __('messages.delete_confirm') }}')">
                     @csrf
                     <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
                 </form>
@@ -258,16 +252,16 @@
                 </div>
             </div>
             <div class="chips-container">
-                <span class="chip" style="color:var(--text-secondary);font-size:0.8rem;">الأبناء:</span>
+                <span class="chip" style="color:var(--text-secondary);font-size:0.8rem;">{{ __('messages.children') }}:</span>
                 @forelse($parent->children ?? [] as $child)
                     <span class="chip chip-accent">{{ $child }}</span>
                 @empty
-                    <span class="chip" style="border:1px dashed var(--border-color);background:transparent;">لا يوجد أبناء مرتبطون</span>
+                    <span class="chip" style="border:1px dashed var(--border-color);background:transparent;">{{ __('messages.no_linked_children') }}</span>
                 @endforelse
             </div>
         </div>
         @empty
-        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">لا توجد حسابات أولياء أمور حالياً.</div>
+        <div class="account-card" style="text-align:center;color:var(--text-secondary);padding:2rem;">{{ __('messages.no_parents_found') }}</div>
         @endforelse
     </div>
 
@@ -277,29 +271,29 @@
     {{-- Modal: Add Teacher --}}
     <div id="teacher-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">إضافة حساب مدرب جديد</h4>
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">{{ __('messages.add_new_teacher_account') }}</h4>
             <form action="{{ route('hod.accounts.store_teacher') }}" method="POST">
                 @csrf
                 <div class="form-group">
-                    <label class="form-label">الاسم الكامل</label>
+                    <label class="form-label">{{ __('messages.full_name') }} <span style="color:#ef4444">*</span></label>
                     <input type="text" name="full_name" required placeholder="مثال: د. أحمد المحمد" class="form-input">
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">رقم الهاتف</label>
+                        <label class="form-label">{{ __('messages.phone_number') }}</label>
                         <input type="tel" name="phone" placeholder="09xxxxxxxx" dir="ltr" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.email_address') }} <span style="color:#ef4444">*</span></label>
                         <input type="email" name="email" required placeholder="teacher@domain.com" dir="ltr" class="form-input">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.department') }} <span style="color:#ef4444">*</span></label>
                     <input type="text" name="department" value="{{ Auth::user()->department }}" readonly class="form-input" style="background-color: var(--bg-primary); cursor: not-allowed; color: var(--text-secondary);">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">التخصصات (الفروع) <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.specializations_branches') }} <span style="color:#ef4444">*</span></label>
                     <div class="courses-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
                         @foreach($branches as $branch)
                             <label class="course-check">
@@ -310,24 +304,24 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">المواد التي يدرسها</label>
+                    <label class="form-label">{{ __('messages.courses_taught') }}</label>
                     <div class="courses-grid" id="teacher-courses-grid">
-                        <span style="color:var(--text-secondary); font-size:0.9rem;">يرجى اختيار الفرع لعرض المواد المتاحة.</span>
+                        <span style="color:var(--text-secondary); font-size:0.9rem;">{{ __('messages.select_branch_for_courses') }}</span>
                     </div>
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.password') }} <span style="color:#ef4444">*</span></label>
                         <input type="password" name="password" required minlength="6" placeholder="••••••••" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">تأكيد كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.confirm_password') }} <span style="color:#ef4444">*</span></label>
                         <input type="password" name="password_confirmation" required placeholder="••••••••" class="form-input">
                     </div>
                 </div>
                 <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
-                    <button type="submit" class="btn-save">إضافة وحفظ</button>
-                    <button type="button" onclick="closeModal('teacher-modal')" class="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn-save">{{ __('messages.save') }}</button>
+                    <button type="button" onclick="closeModal('teacher-modal')" class="btn-cancel">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -336,41 +330,41 @@
     {{-- Modal: Add Student --}}
     <div id="student-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">إضافة حساب طالب جديد</h4>
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">{{ __('messages.add_new_student_account') }}</h4>
             <form action="{{ route('hod.accounts.store_student') }}" method="POST">
                 @csrf
                 <div class="form-group">
-                    <label class="form-label">الاسم الكامل <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.full_name') }} <span style="color:#ef4444">*</span></label>
                     <input type="text" name="full_name" required placeholder="مثال: يوسف المحمد" class="form-input">
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">رقم الهاتف</label>
+                        <label class="form-label">{{ __('messages.phone_number') }}</label>
                         <input type="tel" name="phone" placeholder="09xxxxxxxx" dir="ltr" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">الرقم الجامعي <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.student_university_id') }} <span style="color:#ef4444">*</span></label>
                         <input type="text" name="university_id" required placeholder="2023xxxx" dir="ltr" class="form-input">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.email_address') }} <span style="color:#ef4444">*</span></label>
                     <input type="email" name="email" required placeholder="student@university.edu" dir="ltr" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Telegram Chat ID (اختياري)</label>
+                    <label class="form-label">{{ __('messages.telegram_chat_id') }}</label>
                     <input type="text" name="telegram_chat_id" placeholder="مثال: 123456789" dir="ltr" class="form-input" value="7650604064" title="احصل عليه من بوت الجامعة لإرسال الإشعارات وبيانات الدخول فوراً">
-                    <small style="color: #6b7280; font-size: 0.8rem;">قم بإدخاله إذا كنت تريد إرسال بيانات الدخول للطالب فور إنشاء الحساب</small>
+                    <small style="color: #6b7280; font-size: 0.8rem;">{{ __('messages.telegram_chat_hint') }}</small>
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">القسم <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.department') }} <span style="color:#ef4444">*</span></label>
                         <input type="text" name="department" value="{{ Auth::user()->department }}" readonly class="form-input" style="background-color: var(--bg-primary); cursor: not-allowed; color: var(--text-secondary);">
                     </div>
                     <div>
-                        <label class="form-label">التخصص (الفرع) <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.specialization') }} <span style="color:#ef4444">*</span></label>
                         <select name="program_id" required class="form-input">
-                            <option value="" disabled selected>اختر الفرع</option>
+                            <option value="" disabled selected>{{ __('messages.select_branch_placeholder') }}</option>
                             @foreach($branches as $branch)
                                 <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                             @endforeach
@@ -379,42 +373,42 @@
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">السنة الدراسية <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.academic_year_label') }} <span style="color:#ef4444">*</span></label>
                         <select name="level" required class="form-input">
-                            <option value="" disabled selected>اختر السنة</option>
-                            <option value="السنة الأولى">السنة الأولى</option>
-                            <option value="السنة الثانية">السنة الثانية</option>
+                            <option value="" disabled selected>{{ __('messages.select_year_placeholder') }}</option>
+                            <option value="السنة الأولى">{{ __('messages.first_year') }}</option>
+                            <option value="السنة الثانية">{{ __('messages.second_year') }}</option>
                         </select>
                     </div>
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">تاريخ الميلاد <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.birth_date') }} <span style="color:#ef4444">*</span></label>
                         <input type="date" name="birth_date" required class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">الجنس <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.gender') }} <span style="color:#ef4444">*</span></label>
                         <div class="gender-toggle">
                             <input type="radio" name="gender" id="male-s" value="ذكر" checked>
-                            <label for="male-s">ذكر</label>
+                            <label for="male-s">{{ __('messages.male') }}</label>
                             <input type="radio" name="gender" id="female-s" value="أنثى">
-                            <label for="female-s">أنثى</label>
+                            <label for="female-s">{{ __('messages.female') }}</label>
                         </div>
                     </div>
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.password') }} <span style="color:#ef4444">*</span></label>
                         <input type="password" name="password" required minlength="6" placeholder="••••••••" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">تأكيد كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.confirm_password') }} <span style="color:#ef4444">*</span></label>
                         <input type="password" name="password_confirmation" required placeholder="••••••••" class="form-input">
                     </div>
                 </div>
                 <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
-                    <button type="submit" class="btn-save">إضافة وحفظ</button>
-                    <button type="button" onclick="closeModal('student-modal')" class="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn-save">{{ __('messages.save') }}</button>
+                    <button type="button" onclick="closeModal('student-modal')" class="btn-cancel">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -423,47 +417,47 @@
     {{-- Modal: Add Parent --}}
     <div id="parent-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">إضافة حساب ولي أمر جديد</h4>
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">{{ __('messages.add_new_parent_account') }}</h4>
             <form action="{{ route('hod.accounts.store_parent') }}" method="POST">
                 @csrf
                 <div class="form-group">
-                    <label class="form-label">الاسم الكامل <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.full_name') }} <span style="color:#ef4444">*</span></label>
                     <input type="text" name="full_name" required placeholder="مثال: يوسف الخالد" class="form-input">
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">رقم الهاتف <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.phone_number') }} <span style="color:#ef4444">*</span></label>
                         <input type="tel" name="phone" required placeholder="09xxxxxxxx" dir="ltr" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">اسم المستخدم <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.username') }} <span style="color:#ef4444">*</span></label>
                         <input type="text" name="username" required placeholder="yousef_parent" dir="ltr" class="form-input">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.email_address') }} <span style="color:#ef4444">*</span></label>
                     <input type="email" name="email" required placeholder="parent@test.com" dir="ltr" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">عدد الأبناء</label>
+                    <label class="form-label">{{ __('messages.children_count') }}</label>
                     <input type="number" id="children_count" min="1" max="10" value="1"
                            oninput="updateChildrenFields(parseInt(this.value)||1)"
-                           class="form-input" placeholder="أدخل عدد الأبناء">
+                           class="form-input" placeholder="1">
                 </div>
                 <div id="children-fields" style="margin-bottom:0.9rem;display:flex;flex-direction:column;gap:0.6rem;"></div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.password') }} <span style="color:#ef4444">*</span></label>
                         <input type="password" name="password" required minlength="6" placeholder="••••••••" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">تأكيد كلمة المرور <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.confirm_password') }} <span style="color:#ef4444">*</span></label>
                         <input type="password" name="password_confirmation" required placeholder="••••••••" class="form-input">
                     </div>
                 </div>
                 <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
-                    <button type="submit" class="btn-save">إضافة وحفظ</button>
-                    <button type="button" onclick="closeModal('parent-modal')" class="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn-save">{{ __('messages.save') }}</button>
+                    <button type="button" onclick="closeModal('parent-modal')" class="btn-cancel">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -472,24 +466,24 @@
     {{-- Modal: Assign Advisor --}}
     <div id="advisor-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">إدارة مربي الدورة لـ <span id="advisor-teacher-name" style="color:var(--accent-color);"></span></h4>
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">{{ __('messages.manage_course_advisor') }}: <span id="advisor-teacher-name" style="color:var(--accent-color);"></span></h4>
             <form action="{{ route('hod.accounts.advisor') }}" method="POST">
                 @csrf
                 <input type="hidden" name="teacher_id" id="advisor-teacher-id">
                 
                 <div class="form-group">
-                    <label class="form-label">الإجراء <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.action_label') }} <span style="color:#ef4444">*</span></label>
                     <select name="action" id="advisor-action" required class="form-input" onchange="toggleAdvisorAction(this.value)">
-                        <option value="assign">تعيين كمربي دورة</option>
-                        <option value="remove">إزالة صفة المربي</option>
+                        <option value="assign">{{ __('messages.assign_advisor_opt') }}</option>
+                        <option value="remove">{{ __('messages.remove_advisor_opt') }}</option>
                     </select>
                 </div>
 
                 <div id="advisor-assign-fields">
                     <div class="form-group">
-                        <label class="form-label">الفرع <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.specialization') }} <span style="color:#ef4444">*</span></label>
                         <select name="branch" id="advisor-branch-select" class="form-input">
-                            <option value="" disabled selected>اختر الفرع</option>
+                            <option value="" disabled selected>{{ __('messages.select_branch_placeholder') }}</option>
                             @foreach($branches as $branch)
                                 <option value="{{ $branch->name }}">{{ $branch->name }}</option>
                             @endforeach
@@ -497,28 +491,28 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">السنة الدراسية <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.academic_year_label') }} <span style="color:#ef4444">*</span></label>
                         <select name="year" id="advisor-year-select" class="form-input">
-                            <option value="" disabled selected>اختر السنة الدراسية</option>
-                            <option value="السنة الأولى">السنة الأولى</option>
-                            <option value="السنة الثانية">السنة الثانية</option>
+                            <option value="" disabled selected>{{ __('messages.select_year_placeholder') }}</option>
+                            <option value="السنة الأولى">{{ __('messages.first_year') }}</option>
+                            <option value="السنة الثانية">{{ __('messages.second_year') }}</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">الشعبة (اختياري)</label>
+                        <label class="form-label">{{ __('messages.section_optional') }}</label>
                         <select name="section" id="advisor-section-select" class="form-input">
-                            <option value="">لا يوجد شعبة محددة</option>
-                            <option value="شعبة 1">شعبة 1</option>
-                            <option value="شعبة 2">شعبة 2</option>
-                            <option value="شعبة 3">شعبة 3</option>
+                            <option value="">{{ __('messages.no_specific_section') }}</option>
+                            <option value="شعبة 1">{{ __('messages.section_1') }}</option>
+                            <option value="شعبة 2">{{ __('messages.section_2') }}</option>
+                            <option value="شعبة 3">{{ __('messages.section_3') }}</option>
                         </select>
                     </div>
                 </div>
 
                 <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
-                    <button type="submit" class="btn-save" style="background:#9333ea;color:#fff;">حفظ التغييرات</button>
-                    <button type="button" onclick="closeModal('advisor-modal')" class="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn-save" style="background:#9333ea;color:#fff;">{{ __('messages.save_changes_btn') }}</button>
+                    <button type="button" onclick="closeModal('advisor-modal')" class="btn-cancel">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -527,26 +521,26 @@
     {{-- Modal: Edit Account --}}
     <div id="edit-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">تعديل بيانات الحساب</h4>
+            <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">{{ __('messages.edit_account_data') }}</h4>
             <form id="edit-account-form" method="POST">
                 @csrf
                 <div class="form-group">
-                    <label class="form-label">الاسم الكامل <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.full_name') }} <span style="color:#ef4444">*</span></label>
                     <input type="text" id="edit_full_name" name="full_name" required class="form-input">
                 </div>
                 <div class="form-row">
                     <div>
-                        <label class="form-label">البريد الإلكتروني <span style="color:#ef4444">*</span></label>
+                        <label class="form-label">{{ __('messages.email_address') }} <span style="color:#ef4444">*</span></label>
                         <input type="email" id="edit_email" name="email" required dir="ltr" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">رقم الهاتف</label>
+                        <label class="form-label">{{ __('messages.phone_number') }}</label>
                         <input type="tel" id="edit_phone" name="phone" dir="ltr" class="form-input">
                     </div>
                 </div>
                 
                 <div class="form-group" id="edit_teacher_courses" style="display:none; margin-top: 1rem;">
-                    <label class="form-label">المواد التي يدرسها (للتعديل) <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.courses_taught_edit') }} <span style="color:#ef4444">*</span></label>
                     <div class="courses-grid">
                         @foreach($all_courses as $course)
                             <label class="course-check edit-course-label" data-assigned="{{ $course->is_assigned ? 'true' : 'false' }}">
@@ -558,16 +552,16 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">كلمة المرور <span style="color:#94a3b8; font-size:0.8rem;">(اختياري - اتركها فارغة إذا لم ترد التغيير)</span></label>
+                    <label class="form-label">{{ __('messages.password') }} <span style="color:#94a3b8; font-size:0.8rem;">{{ __('messages.leave_blank_password') }}</span></label>
                     <input type="password" name="password" minlength="6" placeholder="••••••••" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">تأكيد كلمة المرور</label>
+                    <label class="form-label">{{ __('messages.confirm_password') }}</label>
                     <input type="password" name="password_confirmation" placeholder="••••••••" class="form-input">
                 </div>
                 <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
-                    <button type="submit" class="btn-save">حفظ التعديلات</button>
-                    <button type="button" onclick="closeModal('edit-modal')" class="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn-save">{{ __('messages.save_changes_btn') }}</button>
+                    <button type="button" onclick="closeModal('edit-modal')" class="btn-cancel">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -581,6 +575,28 @@
 
     const coursesByBranch = @json($coursesByBranch ?? []);
 
+    const localizedStrings = {
+        addTeacherBtn: "{{ __('messages.add_new_teacher_account') }}",
+        addStudentBtn: "{{ __('messages.add_new_student_account') }}",
+        addParentBtn: "{{ __('messages.add_new_parent_account') }}",
+        selectBranchPrompt: "{{ __('messages.select_branch_for_courses') }}",
+        noCoursesForBranches: "{{ __('messages.no_courses_available') }}",
+        childUidLabel: "{{ __('messages.child_university_id') }}",
+        uidNotFound: "{{ __('messages.uid_not_found') }}",
+        ordinals: [
+            "{{ __('messages.first_ordinal') }}",
+            "{{ __('messages.second_ordinal') }}",
+            "{{ __('messages.third_ordinal') }}",
+            "{{ __('messages.fourth_ordinal') }}",
+            "{{ __('messages.fifth_ordinal') }}",
+            "{{ __('messages.sixth_ordinal') }}",
+            "{{ __('messages.seventh_ordinal') }}",
+            "{{ __('messages.eighth_ordinal') }}",
+            "{{ __('messages.ninth_ordinal') }}",
+            "{{ __('messages.tenth_ordinal') }}"
+        ]
+    };
+
     function filterTeacherCourses() {
         const checkboxes = document.querySelectorAll('.branch-checkbox:checked');
         const selectedBranches = Array.from(checkboxes).map(cb => cb.value);
@@ -588,7 +604,7 @@
         grid.innerHTML = ''; // Clear current
 
         if (selectedBranches.length === 0) {
-            grid.innerHTML = '<span style="color:var(--text-secondary); font-size:0.9rem;">يرجى اختيار فرع أو أكثر لعرض المواد المتاحة.</span>';
+            grid.innerHTML = `<span style="color:var(--text-secondary); font-size:0.9rem;">${localizedStrings.selectBranchPrompt}</span>`;
             return;
         }
 
@@ -603,7 +619,7 @@
         });
 
         if (uniqueCourses.size === 0) {
-            grid.innerHTML = '<span style="color:var(--text-secondary); font-size:0.9rem;">لا توجد مواد لهذه الفروع.</span>';
+            grid.innerHTML = `<span style="color:var(--text-secondary); font-size:0.9rem;">${localizedStrings.noCoursesForBranches}</span>`;
             return;
         }
 
@@ -624,8 +640,12 @@
             document.getElementById('tab-' + t).style.display = (t === tab) ? 'block' : 'none';
             document.getElementById('btn-' + t).classList.toggle('active', t === tab);
         });
-        const labels = { teachers: 'مدرب جديد', students: 'طالب جديد', parents: 'ولي أمر جديد' };
-        document.getElementById('add-btn-text').innerText = 'إضافة حساب ' + labels[tab];
+        const labels = {
+            teachers: localizedStrings.addTeacherBtn,
+            students: localizedStrings.addStudentBtn,
+            parents: localizedStrings.addParentBtn
+        };
+        document.getElementById('add-btn-text').innerText = labels[tab];
     }
 
     function openAddModal() {
@@ -668,7 +688,6 @@
     }
 
     // ===== Children Fields (Parent Modal) =====
-    const ordinals = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر'];
     let lookupTimers = {};
 
     function openEditModal(userId, fullName, email, phone, role = '', courseIds = []) {
@@ -712,11 +731,12 @@
         const container = document.getElementById('children-fields');
         container.innerHTML = '';
         for (let i = 1; i <= count; i++) {
+            const ord = localizedStrings.ordinals[i-1] || i;
             container.innerHTML += `
             <div>
-                <label class="form-label">الرقم الجامعي للابن ${ordinals[i-1] || i}</label>
+                <label class="form-label">${localizedStrings.childUidLabel} (${ord})</label>
                 <input name="children_university_ids[]" type="text" dir="ltr"
-                       placeholder="مثال: 2023xxxx" id="uid-input-${i}"
+                       placeholder="2023xxxx" id="uid-input-${i}"
                        oninput="lookupStudent(${i}, this.value)"
                        ${i===1?'required':''} class="form-input">
                 <div id="uid-result-${i}" class="uid-result"></div>
@@ -737,7 +757,7 @@
                         result.textContent = '✓ ' + data.full_name + (data.department ? ' — ' + data.department : '') + (data.level ? ' — ' + data.level : '');
                     } else {
                         result.className = 'uid-result uid-err';
-                        result.textContent = '✗ الرقم الجامعي غير موجود';
+                        result.textContent = '✗ ' + localizedStrings.uidNotFound;
                     }
                     result.style.display = 'block';
                 })

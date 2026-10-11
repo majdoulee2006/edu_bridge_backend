@@ -1,5 +1,5 @@
 @extends('layouts.teacher')
-@section('title', 'الاختبارات والتقييمات')
+@section('title', __('messages.grade_events'))
 
 @push('styles')
 <style>
@@ -28,11 +28,10 @@
 
 {{-- Header --}}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-    <div style="color: var(--text-secondary); font-size: 0.95rem;">{{ $events->count() }} تقييم</div>
+    <div style="color: var(--text-secondary); font-size: 0.95rem;">{{ $events->count() }} {{ __('messages.evaluation') }}</div>
     <button onclick="document.getElementById('create-modal').classList.add('active')"
             style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; padding: 0.6rem 1.25rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem;">
-        <i class="fa-solid fa-plus"></i> تقييم جديد
-    </button>
+        <i class="fa-solid fa-plus"></i> {{ __('messages.new_evaluation') }} </button>
 </div>
 
 {{-- Events list --}}
@@ -41,17 +40,17 @@
     <div style="flex: 1; min-width: 0;">
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.4rem;">
             @if($event->type === 'exam')
-                <span class="badge badge-exam"><i class="fa-solid fa-file-circle-check"></i> امتحان</span>
+                <span class="badge badge-exam"><i class="fa-solid fa-file-circle-check"></i> {{ __('messages.exam') }} </span>
             @elseif($event->type === 'quiz')
-                <span class="badge badge-quiz"><i class="fa-solid fa-pen-clip"></i> مذاكرة</span>
+                <span class="badge badge-quiz"><i class="fa-solid fa-pen-clip"></i> {{ __('messages.quiz') }} </span>
             @else
-                <span class="badge badge-oral"><i class="fa-solid fa-microphone"></i> شفهي</span>
+                <span class="badge badge-oral"><i class="fa-solid fa-microphone"></i> {{ __('messages.oral') }} </span>
             @endif
             <span style="font-weight: 800; font-size: 1rem;">{{ $event->title }}</span>
         </div>
         <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.83rem;">
             <span><i class="fa-solid fa-book"></i> {{ $event->course_title ?? '—' }}</span>
-            <span><i class="fa-solid fa-star"></i> {{ $event->max_score }} علامة</span>
+            <span><i class="fa-solid fa-star"></i> {{ $event->max_score }} {{ __('messages.mark') }}</span>
             <span><i class="fa-solid fa-calendar"></i> {{ \Carbon\Carbon::parse($event->date)->format('Y-m-d') }}</span>
             @if(isset($event->time) && $event->time)
                 <span><i class="fa-solid fa-clock"></i> {{ $event->time }}</span>
@@ -70,10 +69,10 @@
         @endphp
         <a href="{{ route('teacher.grade_events.students', $event->id) }}" class="btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; width: auto; background: var(--accent-color); color: #1a1a1a; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
             <i class="fa-solid {{ $isFullyGraded ? 'fa-pen-to-square' : 'fa-list-check' }}"></i> 
-            {{ $isFullyGraded ? 'تعديل العلامات' : 'إدخال العلامات' }}
+            {{ $isFullyGraded ? __('messages.edit_marks') : __('messages.enter_marks') }}
         </a>
         <form action="{{ route('teacher.grade_events.delete', $event->id) }}" method="POST"
-              onsubmit="return confirm('حذف هذا التقييم؟')">
+              onsubmit="return confirm('{{ __('messages.confirm_delete_evaluation') }}')">
             @csrf
             <button type="submit" class="btn-danger"><i class="fa-solid fa-trash"></i></button>
         </form>
@@ -82,15 +81,15 @@
 @empty
 <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
     <i class="fa-solid fa-file-circle-question" style="font-size: 2.5rem; margin-bottom: 0.75rem; display: block; color: var(--accent-color);"></i>
-    لا توجد تقييمات بعد — أنشئ أول تقييم
+    {{ __('messages.no_evaluations_yet_create_first') }}
 </div>
 @endforelse
 
-{{-- Modal: إنشاء تقييم --}}
+{{-- Modal: إنشاء {{ __('messages.evaluation') }} --}}
 <div class="modal-overlay" id="create-modal" onclick="if(event.target===this)this.classList.remove('active')">
     <div class="modal-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-            <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0;">تقييم جديد</h3>
+            <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0;">{{ __('messages.new_evaluation') }}</h3>
             <button onclick="document.getElementById('create-modal').classList.remove('active')"
                     style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-secondary);">✕</button>
         </div>
@@ -102,25 +101,22 @@
             <div style="display: flex; flex-direction: column; gap: 1rem;">
                 {{-- Type selector --}}
                 <div>
-                    <label class="form-label">نوع التقييم</label>
+                    <label class="form-label">{{ __('messages.event_type') }}</label>
                     <div class="type-tabs">
                         <button type="button" class="type-tab active" onclick="selectType('exam', this)">
-                            <i class="fa-solid fa-file-circle-check"></i> امتحان
-                        </button>
+                            <i class="fa-solid fa-file-circle-check"></i> {{ __('messages.exam') }} </button>
                         <button type="button" class="type-tab" onclick="selectType('quiz', this)">
-                            <i class="fa-solid fa-pen-clip"></i> مذاكرة
-                        </button>
+                            <i class="fa-solid fa-pen-clip"></i> {{ __('messages.quiz') }} </button>
                         <button type="button" class="type-tab" onclick="selectType('oral', this)">
-                            <i class="fa-solid fa-microphone"></i> شفهي
-                        </button>
+                            <i class="fa-solid fa-microphone"></i> {{ __('messages.oral') }} </button>
                     </div>
                 </div>
 
                 {{-- Course --}}
                 <div>
-                    <label class="form-label">المادة الدراسية *</label>
+                    <label class="form-label">{{ __('messages.subject_required') }}</label>
                     <select name="course_id" class="form-input" required>
-                        <option value="">اختر المادة</option>
+                        <option value="">{{ __('messages.select_subject') }}</option>
                         @foreach($courses as $c)
                             <option value="{{ $c->course_id }}">{{ $c->title }}</option>
                         @endforeach
@@ -129,18 +125,18 @@
 
                 {{-- Title --}}
                 <div>
-                    <label class="form-label">الاسم / العنوان *</label>
-                    <input type="text" name="title" class="form-input" placeholder="مثال: امتحان الفصل الأول" required>
+                    <label class="form-label">{{ __('messages.name_title_required') }}</label>
+                    <input type="text" name="title" class="form-input" placeholder=__('messages.example_first_semester_exam') required>
                 </div>
 
                 {{-- Score + Date --}}
                 <div class="row-2">
                     <div>
-                        <label class="form-label">العلامة الكلية *</label>
+                        <label class="form-label">{{ __('messages.total_mark_required') }}</label>
                         <input type="number" name="max_score" class="form-input" value="100" min="1" required>
                     </div>
                     <div>
-                        <label class="form-label">التاريخ *</label>
+                        <label class="form-label">{{ __('messages.date_required') }}</label>
                         <input type="date" name="date" class="form-input" min="{{ date('Y-m-d') }}" required>
                     </div>
                 </div>
@@ -148,23 +144,23 @@
                 {{-- Time + Duration --}}
                 <div class="row-2">
                     <div>
-                        <label class="form-label">ساعة الامتحان (اختياري)</label>
+                        <label class="form-label">{{ __('messages.exam_time_optional') }}</label>
                         <input type="time" name="time" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">مدة الامتحان (دقائق - اختياري)</label>
-                        <input type="text" name="duration" class="form-input" placeholder="مثال: 90 دقيقة">
+                        <label class="form-label">{{ __('messages.exam_duration_optional') }}</label>
+                        <input type="text" name="duration" class="form-input" placeholder=__('messages.example_90_minutes')>
                     </div>
                 </div>
 
                 {{-- Notes --}}
                 <div>
-                    <label class="form-label">ملاحظات (اختياري)</label>
-                    <textarea name="notes" class="form-input" rows="2" placeholder="أي ملاحظات إضافية..."></textarea>
+                    <label class="form-label">{{ __('messages.notes_optional') }}</label>
+                    <textarea name="notes" class="form-input" rows="2" placeholder=__('messages.any_additional_notes')></textarea>
                 </div>
 
                 <button type="submit" class="btn-primary" style="margin-top: 0.25rem;">
-                    <i class="fa-solid fa-check"></i> إضافة التقييم
+                    <i class="fa-solid fa-check"></i> {{ __('messages.add_evaluation') }}
                 </button>
             </div>
         </form>

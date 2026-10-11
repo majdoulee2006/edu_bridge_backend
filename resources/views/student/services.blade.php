@@ -1,6 +1,6 @@
 @extends('layouts.student')
-@section('title', 'الخدمات الطلابية')
-@section('subtitle', 'تقديم ومتابعة كافة الطلبات الإلكترونية كالتطبيق الجوال')
+@section('title', __('messages.student_services_title'))
+@section('subtitle', __('messages.student_services_desc'))
 
 @push('styles')
 <style>
@@ -160,7 +160,7 @@
         border-radius: 0.875rem;
         padding: 0.85rem 1.1rem;
         margin-top: 1rem;
-        border-right: 3px solid var(--accent-color);
+        border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 3px solid var(--accent-color);
         font-size: 0.88rem;
     }
 
@@ -425,19 +425,19 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h2 style="font-size: 1.4rem; font-weight: 900; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 0.6rem;">
-                <i class="fa-solid fa-hand-holding-hand" style="color: var(--accent-color);"></i> الخدمات والطلبات الإلكترونية
+                <i class="fa-solid fa-hand-holding-hand" style="color: var(--accent-color);"></i> {{ __('messages.student_services_and_requests') }}
             </h2>
-            <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.25rem;">تقديم ومتابعة كافة الطلبات الطلابية والإدارية كالتطبيق الجوال</p>
+            <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.25rem;">{{ __('messages.student_services_desc') }}</p>
         </div>
 
         <button onclick="openNewRequestModal('general')" style="background: var(--accent-color); color: #1a1a1a; border: none; padding: 0.75rem 1.4rem; border-radius: 0.85rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-family: inherit; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s;">
-            <i class="fa-solid fa-plus-circle"></i> تقديم طلب جديد
+            <i class="fa-solid fa-plus-circle"></i> {{ __('messages.new_request_btn') }}
         </button>
     </div>
 
     <!-- Section 1: Flutter Services Cards Grid -->
     <div class="section-head-title">
-        <i class="fa-solid fa-layer-group" style="color: var(--accent-color);"></i> قائمة الخدمات الطلابية المتاحة
+        <i class="fa-solid fa-layer-group" style="color: var(--accent-color);"></i> {{ __('messages.available_services_list') }}
     </div>
 
     <div class="services-flutter-grid">
@@ -448,9 +448,9 @@
                 <i class="fa-solid fa-scale-balanced"></i>
             </div>
             <div>
-                <div class="service-card-title">تقديم طلب استرحام</div>
-                <div class="service-card-sub">تقديم طلب عذر طبي، إعادة اختبار، أو مراجعة درجات إلى إدارة المعهد والشؤون</div>
-                <div class="service-card-action">تقديم الطلب الآن <i class="fa-solid fa-arrow-left"></i></div>
+                <div class="service-card-title">{{ __('messages.mercy_petition_title') }}</div>
+                <div class="service-card-sub">{{ __('messages.mercy_petition_desc') }}</div>
+                <div class="service-card-action">{{ __('messages.submit_request_now') }} <i class="fa-solid fa-arrow-{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}"></i></div>
             </div>
         </div>
 
@@ -460,9 +460,9 @@
                 <i class="fa-solid fa-file-contract"></i>
             </div>
             <div>
-                <div class="service-card-title">استخراج الوثائق الطلابية</div>
-                <div class="service-card-sub">استخراج شهادة قيد، كشف علامات ورقي مصدق، ومستندات أخرى</div>
-                <div class="service-card-action">طلب وثيقة رسمية <i class="fa-solid fa-arrow-left"></i></div>
+                <div class="service-card-title">{{ __('messages.student_documents_title') }}</div>
+                <div class="service-card-sub">{{ __('messages.student_documents_desc') }}</div>
+                <div class="service-card-action">{{ __('messages.request_official_doc') }} <i class="fa-solid fa-arrow-{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}"></i></div>
             </div>
         </div>
 
@@ -472,9 +472,9 @@
                 <i class="fa-solid fa-file-pen"></i>
             </div>
             <div>
-                <div class="service-card-title">تقديم طلب امتحان إكمال</div>
-                <div class="service-card-sub">تقديم طلب لإجراء امتحان إكمال للمواد التي لم يتم النجاح بها بعذر مقبول</div>
-                <div class="service-card-action">طلب امتحان إكمال <i class="fa-solid fa-arrow-left"></i></div>
+                <div class="service-card-title">{{ __('messages.makeup_exam_service_title') }}</div>
+                <div class="service-card-sub">{{ __('messages.makeup_exam_service_desc') }}</div>
+                <div class="service-card-action">{{ __('messages.request_makeup_exam') }} <i class="fa-solid fa-arrow-{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}"></i></div>
             </div>
         </div>
 
@@ -484,9 +484,9 @@
                 <i class="fa-solid fa-mobile-screen-button"></i>
             </div>
             <div>
-                <div class="service-card-title">تقديم طلب فك قفل الجهاز</div>
-                <div class="service-card-sub">تقديم طلب لشؤون الطلاب لفك قفل الحساب عن الجهاز القديم لربطه بجهاز جديد</div>
-                <div class="service-card-action">طلب فك قفل الجهاز <i class="fa-solid fa-arrow-left"></i></div>
+                <div class="service-card-title">{{ __('messages.device_reset_title') }}</div>
+                <div class="service-card-sub">{{ __('messages.device_reset_desc') }}</div>
+                <div class="service-card-action">{{ __('messages.request_device_unlock') }} <i class="fa-solid fa-arrow-{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}"></i></div>
             </div>
         </div>
 
@@ -496,9 +496,9 @@
                 <i class="fa-solid fa-user-gear"></i>
             </div>
             <div>
-                <div class="service-card-title">طلب تحديث صورة بصمة الوجه</div>
-                <div class="service-card-sub">تقديم طلب لتغيير صورة بصمة الوجه للتحقق عند تسجيل الحضور بالجوال</div>
-                <div class="service-card-action">تحديث صورة البصمة <i class="fa-solid fa-arrow-left"></i></div>
+                <div class="service-card-title">{{ __('messages.face_photo_title') }}</div>
+                <div class="service-card-sub">{{ __('messages.face_photo_desc') }}</div>
+                <div class="service-card-action">{{ __('messages.update_biometric_photo') }} <i class="fa-solid fa-arrow-{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}"></i></div>
             </div>
         </div>
 
@@ -506,28 +506,28 @@
 
     <!-- Section 2: Requests Tracker with Filter Tabs -->
     <div class="section-head-title" style="margin-top: 1rem;">
-        <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-color);"></i> سجل الطلبات المرفوعة ومتابعة حالتها
+        <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-color);"></i> {{ __('messages.requests_tracker_title') }}
     </div>
 
     <!-- Filter Tabs -->
     <div class="filter-tabs-wrapper">
         <button class="filter-tab-btn active" onclick="filterRequests('all', this)">
-            <i class="fa-solid fa-globe"></i> كافة الطلبات ({{ $stats['total'] }})
+            <i class="fa-solid fa-globe"></i> {{ __('messages.all_requests_with_count', ['count' => $stats['total']]) }}
         </button>
         <button class="filter-tab-btn" onclick="filterRequests('mercy', this)">
-            <i class="fa-solid fa-scale-balanced"></i> طلبات الاسترحام
+            <i class="fa-solid fa-scale-balanced"></i> {{ __('messages.mercy_requests_tab') }}
         </button>
         <button class="filter-tab-btn" onclick="filterRequests('document', this)">
-            <i class="fa-solid fa-file-contract"></i> الوثائق الطلابية
+            <i class="fa-solid fa-file-contract"></i> {{ __('messages.documents_tab') }}
         </button>
         <button class="filter-tab-btn" onclick="filterRequests('makeup', this)">
-            <i class="fa-solid fa-file-pen"></i> امتحانات الإكمال
+            <i class="fa-solid fa-file-pen"></i> {{ __('messages.makeup_exams_tab') }}
         </button>
         <button class="filter-tab-btn" onclick="filterRequests('device_reset', this)">
-            <i class="fa-solid fa-mobile-screen"></i> فك قفل الجهاز
+            <i class="fa-solid fa-mobile-screen"></i> {{ __('messages.device_reset_tab') }}
         </button>
         <button class="filter-tab-btn" onclick="filterRequests('face_photo', this)">
-            <i class="fa-solid fa-user-gear"></i> بصمة الوجه
+            <i class="fa-solid fa-user-gear"></i> {{ __('messages.face_photo_tab') }}
         </button>
     </div>
 
@@ -536,40 +536,40 @@
         @forelse($requests as $req)
             @php
                 $typeNames = [
-                    'mercy'        => ['name' => 'طلب استرحام / إعادة نظر', 'icon' => 'fa-scale-balanced', 'color' => '#f59e0b'],
-                    'document'     => ['name' => 'طلب وثيقة / كشف علامات', 'icon' => 'fa-file-contract',   'color' => '#3b82f6'],
-                    'makeup'       => ['name' => 'طلب امتحان إكمال',        'icon' => 'fa-file-pen',        'color' => '#ef4444'],
-                    'device_reset' => ['name' => 'طلب فك قفل الجهاز',       'icon' => 'fa-mobile-screen',   'color' => '#8b5cf6'],
-                    'face_photo'   => ['name' => 'طلب صورة بصمة الوجه',     'icon' => 'fa-user-gear',       'color' => '#10b981'],
-                    'general'      => ['name' => 'طلب عام / استفسار',       'icon' => 'fa-comment-dots',    'color' => '#ca8a04'],
+                    'mercy'        => ['name' => __('messages.mercy_petition_title'), 'icon' => 'fa-scale-balanced', 'color' => '#f59e0b'],
+                    'document'     => ['name' => __('messages.student_documents_title'), 'icon' => 'fa-file-contract',   'color' => '#3b82f6'],
+                    'makeup'       => ['name' => __('messages.makeup_exam_service_title'),        'icon' => 'fa-file-pen',        'color' => '#ef4444'],
+                    'device_reset' => ['name' => __('messages.device_reset_title'),       'icon' => 'fa-mobile-screen',   'color' => '#8b5cf6'],
+                    'face_photo'   => ['name' => __('messages.face_photo_title'),     'icon' => 'fa-user-gear',       'color' => '#10b981'],
+                    'general'      => ['name' => __('messages.general_request_service_title'),       'icon' => 'fa-comment-dots',    'color' => '#ca8a04'],
                 ];
-                $typeInfo = $typeNames[$req->type] ?? ['name' => 'طلب خدمة طلابية', 'icon' => 'fa-paper-plane', 'color' => '#ca8a04'];
+                $typeInfo = $typeNames[$req->type] ?? ['name' => __('messages.student_services_title'), 'icon' => 'fa-paper-plane', 'color' => '#ca8a04'];
 
                 // Status pill mapping
-                $statusTitle = 'قيد المراجعة';
+                $statusTitle = __('messages.pending');
                 $pillClass = 'pill-pending';
                 $finalDecision = null;
 
                 if ($req->status === 'completed' || $req->admin_decision !== null || ($req->type === 'device_reset' && $req->affairs_decision !== null)) {
                     $isApproved = ($req->admin_decision === 'approved') || ($req->type === 'device_reset' && $req->affairs_decision === 'approved');
                     if ($isApproved) {
-                        $statusTitle = 'تم القبول النهائي';
+                        $statusTitle = __('messages.final_approved_status');
                         $pillClass = 'pill-approved';
                         $finalDecision = 'approved';
                     } else {
-                        $statusTitle = 'تم الرفض النهائي';
+                        $statusTitle = __('messages.final_rejected_status');
                         $pillClass = 'pill-rejected';
                         $finalDecision = 'rejected';
                     }
                 } else {
                     $statusTitle = match($req->status) {
-                        'pending_affairs' => 'قيد مراجعة الشؤون الطلابية',
-                        'pending_hod'     => 'قيد مراجعة رئيس القسم',
-                        'pending_admin'   => 'قيد مراجعة إدارة المعهد',
-                        'approved'        => 'مقبول',
-                        'rejected'        => 'مرفوض',
-                        'completed'       => 'مكتمل',
-                        default           => 'قيد المعالجة',
+                        'pending_affairs' => __('messages.pending_affairs_status'),
+                        'pending_hod'     => __('messages.pending_hod_status'),
+                        'pending_admin'   => __('messages.pending_admin_status'),
+                        'approved'        => __('messages.approved'),
+                        'rejected'        => __('messages.rejected'),
+                        'completed'       => __('messages.completed'),
+                        default           => __('messages.pending'),
                     };
                     $pillClass = 'pill-pending';
                 }
@@ -587,7 +587,7 @@
                                 <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">#{{ $req->id }}</span>
                             </div>
                             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                                <i class="fa-regular fa-clock"></i> تم تقديم الطلب بتاريخ: {{ \Carbon\Carbon::parse($req->created_at)->format('Y-m-d H:i') }}
+                                <i class="fa-regular fa-clock"></i> {{ __('messages.request_submitted_date', ['date' => \Carbon\Carbon::parse($req->created_at)->format('Y-m-d H:i')]) }}
                             </div>
                         </div>
                     </div>
@@ -595,9 +595,9 @@
                     <div>
                         <span class="status-pill {{ $pillClass }}">
                             @if($finalDecision === 'approved')
-                                <i class="fa-solid fa-circle-check"></i> تم القبول
+                                <i class="fa-solid fa-circle-check"></i> {{ __('messages.approved') }}
                             @elseif($finalDecision === 'rejected')
-                                <i class="fa-solid fa-circle-xmark"></i> تم الرفض
+                                <i class="fa-solid fa-circle-xmark"></i> {{ __('messages.rejected') }}
                             @else
                                 <i class="fa-solid fa-hourglass-half"></i> {{ $statusTitle }}
                             @endif
@@ -607,23 +607,23 @@
 
                 <!-- Request Details -->
                 <div style="margin-top: 1rem; color: var(--text-primary); font-size: 0.92rem; line-height: 1.6; background: var(--bg-primary); padding: 0.85rem 1.1rem; border-radius: 0.85rem; border: 1px solid var(--border-color);">
-                    <strong>تفاصيل الطلب والأسباب:</strong> {{ $req->formatted_details }}
+                    <strong>{{ __('messages.request_details_reasons') }}</strong> {{ $req->formatted_details }}
                 </div>
 
                 <!-- Decisions & Notes Section -->
                 @if($req->admin_notes || $req->affairs_notes || $req->hod_notes)
                     <div class="notes-box">
                         <div style="font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">
-                            <i class="fa-solid fa-comment-dots" style="color: var(--accent-color);"></i> رد وملاحظات الإدارة والشؤون:
+                            <i class="fa-solid fa-comment-dots" style="color: var(--accent-color);"></i> {{ __('messages.admin_affairs_response_notes') }}
                         </div>
                         @if($req->admin_notes)
-                            <div><strong>قرار الإدارة:</strong> {{ $req->admin_notes }}</div>
+                            <div><strong>{{ __('messages.admin_decision_notes') }}</strong> {{ $req->admin_notes }}</div>
                         @endif
                         @if($req->affairs_notes)
-                            <div><strong>ملاحظات الشؤون:</strong> {{ $req->affairs_notes }}</div>
+                            <div><strong>{{ __('messages.affairs_notes_label') }}</strong> {{ $req->affairs_notes }}</div>
                         @endif
                         @if($req->hod_notes)
-                            <div><strong>ملاحظات رئيس القسم:</strong> {{ $req->hod_notes }}</div>
+                            <div><strong>{{ __('messages.hod_notes_label') }}</strong> {{ $req->hod_notes }}</div>
                         @endif
                     </div>
                 @endif
@@ -631,8 +631,8 @@
         @empty
             <div style="text-align: center; padding: 3.5rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary); border: 1px dashed var(--border-color);">
                 <i class="fa-solid fa-hand-holding-hand" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; color: var(--accent-color);"></i>
-                <p style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">لا توجد طلبات سابقة في هذا التصنيف</p>
-                <p style="font-size: 0.88rem; margin-top: 0.3rem;">يمكنك تقديم طلب جديد عبر الضغط على إحدى بطاقات الخدمات المتاحة في الأعلى.</p>
+                <p style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">{{ __('messages.no_requests_in_category') }}</p>
+                <p style="font-size: 0.88rem; margin-top: 0.3rem;">{{ __('messages.can_submit_request_hint') }}</p>
             </div>
         @endforelse
     </div>
@@ -647,15 +647,15 @@
                         <i class="fa-solid fa-plus-circle"></i>
                     </div>
                     <div>
-                        <h3>تقديم طلب خدمة طلابية</h3>
-                        <span>طلب رسمي موجّه لإدارة الكلية</span>
+                        <h3>{{ __('messages.student_service_request_modal_title') }}</h3>
+                        <span>{{ __('messages.official_request_to_college') }}</span>
                     </div>
                 </div>
-                <button type="button" class="btn-close-modal" onclick="closeNewRequestModal()" title="إغلاق">&times;</button>
+                <button type="button" class="btn-close-modal" onclick="closeNewRequestModal()" title="{{ __('messages.close') }}">&times;</button>
             </div>
 
             <!-- Modal Scrollable Body -->
-            <div class="modal-scrollable-body" dir="rtl">
+            <div class="modal-scrollable-body">
                 <form action="{{ route('student.services.store') }}" method="POST" enctype="multipart/form-data" id="studentServiceForm">
                     @csrf
 
@@ -666,41 +666,41 @@
                                 <i class="fa-solid fa-hand-holding-hand"></i>
                             </div>
                             <div style="flex: 1; min-width: 0;">
-                                <div class="selected-service-label">الخدمة المحددة:</div>
+                                <div class="selected-service-label">{{ __('messages.selected_service_label') }}</div>
                                 <div id="selectedServiceTitleText" class="selected-service-name"></div>
                             </div>
                         </div>
-                        <button type="button" onclick="showSelectDropdown()" class="btn-change-service" title="تغيير نوع الخدمة">
-                            <i class="fa-solid fa-arrow-rotate-right"></i> تغيير
+                        <button type="button" onclick="showSelectDropdown()" class="btn-change-service" title="{{ __('messages.change_btn') }}">
+                            <i class="fa-solid fa-arrow-rotate-right"></i> {{ __('messages.change_btn') }}
                         </button>
                     </div>
 
                     <!-- Dropdown Select Menu (Shown when general or user changes) -->
                     <div id="serviceTypeSelectGroup" class="form-group">
-                        <label class="form-label"><i class="fa-solid fa-list-check" style="color: var(--accent-color);"></i> نوع الخدمة المطلوب:</label>
+                        <label class="form-label"><i class="fa-solid fa-list-check" style="color: var(--accent-color);"></i> {{ __('messages.service_type_required_label') }}</label>
                         <select name="type" id="modalServiceTypeSelect" class="form-control" onchange="checkSpecialFieldsVisibility(this.value)" required>
-                            <option value="mercy">⚖️ تقديم طلب استرحام (عذر طبي / إعادة اختبار / مراجعة)</option>
-                            <option value="document">📄 استخراج الوثائق الطلابية (شهادة قيد / كشف علامات)</option>
-                            <option value="makeup">📝 تقديم طلب امتحان إكمال (للمواد المتبقية / الراسب بها)</option>
-                            <option value="device_reset">📱 تقديم طلب فك قفل الجهاز القديم</option>
-                            <option value="face_photo">👤 طلب تحديث صورة بصمة الوجه للتحقق</option>
-                            <option value="general">💬 طلب عام / استفسار موجّه للإدارة</option>
+                            <option value="mercy">{{ __('messages.mercy_request_select_opt') }}</option>
+                            <option value="document">{{ __('messages.document_request_select_opt') }}</option>
+                            <option value="makeup">{{ __('messages.makeup_request_select_opt') }}</option>
+                            <option value="device_reset">{{ __('messages.device_reset_select_opt') }}</option>
+                            <option value="face_photo">{{ __('messages.face_photo_select_opt') }}</option>
+                            <option value="general">{{ __('messages.general_request_select_opt') }}</option>
                         </select>
                     </div>
 
                     <!-- Failed Subject Selection (Shown specifically for Makeup Exam requests) -->
                     <div id="failedSubjectSelectGroup" class="form-group" style="display: none; background: rgba(239, 68, 68, 0.05); padding: 1rem; border-radius: 0.85rem; border: 1px solid rgba(239, 68, 68, 0.2);">
                         <label class="form-label" style="color: #ef4444; font-weight: 800; display: flex; align-items: center; gap: 0.4rem;">
-                            <i class="fa-solid fa-triangle-exclamation"></i> اختر المادة الراسب بها لتقديم طلب الإكمال:
+                            <i class="fa-solid fa-triangle-exclamation"></i> {{ __('messages.choose_failed_subject_label') }}
                         </label>
                         <select name="subject_name" id="failedSubjectSelect" class="form-control" style="border-color: #fca5a5;">
                             @if(count($failedCourses) > 0)
                                 @foreach($failedCourses as $fc)
-                                    <option value="{{ $fc['title'] }}">{{ $fc['title'] }} (النتيجة الحالية: {{ $fc['status'] }} - {{ $fc['total_score'] ?? 'بدون علامة' }} درجة)</option>
+                                    <option value="{{ $fc['title'] }}">{{ $fc['title'] }} ({{ __('messages.current_result_with_score', ['status' => $fc['status'], 'score' => $fc['total_score'] ?? '-']) }})</option>
                                 @endforeach
                             @else
                                 @foreach($enrolledCourses as $ec)
-                                    <option value="{{ $ec->title }}">{{ $ec->title }} (السنة {{ $ec->year }})</option>
+                                    <option value="{{ $ec->title }}">{{ $ec->title }} ({{ __('messages.academic_year_val', ['year' => $ec->year]) }})</option>
                                 @endforeach
                             @endif
                         </select>
@@ -709,10 +709,10 @@
                     <!-- Face / Biometric Photo Upload (Shown specifically for face_photo requests) -->
                     <div id="facePhotoUploadGroup" class="form-group" style="display: none; background: rgba(16, 185, 129, 0.06); padding: 1.1rem; border-radius: 0.85rem; border: 1.5px dashed #10b981;">
                         <label class="form-label" style="color: #10b981; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
-                            <i class="fa-solid fa-camera"></i> اختيار ملف الصورة الجديدة لبصمة الوجه (JPG, PNG):
+                            <i class="fa-solid fa-camera"></i> {{ __('messages.select_face_photo_file_label') }}
                         </label>
                         <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.65rem;">
-                            يجب اختيار ملف صورة شخصية واضحة للوجه حصراً (بصيغة JPG أو PNG أو WebP) ليتم مطابقتها واعتمادها لبصمة الحضور.
+                            {{ __('messages.face_photo_file_hint') }}
                         </p>
                         <input type="file" 
                                name="photo" 
@@ -721,24 +721,24 @@
                                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                                onchange="previewSelectedPhoto(this)">
                         <div id="photoPreviewContainer" style="display: none; margin-top: 0.85rem; text-align: center;">
-                            <img id="photoPreviewImg" src="" alt="معاينة الصورة" style="max-height: 140px; border-radius: 0.75rem; border: 2px solid #10b981; box-shadow: 0 4px 12px rgba(16,185,129,0.2); object-fit: cover;">
-                            <div style="font-size: 0.78rem; color: #10b981; font-weight: 700; margin-top: 0.35rem;">✓ تم اختيار صورة صالحة بنجاح</div>
+                            <img id="photoPreviewImg" src="" alt="preview" style="max-height: 140px; border-radius: 0.75rem; border: 2px solid #10b981; box-shadow: 0 4px 12px rgba(16,185,129,0.2); object-fit: cover;">
+                            <div style="font-size: 0.78rem; color: #10b981; font-weight: 700; margin-top: 0.35rem;">{{ __('messages.valid_photo_selected_success') }}</div>
                         </div>
                     </div>
 
                     <!-- Details Textarea -->
                     <div class="form-group">
-                        <label class="form-label"><i class="fa-solid fa-align-right" style="color: var(--accent-color);"></i> تفاصيل الطلب والأسباب بالتفصيل:</label>
-                        <textarea name="details" class="form-control" rows="5" placeholder="اكتب هنا تفاصيل طلبك والأسباب الموجبة بالتفصيل..." required></textarea>
+                        <label class="form-label"><i class="fa-solid fa-align-right" style="color: var(--accent-color);"></i> {{ __('messages.request_details_full_label') }}</label>
+                        <textarea name="details" class="form-control" rows="5" placeholder="{{ __('messages.request_details_full_ph') }}" required></textarea>
                     </div>
 
                     <!-- Modal Actions Footer -->
                     <div class="modal-actions-footer">
                         <button type="submit" class="btn-modal-submit">
-                            <i class="fa-solid fa-paper-plane"></i> إرسال الطلب الآن
+                            <i class="fa-solid fa-paper-plane"></i> {{ __('messages.send_request_now_btn') }}
                         </button>
                         <button type="button" onclick="closeNewRequestModal()" class="btn-modal-cancel">
-                            إلغاء
+                            {{ __('messages.cancel_btn') }}
                         </button>
                     </div>
                 </form>
@@ -751,12 +751,12 @@
 @push('scripts')
 <script>
     const serviceMap = {
-        'mercy': '⚖️ تقديم طلب استرحام (عذر طبي / إعادة اختبار / مراجعة)',
-        'document': '📄 استخراج الوثائق الطلابية (شهادة قيد / كشف علامات)',
-        'makeup': '📝 تقديم طلب امتحان إكمال (للمواد المتبقية / الراسب بها)',
-        'device_reset': '📱 تقديم طلب فك قفل الجهاز القديم',
-        'face_photo': '👤 طلب تحديث صورة بصمة الوجه للتحقق',
-        'general': '💬 طلب عام / استفسار موجّه للإدارة'
+        'mercy': @json(__('messages.mercy_request_select_opt')),
+        'document': @json(__('messages.document_request_select_opt')),
+        'makeup': @json(__('messages.makeup_request_select_opt')),
+        'device_reset': @json(__('messages.device_reset_select_opt')),
+        'face_photo': @json(__('messages.face_photo_select_opt')),
+        'general': @json(__('messages.general_request_select_opt'))
     };
 
     function checkSpecialFieldsVisibility(selectedType) {
@@ -799,7 +799,7 @@
         const fileExt = file.name.split('.').pop().toLowerCase();
 
         if (!validTypes.includes(file.type) && !validExts.includes(fileExt)) {
-            alert('❌ عذراً، يجب أن يكون الملف المختار صورة حصراً بلواحق (JPG, PNG, WebP)!');
+            alert(@json(__('messages.only_images_allowed_alert')));
             input.value = '';
             if (previewContainer) previewContainer.style.display = 'none';
             return;

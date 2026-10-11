@@ -1,6 +1,6 @@
 @extends('layouts.student')
-@section('title', 'الرئيسية')
-@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'الطالب'))
+@section('title', __('messages.dashboard'))
+@section('subtitle', __('messages.welcome_back') . '، ' . (auth()->user()->full_name ?? __('messages.student_role')))
 
 @push('styles')
 <style>
@@ -120,7 +120,7 @@
         transition: transform 0.2s, opacity 0.2s;
     }
     .stat-card:hover .stat-arrow {
-        transform: translateX(-3px);
+        transform: {{ app()->getLocale() === 'ar' ? 'translateX(-3px)' : 'translateX(3px)' }};
         opacity: 1;
         color: var(--accent-color, #ca8a04);
     }
@@ -161,7 +161,7 @@
     <a href="{{ route('student.courses') }}" class="stat-card">
         <div class="stat-card-body">
             <div class="stat-info">
-                <span class="stat-label">المواد الدراسية</span>
+                <span class="stat-label">{{ __('messages.my_registered_courses') }}</span>
                 <div class="stat-value">{{ $courses->count() }}</div>
             </div>
             <div class="stat-icon stat-icon-blue">
@@ -169,8 +169,8 @@
             </div>
         </div>
         <div class="stat-footer">
-            <span class="stat-hint">عرض المقررات</span>
-            <i class="fa-solid fa-arrow-left stat-arrow"></i>
+            <span class="stat-hint">{{ __('messages.view_courses') }}</span>
+            <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }} stat-arrow"></i>
         </div>
     </a>
 
@@ -178,7 +178,7 @@
     <a href="{{ route('student.assignments') }}" class="stat-card">
         <div class="stat-card-body">
             <div class="stat-info">
-                <span class="stat-label">الواجبات القادمة</span>
+                <span class="stat-label">{{ __('messages.upcoming_assignments') }}</span>
                 <div class="stat-value">{{ $assignments->count() }}</div>
             </div>
             <div class="stat-icon stat-icon-yellow">
@@ -186,8 +186,8 @@
             </div>
         </div>
         <div class="stat-footer">
-            <span class="stat-hint">تسليم الواجبات</span>
-            <i class="fa-solid fa-arrow-left stat-arrow"></i>
+            <span class="stat-hint">{{ __('messages.submit_assignments_btn') }}</span>
+            <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }} stat-arrow"></i>
         </div>
     </a>
 
@@ -195,8 +195,8 @@
     <a href="{{ route('student.attendance') }}" class="stat-card">
         <div class="stat-card-body">
             <div class="stat-info" style="width: 100%;">
-                <span class="stat-label">نسبة الحضور</span>
-                <div class="stat-value">{{ $attendanceRate !== null ? $attendanceRate . '%' : 'غير متاح' }}</div>
+                <span class="stat-label">{{ __('messages.attendance_rate') }}</span>
+                <div class="stat-value">{{ $attendanceRate !== null ? $attendanceRate . '%' : __('messages.unspecified') }}</div>
                 @if($attendanceRate !== null)
                 <div class="att-bar-wrap">
                     <div class="att-bar" style="width: {{ min(100, max(0, $attendanceRate)) }}%;"></div>
@@ -208,8 +208,8 @@
             </div>
         </div>
         <div class="stat-footer">
-            <span class="stat-hint">سجل الحضور</span>
-            <i class="fa-solid fa-arrow-left stat-arrow"></i>
+            <span class="stat-hint">{{ __('messages.attendance_log') }}</span>
+            <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }} stat-arrow"></i>
         </div>
     </a>
 
@@ -217,16 +217,16 @@
     <a href="{{ route('student.grades') }}" class="stat-card">
         <div class="stat-card-body">
             <div class="stat-info">
-                <span class="stat-label">متوسط الدرجات</span>
-                <div class="stat-value">{{ $avgGrade !== null ? $avgGrade . '%' : 'غير متاح' }}</div>
+                <span class="stat-label">{{ __('messages.gpa_average') }}</span>
+                <div class="stat-value">{{ $avgGrade !== null ? $avgGrade . '%' : __('messages.unspecified') }}</div>
             </div>
             <div class="stat-icon stat-icon-purple">
                 <i class="fa-solid fa-chart-line"></i>
             </div>
         </div>
         <div class="stat-footer">
-            <span class="stat-hint">تقرير الأداء</span>
-            <i class="fa-solid fa-arrow-left stat-arrow"></i>
+            <span class="stat-hint">{{ __('messages.performance_report') }}</span>
+            <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }} stat-arrow"></i>
         </div>
     </a>
 
@@ -234,16 +234,16 @@
     <a href="{{ route('student.grades') }}" class="stat-card">
         <div class="stat-card-body">
             <div class="stat-info">
-                <span class="stat-label">بطاقة الطالب</span>
-                <div class="stat-value" style="font-size: 1.25rem;">كشف العلامات</div>
+                <span class="stat-label">{{ __('messages.student_role') }}</span>
+                <div class="stat-value" style="font-size: 1.15rem;">{{ __('messages.student_academic_card') }}</div>
             </div>
             <div class="stat-icon stat-icon-rose">
                 <i class="fa-solid fa-id-card"></i>
             </div>
         </div>
         <div class="stat-footer">
-            <span class="stat-hint">السجل الأكاديمي</span>
-            <i class="fa-solid fa-arrow-left stat-arrow"></i>
+            <span class="stat-hint">{{ __('messages.academic_record') }}</span>
+            <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }} stat-arrow"></i>
         </div>
     </a>
 
@@ -253,7 +253,7 @@
 <div style="margin-bottom: 2rem;">
     <p class="section-title">
         <i class="fa-solid fa-bullhorn" style="color: var(--accent-color, #eab308);"></i>
-        آخر الأخبار والإعلانات
+        {{ __('messages.latest_news_and_announcements') }}
     </p>
 
     @forelse($announcements as $ann)
@@ -280,7 +280,7 @@
             <!-- Avatar column -->
             <div style="flex-shrink: 0;">
                 <div style="width: 44px; height: 44px; border-radius: 50%; background-color: var(--accent-color, #1d9bf0); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 1.1rem;">
-                    إ
+                    {{ app()->getLocale() === 'ar' ? 'إ' : 'A' }}
                 </div>
             </div>
             
@@ -289,7 +289,7 @@
                 <!-- Header -->
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
                     <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">الإدارة</span>
+                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ __('messages.role_admin_badge') }}</span>
                         <i class="fa-solid fa-circle-check" style="color: #1d9bf0; font-size: 0.85rem;"></i>
                         <span style="color: var(--text-muted); font-size: 0.85rem;" dir="ltr">@admin · {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans(null, true) }}</span>
                     </div>
@@ -310,7 +310,7 @@
     @empty
         <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary); border: 1px solid var(--border-color, rgba(0,0,0,0.06));">
             <i class="fa-solid fa-bullhorn" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: var(--accent-color, #eab308); opacity: 0.5;"></i>
-            لا توجد إعلانات حالياً
+            {{ __('messages.no_announcements_currently') }}
         </div>
     @endforelse
 </div>

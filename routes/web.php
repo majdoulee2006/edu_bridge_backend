@@ -701,13 +701,11 @@ Route::middleware(['web'])->get('/web-notifications/latest', function () {
         return response()->json(['unread_count' => 0, 'latest' => []]);
     }
 
-    $unreadCount = \Illuminate\Support\Facades\DB::table('notifications')
-        ->where('user_id', $userId)
+    $unreadCount = \App\Models\Notification::where('user_id', $userId)
         ->where('is_read', 0)
         ->count();
 
-    $latest = \Illuminate\Support\Facades\DB::table('notifications')
-        ->where('user_id', $userId)
+    $latest = \App\Models\Notification::where('user_id', $userId)
         ->where('is_read', 0)
         ->orderByDesc('created_at')
         ->limit(3)

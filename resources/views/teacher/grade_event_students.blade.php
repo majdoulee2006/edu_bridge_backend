@@ -134,10 +134,10 @@
         <thead>
             <tr>
                 <th>#</th>
-                <th>اسم الطالب</th>
-                <th>الرقم الجامعي</th>
+                <th>{{ __('messages.student_name') }}</th>
+                <th>{{ __('messages.student_id_number') }}</th>
                 <th style="text-align: center;">العلامة (من {{ $event->max_score }})</th>
-                <th>ملاحظات للمدرب</th>
+                <th>{{ __('messages.notes') }} للمدرب</th>
             </tr>
         </thead>
         <tbody>
@@ -150,7 +150,7 @@
                         <input type="number" name="scores[{{ $student->student_id }}]" value="{{ $student->score }}" class="form-input grade-input" min="0" max="{{ $event->max_score }}" step="0.5" placeholder="—" data-max="{{ $event->max_score }}">
                     </td>
                     <td>
-                        <input type="text" name="notes[{{ $student->student_id }}]" value="{{ $student->notes }}" class="form-input" style="width: 100%; text-align: right;" placeholder="ملاحظات اختيارية...">
+                        <input type="text" name="notes[{{ $student->student_id }}]" value="{{ $student->notes }}" class="form-input" style="width: 100%; text-align: right;" placeholder="{{ __('messages.notes') }} اختيارية...">
                     </td>
                 </tr>
             @empty

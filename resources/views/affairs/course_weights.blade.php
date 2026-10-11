@@ -1,6 +1,6 @@
 @extends('layouts.affairs')
 
-@section('title', 'المسار الأكاديمي الطلابي')
+@section('title', __('messages.student_academic_pathway'))
 
 @push('styles')
 <style>
@@ -200,8 +200,8 @@
                     <i class="fa-solid fa-graduation-cap cw-accent-icon"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-black cw-title tracking-wide">المسار الأكاديمي الطلابي</h1>
-                    <p class="text-sm cw-subtitle mt-1">محطة العمل الشاملة لشؤون الطلاب: فرز النتائج، تقييم التثقيلات، إصدار قرارات الترفيع والتخرج، والتقارير المعتمدة</p>
+                    <h1 class="text-2xl font-black cw-title tracking-wide">{{ __('messages.student_academic_pathway') }}</h1>
+                    <p class="text-sm cw-subtitle mt-1">{{ __('messages.pathway_subtitle') }}</p>
                 </div>
             </div>
 
@@ -210,13 +210,13 @@
                 <!-- Premium Settings Modal Button -->
                 <button onclick="document.getElementById('premiumSettingsModal').classList.remove('hidden')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-zinc-800 to-zinc-900 hover:from-zinc-700 hover:to-zinc-800 text-white text-sm font-bold flex items-center gap-2 transition-all shadow-lg border border-zinc-700/50 hover:border-zinc-600">
                     <i class="fa-solid fa-sliders text-amber-400 text-base drop-shadow-md"></i>
-                    <span>إعدادات الفصول والترفيع</span>
+                    <span>{{ __('messages.semester_promotion_settings') }}</span>
                 </button>
 
                 <!-- Cohort PDF Export Button -->
                 <button onclick="exportCohortReport('pdf')" class="px-4 py-2.5 rounded-xl cw-inner-box hover:bg-zinc-200 dark:hover:bg-zinc-800 text-sm font-bold flex items-center gap-2 transition shadow-sm">
                     <i class="fa-solid fa-file-pdf text-red-500 text-base"></i>
-                    <span class="cw-title">محضر نتائج الدفعة (PDF)</span>
+                    <span class="cw-title">{{ __('messages.cohort_results_report_pdf') }}</span>
                 </button>
             </div>
         </div>
@@ -227,18 +227,18 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)] mb-4">
             <div class="flex items-center gap-2 cw-title font-bold text-sm">
                 <i class="fa-solid fa-sliders cw-accent-icon"></i>
-                <span>محددات الفرز الأكاديمي المتتالي</span>
+                <span>{{ __('messages.cascading_academic_filters') }}</span>
             </div>
 
             <!-- View Mode Switcher -->
             <div class="inline-flex p-1 cw-inner-box">
                 <button type="button" id="btnModeStudent" onclick="switchViewMode('student')" class="px-5 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 bg-primary text-black shadow">
                     <i class="fa-solid fa-user-graduate"></i>
-                    <span>منظور الطلاب (Workstation)</span>
+                    <span>{{ __('messages.students_view_workstation') }}</span>
                 </button>
                 <button type="button" id="btnModeCourse" onclick="switchViewMode('course')" class="px-5 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 cw-subtitle hover:cw-title">
                     <i class="fa-solid fa-book-open"></i>
-                    <span>منظور المواد (Courses)</span>
+                    <span>{{ __('messages.courses_view_perspective') }}</span>
                 </button>
             </div>
         </div>
@@ -249,10 +249,10 @@
             <div>
                 <label class="block text-xs font-bold cw-subtitle mb-1.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-building-columns cw-accent-icon text-xs"></i>
-                    <span>1. القسم الأكاديمي</span>
+                    <span>{{ __('messages.filter_dept_num') }}</span>
                 </label>
                 <select id="filterDepartment" onchange="onDepartmentChanged()" class="w-full cw-select rounded-xl px-3.5 py-2.5 text-sm font-semibold">
-                    <option value="all">جميع الأقسام</option>
+                    <option value="all">{{ __('messages.all_departments_opt') }}</option>
                     @foreach($data['departments'] as $dept)
                         <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
                     @endforeach
@@ -263,10 +263,10 @@
             <div>
                 <label class="block text-xs font-bold cw-subtitle mb-1.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-code-branch cw-accent-icon text-xs"></i>
-                    <span>2. الفرع / التخصص</span>
+                    <span>{{ __('messages.filter_prog_num') }}</span>
                 </label>
                 <select id="filterProgram" onchange="applyFilters()" class="w-full cw-select rounded-xl px-3.5 py-2.5 text-sm font-semibold">
-                    <option value="all">جميع التخصصات</option>
+                    <option value="all">{{ __('messages.all_programs_opt') }}</option>
                     @foreach($data['programs'] as $prog)
                         <option value="{{ $prog->id }}" data-dept="{{ $prog->department_id }}">{{ $prog->name }}</option>
                     @endforeach
@@ -277,12 +277,12 @@
             <div>
                 <label class="block text-xs font-bold cw-subtitle mb-1.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-calendar-days cw-accent-icon text-xs"></i>
-                    <span>3. السنة الدراسية</span>
+                    <span>{{ __('messages.filter_year_num') }}</span>
                 </label>
                 <select id="filterYear" onchange="onYearChanged()" class="w-full cw-select rounded-xl px-3.5 py-2.5 text-sm font-semibold">
-                    <option value="both">كلاهما (الأولى والثانية)</option>
-                    <option value="1">السنة الأولى</option>
-                    <option value="2">السنة الثانية</option>
+                    <option value="both">{{ __('messages.both_years_opt') }}</option>
+                    <option value="1">{{ __('messages.year_1_opt') }}</option>
+                    <option value="2">{{ __('messages.year_2_opt') }}</option>
                 </select>
             </div>
 
@@ -290,12 +290,12 @@
             <div>
                 <label class="block text-xs font-bold cw-subtitle mb-1.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-layer-group cw-accent-icon text-xs"></i>
-                    <span>4. الفصل الدراسي</span>
+                    <span>{{ __('messages.filter_semester_num') }}</span>
                 </label>
                 <select id="filterSemester" onchange="applyFilters()" class="w-full cw-select rounded-xl px-3.5 py-2.5 text-sm font-semibold">
-                    <option value="both">كلاهما (الفصلين)</option>
-                    <option value="1">الفصل الأول</option>
-                    <option value="2">الفصل الثاني</option>
+                    <option value="both">{{ __('messages.both_semesters_opt') }}</option>
+                    <option value="1">{{ __('messages.semester_1_opt') }}</option>
+                    <option value="2">{{ __('messages.semester_2_opt') }}</option>
                 </select>
             </div>
 
@@ -303,13 +303,13 @@
             <div>
                 <label class="block text-xs font-bold cw-subtitle mb-1.5 flex items-center gap-1.5">
                     <i class="fa-solid fa-clipboard-check cw-accent-icon text-xs"></i>
-                    <span>5. الحالة الأكاديمية</span>
+                    <span>{{ __('messages.filter_standing_num') }}</span>
                 </label>
                 <select id="filterStanding" onchange="applyFilters()" class="w-full cw-select rounded-xl px-3.5 py-2.5 text-sm font-semibold">
-                    <option value="all">جميع الحالات الأكاديمية</option>
-                    <option value="passed">الناجحون والمترفعون (✅)</option>
-                    <option value="failed">الراسبون (❌)</option>
-                    <option value="supplementary">الدورة التكميلية (📝)</option>
+                    <option value="all">{{ __('messages.all_standings_opt') }}</option>
+                    <option value="passed">{{ __('messages.passed_promoted_opt') }}</option>
+                    <option value="failed">{{ __('messages.failed_opt') }}</option>
+                    <option value="supplementary">{{ __('messages.supplementary_opt') }}</option>
                 </select>
             </div>
         </div>
@@ -324,10 +324,10 @@
             <div class="space-y-3 pb-3 border-b border-[var(--border-color)]">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-3 cw-subtitle text-sm"></i>
-                    <input type="text" id="studentSearchInput" oninput="onStudentSearch()" placeholder="بحث بالاسم أو الرقم الجامعي..." class="w-full cw-input rounded-xl pr-10 pl-4 py-2 text-sm font-semibold">
+                    <input type="text" id="studentSearchInput" oninput="onStudentSearch()" placeholder="{{ __('messages.search_student_pathway_placeholder') }}" class="w-full cw-input rounded-xl pr-10 pl-4 py-2 text-sm font-semibold">
                 </div>
                 <div class="flex items-center justify-between text-xs cw-subtitle px-1 font-semibold">
-                    <span>الطلاب المطابقون:</span>
+                    <span>{{ __('messages.matched_students') }}</span>
                     <span id="matchedStudentsCount" class="px-2 py-0.5 rounded-md cw-accent-badge font-bold">0</span>
                 </div>
             </div>
@@ -346,13 +346,13 @@
                 <div class="flex items-center gap-2">
                     <button type="button" onclick="navigateStudent(-1)" class="px-3.5 py-2 rounded-xl cw-inner-box hover:bg-zinc-200 dark:hover:bg-zinc-800 text-xs font-bold flex items-center gap-1.5 transition">
                         <i class="fa-solid fa-arrow-right"></i>
-                        <span>السابق</span>
+                        <span>{{ __('messages.prev_student') }}</span>
                     </button>
                     <span id="studentNavCounter" class="text-xs font-bold px-2 py-1 cw-inner-box">
-                        0 من 0
+                        0 {{ __('messages.of_count') }} 0
                     </span>
                     <button type="button" onclick="navigateStudent(1)" class="px-3.5 py-2 rounded-xl cw-inner-box hover:bg-zinc-200 dark:hover:bg-zinc-800 text-xs font-bold flex items-center gap-1.5 transition">
-                        <span>التالي</span>
+                        <span>{{ __('messages.next_student') }}</span>
                         <i class="fa-solid fa-arrow-left"></i>
                     </button>
                 </div>
@@ -360,7 +360,7 @@
                 <div class="flex items-center gap-2">
                     <button type="button" onclick="exportStudentTranscript('pdf')" class="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2 border border-red-500/30 transition shadow-sm">
                         <i class="fa-solid fa-file-pdf text-sm"></i>
-                        <span>كشف درجات الطالب (PDF)</span>
+                        <span>{{ __('messages.student_transcript_pdf') }}</span>
                     </button>
                 </div>
             </div>
@@ -377,20 +377,20 @@
                         <div>
                             <div class="flex items-center gap-3">
                                 <h2 id="dossierFullName" class="text-xl font-black cw-title">-</h2>
-                                <span id="dossierStatusBadge" class="px-2.5 py-1 rounded-full text-xs font-bold status-badge-pass">ناجح</span>
+                                <span id="dossierStatusBadge" class="px-2.5 py-1 rounded-full text-xs font-bold status-badge-pass">{{ __('messages.passed_status') }}</span>
                             </div>
                             <div class="flex items-center gap-3 mt-1.5 text-xs cw-subtitle font-semibold">
-                                <span>الرقم الجامعي: <b id="dossierStudentCode" class="cw-accent-badge px-2 py-0.5 rounded font-mono">-</b></span>
+                                <span>{{ __('messages.university_id_label') }} <b id="dossierStudentCode" class="cw-accent-badge px-2 py-0.5 rounded font-mono">-</b></span>
                                 <span>•</span>
-                                <span>تاريخ الالتحاق: <span id="dossierJoinedAt" class="cw-title font-semibold">-</span></span>
+                                <span>{{ __('messages.joined_date_label') }} <span id="dossierJoinedAt" class="cw-title font-semibold">-</span></span>
                             </div>
                         </div>
                     </div>
 
                     <div class="text-left">
-                        <span class="text-xs cw-subtitle block">نطاق الفلترة النشط:</span>
+                        <span class="text-xs cw-subtitle block">{{ __('messages.active_filter_scope') }}</span>
                         <span id="dossierScopeBadge" class="text-xs font-bold cw-title px-2.5 py-1 cw-inner-box mt-1 inline-block">
-                            كافة الفصول والسنوات
+                            {{ __('messages.all_semesters_years_scope') }}
                         </span>
                     </div>
                 </div>
@@ -398,26 +398,26 @@
                 <!-- Detailed Dossier Metadata Grid -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-1 text-xs">
                     <div class="cw-inner-box p-3">
-                        <span class="cw-subtitle block mb-1">القسم العلمي</span>
+                        <span class="cw-subtitle block mb-1">{{ __('messages.academic_department_col') }}</span>
                         <span id="dossierDept" class="cw-title font-bold text-sm">-</span>
                     </div>
                     <div class="cw-inner-box p-3">
-                        <span class="cw-subtitle block mb-1">الفرع / التخصص</span>
+                        <span class="cw-subtitle block mb-1">{{ __('messages.branch_specialization_col') }}</span>
                         <span id="dossierProgram" class="cw-title font-bold text-sm">-</span>
                     </div>
                     <div class="cw-inner-box p-3">
-                        <span class="cw-subtitle block mb-1">السنة / المستوى</span>
+                        <span class="cw-subtitle block mb-1">{{ __('messages.academic_year_level_col') }}</span>
                         <span id="dossierLevel" class="cw-accent-text font-black text-sm">-</span>
                     </div>
                     <div class="cw-inner-box p-3">
-                        <span class="cw-subtitle block mb-1">المرشد الأكاديمي (المربي)</span>
+                        <span class="cw-subtitle block mb-1">{{ __('messages.academic_advisor_col') }}</span>
                         <span id="dossierAdvisor" class="cw-title font-bold text-sm">-</span>
                     </div>
                 </div>
 
                 <div class="mt-3 text-xs cw-subtitle flex items-center gap-2">
                     <i class="fa-solid fa-id-badge cw-accent-icon"></i>
-                    <span>رئيس القسم المختص: <b id="dossierHOD" class="cw-title">-</b></span>
+                    <span>{{ __('messages.dept_head_label') }} <b id="dossierHOD" class="cw-title">-</b></span>
                 </div>
             </div>
 
@@ -431,16 +431,16 @@
                             <i class="fa-solid fa-layer-group cw-accent-icon"></i>
                         </div>
                         <div>
-                            <h3 class="font-black text-sm cw-title">سجل المقررات والتثقيلات الموزونة مفصولة بالفصول الدراسية</h3>
-                            <p id="coursesScopeSubtitle" class="text-[11px] cw-subtitle mt-0.5">عرض المقررات مقسمة وفق الفصول المحددة بالفلترة مع احتساب معدل كل فصل وتراكمي الفصول</p>
+                            <h3 class="font-black text-sm cw-title">{{ __('messages.courses_weights_semester_breakdown_title') }}</h3>
+                            <p id="coursesScopeSubtitle" class="text-[11px] cw-subtitle mt-0.5">{{ __('messages.courses_scope_desc') }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
                         <span id="displayedSemestersBadge" class="text-xs px-3 py-1 rounded-lg cw-inner-box cw-subtitle font-bold">
-                            0 فصول
+                            0 {{ __('messages.semesters') }}
                         </span>
                         <span id="coursesCountBadge" class="text-xs px-3 py-1 rounded-lg cw-accent-badge font-bold">
-                            0 مقرر
+                            0 {{ __('messages.courses') }}
                         </span>
                     </div>
                 </div>
@@ -458,16 +458,16 @@
                                 <i class="fa-solid fa-calculator"></i>
                             </div>
                             <div>
-                                <h3 class="font-black text-sm cw-title">ملخص المعدل التراكمي العام (الفصول المنتهية المجتازة)</h3>
+                                <h3 class="font-black text-sm cw-title">{{ __('messages.cum_gpa_summary_title') }}</h3>
                                 <p id="cumFormulaExplanation" class="text-xs cw-subtitle mt-0.5 font-medium">
-                                    المعادلة المعتمدة: مجموع معدلات الفصول المنتهية المجتازة ÷ عددها فقط
+                                    {{ __('messages.cum_formula_desc') }}
                                 </p>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-3 self-end md:self-auto">
                             <div class="text-left md:text-right">
-                                <span class="text-xs cw-subtitle block font-semibold">المعدل التراكمي العام:</span>
+                                <span class="text-xs cw-subtitle block font-semibold">{{ __('messages.cum_gpa_label') }}</span>
                                 <span id="cumGpaDisplay" class="text-3xl font-black font-mono cw-accent-text tracking-tight">0.00%</span>
                             </div>
                         </div>
@@ -475,20 +475,20 @@
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-xs">
                         <div class="cw-inner-box p-3 text-center">
-                            <span class="cw-subtitle block mb-1">الفصول المنتهية المجتازة</span>
+                            <span class="cw-subtitle block mb-1">{{ __('messages.passed_semesters_stat') }}</span>
                             <span id="cumSemestersCount" class="cw-title font-bold text-base font-mono">0</span>
                         </div>
                         <div class="cw-inner-box p-3 text-center">
-                            <span class="cw-subtitle block mb-1">إجمالي الساعات (التثقيل)</span>
+                            <span class="cw-subtitle block mb-1">{{ __('messages.total_credits_stat') }}</span>
                             <span id="cumTotalHours" class="cw-title font-bold text-base font-mono">0</span>
                         </div>
                         <div class="cw-inner-box p-3 text-center">
-                            <span class="cw-subtitle block mb-1">إجمالي المقررات</span>
+                            <span class="cw-subtitle block mb-1">{{ __('messages.total_courses_stat') }}</span>
                             <span id="cumTotalCoursesCount" class="cw-title font-bold text-base font-mono">0</span>
                         </div>
                         <div class="cw-inner-box p-3 text-center">
-                            <span class="cw-subtitle block mb-1">الحالة الأكاديمية للمقررات</span>
-                            <span id="cumOverallStatus" class="font-bold text-sm text-emerald-600 dark:text-emerald-400">مستوفٍ لشروط النجاح</span>
+                            <span class="cw-subtitle block mb-1">{{ __('messages.courses_standing_stat') }}</span>
+                            <span id="cumOverallStatus" class="font-bold text-sm text-emerald-600 dark:text-emerald-400">{{ __('messages.eligible_for_pass') }}</span>
                         </div>
                     </div>
 
@@ -496,7 +496,7 @@
                     <div id="failedCoursesAlert" class="hidden mt-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3">
                         <i class="fa-solid fa-triangle-exclamation text-red-500 text-base mt-0.5"></i>
                         <div>
-                            <div class="text-xs font-bold text-red-600 dark:text-red-400">المقررات غير المجتازة ضمن الفصول المعروضة:</div>
+                            <div class="text-xs font-bold text-red-600 dark:text-red-400">{{ __('messages.unpassed_courses_title') }}</div>
                             <div id="failedCoursesListText" class="text-xs text-red-700 dark:text-red-200 mt-1 font-semibold leading-relaxed">-</div>
                         </div>
                     </div>
@@ -509,9 +509,9 @@
                 <div class="flex items-center justify-between pb-3 border-b border-[var(--border-color)] mb-4">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-gavel cw-accent-icon text-base"></i>
-                        <h3 class="text-base font-black cw-title">محطة اتخاذ القرار الأكاديمي لشؤون الطلاب</h3>
+                        <h3 class="text-base font-black cw-title">{{ __('messages.academic_decision_workstation') }}</h3>
                     </div>
-                    <span class="text-xs cw-subtitle font-semibold">تحديث فوري وإشعار تلقائي للطالب</span>
+                    <span class="text-xs cw-subtitle font-semibold">{{ __('messages.instant_notification_hint') }}</span>
                 </div>
 
                 <!-- Decision Actions Buttons -->
@@ -523,9 +523,9 @@
                     <!-- Administrative Remarks Input -->
                     <div>
                         <label class="block text-xs font-bold cw-subtitle mb-1.5">
-                            ملاحظات وتوجيهات الشؤون الإدارية (تُرسل في إشعار الطالب وتُحفظ بالسجل الأكاديمي):
+                            {{ __('messages.admin_notes_label') }}
                         </label>
-                        <textarea id="decisionNotesInput" rows="2" placeholder="أدخل أي ملاحظات رسمية أو استثناءات إدارية هنا..." class="w-full cw-input rounded-xl p-3 text-xs"></textarea>
+                        <textarea id="decisionNotesInput" rows="2" placeholder="{{ __('messages.admin_notes_placeholder') }}" class="w-full cw-input rounded-xl p-3 text-xs"></textarea>
                     </div>
                 </div>
             </div>
@@ -541,9 +541,9 @@
             <div class="pb-3 border-b border-[var(--border-color)] flex items-center justify-between">
                 <div class="flex items-center gap-2 cw-title font-bold text-sm">
                     <i class="fa-solid fa-list-check cw-accent-icon"></i>
-                    <span>قائمة المواد المفلترة</span>
+                    <span>{{ __('messages.filtered_courses_list') }}</span>
                 </div>
-                <span id="matchedCoursesCount" class="text-xs px-2 py-0.5 rounded-md cw-accent-badge font-bold">0 مادة</span>
+                <span id="matchedCoursesCount" class="text-xs px-2 py-0.5 rounded-md cw-accent-badge font-bold">0 {{ __('messages.courses') }}</span>
             </div>
 
             <div id="coursesListScroll" class="custom-scroll flex-1 overflow-y-auto divide-y divide-[var(--border-color)] mt-2 space-y-1 pr-1">
@@ -558,23 +558,23 @@
             <div class="cw-card p-6 relative overflow-hidden">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
                     <div>
-                        <span id="courseYearBadge" class="px-2.5 py-1 rounded-full text-xs font-bold cw-accent-badge">السنة الأولى</span>
+                        <span id="courseYearBadge" class="px-2.5 py-1 rounded-full text-xs font-bold cw-accent-badge">{{ __('messages.year_1_opt') }}</span>
                         <h2 id="courseTitleHeader" class="text-xl font-black cw-title mt-2">-</h2>
                         <div class="flex items-center gap-3 text-xs cw-subtitle mt-1 font-semibold">
-                            <span>التثقيل (الساعات المعتمدة): <b id="courseWeightHeader" class="cw-accent-text font-mono">-</b></span>
+                            <span>{{ __('messages.credit_weight_th') }}: <b id="courseWeightHeader" class="cw-accent-text font-mono">-</b></span>
                             <span>•</span>
-                            <span>الفصل الدراسي: <span id="courseSemesterHeader" class="cw-title">-</span></span>
+                            <span>{{ __('messages.filter_semester_num') }}: <span id="courseSemesterHeader" class="cw-title">-</span></span>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="exportCourseReport('pdf')" class="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-2 border border-red-500/30 transition shadow-sm">
                             <i class="fa-solid fa-file-pdf"></i>
-                            <span>كشف المادة المعتمد (PDF)</span>
+                            <span>{{ __('messages.certified_course_report_pdf') }}</span>
                         </button>
                         <button type="button" onclick="exportCourseReport('excel')" class="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 border border-emerald-500/30 transition">
                             <i class="fa-solid fa-file-excel"></i>
-                            <span>إكسل</span>
+                            <span>{{ __('messages.excel_btn') }}</span>
                         </button>
                     </div>
                 </div>
@@ -582,15 +582,15 @@
                 <!-- Stats Bar -->
                 <div class="grid grid-cols-3 gap-4 mt-5 text-center text-xs">
                     <div class="cw-inner-box p-3">
-                        <span class="cw-subtitle block mb-1">إجمالي المسجلين</span>
+                        <span class="cw-subtitle block mb-1">{{ __('messages.total_enrolled_students') }}</span>
                         <span id="courseTotalEnrolled" class="cw-title font-bold text-lg font-mono">0</span>
                     </div>
                     <div class="cw-inner-box p-3">
-                        <span class="cw-subtitle block mb-1">نسبة النجاح</span>
+                        <span class="cw-subtitle block mb-1">{{ __('messages.pass_rate') }}</span>
                         <span id="coursePassRate" class="text-emerald-600 dark:text-emerald-400 font-bold text-lg font-mono">0%</span>
                     </div>
                     <div class="cw-inner-box p-3">
-                        <span class="cw-subtitle block mb-1">الطلاب الراسبون</span>
+                        <span class="cw-subtitle block mb-1">{{ __('messages.failed_students') }}</span>
                         <span id="courseFailCount" class="text-red-600 dark:text-red-400 font-bold text-lg font-mono">0</span>
                     </div>
                 </div>
@@ -601,14 +601,14 @@
                 <div class="p-4 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)]">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-users cw-accent-icon"></i>
-                        <h3 class="font-black text-sm cw-title">الطلاب المسجلون ونتائجهم بالمقرر</h3>
+                        <h3 class="font-black text-sm cw-title">{{ __('messages.enrolled_students_course_results') }}</h3>
                     </div>
 
                     <!-- Sub-filter by Pass/Fail -->
                     <div class="inline-flex p-0.5 cw-inner-box text-xs font-semibold">
-                        <button type="button" onclick="filterCourseStudents('all')" id="btnCsFilterAll" class="px-3 py-1 rounded-md bg-[var(--bg-secondary)] text-[var(--text-primary)] font-bold shadow-sm border border-[var(--border-color)]">الكل</button>
-                        <button type="button" onclick="filterCourseStudents('pass')" id="btnCsFilterPass" class="px-3 py-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)]">الناجحون</button>
-                        <button type="button" onclick="filterCourseStudents('fail')" id="btnCsFilterFail" class="px-3 py-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)]">الراسبون</button>
+                        <button type="button" onclick="filterCourseStudents('all')" id="btnCsFilterAll" class="px-3 py-1 rounded-md bg-[var(--bg-secondary)] text-[var(--text-primary)] font-bold shadow-sm border border-[var(--border-color)]">{{ __('messages.filter_all') }}</button>
+                        <button type="button" onclick="filterCourseStudents('pass')" id="btnCsFilterPass" class="px-3 py-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)]">{{ __('messages.passed_status') }}</button>
+                        <button type="button" onclick="filterCourseStudents('fail')" id="btnCsFilterFail" class="px-3 py-1 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)]">{{ __('messages.failed_status') }}</button>
                     </div>
                 </div>
 
@@ -616,14 +616,14 @@
                     <table class="w-full text-right text-xs cw-table">
                         <thead>
                             <tr class="font-bold">
-                                <th class="py-3 px-4">الرقم الجامعي</th>
-                                <th class="py-3 px-4">اسم الطالب</th>
-                                <th class="py-3 px-4 text-center">المذاكرة (25)</th>
-                                <th class="py-3 px-4 text-center">الشفهي (25)</th>
-                                <th class="py-3 px-4 text-center">الامتحان (50)</th>
-                                <th class="py-3 px-4 text-center">علامة المقرر (100)</th>
-                                <th class="py-3 px-4 text-center">التثقيل</th>
-                                <th class="py-3 px-4 text-center">الحالة</th>
+                                <th class="py-3 px-4">{{ __('messages.university_id') }}</th>
+                                <th class="py-3 px-4">{{ __('messages.student_name') }}</th>
+                                <th class="py-3 px-4 text-center">{{ __('messages.quiz_th') }}</th>
+                                <th class="py-3 px-4 text-center">{{ __('messages.oral_th') }}</th>
+                                <th class="py-3 px-4 text-center">{{ __('messages.exam_th') }}</th>
+                                <th class="py-3 px-4 text-center">{{ __('messages.course_mark_th') }}</th>
+                                <th class="py-3 px-4 text-center">{{ __('messages.credit_weight_th') }}</th>
+                                <th class="py-3 px-4 text-center">{{ __('messages.status') }}</th>
                             </tr>
                         </thead>
                         <tbody id="courseStudentsTbody" class="divide-y divide-[var(--border-color)] font-semibold">
@@ -637,13 +637,13 @@
     </div>
 </div>
 <!-- Premium Academic Settings Modal -->
-<div id="premiumSettingsModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" dir="rtl">
+<div id="premiumSettingsModal" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" dir="{{ app()->getLocale() === 'en' ? 'ltr' : 'rtl' }}">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
         <!-- Glassmorphism Background overlay -->
         <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity" aria-hidden="true" onclick="document.getElementById('premiumSettingsModal').classList.add('hidden')"></div>
 
         <!-- Modal panel -->
-        <div class="relative inline-block w-full max-w-3xl text-right align-bottom transition-all transform bg-[#18181b] rounded-[24px] shadow-2xl sm:my-8 sm:align-middle border border-zinc-700/50 overflow-hidden ring-1 ring-white/10">
+        <div class="relative inline-block w-full max-w-3xl text-right align-bottom transition-all transform bg-[#18181b] rounded-[24px] shadow-2xl sm:my-8 sm:align-middle border border-zinc-700/50 overflow-hidden ring-1 ring-white/10" style="text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};">
             
             <!-- Header with Gradient Line -->
             <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500"></div>
@@ -652,7 +652,7 @@
                     <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shadow-inner">
                         <i class="fa-solid fa-sliders text-amber-400 text-lg"></i>
                     </div>
-                    مركز الإعدادات الأكاديمية
+                    {{ __('messages.academic_settings_center') }}
                 </h3>
                 <button type="button" class="text-zinc-400 hover:text-white hover:bg-zinc-800 p-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-zinc-600" onclick="document.getElementById('premiumSettingsModal').classList.add('hidden')">
                     <i class="fa-solid fa-xmark text-xl"></i>
@@ -668,32 +668,32 @@
                     
                     <div class="flex items-center gap-3 mb-6">
                         <i class="fa-solid fa-calendar-check text-emerald-400 text-lg"></i>
-                        <h4 class="text-lg font-bold text-white">إدارة وتفعيل الفصول الدراسية</h4>
+                        <h4 class="text-lg font-bold text-white">{{ __('messages.semesters_management_activation') }}</h4>
                     </div>
                     
                     <form action="{{ route('affairs.semester.activate') }}" method="POST" class="space-y-5 relative z-10">
                         @csrf
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div>
-                                <label class="block text-xs font-semibold text-zinc-400 mb-2">الفصل الدراسي المراد تفعيله:</label>
+                                <label class="block text-xs font-semibold text-zinc-400 mb-2">{{ __('messages.target_semester_activation') }}</label>
                                 <select name="semester_name" required class="w-full bg-zinc-900/80 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all outline-none">
-                                    <option value="الفصل الأول" {{ ($activeSemester->name ?? '') == 'الفصل الأول' ? 'selected' : '' }}>الفصل الدراسي الأول</option>
-                                    <option value="الفصل الثاني" {{ ($activeSemester->name ?? '') == 'الفصل الثاني' ? 'selected' : '' }}>الفصل الدراسي الثاني</option>
+                                    <option value="الفصل الأول" {{ (($activeSemester->name ?? $activeSemester->semester_name ?? '') == 'الفصل الأول') ? 'selected' : '' }}>{{ __('messages.semester_1_opt') }}</option>
+                                    <option value="الفصل الثاني" {{ (($activeSemester->name ?? $activeSemester->semester_name ?? '') == 'الفصل الثاني') ? 'selected' : '' }}>{{ __('messages.semester_2_opt') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-zinc-400 mb-2">تاريخ بداية الفصل (من):</label>
+                                <label class="block text-xs font-semibold text-zinc-400 mb-2">{{ __('messages.semester_start_date') }}</label>
                                 <input type="date" name="start_date" value="{{ $activeSemester->start_date ?? '' }}" required class="w-full bg-zinc-900/80 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-300 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all outline-none" style="color-scheme: dark;">
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-zinc-400 mb-2">تاريخ نهاية الفصل (إلى):</label>
+                                <label class="block text-xs font-semibold text-zinc-400 mb-2">{{ __('messages.semester_end_date') }}</label>
                                 <input type="date" name="end_date" value="{{ $activeSemester->end_date ?? '' }}" required class="w-full bg-zinc-900/80 border border-zinc-700/60 rounded-xl px-4 py-3 text-sm text-zinc-300 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all outline-none" style="color-scheme: dark;">
                             </div>
                         </div>
                         <div class="flex justify-end pt-2">
                             <button type="submit" class="px-6 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold rounded-xl text-sm transition-all flex items-center gap-2">
                                 <i class="fa-solid fa-check-double"></i>
-                                اعتماد وتفعيل الفصل
+                                {{ __('messages.activate_semester_submit') }}
                             </button>
                         </div>
                     </form>
@@ -705,11 +705,11 @@
                     
                     <div class="flex items-center gap-3 mb-2">
                         <i class="fa-solid fa-users-gear text-blue-400 text-lg"></i>
-                        <h4 class="text-lg font-bold text-white">الترحيل والترفيع الجماعي للدفعة</h4>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 ml-auto">إجراء سنوي</span>
+                        <h4 class="text-lg font-bold text-white">{{ __('messages.cohort_bulk_promotion') }}</h4>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 ml-auto">{{ __('messages.annual_action') }}</span>
                     </div>
                     <p class="text-xs text-zinc-400 mb-6 leading-relaxed">
-                        عند الضغط على الزر، سيتم تغيير المرحلة الدراسية لجميع طلاب السنة الأولى البالغ عددهم (<strong class="text-zinc-200">{{ $firstYearCount ?? 0 }} طالباً</strong>) ليكونوا في السنة الثانية تلقائياً.
+                        {{ __('messages.cohort_promotion_desc', ['count' => $firstYearCount ?? 0]) }}
                     </p>
                     
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 relative z-10">
@@ -718,16 +718,16 @@
                                 <i class="fa-solid fa-users text-blue-400 text-xl"></i>
                             </div>
                             <div>
-                                <div class="text-xs text-zinc-500 font-semibold">المستحقون للترفية حالياً</div>
-                                <div class="text-lg font-black text-white">{{ $firstYearCount ?? 0 }} <span class="text-xs font-normal text-zinc-400">طالباً</span></div>
+                                <div class="text-xs text-zinc-500 font-semibold">{{ __('messages.currently_eligible_promotion') }}</div>
+                                <div class="text-lg font-black text-white">{{ $firstYearCount ?? 0 }} <span class="text-xs font-normal text-zinc-400">{{ __('messages.students_count_unit') }}</span></div>
                             </div>
                         </div>
                         
-                        <form action="{{ route('affairs.promote.year2') }}" method="POST" onsubmit="return confirm('هل أنت متأكد من ترفيع جميع طلاب السنة الأولى إلى السنة الثانية؟ هذا الإجراء لا يمكن التراجع عنه بسهولة.');">
+                        <form action="{{ route('affairs.promote.year2') }}" method="POST" onsubmit="return confirm('{{ __('messages.confirm_decision_prompt') }}');">
                             @csrf
                             <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40">
                                 <i class="fa-solid fa-graduation-cap"></i>
-                                تنفيذ الترفيع لجميع طلاب السنة الأولى
+                                {{ __('messages.execute_promotion_year_1') }}
                             </button>
                         </form>
                     </div>
@@ -738,7 +738,7 @@
             <!-- Footer -->
             <div class="px-6 py-4 bg-[#18181b] border-t border-zinc-800/80 flex justify-end">
                 <button type="button" class="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl font-bold transition-all border border-zinc-700" onclick="document.getElementById('premiumSettingsModal').classList.add('hidden')">
-                    إغلاق
+                    {{ __('messages.close') }}
                 </button>
             </div>
         </div>
@@ -748,6 +748,113 @@
 
 @push('scripts')
 <script>
+    // ─────────────────────────── Localization Dictionary ───────────────────────────
+    const currentLocale = '{{ app()->getLocale() }}';
+    const isRTL = currentLocale === 'ar';
+
+    const i18n = {
+        of: '{{ __("messages.of_count") }}',
+        year_1: '{{ __("messages.year_1_opt") }}',
+        year_2: '{{ __("messages.year_2_opt") }}',
+        semester_1: '{{ __("messages.semester_1_opt") }}',
+        semester_2: '{{ __("messages.semester_2_opt") }}',
+        sem_3_label: currentLocale === 'en' ? 'Semester 3' : 'الفصل الثالث',
+        sem_4_label: currentLocale === 'en' ? 'Semester 4' : 'الفصل الرابع',
+        year_2_sem_1: currentLocale === 'en' ? 'Year 2 (Sem 1)' : 'السنة الثانية (فصل 1)',
+        year_2_sem_2: currentLocale === 'en' ? 'Year 2 (Sem 2)' : 'السنة الثانية (فصل 2)',
+        sem_1_year_1_full: currentLocale === 'en' ? 'Semester 1 • First Year' : 'الفصل الأول • السنة الأولى',
+        sem_2_year_1_full: currentLocale === 'en' ? 'Semester 2 • First Year' : 'الفصل الثاني • السنة الأولى',
+        sem_3_year_2_full: currentLocale === 'en' ? 'Semester 3 • Second Year (Semester 1)' : 'الفصل الثالث • السنة الثانية (الفصل الأول)',
+        sem_4_year_2_full: currentLocale === 'en' ? 'Semester 4 • Second Year (Semester 2)' : 'الفصل الرابع • السنة الثانية (الفصل الثاني)',
+        passed: '{{ __("messages.passed_status") }}',
+        failed: '{{ __("messages.failed_status") }}',
+        passed_prev_year: '{{ __("messages.passed_prev_year") }}',
+        locked_sem1: '{{ __("messages.locked_course_sem1_done") }}',
+        locked_final: '{{ __("messages.locked_course_final_sem") }}',
+        currently_active_sem: '{{ __("messages.currently_active_sem") }}',
+        starts_later: '{{ __("messages.starts_later") }}',
+        passed_prev_year_full: currentLocale === 'en' ? 'Passed (Previous Academic Year 2024/2025)' : 'مجتاز (العام الدراسي الماضي 2024/2025)',
+        passed_successfully: currentLocale === 'en' ? 'Passed Successfully' : 'مجتاز بنجاح',
+        no_code: currentLocale === 'en' ? 'No ID' : 'بدون رقم',
+        sem_gpa_label: '{{ __("messages.sem_gpa_label") }}',
+        sem_total_hours_prefix: currentLocale === 'en' ? 'Total Hours for' : 'مجموع وساعات',
+        hours_weight: '{{ __("messages.total_credits_stat") }}',
+        courses_count_label: '{{ __("messages.total_courses_stat") }}',
+        plan_courses_subtitle: currentLocale === 'en' ? 'Approved plan courses for' : 'مقررات',
+        semesters_displayed: currentLocale === 'en' ? 'Semesters Displayed' : 'فصول معروضة',
+        courses_unit: currentLocale === 'en' ? 'Courses' : 'مقرر',
+        courses_unit_single: currentLocale === 'en' ? 'course' : 'مادة',
+        students_unit: currentLocale === 'en' ? 'Students' : 'طلاب',
+        student_unit_single: currentLocale === 'en' ? 'student' : 'طالب',
+        passed_semesters_unit: currentLocale === 'en' ? 'Passed Semesters' : 'فصول مجتازة',
+        eligible_for_pass: '{{ __("messages.eligible_for_pass") }}',
+        failed_in_courses: currentLocale === 'en' ? 'Failed in :count Courses ⚠️' : 'راسب في :count مواد ⚠️',
+        pending_results: '{{ __("messages.pending_results_completion") }}',
+        no_matching_students: '{{ __("messages.no_matching_students") }}',
+        no_matching_courses: currentLocale === 'en' ? 'No courses match current filter' : 'لا توجد مواد مطابقة لمعايير الفلترة',
+        no_student_selected: '{{ __("messages.no_selected_students") }}',
+        select_student_prompt: '{{ __("messages.please_select_student_sidebar") }}',
+        select_student_decision: currentLocale === 'en' ? 'Select a student to take an academic decision' : 'اختر طالباً لاتخاذ القرار الأكاديمي',
+        no_courses_to_display: currentLocale === 'en' ? 'No course data to display' : 'لا توجد بيانات مقررات معروضة',
+        no_courses_matching_filter: currentLocale === 'en' ? 'No registered courses match the selected filters' : 'لا توجد مقررات مسجلة لهذا الطالب مطابقة للفلاتر المحددة',
+        adjust_filter_prompt: currentLocale === 'en' ? 'Please adjust academic year or semester filters above' : 'يرجى تعديل محددات السنة الدراسية أو الفصل من شريط التصفية بالأعلى',
+        no_students_in_course: '{{ __("messages.no_students_enrolled_course") }}',
+        confirm_decision: '{{ __("messages.confirm_decision_prompt") }}',
+        saving_decision: '{{ __("messages.saving_decision_sending") }}',
+        error_occurred: '{{ __("messages.error") }}',
+        connection_failed: currentLocale === 'en' ? 'Failed to connect to server.' : 'فشل الاتصال بالخادم.',
+        select_student_first: currentLocale === 'en' ? 'Please select a student first' : 'يرجى اختيار طالب أولاً',
+        select_course_first: currentLocale === 'en' ? 'Please select a course first' : 'يرجى اختيار مادة أولاً',
+        scope_prefix: currentLocale === 'en' ? 'Active Scope:' : 'نطاق العرض النشط:',
+        scope_suffix: currentLocale === 'en' ? '(Separated with exact credits & GPA)' : '(مفصولة بهوامش ومعدلات دقيقة)',
+        all_years_scope: currentLocale === 'en' ? 'All Years (Year 1 & 2) • Semesters 1 to 4' : 'كافة السنوات (الأولى والثانية) • الفصول 1 إلى 4',
+        all_years_sem1_scope: currentLocale === 'en' ? 'All Years • Semester 1 & 3' : 'كافة السنوات • الفصل الأول والثالث',
+        all_years_sem2_scope: currentLocale === 'en' ? 'All Years • Semester 2 & 4' : 'كافة السنوات • الفصل الثاني والرابع',
+        year1_all_sem: currentLocale === 'en' ? 'First Year • Semester 1 & 2' : 'السنة الأولى • الفصل الأول والثاني',
+        year1_sem1: currentLocale === 'en' ? 'First Year • Semester 1' : 'السنة الأولى • الفصل الأول',
+        year1_sem2: currentLocale === 'en' ? 'First Year • Semester 2' : 'السنة الأولى • الفصل الثاني',
+        year2_all_sem: currentLocale === 'en' ? 'Second Year • Semester 3 & 4' : 'السنة الثانية • الفصل الثالث والرابع',
+        year2_sem1: currentLocale === 'en' ? 'Second Year • Semester 3 (Semester 1)' : 'السنة الثانية • الفصل الثالث (الفصل الأول)',
+        year2_sem2: currentLocale === 'en' ? 'Second Year • Semester 4 (Semester 2)' : 'السنة الثانية • الفصل الرابع (الفصل الثاني)',
+        year1_no_year2_sem: currentLocale === 'en' ? 'First Year (No Year 2 Semesters)' : 'السنة الأولى (لا توجد فصول سنة ثانية)',
+        formula_year2: currentLocale === 'en'
+            ? 'Approved Formula (Year 2 Student): Sum of completed passed semesters (2 from last year + current active semester) ÷ Passed semesters (3) = '
+            : 'المعادلة المعتمدة (طالب سنة ثانية): مجموع الفصول المنتهية المجتازة (فصلان من العام الماضي + الفصل الساري) ÷ عدد الفصول المجتازة (3 فصول) = ',
+        formula_multi_sem: currentLocale === 'en'
+            ? 'Approved Formula: Sum of completed passed semesters ÷ Number of passed semesters (:count semesters) = '
+            : 'المعادلة المعتمدة: مجموع الفصول المنتهية المجتازة ÷ عدد الفصول المجتازة (:count فصول) = ',
+        formula_single_sem: currentLocale === 'en'
+            ? 'Approved Formula: Sum of completed passed semesters ÷ 1 = '
+            : 'المعادلة المعتمدة: مجموع الفصول المنتهية المجتازة على عددها فقط = ',
+        formula_none_passed: currentLocale === 'en'
+            ? 'Approved Formula: No semester passed with GPA ≥ 50% (Current GPA: :gpa)'
+            : 'المعادلة المعتمدة: لم يتم اجتياز أي فصل بمعدل ≥ 50% (المعدل الحالي: :gpa)',
+        formula_no_semesters: currentLocale === 'en'
+            ? 'No completed passed semesters currently under selected filters and student level'
+            : 'لا توجد فصول دراسية منتهية مجتازة حالياً وفق خيارات الفلترة ومستوى الطالب',
+        // Decision buttons
+        btn_promote_y2: '{{ __("messages.promote_year_2_btn") }}',
+        btn_repeat_y1_failed: '{{ __("messages.repeat_year_1_btn") }}',
+        btn_supp: currentLocale === 'en' ? 'Transfer to Supplementary Session (:count courses)' : 'تحويل للدورة التكميلية (حصر المواد: :count)',
+        btn_supp_sem1: currentLocale === 'en' ? 'Transfer to Supplementary Session (Sem 1: :count courses)' : 'تحويل للدورة التكميلية (فصل أول: :count مواد)',
+        btn_supp_sem3: currentLocale === 'en' ? 'Transfer to Supplementary Session (Sem 3: :count courses)' : 'تحويل للدورة التكميلية (فصل ثالث: :count مواد)',
+        btn_supp_grad: currentLocale === 'en' ? 'Transfer to Graduate Supplementary Session (:count courses)' : 'تحويل لدورة الخريجين التكميلية (:count مواد)',
+        btn_repeat_y1: currentLocale === 'en' ? 'Repeat First Year' : 'إعادة السنة الأولى',
+        btn_repeat_y1_all: currentLocale === 'en' ? 'Year 1 Failed (Repeat Full Year)' : 'راسب سنة أولى (إعادة السنة كاملة)',
+        btn_promote_sem2: '{{ __("messages.promote_semester_2_btn") }}',
+        btn_repeat_sem1: currentLocale === 'en' ? 'Failed Semester 1 (Repeat)' : 'راسب فصل أول (إعادة)',
+        btn_repeat_sem1_year: currentLocale === 'en' ? 'Failed Semester 1 (Repeat Year)' : 'راسب فصل أول (إعادة السنة)',
+        btn_graduate: '{{ __("messages.graduate_btn") }}',
+        btn_repeat_y2: '{{ __("messages.repeat_year_2_btn") }}',
+        btn_repeat_y2_all: currentLocale === 'en' ? 'Year 2 Failed (Remain in Year 2)' : 'راسب سنة ثانية (بقاء في السنة الثانية)',
+        btn_promote_sem4: '{{ __("messages.promote_semester_4_btn") }}',
+        btn_repeat_sem3: currentLocale === 'en' ? 'Failed Semester 3 (Remain in Year 2)' : 'راسب فصل ثالث (بقاء في السنة الثانية)',
+        grad_status_badge: '{{ __("messages.graduated_status") }}',
+        supp_status_badge: '{{ __("messages.supplementary_status") }}',
+        fail_status_badge: '{{ __("messages.repeat_year_status") }}',
+        pass_status_badge: '{{ __("messages.promoted_status") }}',
+    };
+
     // ─────────────────────────── Application Data & State ───────────────────────────
     const appData = @json($data);
     let currentMode = 'student'; // 'student' or 'course'
@@ -861,9 +968,9 @@
             if (deptId !== 'all' && String(s.department_id) !== String(deptId)) return false;
             if (progId !== 'all' && String(s.program_id) !== String(progId)) return false;
             
-            const levelStr = String(s.level || '').trim();
+            const levelStr = String(s.level || '').trim().toLowerCase();
             const isYear1 = levelStr.includes('الأولى') || levelStr === '1' || levelStr.includes('first');
-            const isYear2 = levelStr.includes('الثانية') || levelStr.includes('خريج') || levelStr.includes('تكميل') || levelStr === '2' || levelStr.includes('second');
+            const isYear2 = levelStr.includes('الثانية') || levelStr.includes('خريج') || levelStr.includes('تكميل') || levelStr === '2' || levelStr.includes('second') || levelStr.includes('graduate');
 
             if (year === '1' && !isYear1) return false;
             if (year === '2' && !isYear2) return false;
@@ -876,7 +983,6 @@
                     if (hasFailed || !['passed', 'graduated'].includes(sStanding)) return false;
                 }
                 if (standing === 'failed') {
-                    // يشمل أي طالب لديه مواد غير مجتازة سواء في السنة الأولى أو الثانية (بما في ذلك الدورة التكميلية)
                     if (!hasFailed && sStanding !== 'failed' && sStanding !== 'supplementary') return false;
                 }
                 if (standing === 'supplementary') {
@@ -922,7 +1028,7 @@
             scrollContainer.innerHTML = `
                 <div class="text-center py-12 cw-subtitle text-xs">
                     <i class="fa-solid fa-user-slash text-2xl mb-2 block opacity-40"></i>
-                    لا يوجد طلاب مطابقون لمعايير الفلترة الحالية
+                    ${i18n.no_matching_students}
                 </div>
             `;
             clearStudentDossier();
@@ -956,7 +1062,7 @@
                     ${iconHtml}
                     <div>
                         <div class="text-xs font-bold cw-title">${s.full_name}</div>
-                        <div class="text-[11px] cw-subtitle font-mono mt-0.5">${s.student_code || 'بدون رقم'} • ${s.level}</div>
+                        <div class="text-[11px] cw-subtitle font-mono mt-0.5">${s.student_code || i18n.no_code} • ${s.level}</div>
                     </div>
                 </div>
                 ${gpaBadge}
@@ -969,12 +1075,12 @@
             renderActiveStudent(activeStudent, currentStudentIndex + 1, displayList.length);
         } else {
             clearStudentDossier();
-            document.getElementById('decisionButtonsContainer').innerHTML = '<span class="text-xs cw-subtitle">الرجاء اختيار طالب من القائمة الجانبية</span>';
+            document.getElementById('decisionButtonsContainer').innerHTML = `<span class="text-xs cw-subtitle">${i18n.select_student_prompt}</span>`;
         }
     }
 
     function onStudentSearch() {
-        currentStudentIndex = -1; // إجبار المستخدم على اختيار الطالب لمنع الخطأ
+        currentStudentIndex = -1;
         renderStudentWorkstation();
     }
 
@@ -1000,12 +1106,12 @@
         renderStudentWorkstation();
     }
 
-    // ─────────────────────────── مصفوفة الفصول الأربعة وحساب المعدلات الدقيقة ───────────────────────────
+    // ─────────────────────────── Canonical Semesters Array ───────────────────────────
     const CANONICAL_SEMESTERS = [
-        { key: '1_1', year: 1, semester_id: 1, num: 1, title: 'الفصل الأول', yearLabel: 'السنة الأولى', fullTitle: 'الفصل الأول • السنة الأولى' },
-        { key: '1_2', year: 1, semester_id: 2, num: 2, title: 'الفصل الثاني', yearLabel: 'السنة الأولى', fullTitle: 'الفصل الثاني • السنة الأولى' },
-        { key: '2_1', year: 2, semester_id: 1, num: 3, title: 'الفصل الثالث', yearLabel: 'السنة الثانية (فصل 1)', fullTitle: 'الفصل الثالث • السنة الثانية (الفصل الأول)' },
-        { key: '2_2', year: 2, semester_id: 2, num: 4, title: 'الفصل الرابع', yearLabel: 'السنة الثانية (فصل 2)', fullTitle: 'الفصل الرابع • السنة الثانية (الفصل الثاني)' },
+        { key: '1_1', year: 1, semester_id: 1, num: 1, title: i18n.semester_1, yearLabel: i18n.year_1, fullTitle: i18n.sem_1_year_1_full },
+        { key: '1_2', year: 1, semester_id: 2, num: 2, title: i18n.semester_2, yearLabel: i18n.year_1, fullTitle: i18n.sem_2_year_1_full },
+        { key: '2_1', year: 2, semester_id: 1, num: 3, title: i18n.sem_3_label, yearLabel: i18n.year_2_sem_1, fullTitle: i18n.sem_3_year_2_full },
+        { key: '2_2', year: 2, semester_id: 2, num: 4, title: i18n.sem_4_label, yearLabel: i18n.year_2_sem_2, fullTitle: i18n.sem_4_year_2_full },
     ];
 
     /**
@@ -1026,11 +1132,10 @@
         const failedTitles = [];
 
         // تحديد ما إذا كان الطالب في السنة الأولى
-        const levelStr = String(s.level || '');
-        const isYear1 = levelStr.includes('الأولى');
+        const levelStr = String(s.level || '').toLowerCase();
+        const isYear1 = levelStr.includes('الأولى') || levelStr.includes('first') || levelStr === '1';
 
         CANONICAL_SEMESTERS.forEach(semDef => {
-            // طالب السنة الأولى لديه فصلان فقط (الأول والثاني) ولا يمكن أن تظهر له فصول السنة الثانية (3 و 4)
             if (isYear1 && semDef.year > 1) return;
 
             if (yearFilter !== 'both' && String(semDef.year) !== String(yearFilter)) return;
@@ -1039,9 +1144,7 @@
             const coursesInSem = allCourses.filter(c => 
                 Number(c.year) === semDef.year && Number(c.semester_id) === semDef.semester_id
             );
-            // تحديد حالة الفصل الدراسي بالنسبة للطالب (سنة أولى أم سنة ثانية):
-            // لطالب السنة الأولى: الفصل الثاني فقط مغلق
-            // لطالب السنة الثانية: الفصل الأخير فقط مغلق (الفصل الرابع)، وفصول السنة الأولى مجتازة من العام الماضي
+
             const isClosed = isYear1 
                 ? (semDef.year === 1 && semDef.semester_id === 2)
                 : (semDef.year === 2 && semDef.semester_id === 2);
@@ -1088,7 +1191,7 @@
                             percentage: pct,
                             weight: w,
                             points: pts,
-                            status: isPass ? 'ناجح' : 'راسب',
+                            status: isPass ? i18n.passed : i18n.failed,
                             isPass: isPass
                         };
                     } else if (isPastCompleted) {
@@ -1108,12 +1211,11 @@
                             percentage: '-',
                             weight: w,
                             points: 0,
-                            status: 'مجتاز (السنة السابقة)',
+                            status: i18n.passed_prev_year,
                             isPass: true
                         };
                     } else {
-                        // isClosed
-                        const closedText = isYear1 ? 'مغلق المقرر لحين انتهاء الفصل الأول' : 'مغلق المقرر (الفصل الأخير)';
+                        const closedText = isYear1 ? i18n.locked_sem1 : i18n.locked_final;
                         return {
                             course_id: c.course_id,
                             title: c.title,
@@ -1154,7 +1256,7 @@
                     cumHours += sHours;
                     cumPoints += sPoints;
                 } else if (isPastCompleted) {
-                    isSemPassed = true; // فصول السنة الأولى مجتازة لطالب السنة الثانية
+                    isSemPassed = true;
                     cumHours += sHours;
                 } else {
                     isSemPassed = false;
@@ -1174,16 +1276,10 @@
             }
         });
 
-        // عدد الفصول المنتهية المجتازة فعلياً:
-        // لطالب السنة الأولى: عدد الفصول السارية المجتازة (1)
-        // لطالب السنة الثانية: فصلان منجزين من السنة الأولى + الفصل الساري المجتاز (3 فصول)
         const visiblePassedCount = semGroups.filter(g => g.isPass === true).length;
         const totalInstitutionalPassed = isYear1 ? visiblePassedCount : (2 + passedSemGpas.length);
-
-        // مجموع معدلات الفصول المنتهية المجتازة
         const sumPassedGpas = passedSemGpas.reduce((acc, cur) => acc + cur.gpa, 0);
 
-        // المعدل التراكمي النهائي = مجموع معدلات الفصول المنتهية المجتازة ÷ عدد الفصول المجتازة
         let cumGpa = (s.summary && typeof s.summary.weighted_gpa === 'number') 
             ? s.summary.weighted_gpa 
             : (totalInstitutionalPassed > 0 ? Number((sumPassedGpas / totalInstitutionalPassed).toFixed(2)) : 0);
@@ -1203,7 +1299,7 @@
     }
 
     function renderActiveStudent(s, pos, total) {
-        document.getElementById('studentNavCounter').innerText = `${pos} من ${total}`;
+        document.getElementById('studentNavCounter').innerText = `${pos} ${i18n.of} ${total}`;
 
         if (!s) {
             clearStudentDossier();
@@ -1216,63 +1312,63 @@
         document.getElementById('dossierJoinedAt').innerText = s.joined_at || '2026-09-01';
         document.getElementById('dossierDept').innerText = s.department_name || '-';
         document.getElementById('dossierProgram').innerText = s.program_name || '-';
-        document.getElementById('dossierLevel').innerText = s.level || 'السنة الأولى';
-        document.getElementById('dossierAdvisor').innerText = s.advisor_name || 'أ. أحمد نصلى (المربي)';
-        document.getElementById('dossierHOD').innerText = s.hod_name || 'د. أحمد ديب (رئيس القسم)';
+        document.getElementById('dossierLevel').innerText = s.level || i18n.year_1;
+        document.getElementById('dossierAdvisor').innerText = s.advisor_name || (currentLocale === 'en' ? 'Mr. Ahmed Nasli (Mentor)' : 'أ. أحمد نصلى (المربي)');
+        document.getElementById('dossierHOD').innerText = s.hod_name || (currentLocale === 'en' ? 'Dr. Ahmed Deeb (Head of Dept.)' : 'د. أحمد ديب (رئيس القسم)');
 
         // تحديد السنة
-        const levelStr = String(s.level || '');
-        const isYear1 = levelStr.includes('الأولى');
+        const levelStr = String(s.level || '').toLowerCase();
+        const isYear1 = levelStr.includes('الأولى') || levelStr.includes('first') || levelStr === '1';
 
         // نطاق الفلترة النشط
         const yVal = document.getElementById('filterYear').value;
         const sVal = document.getElementById('filterSemester').value;
         let scopeText = '';
         if (yVal === 'both' && sVal === 'both') {
-            scopeText = isYear1 ? 'السنة الأولى • الفصل الأول والثاني' : 'كافة السنوات (الأولى والثانية) • الفصول 1 إلى 4';
+            scopeText = isYear1 ? i18n.year1_all_sem : i18n.all_years_scope;
         } else if (yVal === '1' && sVal === 'both') {
-            scopeText = 'السنة الأولى • الفصل الأول والثاني';
+            scopeText = i18n.year1_all_sem;
         } else if (yVal === '1' && sVal === '1') {
-            scopeText = 'السنة الأولى • الفصل الأول';
+            scopeText = i18n.year1_sem1;
         } else if (yVal === '1' && sVal === '2') {
-            scopeText = 'السنة الأولى • الفصل الثاني';
+            scopeText = i18n.year1_sem2;
         } else if (yVal === '2' && sVal === 'both') {
-            scopeText = isYear1 ? 'السنة الأولى (لا توجد فصول سنة ثانية)' : 'السنة الثانية • الفصل الثالث والرابع';
+            scopeText = isYear1 ? i18n.year1_no_year2_sem : i18n.year2_all_sem;
         } else if (yVal === '2' && sVal === '1') {
-            scopeText = isYear1 ? 'السنة الأولى (لا توجد فصول سنة ثانية)' : 'السنة الثانية • الفصل الثالث (الفصل الأول)';
+            scopeText = isYear1 ? i18n.year1_no_year2_sem : i18n.year2_sem1;
         } else if (yVal === '2' && sVal === '2') {
-            scopeText = isYear1 ? 'السنة الأولى (لا توجد فصول سنة ثانية)' : 'السنة الثانية • الفصل الرابع (الفصل الثاني)';
+            scopeText = isYear1 ? i18n.year1_no_year2_sem : i18n.year2_sem2;
         } else if (yVal === 'both' && sVal === '1') {
-            scopeText = isYear1 ? 'السنة الأولى • الفصل الأول' : 'كافة السنوات • الفصل الأول والثالث';
+            scopeText = isYear1 ? i18n.year1_sem1 : i18n.all_years_sem1_scope;
         } else if (yVal === 'both' && sVal === '2') {
-            scopeText = isYear1 ? 'السنة الأولى • الفصل الثاني' : 'كافة السنوات • الفصل الثاني والرابع';
+            scopeText = isYear1 ? i18n.year1_sem2 : i18n.all_years_sem2_scope;
         }
         document.getElementById('dossierScopeBadge').innerText = scopeText;
-        document.getElementById('coursesScopeSubtitle').innerText = `نطاق العرض النشط: ${scopeText} (مفصولة بهوامش ومعدلات دقيقة)`;
+        document.getElementById('coursesScopeSubtitle').innerText = `${i18n.scope_prefix} ${scopeText} ${i18n.scope_suffix}`;
 
         // Standing Badge
         const standing = s.summary?.standing || 'passed';
         const badge = document.getElementById('dossierStatusBadge');
         if (standing === 'graduated') {
             badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold status-badge-grad';
-            badge.innerText = 'خريج رسمي معتمد 🎓';
+            badge.innerText = i18n.grad_status_badge;
         } else if (standing === 'supplementary') {
             badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold status-badge-supp';
-            badge.innerText = 'دورة تكميلية 📝';
+            badge.innerText = i18n.supp_status_badge;
         } else if (standing === 'failed') {
             badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold status-badge-fail';
-            badge.innerText = 'راسب - إعادة سنة ⚠️';
+            badge.innerText = i18n.fail_status_badge;
         } else {
             badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold status-badge-pass';
-            badge.innerText = 'ناجح ومترفع ✅';
+            badge.innerText = i18n.pass_status_badge;
         }
 
         // احتساب المقررات مقسمة وفق الفصول مع معدل كل فصل والتراكمي
         const data = calculateStudentData(s, yVal, sVal);
 
         // Header Badges
-        document.getElementById('displayedSemestersBadge').innerText = `${data.semGroups.length} فصول معروضة`;
-        document.getElementById('coursesCountBadge').innerText = `${data.totalCoursesCount} مقرر`;
+        document.getElementById('displayedSemestersBadge').innerText = `${data.semGroups.length} ${i18n.semesters_displayed}`;
+        document.getElementById('coursesCountBadge').innerText = `${data.totalCoursesCount} ${i18n.courses_unit}`;
 
         // Render Semesters Container
         const container = document.getElementById('studentSemestersContainer');
@@ -1282,8 +1378,8 @@
             container.innerHTML = `
                 <div class="cw-card p-10 text-center">
                     <i class="fa-solid fa-folder-open text-3xl cw-subtitle opacity-40 mb-3 block"></i>
-                    <div class="cw-title font-bold text-sm">لا توجد مقررات مسجلة لهذا الطالب مطابقة للفلاتر المحددة</div>
-                    <div class="cw-subtitle text-xs mt-1">يرجى تعديل محددات السنة الدراسية أو الفصل من شريط التصفية بالأعلى</div>
+                    <div class="cw-title font-bold text-sm">${i18n.no_courses_matching_filter}</div>
+                    <div class="cw-subtitle text-xs mt-1">${i18n.adjust_filter_prompt}</div>
                 </div>
             `;
         } else {
@@ -1294,33 +1390,33 @@
 
                 let semBadgeHtml = '';
                 if (group.isClosed) {
-                    const lockMsg = isYear1 ? 'مغلق المقرر لحين انتهاء الفصل الأول' : 'مغلق المقرر (الفصل الأخير يبدأ لاحقاً)';
+                    const lockMsg = isYear1 ? i18n.locked_sem1 : i18n.locked_final;
                     semBadgeHtml = `<span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-lock text-[10px]"></i> ${lockMsg}</span>`;
                 } else if (group.isCurrentActive) {
-                    semBadgeHtml = `<span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-[10px]"></i> الفصل الساري حالياً</span>`;
+                    semBadgeHtml = `<span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-[10px]"></i> ${i18n.currently_active_sem}</span>`;
                 } else if (group.isPastCompleted) {
-                    semBadgeHtml = `<span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-[10px]"></i> مجتاز (العام الدراسي الماضي 2024/2025)</span>`;
+                    semBadgeHtml = `<span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-[10px]"></i> ${i18n.passed_prev_year_full}</span>`;
                 }
 
                 let gpaHeaderBadgeHtml = '';
                 if (group.isCurrentActive) {
                     gpaHeaderBadgeHtml = `
                         <div class="px-3.5 py-1.5 rounded-xl bg-amber-500/15 dark:bg-[var(--accent-color)]/20 border border-amber-500/30 dark:border-[var(--accent-color)]/40 text-xs font-bold flex items-center gap-2">
-                            <span class="text-amber-800 dark:text-amber-200">معدل الفصل:</span>
+                            <span class="text-amber-800 dark:text-amber-200">${i18n.sem_gpa_label}</span>
                             <span class="font-mono font-black text-sm text-amber-700 dark:text-[var(--accent-color)]">${group.gpa.toFixed(2)}%</span>
                         </div>
                     `;
                 } else if (group.isPastCompleted) {
                     gpaHeaderBadgeHtml = `
                         <div class="px-3.5 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs font-bold flex items-center gap-2">
-                            <span class="text-blue-700 dark:text-blue-300">معدل الفصل:</span>
-                            <span class="font-bold text-xs text-blue-600 dark:text-blue-400">مجتاز بنجاح</span>
+                            <span class="text-blue-700 dark:text-blue-300">${i18n.sem_gpa_label}</span>
+                            <span class="font-bold text-xs text-blue-600 dark:text-blue-400">${i18n.passed_successfully}</span>
                         </div>
                     `;
                 } else {
                     gpaHeaderBadgeHtml = `
                         <div class="px-3.5 py-1.5 rounded-xl cw-inner-box text-xs font-bold flex items-center gap-2">
-                            <span class="cw-subtitle">معدل الفصل:</span>
+                            <span class="cw-subtitle">${i18n.sem_gpa_label}</span>
                             <span class="font-mono font-bold text-sm cw-subtitle">-</span>
                         </div>
                     `;
@@ -1338,18 +1434,18 @@
                                     <span class="text-xs font-bold px-2.5 py-0.5 rounded-full cw-inner-box cw-subtitle">${semDef.yearLabel}</span>
                                     ${semBadgeHtml}
                                 </div>
-                                <p class="text-[11px] cw-subtitle mt-0.5">مقررات ${semDef.title} (${semDef.yearLabel}) المعتمدة في الخطة</p>
+                                <p class="text-[11px] cw-subtitle mt-0.5">${i18n.plan_courses_subtitle} ${semDef.title} (${semDef.yearLabel})</p>
                             </div>
                         </div>
 
                         <!-- Quick Badges -->
                         <div class="flex flex-wrap items-center gap-2">
                             <div class="px-3 py-1.5 rounded-xl cw-inner-box text-xs font-semibold flex items-center gap-2">
-                                <span class="cw-subtitle">الساعات (التثقيل):</span>
+                                <span class="cw-subtitle">${i18n.hours_weight}:</span>
                                 <span class="font-mono font-bold cw-title">${group.hours}</span>
                             </div>
                             <div class="px-3 py-1.5 rounded-xl cw-inner-box text-xs font-semibold flex items-center gap-2">
-                                <span class="cw-subtitle">عدد المقررات:</span>
+                                <span class="cw-subtitle">${i18n.courses_count_label}:</span>
                                 <span class="font-mono font-bold cw-title">${group.courses.length}</span>
                             </div>
                             ${gpaHeaderBadgeHtml}
@@ -1362,14 +1458,14 @@
                 group.courses.forEach(c => {
                     let statusBadge = '';
                     if (group.isClosed) {
-                        const lockText = isYear1 ? 'مغلق المقرر لحين انتهاء الفصل الأول' : 'مغلق المقرر (الفصل الأخير)';
+                        const lockText = isYear1 ? i18n.locked_sem1 : i18n.locked_final;
                         statusBadge = `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">${lockText}</span>`;
                     } else if (group.isPastCompleted) {
-                        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">مجتاز (السنة السابقة)</span>`;
+                        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">${i18n.passed_prev_year}</span>`;
                     } else if (c.isPass) {
-                        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold status-badge-pass">ناجح</span>`;
+                        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold status-badge-pass">${i18n.passed}</span>`;
                     } else {
-                        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold status-badge-fail">راسب</span>`;
+                        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold status-badge-fail">${i18n.failed}</span>`;
                     }
 
                     const quizDisplay = group.isCurrentActive ? c.quiz_score : '-';
@@ -1396,35 +1492,35 @@
                 if (group.isCurrentActive) {
                     footerGpaHtml = `
                         <span class="px-2.5 py-1 rounded-lg text-xs font-bold font-mono ${group.isPass ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10' : 'text-red-700 dark:text-red-300 bg-red-500/10'}">
-                            معدل الفصل: ${group.gpa.toFixed(2)}%
+                            ${i18n.sem_gpa_label} ${group.gpa.toFixed(2)}%
                         </span>
                     `;
                 } else if (group.isPastCompleted) {
                     footerGpaHtml = `
                         <span class="px-2.5 py-1 rounded-lg text-xs font-bold font-mono text-blue-700 dark:text-blue-300 bg-blue-500/10">
-                            مجتاز من العام الماضي
+                            ${i18n.passed_prev_year}
                         </span>
                     `;
                 } else {
                     footerGpaHtml = `
                         <span class="px-2.5 py-1 rounded-lg text-xs font-bold font-mono cw-subtitle bg-black/5 dark:bg-white/5">
-                            يبدأ لاحقاً
+                            ${i18n.starts_later}
                         </span>
                     `;
                 }
 
                 const tableHtml = `
                     <div class="overflow-x-auto">
-                        <table class="w-full text-right text-xs cw-table">
+                        <table class="w-full text-start text-xs cw-table">
                             <thead>
                                 <tr class="font-bold border-b border-[var(--border-color)]">
-                                    <th class="py-3 px-4">المقرر الدراسي</th>
-                                    <th class="py-3 px-4 text-center">المذاكرة (25)</th>
-                                    <th class="py-3 px-4 text-center">الشفهي (25)</th>
-                                    <th class="py-3 px-4 text-center">الامتحان (50)</th>
-                                    <th class="py-3 px-4 text-center">علامة المقرر (100)</th>
-                                    <th class="py-3 px-4 text-center">التثقيل</th>
-                                    <th class="py-3 px-4 text-center">الحالة الأكاديمية</th>
+                                    <th class="py-3 px-4">{{ __('messages.course_name_th') }}</th>
+                                    <th class="py-3 px-4 text-center">{{ __('messages.quiz_th') }}</th>
+                                    <th class="py-3 px-4 text-center">{{ __('messages.oral_th') }}</th>
+                                    <th class="py-3 px-4 text-center">{{ __('messages.exam_th') }}</th>
+                                    <th class="py-3 px-4 text-center">{{ __('messages.course_mark_th') }}</th>
+                                    <th class="py-3 px-4 text-center">{{ __('messages.credit_weight_th') }}</th>
+                                    <th class="py-3 px-4 text-center">{{ __('messages.academic_status_th') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-[var(--border-color)] font-semibold">
@@ -1432,7 +1528,7 @@
                             </tbody>
                             <tfoot class="font-bold text-xs bg-[var(--bg-primary)]">
                                 <tr>
-                                    <td class="py-3.5 px-4 cw-title font-bold" colspan="5">مجموع وساعات ${semDef.title}:</td>
+                                    <td class="py-3.5 px-4 cw-title font-bold" colspan="5">${i18n.sem_total_hours_prefix} ${semDef.title}:</td>
                                     <td class="py-3.5 px-4 text-center cw-accent-text font-mono text-sm font-black">${group.hours}</td>
                                     <td class="py-3.5 px-4 text-center">
                                         ${footerGpaHtml}
@@ -1450,7 +1546,7 @@
 
         // تحديث بطاقة الملخص التراكمي العام
         document.getElementById('cumGpaDisplay').innerText = data.cumGpa.toFixed(2) + '%';
-        document.getElementById('cumSemestersCount').innerText = `${data.passedSemestersCount} فصول مجتازة`;
+        document.getElementById('cumSemestersCount').innerText = `${data.passedSemestersCount} ${i18n.passed_semesters_unit}`;
         document.getElementById('cumTotalHours').innerText = data.cumHours;
         const totalCoursesEl = document.getElementById('cumTotalCoursesCount');
         if (totalCoursesEl) totalCoursesEl.innerText = data.totalCoursesCount;
@@ -1458,31 +1554,33 @@
         const cumStatusEl = document.getElementById('cumOverallStatus');
         if (data.failedTitles.length === 0 && data.passedSemestersCount > 0) {
             cumStatusEl.className = 'font-bold text-sm text-emerald-600 dark:text-emerald-400';
-            cumStatusEl.innerText = 'مستوفٍ لشروط النجاح ✅';
+            cumStatusEl.innerText = i18n.eligible_for_pass;
         } else if (data.failedTitles.length > 0) {
             cumStatusEl.className = 'font-bold text-sm text-red-600 dark:text-red-400';
-            cumStatusEl.innerText = `راسب في ${data.failedTitles.length} مواد ⚠️`;
+            cumStatusEl.innerText = i18n.failed_in_courses.replace(':count', data.failedTitles.length);
         } else {
             cumStatusEl.className = 'font-bold text-sm text-amber-600 dark:text-amber-400';
-            cumStatusEl.innerText = 'بانتظار استكمال النتائج';
+            cumStatusEl.innerText = i18n.pending_results;
         }
 
         const formulaEl = document.getElementById('cumFormulaExplanation');
         if (!isYear1) {
             const activeGpaStr = data.passedSemGpas.length > 0 ? data.passedSemGpas[0].gpa.toFixed(2) + '%' : '0.00%';
-            formulaEl.innerHTML = `المعادلة المعتمدة (طالب سنة ثانية): مجموع الفصول المنتهية المجتازة (فصلان من العام الماضي + الفصل الساري) ÷ عدد الفصول المجتازة (3 فصول) = <span class="cw-title font-mono font-bold">${activeGpaStr}</span> ÷ 3 = <span class="cw-accent-text font-mono font-black text-sm">${data.cumGpa.toFixed(2)}%</span>`;
+            formulaEl.innerHTML = `${i18n.formula_year2}<span class="cw-title font-mono font-bold">${activeGpaStr}</span> ÷ 3 = <span class="cw-accent-text font-mono font-black text-sm">${data.cumGpa.toFixed(2)}%</span>`;
         } else if (data.passedSemestersCount > 1) {
             const sumStr = data.passedSemGpas.length > 0 
                 ? data.passedSemGpas.map(item => `<span class="cw-title font-mono font-bold">${item.gpa.toFixed(2)}%</span>`).join(' + ')
                 : '0.00%';
-            formulaEl.innerHTML = `المعادلة المعتمدة: مجموع الفصول المنتهية المجتازة ÷ عدد الفصول المجتازة (${data.passedSemestersCount} فصول) = ${sumStr} ÷ ${data.passedSemestersCount} = <span class="cw-accent-text font-mono font-black text-sm">${data.cumGpa.toFixed(2)}%</span>`;
+            const baseTpl = i18n.formula_multi_sem.replace(':count', data.passedSemestersCount);
+            formulaEl.innerHTML = `${baseTpl}${sumStr} ÷ ${data.passedSemestersCount} = <span class="cw-accent-text font-mono font-black text-sm">${data.cumGpa.toFixed(2)}%</span>`;
         } else if (data.passedSemestersCount === 1) {
             const valStr = data.passedSemGpas.length > 0 ? data.passedSemGpas[0].gpa.toFixed(2) + '%' : '0.00%';
-            formulaEl.innerHTML = `المعادلة المعتمدة: مجموع الفصول المنتهية المجتازة على عددها فقط = <span class="cw-title font-mono font-bold">${valStr}</span> ÷ 1 = <span class="cw-accent-text font-mono font-black text-sm">${data.cumGpa.toFixed(2)}%</span>`;
+            formulaEl.innerHTML = `${i18n.formula_single_sem}<span class="cw-title font-mono font-bold">${valStr}</span> ÷ 1 = <span class="cw-accent-text font-mono font-black text-sm">${data.cumGpa.toFixed(2)}%</span>`;
         } else if (data.allSemGpas.length > 0) {
-            formulaEl.innerHTML = `المعادلة المعتمدة: لم يتم اجتياز أي فصل بمعدل ≥ 50% (المعدل الحالي: <span class="text-red-500 font-mono font-bold">${data.cumGpa.toFixed(2)}%</span>)`;
+            const gpaSpan = `<span class="text-red-500 font-mono font-bold">${data.cumGpa.toFixed(2)}%</span>`;
+            formulaEl.innerHTML = i18n.formula_none_passed.replace(':gpa', gpaSpan);
         } else {
-            formulaEl.innerText = 'لا توجد فصول دراسية منتهية مجتازة حالياً وفق خيارات الفلترة ومستوى الطالب';
+            formulaEl.innerText = i18n.formula_no_semesters;
         }
 
         // صندوق المقررات غير المجتازة
@@ -1500,7 +1598,7 @@
     }
 
     function clearStudentDossier() {
-        document.getElementById('dossierFullName').innerText = 'لا يوجد طلاب مختارون';
+        document.getElementById('dossierFullName').innerText = i18n.no_student_selected;
         document.getElementById('dossierStudentCode').innerText = '-';
         document.getElementById('dossierJoinedAt').innerText = '-';
         document.getElementById('dossierDept').innerText = '-';
@@ -1508,13 +1606,13 @@
         document.getElementById('dossierLevel').innerText = '-';
         document.getElementById('dossierAdvisor').innerText = '-';
         document.getElementById('dossierHOD').innerText = '-';
-        document.getElementById('displayedSemestersBadge').innerText = '0 فصول';
-        document.getElementById('coursesCountBadge').innerText = '0 مقرر';
+        document.getElementById('displayedSemestersBadge').innerText = `0 ${i18n.semesters_displayed}`;
+        document.getElementById('coursesCountBadge').innerText = `0 ${i18n.courses_unit}`;
         document.getElementById('studentSemestersContainer').innerHTML = `
             <div class="cw-card p-10 text-center">
                 <i class="fa-solid fa-folder-open text-3xl cw-subtitle opacity-40 mb-3 block"></i>
-                <div class="cw-title font-bold text-sm">لا توجد بيانات مقررات معروضة</div>
-                <div class="cw-subtitle text-xs mt-1">اختر طالباً من القائمة الجانبية لعرض مقرراته ونتائجه</div>
+                <div class="cw-title font-bold text-sm">${i18n.no_courses_to_display}</div>
+                <div class="cw-subtitle text-xs mt-1">${i18n.select_student_prompt}</div>
             </div>
         `;
         document.getElementById('cumGpaDisplay').innerText = '0.00%';
@@ -1523,22 +1621,27 @@
         document.getElementById('cumTotalPoints').innerText = '0';
         document.getElementById('cumOverallStatus').innerText = '-';
         document.getElementById('failedCoursesAlert').classList.add('hidden');
-        document.getElementById('decisionButtonsContainer').innerHTML = '<span class="text-xs cw-subtitle">اختر طالباً لاتخاذ القرار الأكاديمي</span>';
+        document.getElementById('decisionButtonsContainer').innerHTML = `<span class="text-xs cw-subtitle">${i18n.select_student_decision}</span>`;
     }
 
     function renderDecisionButtons(s) {
         const container = document.getElementById('decisionButtonsContainer');
         container.innerHTML = '';
 
-        const level = String(s.level || '');
+        const level = String(s.level || '').toLowerCase();
         const failedCount = s.summary?.failed_count ?? 0;
-        const isYear1 = level.includes('الأولى');
+        const isYear1 = level.includes('الأولى') || level.includes('first') || level === '1';
 
         // فحص هل الفصل الثاني من السنة الأولى منتهٍ وله درجات؟
         const hasY1Sem2 = (s.courses || []).some(c => (Number(c.year) === 1 || !c.year) && Number(c.semester_id) === 2 && !c.is_closed && c.score !== null);
 
         // فحص هل الفصل الرابع (الفصل الثاني للسنة الثانية) منتهٍ وله درجات؟
         const hasY2Sem2 = (s.courses || []).some(c => Number(c.year) === 2 && Number(c.semester_id) === 2 && !c.is_closed && c.score !== null);
+
+        const suppBtnText = i18n.btn_supp.replace(':count', failedCount);
+        const suppSem1Text = i18n.btn_supp_sem1.replace(':count', failedCount);
+        const suppSem3Text = i18n.btn_supp_sem3.replace(':count', failedCount);
+        const suppGradText = i18n.btn_supp_grad.replace(':count', failedCount);
 
         if (isYear1) {
             if (hasY1Sem2) {
@@ -1547,29 +1650,29 @@
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('promote_year_2', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-primary hover:brightness-105 text-black font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-graduation-cap"></i>
-                            <span>الترفيع إلى السنة الثانية (تسجيل المقررات تلقائياً)</span>
+                            <span>${i18n.btn_promote_y2}</span>
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>إعادة السنة الأولى (راسب)</span>
+                            <span>${i18n.btn_repeat_y1_failed}</span>
                         </button>
                     `;
                 } else if (failedCount <= 4) {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('supplementary', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-pen-ruler"></i>
-                            <span>تحويل للدورة التكميلية (حصر المواد: ${failedCount})</span>
+                            <span>${suppBtnText}</span>
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>إعادة السنة الأولى</span>
+                            <span>${i18n.btn_repeat_y1}</span>
                         </button>
                     `;
                 } else {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>راسب سنة أولى (إعادة السنة كاملة)</span>
+                            <span>${i18n.btn_repeat_y1_all}</span>
                         </button>
                     `;
                 }
@@ -1579,29 +1682,29 @@
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('promote_semester_2', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-arrow-left"></i>
-                            <span>الترفيع إلى الفصل الثاني (استيفاء الفصل الأول بنجاح)</span>
+                            <span>${i18n.btn_promote_sem2}</span>
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>راسب فصل أول (إعادة)</span>
+                            <span>${i18n.btn_repeat_sem1}</span>
                         </button>
                     `;
                 } else if (failedCount <= 4) {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('supplementary', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-pen-ruler"></i>
-                            <span>تحويل للدورة التكميلية (فصل أول: ${failedCount} مواد)</span>
+                            <span>${suppSem1Text}</span>
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>إعادة السنة الأولى</span>
+                            <span>${i18n.btn_repeat_y1}</span>
                         </button>
                     `;
                 } else {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>راسب فصل أول (إعادة السنة)</span>
+                            <span>${i18n.btn_repeat_sem1_year}</span>
                         </button>
                     `;
                 }
@@ -1614,29 +1717,29 @@
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('graduate', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-award text-sm"></i>
-                            <span>اعتماد التخرج (خريج رسمي معتمد 🎓)</span>
+                            <span>${i18n.btn_graduate}</span>
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>رسوب (بقاء في السنة الثانية)</span>
+                            <span>${i18n.btn_repeat_y2}</span>
                         </button>
                     `;
                 } else if (failedCount <= 4) {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('supplementary', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-pen-ruler"></i>
-                            <span>تحويل لدورة الخريجين التكميلية (${failedCount} مواد)</span>
+                            <span>${suppGradText}</span>
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>رسوب (بقاء في السنة الثانية)</span>
+                            <span>${i18n.btn_repeat_y2}</span>
                         </button>
                     `;
                 } else {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>راسب سنة ثانية (بقاء في السنة الثانية)</span>
+                            <span>${i18n.btn_repeat_y2_all}</span>
                         </button>
                     `;
                 }
@@ -1646,29 +1749,29 @@
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('promote_semester_4', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-arrow-left"></i>
-                            <span>الترفيع إلى الفصل الرابع (استيفاء الفصل الثالث بنجاح)</span>
+                            <span>${i18n.btn_promote_sem4}</span>
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>رسوب (بقاء في السنة الثانية)</span>
+                            <span>${i18n.btn_repeat_y2}</span>
                         </button>
                     `;
                 } else if (failedCount <= 4) {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('supplementary', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-pen-ruler"></i>
-                            <span>تحويل للدورة التكميلية (فصل ثالث: ${failedCount} مواد)</span>
+                            <span>${suppSem3Text}</span>
                         </button>
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs flex items-center gap-2 transition border border-red-500/30">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>رسوب (بقاء في السنة الثانية)</span>
+                            <span>${i18n.btn_repeat_y2}</span>
                         </button>
                     `;
                 } else {
                     container.innerHTML = `
                         <button type="button" onclick="submitDecision('repeat_year', ${s.student_id})" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs flex items-center gap-2 transition shadow-md">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>راسب فصل ثالث (بقاء في السنة الثانية)</span>
+                            <span>${i18n.btn_repeat_sem3}</span>
                         </button>
                     `;
                 }
@@ -1680,13 +1783,13 @@
     function submitDecision(decision, studentId) {
         const notes = document.getElementById('decisionNotesInput').value;
 
-        if (!confirm('هل أنت متأكد من اعتماد هذا القرار الأكاديمي وإشعار الطالب فورياً؟')) {
+        if (!confirm(i18n.confirm_decision)) {
             return;
         }
 
         const btnContainer = document.getElementById('decisionButtonsContainer');
         const originalContent = btnContainer.innerHTML;
-        btnContainer.innerHTML = `<span class="text-xs cw-accent-text font-bold animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-1"></i> جارٍ حفظ القرار الأكاديمي وإرسال الإشعار...</span>`;
+        btnContainer.innerHTML = `<span class="text-xs cw-accent-text font-bold animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-1"></i> ${i18n.saving_decision}</span>`;
 
         fetch("{{ route('affairs.course_weights.student_decision') }}", {
             method: 'POST',
@@ -1713,20 +1816,20 @@
                 alert('✅ ' + data.message);
                 renderStudentWorkstation();
             } else {
-                alert('❌ حدث خطأ: ' + (data.message || 'تعذر حفظ القرار'));
+                alert('❌ ' + (data.message || i18n.error_occurred));
                 btnContainer.innerHTML = originalContent;
             }
         })
         .catch(err => {
             console.error(err);
-            alert('❌ فشل الاتصال بالخادم.');
+            alert('❌ ' + i18n.connection_failed);
             btnContainer.innerHTML = originalContent;
         });
     }
 
     // ─────────────────────────── Course Workstation Engine ───────────────────────────
     function renderCourseWorkstation() {
-        document.getElementById('matchedCoursesCount').innerText = `${filteredCourses.length} مادة`;
+        document.getElementById('matchedCoursesCount').innerText = `${filteredCourses.length} ${i18n.courses_unit_single}`;
         const scrollContainer = document.getElementById('coursesListScroll');
         scrollContainer.innerHTML = '';
 
@@ -1734,7 +1837,7 @@
             scrollContainer.innerHTML = `
                 <div class="text-center py-12 cw-subtitle text-xs">
                     <i class="fa-solid fa-book-skull text-2xl mb-2 block opacity-40"></i>
-                    لا توجد مواد مطابقة لمعايير الفلترة
+                    ${i18n.no_matching_courses}
                 </div>
             `;
             return;
@@ -1755,13 +1858,16 @@
                 renderCourseWorkstation();
             };
 
+            const yearLabel = c.year == 1 ? i18n.year_1 : i18n.year_2;
+            const semLabel = c.semester_id == 1 ? i18n.semester_1 : i18n.semester_2;
+
             item.innerHTML = `
                 <div>
                     <div class="text-xs font-bold cw-title">${c.title}</div>
-                    <div class="text-[11px] cw-subtitle mt-0.5">سنة ${c.year} • فصل ${c.semester_id} • وزن: ${c.weight}</div>
+                    <div class="text-[11px] cw-subtitle mt-0.5">${yearLabel} • ${semLabel} • ${i18n.hours_weight}: ${c.weight}</div>
                 </div>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded cw-accent-badge font-mono">
-                    ${enrolledList.length} طالب
+                    ${enrolledList.length} ${i18n.student_unit_single}
                 </span>
             `;
             scrollContainer.appendChild(item);
@@ -1776,12 +1882,14 @@
 
         document.getElementById('courseTitleHeader').innerText = c.title;
         document.getElementById('courseWeightHeader').innerText = c.weight || '1';
-        document.getElementById('courseYearBadge').innerText = c.year == 1 ? 'السنة الأولى' : 'السنة الثانية';
+        document.getElementById('courseYearBadge').innerText = c.year == 1 ? i18n.year_1 : i18n.year_2;
         const isCourseOpen = (Number(c.semester_id) === 1);
+        const semName = c.semester_id == 1 ? i18n.semester_1 : i18n.semester_2;
+
         if (isCourseOpen) {
-            document.getElementById('courseSemesterHeader').innerHTML = `${c.semester_id == 1 ? 'الفصل الأول' : 'الفصل الثاني'} <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold mr-2"><i class="fa-solid fa-circle-check text-[10px]"></i> الفصل الساري حالياً</span>`;
+            document.getElementById('courseSemesterHeader').innerHTML = `${semName} <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold mx-2"><i class="fa-solid fa-circle-check text-[10px]"></i> ${i18n.currently_active_sem}</span>`;
         } else {
-            document.getElementById('courseSemesterHeader').innerHTML = `${c.semester_id == 1 ? 'الفصل الأول' : 'الفصل الثاني'} <span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold mr-2"><i class="fa-solid fa-lock text-[10px]"></i> مغلق المقرر لحين انتهاء الفصل الأول</span>`;
+            document.getElementById('courseSemesterHeader').innerHTML = `${semName} <span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold mx-2"><i class="fa-solid fa-lock text-[10px]"></i> ${i18n.locked_sem1}</span>`;
         }
 
         let students = (appData.students || []).filter(s => s.course_id === c.course_id);
@@ -1809,7 +1917,7 @@
         tbody.innerHTML = '';
 
         if (students.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-6 cw-subtitle">لا يوجد طلاب مسجلون بهذه المادة</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 cw-subtitle">${i18n.no_students_in_course}</td></tr>`;
             return;
         }
 
@@ -1823,8 +1931,8 @@
             const examDisplay = isCourseOpen ? (s.final_exam_score || 0) : '-';
             const totalDisplay = isCourseOpen ? `${s.exam_score} / 100` : '-';
             const statusHtml = isCourseOpen
-                ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold ${isPass ? 'status-badge-pass' : 'status-badge-fail'}">${isPass ? 'ناجح' : 'راسب'}</span>`
-                : `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">مغلق المقرر</span>`;
+                ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold ${isPass ? 'status-badge-pass' : 'status-badge-fail'}">${isPass ? i18n.passed : i18n.failed}</span>`
+                : `<span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">${i18n.locked_sem1}</span>`;
 
             const tr = document.createElement('tr');
             tr.className = 'transition';
@@ -1867,7 +1975,7 @@
             );
         }
         if (displayList.length === 0 || !displayList[currentStudentIndex]) {
-            alert('يرجى اختيار طالب أولاً');
+            alert(i18n.select_student_first);
             return;
         }
 
@@ -1878,7 +1986,7 @@
 
     function exportCourseReport(format) {
         if (!currentCourseId) {
-            alert('يرجى اختيار مادة أولاً');
+            alert(i18n.select_course_first);
             return;
         }
         const progId = document.getElementById('filterProgram').value !== 'all' ? document.getElementById('filterProgram').value : 1;

@@ -1,6 +1,6 @@
 @extends('layouts.student')
-@section('title', 'الإنذارات الأكاديمية')
-@section('subtitle', 'سجل تنبيهات وإنذارات الغياب')
+@section('title', __('messages.academic_warnings_title'))
+@section('subtitle', __('messages.academic_warnings_subtitle'))
 
 @push('styles')
 <style>
@@ -14,7 +14,7 @@
         border-radius: 1.25rem;
         padding: 1.5rem;
         box-shadow: var(--shadow);
-        border-right: 6px solid var(--accent-color);
+        border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 6px solid var(--accent-color);
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
@@ -24,9 +24,9 @@
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(0,0,0,0.08);
     }
-    .warning-card.first { border-right-color: #f59e0b; }
-    .warning-card.second { border-right-color: #f97316; }
-    .warning-card.final { border-right-color: #ef4444; }
+    .warning-card.first { border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}-color: #f59e0b; }
+    .warning-card.second { border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}-color: #f97316; }
+    .warning-card.final { border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}-color: #ef4444; }
 
     .warning-header {
         display: flex;
@@ -84,18 +84,18 @@
     @if($warnings->isEmpty())
         <div class="empty-state">
             <i class="fas fa-check-circle"></i>
-            <h3 style="font-weight: 800; margin-bottom: 0.5rem;">سجلك ناصع وخالٍ من أي إنذارات!</h3>
-            <p style="color: var(--text-secondary); font-size: 0.95rem;">لم يتم تسجيل أي إنذار غياب بحقك. التزامك بالدوام رائع ومميز، استمر في تفوقك.</p>
+            <h3 style="font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.clean_record_no_warnings') }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">{{ __('messages.clean_record_desc') }}</p>
         </div>
     @else
         @foreach($warnings as $warning)
             @php
                 $levelClass = $warning->warning_level;
                 $levelText = match($warning->warning_level) {
-                    'first' => 'إنذار أول (7 أيام غياب)',
-                    'second' => 'إنذار ثانٍ (10 أيام غياب) - استدعاء ولي أمر',
-                    'final' => 'إنذار نهائي (15 يوم غياب) - إحالة للإدارة',
-                    default => 'إنذار أكاديمي'
+                    'first' => __('messages.first_warning_label'),
+                    'second' => __('messages.second_warning_label'),
+                    'final' => __('messages.final_warning_label'),
+                    default => __('messages.academic_warning')
                 };
                 $badgeClass = match($warning->warning_level) {
                     'first' => 'badge-first',
@@ -111,7 +111,7 @@
                         <span>{{ $levelText }}</span>
                     </div>
                     <span class="warning-badge {{ $badgeClass }}">
-                        {{ $warning->absence_days }} يوم غياب
+                        {{ __('messages.absence_days_count', ['count' => $warning->absence_days]) }}
                     </span>
                 </div>
                 <div class="warning-msg">
@@ -120,9 +120,9 @@
                 <div class="warning-meta">
                     <span><i class="far fa-calendar-alt"></i> {{ $warning->created_at->translatedFormat('d F Y - h:i A') }}</span>
                     @if($warning->warning_level === 'second')
-                        <span style="color: #f97316;"><i class="fas fa-user-friends"></i> تم إرسال استدعاء لولي الأمر</span>
+                        <span style="color: #f97316;"><i class="fas fa-user-friends"></i> {{ __('messages.parent_summon_sent') }}</span>
                     @elseif($warning->warning_level === 'final')
-                        <span style="color: #ef4444;"><i class="fas fa-gavel"></i> بانتظار قرار الإدارة ورئيس القسم</span>
+                        <span style="color: #ef4444;"><i class="fas fa-gavel"></i> {{ __('messages.awaiting_admin_dept_decision') }}</span>
                     @endif
                 </div>
             </div>

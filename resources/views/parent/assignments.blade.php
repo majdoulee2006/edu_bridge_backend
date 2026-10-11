@@ -1,5 +1,5 @@
 @extends('layouts.parent')
-@section('title', 'الواجبات والمهام')
+@section('title', __('messages.assignments'))
 
 @push('styles')
 <style>
@@ -227,12 +227,12 @@
 @if(!$selected_child_id)
     <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color);">
         <i class="fa-solid fa-child" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 1rem; display: block;"></i>
-        <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">يرجى اختيار ابن أولاً</h4>
-        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">يرجى اختيار الابن من القائمة في الأعلى أو إضافة ابن من تبويب "أبنائي".</p>
+        <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.please_select_child_first') }}</h4>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">{{ __('messages.select_child_hint') }}</p>
     </div>
 @else
     @section('subtitle')
-        متابعة الواجبات وتواريخ تسليمها للابن: {{ $selected_child->full_name }}
+        {{ (app()->getLocale() === 'en' ? 'Track assignments and due dates for: ' : 'متابعة الواجبات وتواريخ تسليمها للابن: ') . $selected_child->full_name }}
     @endsection
 
     @php
@@ -244,13 +244,13 @@
     @if($assignments->isNotEmpty())
         <div class="tabs-nav">
             <button class="tab-btn active" onclick="switchTab('pending', event)">
-                <i class="fa-solid fa-clock" style="color: #f59e0b;"></i> غير مكتملة ({{ $pending->count() }})
+                <i class="fa-solid fa-clock" style="color: #f59e0b;"></i> {{ __('messages.incomplete') }} ({{ $pending->count() }})
             </button>
             <button class="tab-btn" onclick="switchTab('completed', event)">
-                <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> مكتملة ({{ $completed->count() }})
+                <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> {{ __('messages.completed') }} ({{ $completed->count() }})
             </button>
             <button class="tab-btn" onclick="switchTab('missed', event)">
-                <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> فائتة ({{ $missed->count() }})
+                <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> {{ __('messages.missed') }} ({{ $missed->count() }})
             </button>
         </div>
 
@@ -267,7 +267,7 @@
                                 </div>
                                 <div>
                                     <span class="status-badge status-pending">
-                                        <i class="fa-solid fa-clock" style="margin-left: 0.25rem;"></i> غير مكتمل
+                                        <i class="fa-solid fa-clock" style="margin-inline-end: 0.25rem;"></i> {{ __('messages.incomplete') }}
                                     </span>
                                 </div>
                             </div>
@@ -275,21 +275,21 @@
                             <div class="card-body">
                                 @if($asn->file_path)
                                     <a href="{{ asset('storage/' . $asn->file_path) }}" class="btn-download" target="_blank">
-                                        <i class="fa-solid fa-download"></i> تحميل ملف الواجب ({{ $asn->file_name ?? 'تحميل' }})
+                                        <i class="fa-solid fa-download"></i> {{ __('messages.download_assignment_file') }} ({{ $asn->file_name ?? __('messages.download') }})
                                     </a>
                                 @else
-                                    <span style="font-style: italic; opacity: 0.6;">لا يوجد ملف مرفق للواجب.</span>
+                                    <span style="font-style: italic; opacity: 0.6;">{{ __('messages.no_attached_file') }}</span>
                                 @endif
                             </div>
                             
                             <div class="card-footer">
                                 <div class="meta-item">
                                     <i class="fa-regular fa-calendar"></i>
-                                    <span>تاريخ الاستحقاق: {{ \Carbon\Carbon::parse($asn->due_date)->format('Y-m-d H:i') }}</span>
+                                    <span>{{ __('messages.due_date') }}: {{ \Carbon\Carbon::parse($asn->due_date)->format('Y-m-d H:i') }}</span>
                                 </div>
                                 <div class="meta-item">
                                     <i class="fa-solid fa-star"></i>
-                                    <span>الدرجة المستحقة: <strong>-- / {{ $asn->max_points }}</strong></span>
+                                    <span>{{ __('messages.due_grade') }}: <strong>-- / {{ $asn->max_points }}</strong></span>
                                 </div>
                             </div>
                         </div>
@@ -298,8 +298,8 @@
             @else
                 <div class="empty-state">
                     <i class="fa-solid fa-check-double" style="color: #10b981;"></i>
-                    <h4>لا يوجد واجبات غير مكتملة</h4>
-                    <p>عمل ممتاز! تم إنجاز جميع الواجبات المطلوبة حتى الآن.</p>
+                    <h4>{{ __('messages.no_incomplete_assignments') }}</h4>
+                    <p>{{ __('messages.all_assignments_done_hint') }}</p>
                 </div>
             @endif
         </div>
@@ -317,7 +317,7 @@
                                 </div>
                                 <div>
                                     <span class="status-badge status-completed">
-                                        <i class="fa-solid fa-circle-check" style="margin-left: 0.25rem;"></i> تم التسليم
+                                        <i class="fa-solid fa-circle-check" style="margin-inline-end: 0.25rem;"></i> {{ __('messages.submitted') }}
                                     </span>
                                 </div>
                             </div>
@@ -325,21 +325,21 @@
                             <div class="card-body">
                                 @if($asn->file_path)
                                     <a href="{{ asset('storage/' . $asn->file_path) }}" class="btn-download" target="_blank">
-                                        <i class="fa-solid fa-download"></i> تحميل ملف الواجب ({{ $asn->file_name ?? 'تحميل' }})
+                                        <i class="fa-solid fa-download"></i> {{ __('messages.download_assignment_file') }} ({{ $asn->file_name ?? __('messages.download') }})
                                     </a>
                                 @else
-                                    <span style="font-style: italic; opacity: 0.6;">لا يوجد ملف مرفق للواجب.</span>
+                                    <span style="font-style: italic; opacity: 0.6;">{{ __('messages.no_attached_file') }}</span>
                                 @endif
                             </div>
                             
                             <div class="card-footer">
                                 <div class="meta-item">
                                     <i class="fa-regular fa-calendar"></i>
-                                    <span>تاريخ الاستحقاق: {{ \Carbon\Carbon::parse($asn->due_date)->format('Y-m-d H:i') }}</span>
+                                    <span>{{ __('messages.due_date') }}: {{ \Carbon\Carbon::parse($asn->due_date)->format('Y-m-d H:i') }}</span>
                                 </div>
                                 <div class="meta-item">
                                     <i class="fa-solid fa-star"></i>
-                                    <span>الدرجة المستحقة: 
+                                    <span>{{ __('messages.due_grade') }}: 
                                         @if($asn->grade !== null)
                                             <strong style="color: #10b981;">{{ $asn->grade }} / {{ $asn->max_points }}</strong>
                                         @else
@@ -350,7 +350,7 @@
                                 @if($asn->submitted_at)
                                     <div class="meta-item">
                                         <i class="fa-solid fa-check"></i>
-                                        <span>تم التسليم في: {{ \Carbon\Carbon::parse($asn->submitted_at)->format('Y-m-d H:i') }}</span>
+                                        <span>{{ __('messages.submitted_at') }}: {{ \Carbon\Carbon::parse($asn->submitted_at)->format('Y-m-d H:i') }}</span>
                                     </div>
                                 @endif
                             </div>
@@ -358,7 +358,7 @@
                             @if($asn->feedback)
                                 <div class="feedback-box">
                                     <div class="feedback-title">
-                                        <i class="fa-solid fa-comment-dots"></i> ملاحظات المعلم:
+                                        <i class="fa-solid fa-comment-dots"></i> {{ __('messages.teacher_feedback') }}:
                                     </div>
                                     <p style="margin: 0; color: var(--text-secondary);">{{ $asn->feedback }}</p>
                                 </div>
@@ -369,8 +369,8 @@
             @else
                 <div class="empty-state">
                     <i class="fa-solid fa-circle-xmark" style="color: var(--text-secondary);"></i>
-                    <h4>لا توجد واجبات مكتملة</h4>
-                    <p>لم يتم تسليم أي واجبات بعد من قِبل الابن.</p>
+                    <h4>{{ __('messages.no_completed_assignments') }}</h4>
+                    <p>{{ __('messages.no_assignments_submitted_yet') }}</p>
                 </div>
             @endif
         </div>
@@ -388,7 +388,7 @@
                                 </div>
                                 <div>
                                     <span class="status-badge status-missed">
-                                        <i class="fa-solid fa-triangle-exclamation" style="margin-left: 0.25rem;"></i> فائت
+                                        <i class="fa-solid fa-triangle-exclamation" style="margin-inline-end: 0.25rem;"></i> {{ __('messages.missed') }}
                                     </span>
                                 </div>
                             </div>
@@ -396,21 +396,21 @@
                             <div class="card-body">
                                 @if($asn->file_path)
                                     <a href="{{ asset('storage/' . $asn->file_path) }}" class="btn-download" target="_blank">
-                                        <i class="fa-solid fa-download"></i> تحميل ملف الواجب ({{ $asn->file_name ?? 'تحميل' }})
+                                        <i class="fa-solid fa-download"></i> {{ __('messages.download_assignment_file') }} ({{ $asn->file_name ?? __('messages.download') }})
                                     </a>
                                 @else
-                                    <span style="font-style: italic; opacity: 0.6;">لا يوجد ملف مرفق للواجب.</span>
+                                    <span style="font-style: italic; opacity: 0.6;">{{ __('messages.no_attached_file') }}</span>
                                 @endif
                             </div>
                             
                             <div class="card-footer">
                                 <div class="meta-item">
                                     <i class="fa-regular fa-calendar"></i>
-                                    <span>تاريخ الاستحقاق: {{ \Carbon\Carbon::parse($asn->due_date)->format('Y-m-d H:i') }}</span>
+                                    <span>{{ __('messages.due_date') }}: {{ \Carbon\Carbon::parse($asn->due_date)->format('Y-m-d H:i') }}</span>
                                 </div>
                                 <div class="meta-item">
                                     <i class="fa-solid fa-star"></i>
-                                    <span>الدرجة المستحقة: <strong>-- / {{ $asn->max_points }}</strong></span>
+                                    <span>{{ __('messages.due_grade') }}: <strong>-- / {{ $asn->max_points }}</strong></span>
                                 </div>
                             </div>
                         </div>
@@ -419,16 +419,16 @@
             @else
                 <div class="empty-state">
                     <i class="fa-solid fa-thumbs-up" style="color: #10b981;"></i>
-                    <h4>لا توجد واجبات فائتة</h4>
-                    <p>رائع جداً! تم تسليم كافة الواجبات قبل انتهاء مهلة التسليم.</p>
+                    <h4>{{ __('messages.no_missed_assignments') }}</h4>
+                    <p>{{ __('messages.all_submitted_on_time') }}</p>
                 </div>
             @endif
         </div>
     @else
         <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color);">
             <i class="fa-solid fa-book-open" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.4; margin-bottom: 1rem; display: block;"></i>
-            <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">لا يوجد واجبات مسجلة</h4>
-            <p style="color: var(--text-secondary); font-size: 0.95rem;">لم يتم تكليف الابن {{ $selected_child->full_name }} بأي واجبات دراسية في المواد المسجلة حتى الآن.</p>
+            <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.no_assignments_recorded') }}</h4>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">{{ (app()->getLocale() === 'en' ? 'No assignments assigned to ' : 'لم يتم تكليف الابن ') . $selected_child->full_name . (app()->getLocale() === 'en' ? ' in registered courses yet.' : ' بأي واجبات دراسية في المواد المسجلة حتى الآن.') }}</p>
         </div>
     @endif
 @endif
@@ -438,19 +438,16 @@
 @push('scripts')
 <script>
 function switchTab(tabId, event) {
-    // Hide all tab contents
     document.querySelectorAll('.tab-content').forEach(el => {
         el.classList.remove('active');
     });
-    // Show selected tab content
     document.getElementById('tab-' + tabId).classList.add('active');
     
-    // Deactivate all tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    // Activate clicked button
     event.currentTarget.classList.add('active');
 }
 </script>
 @endpush
+

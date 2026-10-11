@@ -1,5 +1,5 @@
 @extends('layouts.affairs')
-@section('title', 'طلبات التسجيل')
+@section('title', __('messages.pending_registration_requests'))
 
 @push('styles')
 <style>
@@ -314,7 +314,7 @@
     <div class="page-header">
         <h2>
             <i class="fa-solid fa-user-clock" style="color:#ffcc00;"></i>
-            طلبات التسجيل المعلّقة
+            {{ __('messages.pending_registration_requests') }}
             @if($pending->count() > 0)
                 <span class="badge-count">{{ $pending->count() }}</span>
             @endif
@@ -324,8 +324,8 @@
     @if($pending->isEmpty())
         <div class="empty-state">
             <i class="fa-solid fa-inbox"></i>
-            <p style="font-size:1.2rem; font-weight:800; color:var(--text-primary);">لا توجد طلبات تسجيل معلّقة حالياً</p>
-            <p style="font-size:0.9rem; margin-top:0.5rem;">جميع طلبات الطلاب وأولياء الأمور تمت مراجعتها بنجاح.</p>
+            <p style="font-size:1.2rem; font-weight:800; color:var(--text-primary);">{{ __('messages.no_pending_requests') }}</p>
+            <p style="font-size:0.9rem; margin-top:0.5rem;">{{ __('messages.all_requests_reviewed') }}</p>
         </div>
     @else
         <div class="card-grid">
@@ -333,7 +333,7 @@
             @php
                 $avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : null;
                 $telegramVal = $user->telegram_chat_id ?? $user->telegram_id ?? '7821980919';
-                $roleLabel = $user->role_id == 3 ? '🎓 طالب' : '👨‍👩‍👧 ولي أمر';
+                $roleLabel = $user->role_id == 3 ? '🎓 ' . __('messages.role_student') : '👨‍👩‍👧 ' . __('messages.role_parent');
             @endphp
             <div class="student-card" onclick="openStudentModal({{ json_encode([
                 'user_id'          => $user->user_id,
@@ -341,13 +341,13 @@
                 'avatar'           => $avatarUrl,
                 'role'             => $user->role_id == 3 ? 'student' : 'parent',
                 'role_label'       => $roleLabel,
-                'email'            => $user->email ?? 'غير متوفر',
-                'phone'            => $user->phone ?? 'غير متوفر',
-                'birth_date'       => $user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->format('Y-m-d') : 'غير متوفر',
-                'gender'           => $user->gender ?? 'غير متوفر',
-                'department'       => $user->department ?? 'غير متوفر',
-                'branch'           => $user->branch ?? 'غير متوفر',
-                'academic_year'    => $user->academic_year ?? 'غير متوفر',
+                'email'            => $user->email ?? __('messages.not_available'),
+                'phone'            => $user->phone ?? __('messages.not_available'),
+                'birth_date'       => $user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->format('Y-m-d') : __('messages.not_available'),
+                'gender'           => $user->gender ?? __('messages.not_available'),
+                'department'       => $user->department ?? __('messages.not_available'),
+                'branch'           => $user->branch ?? __('messages.not_available'),
+                'academic_year'    => $user->academic_year ?? __('messages.not_available'),
                 'telegram'         => $telegramVal,
                 'university_id'    => $user->university_id,
                 'approve_url'      => route('affairs.pending_accounts.approve', $user->user_id),
@@ -367,7 +367,7 @@
                 @if($user->role_id == 3)
                     <div class="card-dept">
                         <i class="fa-solid fa-graduation-cap" style="color:#ffcc00;"></i>
-                        {{ $user->department ?? 'غير محدد' }} {{ $user->branch ? '- ' . $user->branch : '' }}
+                        {{ $user->department ?? __('messages.not_specified') }} {{ $user->branch ? '- ' . $user->branch : '' }}
                     </div>
                 @else
                     <div class="card-dept">
@@ -376,8 +376,8 @@
                     </div>
                 @endif
 
-                <button class="view-details-btn">
-                    <i class="fa-solid fa-eye"></i> عرض كافة البيانات
+                <button class="view-details-btn cursor-pointer">
+                    <i class="fa-solid fa-eye"></i> {{ __('messages.view_all_details') }}
                 </button>
             </div>
             @endforeach
@@ -410,14 +410,14 @@
             <form id="approveForm" method="POST" action="" style="flex:1;">
                 @csrf
                 <button type="submit" class="btn-approve-act">
-                    <i class="fa-solid fa-circle-check"></i> موافقة وتفعيل
+                    <i class="fa-solid fa-circle-check"></i> {{ __('messages.approve_and_activate') }}
                 </button>
             </form>
 
-            <form id="rejectForm" method="POST" action="" style="flex:1;" onsubmit="return confirm('هل أنت متأكد من رفض هذا الطلب وحذفه؟')">
+            <form id="rejectForm" method="POST" action="" style="flex:1;" onsubmit="return confirm('{{ __('messages.confirm_reject_account') }}')">
                 @csrf
                 <button type="submit" class="btn-reject-act">
-                    <i class="fa-solid fa-circle-xmark"></i> رفض الطلب
+                    <i class="fa-solid fa-circle-xmark"></i> {{ __('messages.reject_request') }}
                 </button>
             </form>
         </div>
@@ -444,23 +444,23 @@ function openStudentModal(data) {
     // 3. Populate Details
     let detailsHtml = '';
     
-    detailsHtml += buildDetailRow('البريد الإلكتروني', data.email, 'fa-envelope');
-    detailsHtml += buildDetailRow('رقم الهاتف', data.phone, 'fa-phone');
-    detailsHtml += buildDetailRow('تاريخ الميلاد', data.birth_date, 'fa-calendar-days');
-    detailsHtml += buildDetailRow('الجنس', data.gender, 'fa-user');
+    detailsHtml += buildDetailRow("{{ __('messages.email') }}", data.email, 'fa-envelope');
+    detailsHtml += buildDetailRow("{{ __('messages.phone') }}", data.phone, 'fa-phone');
+    detailsHtml += buildDetailRow("{{ __('messages.birth_date') }}", data.birth_date, 'fa-calendar-days');
+    detailsHtml += buildDetailRow("{{ __('messages.gender') }}", data.gender, 'fa-user');
 
     if (data.role === 'student') {
-        detailsHtml += buildDetailRow('القسم', data.department, 'fa-graduation-cap');
-        detailsHtml += buildDetailRow('الفرع', data.branch, 'fa-diagram-project');
-        detailsHtml += buildDetailRow('السنة الدراسية', data.academic_year, 'fa-chart-line');
-        detailsHtml += buildDetailRow('معرّف تليجرام', data.telegram, 'fa-paper-plane');
+        detailsHtml += buildDetailRow("{{ __('messages.academic_department') }}", data.department, 'fa-graduation-cap');
+        detailsHtml += buildDetailRow("{{ __('messages.branch') }}", data.branch, 'fa-diagram-project');
+        detailsHtml += buildDetailRow("{{ __('messages.academic_year') }}", data.academic_year, 'fa-chart-line');
+        detailsHtml += buildDetailRow("{{ __('messages.telegram_id') }}", data.telegram, 'fa-paper-plane');
         
         const uniIdText = (data.university_id && data.university_id.toString().trim() !== '')
             ? data.university_id
-            : 'سيتم توليده تلقائياً عند الموافقة ✨';
-        detailsHtml += buildDetailRow('الرقم الجامعي', uniIdText, 'fa-id-card');
+            : "{{ __('messages.auto_generated_on_approval') }}";
+        detailsHtml += buildDetailRow("{{ __('messages.university_id') }}", uniIdText, 'fa-id-card');
     } else {
-        detailsHtml += buildDetailRow('معرّف تليجرام', data.telegram, 'fa-paper-plane');
+        detailsHtml += buildDetailRow("{{ __('messages.telegram_id') }}", data.telegram, 'fa-paper-plane');
     }
 
     document.getElementById('modalDetailsContainer').innerHTML = detailsHtml;

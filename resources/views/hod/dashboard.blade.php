@@ -1,6 +1,6 @@
 @extends('layouts.hod')
 
-@section('title', 'الرئيسية')
+@section('title', __('messages.dashboard'))
 
 @push('styles')
 <style>
@@ -107,7 +107,7 @@
     <div class="welcome-header">
         <div class="welcome-text">
             <h2>Edu-Bridge</h2>
-            <p>مرحباً، رئيس القسم{{ auth()->user()->department ? ' ' . auth()->user()->department : '' }}</p>
+            <p>{{ __('messages.welcome') }}, {{ __('messages.department_head') }}{{ auth()->user()->department ? ' - ' . auth()->user()->department : '' }}</p>
         </div>
     </div>
 
@@ -115,11 +115,11 @@
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
         <div style="display:flex; align-items:center; gap:0.5rem;">
             <span style="width:4px; height:24px; background:var(--accent-color); border-radius:2px; display:inline-block;"></span>
-            <h3 style="font-size:1.1rem; font-weight:800;">آخر الأخبار والإعلانات</h3>
+            <h3 style="font-size:1.1rem; font-weight:800;">{{ __('messages.latest_news_announcements') }}</h3>
         </div>
         <a href="{{ route('hod.announcements.create') }}"
            style="display:flex; align-items:center; gap:0.4rem; background:var(--accent-color); color:#1a1a1a; border-radius:2rem; padding:0.45rem 1rem; font-weight:700; font-size:0.82rem; text-decoration:none;">
-            <i class="fa-solid fa-plus"></i> إضافة إعلان
+            <i class="fa-solid fa-plus"></i> {{ __('messages.add_announcement') }}
         </a>
     </div>
 
@@ -127,7 +127,7 @@
         @php
             $colors = ['#111827','#1d4ed8','#065f46','#7c3aed','#be123c','#b45309'];
             $color  = $colors[$loop->index % count($colors)];
-            $initials = mb_substr($ann->user->full_name ?? 'إ', 0, 1);
+            $initials = mb_substr($ann->user->full_name ?? (app()->getLocale() === 'en' ? 'H' : 'إ'), 0, 1);
 
             $imgsArr = [];
             if (!empty($ann->images)) {
@@ -163,7 +163,7 @@
                 <!-- Header -->
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
                     <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ $ann->user->full_name ?? 'رئيس القسم' }}</span>
+                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ $ann->user->full_name ?? __('messages.department_head') }}</span>
                         @if(isset($ann->user) && in_array($ann->user->role, ['admin', 'hod', 'affairs']))
                             <i class="fa-solid fa-circle-check" style="color: #1d9bf0; font-size: 0.85rem;"></i>
                         @endif
@@ -172,10 +172,10 @@
 
                     @if($isOwner)
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <a href="{{ route('hod.announcements.edit', $annId) }}" style="color: var(--text-muted);"><i class="fa-solid fa-pen"></i></a>
-                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('حذف؟')" style="margin:0; display: flex; align-items: center;">
+                        <a href="{{ route('hod.announcements.edit', $annId) }}" style="color: var(--text-muted);" title="{{ __('messages.edit') }}"><i class="fa-solid fa-pen"></i></a>
+                        <form action="{{ route('hod.announcements.delete', $annId) }}" method="POST" onsubmit="return confirm('{{ __('messages.delete_confirm') }}')" style="margin:0; display: flex; align-items: center;">
                             @csrf
-                            <button type="submit" style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 0;"><i class="fa-solid fa-trash"></i></button>
+                            <button type="submit" style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 0;" title="{{ __('messages.delete') }}"><i class="fa-solid fa-trash"></i></button>
                         </form>
                     </div>
                     @endif
@@ -195,7 +195,7 @@
                 @if(isset($ann->link_url) && $ann->link_url)
                     <div style="margin-top: 0.75rem;">
                         <a href="{{ $ann->link_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 0.5rem; color: #1d9bf0; text-decoration: none; font-size: 0.9rem; font-weight: 700;">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i> فتح الرابط
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ __('messages.open_attached_link') }}
                         </a>
                     </div>
                 @endif
@@ -204,7 +204,7 @@
     @empty
     <div style="text-align:center; padding:2rem; background:var(--bg-secondary); border-radius:1.25rem; color:var(--text-secondary);">
         <i class="fa-solid fa-bullhorn" style="font-size:2rem; opacity:0.3; margin-bottom:0.5rem; display:block;"></i>
-        لا توجد إعلانات حالياً
+        {{ __('messages.no_announcements_yet') }}
     </div>
     @endforelse
 

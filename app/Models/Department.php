@@ -27,4 +27,23 @@ class Department extends Model
     {
         return $this->hasOne(Head::class, 'department_id', 'department_id');
     }
+
+    // 5. الاسم المترجم بحسب اللغة الحالية
+    public function getDisplayNameAttribute(): string
+    {
+        $name = trim($this->attributes['name'] ?? $this->attributes['department_name'] ?? '');
+        $map = [
+            'هندسي'                  => 'dept_engineering',
+            'نظم المعلومات الحاسوبية' => 'dept_cis',
+            'طبي'                    => 'dept_medical',
+            'تجاري'                  => 'dept_business',
+        ];
+
+        $key = $map[$name] ?? null;
+        if ($key && \Illuminate\Support\Facades\Lang::has("messages.{$key}")) {
+            return __("messages.{$key}");
+        }
+
+        return $name;
+    }
 }

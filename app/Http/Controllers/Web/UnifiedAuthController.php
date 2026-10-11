@@ -164,7 +164,7 @@ class UnifiedAuthController extends Controller
     {
         $pending = $request->session()->get('pending_face_auth');
         if (!$pending || empty($pending['user_id']) || empty($pending['student_id'])) {
-            return redirect()->route('login')->withErrors(['login' => 'انتهت صلاحية جلسة التحقق، يرجى تسجيل الدخول مجدداً.']);
+            return redirect()->route('login')->withErrors(['login' => __('messages.session_expired_login_again')]);
         }
 
         $user = User::find($pending['user_id']);
@@ -311,10 +311,10 @@ class UnifiedAuthController extends Controller
         $request->session()->regenerateToken();
 
         if ($isInactivity) {
-            return redirect()->route('login')->with('warning', '🔒 تم تسجيل الخروج تلقائياً لحماية حسابك بسبب عدم وجود أي نشاط لمدة 20 دقيقة.');
+            return redirect()->route('login')->with('warning', __('messages.auto_logout_inactivity_warning'));
         }
 
-        return redirect()->route('login')->with('success', 'تم تسجيل الخروج بنجاح.');
+        return redirect()->route('login')->with('success', __('messages.logged_out_successfully'));
     }
 
     /**

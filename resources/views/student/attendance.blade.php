@@ -1,7 +1,7 @@
 @extends('layouts.student')
 
-@section('title', 'تسجيل الحضور بالكاميرا المباشرة')
-@section('subtitle', 'الكاميرا تعمل تلقائياً من داخل الصفحة لمسح الـ QR والتحقق من الوجه ⚡')
+@section('title', __('messages.live_camera_attendance'))
+@section('subtitle', __('messages.attendance_camera_subtitle'))
 
 @push('styles')
 <!-- jsQR for real-time video frame decoding (100% Offline) -->
@@ -141,8 +141,8 @@
         <div class="flex items-center gap-3">
             <span id="status-dot" class="w-3.5 h-3.5 rounded-full bg-yellow-400 animate-pulse"></span>
             <div>
-                <div id="status-title" class="font-extrabold text-sm status-title-text">مسح رمز الـ QR (الكاميرا الخلفية)</div>
-                <div id="status-subtitle" class="text-[11px] status-sub-text">وجه الكاميرا نحو رمز الـ QR المباشر</div>
+                <div id="status-title" class="font-extrabold text-sm status-title-text">{{ __('messages.qr_scan_rear_cam') }}</div>
+                <div id="status-subtitle" class="text-[11px] status-sub-text">{{ __('messages.point_cam_to_qr') }}</div>
             </div>
         </div>
         <span id="step-badge" class="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-full">1 / 2</span>
@@ -152,8 +152,8 @@
     <div class="embedded-cam-box relative">
         
         <!-- زر عكس اتجاه الكاميرا يدوياً للمستخدم -->
-        <button type="button" onclick="toggleVideoFlip()" class="absolute top-3 left-3 z-20 bg-slate-900/80 hover:bg-slate-950 text-yellow-400 text-xs font-extrabold px-3 py-1.5 rounded-full border border-yellow-400/40 flex items-center gap-1.5 transition-all shadow-md cursor-pointer">
-            <i class="fa-solid fa-arrows-rotate"></i> <span>عكس اتجاه الكاميرا</span>
+        <button type="button" onclick="toggleVideoFlip()" class="absolute top-3 {{ app()->getLocale() === 'ar' ? 'left-3' : 'right-3' }} z-20 bg-slate-900/80 hover:bg-slate-950 text-yellow-400 text-xs font-extrabold px-3 py-1.5 rounded-full border border-yellow-400/40 flex items-center gap-1.5 transition-all shadow-md cursor-pointer">
+            <i class="fa-solid fa-arrows-rotate"></i> <span>{{ __('messages.flip_camera') }}</span>
         </button>
 
         <!-- عنصر الفيديو المباشر في الـ HTML (يعمل تلقائياً) -->
@@ -165,7 +165,7 @@
                 <div class="scan-laser"></div>
             </div>
             <p class="mt-4 text-xs font-bold text-yellow-400 bg-black/80 px-4 py-1.5 rounded-full border border-yellow-400/40">
-                جاري قراءة الـ QR تلقائياً...
+                {{ __('messages.auto_scanning_qr') }}
             </p>
         </div>
 
@@ -173,19 +173,19 @@
         <div id="frame-face" class="hidden absolute inset-0 z-10 flex flex-col items-center justify-center">
             <div class="cutout-face"></div>
             <p class="mt-4 text-xs font-bold text-green-400 bg-black/80 px-4 py-1.5 rounded-full border border-green-400/40">
-                اجعل وجهك في المنتصف للتحقق...
+                {{ __('messages.center_face_prompt') }}
             </p>
         </div>
 
         <!-- في حال حظر المتصفح للكاميرا بسبب HTTP غير المشفر -->
         <div id="perm-error-box" class="hidden absolute inset-0 bg-slate-950/95 z-30 flex flex-col items-center justify-center p-6 text-center">
             <i class="fa-solid fa-lock text-4xl text-amber-400 mb-3"></i>
-            <h4 class="text-white font-bold text-sm mb-2">يتطلب المتصفح إذن الكاميرا</h4>
+            <h4 class="text-white font-bold text-sm mb-2">{{ __('messages.browser_permission_required') }}</h4>
             <p class="text-slate-400 text-xs leading-relaxed mb-4">
-                يرجى الضغط على <b>"سماح (Allow)"</b> في المتصفح، أو فتح الرابط من <b>localhost:8001</b> لتشغيل الكاميرا المباشرة من أصل الصفحة.
+                {!! __('messages.camera_permission_hint') !!}
             </p>
             <button onclick="startEmbeddedCamera('environment')" class="bg-yellow-400 text-black font-extrabold px-6 py-2.5 rounded-xl text-xs">
-                إعادة محاولة فتح الكاميرا
+                {{ __('messages.retry_open_camera') }}
             </button>
         </div>
 
@@ -201,12 +201,12 @@
         <div id="modal-icon" class="text-6xl text-green-400">
             <i class="fa-solid fa-circle-check"></i>
         </div>
-        <h3 id="modal-title" class="text-2xl font-bold modal-title-text">تم تسجيل الحضور</h3>
+        <h3 id="modal-title" class="text-2xl font-bold modal-title-text">{{ __('messages.attendance_marked_title') }}</h3>
         <p id="modal-msg" class="text-sm modal-msg-text leading-relaxed"></p>
         <div id="modal-score" class="text-sm font-bold py-2.5 rounded-xl border modal-score-box"></div>
 
         <button onclick="closeModal()" class="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-extrabold py-3.5 rounded-xl transition text-base cursor-pointer">
-            تم
+            {{ __('messages.done_btn') }}
         </button>
     </div>
 </div>
@@ -313,8 +313,8 @@
         document.getElementById('frame-qr').classList.add('hidden');
         document.getElementById('frame-face').classList.remove('hidden');
         
-        document.getElementById('status-title').textContent = "التحقق من بصمة الوجه (الكاميرا الأمامية)";
-        document.getElementById('status-subtitle').textContent = "اجعل وجهك في المنتصف للتحقق المباشر";
+        document.getElementById('status-title').textContent = @json(__('messages.face_verify_front_cam'));
+        document.getElementById('status-subtitle').textContent = @json(__('messages.center_face_direct'));
         document.getElementById('step-badge').textContent = "2 / 2";
         document.getElementById('status-dot').className = "w-3.5 h-3.5 rounded-full bg-green-400 animate-pulse";
 
@@ -368,7 +368,7 @@
         } catch (e) {
             showResultModal({
                 success: false,
-                message: "تعذر الاتصال بالخادم، يرجى إعادة المحاولة."
+                message: @json(__('messages.server_connect_error'))
             });
         }
     }
@@ -380,26 +380,26 @@
         const msg = document.getElementById('modal-msg');
         const score = document.getElementById('modal-score');
 
-        let displayMessage = res.message || "فشلت مطابقة بصمة الوجه أو رمز QR غير صالح.";
+        let displayMessage = res.message || @json(__('messages.face_mismatch_error'));
         if (typeof displayMessage === 'string' && (displayMessage.includes('\\') || displayMessage.includes('.php') || displayMessage.includes('Argument #'))) {
-            displayMessage = "فشل التحقق من الحضور: الوجه غير مطابق لصورة الطالب المسجلة ❌";
+            displayMessage = @json(__('messages.face_mismatch_error'));
         }
 
         if (res.success) {
             icon.className = "text-6xl text-green-400";
             icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
-            title.textContent = "تم تسجيل حضورك بنجاح ✅";
+            title.textContent = @json(__('messages.attendance_verify_success'));
             msg.textContent = displayMessage;
             if (res.face_score !== undefined && res.face_score !== null) {
                 score.style.display = "block";
-                score.textContent = "نسبة المطابقة الأمنية: " + res.face_score + "%";
+                score.textContent = @json(__('messages.security_match_ratio', ['score' => '___'])).replace('___', res.face_score);
             } else {
                 score.style.display = "none";
             }
         } else {
             icon.className = "text-6xl text-red-500";
             icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
-            title.textContent = "فشل التحقق من الحضور ❌";
+            title.textContent = @json(__('messages.attendance_verify_fail'));
             msg.textContent = displayMessage;
             score.style.display = "none";
         }
