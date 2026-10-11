@@ -211,6 +211,7 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         // مسارات الحضور والإجازات
         Route::get('/attendance', [StudentController::class, 'getMyAttendance']);
         Route::post('/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
+        Route::post('/attendance/sync', [StudentController::class, 'syncAttendanceBatch']);
         Route::post('/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
         Route::get('/warnings', [StudentController::class, 'getMyWarnings']);
         Route::get('/leave-requests', [StudentController::class, 'getMyAbsenceRequests']);
@@ -266,6 +267,10 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::delete('/lessons/{lessonId}', [TeacherController::class, 'deleteLesson']);
 
         // الحضور والغياب (الروابط الثابتة قبل الـ wildcards)
+        Route::get('/attendance/today-sessions', [TeacherController::class, 'todaySessions']);
+        Route::post('/attendance/sync', [TeacherController::class, 'syncReceipts']);
+        Route::post('/device-key', [TeacherController::class, 'registerDeviceKey']);
+        Route::post('/device-key/revoke', [TeacherController::class, 'revokeDeviceKey']);
         Route::post('/attendance', [TeacherController::class, 'markAttendance']);
         Route::post('/attendance/generate-qr', [TeacherController::class, 'generateQrSession']);
         Route::post('/attendance/session/{sessionId}/refresh-qr', [TeacherController::class, 'refreshQrToken']);

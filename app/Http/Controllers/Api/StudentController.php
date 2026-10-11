@@ -2024,13 +2024,15 @@ class StudentController extends Controller
     public function scanAttendanceQr(Request $request)
     {
         $request->validate([
-            'qr_token'       => 'required|string',
-            'device_id'      => 'nullable|string|max:255',
-            'latitude'       => 'nullable|numeric|between:-90,90',
-            'longitude'      => 'nullable|numeric|between:-180,180',
-            'face_embedding' => 'nullable|array',
-            'face_image'     => 'nullable|string',
-            'scanned_at'     => 'nullable|date', // الحقل الجديد للتحضير بدون إنترنت
+            'qr_token'        => 'required|string',
+            'client_scan_id'  => 'nullable|string|max:64',
+            'time_confidence' => 'nullable|string|in:high,medium,low',
+            'device_id'       => 'nullable|string|max:255',
+            'latitude'        => 'nullable|numeric|between:-90,90',
+            'longitude'       => 'nullable|numeric|between:-180,180',
+            'face_embedding'  => 'nullable|array',
+            'face_image'      => 'nullable|string',
+            'scanned_at'      => 'nullable|date', // الحقل الجديد للتحضير بدون إنترنت
         ]);
 
         $student   = $request->user()->student;
@@ -2039,6 +2041,22 @@ class StudentController extends Controller
         $longitude = $request->longitude;
         // جلب وقت المسح الفعلي من الموبايل أو اعتماد وقت السيرفر الحالي
         $scannedAt = $request->scanned_at ? Carbon::parse($request->scanned_at) : now();
+
+        // منع التكرار (Idempotency): إذا أرسل التطبيق نفس المسح مسبقاً عبر client_scan_id
+        if ($request->filled('client_scan_id')) {
+            $existing = Attendance::where('student_id', $student->student_id)
+                ->where('client_scan_id', $request->client_scan_id)
+                ->first();
+            if ($existing) {
+                return response()->json([
+                    'success'     => true,
+                    'message'     => 'تم تسجيل حضورك مسبقاً بنجاح ✅',
+                    'face_status' => $existing->face_status ?? 'verified',
+                    'face_score'  => $existing->face_score,
+                    'is_replay'   => true,
+                ], 200);
+            }
+        }
 
         // وقت المسح يرسله التطبيق: نرفض أي وقت مستقبلي (بهامش بسيط لفروق الساعات)
         if ($scannedAt->greaterThan(now()->addSeconds(config('attendance.max_future_skew_seconds', 120)))) {
@@ -2060,8 +2078,8 @@ class StudentController extends Controller
             $token = $json['token'] ?? $json['qr_token'] ?? $token;
         }
 
-        // الرمز الحالي، أو سابق استُبدل منذ أقل من مهلة السماح (الطالب يبطئ في خطوة الوجه بعد قراءة الـ QR)
-        $session = \App\Support\QrTokens::resolve($token);
+        // الرمز الحالي أو التاريخي: نمرر وقت المسح الفعلي لفحص خط الرموز الزمني
+        $session = \App\Support\QrTokens::resolve($token, $request->scanned_at ? $scannedAt : null);
 
         if (!$session) {
             return response()->json([
@@ -2090,9 +2108,11 @@ class StudentController extends Controller
             }
         }
 
-        // مقارنة وقت المسح الفعلي مع وقت بداية ونهاية الجلسة
-        $sessionStart = $session->created_at;
-        $sessionEnd   = Carbon::parse($session->expires_at);
+        // مقارنة وقت المسح الفعلي مع وقت بداية ونهاية الجلسة (مع تسامح لانحراف الساعات)
+        $sessionStart = Carbon::parse($session->created_at)->subMinutes(5);
+        $sessionEnd   = $session->session_expires_at
+            ? Carbon::parse($session->session_expires_at)->addMinutes(5)
+            : Carbon::parse($session->expires_at)->addMinutes(60);
 
         if ($scannedAt->greaterThan($sessionEnd) || $scannedAt->lessThan($sessionStart)) {
             return response()->json([
@@ -2295,15 +2315,19 @@ class StudentController extends Controller
                 'attendance_date' => $scannedAt->toDateString(),
             ],
             [
-                'status'        => $attendanceStatus,
-                'excuse_status' => 'none',
-                'device_id'     => $deviceId,
-                'latitude'      => $latitude,
-                'longitude'     => $longitude,
-                'reject_reason' => $rejectReason,
-                'face_image'    => $savedFaceImagePath,
-                'face_score'    => $faceScore,
-                'face_status'   => $faceStatus,
+                'status'          => $attendanceStatus,
+                'excuse_status'   => 'none',
+                'device_id'       => $deviceId,
+                'latitude'        => $latitude,
+                'longitude'       => $longitude,
+                'reject_reason'   => $rejectReason,
+                'face_image'      => $savedFaceImagePath,
+                'face_score'      => $faceScore,
+                'face_status'     => $faceStatus,
+                'source'          => $request->filled('scanned_at') ? 'offline' : 'online',
+                'client_scan_id'  => $request->client_scan_id,
+                'synced_at'       => $request->filled('scanned_at') ? now() : null,
+                'time_confidence' => $request->time_confidence ?? 'high',
             ] + \App\Support\ScanFingerprint::capture($request, $session, $scannedAt) // بصمة المسح لتحليل الأنماط المشبوهة
         );
 
@@ -2327,6 +2351,55 @@ class StudentController extends Controller
             'message'     => $message,
             'face_status' => $faceStatus,
             'face_score'  => $faceScore,
+        ], 200);
+    }
+
+    /**
+     * مزامنة دفعة مسوح أوفلاين في طلب واحد (المرحلة 1 - البند 6.5).
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function syncAttendanceBatch(Request $request)
+    {
+        $request->validate([
+            'scans'                   => 'required|array|max:20',
+            'scans.*.qr_token'        => 'required|string',
+            'scans.*.client_scan_id'  => 'nullable|string|max:64',
+            'scans.*.time_confidence' => 'nullable|string|in:high,medium,low',
+            'scans.*.device_id'       => 'nullable|string|max:255',
+            'scans.*.latitude'        => 'nullable|numeric|between:-90,90',
+            'scans.*.longitude'       => 'nullable|numeric|between:-180,180',
+            'scans.*.face_embedding'  => 'nullable|array',
+            'scans.*.face_image'      => 'nullable|string',
+            'scans.*.scanned_at'      => 'nullable|date',
+        ]);
+
+        $results = [];
+
+        foreach ($request->scans as $scanItem) {
+            $subReq = Request::create('/api/student/attendance/scan', 'POST', $scanItem);
+            $subReq->setUserResolver(fn () => $request->user());
+            $subReq->headers->set('Accept', 'application/json');
+
+            $res = $this->scanAttendanceQr($subReq);
+            $data = $res->getData(true);
+            $statusCode = $res->getStatusCode();
+
+            $results[] = [
+                'client_scan_id' => $scanItem['client_scan_id'] ?? null,
+                'qr_token'       => $scanItem['qr_token'] ?? null,
+                'success'        => $statusCode >= 200 && $statusCode < 300,
+                'status_code'    => $statusCode,
+                'message'        => $data['message'] ?? '',
+                'reject_reason'  => $data['reject_reason'] ?? null,
+                'face_status'    => $data['face_status'] ?? null,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'results' => $results,
         ], 200);
     }
 
