@@ -32,10 +32,18 @@ class Attendance extends Model
         'face_image',
         'face_score',
         'face_status',
+        'source',
+        'client_scan_id',
+        'time_confidence',
+        'synced_at',
+        'countersigned',
+        'review_status',
     ];
 
     protected $casts = [
         'attendance_date' => 'date',
+        'synced_at'       => 'datetime',
+        'countersigned'   => 'boolean',
     ];
 
     public function student()

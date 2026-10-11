@@ -17,6 +17,11 @@ class AttendanceSession extends Model
         'session_expires_at',
         'closed_at',
         'analyzed_at',
+        'offline_mode',
+        'session_uuid',
+        'session_secret',
+        'sync_deadline_at',
+        'finalized_at',
     ];
 
     // عشان يسهل علينا التعامل مع الوقت
@@ -27,6 +32,8 @@ class AttendanceSession extends Model
         'previous_tokens'    => 'array',
         'closed_at'          => 'datetime',
         'analyzed_at'        => 'datetime',
+        'sync_deadline_at'   => 'datetime',
+        'finalized_at'       => 'datetime',
     ];
 
     public function lesson()
