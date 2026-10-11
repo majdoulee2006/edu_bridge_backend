@@ -432,20 +432,29 @@ class TeacherController extends Controller
         ]);
 
         // ت�™Ë†Ã™â€žÃ™`د ت�™Ë†Ã™Æ’Ã™  عش�™�ائ�™Å  Ã™�إ�™ شاء ا�™ج�™سة
-        $token = \Illuminate\Support\Str::random(32);
+        $token         = \Illuminate\Support\Str::random(32);
+        $sessionUuid   = (string) \Illuminate\Support\Str::uuid();
+        $sessionSecret = bin2hex(random_bytes(16));
 
         $session = \App\Models\AttendanceSession::create([
             'lesson_id'          => $lesson->lesson_id,
             'qr_token'           => $token,
+            'session_uuid'       => $sessionUuid,
+            'session_secret'     => $sessionSecret,
+            'offline_mode'       => $request->input('offline_mode', 'standard'),
             'expires_at'         => now()->addSeconds(30),
             'session_expires_at' => now()->addMinutes(10),
             'is_active'          => true,
         ]);
 
+        \App\Support\QrTokens::recordIssued($session->id, $token);
+
         return response()->json([
             'success' => true,
             'data' => [
                 'session_id'          => $session->id,
+                'session_uuid'        => $sessionUuid,
+                'session_secret'      => $sessionSecret,
                 'qr_token'            => $token,
                 'expires_at'          => $session->expires_at,
                 'session_expires_at'  => $session->session_expires_at,
@@ -591,45 +600,212 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
         }
 
-        $lesson = $session->lesson;
-        $course = $lesson->course;
-        $allStudents = $course->students()->get();
+        // فحص وضع الجلسة: هل هي جلسة تدعم الأوفلاين أم جلسة عادية متصلة (المرحلة 3)
+        $isOfflineSession = in_array($session->offline_mode, ['standard', 'strict'], true);
+        $forceImmediate   = $request->boolean('immediate', false);
 
-        // من له سجل أصلاً (حاضر أو متأخر أو غائب بعذر) لا يُمسّ؛ كان "late" يتحول إلى "absent"
-        $today = now()->toDateString();
-        $recordedIds = Attendance::where('lesson_id', $lesson->lesson_id)
-            ->whereDate('attendance_date', $today)
-            ->pluck('student_id')
-            ->toArray();
+        if ($isOfflineSession && !$forceImmediate) {
+            $lesson     = $session->lesson;
+            $course     = $lesson?->course;
+            $department = $course?->programs()->with('department')->first()?->department;
+            $policy     = $department?->offline_sync_policy ?? 'anytime';
 
-        foreach ($allStudents as $student) {
-            if (in_array($student->student_id, $recordedIds)) {
-                continue;
-            }
+            $windowHours = (int) config('attendance.offline.default_window_hours', 48);
+            $deadline    = $policy === 'same_day'
+                ? now()->endOfDay()
+                : now()->addHours($windowHours);
 
-            // إجازة/إذن معتمد لهذا اليوم: يُسجَّل الغياب لكنه معذور (لا يُحتسب في الإنذارات)
-            $excused = \App\Support\Access::studentHasApprovedLeave($student->student_id, $student->user_id, $today);
-
-            Attendance::create([
-                'student_id'      => $student->student_id,
-                'lesson_id'       => $lesson->lesson_id,
-                'attendance_date' => $today,
-                'status'          => 'absent',
-                'excuse_status'   => $excused ? 'approved' : 'none',
+            $session->update([
+                'is_active'        => false,
+                'closed_at'        => now(),
+                'sync_deadline_at' => $deadline,
             ]);
+
+            return response()->json([
+                'success'          => true,
+                'message'          => 'تم إغلاق الجلسة وتحديد مهلة المزامنة حتى ' . $deadline->translatedFormat('Y-m-d H:i') . ' (في انتظار مزامنة مسوح الطلاب)',
+                'sync_deadline_at' => $deadline->toIso8601String(),
+                'status'           => 'pending_sync',
+            ], 200);
         }
 
-        $session->update([
-            'is_active' => false,
-            'closed_at' => now(),
-        ]);
-
-        // تحليل الأنماط المشبوهة للجلسة (في الطابور؛ والأمر المجدول attendance:analyze شبكة أمان إن لم يعمل الطابور)
-        \App\Jobs\AnalyzeAttendanceSessionJob::dispatch($session->id);
+        // للجلسات المتصلة العادية (offline_mode = none) أو عند طلب الإنهاء الفوري القسري
+        \App\Services\AttendanceSessionFinalizer::finalize($session);
 
         return response()->json([
             'success' => true,
             'message' => 'تم إنهاء الجلسة وتسجيل الغياب',
+        ], 200);
+    }
+
+    /**
+     * جلب الحصص المجهزة لليوم وفق جدول المعلم مع مفاتيح TOTP (المرحلة 2)
+     */
+    public function todaySessions(Request $request)
+    {
+        $teacher = $request->user()->teacher;
+        if (!$teacher) {
+            return response()->json(['success' => true, 'sessions' => []], 200);
+        }
+
+        $todayEnglish = now()->englishDayOfWeek;
+
+        $schedules = Schedule::whereIn('course_id', $teacher->courses()->pluck('courses.course_id'))
+            ->where('day', $todayEnglish)
+            ->with('course')
+            ->get();
+
+        $todayDate = now()->toDateString();
+        $sessions = [];
+
+        foreach ($schedules as $schedule) {
+            $course = $schedule->course;
+            if (!$course) {
+                continue;
+            }
+
+            $lesson = Lesson::firstOrCreate(
+                [
+                    'course_id'  => $course->course_id,
+                    'teacher_id' => $teacher->teacher_id,
+                    'type'       => 'session',
+                ],
+                [
+                    'title'      => $course->title . ' - ' . $todayDate,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+
+            $session = \App\Models\AttendanceSession::where('lesson_id', $lesson->lesson_id)
+                ->whereDate('created_at', $todayDate)
+                ->first();
+
+            if (!$session) {
+                $sessionUuid   = (string) \Illuminate\Support\Str::uuid();
+                $sessionSecret = bin2hex(random_bytes(16));
+                $token         = \Illuminate\Support\Str::random(32);
+
+                $session = \App\Models\AttendanceSession::create([
+                    'lesson_id'          => $lesson->lesson_id,
+                    'session_uuid'       => $sessionUuid,
+                    'session_secret'     => $sessionSecret,
+                    'qr_token'           => $token,
+                    'offline_mode'       => 'standard',
+                    'expires_at'         => now()->addSeconds(30),
+                    'session_expires_at' => now()->addMinutes(60),
+                    'is_active'          => true,
+                ]);
+
+                \App\Support\QrTokens::recordIssued($session->id, $token);
+            } elseif (empty($session->session_uuid) || empty($session->session_secret)) {
+                $session->session_uuid   = $session->session_uuid ?: (string) \Illuminate\Support\Str::uuid();
+                $session->session_secret = $session->session_secret ?: bin2hex(random_bytes(16));
+                $session->save();
+            }
+
+            $sessions[] = [
+                'schedule_id'    => $schedule->schedule_id,
+                'course_id'      => $course->course_id,
+                'course_name'    => $course->title,
+                'room'           => $schedule->room,
+                'start_time'     => $schedule->start_time,
+                'end_time'       => $schedule->end_time,
+                'lesson_id'      => $lesson->lesson_id,
+                'session_id'     => $session->id,
+                'session_uuid'   => $session->session_uuid,
+                'session_secret' => $session->session_secret,
+                'is_active'      => (bool) $session->is_active,
+            ];
+        }
+
+        return response()->json([
+            'success'  => true,
+            'sessions' => $sessions,
+        ], 200);
+    }
+
+    /**
+     * تسجيل المفتاح العام لجهاز المعلم (المرحلة 4: الوضع الصارم)
+     */
+    public function registerDeviceKey(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'device_id'  => 'required|string|max:255',
+            'public_key' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $key = \App\Services\TeacherReceiptService::registerDeviceKey(
+            $request->user()->user_id,
+            $request->device_id,
+            $request->public_key
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تسجيل مفتاح الجهاز بنجاح',
+            'data'    => [
+                'device_id'     => $key->device_id,
+                'registered_at' => $key->registered_at,
+            ],
+        ], 200);
+    }
+
+    /**
+     * إلغاء تفعيل مفتاح جهاز المعلم فورياً
+     */
+    public function revokeDeviceKey(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'device_id' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $revoked = \App\Services\TeacherReceiptService::revokeDeviceKey(
+            $request->user()->user_id,
+            $request->device_id
+        );
+
+        return response()->json([
+            'success' => $revoked,
+            'message' => $revoked ? 'تم إلغاء تفعيل مفتاح الجهاز' : 'المفتاح غير موجود',
+        ], 200);
+    }
+
+    /**
+     * مزامنة ورفع إيصالات المعلم الموقعة لتأكيد حضور الطلاب في الوضع الصارم
+     */
+    public function syncReceipts(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'receipts'                   => 'required|array',
+            'receipts.*.session_uuid'    => 'required|string',
+            'receipts.*.student_id'      => 'required|integer',
+            'receipts.*.client_scan_id'  => 'required|string',
+            'receipts.*.device_id'       => 'required|string',
+            'receipts.*.teacher_time'    => 'required|string',
+            'receipts.*.signature'       => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $results = [];
+        foreach ($request->receipts as $receipt) {
+            $results[] = \App\Services\TeacherReceiptService::processReceipt($request->user(), $receipt);
+        }
+
+        return response()->json([
+            'success' => true,
+            'results' => $results,
         ], 200);
     }
 
