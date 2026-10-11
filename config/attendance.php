@@ -16,4 +16,14 @@ return [
     // كم ثانية يبقى رمز QR المستبدَل صالحًا بعد استبداله (الرمز يتجدد كل 30 ثانية، وخطوة الوجه عند الطالب تأخذ وقتًا).
     // 0 = لا مهلة (الرمز الحالي فقط). كلما زادت اتسعت نافذة مشاركة صورة الـ QR مع غائب.
     'qr_grace_seconds' => (int) env('ATTENDANCE_QR_GRACE_SECONDS', 90),
+
+    /*
+    | إعدادات الحضور الأوفلاين الشامل (المرحلة 3)
+    */
+    'offline' => [
+        'enabled'                => (bool) env('ATTENDANCE_OFFLINE_ENABLED', true),
+        'max_batch'              => (int) env('ATTENDANCE_OFFLINE_MAX_BATCH', 20),
+        'clock_tolerance_seconds'=> (int) env('ATTENDANCE_OFFLINE_CLOCK_TOLERANCE', 60),
+        'default_window_hours'   => (int) env('ATTENDANCE_OFFLINE_DEFAULT_WINDOW_HOURS', 48),
+    ],
 ];
