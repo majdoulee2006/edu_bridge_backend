@@ -1,5 +1,5 @@
 @extends('layouts.hod')
-@section('title', 'الإشعارات')
+@section('title', __('messages.notifications'))
 
 @push('styles')
 <style>
@@ -57,14 +57,19 @@
         display: flex;
         gap: 1rem;
         align-items: flex-start;
-        border-right: 4px solid transparent;
         transition: all 0.2s;
         cursor: pointer;
         text-decoration: none;
         color: inherit;
     }
-    .notif-card.unread { border-right-color: var(--accent-color); }
-    .notif-card:hover { transform: translateX(-3px); box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
+    [dir="rtl"] .notif-card { border-right: 4px solid transparent; }
+    [dir="rtl"] .notif-card.unread { border-right-color: var(--accent-color); }
+    [dir="rtl"] .notif-card:hover { transform: translateX(-3px); box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
+
+    [dir="ltr"] .notif-card { border-left: 4px solid transparent; }
+    [dir="ltr"] .notif-card.unread { border-left-color: var(--accent-color); }
+    [dir="ltr"] .notif-card:hover { transform: translateX(3px); box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
+
     .notif-icon { width: 46px; height: 46px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
     .mark-read-btn {
         background: var(--bg-secondary);
@@ -122,15 +127,15 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
             <p style="color: var(--text-secondary); margin-top: 0.25rem; font-size: 0.9rem;">
-                لديك <span style="font-weight: 800; color: var(--text-primary);">{{ $notifications->total() }}</span> إشعار 
+                {{ __('messages.notifications_count_total', ['total' => $notifications->total()]) }} 
                 @if(isset($unreadCount) && $unreadCount > 0)
-                    (<span style="color: var(--accent-color); font-weight: 800;">{{ $unreadCount }} غير مقروء</span>)
+                    (<span style="color: var(--accent-color); font-weight: 800;">{{ __('messages.unread_count_notice', ['count' => $unreadCount]) }}</span>)
                 @endif
             </p>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <a href="{{ route('hod.notifications') }}" class="single-read-btn {{ !request('filter') ? 'active-filter' : '' }}" style="text-decoration: none;">الكل</a>
-                <a href="{{ route('hod.notifications', ['filter' => 'unread']) }}" class="single-read-btn {{ request('filter') == 'unread' ? 'active-filter' : '' }}" style="text-decoration: none;">غير المقروءة</a>
-                <a href="{{ route('hod.notifications', ['filter' => 'read']) }}" class="single-read-btn {{ request('filter') == 'read' ? 'active-filter' : '' }}" style="text-decoration: none;">المقروءة</a>
+                <a href="{{ route('hod.notifications') }}" class="single-read-btn {{ !request('filter') ? 'active-filter' : '' }}" style="text-decoration: none;">{{ __('messages.all') }}</a>
+                <a href="{{ route('hod.notifications', ['filter' => 'unread']) }}" class="single-read-btn {{ request('filter') == 'unread' ? 'active-filter' : '' }}" style="text-decoration: none;">{{ __('messages.filter_unread') }}</a>
+                <a href="{{ route('hod.notifications', ['filter' => 'read']) }}" class="single-read-btn {{ request('filter') == 'read' ? 'active-filter' : '' }}" style="text-decoration: none;">{{ __('messages.filter_read') }}</a>
             </div>
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -138,11 +143,11 @@
                 <form method="POST" action="{{ route('hod.notifications.read_all') }}">
                     @csrf
                     <button type="submit" class="mark-read-btn">
-                        <i class="fa-solid fa-check-double"></i> تمييز الكل كمقروءة
+                        <i class="fa-solid fa-check-double"></i> {{ __('messages.mark_all_as_read') }}
                     </button>
                 </form>
             @endif
-            <button class="add-circle-btn" onclick="openModal('send-notif-modal')" title="إرسال إشعار جديد">
+            <button class="add-circle-btn" onclick="openModal('send-notif-modal')" title="{{ __('messages.send_new_notification') }}">
                 <i class="fa-solid fa-plus"></i>
             </button>
         </div>
@@ -214,8 +219,8 @@
                         @if(!$isRead)
                             <form method="POST" action="{{ route('hod.notifications.read', $n->id) }}" style="display: inline;" onclick="event.stopPropagation();">
                                 @csrf
-                                <button type="submit" class="single-read-btn" title="تمييز كمقروء">
-                                    <i class="fa-solid fa-check"></i> مقروءة
+                                <button type="submit" class="single-read-btn" title="{{ __('messages.mark_as_read_btn') }}">
+                                    <i class="fa-solid fa-check"></i> {{ __('messages.mark_as_read_btn') }}
                                 </button>
                             </form>
                         @endif
@@ -233,7 +238,7 @@
     @empty
         <div style="text-align: center; padding: 4rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary);">
             <i class="fa-regular fa-bell-slash" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
-            <p style="font-size: 1.1rem; font-weight: 600;">لا توجد إشعارات لعرضها</p>
+            <p style="font-size: 1.1rem; font-weight: 600;">{{ __('messages.no_notifications_to_show') }}</p>
         </div>
     @endforelse
 
@@ -244,48 +249,48 @@
     @endif
 
 
-    {{-- Modal: إرسال إشعار جديد --}}
+    {{-- Modal: Send New Notification --}}
     <div id="send-notif-modal" class="modal-overlay">
         <div class="modal-card">
             <h4 style="font-size:1.3rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">
                 <i class="fa-solid fa-bell" style="color:var(--accent-color);margin-left:0.4rem;"></i>
-                إرسال إشعار جديد
+                {{ __('messages.send_new_notification') }}
             </h4>
             <form id="sendHodNotifForm" action="{{ route('hod.notifications.send') }}" method="POST">
                 @csrf
 
                 <div class="form-group">
-                    <label class="form-label">عنوان الإشعار <span style="color:#ef4444">*</span></label>
-                    <input type="text" name="title" required class="form-input" placeholder="مثال: تنبيه هام للطلاب">
+                    <label class="form-label">{{ __('messages.notification_title_label') }} <span style="color:#ef4444">*</span></label>
+                    <input type="text" name="title" required class="form-input" placeholder="{{ __('messages.notification_title_ph') }}">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">محتوى الإشعار <span style="color:#ef4444">*</span></label>
-                    <textarea name="message" required rows="3" class="form-input" placeholder="اكتب نص الإشعار..."></textarea>
+                    <label class="form-label">{{ __('messages.notification_content_label') }} <span style="color:#ef4444">*</span></label>
+                    <textarea name="message" required rows="3" class="form-input" placeholder="{{ __('messages.notification_content_ph') }}"></textarea>
                 </div>
 
                 <input type="hidden" name="category" value="academic">
 
                 <div class="form-group">
-                    <label class="form-label">إرسال إلى</label>
+                    <label class="form-label">{{ __('messages.send_to_label') }}</label>
                     <div class="target-options" id="target-opts">
                         <label class="target-opt selected" onclick="selectTarget(this)">
-                            <input type="radio" name="target" value="students" checked> الطلاب فقط
+                            <input type="radio" name="target" value="students" checked> {{ __('messages.target_students_only') }}
                         </label>
                         <label class="target-opt" onclick="selectTarget(this)">
-                            <input type="radio" name="target" value="students_teachers"> الطلاب والمعلمين
+                            <input type="radio" name="target" value="students_teachers"> {{ __('messages.target_students_teachers') }}
                         </label>
                         <label class="target-opt" onclick="selectTarget(this)">
-                            <input type="radio" name="target" value="all"> الكل
+                            <input type="radio" name="target" value="all"> {{ __('messages.target_all_portal') }}
                         </label>
                     </div>
                 </div>
 
                 <div style="display:flex;gap:0.75rem;margin-top:1rem;">
                     <button type="submit" id="sendHodNotifBtn" class="btn-send" style="display:flex;align-items:center;justify-content:center;gap:0.5rem;">
-                        <i class="fa-solid fa-paper-plane"></i> <span>إرسال الإشعار</span>
+                        <i class="fa-solid fa-paper-plane"></i> <span>{{ __('messages.send') }}</span>
                     </button>
-                    <button type="button" onclick="closeModal('send-notif-modal')" class="btn-cancel">إلغاء</button>
+                    <button type="button" onclick="closeModal('send-notif-modal')" class="btn-cancel">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -295,6 +300,11 @@
 
 @push('scripts')
 <script>
+    const notifStrings = {
+        sending: "{{ __('messages.sending_notification_loading') }}",
+        sendBtnText: "{{ __('messages.send') }}"
+    };
+
     function openModal(id)  { document.getElementById(id).classList.add('active'); }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
@@ -319,7 +329,7 @@
                 btn.disabled = true;
                 btn.style.opacity = '0.6';
                 btn.style.pointerEvents = 'none';
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>جاري الإرسال...</span>';
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>${notifStrings.sending}</span>`;
             });
         }
 
@@ -329,7 +339,7 @@
                 btn.disabled = false;
                 btn.style.opacity = '1';
                 btn.style.pointerEvents = 'auto';
-                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>إرسال الإشعار</span>';
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span>${notifStrings.sendBtnText}</span>`;
             }
         });
     })();

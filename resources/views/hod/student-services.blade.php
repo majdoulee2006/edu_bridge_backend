@@ -1,7 +1,7 @@
 @extends('layouts.hod')
-@section('title', 'الخدمات الطلابية')
-@section('header-title', 'الخدمات والطلبات الطلابية')
-@section('header-subtitle', 'إدارة الطلبات من مختلف الأقسام')
+@section('title', __('messages.student_services_mgmt'))
+@section('header-title', __('messages.student_services_mgmt'))
+@section('header-subtitle', __('messages.student_services_desc'))
 
 @push('styles')
 <style>
@@ -95,6 +95,9 @@
         white-space: nowrap !important;
         font-size: 0.9rem;
     }
+    [dir="ltr"] .custom-table th {
+        text-align: left;
+    }
     [data-theme="dark"] .custom-table th {
         color: #94a3b8;
         border-bottom-color: #334155;
@@ -175,7 +178,7 @@
     .badge-pending { background: #fef08a; color: #854d0e; }
     .badge-approved { background: #bbf7d0; color: #166534; }
     .badge-rejected { background: #fecaca; color: #991b1b; }
-    .badge-admin-review { background: #c4b5fd; color: #4c1d95; } /* بانتظار قرار الإدارة */
+    .badge-admin-review { background: #c4b5fd; color: #4c1d95; }
     [data-theme="dark"] .badge-admin-review { background: #4c1d95; color: #ddd6fe; }
 
     /* Action Buttons */
@@ -202,7 +205,7 @@
     }
     .btn-view { background: #3b82f6; }
 
-    /* Modal Styling - Compact Portrait Card (like affairs) */
+    /* Modal Styling */
     .modal-overlay {
         position: fixed;
         inset: 0;
@@ -329,6 +332,9 @@
         font-weight: 700;
         text-align: left;
     }
+    [dir="ltr"] .student-mini-value {
+        text-align: right;
+    }
 
     /* Details Box */
     .modal-detail-box {
@@ -369,10 +375,11 @@
         padding: 0.6rem 0.75rem;
         background: var(--bg-primary, #ffffff);
         color: var(--text-primary);
-        font-family: 'Cairo', sans-serif;
+        font-family: inherit;
         font-size: 0.86rem;
         resize: vertical;
         transition: border-color 0.2s;
+        box-sizing: border-box;
     }
     [data-theme="dark"] .notes-area-compact {
         background: #0f172a;
@@ -398,7 +405,7 @@
         font-weight: 700;
         font-size: 0.88rem;
         cursor: pointer;
-        font-family: 'Cairo', sans-serif;
+        font-family: inherit;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -427,10 +434,10 @@
     <!-- Main Tabs Navigation -->
     <div class="custom-tabs" style="border-bottom: 3px solid var(--accent-color); margin-bottom: 2rem;">
         <button class="tab-btn active" onclick="switchMainTab(this, 'pending')" style="font-size: 1.2rem; border-radius: 12px 12px 0 0;">
-            <i class="fa-regular fa-clock"></i> طلبات معلقة
+            <i class="fa-regular fa-clock"></i> {{ __('messages.pending_requests_tab') }}
         </button>
         <button class="tab-btn" onclick="switchMainTab(this, 'completed')" style="font-size: 1.2rem; border-radius: 12px 12px 0 0;">
-            <i class="fa-solid fa-check-double"></i> طلبات منتهية
+            <i class="fa-solid fa-check-double"></i> {{ __('messages.completed_requests_tab') }}
         </button>
     </div>
 
@@ -440,13 +447,13 @@
         <!-- Sub Tabs Navigation -->
         <div class="custom-tabs">
             <button class="tab-btn active" onclick="switchSubTab(this, '{{ $statusGrp }}-mercy', '{{ $statusGrp }}')">
-                <i class="fa-solid fa-gavel"></i> طلبات الاسترحام
+                <i class="fa-solid fa-gavel"></i> {{ __('messages.mercy_requests_tab') }}
             </button>
             <button class="tab-btn" onclick="switchSubTab(this, '{{ $statusGrp }}-documents', '{{ $statusGrp }}')">
-                <i class="fa-solid fa-file-invoice"></i> طلبات الوثائق
+                <i class="fa-solid fa-file-invoice"></i> {{ __('messages.document_requests_tab') }}
             </button>
             <button class="tab-btn" onclick="switchSubTab(this, '{{ $statusGrp }}-makeup', '{{ $statusGrp }}')">
-                <i class="fa-solid fa-pen-to-square"></i> امتحانات الإكمال
+                <i class="fa-solid fa-pen-to-square"></i> {{ __('messages.makeup_exams_tab') }}
             </button>
         </div>
 
@@ -456,13 +463,13 @@
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>موضوع الاسترحام</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th>{{ __('messages.student') }}</th>
+                        <th>{{ __('messages.student_university_id') }}</th>
+                        <th>{{ __('messages.academic_year_label') }}</th>
+                        <th>{{ __('messages.mercy_subject') }}</th>
+                        <th>{{ __('messages.request_date_col') }}</th>
+                        <th>{{ __('messages.status') }}</th>
+                        <th>{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -471,8 +478,8 @@
                     <tr>
                         <td class="table-cell-nowrap">
                             <div class="table-student-cell">
-                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'S', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}">{{ $req->student?->user?->full_name ?? __('messages.unknown') }}</span>
                             </div>
                         </td>
                         <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
@@ -483,25 +490,25 @@
                         <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td class="table-cell-nowrap">
                             @if($req->status == 'pending_hod')
-                                <span class="badge badge-pending">بانتظار مراجعتك</span>
+                                <span class="badge badge-pending">{{ __('messages.awaiting_your_review') }}</span>
                             @elseif($req->status == 'pending_admin')
-                                <span class="badge badge-pending">قيد مراجعة الإدارة</span>
+                                <span class="badge badge-pending">{{ __('messages.under_admin_review') }}</span>
                             @else
-                                <span class="badge badge-approved">منتهي</span>
+                                <span class="badge badge-approved">{{ __('messages.completed_status') }}</span>
                             @endif
                         </td>
                         <td class="table-cell-nowrap">
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_hod'); @endphp
-                                <button class="btn-action btn-view" title="عرض التفاصيل" 
-                                    data-type="{{ $req->type == 'mercy' ? 'استرحام' : ($req->type == 'makeup' ? 'إكمال' : 'وثيقة') }}"
-                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                <button class="btn-action btn-view" title="{{ __('messages.view_details') }}" 
+                                    data-type="{{ __('messages.mercy_requests_tab') }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
-                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
-                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? __('messages.unspecified') }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? __('messages.unspecified') }}"
                                     data-details="{{ $req->formatted_details }}"
-                                    data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? __('messages.no_notes') }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)"><i class="fa-solid fa-eye"></i></button>
@@ -510,7 +517,7 @@
                     </tr>
                     @endforeach
                     @if($filtered->isEmpty())
-                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    <tr><td colspan="7" style="text-align: center;">{{ __('messages.no_requests_found') }}</td></tr>
                     @endif
                 </tbody>
             </table>
@@ -523,13 +530,13 @@
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>نوع الوثيقة</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th>{{ __('messages.student') }}</th>
+                        <th>{{ __('messages.student_university_id') }}</th>
+                        <th>{{ __('messages.academic_year_label') }}</th>
+                        <th>{{ __('messages.document_type_col') }}</th>
+                        <th>{{ __('messages.request_date_col') }}</th>
+                        <th>{{ __('messages.status') }}</th>
+                        <th>{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -538,8 +545,8 @@
                     <tr>
                         <td class="table-cell-nowrap">
                             <div class="table-student-cell">
-                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'S', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}">{{ $req->student?->user?->full_name ?? __('messages.unknown') }}</span>
                             </div>
                         </td>
                         <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
@@ -550,25 +557,25 @@
                         <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td class="table-cell-nowrap">
                             @if($req->status == 'pending_hod')
-                                <span class="badge badge-pending">بانتظار مراجعتك</span>
+                                <span class="badge badge-pending">{{ __('messages.awaiting_your_review') }}</span>
                             @elseif($req->status == 'pending_admin')
-                                <span class="badge badge-pending">قيد مراجعة الإدارة</span>
+                                <span class="badge badge-pending">{{ __('messages.under_admin_review') }}</span>
                             @else
-                                <span class="badge badge-approved">منتهي</span>
+                                <span class="badge badge-approved">{{ __('messages.completed_status') }}</span>
                             @endif
                         </td>
                         <td class="table-cell-nowrap">
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_hod'); @endphp
-                                <button class="btn-action btn-view" title="عرض التفاصيل" 
-                                    data-type="وثيقة"
-                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                <button class="btn-action btn-view" title="{{ __('messages.view_details') }}" 
+                                    data-type="{{ __('messages.document_requests_tab') }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
-                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
-                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? __('messages.unspecified') }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? __('messages.unspecified') }}"
                                     data-details="{{ $req->formatted_details }}"
-                                    data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? __('messages.no_notes') }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)"><i class="fa-solid fa-eye"></i></button>
@@ -577,7 +584,7 @@
                     </tr>
                     @endforeach
                     @if($filtered->isEmpty())
-                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    <tr><td colspan="7" style="text-align: center;">{{ __('messages.no_requests_found') }}</td></tr>
                     @endif
                 </tbody>
             </table>
@@ -590,13 +597,13 @@
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>الطالب</th>
-                        <th>الرقم الجامعي</th>
-                        <th>العام الدراسي</th>
-                        <th>المواد المطلوبة للإكمال</th>
-                        <th>تاريخ الطلب</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th>{{ __('messages.student') }}</th>
+                        <th>{{ __('messages.student_university_id') }}</th>
+                        <th>{{ __('messages.academic_year_label') }}</th>
+                        <th>{{ __('messages.makeup_courses_col') }}</th>
+                        <th>{{ __('messages.request_date_col') }}</th>
+                        <th>{{ __('messages.status') }}</th>
+                        <th>{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -605,8 +612,8 @@
                     <tr>
                         <td class="table-cell-nowrap">
                             <div class="table-student-cell">
-                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'ط', 0, 1) }}</div>
-                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? 'غير معروف' }}">{{ $req->student?->user?->full_name ?? 'غير معروف' }}</span>
+                                <div class="table-avatar">{{ mb_substr($req->student?->user?->full_name ?? 'S', 0, 1) }}</div>
+                                <span class="table-student-name" title="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}">{{ $req->student?->user?->full_name ?? __('messages.unknown') }}</span>
                             </div>
                         </td>
                         <td class="table-cell-nowrap">{{ $req->student?->student_code ?? 'N/A' }}</td>
@@ -617,25 +624,25 @@
                         <td class="table-cell-nowrap">{{ $req->created_at?->format('Y-m-d') }}</td>
                         <td class="table-cell-nowrap">
                             @if($req->status == 'pending_hod')
-                                <span class="badge badge-pending">بانتظار مراجعتك</span>
+                                <span class="badge badge-pending">{{ __('messages.awaiting_your_review') }}</span>
                             @elseif($req->status == 'pending_admin')
-                                <span class="badge badge-pending">قيد مراجعة الإدارة</span>
+                                <span class="badge badge-pending">{{ __('messages.under_admin_review') }}</span>
                             @else
-                                <span class="badge badge-approved">منتهي</span>
+                                <span class="badge badge-approved">{{ __('messages.completed_status') }}</span>
                             @endif
                         </td>
                         <td class="table-cell-nowrap">
                             <div class="action-btns">
                                 @php $canRespond = ($req->status == 'pending_hod'); @endphp
-                                <button class="btn-action btn-view" title="عرض التفاصيل" 
-                                    data-type="إكمال"
-                                    data-name="{{ $req->student?->user?->full_name ?? 'غير معروف' }}"
+                                <button class="btn-action btn-view" title="{{ __('messages.view_details') }}" 
+                                    data-type="{{ __('messages.makeup_exams_tab') }}"
+                                    data-name="{{ $req->student?->user?->full_name ?? __('messages.unknown') }}"
                                     data-id="{{ $req->student?->student_code ?? 'N/A' }}"
                                     data-year="{{ $req->student?->user?->academic_year ?? 'N/A' }}"
-                                    data-department="{{ $req->student?->program?->department?->name ?? 'غير محدد' }}"
-                                    data-specialization="{{ $req->student?->program?->name ?? 'غير محدد' }}"
+                                    data-department="{{ $req->student?->program?->department?->name ?? __('messages.unspecified') }}"
+                                    data-specialization="{{ $req->student?->program?->name ?? __('messages.unspecified') }}"
                                     data-details="{{ $req->formatted_details }}"
-                                    data-affairs-notes="{{ $req->affairs_notes ?? 'لا توجد ملاحظات' }}"
+                                    data-affairs-notes="{{ $req->affairs_notes ?? __('messages.no_notes') }}"
                                     data-req-id="{{ $req->id }}"
                                     data-can-respond="{{ $canRespond ? 'true' : 'false' }}"
                                     onclick="openRequestModalFromBtn(this)"><i class="fa-solid fa-eye"></i></button>
@@ -644,7 +651,7 @@
                     </tr>
                     @endforeach
                     @if($filtered->isEmpty())
-                    <tr><td colspan="7" style="text-align: center;">لا توجد طلبات</td></tr>
+                    <tr><td colspan="7" style="text-align: center;">{{ __('messages.no_requests_found') }}</td></tr>
                     @endif
                 </tbody>
             </table>
@@ -653,6 +660,7 @@
 
     </div>
     @endforeach
+
 <!-- Request Details Modal - Compact Portrait Card -->
 <div id="requestModal" class="modal-overlay" onclick="closeModalOnOutsideClick(event)">
     <form class="modal-content" id="decisionForm" method="POST" action="">
@@ -665,11 +673,11 @@
                     <i class="fa-solid fa-file-invoice"></i>
                 </div>
                 <div>
-                    <h3>تفاصيل ومعالجة الطلب</h3>
+                    <h3>{{ __('messages.request_details_modal_title') }}</h3>
                     <span id="modal-request-type"></span>
                 </div>
             </div>
-            <button type="button" class="btn-close-modal" onclick="closeModal()" title="إغلاق">
+            <button type="button" class="btn-close-modal" onclick="closeModal()" title="{{ __('messages.close') }}">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -677,51 +685,51 @@
         <!-- Student Mini Card -->
         <div class="student-mini-card">
             <div class="student-mini-row">
-                <span class="student-mini-label"><i class="fa-solid fa-user"></i> الطالب:</span>
+                <span class="student-mini-label"><i class="fa-solid fa-user"></i> {{ __('messages.student_label') }}</span>
                 <span class="student-mini-value" id="modal-student-name"></span>
             </div>
             <div class="student-mini-row">
-                <span class="student-mini-label"><i class="fa-solid fa-id-card"></i> الرقم الجامعي:</span>
+                <span class="student-mini-label"><i class="fa-solid fa-id-card"></i> {{ __('messages.student_university_id') }}:</span>
                 <span class="student-mini-value" id="modal-student-id"></span>
             </div>
             <div class="student-mini-row">
-                <span class="student-mini-label"><i class="fa-solid fa-building-columns"></i> القسم والتخصص:</span>
+                <span class="student-mini-label"><i class="fa-solid fa-building-columns"></i> {{ __('messages.department_and_spec') }}</span>
                 <span class="student-mini-value">
                     <span id="modal-student-department"></span> - <span id="modal-student-specialization"></span>
                 </span>
             </div>
             <div class="student-mini-row">
-                <span class="student-mini-label"><i class="fa-solid fa-calendar"></i> السنة الدراسية:</span>
+                <span class="student-mini-label"><i class="fa-solid fa-calendar"></i> {{ __('messages.academic_year_label') }}:</span>
                 <span class="student-mini-value" id="modal-student-year" style="color: var(--accent-color, #f59e0b);"></span>
             </div>
         </div>
 
         <!-- Request Details -->
         <div class="modal-detail-box">
-            <label><i class="fa-solid fa-comment-dots"></i> تفاصيل الطلب / السبب:</label>
+            <label><i class="fa-solid fa-comment-dots"></i> {{ __('messages.request_details_reason') }}</label>
             <div class="modal-detail-content" id="modal-request-details"></div>
         </div>
 
         <!-- Affairs Notes (Read-only) -->
         <div class="modal-detail-box" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 12px; padding: 0.7rem 0.85rem;">
-            <label style="color: #b45309;"><i class="fa-solid fa-clipboard-check"></i> رأي وملاحظات الشؤون:</label>
+            <label style="color: #b45309;"><i class="fa-solid fa-clipboard-check"></i> {{ __('messages.affairs_notes_title') }}</label>
             <div id="modal-affairs-notes" style="font-size: 0.86rem; font-weight: 600; line-height: 1.45; margin-top: 0.25rem;"></div>
         </div>
         
         <!-- HOD Notes Area -->
         <div class="modal-detail-box">
-            <label><i class="fa-solid fa-pen-nib"></i> رأي وملاحظات رئيس القسم <span style="color: #ef4444;">(مطلوب إجبارياً)</span>:</label>
-            <textarea class="notes-area-compact" name="notes" id="modal-hod-notes" placeholder="اكتب رأيك أسباب القبول أو الرفض ليتم تحويل الطلب مع رأيك إلى الإدارة..."></textarea>
+            <label><i class="fa-solid fa-pen-nib"></i> {{ __('messages.hod_opinion_required') }}</label>
+            <textarea class="notes-area-compact" name="notes" id="modal-hod-notes" placeholder="{{ __('messages.hod_opinion_ph') }}"></textarea>
             <input type="hidden" name="decision" id="modal-decision" value="approved">
         </div>
 
         <!-- Footer -->
         <div class="modal-card-footer">
             <button type="button" class="btn-modal-reject" onclick="submitDecision('reject')">
-                <i class="fa-solid fa-xmark"></i> عدم موافقة وتحويل للإدارة
+                <i class="fa-solid fa-xmark"></i> {{ __('messages.disapprove_and_forward') }}
             </button>
             <button type="button" class="btn-modal-approve" onclick="submitDecision('approve')">
-                <i class="fa-solid fa-check"></i> موافقة وتحويل للإدارة
+                <i class="fa-solid fa-check"></i> {{ __('messages.approve_and_forward') }}
             </button>
         </div>
     </form>
@@ -731,6 +739,12 @@
 
 @push('scripts')
 <script>
+    const serviceStrings = {
+        noNotes: "{{ __('messages.no_notes') }}",
+        alreadyResponded: "{{ __('messages.already_responded_notice') }}",
+        validationAlert: "{{ __('messages.hod_notes_validation_alert') }}"
+    };
+
     function switchMainTab(btnElement, statusGrp) {
         btnElement.parentElement.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         btnElement.classList.add('active');
@@ -783,7 +797,7 @@
         const department = btn.getAttribute('data-department') || '';
         const specialization = btn.getAttribute('data-specialization') || '';
         const details = btn.getAttribute('data-details') || '';
-        const affairsNotes = btn.getAttribute('data-affairs-notes') || 'لا توجد ملاحظات';
+        const affairsNotes = btn.getAttribute('data-affairs-notes') || serviceStrings.noNotes;
         const reqId = btn.getAttribute('data-req-id') || '';
         const canRespond = btn.getAttribute('data-can-respond') === 'true';
 
@@ -803,8 +817,8 @@
             try {
                 const parsed = JSON.parse(details);
                 let parts = [];
-                if (parsed.reason) parts.push('سبب الطلب: ' + parsed.reason);
-                if (parsed.new_device_id) parts.push('معرف الجهاز الجديد: ' + parsed.new_device_id);
+                if (parsed.reason) parts.push(parsed.reason);
+                if (parsed.new_device_id) parts.push(parsed.new_device_id);
                 if (parts.length > 0) displayDetails = parts.join('\n');
             } catch(e) {}
         }
@@ -822,14 +836,13 @@
             notesElement.readOnly = false;
             footer.style.display = 'flex';
         } else {
-            notesElement.value = 'تم إبداء رأيك مسبقاً، لا يمكن التعديل.';
+            notesElement.value = serviceStrings.alreadyResponded;
             notesElement.readOnly = true;
             footer.style.display = 'none';
         }
         
         const modal = document.getElementById('requestModal');
         modal.style.display = 'flex';
-        // Trigger animation after display flex
         setTimeout(() => modal.classList.add('active'), 10);
     }
 
@@ -850,18 +863,16 @@
         const notesElement = document.getElementById('modal-hod-notes');
         const notes = notesElement.value.trim();
         
-        // التحقق الإجباري من وجود الملاحظات
         if (notes === '') {
-            notesElement.style.borderColor = '#ef4444'; // تلوين الحواف بالأحمر
+            notesElement.style.borderColor = '#ef4444';
             notesElement.focus();
             
-            // اهتزاز خفيف للفت الانتباه
             notesElement.style.transform = 'translateX(5px)';
             setTimeout(() => notesElement.style.transform = 'translateX(-5px)', 100);
             setTimeout(() => notesElement.style.transform = 'translateX(5px)', 200);
             setTimeout(() => notesElement.style.transform = 'translateX(0)', 300);
             
-            alert('❌ عذراً، يجب كتابة القرار النهائي للإدارة قبل الموافقة أو الرفض!');
+            alert(serviceStrings.validationAlert);
             return;
         }
         

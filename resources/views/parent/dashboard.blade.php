@@ -1,6 +1,6 @@
 @extends('layouts.parent')
-@section('title', 'الرئيسية')
-@section('subtitle', 'أهلاً بك في لوحة تحكم ولي الأمر')
+@section('title', __('messages.dashboard'))
+@section('subtitle', __('messages.welcome_parent_dashboard'))
 
 @push('styles')
 <style>
@@ -287,13 +287,18 @@
     .close-btn {
         position: absolute;
         top: 1.25rem;
-        left: 1.25rem; /* Left since we are RTL */
+        left: 1.25rem;
         font-size: 1.5rem;
         font-weight: bold;
         color: var(--text-secondary);
         cursor: pointer;
         transition: color 0.2s ease;
         line-height: 1;
+    }
+    
+    [dir="ltr"] .close-btn {
+        left: auto;
+        right: 1.25rem;
     }
     
     .close-btn:hover {
@@ -325,8 +330,8 @@
 
 <div class="welcome-card">
     <div class="welcome-content">
-        <h2>مرحباً بك، {{ $user->full_name }}</h2>
-        <p>يمكنك من خلال هذه اللوحة متابعة الأداء الأكاديمي، جدول المحاضرات، ونتائج أبنائك بكل سهولة وشفافية.</p>
+        <h2>{{ __('messages.welcome') . (app()->getLocale() === 'en' ? ', ' : '، ') . $user->full_name }}</h2>
+        <p>{{ __('messages.parent_dashboard_desc') }}</p>
     </div>
     <div style="font-size: 5rem; color: var(--accent-color); opacity: 0.8;">
         <i class="fa-solid fa-users"></i>
@@ -335,7 +340,7 @@
 
 
 <h3 class="section-title">
-    <i class="fa-solid fa-children"></i> أبنائي المسجلين ({{ $children->count() }})
+    <i class="fa-solid fa-children"></i> {{ __('messages.registered_children') }} ({{ $children->count() }})
 </h3>
 
 @if($children->isNotEmpty())
@@ -351,10 +356,10 @@
             </div>
             <div class="child-name">{{ $child->full_name }}</div>
             <div class="child-info">
-                {{ $child->department ?? 'تخصص عام' }} • {{ $child->display_level ?? $child->level ?? 'السنة الأولى' }} • <span style="color: var(--accent-color); font-weight: 700;">{{ $child->active_semester_name ?? '' }}</span>
+                {{ $child->department ?? __('messages.general_major') }} • {{ $child->display_level ?? $child->level ?? __('messages.first_year') }} • <span style="color: var(--accent-color); font-weight: 700;">{{ $child->active_semester_name ?? '' }}</span>
             </div>
             <div class="child-btn">
-                {{ $selected_child_id == $child->student_id ? 'عرض التفاصيل والجدول' : 'متابعة الأداء' }} <i class="fa-solid fa-arrow-left" style="margin-right: 0.4rem; font-size: 0.8rem;"></i>
+                {{ $selected_child_id == $child->student_id ? __('messages.view_details_and_schedule') : __('messages.follow_performance') }} <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}" style="margin-inline-start: 0.4rem; font-size: 0.8rem;"></i>
             </div>
         </div>
         @endforeach
@@ -364,23 +369,23 @@
             <div class="child-avatar" style="background: rgba(255, 204, 0, 0.1); border: 2px solid var(--accent-color); color: var(--accent-color); width: 60px; height: 60px; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
                 <i class="fa-solid fa-plus" style="font-size: 1.5rem; color: var(--accent-color) !important;"></i>
             </div>
-            <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">ربط ابن جديد</div>
-            <div style="font-size: 0.85rem; color: var(--text-secondary);">إضافة طالب إلى حسابك</div>
+            <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">{{ __('messages.link_new_child') }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">{{ __('messages.add_student_to_account') }}</div>
         </div>
     </div>
 @else
     <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color); margin-bottom: 2.5rem;">
         <i class="fa-solid fa-user-xmark" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 1rem;"></i>
-        <h4 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem;">لا يوجد أبناء مرتبطين بحسابك</h4>
-        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">يرجى ربط حساب ابنك للبدء بمتابعة أدائه الدراسي.</p>
+        <h4 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.no_children_linked_yet') }}</h4>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">{{ __('messages.no_children_prompt') }}</p>
         <button onclick="openLinkChildModal()" class="btn btn-primary" style="background: var(--accent-color); color: #1a1a1a; padding: 0.75rem 2rem; border-radius: 2rem; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-family: inherit;">
-            <i class="fa-solid fa-plus" style="margin-left: 0.5rem;"></i> ربط ابن جديد
+            <i class="fa-solid fa-plus" style="margin-inline-end: 0.5rem;"></i> {{ __('messages.link_new_child') }}
         </button>
     </div>
 @endif
 
 <h3 class="section-title">
-    <i class="fa-solid fa-bullhorn"></i> آخر أخبار المعهد والفعاليات
+    <i class="fa-solid fa-bullhorn"></i> {{ __('messages.institute_news_and_events') }}
 </h3>
 
 <div class="announcements-list">
@@ -407,7 +412,7 @@
             <!-- Avatar column -->
             <div style="flex-shrink: 0;">
                 <div style="width: 44px; height: 44px; border-radius: 50%; background-color: var(--accent-color, #1d9bf0); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000; font-size: 1.1rem;">
-                    إ
+                    {{ app()->getLocale() === 'en' ? 'A' : 'إ' }}
                 </div>
             </div>
             
@@ -416,7 +421,7 @@
                 <!-- Header -->
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
                     <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">الإدارة</span>
+                        <span style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ app()->getLocale() === 'en' ? 'Administration' : 'الإدارة' }}</span>
                         <i class="fa-solid fa-circle-check" style="color: #1d9bf0; font-size: 0.85rem;"></i>
                         <span style="color: var(--text-muted); font-size: 0.9rem;" dir="ltr">@admin · {{ \Carbon\Carbon::parse($ann->created_at)->diffForHumans(null, true) }}</span>
                     </div>
@@ -436,7 +441,7 @@
         </div>
     @empty
         <div style="text-align: center; color: var(--text-secondary); padding: 1.5rem 0;">
-            لا توجد إعلانات أو أخبار حالياً.
+            {{ __('messages.no_announcements_currently') }}
         </div>
     @endforelse
 </div>
@@ -446,22 +451,22 @@
     <div class="modal-content">
         <span class="close-btn" onclick="closeLinkChildModal()">&times;</span>
         <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
-            <i class="fa-solid fa-link" style="color: var(--accent-color);"></i> ربط ابن جديد
+            <i class="fa-solid fa-link" style="color: var(--accent-color);"></i> {{ __('messages.link_child_modal_title') }}
         </h3>
         <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem;">
-            يرجى إدخال الرقم الجامعي للابن لتتمكن من ربطه بحسابك.
+            {{ __('messages.link_child_modal_desc') }}
             <br>
-            <strong style="color: var(--accent-color);">تنبيه:</strong> يتطلب نظام الحماية تطابق اسم العائلة (الاسم الأخير) بين حسابك وحساب الابن لإتمام عملية الربط بنجاح.
+            <strong style="color: var(--accent-color);">{{ __('messages.link_child_security_notice') }}</strong>
         </p>
         
         <form action="{{ route('parent.children.link') }}" method="POST">
             @csrf
             <div style="margin-bottom: 1.25rem;">
-                <label for="student_code" style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">الرقم الجامعي للابن</label>
-                <input type="text" name="student_code" id="student_code" style="width: 100%; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.75rem 1rem; border-radius: 0.75rem; font-family: inherit; font-size: 0.95rem; outline: none;" placeholder="مثال: 2026100" required>
+                <label for="student_code" style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">{{ __('messages.student_university_id') }}</label>
+                <input type="text" name="student_code" id="student_code" style="width: 100%; background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.75rem 1rem; border-radius: 0.75rem; font-family: inherit; font-size: 0.95rem; outline: none;" placeholder="{{ __('messages.student_code_placeholder') }}" required>
             </div>
             <button type="submit" class="btn-submit" style="width: 100%; justify-content: center;">
-                <i class="fa-solid fa-plus"></i> ربط الابن بالحساب
+                <i class="fa-solid fa-plus"></i> {{ __('messages.link_child_submit_btn') }}
             </button>
         </form>
     </div>

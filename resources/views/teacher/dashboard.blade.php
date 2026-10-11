@@ -1,6 +1,6 @@
 @extends('layouts.teacher')
-@section('title', 'الرئيسية')
-@section('subtitle', 'مرحباً، ' . (auth()->user()->full_name ?? 'أستاذ'))
+@section('title', __('messages.dashboard'))
+@section('subtitle', __('messages.welcome_back') . '، ' . (auth()->user()->full_name ?? __('messages.teacher')))
 
 @push('styles')
 <style>
@@ -308,8 +308,8 @@
         <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
         <div>
             <div class="stat-value">{{ $courses->count() }}</div>
-            <div class="stat-label">المواد الدراسية</div>
-            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+            <div class="stat-label">{{ __('messages.courses') }}</div>
+            <div class="stat-hint"><i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}"></i> {{ __('messages.click_to_view') }}</div>
         </div>
     </div>
 
@@ -317,8 +317,8 @@
         <div class="stat-icon"><i class="fa-solid fa-file-pen"></i></div>
         <div>
             <div class="stat-value">{{ $recentAssignments->count() }}</div>
-            <div class="stat-label">الواجبات النشطة</div>
-            <div class="stat-hint"><i class="fa-solid fa-arrow-left"></i> اضغط للعرض</div>
+            <div class="stat-label">{{ __('messages.active_assignments') }}</div>
+            <div class="stat-hint"><i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}"></i> {{ __('messages.click_to_view') }}</div>
         </div>
     </div>
 
@@ -329,11 +329,11 @@
     <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 1rem;">
         <p class="section-title" style="margin-bottom: 0;">
             <i class="fa-solid fa-bullhorn" style="color: var(--accent-color);"></i>
-            آخر الأخبار والإعلانات
+            {{ __('messages.latest_news_announcements') }}
         </p>
         <a href="{{ route('teacher.announcements.create') }}"
            style="display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.9rem; border-radius: 0.6rem; background: var(--accent-color); color: #1a1a1a; font-size: 0.82rem; font-weight: 800; text-decoration: none; white-space: nowrap;">
-            <i class="fa-solid fa-plus"></i> إضافة إعلان
+            <i class="fa-solid fa-plus"></i> {{ __('messages.add_announcement') }}
         </a>
     </div>
 
@@ -405,7 +405,7 @@
     @empty
         <div style="text-align: center; padding: 2.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
             <i class="fa-solid fa-bullhorn" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>
-            لا توجد إعلانات حالياً
+            {{ __('messages.no_announcements_currently') }}
         </div>
     @endforelse
 </div>
@@ -424,7 +424,7 @@
             <div class="modal-header">
                 <h3 style="font-weight: 800; font-size: 1.15rem; margin: 0;">
                     <i class="fa-solid fa-book-open" style="color: var(--accent-color);"></i>
-                    موادي الدراسية
+                    {{ __('messages.my_courses_modal_title') }}
                 </h3>
                 <button class="modal-close" onclick="closeCoursesModal()">
                     <i class="fa-solid fa-xmark"></i>
@@ -445,7 +445,7 @@
                                     <i class="fa-solid fa-layer-group"></i> {{ $c->level }}
                                 @endif
                                 &nbsp;&middot;&nbsp;
-                                <i class="fa-solid fa-file-video"></i> {{ $courseLecturesCount }} محاضرة مرفوعة
+                                <i class="fa-solid fa-file-video"></i> {{ $courseLecturesCount }} {{ __('messages.lectures') }}
                             </div>
                         </div>
                         <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary); margin-inline-start: auto;"></i>
@@ -453,7 +453,7 @@
                 @empty
                     <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                         <i class="fa-solid fa-book-open" style="font-size: 2rem; opacity: 0.4; display: block; margin-bottom: 0.5rem;"></i>
-                        لا توجد مواد مسندة حالياً
+                        {{ __('messages.no_assigned_courses') }}
                     </div>
                 @endforelse
             </div>
@@ -466,7 +466,7 @@
                     <button class="back-btn-modal" onclick="goBackToCourses()">
                         <i class="fa-solid fa-arrow-right"></i>
                     </button>
-                    <h3 id="selected-course-title-modal" style="font-weight: 800; font-size: 1.15rem; margin: 0;">المحاضرات</h3>
+                    <h3 id="selected-course-title-modal" style="font-weight: 800; font-size: 1.15rem; margin: 0;">{{ __('messages.lectures') }}</h3>
                 </div>
                 <button class="modal-close" onclick="closeCoursesModal()">
                     <i class="fa-solid fa-xmark"></i>
@@ -476,7 +476,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;" id="lectures-count-modal">0 محاضرة</span>
                 <button onclick="showUploadScreen()" style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.5rem; padding: 0.5rem 1rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.82rem; display: flex; align-items: center; gap: 0.4rem;">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> رفع محاضرة جديدة
+                    <i class="fa-solid fa-cloud-arrow-up"></i> {{ __('messages.upload_new_lecture') }}
                 </button>
             </div>
 
@@ -509,13 +509,13 @@
                                     <span><i class="fa-regular fa-calendar"></i> {{ \Carbon\Carbon::parse($l->created_at)->format('Y-m-d') }}</span>
                                     @if($l->file_path)
                                         <span>&middot;</span>
-                                        <a href="{{ asset('storage/' . $l->file_path) }}" target="_blank" style="color: var(--accent-color); font-weight: 700; text-decoration: none;">📎 عرض الملف</a>
+                                        <a href="{{ asset('storage/' . $l->file_path) }}" target="_blank" style="color: var(--accent-color); font-weight: 700; text-decoration: none;">📎 {{ __('messages.view_file') }}</a>
                                     @endif
                                 </div>
                             </div>
                         </div>
                         
-                        <form action="{{ route('teacher.lectures.delete', $l->lesson_id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه المحاضرة؟')" style="margin: 0;">
+                        <form action="{{ route('teacher.lectures.delete', $l->lesson_id) }}" method="POST" onsubmit="return confirm('{{ __('messages.confirm_delete_lecture') }}')" style="margin: 0;">
                             @csrf
                             <button type="submit" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0.35rem; font-size: 0.95rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
                                 <i class="fa-solid fa-trash"></i>
@@ -526,8 +526,8 @@
                 
                 <div id="no-lectures-modal-message" style="display: none; text-align: center; padding: 3rem 1.5rem; color: var(--text-secondary);">
                     <i class="fa-solid fa-folder-open" style="font-size: 2.5rem; margin-bottom: 0.75rem; display: block; color: var(--accent-color); opacity: 0.5;"></i>
-                    <p style="font-size: 0.95rem; font-weight: 700; margin: 0 0 0.2rem 0; color: var(--text-primary);">لا توجد محاضرات مرفوعة</p>
-                    <p style="font-size: 0.8rem; margin: 0;">انقر على الزر أعلاه لرفع أول محاضرة لهذه المادة.</p>
+                    <p style="font-size: 0.95rem; font-weight: 700; margin: 0 0 0.2rem 0; color: var(--text-primary);">{{ __('messages.no_lectures_uploaded') }}</p>
+                    <p style="font-size: 0.8rem; margin: 0;">{{ __('messages.upload_first_lecture_hint') }}</p>
                 </div>
             </div>
         </div>
@@ -539,7 +539,7 @@
                     <button class="back-btn-modal" onclick="goBackToLectures()">
                         <i class="fa-solid fa-arrow-right"></i>
                     </button>
-                    <h3 style="font-weight: 800; font-size: 1.15rem; margin: 0;">رفع محاضرة جديدة</h3>
+                    <h3 style="font-weight: 800; font-size: 1.15rem; margin: 0;">{{ __('messages.upload_new_lecture') }}</h3>
                 </div>
                 <button class="modal-close" onclick="closeCoursesModal()">
                     <i class="fa-solid fa-xmark"></i>
@@ -551,17 +551,17 @@
                 <input type="hidden" name="course_id" id="modal-upload-course-id">
 
                 <div>
-                    <label style="display:block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem;">عنوان المحاضرة</label>
-                    <input type="text" name="title" class="modal-form-input" placeholder="أدخل عنوان المحاضرة هنا" required>
+                    <label style="display:block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem;">{{ __('messages.lecture_title') }}</label>
+                    <input type="text" name="title" class="modal-form-input" placeholder="أدخل {{ __('messages.lecture_title') }} هنا" required>
                 </div>
 
                 <div>
-                    <label style="display:block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem;">الوصف (اختياري)</label>
-                    <textarea name="description" class="modal-form-input" rows="2" placeholder="ملاحظات أو وصف مختصر..." style="resize: vertical;"></textarea>
+                    <label style="display:block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem;">{{ __('messages.description_optional') }}</label>
+                    <textarea name="description" class="modal-form-input" rows="2" placeholder="{{ __('messages.description_placeholder') }}" style="resize: vertical;"></textarea>
                 </div>
 
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem;">الملف المرفق</label>
+                    <label style="display:block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem;">{{ __('messages.attached_file') }}</label>
                     <div class="modal-upload-area" id="modal-upload-area"
                          ondragover="event.preventDefault(); this.classList.add('drag-over')"
                          ondragleave="this.classList.remove('drag-over')"
@@ -571,8 +571,8 @@
                                onchange="previewModalFile(this)">
                         <div id="modal-upload-placeholder">
                             <div class="modal-upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-                            <div class="modal-upload-text" style="font-size: 0.88rem;">اسحب وأفلت الملف هنا أو انقر للاختيار</div>
-                            <div class="modal-upload-hint" style="font-size: 0.72rem;">صورة، فيديو، مستند، أو ZIP (حجم غير محدود)</div>
+                            <div class="modal-upload-text" style="font-size: 0.88rem;">{{ __('messages.drag_drop_file_hint') }}</div>
+                            <div class="modal-upload-hint" style="font-size: 0.72rem;">{{ __('messages.unlimited_size_hint') }}</div>
                         </div>
                     </div>
 
@@ -588,9 +588,9 @@
 
                 <div style="display: flex; gap: 0.75rem;">
                     <button type="submit" style="flex: 1; padding: 0.75rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 0.95rem;">
-                        <i class="fa-solid fa-cloud-arrow-up"></i> رفع الآن
+                        <i class="fa-solid fa-cloud-arrow-up"></i> {{ __('messages.upload_now') }}
                     </button>
-                    <button type="button" onclick="goBackToLectures()" style="flex: 1; padding: 0.75rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.95rem;">إلغاء</button>
+                    <button type="button" onclick="goBackToLectures()" style="flex: 1; padding: 0.75rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.95rem;">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -607,7 +607,7 @@
         <div class="modal-header">
             <h3 style="font-weight: 800; font-size: 1.1rem;">
                 <i class="fa-solid fa-file-pen" style="color: var(--accent-color);"></i>
-                الواجبات النشطة
+                {{ __('messages.active_assignments') }}
             </h3>
             <button class="modal-close" onclick="closeModal('assignments-modal')">
                 <i class="fa-solid fa-xmark"></i>
@@ -617,13 +617,13 @@
         @forelse($recentAssignments as $a)
             @php
                 $statusClass = 'badge-active';
-                $statusText  = 'نشط';
+                $statusText  = __('messages.active_badge_assignment');
                 if(($a->graded_count ?? 0) >= ($a->submissions_count ?? 1) && ($a->submissions_count ?? 0) > 0) {
                     $statusClass = 'badge-graded';
-                    $statusText  = 'تم التصحيح';
+                    $statusText  = __('messages.graded_badge');
                 } elseif(($a->submissions_count ?? 0) > 0) {
                     $statusClass = 'badge-pending';
-                    $statusText  = 'قيد التصحيح';
+                    $statusText  = __('messages.pending_grade_badge');
                 }
             @endphp
             <div class="list-item">
@@ -639,13 +639,13 @@
                         <i class="fa-solid fa-calendar"></i> {{ \Carbon\Carbon::parse($a->due_date)->format('Y-m-d') }}
                         @if(isset($a->submissions_count))
                             &nbsp;Â·&nbsp;
-                            <i class="fa-solid fa-users"></i> {{ $a->submissions_count }} تسليم
+                            <i class="fa-solid fa-users"></i> {{ $a->submissions_count }} {{ __('messages.submissions') }}
                         @endif
                     </div>
                 </div>
                 <a href="{{ route('teacher.assignments.submissions', $a->assignment_id) }}"
                    style="color: var(--accent-color); font-size: 1rem;"
-                   title="عرض الردود"
+                   title="{{ __('messages.view_responses') }}"
                    onclick="closeModal('assignments-modal')">
                     <i class="fa-solid fa-chevron-left"></i>
                 </a>
@@ -653,7 +653,7 @@
         @empty
             <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                 <i class="fa-solid fa-file-circle-plus" style="font-size: 2rem; opacity: 0.4; display: block; margin-bottom: 0.5rem;"></i>
-                لا توجد واجبات حالياً
+                {{ __('messages.no_assignments_currently') }}
             </div>
         @endforelse
 
@@ -661,7 +661,7 @@
             <a href="{{ route('teacher.assignments') }}"
                onclick="closeModal('assignments-modal')"
                style="color: var(--accent-color); font-weight: 700; font-size: 0.9rem; text-decoration: none;">
-                <i class="fa-solid fa-arrow-left"></i> عرض كل الواجبات
+                <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}"></i> {{ __('messages.view_all_assignments') }}
             </a>
         </div>
     </div>
@@ -713,7 +713,7 @@ function showCourseLectures(courseId, courseTitle) {
         }
     });
     
-    document.getElementById('lectures-count-modal').textContent = count + ' محاضرة مرفوعة';
+    document.getElementById('lectures-count-modal').textContent = count + ' {{ __('messages.lectures') }}';
     
     if (count === 0) {
         document.getElementById('no-lectures-modal-message').style.display = 'block';
@@ -821,7 +821,7 @@ document.getElementById('modal-upload-lecture-form').addEventListener('submit', 
         progressContainer.style.border = '1px solid var(--border-color)';
         progressContainer.innerHTML = `
             <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
-                <span id="modal-upload-status-text">جاري رفع الملف...</span>
+                <span id="modal-upload-status-text">{{ __('messages.uploading_file') }}</span>
                 <span id="modal-upload-percentage" style="color: var(--accent-color);">0%</span>
             </div>
             <div style="width: 100%; height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; border: 1px solid var(--border-color);">

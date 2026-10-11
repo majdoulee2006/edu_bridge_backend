@@ -226,8 +226,9 @@
         /* Dropdown Card */
         .notif-dropdown-card {
             position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
+            top: calc(100% + 6px);
+            right: 0;
+            left: auto;
             width: 350px;
             max-width: calc(100vw - 2rem);
             background: var(--bg-primary, #ffffff);
@@ -238,12 +239,26 @@
             display: none;
             flex-direction: column;
             overflow: hidden;
-            transform-origin: top left;
+            transform-origin: top right;
             animation: notifCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
+        [dir="rtl"] .notif-dropdown-card {
+            left: 0;
+            right: auto;
+            transform-origin: top left;
+        }
+
+        [dir="ltr"] .notif-dropdown-card {
+            right: 0;
+            left: auto;
+            transform-origin: top right;
+        }
+
         @media (max-width: 640px) {
-            .notif-dropdown-card {
+            .notif-dropdown-card,
+            [dir="rtl"] .notif-dropdown-card,
+            [dir="ltr"] .notif-dropdown-card {
                 position: fixed !important;
                 top: 68px !important;
                 left: 12px !important;

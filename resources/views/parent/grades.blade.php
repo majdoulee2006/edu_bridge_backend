@@ -1,5 +1,5 @@
 @extends('layouts.parent')
-@section('title', 'الدرجات والأداء')
+@section('title', __('messages.grades_and_performance'))
 
 @push('styles')
 <style>
@@ -103,7 +103,7 @@
     
     .grades-table th, .grades-table td {
         padding: 1rem 1.5rem;
-        text-align: right;
+        text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};
         font-size: 0.9rem;
     }
     
@@ -171,18 +171,18 @@
 @if(!$selected_child_id)
     <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color);">
         <i class="fa-solid fa-child" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 1rem; display: block;"></i>
-        <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">يرجى اختيار ابن أولاً</h4>
-        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">يرجى اختيار الابن من القائمة في الأعلى أو إضافة ابن من تبويب "أبنائي".</p>
+        <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.please_select_child_first') }}</h4>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">{{ __('messages.select_child_hint') }}</p>
     </div>
 @else
     @section('subtitle')
-        الدرجات الأكاديمية ونتائج الاختبارات للابن: {{ $selected_child->full_name }}
+        {{ __('messages.academic_grades_for_child') }}: {{ $selected_child->full_name }}
     @endsection
 
     <div class="average-card">
         <div class="average-info">
-            <h3>المعدل الدراسي التراكمي</h3>
-            <p>يمثل هذا المعدل متوسط درجات الابن في كافة الاختبارات والامتحانات التي تم تسجيل نتائجها.</p>
+            <h3>{{ __('messages.cumulative_gpa') }}</h3>
+            <p>{{ __('messages.cumulative_gpa_desc') }}</p>
         </div>
         <div class="average-number">
             {{ $overallAverage }}%
@@ -195,28 +195,28 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fa-solid fa-id-card" style="color: var(--accent-color);"></i> كشف العلامات الأكاديمي للابن (البطاقة الأكاديمية)
+                <i class="fa-solid fa-id-card" style="color: var(--accent-color);"></i> {{ __('messages.academic_report_card') }}
             </h3>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">سجل أكاديمي موحد لجميع المواد المسجلة والحالة الإجمالية</p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ __('messages.academic_report_card_desc') }}</p>
         </div>
     </div>
 
     {{-- Stats Grid --}}
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
         <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
-            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">المعدل التراكمي</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">{{ __('messages.cumulative_gpa') }}</div>
             <div style="font-size: 1.6rem; font-weight: 900; color: var(--accent-color); margin-top: 0.2rem;">{{ $academicCardData['summary']['average'] ?? 0 }}%</div>
         </div>
         <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
-            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">المواد المجتازة</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">{{ __('messages.passed_courses') }}</div>
             <div style="font-size: 1.6rem; font-weight: 900; color: #10b981; margin-top: 0.2rem;">{{ $academicCardData['summary']['passed_courses'] ?? 0 }}</div>
         </div>
         <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
-            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">المواد المتبقية / راسب</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">{{ __('messages.failed_courses') }}</div>
             <div style="font-size: 1.6rem; font-weight: 900; color: #ef4444; margin-top: 0.2rem;">{{ $academicCardData['summary']['failed_courses'] ?? 0 }}</div>
         </div>
         <div style="background: var(--bg-primary); border-radius: 1rem; padding: 1rem; text-align: center; border: 1px solid var(--border-color);">
-            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">لم يتم التقدم لها</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">{{ __('messages.not_attended_courses') }}</div>
             <div style="font-size: 1.6rem; font-weight: 900; color: #6b7280; margin-top: 0.2rem;">{{ $academicCardData['summary']['not_attended'] ?? 0 }}</div>
         </div>
     </div>
@@ -226,14 +226,14 @@
         <table style="width: 100%; border-collapse: collapse; min-width: 750px;">
             <thead>
                 <tr style="border-bottom: 2px solid var(--border-color);">
-                    <th style="padding: 0.75rem; text-align: right; color: var(--text-secondary); font-size: 0.85rem;">#</th>
-                    <th style="padding: 0.75rem; text-align: right; color: var(--text-secondary); font-size: 0.85rem;">المادة الدراسية</th>
-                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">المذاكرة (25)</th>
-                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الشفهي/العملي (25)</th>
-                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الامتحان (50)</th>
-                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">المجموع (100)</th>
-                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">التثقيل</th>
-                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">الحالة</th>
+                    <th style="padding: 0.75rem; text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }}; color: var(--text-secondary); font-size: 0.85rem;">#</th>
+                    <th style="padding: 0.75rem; text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }}; color: var(--text-secondary); font-size: 0.85rem;">{{ __('messages.course') }}</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">{{ __('messages.quiz_score_25') }}</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">{{ __('messages.oral_score_25') }}</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">{{ __('messages.exam_score_50') }}</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">{{ __('messages.total_score_100') }}</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">{{ __('messages.weight') }}</th>
+                    <th style="padding: 0.75rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">{{ __('messages.status') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -247,12 +247,12 @@
                     <td style="padding: 0.75rem; text-align: center; font-weight: 800;">{{ $row['total_score'] ?? '-' }}</td>
                     <td style="padding: 0.75rem; text-align: center;">{{ $row['weight'] ?? 1 }}</td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        @if($row['status'] === 'ناجح')
-                            <span style="background: #bbf7d0; color: #166534; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">ناجح</span>
-                        @elseif($row['status'] === 'راسب')
-                            <span style="background: #fecaca; color: #991b1b; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">راسب</span>
+                        @if($row['status'] === 'ناجح' || $row['status'] === 'passed')
+                            <span style="background: #bbf7d0; color: #166534; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">{{ __('messages.passed') }}</span>
+                        @elseif($row['status'] === 'راسب' || $row['status'] === 'failed')
+                            <span style="background: #fecaca; color: #991b1b; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">{{ __('messages.failed') }}</span>
                         @else
-                            <span style="background: #fef08a; color: #854d0e; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">لم يتم التقدم</span>
+                            <span style="background: #fef08a; color: #854d0e; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700;">{{ __('messages.not_attended') }}</span>
                         @endif
                     </td>
                 </tr>
@@ -264,7 +264,7 @@
 @endif
 
     <h3 class="section-title" style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
-        <i class="fa-solid fa-graduation-cap" style="color: var(--accent-color);"></i> تفصيل نتائج المواد الدراسية
+        <i class="fa-solid fa-graduation-cap" style="color: var(--accent-color);"></i> {{ __('messages.courses_grades_details') }}
     </h3>
 
     @if($grades->isNotEmpty())
@@ -276,35 +276,35 @@
                         {{ $courseTitle }}
                     </span>
                     <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">
-                        المتوسط للمادة: {{ round($courseGrades->avg('score'), 1) }}%
+                        {{ __('messages.course_average') }}: {{ round($courseGrades->avg('score'), 1) }}%
                     </span>
                 </div>
                 <div class="course-grades-content">
                     <table class="grades-table">
                         <thead>
                             <tr>
-                                <th>نوع التقييم / الاختبار</th>
-                                <th>تاريخ التقييم</th>
-                                <th style="text-align: center;">الدرجة المحصلة</th>
+                                <th>{{ __('messages.evaluation_type') }}</th>
+                                <th>{{ __('messages.evaluation_date') }}</th>
+                                <th style="text-align: center;">{{ __('messages.obtained_score') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($courseGrades as $g)
                                 @php
                                     $badgeClass = 'badge-generic';
-                                    $badgeText = 'تقييم';
+                                    $badgeText = __('messages.evaluation_badge');
                                     $icon = 'fa-chart-simple';
-                                    if (mb_strpos($g->exam_name, 'نهائي') !== false || mb_strpos($g->exam_name, 'النهائي') !== false || mb_strpos($g->exam_name, 'امتحان') !== false) {
+                                    if (mb_strpos($g->exam_name, 'نهائي') !== false || mb_strpos($g->exam_name, 'النهائي') !== false || mb_strpos($g->exam_name, 'امتحان') !== false || stripos($g->exam_name, 'final') !== false || stripos($g->exam_name, 'exam') !== false) {
                                         $badgeClass = 'badge-exam';
-                                        $badgeText = 'علامة الامتحان';
+                                        $badgeText = __('messages.exam_grade_badge');
                                         $icon = 'fa-file-invoice';
-                                    } elseif (mb_strpos($g->exam_name, 'شفهي') !== false) {
+                                    } elseif (mb_strpos($g->exam_name, 'شفهي') !== false || stripos($g->exam_name, 'oral') !== false) {
                                         $badgeClass = 'badge-oral';
-                                        $badgeText = 'علامة الشفهي';
+                                        $badgeText = __('messages.oral_grade_badge');
                                         $icon = 'fa-comments';
-                                    } elseif (mb_strpos($g->exam_name, 'مذاكرة') !== false || mb_strpos($g->exam_name, 'اختبار') !== false) {
+                                    } elseif (mb_strpos($g->exam_name, 'مذاكرة') !== false || mb_strpos($g->exam_name, 'اختبار') !== false || stripos($g->exam_name, 'quiz') !== false) {
                                         $badgeClass = 'badge-quiz';
-                                        $badgeText = 'علامة المذاكرة';
+                                        $badgeText = __('messages.quiz_grade_badge');
                                         $icon = 'fa-pen-to-square';
                                     }
                                 @endphp
@@ -318,7 +318,7 @@
                                         </div>
                                     </td>
                                     <td style="color: var(--text-secondary);">
-                                        {{ $g->exam_date ? \Carbon\Carbon::parse($g->exam_date)->format('Y-m-d') : 'غير محدد' }}
+                                        {{ $g->exam_date ? \Carbon\Carbon::parse($g->exam_date)->format('Y-m-d') : __('messages.unspecified') }}
                                     </td>
                                     <td style="text-align: center; font-size: 1rem;">
                                         @php
@@ -338,8 +338,8 @@
     @else
         <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color);">
             <i class="fa-solid fa-chart-line" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.4; margin-bottom: 1rem; display: block;"></i>
-            <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">لا توجد درجات مسجلة</h4>
-            <p style="color: var(--text-secondary); font-size: 0.95rem;">لم يتم تسجيل أو رصد أي درجات امتحانات للابن {{ $selected_child->full_name }} في النظام بعد.</p>
+            <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.no_grades_recorded') }}</h4>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">{{ __('messages.no_grades_recorded_desc') }}</p>
         </div>
     @endif
 @endif

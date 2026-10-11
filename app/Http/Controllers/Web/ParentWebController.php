@@ -116,19 +116,19 @@ class ParentWebController extends Controller
             if (!$parent) {
                 \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'هذا الحساب ليس حساب ولي أمر', Auth::user());
                 Auth::logout();
-                return back()->withErrors(['login' => 'هذا الحساب ليس حساب ولي أمر.']);
+                return back()->withErrors(['login' => __('messages.login_not_parent_account')]);
             }
             if (Auth::user()->status !== 'active') {
                 \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب ولي الأمر موقوف مؤقتاً', Auth::user());
                 Auth::logout();
-                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+                return back()->withErrors(['login' => __('messages.login_account_suspended')]);
             }
             $request->session()->regenerate();
             \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح عبر موقع ولي الأمر الإلكتروني');
             return redirect('/parent/dashboard');
         }
 
-        return back()->withInput()->withErrors(['login' => 'بيانات الدخول غير صحيحة.']);
+        return back()->withInput()->withErrors(['login' => __('messages.login_invalid_credentials')]);
     }
 
     public function logout(Request $request)
@@ -243,14 +243,14 @@ class ParentWebController extends Controller
         $request->validate([
             'student_code' => 'required|string',
         ], [
-            'student_code.required' => 'الرقم الجامعي مطلوب.'
+            'student_code.required' => __('messages.university_id_required')
         ]);
 
         $parent = $this->getParentRecord();
         $student = DB::table('students')->where('student_code', $request->student_code)->first();
 
         if (!$student) {
-            return back()->with('error', 'الرقم الجامعي المدخل غير صحيح أو غير مسجل في النظام.');
+            return back()->with('error', __('messages.university_id_invalid'));
         }
 
         // Check last name matching
@@ -267,7 +267,7 @@ class ParentWebController extends Controller
         $studentLastName = mb_strtolower(trim($studentLastName), 'UTF-8');
 
         if (empty($studentLastName) || $parentLastName !== $studentLastName) {
-            return back()->with('error', 'لا يمكن ربط هذا الطالب. اسم العائلة لا يتطابق مع اسم عائلتك (' . $parentLastName . ').');
+            return back()->with('error', __('messages.parent_child_family_mismatch', ['family' => $parentLastName]));
         }
 
         // Check if already linked
@@ -283,7 +283,7 @@ class ParentWebController extends Controller
             ->exists();
 
         if ($exists) {
-            return back()->with('error', 'هذا الطالب مرتبط بحسابك بالفعل.');
+            return back()->with('error', __('messages.child_already_linked'));
         }
 
         // Link student
@@ -298,7 +298,7 @@ class ParentWebController extends Controller
         // Clear session so it updates selection to the new child if needed
         session()->forget('selected_child_id');
 
-        return back()->with('success', 'تم ربط الابن ' . $studentUser->full_name . ' بنجاح!');
+        return back()->with('success', __('messages.child_linked_successfully', ['name' => $studentUser->full_name ?? '']));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -477,15 +477,15 @@ class ParentWebController extends Controller
 
         if (!$result['ok']) {
             return back()->with('error', match ($result['error']) {
-                'forbidden' => 'غير مصرح لك بالرد على هذا الطلب.',
-                'stage'     => 'تم الرد على هذا الطلب مسبقاً.',
-                default     => 'الطلب غير موجود.',
+                'forbidden' => __('messages.unauthorized_request_response'),
+                'stage'     => __('messages.request_already_responded'),
+                default     => __('messages.request_not_found'),
             });
         }
 
         return back()->with('success', $request->status === 'approved'
-            ? 'تمت موافقة ولي الأمر بنجاح وتحويل الطلب لرئيس القسم.'
-            : 'تم رفض طلب الإذن وإيقاف المسار.');
+            ? __('messages.parent_approval_transferred_hod')
+            : __('messages.leave_rejected_success'));
     }
 
     public function submitLeaveRequest(Request $request)
@@ -496,12 +496,12 @@ class ParentWebController extends Controller
             'date'       => 'required|date',
             'reason'     => 'required|string|min:3',
         ], [
-            'student_id.required' => 'يجب اختيار الابن.',
-            'reason.required' => 'سبب الإجازة مطلوب.'
+            'student_id.required' => __('messages.child_selection_required'),
+            'reason.required'     => __('messages.leave_reason_required')
         ]);
 
         if ($request->filled('time') && $request->time > '15:00') {
-            return back()->withErrors(['time' => 'عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).'])->withInput();
+            return back()->withErrors(['time' => __('messages.leave_time_limit_alert')])->withInput();
         }
 
         $parent = $this->getParentRecord();
@@ -524,7 +524,7 @@ class ParentWebController extends Controller
             ->exists();
 
         if (!$linked) {
-            return back()->with('error', 'هذا الطالب غير مرتبط بحسابك.');
+            return back()->with('error', __('messages.student_not_linked_to_parent'));
         }
 
         $studentUser = DB::table('students')
@@ -565,7 +565,7 @@ class ParentWebController extends Controller
             ]);
         }
 
-        return back()->with('success', 'تم تقديم طلب الإجازة بنجاح، وهو قيد المراجعة حالياً من قِبل إدارة القسم.');
+        return back()->with('success', __('messages.leave_submitted_under_review'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -628,7 +628,7 @@ class ParentWebController extends Controller
             ->exists();
 
         if (!$linked) {
-            return back()->with('error', 'هذا الطالب غير مرتبط بحسابك.');
+            return back()->with('error', __('messages.student_not_linked_to_parent'));
         }
 
         $student = DB::table('students')
@@ -646,7 +646,8 @@ class ParentWebController extends Controller
             ->first();
 
         if ($recent) {
-            return back()->with('error', 'لا يمكنك طلب تقرير ' . ($reportType === 'academic' ? 'أكاديمي' : 'سلوكي') . ' أكثر من مرة خلال ' . $limitDays . ' يوماً.');
+            $typeName = ($reportType === 'academic') ? __('messages.report_type_academic_label') : __('messages.report_type_behavioral_label');
+            return back()->with('error', __('messages.report_limit_exceeded', ['type' => $typeName, 'days' => $limitDays]));
         }
 
         if ($reportType === 'academic') {
@@ -679,7 +680,7 @@ class ParentWebController extends Controller
                 'updated_at'      => now(),
             ]);
 
-            return back()->with('success', 'تم إصدار التقرير الأكاديمي للابن ' . $student->student_name . ' بنجاح وعرضه بالجدول أدناه.');
+            return back()->with('success', __('messages.academic_report_issued_success', ['name' => $student->student_name ?? '']));
         }
 
         // Behavioral Report requires Advisor Teacher
@@ -713,7 +714,7 @@ class ParentWebController extends Controller
         }
 
         if (!$advisorTeacher) {
-            return back()->with('error', 'لم يتم تعيين مربي دائم لصف الطالب حالياً لتلقي الطلب السلوكي.');
+            return back()->with('error', __('messages.no_homeroom_teacher_assigned'));
         }
 
         $requestId = DB::table('report_requests')->insertGetId([
@@ -748,7 +749,7 @@ class ParentWebController extends Controller
             );
         }
 
-        return back()->with('success', 'تم إرسال طلب التقرير السلوكي للمربي بنجاح. سيظهر بالجدول فور تعبئته.');
+        return back()->with('success', __('messages.behavioral_report_sent_success'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -766,8 +767,8 @@ class ParentWebController extends Controller
             'full_name' => 'required|string|max:255',
             'phone'     => 'required|string|max:20|unique:users,phone,' . $user->user_id . ',user_id',
         ], [
-            'full_name.required' => 'الاسم الكامل مطلوب.',
-            'phone.required'     => 'رقم الهاتف مطلوب.'
+            'full_name.required' => __('messages.full_name_required'),
+            'phone.required'     => __('messages.phone_required')
         ]);
 
         DB::table('users')->where('user_id', $user->user_id)->update([
@@ -776,7 +777,7 @@ class ParentWebController extends Controller
             'updated_at'=> now()
         ]);
 
-        return back()->with('success', 'تم تحديث البيانات الشخصية بنجاح!');
+        return back()->with('success', __('messages.profile_updated_successfully'));
     }
 
     public function updatePassword(Request $request)
@@ -784,21 +785,21 @@ class ParentWebController extends Controller
         $user = auth()->user();
 
         if (!session('parent_otp_verified')) {
-            return back()->withErrors(['current_password' => 'يرجى التحقق من هويتك أولاً عبر رمز التحقق (OTP).']);
+            return back()->withErrors(['current_password' => __('messages.verify_identity_otp_first')]);
         }
 
         $request->validate([
             'current_password' => 'required',
             'password'         => 'required|min:8|confirmed',
         ], [
-            'current_password.required' => 'كلمة المرور الحالية مطلوبة.',
-            'password.required' => 'كلمة المرور الجديدة مطلوبة.',
-            'password.min' => 'يجب ألا تقل كلمة المرور عن 6 أحرف.',
-            'password.confirmed' => 'تأكيد كلمة المرور غير متطابق.'
+            'current_password.required' => __('messages.current_password_required'),
+            'password.required'         => __('messages.new_password_required'),
+            'password.min'              => __('messages.password_min_length'),
+            'password.confirmed'        => __('messages.password_confirmation_mismatch')
         ]);
 
         if (!Hash::check($request->current_password, $user->password)) {
-            return back()->withErrors(['current_password' => 'كلمة المرور الحالية غير صحيحة.']);
+            return back()->withErrors(['current_password' => __('messages.current_password_incorrect')]);
         }
 
         DB::table('users')->where('user_id', $user->user_id)->update([
@@ -808,7 +809,7 @@ class ParentWebController extends Controller
 
         session()->forget('parent_otp_verified');
 
-        return back()->with('success', 'تم تغيير كلمة المرور بنجاح!');
+        return back()->with('success', __('messages.password_changed_successfully'));
     }
 
     public function sendOTP(Request $request)
@@ -1011,7 +1012,7 @@ class ParentWebController extends Controller
             return response()->json(['status' => 'success', 'data' => $message], 201);
         }
 
-        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+        return redirect()->back()->with('success', __('messages.message_sent_successfully'));
     }
 
     public function updateMessage(Request $request, $id)
@@ -1019,7 +1020,7 @@ class ParentWebController extends Controller
         $message = \App\Models\Message::findOrFail($id);
         
         if ($message->sender_id !== Auth::id()) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.unauthorized')], 403);
         }
 
         $request->validate([
@@ -1041,12 +1042,12 @@ class ParentWebController extends Controller
         $message = \App\Models\Message::findOrFail($id);
 
         if ((int)$message->sender_id !== (int)$currentUserId && (int)$message->receiver_id !== (int)$currentUserId) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.unauthorized')], 403);
         }
 
         if ($type === 'everyone') {
             if ((int)$message->sender_id !== (int)$currentUserId) {
-                return response()->json(['status' => 'error', 'message' => 'يمكن لمراسل الرسالة فقط حذفها لدى الجميع'], 403);
+                return response()->json(['status' => 'error', 'message' => __('messages.only_sender_can_delete_for_everyone')], 403);
             }
             $message->deleted_for_everyone = true;
             $message->save();
@@ -1072,7 +1073,7 @@ class ParentWebController extends Controller
             }
         }
 
-        return response()->json(['status' => 'success', 'message' => 'تم حذف الرسالة بنجاح']);
+        return response()->json(['status' => 'success', 'message' => __('messages.message_deleted_successfully')]);
     }
 
     // ─────────────────────────── Academic Card Exports ───────────────────────────
@@ -1160,9 +1161,9 @@ class ParentWebController extends Controller
             'reason'         => 'required|string|min:5',
             'preferred_date' => 'nullable|date|after_or_equal:today',
         ], [
-            'subject.required' => 'موضوع الموعد مطلوب.',
-            'reason.required'  => 'سبب طلب الموعد مطلوب.',
-            'preferred_date.after_or_equal' => 'تاريخ المقابلة يفضل أن يكون اليوم أو في المستقبل.'
+            'subject.required'              => __('messages.appointment_subject_required'),
+            'reason.required'               => __('messages.appointment_reason_required'),
+            'preferred_date.after_or_equal' => __('messages.appointment_date_future_hint')
         ]);
 
         $user = auth()->user();
@@ -1195,7 +1196,7 @@ class ParentWebController extends Controller
             ]);
         }
 
-        return back()->with('success', 'تم إرسال طلب الموعد للإدارة بنجاح. سيتم الرد عليك وتحديد الوقت المناسب قريباً.');
+        return back()->with('success', __('messages.appointment_sent_success'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1234,7 +1235,7 @@ class ParentWebController extends Controller
             return response()->json(['status' => 'success']);
         }
 
-        return back()->with('success', 'تم تمييز الإشعار كمقروء.');
+        return back()->with('success', __('messages.notification_marked_read_single'));
     }
 
     public function markAllNotificationsRead()
@@ -1248,7 +1249,7 @@ class ParentWebController extends Controller
             return response()->json(['status' => 'success']);
         }
 
-        return back()->with('success', 'تم تمييز جميع الإشعارات كمقروءة.');
+        return back()->with('success', __('messages.notification_marked_read_all'));
     }
 
     public function settings()

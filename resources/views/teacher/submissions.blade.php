@@ -20,7 +20,7 @@
     <!-- Back button -->
     <div style="margin-bottom: 1.5rem;">
         <a href="{{ route('teacher.assignments') }}" style="color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 0.9rem;">
-            <i class="fa-solid fa-arrow-right"></i> العودة للواجبات
+            <i class="fa-solid fa-arrow-right"></i> {{ __('messages.back') }}
         </a>
     </div>
 
@@ -30,7 +30,7 @@
         <div style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.25rem;">
             <i class="fa-solid fa-book"></i> {{ $assignment->course_title }}
             &nbsp;|&nbsp;
-            <i class="fa-solid fa-calendar"></i> تاريخ التسليم: {{ \Carbon\Carbon::parse($assignment->due_date)->format('Y-m-d') }}
+            <i class="fa-solid fa-calendar"></i> {{ __('messages.due_date') }}: {{ \Carbon\Carbon::parse($assignment->due_date)->format('Y-m-d') }}
             &nbsp;|&nbsp;
             <i class="fa-solid fa-users"></i> {{ $submissions->count() }} تسليم
         </div>
@@ -57,10 +57,10 @@
                     <div style="color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.2rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
                         <span><i class="fa-solid fa-clock"></i> {{ $s->submitted_at ? \Carbon\Carbon::parse($s->submitted_at)->format('Y-m-d h:i A') : 'غير محدد' }}</span>
                         @if($solText)
-                            <span style="color: #3b82f6; font-weight: 700;"><i class="fa-solid fa-pen-to-square"></i> نص الحل</span>
+                            <span style="color: #3b82f6; font-weight: 700;"><i class="fa-solid fa-pen-to-square"></i> {{ __('messages.solution_text') }} </span>
                         @endif
                         @if($s->file_path)
-                            <span style="color: #eab308; font-weight: 700;"><i class="fa-solid fa-paperclip"></i> ملف مرفق</span>
+                            <span style="color: #eab308; font-weight: 700;"><i class="fa-solid fa-paperclip"></i> {{ __('messages.attached_file') }} </span>
                         @endif
                     </div>
                 </div>
@@ -73,9 +73,9 @@
                         $badgeColor = $isPass ? 'hsl(120,50%,30%)' : 'hsl(0,50%,30%)';
                     @endphp
                     <span class="grade-badge" style="background: {{ $badgeBg }}; color: {{ $badgeColor }};">{{ $s->grade }}/{{ $assignment->max_points }}</span>
-                    <span style="font-size: 0.8rem; color: {{ $badgeColor }}; font-weight: 700;">تم التصحيح</span>
+                    <span style="font-size: 0.8rem; color: {{ $badgeColor }}; font-weight: 700;">{{ __('messages.graded') }}</span>
                 @else
-                    <span class="grade-badge" style="background: hsl(30,70%,90%); color: hsl(30,50%,30%);">بانتظار التصحيح</span>
+                    <span class="grade-badge" style="background: hsl(30,70%,90%); color: hsl(30,50%,30%);">{{ __('messages.awaiting_grading') }}</span>
                 @endif
                 <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary);"></i>
             </div>
@@ -83,7 +83,7 @@
     @empty
         <div style="text-align: center; padding: 4rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary);">
             <i class="fa-solid fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
-            <p>لا توجد تسليمات لهذا الواجب بعد</p>
+            <p>{{ __('messages.no_submissions_for_this_assignment_yet') }}</p>
         </div>
     @endforelse
 
@@ -92,7 +92,7 @@
         <div class="modal-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div>
-                    <h3 style="font-weight: 800; font-size: 1.1rem;" id="modal-student-name">تصحيح الواجب</h3>
+                    <h3 style="font-weight: 800; font-size: 1.1rem;" id="modal-student-name">{{ __('messages.grade_assignment') }}</h3>
                     <p style="color: var(--text-secondary); font-size: 0.85rem;">{{ $assignment->title }}</p>
                 </div>
                 <button onclick="document.getElementById('grade-modal').classList.remove('active')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.25rem;">
@@ -107,12 +107,12 @@
                 </p>
                 
                 <div id="modal-solution-container" style="margin-bottom: 0.75rem; background: var(--bg-secondary); padding: 0.75rem 1rem; border-radius: 0.75rem;">
-                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--accent-color); margin-bottom: 0.3rem;">نص الحل:</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--accent-color); margin-bottom: 0.3rem;">{{ __('messages.solution_text_label') }}</div>
                     <div id="modal-content" style="font-size: 0.92rem; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap;"></div>
                 </div>
 
                 <div id="modal-notes-container" style="margin-bottom: 0.75rem; background: var(--bg-secondary); padding: 0.75rem 1rem; border-radius: 0.75rem;">
-                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.3rem;">ملاحظات الطالب:</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.3rem;">{{ __('messages.student_notes') }}</div>
                     <div id="modal-notes" style="font-size: 0.88rem; line-height: 1.5; color: var(--text-primary);"></div>
                 </div>
 
@@ -120,7 +120,7 @@
                     <a id="modal-file-link" href="#" target="_blank" download
                        style="display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent-color); color: #1a1a1a; padding: 0.65rem 1.25rem; border-radius: 0.75rem; font-size: 0.88rem; font-weight: 800; text-decoration: none;">
                         <i class="fa-solid fa-file-arrow-down"></i>
-                        <span id="modal-file-name">تحميل ملف الحل المرفوع</span>
+                        <span id="modal-file-name">{{ __('messages.download_uploaded_solution_file') }}</span>
                     </a>
                 </div>
 
@@ -138,14 +138,14 @@
                     <input type="number" name="grade" id="modal-grade" class="form-input" placeholder="0" min="0" max="{{ $assignment->max_points }}" required>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem;">ملاحظات المعلم</label>
-                    <textarea name="feedback" id="modal-feedback" class="form-input" rows="3" placeholder="اكتب ملاحظاتك للطالب هنا..." style="resize: vertical;"></textarea>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem;">{{ __('messages.feedback_notes') }}</label>
+                    <textarea name="feedback" id="modal-feedback" class="form-input" rows="3" placeholder="{{ __('messages.write_notes_to_student_here') }}" style="resize: vertical;"></textarea>
                 </div>
                 <div style="display: flex; gap: 1rem;">
                     <button type="submit" style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
                         <i class="fa-solid fa-floppy-disk"></i> حفظ التصحيح
                     </button>
-                    <button type="button" onclick="document.getElementById('grade-modal').classList.remove('active')" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">إلغاء</button>
+                    <button type="button" onclick="document.getElementById('grade-modal').classList.remove('active')" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>

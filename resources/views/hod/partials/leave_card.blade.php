@@ -3,10 +3,10 @@
     $isPending  = in_array($status, ['pending', 'pending_hod', 'pending_parent']);
     $isApproved = $status === 'approved';
     $statusLabel = match($status) {
-        'approved'       => 'موافق عليها',
-        'rejected'       => 'مرفوضة',
-        'pending_parent' => 'بانتظار ولي الأمر',
-        default          => 'بانتظار الموافقة',
+        'approved'       => __('messages.status_approved_label'),
+        'rejected'       => __('messages.status_rejected_label'),
+        'pending_parent' => __('messages.status_pending_parent'),
+        default          => __('messages.status_pending_approval'),
     };
     $statusColor = match($status) {
         'approved'       => ['bg' => '#f0fdf4', 'color' => '#16a34a'],
@@ -14,7 +14,7 @@
         'pending_parent' => ['bg' => '#eff6ff', 'color' => '#2563eb'],
         default          => ['bg' => '#fefce8', 'color' => '#ca8a04'],
     };
-    $studentName = $leave->student_name ?? 'طالب';
+    $studentName = $leave->student_name ?? __('messages.student');
     $leaveType = $leave->type ?? 'full_day';
     $leaveCategory = $leave->leave_category ?? ($leaveType === 'hourly' ? 'hourly' : 'daily');
     $attachmentFile = $leave->attachment ?? $leave->document ?? null;
@@ -34,7 +34,7 @@
                 @if(!empty($leave->created_at))
                 <p style="font-size:0.82rem; font-weight:700; color:var(--text-primary);">
                     <i class="fa-regular fa-clock" style="color:var(--accent-color);"></i>
-                    تاريخ ووقت التقديم: {{ \Carbon\Carbon::parse($leave->created_at)->format('Y-m-d - h:i A') }}
+                    {{ __('messages.submission_datetime') }}: {{ \Carbon\Carbon::parse($leave->created_at)->format('Y-m-d - h:i A') }}
                 </p>
                 @endif
             </div>
@@ -42,7 +42,7 @@
 
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.5rem;">
             {{-- نوع الإجازة --}}
-            <span class="leave-badge">{{ $leaveType == 'full_day' ? 'يوم كامل' : ($leaveType == 'justification' ? 'تبرير غياب' : 'ساعية') }}</span>
+            <span class="leave-badge">{{ $leaveType == 'full_day' ? __('messages.full_day_leave') : ($leaveType == 'justification' ? __('messages.justification_leave') : __('messages.hourly_leave')) }}</span>
             {{-- حالة الإجازة --}}
             <span style="padding:0.2rem 0.75rem;border-radius:1rem;font-size:0.82rem;font-weight:700;background:{{ $statusColor['bg'] }};color:{{ $statusColor['color'] }};">
                 {{ $statusLabel }}
@@ -54,7 +54,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
             <span style="background:var(--bg-primary);padding:0.3rem 0.8rem;border-radius:1rem;font-size:0.85rem;">
                 <i class="fa-solid fa-tag" style="color:var(--text-secondary);"></i>
-                {{ $leaveCategory == 'hourly' ? 'ساعية' : 'يومية' }}
+                {{ $leaveCategory == 'hourly' ? __('messages.hourly_leave') : __('messages.daily_leave') }}
             </span>
             @if(!empty($leave->date))
             <span style="background:var(--bg-primary);padding:0.3rem 0.8rem;border-radius:1rem;font-size:0.85rem;" dir="ltr">
@@ -64,8 +64,8 @@
             @endif
         </div>
         @if(!empty($leave->reason))
-        <div style="margin-top:0.75rem;background:var(--bg-primary);padding:0.75rem 1rem;border-radius:0.75rem;font-size:0.9rem;border-right:3px solid var(--border-color);">
-            <strong style="color:var(--text-secondary);font-size:0.82rem;display:block;margin-bottom:0.25rem;">السبب:</strong>
+        <div style="margin-top:0.75rem;background:var(--bg-primary);padding:0.75rem 1rem;border-radius:0.75rem;font-size:0.9rem;border-right:3px solid var(--border-color);[dir='ltr'] & { border-right: none; border-left: 3px solid var(--border-color); }">
+            <strong style="color:var(--text-secondary);font-size:0.82rem;display:block;margin-bottom:0.25rem;">{{ __('messages.leave_reason_label') }}:</strong>
             {{ $leave->reason }}
         </div>
         @endif
@@ -73,18 +73,18 @@
         {{-- إظهار رأي المراحل السابقة (موافقة ولي الأمر) --}}
         @if(in_array($status, ['pending_hod', 'pending_affairs', 'approved']))
         <div style="margin-top:0.75rem;background:#f0fdf4;color:#16a34a;padding:0.5rem 0.8rem;border-radius:0.6rem;font-size:0.85rem;font-weight:700;display:flex;align-items:center;gap:0.4rem;border:1px solid #bbf7d0;">
-            <i class="fa-solid fa-circle-check"></i> رأي المرحلة السابقة: موافقة ولي الأمر (تمت ✓)
+            <i class="fa-solid fa-circle-check"></i> {{ __('messages.parent_approved_step') }}
         </div>
         @elseif($status === 'pending_parent')
         <div style="margin-top:0.75rem;background:#eff6ff;color:#2563eb;padding:0.5rem 0.8rem;border-radius:0.6rem;font-size:0.85rem;font-weight:700;display:flex;align-items:center;gap:0.4rem;border:1px solid #bfdbfe;">
-            <i class="fa-solid fa-clock"></i> في انتظار موافقة ولي الأمر أولاً
+            <i class="fa-solid fa-clock"></i> {{ __('messages.waiting_parent_first') }}
         </div>
         @endif
 
         @if($attachmentFile)
         <div style="margin-top:0.75rem;">
             <a href="{{ asset('storage/' . $attachmentFile) }}" target="_blank" style="display:inline-flex;align-items:center;gap:0.4rem;background:#eff6ff;color:#2563eb;padding:0.4rem 0.8rem;border-radius:1rem;font-size:0.85rem;font-weight:700;text-decoration:none;">
-                <i class="fa-solid fa-paperclip"></i> عرض المرفق
+                <i class="fa-solid fa-paperclip"></i> {{ __('messages.view_attachment') }}
             </a>
         </div>
         @endif
@@ -97,14 +97,14 @@
             @csrf
             <input type="hidden" name="status" value="rejected">
             <button type="submit" class="btn-reject" style="width:100%;">
-                <i class="fa-solid fa-xmark"></i> رفض
+                <i class="fa-solid fa-xmark"></i> {{ __('messages.reject') }}
             </button>
         </form>
         <form action="{{ route('hod.leaves.status', $leave->id) }}" method="POST" style="flex:1;">
             @csrf
             <input type="hidden" name="status" value="approved">
             <button type="submit" class="btn-approve" style="width:100%;">
-                <i class="fa-solid fa-check"></i> موافقة
+                <i class="fa-solid fa-check"></i> {{ __('messages.approve') }}
             </button>
         </form>
     </div>

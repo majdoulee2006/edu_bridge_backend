@@ -1,6 +1,6 @@
 @extends('layouts.hod')
 
-@section('title', 'الرسائل')
+@section('title', __('messages.messages'))
 
 @section('content')
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
@@ -11,8 +11,8 @@
         
         <!-- Header & Search Title -->
         <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-extrabold text-white tracking-wide">مكان للبحث عن</h2>
-            <button type="button" onclick="openNewChatModal()" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md" title="محادثة جديدة">
+            <h2 class="text-base font-extrabold text-white tracking-wide">{{ __('messages.messages') }}</h2>
+            <button type="button" onclick="openNewChatModal()" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md" title="{{ __('messages.new_chat') }}">
                 <span class="material-symbols-outlined text-lg">add_comment</span>
             </button>
         </div>
@@ -22,18 +22,18 @@
             <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                 <span class="material-symbols-outlined text-lg">search</span>
             </span>
-            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="ابحث عن زملائك..." type="text"/>
+            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="{{ __('messages.search_contacts_placeholder') }}" type="text"/>
         </div>
 
         <!-- Section Title -->
-        <div class="text-[11px] font-bold text-slate-400 mb-2 px-1">أحدث المحادثات</div>
+        <div class="text-[11px] font-bold text-slate-400 mb-2 px-1">{{ __('messages.recent_chats') }}</div>
 
         <!-- Contacts Scrollable List -->
         <div class="flex-1 overflow-y-auto hide-scrollbar space-y-1.5 pr-1" id="contacts-list-container">
             <!-- Loading Indicator -->
             <div id="contacts-loading" class="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
                 <div class="animate-spin rounded-full h-7 w-7 border-2 border-[#f2f20d] border-t-transparent"></div>
-                <span class="text-xs font-semibold">جاري تحميل المحادثات...</span>
+                <span class="text-xs font-semibold">{{ __('messages.loading_chats') }}</span>
             </div>
             
             <!-- Dynamic Contacts List Wrapper -->
@@ -41,7 +41,7 @@
             
             <div id="contacts-empty" class="hidden flex flex-col items-center justify-center py-12 text-slate-400 text-center px-4">
                 <span class="material-symbols-outlined text-4xl mb-2 text-slate-600">contact_support</span>
-                <span class="text-xs font-bold">لا توجد جهات اتصال متاحة</span>
+                <span class="text-xs font-bold">{{ __('messages.no_contacts_available') }}</span>
             </div>
         </div>
     </div>
@@ -54,8 +54,8 @@
             <div class="w-20 h-20 rounded-full bg-[#1c1c20] border border-[#27272a] flex items-center justify-center text-[#f2f20d] mb-5 shadow-lg">
                 <span class="material-symbols-outlined text-4xl">forum</span>
             </div>
-            <h3 class="text-base font-black text-white mb-2">مرحباً بك في نظام المحادثات الفورية</h3>
-            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">اختر إحدى المحادثات المتاحة في القائمة للبدء أو انقر على زر إضافة محادثة لبدء تواصل جديد.</p>
+            <h3 class="text-base font-black text-white mb-2">{{ __('messages.welcome_chat_title') }}</h3>
+            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">{{ __('messages.welcome_chat_desc') }}</p>
         </div>
 
         <!-- Active Chat Window Container -->
@@ -66,7 +66,7 @@
                 <div class="flex items-center gap-3">
                     <!-- Mobile Back Arrow -->
                     <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-[#27272a] text-slate-300 hover:bg-[#3f3f46]">
-                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                        <span class="material-symbols-outlined text-lg">{{ app()->getLocale() === 'ar' ? 'arrow_forward' : 'arrow_back' }}</span>
                     </button>
 
                     <!-- Contact Avatar & Status -->
@@ -85,7 +85,7 @@
                             <span id="active-contact-role" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#27272a] text-slate-300">...</span>
                         </div>
                         <span class="text-[10px] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متصل الآن
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ __('messages.online_now') }}
                         </span>
                     </div>
                 </div>
@@ -94,35 +94,35 @@
                 <div class="flex items-center gap-2">
                     <!-- Disappearing Timer Menu Dropdown -->
                     <div class="relative">
-                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] text-slate-300 hover:text-[#f2f20d] text-xs font-semibold transition-all border border-[#27272a]" title="الرسائل ذاتية الاختفاء">
+                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] text-slate-300 hover:text-[#f2f20d] text-xs font-semibold transition-all border border-[#27272a]" title="{{ __('messages.disappearing_messages') }}">
                             <span class="material-symbols-outlined text-base text-amber-400">timer</span>
-                            <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
+                            <span id="disappearing-btn-label" class="hidden sm:inline">{{ __('messages.disappearing_messages') }}</span>
                         </button>
                         
                         <!-- Dropdown Options -->
                         <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-[#1c1c20] rounded-xl shadow-2xl border border-[#27272a] p-2 text-xs min-w-[200px] z-[99] space-y-1">
-                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">مؤقت اختفاء الرسائل الجديدة</div>
-                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>🚫 إيقاف (رسائل دائمة)</span>
+                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">{{ __('messages.disappearing_messages') }}</div>
+                            <button type="button" onclick="setDisappearingTimer(0, '{{ app()->getLocale() === 'ar' ? 'إيقاف' : 'Off' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>🚫 {{ app()->getLocale() === 'ar' ? 'إيقاف (رسائل دائمة)' : 'Off (Permanent)' }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 5 دقائق</span>
+                            <button type="button" onclick="setDisappearingTimer(300, '{{ app()->getLocale() === 'ar' ? '5 دقائق' : '5 Minutes' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ {{ app()->getLocale() === 'ar' ? '5 دقائق' : '5 Minutes' }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ ساعة واحدة</span>
+                            <button type="button" onclick="setDisappearingTimer(3600, '{{ app()->getLocale() === 'ar' ? 'ساعة واحدة' : '1 Hour' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ {{ app()->getLocale() === 'ar' ? 'ساعة واحدة' : '1 Hour' }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 24 ساعة (يوم)</span>
+                            <button type="button" onclick="setDisappearingTimer(86400, '{{ app()->getLocale() === 'ar' ? '24 ساعة' : '24 Hours' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ {{ app()->getLocale() === 'ar' ? '24 ساعة (يوم)' : '24 Hours (1 Day)' }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 7 أيام (أسبوع)</span>
+                            <button type="button" onclick="setDisappearingTimer(604800, '{{ app()->getLocale() === 'ar' ? '7 أيام' : '7 Days' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ {{ app()->getLocale() === 'ar' ? '7 أيام (أسبوع)' : '7 Days (1 Week)' }}</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- In-Chat Search Bar -->
                     <div class="hidden sm:block relative">
-                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث في المحادثة..." class="bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-1.5 pr-8 pl-3 text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none w-36 sm:w-44 transition-all">
+                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="{{ __('messages.search_in_chat') }}" class="bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-1.5 pr-8 pl-3 text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none w-36 sm:w-44 transition-all">
                         <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
                             <span class="material-symbols-outlined text-sm">search</span>
                         </span>
@@ -142,9 +142,9 @@
                 <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-400 font-bold mb-2 transition-all">
                     <div class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">timer</span>
-                        <span>الرسائل الجديدة ستختفي تلقائياً بعد: <strong id="disappearing-banner-time">24 ساعة</strong></span>
+                        <span>{{ app()->getLocale() === 'ar' ? 'الرسائل الجديدة ستختفي تلقائياً بعد:' : 'New messages will disappear after:' }} <strong id="disappearing-banner-time">24 {{ app()->getLocale() === 'ar' ? 'ساعة' : 'hours' }}</strong></span>
                     </div>
-                    <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-400 p-0.5">
+                    <button type="button" onclick="setDisappearingTimer(0, '{{ app()->getLocale() === 'ar' ? 'إيقاف' : 'Off' }}')" class="text-slate-400 hover:text-red-400 p-0.5">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
@@ -160,7 +160,7 @@
                             <span id="preview-filesize" class="text-[10px] font-semibold text-slate-400">0 KB</span>
                         </div>
                     </div>
-                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0" title="إلغاء الملف">
+                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0" title="{{ app()->getLocale() === 'ar' ? 'إلغاء الملف' : 'Remove file' }}">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
@@ -173,14 +173,14 @@
                     <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-[#1c1c20] border border-[#27272a] rounded-2xl px-4 py-2.5 text-slate-200">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-                            <span class="text-xs font-black text-red-500">جاري تسجيل الصوت...</span>
+                            <span class="text-xs font-black text-red-500">{{ __('messages.voice_recording') }}</span>
                             <span id="recording-timer" class="text-xs font-bold font-mono text-slate-300">00:00</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="إلغاء">
+                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="{{ __('messages.cancel') }}">
                                 <span class="material-symbols-outlined">delete</span>
                             </button>
-                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md" title="إرسال الصوت">
+                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md" title="{{ __('messages.send') }}">
                                 <span class="material-symbols-outlined text-lg">check</span>
                             </button>
                         </div>
@@ -190,23 +190,23 @@
                     <div id="standard-input-elements" class="flex-1 flex items-center gap-2 bg-[#1c1c20] border border-[#2d2d35] rounded-2xl px-3 py-1.5 focus-within:border-[#f2f20d] transition-all">
                         
                         <!-- File Input -->
-                        <label class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] cursor-pointer transition-colors shrink-0" title="إرفاق ملف أو صورة">
+                        <label class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] cursor-pointer transition-colors shrink-0" title="{{ __('messages.attach_file_hint') }}">
                             <span class="material-symbols-outlined text-xl">attach_file</span>
                             <input type="file" id="message-file" class="hidden" onchange="handleFileSelection(event)">
                         </label>
 
                         <!-- Input Field -->
-                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs md:text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
+                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs md:text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="{{ __('messages.type_message_placeholder') }}" type="text" autocomplete="off"/>
 
                         <!-- Microphone Button -->
-                        <button type="button" onclick="startAudioRecording()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] transition-colors shrink-0" title="تسجيل ملاحظة صوتية">
+                        <button type="button" onclick="startAudioRecording()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] transition-colors shrink-0" title="{{ __('messages.record_voice_hint') }}">
                             <span class="material-symbols-outlined text-xl">mic</span>
                         </button>
                     </div>
 
                     <!-- Send Button -->
-                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-lg shrink-0 active:scale-95 border border-[#3f3f46]" title="إرسال">
-                        <span id="send-btn-icon" class="material-symbols-outlined text-xl rotate-180">send</span>
+                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-lg shrink-0 active:scale-95 border border-[#3f3f46]" title="{{ __('messages.send') }}">
+                        <span id="send-btn-icon" class="material-symbols-outlined text-xl {{ app()->getLocale() === 'ar' ? 'rotate-180' : '' }}">send</span>
                     </button>
                 </form>
             </div>
@@ -218,7 +218,7 @@
 <div id="new-chat-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
     <div class="bg-[#141417] border border-[#27272a] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
         <div class="p-5 border-b border-[#27272a] flex items-center justify-between">
-            <h3 class="text-base font-extrabold text-white">بدء محادثة جديدة</h3>
+            <h3 class="text-base font-extrabold text-white">{{ __('messages.start_new_chat') }}</h3>
             <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-white transition-colors">
                 <span class="material-symbols-outlined text-sm">close</span>
             </button>
@@ -228,26 +228,36 @@
                 <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined text-lg">search</span>
                 </span>
-                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all" placeholder="البحث باسم المستخدم..." type="text"/>
+                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all" placeholder="{{ __('messages.search_by_username') }}" type="text"/>
             </div>
             
             <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-1.5" id="modal-contacts-list">
                 @if(isset($allUsers) && count($allUsers) > 0)
                     @foreach($allUsers as $user)
                         @php
-                            $roleAr = $user->role;
-                            $badgeClass = 'bg-[#27272a] text-slate-300';
-                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/20 text-rose-400'; $roleAr = 'الإدارة'; }
-                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/20 text-blue-400'; $roleAr = 'المدرب'; }
-                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/20 text-emerald-400'; $roleAr = 'الطالب'; }
-                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/20 text-purple-400'; $roleAr = 'الأهل'; }
-                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/20 text-amber-400'; $roleAr = 'رئيس القسم'; }
-                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/20 text-cyan-400'; $roleAr = 'الشؤون'; }
+                            $roleLabel = match($user->role) {
+                                'admin' => (app()->getLocale() === 'ar' ? 'الإدارة' : 'Admin'),
+                                'teacher' => (app()->getLocale() === 'ar' ? 'المدرب' : 'Teacher'),
+                                'student' => (app()->getLocale() === 'ar' ? 'الطالب' : 'Student'),
+                                'parent' => (app()->getLocale() === 'ar' ? 'الأهل' : 'Parent'),
+                                'head' => (app()->getLocale() === 'ar' ? 'رئيس القسم' : 'Head of Dept'),
+                                'affairs' => (app()->getLocale() === 'ar' ? 'الشؤون' : 'Affairs'),
+                                default => $user->role,
+                            };
+                            $badgeClass = match($user->role) {
+                                'admin' => 'bg-rose-500/20 text-rose-400',
+                                'teacher' => 'bg-blue-500/20 text-blue-400',
+                                'student' => 'bg-emerald-500/20 text-emerald-400',
+                                'parent' => 'bg-purple-500/20 text-purple-400',
+                                'head' => 'bg-amber-500/20 text-amber-400',
+                                'affairs' => 'bg-cyan-500/20 text-cyan-400',
+                                default => 'bg-[#27272a] text-slate-300',
+                            };
                             
                             $avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : '';
                             $initials = mb_substr(trim($user->full_name), 0, 1);
                         @endphp
-                        <div onclick="startNewChat({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-colors border border-transparent hover:border-[#27272a]" data-name="{{ strtolower($user->full_name) }}">
+                        <div onclick="startNewChat({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ $roleLabel }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-colors border border-transparent hover:border-[#27272a]" data-name="{{ strtolower($user->full_name) }}">
                             <div class="relative shrink-0 select-none">
                                 @if($user->avatar)
                                     <img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="{{ $avatarUrl }}" alt="Avatar">
@@ -260,12 +270,12 @@
                                 <div class="text-[10px] font-medium text-slate-400 truncate">{{ $user->email }}</div>
                             </div>
                             <div class="shrink-0">
-                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md {{ $badgeClass }}">{{ $roleAr }}</span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md {{ $badgeClass }}">{{ $roleLabel }}</span>
                             </div>
                         </div>
                     @endforeach
                 @else
-                    <div class="text-center py-8 text-slate-500 text-xs font-semibold">لا يوجد مستخدمين آخرين في النظام</div>
+                    <div class="text-center py-8 text-slate-500 text-xs font-semibold">{{ app()->getLocale() === 'ar' ? 'لا يوجد مستخدمين آخرين في النظام' : 'No other users in the system' }}</div>
                 @endif
             </div>
         </div>
@@ -274,7 +284,6 @@
 
 <!-- ================= CSS POLISHING ================= -->
 @push('styles')
-<!-- Material Symbols locally provided by layout -->
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -300,9 +309,7 @@
         animation: flash 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 
-    /* ========================================================
-       LIGHT MODE CHAT THEME OVERRIDES (الوضع النهاري لرئيس القسم)
-       ======================================================== */
+    /* LIGHT MODE CHAT THEME OVERRIDES */
     html:not(.dark) #chat-app-container,
     html[data-theme="light"] #chat-app-container,
     [data-theme="light"] #chat-app-container {
@@ -772,6 +779,8 @@
     let recordDurationSecs = 0;
     let isRecordingCancelled = false;
 
+    const chatLocale = "{{ app()->getLocale() }}";
+
     document.addEventListener("DOMContentLoaded", function () {
         loadContacts();
         initializeEcho();
@@ -830,6 +839,26 @@
             });
     }
 
+    function getRoleLabel(role) {
+        if (chatLocale === 'ar') {
+            if (role === 'admin') return 'الإدارة';
+            if (role === 'teacher') return 'المدرب';
+            if (role === 'student') return 'الطالب';
+            if (role === 'parent') return 'الأهل';
+            if (role === 'head') return 'رئيس القسم';
+            if (role === 'affairs') return 'الشؤون';
+            return role;
+        } else {
+            if (role === 'admin') return 'Admin';
+            if (role === 'teacher') return 'Teacher';
+            if (role === 'student') return 'Student';
+            if (role === 'parent') return 'Parent';
+            if (role === 'head') return 'Head of Dept';
+            if (role === 'affairs') return 'Affairs';
+            return role;
+        }
+    }
+
     function loadContacts() {
         const loadingDiv = document.getElementById('contacts-loading');
         const emptyDiv = document.getElementById('contacts-empty');
@@ -861,24 +890,12 @@
                         targetContact = data.data.find(c => String(c.id) === String(targetContactId));
                     }
                     if (targetContact) {
-                        let roleAr = targetContact.role;
-                        if (targetContact.role === 'admin') roleAr = 'الإدارة';
-                        else if (targetContact.role === 'teacher') roleAr = 'المدرب';
-                        else if (targetContact.role === 'student') roleAr = 'الطالب';
-                        else if (targetContact.role === 'parent') roleAr = 'الأهل';
-                        else if (targetContact.role === 'head') roleAr = 'رئيس القسم';
-                        else if (targetContact.role === 'affairs') roleAr = 'الشؤون';
-                        selectContact(targetContact.id, targetContact.name, roleAr, targetContact.image || '');
+                        const roleLabel = getRoleLabel(targetContact.role);
+                        selectContact(targetContact.id, targetContact.name, roleLabel, targetContact.image || '');
                     } else if (!activeContactId && data.data.length > 0 && window.innerWidth >= 768) {
                         const first = data.data[0];
-                        let roleAr = first.role;
-                        if (first.role === 'admin') roleAr = 'الإدارة';
-                        else if (first.role === 'teacher') roleAr = 'المدرب';
-                        else if (first.role === 'student') roleAr = 'الطالب';
-                        else if (first.role === 'parent') roleAr = 'الأهل';
-                        else if (first.role === 'head') roleAr = 'رئيس القسم';
-                        else if (first.role === 'affairs') roleAr = 'الشؤون';
-                        selectContact(first.id, first.name, roleAr, first.image || '');
+                        const roleLabel = getRoleLabel(first.role);
+                        selectContact(first.id, first.name, roleLabel, first.image || '');
                     }
                 } else {
                     emptyDiv.classList.remove('hidden');
@@ -915,25 +932,19 @@
 
         contacts.forEach(contact => {
             let badgeClass = 'bg-[#27272a] text-slate-300';
-            let roleAr = contact.role;
+            const roleLabel = getRoleLabel(contact.role);
             if (contact.role === 'admin') {
                 badgeClass = 'bg-rose-500/20 text-rose-400';
-                roleAr = 'الإدارة';
             } else if (contact.role === 'teacher') {
                 badgeClass = 'bg-blue-500/20 text-blue-400';
-                roleAr = 'المدرب';
             } else if (contact.role === 'student') {
                 badgeClass = 'bg-emerald-500/20 text-emerald-400';
-                roleAr = 'الطالب';
             } else if (contact.role === 'parent') {
                 badgeClass = 'bg-purple-500/20 text-purple-400';
-                roleAr = 'الأهل';
             } else if (contact.role === 'head') {
                 badgeClass = 'bg-amber-500/20 text-amber-400';
-                roleAr = 'رئيس القسم';
             } else if (contact.role === 'affairs') {
                 badgeClass = 'bg-cyan-500/20 text-cyan-400';
-                roleAr = 'الشؤون';
             }
 
             const unreadBadge = contact.unread > 0 
@@ -946,15 +957,15 @@
 
             const initials = contact.name.trim().charAt(0);
             
-            let lastMsgText = contact.last_message || 'ابدأ محادثة جديدة';
+            let lastMsgText = contact.last_message || (chatLocale === 'ar' ? 'ابدأ محادثة جديدة' : 'Start new chat');
             if (contact.last_message === '[Attachment]') {
-                lastMsgText = '📁 ملف مرفق';
+                lastMsgText = chatLocale === 'ar' ? '📁 ملف مرفق' : '📁 Attachment';
             } else if (contact.last_message === '[Voice Note]') {
-                lastMsgText = '🎤 رسالة صوتية';
+                lastMsgText = chatLocale === 'ar' ? '🎤 رسالة صوتية' : '🎤 Voice Note';
             }
 
             const safeName = (contact.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            const safeRole = (roleAr || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeRole = (roleLabel || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const safeImg = (contact.image || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
             const contactHtml = `
@@ -977,7 +988,7 @@
                         </div>
                         <div class="flex items-center justify-between mt-0.5">
                             <span class="text-[11px] font-medium truncate text-slate-400 max-w-[130px]">${lastMsgText}</span>
-                            <span class="text-[8px] font-bold px-2 py-0.5 rounded-md ${badgeClass}">${roleAr}</span>
+                            <span class="text-[8px] font-bold px-2 py-0.5 rounded-md ${badgeClass}">${roleLabel}</span>
                         </div>
                     </div>
                     
@@ -1104,7 +1115,7 @@
         feed.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full gap-2 text-slate-400 py-12">
                 <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#f2f20d] border-t-transparent"></div>
-                <span class="text-xs font-semibold">تحميل الرسائل...</span>
+                <span class="text-xs font-semibold">${chatLocale === 'ar' ? 'تحميل الرسائل...' : 'Loading messages...'}</span>
             </div>
         `;
 
@@ -1126,14 +1137,14 @@
                     feed.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-full text-slate-400 py-12 text-center">
                             <span class="material-symbols-outlined text-4xl text-slate-600 mb-2">forum</span>
-                            <span class="text-xs font-bold">لا توجد رسائل سابقة. ابدأ المحادثة الآن!</span>
+                            <span class="text-xs font-bold">${chatLocale === 'ar' ? 'لا توجد رسائل سابقة. ابدأ المحادثة الآن!' : 'No messages yet. Start the conversation!'}</span>
                         </div>
                     `;
                 }
             })
             .catch(err => {
                 console.error("Messages history load error: ", err);
-                feed.innerHTML = `<div class="text-center text-xs text-red-500 py-6">خطأ في تحميل أرشيف المحادثة.</div>`;
+                feed.innerHTML = `<div class="text-center text-xs text-red-500 py-6">${chatLocale === 'ar' ? 'خطأ في تحميل أرشيف المحادثة.' : 'Error loading conversation history.'}</div>`;
             });
     }
 
@@ -1146,7 +1157,7 @@
         const isMe = parseInt(msg.sender_id) === parseInt(currentUserId);
         
         const emptyState = feed.querySelector('.text-center');
-        if (emptyState && emptyState.innerText.includes('لا توجد رسائل')) {
+        if (emptyState && (emptyState.innerText.includes('لا توجد رسائل') || emptyState.innerText.includes('No messages yet'))) {
             feed.innerHTML = '';
         }
 
@@ -1155,7 +1166,7 @@
             ? 'bg-[#2d3748] text-slate-100 chat-bubble-sent shadow-md border border-[#3f3f46]/30' 
             : 'bg-[#27272a] text-slate-100 chat-bubble-received border border-[#3f3f46]/30 shadow-md';
 
-        const msgTime = new Date(msg.created_at).toLocaleTimeString('ar-EG', {
+        const msgTime = new Date(msg.created_at).toLocaleTimeString(chatLocale === 'ar' ? 'ar-EG' : 'en-US', {
             hour: '2-digit',
             minute: '2-digit'
         });
@@ -1186,10 +1197,10 @@
         let pendingOverlay = '';
         let pendingProgressHtml = '';
         if (msg.isPending) {
-            let pendingLabel = 'جاري رفع الملف...';
-            if (fileType.startsWith('image/')) pendingLabel = 'جاري رفع الصورة...';
-            else if (fileType.startsWith('video/')) pendingLabel = 'جاري رفع الفيديو...';
-            else if (fileType.startsWith('audio/') || msg.message === '[Voice Note]') pendingLabel = 'جاري رفع الصوت...';
+            let pendingLabel = chatLocale === 'ar' ? 'جاري رفع الملف...' : 'Uploading file...';
+            if (fileType.startsWith('image/')) pendingLabel = chatLocale === 'ar' ? 'جاري رفع الصورة...' : 'Uploading image...';
+            else if (fileType.startsWith('video/')) pendingLabel = chatLocale === 'ar' ? 'جاري رفع الفيديو...' : 'Uploading video...';
+            else if (fileType.startsWith('audio/') || msg.message === '[Voice Note]') pendingLabel = chatLocale === 'ar' ? 'جاري رفع الصوت...' : 'Uploading audio...';
 
             pendingOverlay = `
                 <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-xl gap-2 p-3 z-20 select-none transition-all">
@@ -1201,7 +1212,7 @@
             `;
 
             pendingProgressHtml = `
-                <div class="mt-2.5 w-full min-w-[180px] dir-rtl">
+                <div class="mt-2.5 w-full min-w-[180px] ${chatLocale === 'ar' ? 'dir-rtl' : 'dir-ltr'}">
                     <div class="w-full bg-black/20 rounded-full h-2 overflow-hidden border border-white/10">
                         <div id="progress-bar-${msg.id}" class="bg-[#f2f20d] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
                     </div>
@@ -1239,9 +1250,9 @@
                                     <div id="progress-${voiceId}" class="h-full bg-[#f2f20d] rounded-full transition-all duration-100" style="width: 0%;"></div>
                                 </div>
                                 
-                                <div class="flex items-center justify-between text-[10px] font-bold opacity-75 dir-rtl">
+                                <div class="flex items-center justify-between text-[10px] font-bold opacity-75 ${chatLocale === 'ar' ? 'dir-rtl' : 'dir-ltr'}">
                                     <span id="time-${voiceId}">00:00</span>
-                                    <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">graphic_eq</span> صوتية</span>
+                                    <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">graphic_eq</span> ${chatLocale === 'ar' ? 'صوتية' : 'Voice'}</span>
                                 </div>
                             </div>
                         </div>
@@ -1263,7 +1274,7 @@
                         <a href="${url}" download="${fileName}" target="_blank" class="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold transition-all truncate group/doc">
                             <span class="material-symbols-outlined text-[#f2f20d] shrink-0">description</span>
                             <span class="truncate text-slate-200">${displayName}</span>
-                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-[#f2f20d] text-sm mr-auto shrink-0 transition-colors">download</span>
+                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-[#f2f20d] text-sm ${chatLocale === 'ar' ? 'mr-auto' : 'ml-auto'} shrink-0 transition-colors">download</span>
                         </a>
                     </div>
                 `;
@@ -1279,14 +1290,14 @@
         const checkmarkIcon = msg.isPending
             ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
                 <span class="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
-                <span>جاري الإرسال...</span>
+                <span>${chatLocale === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>
                </span>`
             : (isRead
                 ? '<span class="material-symbols-outlined text-[10px] text-blue-400">done_all</span>'
                 : '<span class="material-symbols-outlined text-[10px] text-slate-400">done</span>');
 
         const timerIconHtml = (msg.disappears_after || msg.expires_at) 
-            ? `<span class="material-symbols-outlined text-[12px] text-amber-400 shrink-0" title="رسالة ذاتية الاختفاء">timer</span>` 
+            ? `<span class="material-symbols-outlined text-[12px] text-amber-400 shrink-0" title="${chatLocale === 'ar' ? 'رسالة ذاتية الاختفاء' : 'Disappearing message'}">timer</span>` 
             : '';
 
         const bubbleId = msg.id ? `id="msg-${msg.id}"` : '';
@@ -1302,8 +1313,8 @@
                         <span class="material-symbols-outlined text-sm">more_vert</span>
                     </button>
                     <div id="msg-options-${msg.id}" class="hidden absolute ${isMe ? 'left-0' : 'right-0'} bottom-8 mb-1 bg-[#1c1c20] rounded-xl shadow-xl border border-[#27272a] py-1 text-xs min-w-[110px] z-[99] flex flex-col">
-                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-[#27272a] text-slate-200 w-full">تعديل</button>` : ''}
-                        <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-red-500/20 text-red-400 w-full">حذف</button>
+                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 ${chatLocale === 'ar' ? 'text-right' : 'text-left'} hover:bg-[#27272a] text-slate-200 w-full">${chatLocale === 'ar' ? 'تعديل' : 'Edit'}</button>` : ''}
+                        <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 ${chatLocale === 'ar' ? 'text-right' : 'text-left'} hover:bg-red-500/20 text-red-400 w-full">${chatLocale === 'ar' ? 'حذف' : 'Delete'}</button>
                     </div>
                 </div>
             `;
@@ -1344,7 +1355,7 @@
         if (!file) return;
 
         if (file.size > 51200 * 1024) {
-            alert('حجم الملف كبير جداً! الحد الأقصى المسموح به هو 50 ميجابايت.');
+            alert(chatLocale === 'ar' ? 'حجم الملف كبير جداً! الحد الأقصى المسموح به هو 50 ميجابايت.' : 'File size is too large! Maximum allowed is 50MB.');
             return;
         }
 
@@ -1389,10 +1400,10 @@
                     }
                     cancelEditMode();
                 } else {
-                    alert('فشل التعديل: ' + data.message);
+                    alert((chatLocale === 'ar' ? 'فشل التعديل: ' : 'Edit failed: ') + data.message);
                 }
             }).catch(err => {
-                alert('خطأ في الاتصال.');
+                alert(chatLocale === 'ar' ? 'خطأ في الاتصال.' : 'Connection error.');
             });
             return;
         }
@@ -1440,10 +1451,11 @@
                 const oBar = document.getElementById(`overlay-progress-bar-${tempId}`);
                 const oText = document.getElementById(`overlay-progress-text-${tempId}`);
 
+                const uploadLabel = chatLocale === 'ar' ? 'جاري الرفع... ' : 'Uploading... ';
                 if (pBar) pBar.style.width = percent + '%';
-                if (pText) pText.innerText = `جاري الرفع... ${percent}%`;
+                if (pText) pText.innerText = `${uploadLabel}${percent}%`;
                 if (oBar) oBar.style.width = percent + '%';
-                if (oText) oText.innerText = `جاري الرفع... ${percent}%`;
+                if (oText) oText.innerText = `${uploadLabel}${percent}%`;
             }
         };
 
@@ -1462,13 +1474,13 @@
                         }
                         loadContactsSilently();
                     } else {
-                        alert('فشل في إرسال الرسالة: ' + (data.error || 'خطأ غير معروف'));
+                        alert((chatLocale === 'ar' ? 'فشل في إرسال الرسالة: ' : 'Failed to send message: ') + (data.error || 'Unknown error'));
                     }
                 } catch (e) {
-                    alert('حدث خطأ أثناء معالجة استجابة الخادم.');
+                    alert(chatLocale === 'ar' ? 'حدث خطأ أثناء معالجة استجابة الخادم.' : 'Error processing server response.');
                 }
             } else {
-                alert('فشل إرسال الرسالة. خطأ من الخادم: ' + xhr.status);
+                alert((chatLocale === 'ar' ? 'فشل إرسال الرسالة. خطأ من الخادم: ' : 'Failed to send message. Server error: ') + xhr.status);
             }
         };
 
@@ -1477,7 +1489,7 @@
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            alert('فشل إرسال الرسالة. يرجى التحقق من اتصالك بالشبكة.');
+            alert(chatLocale === 'ar' ? 'فشل إرسال الرسالة. يرجى التحقق من اتصالك بالشبكة.' : 'Failed to send message. Please check your network connection.');
         };
 
         xhr.send(fd);
@@ -1485,7 +1497,7 @@
 
     async function startAudioRecording() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('تسجيل الصوت غير مدعوم في هذا المتصفح.');
+            alert(chatLocale === 'ar' ? 'تسجيل الصوت غير مدعوم في هذا المتصفح.' : 'Audio recording is not supported in this browser.');
             return;
         }
 
@@ -1531,7 +1543,7 @@
 
         } catch (err) {
             console.error('Microphone access denied: ', err);
-            alert('لا يمكن الوصول للميكروفون. يرجى تفعيل صلاحية استخدام الميكروفون في متصفحك.');
+            alert(chatLocale === 'ar' ? 'لا يمكن الوصول للميكروفون. يرجى تفعيل صلاحية استخدام الميكروفون في متصفحك.' : 'Microphone access denied. Please allow microphone permissions in your browser.');
         }
     }
 
@@ -1642,7 +1654,7 @@
         document.getElementById('msg-options-' + id).classList.add('hidden');
         const msg = window.activeMessagesData[id];
         if (!msg || msg.attachment || msg.message === '[Voice Note]') {
-            alert('لا يمكن تعديل المرفقات أو الرسائل الصوتية.');
+            alert(chatLocale === 'ar' ? 'لا يمكن تعديل المرفقات أو الرسائل الصوتية.' : 'Cannot edit attachments or voice notes.');
             return;
         }
         editingMessageId = id;
@@ -1670,17 +1682,17 @@
         if (typeof Swal !== 'undefined') {
             if (isMe) {
                 Swal.fire({
-                    title: 'حذف الرسالة',
-                    text: 'اختر نوع الحذف المطلوب:',
+                    title: chatLocale === 'ar' ? 'حذف الرسالة' : 'Delete Message',
+                    text: chatLocale === 'ar' ? 'اختر نوع الحذف المطلوب:' : 'Select deletion option:',
                     icon: 'warning',
                     showCancelButton: true,
                     showDenyButton: true,
                     confirmButtonColor: '#ef4444',
                     denyButtonColor: '#3b82f6',
                     cancelButtonColor: '#64748b',
-                    confirmButtonText: 'حذف لدى الجميع',
-                    denyButtonText: 'حذف لدي فقط',
-                    cancelButtonText: 'إلغاء'
+                    confirmButtonText: chatLocale === 'ar' ? 'حذف لدى الجميع' : 'Delete for Everyone',
+                    denyButtonText: chatLocale === 'ar' ? 'حذف لدي فقط' : 'Delete for Me Only',
+                    cancelButtonText: chatLocale === 'ar' ? 'إلغاء' : 'Cancel'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         performDeleteMessage(id, 'everyone');
@@ -1690,14 +1702,14 @@
                 });
             } else {
                 Swal.fire({
-                    title: 'حذف الرسالة',
-                    text: 'هل أنت متأكد من حذف هذه الرسالة لديك؟',
+                    title: chatLocale === 'ar' ? 'حذف الرسالة' : 'Delete Message',
+                    text: chatLocale === 'ar' ? 'هل أنت متأكد من حذف هذه الرسالة لديك؟' : 'Are you sure you want to delete this message for yourself?',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#ef4444',
                     cancelButtonColor: '#64748b',
-                    confirmButtonText: 'حذف لدي',
-                    cancelButtonText: 'إلغاء'
+                    confirmButtonText: chatLocale === 'ar' ? 'حذف لدي' : 'Delete for Me',
+                    cancelButtonText: chatLocale === 'ar' ? 'إلغاء' : 'Cancel'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         performDeleteMessage(id, 'me');
@@ -1707,13 +1719,13 @@
         } else {
             let type = 'me';
             if (isMe) {
-                if (confirm('هل تريد حذف الرسالة لدى الجميع؟ (اضغط إلغاء للحذف لديك فقط)')) {
+                if (confirm(chatLocale === 'ar' ? 'هل تريد حذف الرسالة لدى الجميع؟ (اضغط إلغاء للحذف لديك فقط)' : 'Delete message for everyone? (Click cancel for me only)')) {
                     type = 'everyone';
-                } else if (!confirm('هل تريد حذف الرسالة لديك فقط؟')) {
+                } else if (!confirm(chatLocale === 'ar' ? 'هل تريد حذف الرسالة لديك فقط؟' : 'Delete message for yourself only?')) {
                     return;
                 }
             } else {
-                if (!confirm('هل أنت متأكد من حذف هذه الرسالة لديك؟')) return;
+                if (!confirm(chatLocale === 'ar' ? 'هل أنت متأكد من حذف هذه الرسالة لديك؟' : 'Are you sure you want to delete this message?')) return;
             }
             performDeleteMessage(id, type);
         }
@@ -1736,14 +1748,14 @@
                 loadContactsSilently();
             } else {
                 if (typeof Swal !== 'undefined') {
-                    Swal.fire('خطأ', data.message || 'فشل الحذف', 'error');
+                    Swal.fire(chatLocale === 'ar' ? 'خطأ' : 'Error', data.message || (chatLocale === 'ar' ? 'فشل الحذف' : 'Delete failed'), 'error');
                 } else {
-                    alert('فشل الحذف: ' + (data.message || 'خطأ غير معروف'));
+                    alert((chatLocale === 'ar' ? 'فشل الحذف: ' : 'Delete failed: ') + (data.message || 'Unknown error'));
                 }
             }
         }).catch(err => {
             console.error("Delete error:", err);
-            alert('خطأ في الاتصال أثناء تنفيذ عملية الحذف.');
+            alert(chatLocale === 'ar' ? 'خطأ في الاتصال أثناء تنفيذ عملية الحذف.' : 'Connection error during deletion.');
         });
     }
 
@@ -1764,7 +1776,7 @@
                     data.data.slice().reverse().forEach(msg => appendMessageBubble(msg));
                     scrollMessagesToBottom();
                 } else {
-                    feed.innerHTML = `<div class="text-center text-xs text-slate-400 py-6">لا توجد نتائج مطابقة لـ "${query}"</div>`;
+                    feed.innerHTML = `<div class="text-center text-xs text-slate-400 py-6">${chatLocale === 'ar' ? 'لا توجد نتائج مطابقة لـ' : 'No matching results for'} "${query}"</div>`;
                 }
             });
     }
@@ -1814,10 +1826,11 @@
                 const oBar = document.getElementById(`overlay-progress-bar-${tempId}`);
                 const oText = document.getElementById(`overlay-progress-text-${tempId}`);
 
+                const uploadAudioLabel = chatLocale === 'ar' ? 'جاري رفع الصوت... ' : 'Uploading audio... ';
                 if (pBar) pBar.style.width = percent + '%';
-                if (pText) pText.innerText = `جاري رفع الصوت... ${percent}%`;
+                if (pText) pText.innerText = `${uploadAudioLabel}${percent}%`;
                 if (oBar) oBar.style.width = percent + '%';
-                if (oText) oText.innerText = `جاري رفع الصوت... ${percent}%`;
+                if (oText) oText.innerText = `${uploadAudioLabel}${percent}%`;
             }
         };
 
@@ -1836,13 +1849,13 @@
                         }
                         loadContactsSilently();
                     } else {
-                        alert('فشل إرسال الملاحظة الصوتية: ' + (data.error || 'خطأ غير معروف'));
+                        alert((chatLocale === 'ar' ? 'فشل إرسال الملاحظة الصوتية: ' : 'Failed to send voice note: ') + (data.error || 'Unknown error'));
                     }
                 } catch (e) {
-                    alert('حدث خطأ أثناء معالجة استجابة الخادم.');
+                    alert(chatLocale === 'ar' ? 'حدث خطأ أثناء معالجة استجابة الخادم.' : 'Error processing server response.');
                 }
             } else {
-                alert('فشل إرسال الصوت. خطأ الخادم: ' + xhr.status);
+                alert((chatLocale === 'ar' ? 'فشل إرسال الصوت. خطأ الخادم: ' : 'Failed to send audio. Server error: ') + xhr.status);
             }
         };
 
@@ -1851,7 +1864,7 @@
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            alert('فشل إرسال الملاحظة الصوتية. يرجى التحقق من اتصالك بالشبكة.');
+            alert(chatLocale === 'ar' ? 'فشل إرسال الملاحظة الصوتية. يرجى التحقق من اتصالك بالشبكة.' : 'Failed to send voice note. Please check your network connection.');
         };
 
         xhr.send(fd);
@@ -1864,13 +1877,13 @@
 <div id="image-lightbox-modal" class="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md hidden flex flex-col items-center justify-between p-4 md:p-6 transition-all duration-300 opacity-0 select-none">
     <div class="w-full flex items-center justify-between text-white max-w-5xl z-10">
         <button type="button" onclick="closeImageLightbox()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold transition-all text-slate-200 hover:text-white backdrop-blur-sm">
-            <span class="material-symbols-outlined text-lg">arrow_back</span>
-            <span>رجوع للمحادثة</span>
+            <span class="material-symbols-outlined text-lg">{{ app()->getLocale() === 'ar' ? 'arrow_forward' : 'arrow_back' }}</span>
+            <span>{{ app()->getLocale() === 'ar' ? 'رجوع للمحادثة' : 'Back to chat' }}</span>
         </button>
         <div class="flex items-center gap-3">
             <a id="lightbox-download-btn" href="#" download target="_blank" class="flex items-center gap-2 px-5 py-2 rounded-full bg-[#f2f20d] text-black font-bold text-xs hover:bg-[#d9d90b] transition-all shadow-lg active:scale-95">
                 <span class="material-symbols-outlined text-base">download</span>
-                <span>تنزيل الصورة</span>
+                <span>{{ app()->getLocale() === 'ar' ? 'تنزيل الصورة' : 'Download Image' }}</span>
             </a>
             <button type="button" onclick="closeImageLightbox()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all backdrop-blur-sm">
                 <span class="material-symbols-outlined text-xl">close</span>
@@ -1879,7 +1892,7 @@
     </div>
     
     <div class="flex-1 flex items-center justify-center w-full max-w-5xl my-4 overflow-hidden" onclick="closeImageLightbox()">
-        <img id="lightbox-image" src="" alt="صورة المعاينة" class="max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
+        <img id="lightbox-image" src="" alt="Preview" class="max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
     </div>
 </div>
 
@@ -1907,7 +1920,7 @@
             if (btnLabel) btnLabel.innerText = label;
         } else {
             if (banner) banner.classList.add('hidden');
-            if (btnLabel) btnLabel.innerText = 'ذاتية الاختفاء';
+            if (btnLabel) btnLabel.innerText = "{{ __('messages.disappearing_messages') }}";
         }
     }
 

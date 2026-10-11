@@ -80,11 +80,13 @@ html[dir="ltr"], html[dir="ltr"] body {
 }
 
 [dir="rtl"] .sidebar {
-    right: 0;
+    right: 0 !important;
+    left: auto !important;
 }
 
 [dir="ltr"] .sidebar {
-    left: 0;
+    left: 0 !important;
+    right: auto !important;
 }
 
 .brand {

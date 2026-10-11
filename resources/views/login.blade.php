@@ -40,8 +40,8 @@
 
         .login-wrapper {
             width: 100%;
-            max-width: 420px;
-            padding: 2rem;
+            max-width: 480px;
+            padding: 2rem 1.25rem;
             animation: fadeIn 0.4s ease-out;
         }
 
@@ -53,10 +53,44 @@
         .login-card {
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
+            border-radius: 20px;
             padding: 2.5rem;
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
             position: relative;
+        }
+
+        .card-header-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-lang-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.95rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .card-lang-pill:hover {
+            background: rgba(250, 204, 21, 0.12);
+            border-color: var(--accent-yellow);
+            color: var(--accent-yellow);
+            transform: translateY(-1px);
+        }
+
+        .card-lang-pill i {
+            color: var(--accent-yellow);
+            font-size: 0.9rem;
         }
 
         @media (max-width: 480px) {
@@ -279,12 +313,16 @@
 </head>
 <body>
 
-    <div style="position: fixed; top: 1.25rem; {{ app()->getLocale() === 'ar' ? 'left: 1.25rem;' : 'right: 1.25rem;' }} z-index: 9999;">
-        @include('components.lang-switcher')
-    </div>
-
     <div class="login-wrapper">
         <div class="login-card">
+            <div class="card-header-actions">
+                <a href="{{ route('lang.switch', app()->getLocale() === 'ar' ? 'en' : 'ar') }}" 
+                   class="card-lang-pill"
+                   title="{{ app()->getLocale() === 'ar' ? 'Switch to English' : 'التحويل إلى العربية' }}">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>{{ app()->getLocale() === 'ar' ? 'English' : 'العربية' }}</span>
+                </a>
+            </div>
             
             <div class="logo-section">
                 <i class="fa-solid {{ $role['icon'] ?? 'fa-graduation-cap' }} logo-icon"></i>

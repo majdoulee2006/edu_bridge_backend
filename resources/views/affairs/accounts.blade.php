@@ -1,6 +1,6 @@
 @extends('layouts.affairs')
 
-@section('title', 'إدارة الحسابات')
+@section('title', __('messages.accounts_management'))
 
 @section('content')
 <div class="space-y-5">
@@ -13,19 +13,19 @@
             </div>
             <div>
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    كافة الحسابات
+                    {{ __('messages.all_accounts') }}
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-primary/20 text-slate-900 dark:text-primary">
                         {{ $counts['all'] ?? 0 }}
                     </span>
                 </h2>
-                <p class="text-xs text-slate-400">عرض وإدارة مستخدمي النظام بكل سهولة</p>
+                <p class="text-xs text-slate-400">{{ __('messages.accounts_subtitle') }}</p>
             </div>
         </div>
 
         <!-- Single Create Account Button (+) -->
         <button type="button" onclick="openModal('createAccountModal')" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-slate-950 font-bold text-xs hover:bg-primary-hover transition-all shadow-md shadow-primary/20 active:scale-95 cursor-pointer shrink-0">
             <span class="material-symbols-outlined font-black text-lg">add</span>
-            <span>إنشاء حساب جديد</span>
+            <span>{{ __('messages.create_new_account') }}</span>
         </button>
     </div>
 
@@ -37,12 +37,12 @@
                     <span class="material-symbols-outlined text-amber-500 text-2xl animate-pulse">pending_actions</span>
                     <div>
                         <h3 class="text-sm font-bold text-amber-900 dark:text-amber-300 flex items-center gap-2">
-                            طلبات إنشاء الحسابات بانتظار الاعتماد
+                            {{ __('messages.pending_accounts_section_title') }}
                             <span class="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950">
                                 {{ count($pendingUsers) }}
                             </span>
                         </h3>
-                        <p class="text-xs text-amber-700/80 dark:text-amber-400/80">طلبات جديدة تم تقديمها من الويب/التطبيق وبانتظار موافقة الشؤون</p>
+                        <p class="text-xs text-amber-700/80 dark:text-amber-400/80">{{ __('messages.pending_accounts_section_desc') }}</p>
                     </div>
                 </div>
             </div>
@@ -59,27 +59,27 @@
                                     <h4 class="text-xs font-bold text-slate-900 dark:text-white">{{ $pUser->full_name }}</h4>
                                     <p class="text-[11px] text-slate-400">{{ $pUser->email ?? $pUser->phone }}</p>
                                     <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                                        {{ $pUser->role_id == 3 ? 'طالب' : ($pUser->role_id == 4 ? 'ولي أمر' : 'مستخدم') }}
+                                        {{ $pUser->role_id == 3 ? __('messages.role_student') : ($pUser->role_id == 4 ? __('messages.role_parent') : __('messages.user')) }}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-3">
-                            <span class="text-[10px] text-slate-400">{{ \Carbon\Carbon::parse($pUser->created_at)->diffForHumans() }}</span>
+                            <span class="text-[10px] text-slate-400">{{ \Carbon\Carbon::parse($pUser->created_at)->locale(app()->getLocale())->diffForHumans() }}</span>
                             <div class="flex items-center gap-1.5">
-                                <form action="{{ route('affairs.pending_accounts.reject', $pUser->user_id) }}" method="POST" class="inline" onsubmit="return confirm('هل تريد بالتأكيد رفض وحذف هذا الطلب؟')">
+                                <form action="{{ route('affairs.pending_accounts.reject', $pUser->user_id) }}" method="POST" class="inline" onsubmit="return confirm('{{ __('messages.confirm_reject_account') }}')">
                                     @csrf
-                                    <button type="submit" class="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1" title="رفض الطلب">
+                                    <button type="submit" class="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1" title="{{ __('messages.reject_request') }}">
                                         <span class="material-symbols-outlined text-sm">close</span>
-                                        <span>رفض</span>
+                                        <span>{{ __('messages.reject_request') }}</span>
                                     </button>
                                 </form>
                                 <form action="{{ route('affairs.pending_accounts.approve', $pUser->user_id) }}" method="POST" class="inline">
                                     @csrf
                                     <button type="submit" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1">
                                         <span class="material-symbols-outlined text-sm">check_circle</span>
-                                        <span>اعتماد الحساب</span>
+                                        <span>{{ __('messages.approve_account') }}</span>
                                     </button>
                                 </form>
                             </div>
@@ -98,37 +98,37 @@
             <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                 <a href="{{ route('affairs.accounts', ['role' => 'all', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'all' ? 'bg-primary text-slate-950 font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>الكل</span>
+                    <span>{{ __('messages.all') }}</span>
                     <span class="opacity-75">({{ $counts['all'] ?? 0 }})</span>
                 </a>
 
                 <a href="{{ route('affairs.accounts', ['role' => 'student', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'student' ? 'bg-blue-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>الطلاب</span>
+                    <span>{{ __('messages.role_students') }}</span>
                     <span class="opacity-75">({{ $counts['student'] ?? 0 }})</span>
                 </a>
 
                 <a href="{{ route('affairs.accounts', ['role' => 'teacher', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'teacher' ? 'bg-emerald-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>المعلمون</span>
+                    <span>{{ __('messages.role_teachers') }}</span>
                     <span class="opacity-75">({{ $counts['teacher'] ?? 0 }})</span>
                 </a>
 
                 <a href="{{ route('affairs.accounts', ['role' => 'hod', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'hod' ? 'bg-purple-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>رؤساء الأقسام</span>
+                    <span>{{ __('messages.role_hods') }}</span>
                     <span class="opacity-75">({{ $counts['hod'] ?? 0 }})</span>
                 </a>
 
                 <a href="{{ route('affairs.accounts', ['role' => 'parent', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'parent' ? 'bg-orange-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>أولياء الأمور</span>
+                    <span>{{ __('messages.role_parents') }}</span>
                     <span class="opacity-75">({{ $counts['parent'] ?? 0 }})</span>
                 </a>
 
                 <a href="{{ route('affairs.accounts', ['role' => 'affairs', 'search' => $search]) }}" 
                    class="px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 {{ $roleFilter === 'affairs' ? 'bg-rose-500 text-white font-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
-                    <span>الشؤون</span>
+                    <span>{{ __('messages.role_affairs_officer') }}</span>
                     <span class="opacity-75">({{ $counts['affairs'] ?? 0 }})</span>
                 </a>
             </div>
@@ -137,21 +137,21 @@
         <!-- Search Bar Input -->
         <form action="{{ route('affairs.accounts') }}" method="GET" class="relative">
             <input type="hidden" name="role" value="{{ $roleFilter }}">
-            <span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+            <span class="material-symbols-outlined absolute {{ app()->getLocale() === 'en' ? 'left-3.5' : 'right-3.5' }} top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
             <input type="text" 
                    name="search" 
                    value="{{ $search }}" 
-                   placeholder="بحث بالاسم، اسم المستخدم، البريد، أو الهاتف..." 
-                   class="w-full pr-10 pl-20 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary transition-colors">
+                   placeholder="{{ __('messages.search_accounts_ph') }}" 
+                   class="w-full {{ app()->getLocale() === 'en' ? 'pl-10 pr-20' : 'pr-10 pl-20' }} py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary transition-colors">
             
-            <div class="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <div class="absolute {{ app()->getLocale() === 'en' ? 'right-2' : 'left-2' }} top-1/2 -translate-y-1/2 flex items-center gap-1">
                 @if(!empty($search))
                     <a href="{{ route('affairs.accounts', ['role' => $roleFilter]) }}" class="px-2 py-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        إلغاء
+                        {{ __('messages.cancel') }}
                     </a>
                 @endif
                 <button type="submit" class="px-3 py-1 bg-slate-800 text-white dark:bg-primary dark:text-slate-950 rounded-lg text-[11px] font-bold">
-                    بحث
+                    {{ __('messages.search') }}
                 </button>
             </div>
         </form>
@@ -160,15 +160,15 @@
     <!-- Accounts Minimal Clean Table with 4 Action Icons -->
     <div class="bg-white dark:bg-surface-dark rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-right border-collapse">
+            <table class="w-full {{ app()->getLocale() === 'en' ? 'text-left' : 'text-right' }} border-collapse">
                 <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-                        <th class="py-3 px-4">المستخدم والنوع</th>
-                        <th class="py-3 px-4">معرف الحساب</th>
-                        <th class="py-3 px-4">بيانات التواصل</th>
-                        <th class="py-3 px-4 text-center">الحالة</th>
-                        <th class="py-3 px-4 text-center">التاريخ</th>
-                        <th class="py-3 px-4 text-center">إجراءات</th>
+                        <th class="py-3 px-4">{{ __('messages.user_and_role') }}</th>
+                        <th class="py-3 px-4">{{ __('messages.account_id') }}</th>
+                        <th class="py-3 px-4">{{ __('messages.contact_info') }}</th>
+                        <th class="py-3 px-4 text-center">{{ __('messages.status') }}</th>
+                        <th class="py-3 px-4 text-center">{{ __('messages.date') }}</th>
+                        <th class="py-3 px-4 text-center">{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
@@ -201,12 +201,12 @@
                                             {{ $usr->full_name }}
                                         </div>
                                         <span class="text-[10px] font-semibold text-slate-400">
-                                            @if($usr->role_id == 3) طالب
-                                            @elseif($usr->role_id == 2) معلم / مدرب
-                                            @elseif($usr->role_id == 5) رئيس قسم
-                                            @elseif($usr->role_id == 4) ولي أمر
-                                            @elseif($usr->role_id == 6) موظف شؤون
-                                            @else مستخدم
+                                            @if($usr->role_id == 3) {{ __('messages.role_student') }}
+                                            @elseif($usr->role_id == 2) {{ __('messages.teacher_trainer') }}
+                                            @elseif($usr->role_id == 5) {{ __('messages.role_hod') }}
+                                            @elseif($usr->role_id == 4) {{ __('messages.role_parent') }}
+                                            @elseif($usr->role_id == 6) {{ __('messages.role_affairs_officer') }}
+                                            @else {{ __('messages.user') }}
                                             @endif
                                         </span>
                                     </div>
@@ -233,7 +233,7 @@
                             <td class="py-3.5 px-4 text-center">
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold {{ $usr->status === 'active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500' }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $usr->status === 'active' ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
-                                    {{ $usr->status === 'active' ? 'نشط' : 'معلق' }}
+                                    {{ $usr->status === 'active' ? __('messages.active') : __('messages.pending') }}
                                 </span>
                             </td>
 
@@ -248,37 +248,37 @@
                                     <!-- 1. تعديل (Edit) -->
                                     <button type="button" 
                                             onclick="openEditModal({{ $usr->user_id }}, '{{ addslashes($usr->full_name) }}', '{{ addslashes($usr->email ?? '') }}', '{{ addslashes($usr->phone ?? '') }}')" 
-                                            class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm" 
-                                            title="تعديل بيانات الحساب">
+                                            class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm cursor-pointer" 
+                                            title="{{ __('messages.edit_account_details') }}">
                                         <span class="material-symbols-outlined text-base">edit</span>
                                     </button>
 
                                     <!-- 2. إيقاف / تفعيل (Toggle Status) -->
-                                    <form action="{{ route('affairs.accounts.toggle', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('هل أنت متأكد من {{ $usr->status === 'active' ? 'إيقاف' : 'تفعيل' }} حساب ({{ $usr->full_name }})؟')">
+                                    <form action="{{ route('affairs.accounts.toggle', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('{{ $usr->status === 'active' ? __('messages.deactivate_account') : __('messages.activate_account') }}: {{ addslashes($usr->full_name) }}?')">
                                         @csrf
                                         @if($usr->status === 'active')
-                                            <button type="submit" class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm" title="إيقاف الحساب">
+                                            <button type="submit" class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm cursor-pointer" title="{{ __('messages.deactivate_account') }}">
                                                 <span class="material-symbols-outlined text-base">block</span>
                                             </button>
                                         @else
-                                            <button type="submit" class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm" title="تفعيل الحساب">
+                                            <button type="submit" class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm cursor-pointer" title="{{ __('messages.activate_account') }}">
                                                 <span class="material-symbols-outlined text-base">check_circle</span>
                                             </button>
                                         @endif
                                     </form>
 
                                     <!-- 3. فك ربط (Unlink Device / Sessions) -->
-                                    <form action="{{ route('affairs.accounts.unlink', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('هل أنت متأكد من فك ربط حساب ({{ $usr->full_name }})؟\n\n- للطلاب: سيتم فك ربط الجهاز الحالي ليتسنى له الدخول من جهاز جديد.\n- لأولياء الأمور: فك ربط الأبناء بالجلسة.\n- سيتم إنهاء كافة الجلسات النشطة للمستخدم.')">
+                                    <form action="{{ route('affairs.accounts.unlink', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('{{ __('messages.unlink_device_sessions') }}: {{ addslashes($usr->full_name) }}?')">
                                         @csrf
-                                        <button type="submit" class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm" title="فك ربط الجهاز والجلسات">
+                                        <button type="submit" class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm cursor-pointer" title="{{ __('messages.unlink_device_sessions') }}">
                                             <span class="material-symbols-outlined text-base">link_off</span>
                                         </button>
                                     </form>
 
                                     <!-- 4. حذف (Delete) -->
-                                    <form action="{{ route('affairs.accounts.delete', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('تحذير نهائي: هل أنت متأكد من حذف حساب ({{ $usr->full_name }})؟\nهذا الإجراء سيقوم بحذف كافة السجلات التابعة للحساب نهائياً.')">
+                                    <form action="{{ route('affairs.accounts.delete', $usr->user_id) }}" method="POST" class="inline-block" onsubmit="return confirm('{{ __('messages.delete_account') }}: {{ addslashes($usr->full_name) }}?')">
                                         @csrf
-                                        <button type="submit" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm" title="حذف الحساب">
+                                        <button type="submit" class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors inline-flex items-center justify-center shadow-sm cursor-pointer" title="{{ __('messages.delete_account') }}">
                                             <span class="material-symbols-outlined text-base">delete</span>
                                         </button>
                                     </form>
@@ -289,7 +289,7 @@
                         <tr>
                             <td colspan="6" class="py-12 text-center text-slate-400">
                                 <span class="material-symbols-outlined text-4xl mb-2 text-slate-500">search_off</span>
-                                <p class="text-xs font-bold">لا توجد حسابات مسجلة تطابق التصفية الحالية</p>
+                                <p class="text-xs font-bold">{{ __('messages.no_matching_accounts') }}</p>
                             </td>
                         </tr>
                     @endforelse
@@ -315,9 +315,9 @@
         <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary text-xl">person_add</span>
-                إنشاء حساب جديد
+                {{ __('messages.create_new_account') }}
             </h3>
-            <button type="button" onclick="closeModal('createAccountModal')" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+            <button type="button" onclick="closeModal('createAccountModal')" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
@@ -325,33 +325,33 @@
         <form action="{{ route('affairs.accounts.store') }}" method="POST" class="space-y-4 mt-4">
             @csrf
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الاسم الكامل <span class="text-rose-500">*</span></label>
-                <input type="text" name="full_name" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" placeholder="أدخل اسم المستخدم الكامل" required>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.full_name') }} <span class="text-rose-500">*</span></label>
+                <input type="text" name="full_name" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" placeholder="{{ __('messages.enter_full_name_ph') }}" required>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">البريد الإلكتروني <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.email') }} <span class="text-rose-500">*</span></label>
                 <input type="email" name="email" dir="ltr" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" placeholder="example@edu-bridge.com" required>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">رقم الهاتف</label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.phone') }}</label>
                 <input type="tel" name="phone" dir="ltr" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" placeholder="09xxxxxxxx">
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">نوع الحساب (الدور) <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.account_role') }} <span class="text-rose-500">*</span></label>
                 <select name="role_id" id="create_role_id" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" required onchange="toggleAffairsExtraFields()">
-                    <option value="">-- اختر الدور --</option>
-                    <option value="2">معلم / مدرب</option>
-                    <option value="5">رئيس قسم</option>
+                    <option value="">{{ __('messages.select_role_ph') }}</option>
+                    <option value="2">{{ __('messages.teacher_trainer') }}</option>
+                    <option value="5">{{ __('messages.role_hod') }}</option>
                 </select>
             </div>
 
             <div id="create_dept_group" style="display:none;">
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">القسم الأكاديمي <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.academic_department') }} <span class="text-rose-500">*</span></label>
                 <select name="department_id" id="create_department_id" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" onchange="filterAffairsCoursesByDept()">
-                    <option value="">-- اختر القسم --</option>
+                    <option value="">{{ __('messages.select_dept_ph') }}</option>
                     @foreach($departments as $dept)
                         <option value="{{ $dept->department_id }}">{{ $dept->name }}</option>
                     @endforeach
@@ -359,33 +359,33 @@
             </div>
 
             <div id="create_spec_group" style="display:none;">
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الاختصاص (الفرع)</label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.specialization_branch') }}</label>
                 <select name="specialization" id="create_spec_select" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary">
-                    <option value="">الرجاء اختيار القسم أولاً</option>
+                    <option value="">{{ __('messages.select_dept_first') }}</option>
                 </select>
             </div>
 
             <div id="create_courses_group" style="display:none;">
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الدورات (المواد الموكلة)</label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.assigned_courses') }}</label>
                 <select name="courses[]" id="create_courses_select" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" multiple style="height: 110px;">
                     @foreach($courses as $course)
                         <option value="{{ $course->course_id }}">{{ $course->title }}</option>
                     @endforeach
                 </select>
-                <small class="text-[11px] text-slate-400 block mt-1">اضغط Ctrl لتحديد أكثر من مادة</small>
+                <small class="text-[11px] text-slate-400 block mt-1">{{ __('messages.ctrl_multiselect_hint') }}</small>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">كلمة المرور المؤقتة <span class="text-rose-500">*</span></label>
-                <input type="password" name="password" minlength="6" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" placeholder="على الأقل 6 خانات" required>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.temp_password') }} <span class="text-rose-500">*</span></label>
+                <input type="password" name="password" minlength="6" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary" placeholder="{{ __('messages.at_least_6_chars') }}" required>
             </div>
 
             <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-                <button type="button" onclick="closeModal('createAccountModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                    إلغاء
+                <button type="button" onclick="closeModal('createAccountModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    {{ __('messages.cancel') }}
                 </button>
-                <button type="submit" class="px-5 py-2 rounded-xl bg-primary text-slate-950 font-bold text-xs hover:bg-primary-hover shadow-md shadow-primary/20 active:scale-95 transition-all">
-                    حفظ وإنشاء الحساب
+                <button type="submit" class="px-5 py-2 rounded-xl bg-primary text-slate-950 font-bold text-xs hover:bg-primary-hover shadow-md shadow-primary/20 active:scale-95 transition-all cursor-pointer">
+                    {{ __('messages.save_and_create') }}
                 </button>
             </div>
         </form>
@@ -402,9 +402,9 @@
         <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="material-symbols-outlined text-blue-500 text-xl">edit</span>
-                تعديل بيانات الحساب
+                {{ __('messages.edit_account_details') }}
             </h3>
-            <button type="button" onclick="closeModal('editAccountModal')" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+            <button type="button" onclick="closeModal('editAccountModal')" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
@@ -412,39 +412,39 @@
         <form id="editAccountForm" method="POST" class="space-y-4 mt-4">
             @csrf
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الاسم الكامل <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.full_name') }} <span class="text-rose-500">*</span></label>
                 <input type="text" id="edit_full_name" name="full_name" required class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary">
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">البريد الإلكتروني <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.email') }} <span class="text-rose-500">*</span></label>
                 <input type="email" id="edit_email" name="email" required dir="ltr" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary">
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">رقم الهاتف</label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.phone') }}</label>
                 <input type="tel" id="edit_phone" name="phone" dir="ltr" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary">
             </div>
 
             <div>
                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    كلمة المرور الجديدة 
-                    <span class="text-[11px] text-slate-400 font-normal">(اتركها فارغة إذا لم ترد التغيير)</span>
+                    {{ __('messages.new_password') }} 
+                    <span class="text-[11px] text-slate-400 font-normal">{{ __('messages.leave_empty_unchanged') }}</span>
                 </label>
                 <input type="password" id="edit_password" name="password" minlength="6" placeholder="••••••••" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary">
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">تأكيد كلمة المرور الجديدة</label>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{{ __('messages.confirm_new_password') }}</label>
                 <input type="password" id="edit_password_confirmation" name="password_confirmation" placeholder="••••••••" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-primary">
             </div>
 
             <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-                <button type="button" onclick="closeModal('editAccountModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                    إلغاء
+                <button type="button" onclick="closeModal('editAccountModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                    {{ __('messages.cancel') }}
                 </button>
-                <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all">
-                    حفظ التعديلات
+                <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer">
+                    {{ __('messages.save_edits') }}
                 </button>
             </div>
         </form>
@@ -513,12 +513,12 @@
         
         if (!deptId) {
             const optCourse = document.createElement('option');
-            optCourse.value = ""; optCourse.text = "الرجاء اختيار القسم أولاً";
+            optCourse.value = ""; optCourse.text = "{{ __('messages.select_dept_first') }}";
             optCourse.disabled = true; optCourse.selected = true;
             coursesSelect.appendChild(optCourse);
 
             const optSpec = document.createElement('option');
-            optSpec.value = ""; optSpec.text = "الرجاء اختيار القسم أولاً";
+            optSpec.value = ""; optSpec.text = "{{ __('messages.select_dept_first') }}";
             optSpec.disabled = true; optSpec.selected = true;
             specSelect.appendChild(optSpec);
             return;
@@ -527,7 +527,7 @@
         const courses = deptCourses[deptId] || [];
         if(courses.length === 0) {
             const opt = document.createElement('option');
-            opt.value = ""; opt.text = "لا توجد مواد لهذا القسم";
+            opt.value = ""; opt.text = "{{ __('messages.no_courses_for_dept') }}";
             opt.disabled = true; opt.selected = true;
             coursesSelect.appendChild(opt);
         } else {
@@ -542,7 +542,7 @@
         const branches = deptBranches[deptId] || [];
         if(branches.length === 0) {
             const opt = document.createElement('option');
-            opt.value = ""; opt.text = "لا توجد أفرع لهذا القسم";
+            opt.value = ""; opt.text = "{{ __('messages.no_branches_for_dept') }}";
             opt.disabled = true; opt.selected = true;
             specSelect.appendChild(opt);
         } else {

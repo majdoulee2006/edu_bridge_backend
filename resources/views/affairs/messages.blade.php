@@ -1,6 +1,6 @@
 @extends('layouts.affairs')
 
-@section('title', 'الرسائل')
+@section('title', __('messages.messages'))
 
 @section('content')
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
@@ -11,8 +11,8 @@
         
         <!-- Header & Search Title -->
         <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-extrabold text-white tracking-wide">مكان للبحث عن</h2>
-            <button type="button" onclick="openNewChatModal()" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md" title="محادثة جديدة">
+            <h2 class="text-base font-extrabold text-white tracking-wide">{{ __('messages.messages') }}</h2>
+            <button type="button" onclick="openNewChatModal()" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md" title="{{ __('messages.new_chat') }}">
                 <span class="material-symbols-outlined text-lg">add_comment</span>
             </button>
         </div>
@@ -22,18 +22,18 @@
             <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                 <span class="material-symbols-outlined text-lg">search</span>
             </span>
-            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="ابحث عن الطلاب والموظفين..." type="text"/>
+            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="{{ __('messages.search_contacts_placeholder') }}" type="text"/>
         </div>
 
         <!-- Section Title -->
-        <div class="text-[11px] font-bold text-slate-400 mb-2 px-1">أحدث المحادثات</div>
+        <div class="text-[11px] font-bold text-slate-400 mb-2 px-1">{{ __('messages.recent_chats') }}</div>
 
         <!-- Contacts Scrollable List -->
         <div class="flex-1 overflow-y-auto hide-scrollbar space-y-1.5 pr-1" id="contacts-list-container">
             <!-- Loading Indicator -->
             <div id="contacts-loading" class="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
                 <div class="animate-spin rounded-full h-7 w-7 border-2 border-[#f2f20d] border-t-transparent"></div>
-                <span class="text-xs font-semibold">جاري تحميل المحادثات...</span>
+                <span class="text-xs font-semibold">{{ __('messages.loading_chats') }}</span>
             </div>
             
             <!-- Dynamic Contacts List Wrapper -->
@@ -41,7 +41,7 @@
             
             <div id="contacts-empty" class="hidden flex flex-col items-center justify-center py-12 text-slate-400 text-center px-4">
                 <span class="material-symbols-outlined text-4xl mb-2 text-slate-600">contact_support</span>
-                <span class="text-xs font-bold">لا توجد جهات اتصال متاحة</span>
+                <span class="text-xs font-bold">{{ __('messages.no_contacts_available') }}</span>
             </div>
         </div>
     </div>
@@ -54,8 +54,8 @@
             <div class="w-20 h-20 rounded-full bg-[#1c1c20] border border-[#27272a] flex items-center justify-center text-[#f2f20d] mb-5 shadow-lg">
                 <span class="material-symbols-outlined text-4xl">forum</span>
             </div>
-            <h3 class="text-base font-black text-white mb-2">مرحباً بك في نظام المحادثات الفورية</h3>
-            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">اختر إحدى المحادثات المتاحة في القائمة للبدء أو انقر على زر إضافة محادثة لبدء تواصل جديد.</p>
+            <h3 class="text-base font-black text-white mb-2">{{ __('messages.welcome_chat_title') }}</h3>
+            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">{{ __('messages.welcome_chat_desc') }}</p>
         </div>
 
         <!-- Active Chat Window Container -->
@@ -66,7 +66,7 @@
                 <div class="flex items-center gap-3">
                     <!-- Mobile Back Arrow -->
                     <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-[#27272a] text-slate-300 hover:bg-[#3f3f46]">
-                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                        <span class="material-symbols-outlined text-lg">{{ app()->getLocale() === 'ar' ? 'arrow_forward' : 'arrow_back' }}</span>
                     </button>
 
                     <!-- Contact Avatar & Status -->
@@ -85,7 +85,7 @@
                             <span id="active-contact-role" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#27272a] text-slate-300">...</span>
                         </div>
                         <span class="text-[10px] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متصل الآن
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ __('messages.online_now') }}
                         </span>
                     </div>
                 </div>
@@ -94,35 +94,35 @@
                 <div class="flex items-center gap-2">
                     <!-- Disappearing Timer Menu Dropdown -->
                     <div class="relative">
-                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] text-slate-300 hover:text-[#f2f20d] text-xs font-semibold transition-all border border-[#27272a]" title="الرسائل ذاتية الاختفاء">
+                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] text-slate-300 hover:text-[#f2f20d] text-xs font-semibold transition-all border border-[#27272a]" title="{{ __('messages.disappearing_messages') }}">
                             <span class="material-symbols-outlined text-base text-amber-400">timer</span>
-                            <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
+                            <span id="disappearing-btn-label" class="hidden sm:inline">{{ __('messages.disappearing_messages') }}</span>
                         </button>
                         
                         <!-- Dropdown Options -->
                         <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-[#1c1c20] rounded-xl shadow-2xl border border-[#27272a] p-2 text-xs min-w-[200px] z-[99] space-y-1">
-                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">مؤقت اختفاء الرسائل الجديدة</div>
-                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>🚫 إيقاف (رسائل دائمة)</span>
+                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">{{ __('messages.disappearing_messages') }}</div>
+                            <button type="button" onclick="setDisappearingTimer(0, '{{ app()->getLocale() === 'ar' ? 'إيقاف' : 'Off' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>🚫 {{ app()->getLocale() === 'ar' ? 'إيقاف (رسائل دائمة)' : 'Off (Permanent)' }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 5 دقائق</span>
+                            <button type="button" onclick="setDisappearingTimer(300, '{{ app()->getLocale() === 'ar' ? '5 دقائق' : '5 Minutes' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ {{ app()->getLocale() === 'ar' ? '5 دقائق' : '5 Minutes' }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ ساعة واحدة</span>
+                            <button type="button" onclick="setDisappearingTimer(3600, '{{ app()->getLocale() === 'ar' ? 'ساعة واحدة' : '1 Hour' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ {{ app()->getLocale() === 'ar' ? 'ساعة واحدة' : '1 Hour' }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 24 ساعة (يوم)</span>
+                            <button type="button" onclick="setDisappearingTimer(86400, '{{ app()->getLocale() === 'ar' ? '24 ساعة' : '24 Hours' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ {{ app()->getLocale() === 'ar' ? '24 ساعة (يوم)' : '24 Hours (1 Day)' }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 7 أيام (أسبوع)</span>
+                            <button type="button" onclick="setDisappearingTimer(604800, '{{ app()->getLocale() === 'ar' ? '7 أيام' : '7 Days' }}')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>⏱️ {{ app()->getLocale() === 'ar' ? '7 أيام (أسبوع)' : '7 Days (1 Week)' }}</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- In-Chat Search Bar -->
                     <div class="hidden sm:block relative">
-                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث في المحادثة..." class="bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-1.5 pr-8 pl-3 text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none w-36 sm:w-44 transition-all">
+                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="{{ __('messages.search_in_chat') }}" class="bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-1.5 pr-8 pl-3 text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none w-36 sm:w-44 transition-all">
                         <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
                             <span class="material-symbols-outlined text-sm">search</span>
                         </span>
@@ -142,9 +142,9 @@
                 <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-400 font-bold mb-2 transition-all">
                     <div class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">timer</span>
-                        <span>الرسائل الجديدة ستختفي تلقائياً بعد: <strong id="disappearing-banner-time">24 ساعة</strong></span>
+                        <span>{{ app()->getLocale() === 'ar' ? 'الرسائل الجديدة ستختفي تلقائياً بعد:' : 'New messages will disappear after:' }} <strong id="disappearing-banner-time">24 {{ app()->getLocale() === 'ar' ? 'ساعة' : 'hours' }}</strong></span>
                     </div>
-                    <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-400 p-0.5">
+                    <button type="button" onclick="setDisappearingTimer(0, '{{ app()->getLocale() === 'ar' ? 'إيقاف' : 'Off' }}')" class="text-slate-400 hover:text-red-400 p-0.5">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
@@ -160,7 +160,7 @@
                             <span id="preview-filesize" class="text-[10px] font-semibold text-slate-400">0 KB</span>
                         </div>
                     </div>
-                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0" title="إلغاء الملف">
+                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0" title="{{ app()->getLocale() === 'ar' ? 'إلغاء الملف' : 'Remove file' }}">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
@@ -173,14 +173,14 @@
                     <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-[#1c1c20] border border-[#27272a] rounded-2xl px-4 py-2.5 text-slate-200">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-                            <span class="text-xs font-black text-red-500">جاري تسجيل الصوت...</span>
+                            <span class="text-xs font-black text-red-500">{{ __('messages.voice_recording') }}</span>
                             <span id="recording-timer" class="text-xs font-bold font-mono text-slate-300">00:00</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="إلغاء">
+                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="{{ __('messages.cancel') }}">
                                 <span class="material-symbols-outlined">delete</span>
                             </button>
-                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md" title="إرسال الصوت">
+                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md" title="{{ __('messages.send') }}">
                                 <span class="material-symbols-outlined text-lg">check</span>
                             </button>
                         </div>
@@ -190,23 +190,23 @@
                     <div id="standard-input-elements" class="flex-1 flex items-center gap-2 bg-[#1c1c20] border border-[#2d2d35] rounded-2xl px-3 py-1.5 focus-within:border-[#f2f20d] transition-all">
                         
                         <!-- File Input -->
-                        <label class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] cursor-pointer transition-colors shrink-0" title="إرفاق ملف أو صورة">
+                        <label class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] cursor-pointer transition-colors shrink-0" title="{{ __('messages.attach_file_hint') }}">
                             <span class="material-symbols-outlined text-xl">attach_file</span>
                             <input type="file" id="message-file" class="hidden" onchange="handleFileSelection(event)">
                         </label>
 
                         <!-- Input Field -->
-                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs md:text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
+                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs md:text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="{{ __('messages.type_message_placeholder') }}" type="text" autocomplete="off"/>
 
                         <!-- Microphone Button -->
-                        <button type="button" onclick="startAudioRecording()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] transition-colors shrink-0" title="تسجيل ملاحظة صوتية">
+                        <button type="button" onclick="startAudioRecording()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] transition-colors shrink-0" title="{{ __('messages.record_voice_hint') }}">
                             <span class="material-symbols-outlined text-xl">mic</span>
                         </button>
                     </div>
 
                     <!-- Send Button -->
-                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-lg shrink-0 active:scale-95 border border-[#3f3f46]" title="إرسال">
-                        <span id="send-btn-icon" class="material-symbols-outlined text-xl rotate-180">send</span>
+                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-lg shrink-0 active:scale-95 border border-[#3f3f46]" title="{{ __('messages.send') }}">
+                        <span id="send-btn-icon" class="material-symbols-outlined text-xl {{ app()->getLocale() === 'ar' ? 'rotate-180' : '' }}">send</span>
                     </button>
                 </form>
             </div>
@@ -218,7 +218,7 @@
 <div id="new-chat-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
     <div class="bg-[#141417] border border-[#27272a] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
         <div class="p-5 border-b border-[#27272a] flex items-center justify-between">
-            <h3 class="text-base font-extrabold text-white">بدء محادثة جديدة</h3>
+            <h3 class="text-base font-extrabold text-white">{{ __('messages.start_new_chat') }}</h3>
             <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-white transition-colors">
                 <span class="material-symbols-outlined text-sm">close</span>
             </button>
@@ -228,26 +228,36 @@
                 <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined text-lg">search</span>
                 </span>
-                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all" placeholder="البحث باسم المستخدم..." type="text"/>
+                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all" placeholder="{{ __('messages.search_by_username') }}" type="text"/>
             </div>
             
             <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-1.5" id="modal-contacts-list">
                 @if(isset($allUsers) && count($allUsers) > 0)
                     @foreach($allUsers as $user)
                         @php
-                            $roleAr = $user->role;
-                            $badgeClass = 'bg-[#27272a] text-slate-300';
-                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/20 text-rose-400'; $roleAr = 'الإدارة'; }
-                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/20 text-blue-400'; $roleAr = 'المدرب'; }
-                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/20 text-emerald-400'; $roleAr = 'الطالب'; }
-                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/20 text-purple-400'; $roleAr = 'الأهل'; }
-                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/20 text-amber-400'; $roleAr = 'رئيس القسم'; }
-                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/20 text-cyan-400'; $roleAr = 'الشؤون'; }
+                            $roleLabel = match($user->role) {
+                                'admin' => (app()->getLocale() === 'ar' ? 'الإدارة' : 'Admin'),
+                                'teacher' => (app()->getLocale() === 'ar' ? 'المدرب' : 'Teacher'),
+                                'student' => (app()->getLocale() === 'ar' ? 'الطالب' : 'Student'),
+                                'parent' => (app()->getLocale() === 'ar' ? 'الأهل' : 'Parent'),
+                                'head' => (app()->getLocale() === 'ar' ? 'رئيس القسم' : 'Head of Dept'),
+                                'affairs' => (app()->getLocale() === 'ar' ? 'الشؤون' : 'Affairs'),
+                                default => $user->role,
+                            };
+                            $badgeClass = match($user->role) {
+                                'admin' => 'bg-rose-500/20 text-rose-400',
+                                'teacher' => 'bg-blue-500/20 text-blue-400',
+                                'student' => 'bg-emerald-500/20 text-emerald-400',
+                                'parent' => 'bg-purple-500/20 text-purple-400',
+                                'head' => 'bg-amber-500/20 text-amber-400',
+                                'affairs' => 'bg-cyan-500/20 text-cyan-400',
+                                default => 'bg-[#27272a] text-slate-300',
+                            };
                             
                             $avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : '';
                             $initials = mb_substr(trim($user->full_name), 0, 1);
                         @endphp
-                        <div onclick="startNewChat({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-colors border border-transparent hover:border-[#27272a]" data-name="{{ strtolower($user->full_name) }}">
+                        <div onclick="startNewChat({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ $roleLabel }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-colors border border-transparent hover:border-[#27272a]" data-name="{{ strtolower($user->full_name) }}">
                             <div class="relative shrink-0 select-none">
                                 @if($user->avatar)
                                     <img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="{{ $avatarUrl }}" alt="Avatar">
@@ -260,12 +270,12 @@
                                 <div class="text-[10px] font-medium text-slate-400 truncate">{{ $user->email }}</div>
                             </div>
                             <div class="shrink-0">
-                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md {{ $badgeClass }}">{{ $roleAr }}</span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md {{ $badgeClass }}">{{ $roleLabel }}</span>
                             </div>
                         </div>
                     @endforeach
                 @else
-                    <div class="text-center py-8 text-slate-500 text-xs font-semibold">لا يوجد مستخدمين آخرين في النظام</div>
+                    <div class="text-center py-8 text-slate-500 text-xs font-semibold">{{ app()->getLocale() === 'ar' ? 'لا يوجد مستخدمين آخرين في النظام' : 'No other users in the system' }}</div>
                 @endif
             </div>
         </div>

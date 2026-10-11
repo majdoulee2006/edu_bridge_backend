@@ -50,7 +50,7 @@
                         {{ $loop->iteration }}. {{ $q->question_text }}
                     </div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                        {{ $q->type === 'mcq' ? 'اختيار من متعدد' : 'إجابة نصية' }} • {{ $q->marks }} علامة
+                        {{ $q->type === 'mcq' ? __('messages.question_type_mcq') : __('messages.question_type_text') }} • {{ $q->marks }} {{ __('messages.grade_max') }}
                     </div>
                     @if($q->type === 'mcq')
                     <div style="display: flex; flex-direction: column; gap: 0.3rem;">
@@ -67,7 +67,7 @@
                         @endforeach
                     </div>
                     @else
-                    <div style="font-size: 0.82rem; color: var(--text-secondary); font-style: italic;">إجابة مفتوحة</div>
+                    <div style="font-size: 0.82rem; color: var(--text-secondary); font-style: italic;">{{ __('messages.open_answer') }}</div>
                     @endif
                 </div>
                 <form action="{{ route('teacher.quizzes.question.delete', [$quiz->id, $q->id]) }}" method="POST"
@@ -87,21 +87,21 @@
 
     {{-- Right: Add question form --}}
     <div style="background: var(--bg-secondary); border-radius: 1.25rem; padding: 1.5rem; box-shadow: var(--shadow); position: sticky; top: 1rem;">
-        <div style="font-weight: 800; margin-bottom: 1rem; font-size: 0.95rem;">إضافة سؤال</div>
+        <div style="font-weight: 800; margin-bottom: 1rem; font-size: 0.95rem;">{{ __('messages.add_question') }}</div>
 
         <form action="{{ route('teacher.quizzes.question.store', $quiz->id) }}" method="POST" id="q-form">
             @csrf
             <input type="hidden" name="type" id="q-type" value="mcq">
 
             <div class="type-toggle">
-                <button type="button" class="type-btn active" onclick="setType('mcq', this)">اختيار متعدد</button>
-                <button type="button" class="type-btn" onclick="setType('text', this)">إجابة نصية</button>
+                <button type="button" class="type-btn active" onclick="setType('mcq', this)">{{ __('messages.multiple_choice') }}</button>
+                <button type="button" class="type-btn" onclick="setType('text', this)">{{ __('messages.question_type_text') }}</button>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                 <div>
-                    <label class="form-label">نص السؤال *</label>
-                    <textarea name="question_text" class="form-input" rows="3" placeholder="اكتب السؤال هنا..." required></textarea>
+                    <label class="form-label">{{ __('messages.question_text') }} *</label>
+                    <textarea name="question_text" class="form-input" rows="3" placeholder="{{ __('messages.write_question_here') }}" required></textarea>
                 </div>
                 <div>
                     <label class="form-label">العلامة *</label>
@@ -153,7 +153,7 @@ function addOpt() {
     div.className = 'opt-row';
     div.id = 'opt-' + optCount;
     div.innerHTML = `<input type="radio" name="correct" value="${optCount}" class="correct-radio">
-        <input type="text" name="options[]" class="form-input" placeholder="خيار جديد">
+        <input type="text" name="options[]" class="form-input" placeholder="{{ __('messages.new_option') }}">
         <button type="button" onclick="removeOpt(${optCount})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;">✕</button>`;
     list.appendChild(div);
     optCount++;

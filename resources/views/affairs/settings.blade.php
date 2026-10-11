@@ -1,5 +1,5 @@
 @extends('layouts.affairs')
-@section('title', 'الإعدادات')
+@section('title', __('messages.settings'))
 
 @push('styles')
 <style>
@@ -82,41 +82,36 @@
 
     {{-- معلومات الحساب --}}
     <div class="settings-card">
-        <h3><i class="fas fa-user-circle"></i> معلومات الحساب</h3>
+        <h3><i class="fas fa-user-circle"></i> {{ __('messages.account_info') }}</h3>
         <div class="info-row">
-            <span class="info-label">الاسم الكامل</span>
+            <span class="info-label">{{ __('messages.full_name') }}</span>
             <span class="info-value">{{ Auth::user()->full_name }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">البريد الإلكتروني</span>
+            <span class="info-label">{{ __('messages.email') }}</span>
             <span class="info-value">{{ Auth::user()->email }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">اسم المستخدم</span>
+            <span class="info-label">{{ __('messages.username') }}</span>
             <span class="info-value">{{ Auth::user()->username }}</span>
         </div>
         <div class="info-row">
-            <span class="info-label">الدور الوظيفي</span>
-            <span class="info-value"><span class="badge-role">موظف الشؤون</span></span>
+            <span class="info-label">{{ __('messages.job_role') }}</span>
+            <span class="info-value"><span class="badge-role">{{ __('messages.student_affairs_officer') }}</span></span>
         </div>
         <div class="info-row">
-            <span class="info-label">حالة الحساب</span>
-            <span class="info-value" style="color:#22c55e;"><i class="fas fa-circle" style="font-size:0.6rem;margin-left:0.3rem;"></i> نشط</span>
+            <span class="info-label">{{ __('messages.account_status') }}</span>
+            <span class="info-value" style="color:#22c55e;"><i class="fas fa-circle" style="font-size:0.6rem;margin-inline-end:0.3rem;"></i> {{ __('messages.active') }}</span>
         </div>
     </div>
 
 
     {{-- إعدادات النظام --}}
     <div class="settings-card">
-        <h3><i class="fas fa-cog"></i> إعدادات النظام</h3>
+        <h3><i class="fas fa-cog"></i> {{ __('messages.system_settings') }}</h3>
         <div class="info-row">
-            <span class="info-label">إصدار النظام</span>
+            <span class="info-label">{{ __('messages.system_version') }}</span>
             <span class="info-value">EduBridge v1.0.2</span>
-        </div>
-
-        <div class="info-row">
-            <span class="info-label">المنطقة الزمنية</span>
-            <span class="info-value">{{ config('app.timezone') }}</span>
         </div>
     </div>
 
@@ -124,10 +119,10 @@
     <div class="settings-card" style="padding: 1.75rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
             <h3 style="margin: 0; padding: 0; border: none; font-size: 1.15rem; font-weight: 800; color: var(--text);">
-                <i class="fas fa-shield-alt" style="color: var(--primary);"></i> الدعم والمعلومات والأمان
+                <i class="fas fa-shield-alt" style="color: var(--primary);"></i> {{ __('messages.support_security') }}
             </h3>
             <span style="font-size: 0.78rem; font-weight: 700; background: rgba(255,204,0,0.15); color: #eab308; padding: 0.25rem 0.75rem; border-radius: 20px; border: 1px solid rgba(255,204,0,0.3);">
-                منظومة معتمدة
+                {{ __('messages.certified_system') }}
             </span>
         </div>
 
@@ -139,18 +134,18 @@
                         <i class="fas fa-graduation-cap"></i>
                     </div>
                     <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.35rem;">
-                        استعراض <i class="fas fa-arrow-left" style="font-size: 0.7rem;"></i>
+                        {{ __('messages.explore') }} <i class="fas {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}" style="font-size: 0.7rem;"></i>
                     </span>
                 </div>
                 <div style="margin-top: 1rem;">
-                    <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--text);">حول المنصة وفريق التطوير</h4>
+                    <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--text);">{{ __('messages.about_platform_team') }}</h4>
                     <p style="margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
-                        معلومات نظام Edu-Bridge الأكاديمي، كادر الهندسة والبرمجة، سياسة الخصوصية، والتقنيات المعتمدة.
+                        {{ __('messages.about_platform_desc') }}
                     </p>
                 </div>
                 <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
-                    <span>5 مهندسين معتمدين</span>
-                    <span style="color: #eab308; font-weight: 700;">منظومة معتمدة</span>
+                    <span>{{ __('messages.certified_engineers') }}</span>
+                    <span style="color: #eab308; font-weight: 700;">{{ __('messages.certified_system') }}</span>
                 </div>
             </div>
         </div>

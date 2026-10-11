@@ -20,7 +20,7 @@
 
         <div>
             <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">العنوان *</label>
-            <input type="text" name="title" required value="{{ old('title') }}" placeholder="عنوان الإعلان..."
+            <input type="text" name="title" required value="{{ old('title') }}" placeholder="{{ __('messages.announcement_title') }}..."
                    style="width: 100%; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; box-sizing: border-box;">
         </div>
 
@@ -46,11 +46,11 @@
         <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
             <button type="submit"
                     style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
-                <i class="fa-solid fa-paper-plane"></i> نشر الإعلان
+                <i class="fa-solid fa-paper-plane"></i> {{ __('messages.save') }}
             </button>
             <a href="{{ route('teacher.dashboard') }}"
                style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); border-radius: 0.75rem; font-weight: 700; text-align: center; color: var(--text-primary); text-decoration: none;">
-                إلغاء
+                {{ __('messages.cancel') }}
             </a>
         </div>
     </form>

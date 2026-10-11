@@ -1,5 +1,5 @@
 @extends('layouts.parent')
-@section('title', 'المواعيد والاستدعاءات')
+@section('title', __('messages.appointments_and_summons_title'))
 
 @push('styles')
 <style>
@@ -175,11 +175,11 @@
     }
 
     .card-summon {
-        border-right: 5px solid #ef4444;
+        border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 5px solid #ef4444;
     }
 
     .card-meeting {
-        border-right: 5px solid var(--accent-color);
+        border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 5px solid var(--accent-color);
     }
 
     .card-top-row {
@@ -429,24 +429,24 @@
 @section('content')
 
 @section('subtitle')
-    متابعة الاستدعاءات الرسمية الواردة وطلبات المقابلات مع إدارة المعهد
+    {{ __('messages.appointments_subtitle') }}
 @endsection
 
 <!-- Top Header with Primary Plus Button -->
 <div class="page-header-flex">
     <div>
         <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.3rem;">
-            سجل المواعيد والاستدعاءات
+            {{ __('messages.appointments_log_header') }}
         </h2>
         <p style="font-size: 0.9rem; color: var(--text-secondary);">
-            يمكنك استعراض جميع الاستدعاءات الواردة أو تقديم طلب موعد مقابلة جديد مع إدارة المعهد.
+            {{ __('messages.appointments_log_desc') }}
         </p>
     </div>
 
     <!-- The Requested "+" Plus Button -->
     <button type="button" class="btn-create-meeting" onclick="openMeetingModal()">
         <i class="fa-solid fa-plus"></i>
-        طلب موعد مقابلة جديد
+        {{ __('messages.request_new_meeting_btn') }}
     </button>
 </div>
 
@@ -466,7 +466,7 @@
                 {{ $summonsCount }}
             </div>
             <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                الاستدعاءات الرسمية الواردة
+                {{ __('messages.incoming_official_summons') }}
             </div>
         </div>
     </div>
@@ -480,7 +480,7 @@
                 {{ $processedMeetingsCount }}
             </div>
             <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                طلبات المعالجة والردود
+                {{ __('messages.processed_meeting_requests') }}
             </div>
         </div>
     </div>
@@ -494,7 +494,7 @@
                 {{ $pendingMeetingsCount }}
             </div>
             <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                طلبات قيد المراجعة
+                {{ __('messages.pending_meeting_requests') }}
             </div>
         </div>
     </div>
@@ -504,12 +504,12 @@
 <div class="tabs-header">
     <button type="button" class="tab-btn active" id="tab-btn-summons" onclick="switchTab('summons')">
         <i class="fa-solid fa-bullhorn" style="color: #ef4444;"></i>
-        الاستدعاءات الرسمية
+        {{ __('messages.official_summons_tab') }}
         <span class="tab-badge">{{ $summonsCount }}</span>
     </button>
     <button type="button" class="tab-btn" id="tab-btn-meetings" onclick="switchTab('meetings')">
         <i class="fa-solid fa-comments"></i>
-        طلبات المواعيد والمقابلات
+        {{ __('messages.meeting_requests_tab') }}
         <span class="tab-badge">{{ isset($meetings) ? $meetings->count() : 0 }}</span>
     </button>
 </div>
@@ -527,7 +527,7 @@
                         </div>
                         <span class="status-pill pill-red">
                             <i class="fa-solid fa-circle-dot"></i>
-                            استدعاء رسمـي
+                            {{ __('messages.official_summon_badge') }}
                         </span>
                     </div>
 
@@ -539,24 +539,24 @@
                         @if(!empty($sum->student_name))
                             <div class="info-pill-item">
                                 <i class="fa-solid fa-user-graduate"></i>
-                                الطالب المعني: <strong>{{ $sum->student_name }}</strong>
+                                {{ __('messages.target_student') }}: <strong>{{ $sum->student_name }}</strong>
                             </div>
                         @endif
                         @if($sum->formatted_date)
                             <div class="info-pill-item">
                                 <i class="fa-solid fa-calendar-day"></i>
-                                تاريخ الحضور المطلوب: <strong>{{ \Carbon\Carbon::parse($sum->formatted_date)->format('Y-m-d') }}</strong>
+                                {{ __('messages.required_attendance_date') }}: <strong>{{ \Carbon\Carbon::parse($sum->formatted_date)->format('Y-m-d') }}</strong>
                             </div>
                         @endif
                         @if(!empty($sum->sender_name))
                             <div class="info-pill-item">
                                 <i class="fa-solid fa-user-shield"></i>
-                                الجهة المُرْسِلة: {{ $sum->sender_name }}
+                                {{ __('messages.sender_entity') }}: {{ $sum->sender_name }}
                             </div>
                         @endif
                         <div class="info-pill-item">
                             <i class="fa-solid fa-clock"></i>
-                            تاريخ الإرسال: {{ \Carbon\Carbon::parse($sum->created_at)->format('Y-m-d H:i') }}
+                            {{ __('messages.sent_at_date') }}: {{ \Carbon\Carbon::parse($sum->created_at)->format('Y-m-d H:i') }}
                         </div>
                     </div>
                 </div>
@@ -567,8 +567,8 @@
             <div style="width:70px; height:70px; background:rgba(16, 185, 129, 0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem;">
                 <i class="fa-solid fa-circle-check" style="font-size: 2.2rem; color:#10b981;"></i>
             </div>
-            <h4 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem;">لا توجد استدعاءات رسمية</h4>
-            <p style="font-size: 0.92rem; color: var(--text-secondary);">لم يتم إرسال أي استدعاء رسمي لحسابك حتى الآن.</p>
+            <h4 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem;">{{ __('messages.no_official_summons') }}</h4>
+            <p style="font-size: 0.92rem; color: var(--text-secondary);">{{ __('messages.no_official_summons_desc') }}</p>
         </div>
     @endif
 </div>
@@ -586,10 +586,10 @@
                         </div>
                         @php
                             $statusMap = [
-                                'pending'   => ['label' => 'قيد المراجعة والانتظار', 'class' => 'pill-amber', 'icon' => 'fa-clock'],
-                                'approved'  => ['label' => 'تمت الموافقة وتحديد الموعد', 'class' => 'pill-green', 'icon' => 'fa-circle-check'],
-                                'rejected'  => ['label' => 'تم الاعتذار عن الموعد', 'class' => 'pill-red', 'icon' => 'fa-circle-xmark'],
-                                'completed' => ['label' => 'تمت المقابلة بنجاح', 'class' => 'pill-blue', 'icon' => 'fa-check-double'],
+                                'pending'   => ['label' => __('messages.status_pending_meeting'), 'class' => 'pill-amber', 'icon' => 'fa-clock'],
+                                'approved'  => ['label' => __('messages.status_approved_meeting'), 'class' => 'pill-green', 'icon' => 'fa-circle-check'],
+                                'rejected'  => ['label' => __('messages.status_rejected_meeting'), 'class' => 'pill-red', 'icon' => 'fa-circle-xmark'],
+                                'completed' => ['label' => __('messages.status_completed_meeting'), 'class' => 'pill-blue', 'icon' => 'fa-check-double'],
                             ];
                             $st = $statusMap[$m->status] ?? ['label' => $m->status, 'class' => 'pill-amber', 'icon' => 'fa-info-circle'];
                         @endphp
@@ -600,21 +600,21 @@
                     </div>
 
                     <div class="content-box-readable">
-                        <strong style="color:var(--accent-color);">سبب الطلب والتفاصيل:</strong><br>
+                        <strong style="color:var(--accent-color);">{{ __('messages.meeting_reason_and_details') }}:</strong><br>
                         {{ $m->reason }}
                     </div>
 
                     @if($m->scheduled_at && in_array($m->status, ['approved', 'completed']))
                         <div class="scheduled-banner">
-                            <i class="fa-solid fa-clock-desk" style="font-size:1.2rem;"></i>
-                            تاريخ ووقت المقابلة المعتمد: <strong>{{ \Carbon\Carbon::parse($m->scheduled_at)->format('Y-m-d  الساعة h:i A') }}</strong>
+                            <i class="fa-solid fa-clock" style="font-size:1.2rem;"></i>
+                            {{ __('messages.approved_meeting_datetime') }}: <strong>{{ \Carbon\Carbon::parse($m->scheduled_at)->format('Y-m-d') }} {{ __('messages.at_hour') }} {{ \Carbon\Carbon::parse($m->scheduled_at)->format('h:i A') }}</strong>
                         </div>
                     @endif
 
                     @if($m->admin_response)
                         <div class="admin-response-highlight">
-                            <i class="fa-solid fa-reply-all" style="color:var(--accent-color); margin-left:0.5rem;"></i>
-                            <strong>ملاحظة/رد الإدارة:</strong> {{ $m->admin_response }}
+                            <i class="fa-solid fa-reply-all" style="color:var(--accent-color); margin-inline-end:0.5rem;"></i>
+                            <strong>{{ __('messages.admin_notes_response') }}:</strong> {{ $m->admin_response }}
                         </div>
                     @endif
 
@@ -622,18 +622,18 @@
                         @if(!empty($m->student_name))
                             <div class="info-pill-item">
                                 <i class="fa-solid fa-child"></i>
-                                بخصوص الابن: <strong>{{ $m->student_name }}</strong>
+                                {{ __('messages.regarding_child') }}: <strong>{{ $m->student_name }}</strong>
                             </div>
                         @endif
                         @if($m->preferred_date)
                             <div class="info-pill-item">
                                 <i class="fa-solid fa-calendar-day"></i>
-                                التاريخ المقترح من ولي الأمر: {{ \Carbon\Carbon::parse($m->preferred_date)->format('Y-m-d') }}
+                                {{ __('messages.parent_suggested_date') }}: {{ \Carbon\Carbon::parse($m->preferred_date)->format('Y-m-d') }}
                             </div>
                         @endif
                         <div class="info-pill-item">
                             <i class="fa-solid fa-clock"></i>
-                            تاريخ تقديم الطلب: {{ \Carbon\Carbon::parse($m->created_at)->format('Y-m-d H:i') }}
+                            {{ __('messages.request_submission_date') }}: {{ \Carbon\Carbon::parse($m->created_at)->format('Y-m-d H:i') }}
                         </div>
                     </div>
                 </div>
@@ -644,11 +644,11 @@
             <div style="width:70px; height:70px; background:rgba(242, 242, 13, 0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem;">
                 <i class="fa-solid fa-folder-open" style="font-size: 2.2rem; color:var(--accent-color);"></i>
             </div>
-            <h4 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem;">لا توجد طلبات مواعيد مسجلة</h4>
-            <p style="font-size: 0.92rem; color: var(--text-secondary); margin-bottom: 1.5rem;">يمكنك الضغط على زر (+ طلب موعد مقابلة جديد) لتقديم طلب مقابلة للإدارة.</p>
+            <h4 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem;">{{ __('messages.no_meeting_requests_recorded') }}</h4>
+            <p style="font-size: 0.92rem; color: var(--text-secondary); margin-bottom: 1.5rem;">{{ __('messages.no_meeting_requests_desc') }}</p>
             <button type="button" class="btn-create-meeting" onclick="openMeetingModal()" style="margin: 0 auto;">
                 <i class="fa-solid fa-plus"></i>
-                طلب موعد مقابلة جديد
+                {{ __('messages.request_new_meeting_btn') }}
             </button>
         </div>
     @endif
@@ -663,8 +663,8 @@
                     <i class="fa-solid fa-plus"></i>
                 </div>
                 <div>
-                    <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">طلب موعد مقابلة جديد</h3>
-                    <p style="font-size: 0.83rem; color: var(--text-secondary);">سيتم إرسال الطلب لإدارة المعهد والرد عليك بأقرب وقت</p>
+                    <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">{{ __('messages.new_meeting_modal_title') }}</h3>
+                    <p style="font-size: 0.83rem; color: var(--text-secondary);">{{ __('messages.new_meeting_modal_desc') }}</p>
                 </div>
             </div>
             <button type="button" class="modal-close-btn" onclick="closeMeetingModal()">
@@ -675,7 +675,7 @@
         <form action="{{ route('parent.appointments.request') }}" method="POST">
             @csrf
             <div class="form-group-custom">
-                <label>الابن المعني بالمقابلة <span style="color:#ef4444;">*</span></label>
+                <label>{{ __('messages.child_concerned') }} <span style="color:#ef4444;">*</span></label>
                 <select name="student_id" class="form-control-custom" required>
                     @if(isset($parent_children) && $parent_children->isNotEmpty())
                         @foreach($parent_children as $child)
@@ -684,31 +684,31 @@
                             </option>
                         @endforeach
                     @else
-                        <option value="">لا يوجد أبناء مسجلين</option>
+                        <option value="">{{ __('messages.no_registered_children_opt') }}</option>
                     @endif
                 </select>
             </div>
 
             <div class="form-group-custom">
-                <label for="meeting-subject">موضوع المقابلة <span style="color:#ef4444;">*</span></label>
-                <input type="text" name="subject" id="meeting-subject" class="form-control-custom" placeholder="مثال: استفسار عن المستوى الأكاديمي أو السلوكي" required>
+                <label for="meeting-subject">{{ __('messages.meeting_subject_label') }} <span style="color:#ef4444;">*</span></label>
+                <input type="text" name="subject" id="meeting-subject" class="form-control-custom" placeholder="{{ __('messages.meeting_subject_placeholder') }}" required>
             </div>
 
             <div class="form-group-custom">
-                <label for="meeting-date">التاريخ المقترح (اختياري)</label>
+                <label for="meeting-date">{{ __('messages.preferred_date_optional') }}</label>
                 <input type="date" name="preferred_date" id="meeting-date" class="form-control-custom" min="{{ date('Y-m-d') }}">
             </div>
 
             <div class="form-group-custom">
-                <label for="meeting-reason">السبب والتفاصيل <span style="color:#ef4444;">*</span></label>
-                <textarea name="reason" id="meeting-reason" class="form-control-custom" rows="4" placeholder="اكتب تفاصيل الطلب والسبب وراء تحديد موعد المقابلة..." required></textarea>
+                <label for="meeting-reason">{{ __('messages.reason_and_details_label') }} <span style="color:#ef4444;">*</span></label>
+                <textarea name="reason" id="meeting-reason" class="form-control-custom" rows="4" placeholder="{{ __('messages.meeting_reason_placeholder') }}" required></textarea>
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn-modal-cancel" onclick="closeMeetingModal()">إلغاء</button>
+                <button type="button" class="btn-modal-cancel" onclick="closeMeetingModal()">{{ __('messages.cancel') }}</button>
                 <button type="submit" class="btn-modal-submit">
                     <i class="fa-solid fa-paper-plane"></i>
-                    إرسال الطلب الآن
+                    {{ __('messages.send_request_now_btn') }}
                 </button>
             </div>
         </form>

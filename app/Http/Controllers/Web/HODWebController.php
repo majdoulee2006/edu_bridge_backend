@@ -43,18 +43,18 @@ class HODWebController extends Controller
                 if ($user->status !== 'active') {
                     \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب رئيس القسم موقوف', $user);
                     Auth::logout();
-                    return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+                    return back()->withErrors(['login' => __('messages.login_suspended_error')]);
                 }
                 \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح لوحة تحكم رئيس القسم');
                 return redirect('/hod/dashboard');
             } else {
                 \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'ليس لديك صلاحية الدخول كـ رئيس قسم', $user);
                 Auth::logout();
-                return back()->withErrors(['login' => 'ليس لديك صلاحية الدخول كـ رئيس قسم.']);
+                return back()->withErrors(['login' => __('messages.login_unauthorized_hod')]);
             }
         }
 
-        return back()->withErrors(['login' => 'البيانات المدخلة غير صحيحة.']);
+        return back()->withErrors(['login' => __('messages.login_invalid_credentials')]);
     }
 
     /**
@@ -145,7 +145,7 @@ class HODWebController extends Controller
             return response()->json(['status' => 'success']);
         }
 
-        return back()->with('success', 'تم تحديد الإشعار كمقروء.');
+        return back()->with('success', __('messages.notif_marked_read'));
     }
 
     public function markAllNotificationsRead()
@@ -158,7 +158,7 @@ class HODWebController extends Controller
             return response()->json(['status' => 'success']);
         }
 
-        return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
+        return back()->with('success', __('messages.all_notifs_marked_read'));
     }
 
     /**
@@ -177,7 +177,7 @@ class HODWebController extends Controller
         // Prevent duplicate notification sending within 5 seconds (Server-side Anti-Spam protection)
         $cacheKey = 'hod_web_notif_sent_' . $senderId . '_' . md5($request->title . '_' . $request->message . '_' . $request->target);
         if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-            return redirect()->back()->with('success', 'تم إرسال الإشعار بنجاح!');
+            return redirect()->back()->with('success', __('messages.notif_sent_success'));
         }
         \Illuminate\Support\Facades\Cache::put($cacheKey, true, 5);
 
@@ -216,7 +216,7 @@ class HODWebController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 'تم إرسال الإشعار بنجاح لـ ' . $users->count() . ' مستخدم!');
+        return redirect()->back()->with('success', __('messages.notif_sent_count', ['count' => $users->count()]));
     }
 
     /**
@@ -262,7 +262,7 @@ class HODWebController extends Controller
 
         $user->save();
 
-        return redirect()->back()->with('success', 'تم تحديث البيانات بنجاح!');
+        return redirect()->back()->with('success', __('messages.profile_updated_success'));
     }
 
     /**
@@ -297,7 +297,7 @@ class HODWebController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
+            'message' => __('messages.otp_telegram_sent_success')
         ]);
     }
 
@@ -332,13 +332,13 @@ class HODWebController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم تحديث البيانات بنجاح!'
+                'message' => __('messages.profile_updated_success')
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'message' => 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.'
+            'message' => __('messages.otp_invalid')
         ]);
     }
 
@@ -386,14 +386,14 @@ class HODWebController extends Controller
 
         if (!$result['ok']) {
             if ($result['error'] === 'forbidden') {
-                abort(403, 'هذا الطلب لا يخص طلاب قسمك.');
+                abort(403, __('messages.unauthorized_access'));
             }
-            return back()->with('error', $result['error'] === 'stage' ? 'لا يمكن معالجة هذا الطلب في مرحلته الحالية.' : 'الطلب غير موجود.');
+            return back()->with('error', $result['error'] === 'stage' ? __('messages.request_cannot_process_stage') : __('messages.request_not_found'));
         }
 
         return back()->with('success', $status === 'approved'
-            ? 'تمت موافقة رئيس القسم بنجاح وتحويل الطلب لشؤون الطلاب للاعتماد النهائي.'
-            : 'تم رفض طلب الإذن وإيقاف مساره بنجاح.');
+            ? __('messages.leave_approved_success')
+            : __('messages.leave_rejected_success'));
     }
 
     /**
@@ -605,7 +605,7 @@ class HODWebController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'تمت إضافة حساب المدرب بنجاح!');
+        return redirect()->back()->with('success', __('messages.teacher_added_success'));
     }
 
     public function assignAdvisor(Request $request)
@@ -623,7 +623,7 @@ class HODWebController extends Controller
 
         if ($action === 'assign') {
             if (!$request->branch || !$request->year) {
-                return back()->with('error', 'الرجاء اختيار الفرع والسنة لتفعيل المربي.');
+                return back()->with('error', __('messages.select_branch_year_advisor'));
             }
 
             // Remove advisor role from anyone else who has the same branch and year (and section)
@@ -639,7 +639,7 @@ class HODWebController extends Controller
 
             \App\Models\UserActivity::log('تعيين مربي دفعة', "قام رئيس القسم بتعيين المربي للدورة: {$request->branch} - {$request->year}");
 
-            return back()->with('success', 'تم تعيين المربي بنجاح.');
+            return back()->with('success', __('messages.advisor_assigned_success'));
         }
 
         // Action is remove
@@ -654,7 +654,7 @@ class HODWebController extends Controller
 
         \App\Models\UserActivity::log('إزالة صفة المربي', "قام رئيس القسم بإزالة صفة المربي عن المعلم رقم: {$teacherId}");
 
-        return back()->with('success', 'تم إزالة صفة المربي عن المعلم.');
+        return back()->with('success', __('messages.advisor_removed_success'));
     }
 
     /**
@@ -750,7 +750,7 @@ class HODWebController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 'تمت إضافة حساب الطالب بنجاح!');
+        return redirect()->back()->with('success', __('messages.student_added_success'));
     }
 
     /**
@@ -814,7 +814,7 @@ class HODWebController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'تمت إضافة حساب ولي الأمر بنجاح!');
+        return redirect()->back()->with('success', __('messages.parent_added_success'));
     }
 
     /**
@@ -827,7 +827,7 @@ class HODWebController extends Controller
 
         $user = DB::table('users')->where('user_id', $id)->first();
         if (!$user) {
-            return redirect()->back()->with('error', 'المستخدم غير موجود.');
+            return redirect()->back()->with('error', __('messages.user_not_found'));
         }
 
         // رئيس القسم يعدّل فقط حسابات المعلّمين والطلاب وأولياء الأمور في قسمه
@@ -891,7 +891,7 @@ class HODWebController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'تم تحديث بيانات الحساب بنجاح!');
+        return redirect()->back()->with('success', __('messages.account_updated_success'));
     }
 
     /**
@@ -905,7 +905,7 @@ class HODWebController extends Controller
         }
 
         DB::table('users')->where('user_id', $id)->delete();
-        return redirect()->back()->with('success', 'تم حذف الحساب بنجاح.');
+        return redirect()->back()->with('success', __('messages.account_deleted_success'));
     }
 
     /**
@@ -985,7 +985,7 @@ class HODWebController extends Controller
                 'updated_at' => now(),
             ]);
 
-        return redirect()->back()->with('success', 'تم تحديث تثقيل المادة بنجاح');
+        return redirect()->back()->with('success', __('messages.course_weight_updated'));
     }
 
     /**
@@ -1087,7 +1087,7 @@ class HODWebController extends Controller
         }
 
         return redirect()->route('hod.dashboard')
-                         ->with('success', 'تم إضافة الإعلان بنجاح!');
+                         ->with('success', __('messages.announcement_added_success'));
     }
 
     public function editAnnouncement($id)
@@ -1108,7 +1108,7 @@ class HODWebController extends Controller
             $updates['image'] = $request->file('image')->store('announcements', 'public');
         }
         $announcement->update($updates);
-        return redirect()->route('hod.dashboard')->with('success', 'تم تحديث الإعلان!');
+        return redirect()->route('hod.dashboard')->with('success', __('messages.announcement_updated_success'));
     }
 
     public function deleteAnnouncement($id)
@@ -1117,7 +1117,7 @@ class HODWebController extends Controller
             ->where('user_id', auth()->id())->firstOrFail();
         if ($announcement->image) \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
         $announcement->delete();
-        return redirect()->route('hod.dashboard')->with('success', 'تم حذف الإعلان.');
+        return redirect()->route('hod.dashboard')->with('success', __('messages.announcement_deleted_success'));
     }
 
     /**
@@ -1168,7 +1168,7 @@ class HODWebController extends Controller
                 ->first();
 
             if ($conflict) {
-                return redirect()->back()->with('error', 'عذراً! لا يمكن إضافة الحصة. هذا الأستاذ لديه حصة أخرى في نفس اليوم ونفس الوقت في قسم آخر.');
+                return redirect()->back()->with('error', __('messages.schedule_conflict_error'));
             }
         }
 
@@ -1184,7 +1184,7 @@ class HODWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تمت إضافة الحصة الدراسية بنجاح!');
+        return redirect()->back()->with('success', __('messages.schedule_added_success'));
     }
 
     /**
@@ -1198,7 +1198,7 @@ class HODWebController extends Controller
         }
 
         DB::table('schedules')->where('schedule_id', $id)->delete();
-        return redirect()->back()->with('success', 'تم حذف الحصة الدراسية بنجاح.');
+        return redirect()->back()->with('success', __('messages.schedule_deleted_success'));
     }
 
     /**
@@ -1234,7 +1234,7 @@ class HODWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تمت إضافة الامتحان بنجاح!');
+        return redirect()->back()->with('success', __('messages.exam_added_success'));
     }
 
     /**
@@ -1248,7 +1248,7 @@ class HODWebController extends Controller
         }
 
         DB::table('exams')->where('exam_id', $id)->delete();
-        return redirect()->back()->with('success', 'تم حذف الامتحان بنجاح.');
+        return redirect()->back()->with('success', __('messages.exam_deleted_success'));
     }
 
     /**
@@ -1366,7 +1366,7 @@ class HODWebController extends Controller
             return response()->json(['status' => 'success', 'success' => true, 'data' => $message, 'message' => $message]);
         }
 
-        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+        return redirect()->back()->with('success', __('messages.message_sent_success'));
     }
 
     public function updateMessage(Request $request, $id)
@@ -1374,7 +1374,7 @@ class HODWebController extends Controller
         $message = \App\Models\Message::findOrFail($id);
         
         if ($message->sender_id !== Auth::id()) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.unauthorized') ?? 'غير مصرح'], 403);
         }
 
         if ($message->attachment || $message->message === '[Voice Note]') {
@@ -1395,7 +1395,7 @@ class HODWebController extends Controller
         $message = \App\Models\Message::findOrFail($id);
 
         if ((int)$message->sender_id !== (int)$currentUserId && (int)$message->receiver_id !== (int)$currentUserId) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.unauthorized') ?? 'غير مصرح'], 403);
         }
 
         if ($type === 'everyone') {
@@ -1426,7 +1426,7 @@ class HODWebController extends Controller
             }
         }
 
-        return response()->json(['status' => 'success', 'message' => 'تم حذف الرسالة بنجاح']);
+        return response()->json(['status' => 'success', 'message' => __('messages.message_deleted_success')]);
     }
 
     /**
@@ -1581,7 +1581,7 @@ class HODWebController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', 'تم إرسال طلب التقرير للمدرب بنجاح!');
+        return redirect()->back()->with('success', __('messages.report_request_sent_success'));
     }
 
     /**
@@ -1610,7 +1610,7 @@ class HODWebController extends Controller
             DB::table('report_requests')->where('id', $id)->delete();
         }
 
-        return redirect()->back()->with('success', 'تم حذف التقرير بنجاح.');
+        return redirect()->back()->with('success', __('messages.report_deleted_success'));
     }
 
     /**
@@ -1620,7 +1620,7 @@ class HODWebController extends Controller
     {
         $report = DB::table('performance_reports')->where('report_id', $id)->first();
         if (!$report) {
-            return redirect()->back()->with('error', 'التقرير غير موجود.');
+            return redirect()->back()->with('error', __('messages.report_not_found'));
         }
 
         if (!\App\Support\Access::headManagesStudent(Auth::user(), $report->student_id)) {
@@ -1694,7 +1694,7 @@ class HODWebController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 'تم إرسال التقرير للأهل بنجاح.');
+        return redirect()->back()->with('success', __('messages.report_sent_parent_success'));
     }
 
     /**
@@ -1720,10 +1720,10 @@ class HODWebController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'تم اعتماد وحفظ رأي رئيس القسم سابقاً ولا يمكن تعديله.'
+                    'message' => __('messages.hod_notes_already_approved')
                 ], 422);
             }
-            return redirect()->back()->with('error', 'تم اعتماد وحفظ رأي رئيس القسم سابقاً ولا يمكن تعديله.');
+            return redirect()->back()->with('error', __('messages.hod_notes_already_approved'));
         }
 
         if ($requestId) {
@@ -1736,11 +1736,11 @@ class HODWebController extends Controller
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'تم اعتماد وحفظ رأي رئيس القسم بنجاح'
+                'message' => __('messages.hod_notes_saved_success')
             ]);
         }
 
-        return redirect()->back()->with('success', 'تم اعتماد وحفظ رأي رئيس القسم بنجاح.');
+        return redirect()->back()->with('success', __('messages.hod_notes_saved_success'));
     }
 
     /**
@@ -1794,7 +1794,7 @@ class HODWebController extends Controller
         }
 
         if (!$report) {
-            return redirect()->back()->with('error', 'التقرير غير موجود.');
+            return redirect()->back()->with('error', __('messages.report_not_found'));
         }
 
         $isAcademic = $report->report_type === 'academic';
@@ -1874,10 +1874,10 @@ class HODWebController extends Controller
                     'offline_sync_policy' => $request->offline_sync_policy,
                     'updated_at' => now(),
                 ]);
-            return redirect()->back()->with('success', 'تم تحديث سياسة الحضور بدون إنترنت بنجاح!');
+            return redirect()->back()->with('success', __('messages.policy_updated_success'));
         }
 
-        return redirect()->back()->with('error', 'حدث خطأ، لا يوجد قسم مرتبط بك.');
+        return redirect()->back()->with('error', __('messages.policy_error_no_dept'));
     }
 
     /**
@@ -1931,7 +1931,7 @@ class HODWebController extends Controller
 
         // منع الرد أكثر من مرة (رد واحد فقط)
         if ($studentReq->status !== 'pending_hod') {
-            return back()->with('error', 'لقد قمت بإبداء رأيك وسحب صلاحية التعديل على هذا الطلب مسبقاً (مسموح برد واحد فقط).');
+            return back()->with('error', __('messages.single_response_allowed'));
         }
 
         $request->validate([
@@ -1984,6 +1984,6 @@ class HODWebController extends Controller
             }
         }
 
-        return back()->with('success', 'تم حفظ رأي رئيس القسم بنجاح وتحويل الطلب إلى الإدارة.');
+        return back()->with('success', __('messages.student_service_hod_saved'));
     }
 }

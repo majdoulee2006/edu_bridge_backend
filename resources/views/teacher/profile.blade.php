@@ -1,5 +1,5 @@
 @extends('layouts.teacher')
-@section('title', 'الملف الشخصي')
+@section('title', __('messages.teacher_profile'))
 
 @push('styles')
 <style>
@@ -251,26 +251,26 @@
     <div class="profile-stats">
         <div class="stat-card">
             <span class="stat-value">{{ $courses->count() }}</span>
-            <span class="stat-label">المواد الدراسية</span>
+            <span class="stat-label">{{ __('messages.courses') }}</span>
         </div>
         <div class="stat-card">
             <span class="stat-value">{{ $totalStudents ?? 0 }}</span>
-            <span class="stat-label">الطلاب</span>
+            <span class="stat-label">{{ __('messages.students') }}</span>
         </div>
         <div class="stat-card">
             <span class="stat-value">{{ now()->year - ($user->created_at ? $user->created_at->year : now()->year) }}</span>
-            <span class="stat-label">سنوات الخدمة</span>
+            <span class="stat-label">{{ __('messages.years_of_service') }}</span>
         </div>
     </div>
 
     <!-- Personal Info -->
-    <p class="section-heading"><i class="fa-solid fa-circle-info"></i> المعلومات الشخصية</p>
+    <p class="section-heading"><i class="fa-solid fa-circle-info"></i> {{ __('messages.personal_info') }}</p>
     <div class="info-list">
         <div class="info-card">
             <div class="info-right">
                 <div class="info-icon-wrapper" style="background: rgba(242,242,13,0.15); color: var(--accent-color);"><i class="fa-solid fa-user"></i></div>
                 <div>
-                    <div class="info-label">الاسم الكامل</div>
+                    <div class="info-label">{{ __('messages.full_name') }}</div>
                     <div class="info-value">{{ $user->full_name }}</div>
                 </div>
             </div>
@@ -281,7 +281,7 @@
             <div class="info-right">
                 <div class="info-icon-wrapper" style="background: rgba(242,242,13,0.15); color: var(--accent-color);"><i class="fa-solid fa-phone"></i></div>
                 <div>
-                    <div class="info-label">رقم الهاتف</div>
+                    <div class="info-label">{{ __('messages.contact_phone') }}</div>
                     <div class="info-value" dir="ltr" style="text-align: right;">{{ $user->phone ?? 'غير محدد' }}</div>
                 </div>
             </div>
@@ -292,7 +292,7 @@
             <div class="info-right">
                 <div class="info-icon-wrapper" style="background: rgba(242,242,13,0.15); color: var(--accent-color);"><i class="fa-solid fa-envelope"></i></div>
                 <div>
-                    <div class="info-label">البريد الإلكتروني</div>
+                    <div class="info-label">{{ __('messages.contact_email') }}</div>
                     <div class="info-value">{{ $user->email }}</div>
                 </div>
             </div>
@@ -304,7 +304,7 @@
             <div class="info-right">
                 <div class="info-icon-wrapper" style="background: rgba(242,242,13,0.15); color: var(--accent-color);"><i class="fa-solid fa-book"></i></div>
                 <div>
-                    <div class="info-label">المواد التي يدرّسها</div>
+                    <div class="info-label">{{ __('messages.taught_subjects') }}</div>
                     <div class="info-value" style="font-size: 0.9rem;">{{ $courses->pluck('title')->implode(' · ') }}</div>
                 </div>
             </div>
@@ -314,7 +314,7 @@
     </div>
 
     <!-- Settings -->
-    <p class="section-heading"><i class="fa-solid fa-sliders"></i> إعدادات الحساب</p>
+    <p class="section-heading"><i class="fa-solid fa-sliders"></i> {{ __('messages.account_settings') }} </p>
     <div class="action-rows">
         <button class="action-row" onclick="openPasswordModal()">
             <div class="action-row-inner">
@@ -322,8 +322,8 @@
                     <i class="fa-solid fa-key"></i>
                 </div>
                 <div style="text-align: right;">
-                    <div class="action-row-title">تغيير كلمة المرور</div>
-                    <div class="action-row-desc">حماية إضافية للحساب</div>
+                    <div class="action-row-title">{{ __('messages.change_password') }}</div>
+                    <div class="action-row-desc">{{ __('messages.extra_account_protection') }}</div>
                 </div>
             </div>
             <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary);"></i>
@@ -344,14 +344,14 @@
 <!-- Edit Info Modal -->
 <div class="modal-overlay" id="editInfoModal">
     <div class="modal-card">
-        <h3 id="editModalTitle" style="margin-bottom: 1.5rem; font-weight: 800;">تعديل البيانات</h3>
+        <h3 id="editModalTitle" style="margin-bottom: 1.5rem; font-weight: 800;">{{ __('messages.edit_data') }}</h3>
         <form id="profileUpdateForm" onsubmit="handleProfileSubmit(event)">
             <div id="nameInputGroup" style="display: none; margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">الاسم الكامل</label>
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.full_name') }}</label>
                 <input type="text" id="edit_full_name" class="form-input" value="{{ $user->full_name }}">
             </div>
             <div id="phoneInputGroup" style="display: none; margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">رقم الهاتف</label>
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.contact_phone') }}</label>
                 <input type="text" id="edit_phone" class="form-input" value="{{ $user->phone ?? '' }}">
             </div>
             
@@ -359,15 +359,14 @@
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--accent-color);">
                     <i class="fa-brands fa-telegram"></i> معرف حساب تيليغرام (لإرسال OTP)
                 </label>
-                <input type="text" id="edit_telegram" class="form-input" placeholder="مثال: @username أو معرف الحساب">
-                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">اختياري إذا كان مسجلاً مسبقاً</small>
+                <input type="text" id="edit_telegram" class="form-input" placeholder="{{ __('messages.example_username_or_id') }}">
+                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">{{ __('messages.optional_if_registered') }}</small>
             </div>
 
             <div id="profile-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
             <button type="submit" id="profile-btn" class="modal-confirm-btn">
-                <i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق
-            </button>
-            <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
+                <i class="fa-solid fa-paper-plane"></i> {{ __('messages.send_verification_code') }} </button>
+            <button type="button" class="modal-cancel-btn" onclick="closeModals()">{{ __('messages.cancel') }}</button>
         </form>
     </div>
 </div>
@@ -375,18 +374,18 @@
 <!-- Edit Password Modal -->
 <div class="modal-overlay" id="editPasswordModal">
     <div class="modal-card">
-        <h3 style="margin-bottom: 1.5rem; font-weight: 800;">تغيير كلمة المرور</h3>
+        <h3 style="margin-bottom: 1.5rem; font-weight: 800;">{{ __('messages.change_password') }}</h3>
         <form id="password-form" onsubmit="handlePasswordSubmit(event)">
             <div style="margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الحالية</label>
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.current_password') }}</label>
                 <input type="password" id="current_password" class="form-input" placeholder="••••••••" required>
             </div>
             <div style="margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الجديدة</label>
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.new_password') }}</label>
                 <input type="password" id="new_password" class="form-input" placeholder="••••••••" required minlength="6">
             </div>
             <div style="margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">تأكيد كلمة المرور</label>
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.confirm_password') }}</label>
                 <input type="password" id="new_password_confirmation" class="form-input" placeholder="••••••••" required minlength="6">
             </div>
 
@@ -394,15 +393,14 @@
                 <label style="display:block; margin-bottom:0.5rem; font-weight:700; color:var(--accent-color);">
                     <i class="fa-brands fa-telegram"></i> معرف حساب تيليغرام (لإرسال OTP)
                 </label>
-                <input type="text" id="password_telegram" class="form-input" placeholder="مثال: @username أو معرف الحساب">
-                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">اختياري إذا كان مسجلاً مسبقاً</small>
+                <input type="text" id="password_telegram" class="form-input" placeholder="{{ __('messages.example_username_or_id') }}">
+                <small style="display:block; margin-top:0.3rem; color:var(--text-secondary); font-size:0.8rem;">{{ __('messages.optional_if_registered') }}</small>
             </div>
 
             <div id="password-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
             <button type="submit" id="password-btn" class="modal-confirm-btn">
-                <i class="fa-solid fa-paper-plane"></i> إرسال رمز التحقق
-            </button>
-            <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
+                <i class="fa-solid fa-paper-plane"></i> {{ __('messages.send_verification_code') }} </button>
+            <button type="button" class="modal-cancel-btn" onclick="closeModals()">{{ __('messages.cancel') }}</button>
         </form>
     </div>
 </div>
@@ -414,7 +412,7 @@
             <i class="fa-solid fa-paper-plane"></i>
         </div>
         <h3 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 800;">التحقق عبر تيليغرام (OTP)</h3>
-        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">تم إرسال رمز التحقق المكون من 6 أرقام إلى حسابك في بوت تيليغرام.</p>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">{{ __('messages.otp_sent_to_telegram') }}</p>
         <div class="otp-input-row">
             <input class="otp-digit" type="text" maxlength="1">
             <input class="otp-digit" type="text" maxlength="1">
@@ -424,8 +422,8 @@
             <input class="otp-digit" type="text" maxlength="1">
         </div>
         <div id="otp-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
-        <button type="button" class="modal-confirm-btn" id="otp-btn" onclick="verifyOTP()">تأكيد وحفظ</button>
-        <button type="button" class="modal-cancel-btn" onclick="closeOTPModal()">إلغاء</button>
+        <button type="button" class="modal-confirm-btn" id="otp-btn" onclick="verifyOTP()">{{ __('messages.confirm_and_save') }}</button>
+        <button type="button" class="modal-cancel-btn" onclick="closeOTPModal()">{{ __('messages.cancel') }}</button>
     </div>
 </div>
 
@@ -444,10 +442,10 @@ function openEditModal(field) {
     document.getElementById('edit_telegram').value = '';
 
     if (field === 'name') {
-        document.getElementById('editModalTitle').innerText = 'تعديل الاسم الكامل';
+        document.getElementById('editModalTitle').innerText = 'تعديل {{ __('messages.full_name') }}';
         document.getElementById('nameInputGroup').style.display = 'block';
     } else if (field === 'phone') {
-        document.getElementById('editModalTitle').innerText = 'تعديل رقم الهاتف';
+        document.getElementById('editModalTitle').innerText = 'تعديل {{ __('messages.contact_phone') }}';
         document.getElementById('phoneInputGroup').style.display = 'block';
     }
     document.getElementById('editInfoModal').classList.add('active');

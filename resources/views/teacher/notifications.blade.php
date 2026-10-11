@@ -1,5 +1,5 @@
 @extends('layouts.teacher')
-@section('title', 'الإشعارات')
+@section('title', __('messages.tr_notifications'))
 
 @push('styles')
 <style>
@@ -79,18 +79,17 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.6rem; margin: 0;">
-                <i class="fa-solid fa-bell" style="color: var(--accent-color);"></i> الإشعارات
-            </h2>
+                <i class="fa-solid fa-bell" style="color: var(--accent-color);"></i> {{ __('messages.notifications') }} </h2>
             <p style="color: var(--text-secondary); margin-top: 0.25rem; font-size: 0.9rem;">
-                لديك <span style="font-weight: 800; color: var(--text-primary);">{{ $notifications->total() }}</span> إشعار 
+                {{ __('messages.tr_you_have') }} <span style="font-weight: 800; color: var(--text-primary);">{{ $notifications->total() }}</span> {{ __('messages.tr_notification_word') }} 
                 @if(isset($unreadCount) && $unreadCount > 0)
-                    (<span style="color: var(--accent-color); font-weight: 800;">{{ $unreadCount }} غير مقروء</span>)
+                    (<span style="color: var(--accent-color); font-weight: 800;">{{ $unreadCount }} {{ __('messages.tr_unread') }}</span>)
                 @endif
             </p>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <a href="{{ route('teacher.notifications') }}" class="single-read-btn {{ !request('filter') ? 'active-filter' : '' }}" style="text-decoration: none;">الكل</a>
-                <a href="{{ route('teacher.notifications', ['filter' => 'unread']) }}" class="single-read-btn {{ request('filter') == 'unread' ? 'active-filter' : '' }}" style="text-decoration: none;">غير المقروءة</a>
-                <a href="{{ route('teacher.notifications', ['filter' => 'read']) }}" class="single-read-btn {{ request('filter') == 'read' ? 'active-filter' : '' }}" style="text-decoration: none;">المقروءة</a>
+                <a href="{{ route('teacher.notifications') }}" class="single-read-btn {{ !request('filter') ? 'active-filter' : '' }}" style="text-decoration: none;">{{ __('messages.all') }}</a>
+                <a href="{{ route('teacher.notifications', ['filter' => 'unread']) }}" class="single-read-btn {{ request('filter') == 'unread' ? 'active-filter' : '' }}" style="text-decoration: none;">{{ __('messages.unread') }}</a>
+                <a href="{{ route('teacher.notifications', ['filter' => 'read']) }}" class="single-read-btn {{ request('filter') == 'read' ? 'active-filter' : '' }}" style="text-decoration: none;">{{ __('messages.read') }}</a>
             </div>
         </div>
         
@@ -98,7 +97,7 @@
             <form method="POST" action="{{ route('teacher.notifications.read_all') }}">
                 @csrf
                 <button type="submit" class="mark-read-btn">
-                    <i class="fa-solid fa-check-double"></i> تمييز الكل كمقروءة
+                    <i class="fa-solid fa-check-double"></i> {{ __('messages.tr_mark_all_read') }}
                 </button>
             </form>
         @endif
@@ -141,6 +140,10 @@
             } else {
                 $link = '/teacher/notifications';
             }
+
+            $categoryDisplay = localizeNotificationCategory($n->category);
+            $titleDisplay    = localizeNotificationTitle($n->title);
+            $bodyDisplay     = localizeNotificationBody($n->message ?? $n->body ?? '');
         @endphp
         <div class="notif-card {{ !$isRead ? 'unread' : '' }}" onclick="handleNotifClick(event, '{{ $link }}', {{ $n->id }}, {{ !$isRead ? 'true' : 'false' }})">
             <div class="notif-icon" style="background: {{ $style['bg'] }}; color: {{ $style['color'] }};">
@@ -149,28 +152,28 @@
             <div style="flex: 1;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
                     <div>
-                        @if(isset($n->category))
-                            <span style="font-size: 0.78rem; font-weight: 700; color: {{ $style['color'] }};">{{ $n->category }}</span>
+                        @if($categoryDisplay)
+                            <span style="font-size: 0.78rem; font-weight: 700; color: {{ $style['color'] }}; text-transform: uppercase; letter-spacing: 0.5px;">{{ $categoryDisplay }}</span>
                             <br>
                         @endif
-                        <span style="font-weight: {{ $isRead ? '600' : '800' }}; font-size: 0.97rem;">{{ $n->title }}</span>
+                        <span style="font-weight: {{ $isRead ? '600' : '800' }}; font-size: 0.97rem;">{{ $titleDisplay }}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap;" dir="rtl">
+                        <span style="font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap;">
                             {{ \Carbon\Carbon::parse($n->created_at)->translatedFormat('d F Y - h:i A') }}
                         </span>
                         @if(!$isRead)
                             <form method="POST" action="{{ route('teacher.notifications.read', $n->id) }}" style="display: inline;" onclick="event.stopPropagation();">
                                 @csrf
-                                <button type="submit" class="single-read-btn" title="تمييز كمقروء">
-                                    <i class="fa-solid fa-check"></i> مقروءة
+                                <button type="submit" class="single-read-btn" title="{{ __('messages.mark_as_read') }}">
+                                    <i class="fa-solid fa-check"></i> {{ __('messages.read') }}
                                 </button>
                             </form>
                         @endif
                     </div>
                 </div>
                 <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.4rem; line-height: 1.5;">
-                    {{ $n->body ?? $n->message ?? '' }}
+                    {{ $bodyDisplay }}
                 </div>
             </div>
             @if(!$isRead)
@@ -180,7 +183,7 @@
     @empty
         <div style="text-align: center; padding: 4rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary);">
             <i class="fa-regular fa-bell-slash" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
-            <p style="font-size: 1.1rem; font-weight: 600;">لا توجد إشعارات لعرضها</p>
+            <p style="font-size: 1.1rem; font-weight: 600;">{{ __('messages.no_notifications_to_show') }}</p>
         </div>
     @endforelse
 

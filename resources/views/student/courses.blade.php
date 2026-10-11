@@ -1,6 +1,6 @@
 @extends('layouts.student')
-@section('title', 'موادي الدراسية')
-@section('subtitle', 'جميع المواد المسجّل فيها')
+@section('title', __('messages.my_courses_title'))
+@section('subtitle', __('messages.my_courses_subtitle'))
 
 @push('styles')
 <style>
@@ -93,25 +93,25 @@
         <div class="course-meta">
             @php
                 $yearNames = [
-                    1 => 'سنة أولى',
-                    2 => 'سنة ثانية',
-                    3 => 'سنة ثالثة',
-                    4 => 'سنة رابعة',
-                    5 => 'سنة خامسة',
+                    1 => __('messages.first_year'),
+                    2 => __('messages.second_year'),
+                    3 => __('messages.third_year'),
+                    4 => __('messages.fourth_year'),
+                    5 => __('messages.fifth_year'),
                 ];
-                $yearName = $yearNames[$c->year ?? 1] ?? 'سنة أولى';
+                $yearName = $yearNames[$c->year ?? 1] ?? __('messages.first_year');
             @endphp
             <span class="meta-chip"><i class="fa-solid fa-layer-group"></i> {{ $yearName }}</span>
             @if($c->credits ?? false)
-                <span class="meta-chip"><i class="fa-solid fa-clock"></i> {{ $c->credits }} ساعات</span>
+                <span class="meta-chip"><i class="fa-solid fa-clock"></i> {{ __('messages.hours_count', ['count' => $c->credits]) }}</span>
             @endif
             @if(($c->lessons_count ?? 0) > 0)
-                <span class="meta-chip"><i class="fa-solid fa-file-lines"></i> {{ $c->lessons_count }} محاضرة</span>
+                <span class="meta-chip"><i class="fa-solid fa-file-lines"></i> {{ __('messages.lectures_count', ['count' => $c->lessons_count]) }}</span>
             @endif
         </div>
 
         <a href="{{ route('student.course.materials', $c->course_id) }}" class="course-btn">
-            <i class="fa-solid fa-folder-open"></i> استعراض المحاضرات والملفات
+            <i class="fa-solid fa-folder-open"></i> {{ __('messages.browse_lectures_and_files') }}
         </a>
     </div>
     @endforeach
@@ -119,9 +119,10 @@
 @else
 <div style="text-align: center; padding: 3.5rem 1.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
     <i class="fa-solid fa-book-open" style="font-size: 3rem; opacity: 0.4; display: block; margin-bottom: 1rem; color: var(--accent-color);"></i>
-    <h3 style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.35rem;">لا توجد مواد مسجّلة حالياً</h3>
-    <p style="font-size: 0.88rem;">لم يتم تسجيل أي مقررات دراسية لحسابك في الفصل الحالي.</p>
+    <h3 style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.35rem;">{{ __('messages.no_courses_registered') }}</h3>
+    <p style="font-size: 0.88rem;">{{ __('messages.no_courses_desc') }}</p>
 </div>
 @endif
 
 @endsection
+

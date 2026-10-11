@@ -1,6 +1,6 @@
 @extends('layouts.student')
-@section('title', 'طلبات الإذن')
-@section('subtitle', 'سجل طلبات الإذن والغياب المسبق')
+@section('title', __('messages.leave_requests_title'))
+@section('subtitle', __('messages.leave_requests_subtitle'))
 
 @push('styles')
 <style>
@@ -17,7 +17,7 @@
         flex-wrap: wrap;
         gap: 1rem;
         border: 1px solid var(--border-color);
-        border-right: 5px solid var(--accent-color);
+        border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 5px solid var(--accent-color);
     }
     .page-header-info h2 {
         font-size: 1.25rem;
@@ -184,13 +184,13 @@
     <div class="page-header-info">
         <h2>
             <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-color);"></i>
-            سجل طلبات الإذن والغياب
+            {{ __('messages.leave_requests_history_title') }}
         </h2>
-        <p>استعراض الأذون السابقة ومتابعة حالة الاعتمادات الأكاديمية</p>
+        <p>{{ __('messages.leave_requests_history_desc') }}</p>
     </div>
     <button type="button" class="btn-create-leave" onclick="openNewLeaveRequestModal()">
         <i class="fa-solid fa-plus" style="font-size: 1.1rem;"></i>
-        تقديم طلب إذن جديد
+        {{ __('messages.new_leave_request_btn') }}
     </button>
 </div>
 
@@ -198,7 +198,7 @@
 <div style="margin-bottom: 2rem;">
     <p style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
         <i class="fa-solid fa-list-check" style="color: var(--accent-color);"></i>
-        <span>طلباتك السابقة (<span id="requestsCount">{{ $requests->count() }}</span>)</span>
+        <span>{!! __('messages.previous_requests_count', ['count' => '<span id="requestsCount">' . $requests->count() . '</span>']) !!}</span>
     </p>
 
     <div id="requestsListContainer">
@@ -208,25 +208,25 @@
                 <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem;">
                     <div style="display: flex; align-items: center; gap: 0.6rem;">
                         @if($r->status === 'approved')
-                            <span class="badge badge-approved"><i class="fa-solid fa-check"></i> موافق عليه</span>
+                            <span class="badge badge-approved"><i class="fa-solid fa-check"></i> {{ __('messages.approved') }}</span>
                         @elseif($r->status === 'rejected')
-                            <span class="badge badge-rejected"><i class="fa-solid fa-xmark"></i> مرفوض</span>
+                            <span class="badge badge-rejected"><i class="fa-solid fa-xmark"></i> {{ __('messages.rejected') }}</span>
                         @else
-                            <span class="badge badge-pending"><i class="fa-solid fa-hourglass-half"></i> قيد المراجعة (معلق)</span>
+                            <span class="badge badge-pending"><i class="fa-solid fa-hourglass-half"></i> {{ __('messages.filter_pending') }}</span>
                         @endif
                         <span style="font-weight: 800; font-size: 0.95rem; color: var(--text-primary);">
                             <i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i>
-                            تاريخ الإذن: {{ \Carbon\Carbon::parse($r->date)->format('Y-m-d') }}
+                            {{ __('messages.leave_date_label', ['date' => \Carbon\Carbon::parse($r->date)->format('Y-m-d')]) }}
                         </span>
                     </div>
                     <div style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;">
                         <i class="fa-regular fa-clock" style="color: var(--accent-color);"></i>
-                        تاريخ التقديم: {{ \Carbon\Carbon::parse($r->created_at)->format('Y-m-d - h:i A') }}
+                        {{ __('messages.submission_date_label', ['date' => \Carbon\Carbon::parse($r->created_at)->format('Y-m-d - h:i A')]) }}
                     </div>
                 </div>
                 
                 <div style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-top: 0.5rem; background: var(--bg-primary); padding: 0.75rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color);">
-                    <strong style="color: var(--text-primary);">السبب:</strong> {{ $r->reason }}
+                    <strong style="color: var(--text-primary);">{{ __('messages.reason_label') }}</strong> {{ $r->reason }}
                 </div>
                 
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.85rem; flex-wrap: wrap; gap: 0.6rem; border-top: 1px dashed var(--border-color); padding-top: 0.75rem;">
@@ -234,18 +234,18 @@
                         @if($r->document)
                             <a href="/storage/{{ $r->document }}" target="_blank" download
                                style="color: var(--text-secondary); font-weight: 700; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; background: var(--bg-primary); padding: 0.4rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
-                                <i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i> المستند المرفق
+                                <i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i> {{ __('messages.attached_document_btn') }}
                             </a>
                         @else
-                            <span style="font-size: 0.8rem; color: var(--text-secondary);"><i class="fa-regular fa-file-excel"></i> لا يوجد مستند مرفق</span>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);"><i class="fa-regular fa-file-excel"></i> {{ __('messages.no_attached_document') }}</span>
                         @endif
                     </div>
                     
                     {{-- زر عرض بطاقة الخروج الرسمية للحراس --}}
                     <button type="button" 
-                            onclick="openExitPassModal('{{ $r->request_id ?? $r->id }}', '{{ addslashes(auth()->user()->full_name ?? 'الطالب') }}', '{{ addslashes($student->student_code ?? 'غير محدد') }}', '{{ addslashes(auth()->user()->department ?? 'قسم العام') }}', '{{ \Carbon\Carbon::parse($r->date)->format('Y-m-d') }}', '{{ addslashes($r->reason ?? '') }}', '{{ $r->status }}', '{{ $r->created_at }}')"
+                            onclick="openExitPassModal('{{ $r->request_id ?? $r->id }}', '{{ addslashes(auth()->user()->full_name ?? __('messages.student')) }}', '{{ addslashes($student->student_code ?? __('messages.not_specified')) }}', '{{ addslashes(auth()->user()->department ?? __('messages.general_department')) }}', '{{ \Carbon\Carbon::parse($r->date)->format('Y-m-d') }}', '{{ addslashes($r->reason ?? '') }}', '{{ $r->status }}', '{{ $r->created_at }}')"
                             style="background: {{ $r->status === 'approved' ? '#10b981' : ($r->status === 'rejected' ? '#ef4444' : 'var(--accent-color)') }}; color: {{ $r->status === 'approved' || $r->status === 'rejected' ? '#ffffff' : '#1a1a1a' }}; border: none; padding: 0.5rem 1.1rem; border-radius: 0.65rem; font-size: 0.85rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem; font-family: inherit; transition: all 0.2s;">
-                        <i class="fa-solid fa-id-card"></i> {{ $r->status === 'approved' ? 'عرض تصريح الخروج (للحراس)' : 'عرض تفاصيل الاعتماد' }}
+                        <i class="fa-solid fa-id-card"></i> {{ $r->status === 'approved' ? __('messages.view_exit_pass_btn') : __('messages.view_approval_details_btn') }}
                     </button>
                 </div>
             </div>
@@ -253,10 +253,10 @@
         @empty
         <div id="emptyRequestsState" style="text-align: center; padding: 3.5rem 1.5rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
             <i class="fa-solid fa-envelope-open-text" style="font-size: 2.8rem; color: var(--accent-color); opacity: 0.6; display: block; margin-bottom: 0.8rem;"></i>
-            <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.3rem;">لا توجد طلبات إذن سابقة</h3>
-            <p style="font-size: 0.88rem; margin-bottom: 1.2rem;">يمكنك تقديم طلب إذن جديد بالضغط على زر "تقديم طلب إذن جديد" أعلاه.</p>
+            <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.3rem;">{{ __('messages.no_previous_leave_requests') }}</h3>
+            <p style="font-size: 0.88rem; margin-bottom: 1.2rem;">{{ __('messages.no_leave_requests_hint') }}</p>
             <button type="button" class="btn-create-leave" onclick="openNewLeaveRequestModal()">
-                <i class="fa-solid fa-plus"></i> تقديم طلب الآن
+                <i class="fa-solid fa-plus"></i> {{ __('messages.submit_request_prompt_btn') }}
             </button>
         </div>
         @endforelse
@@ -271,31 +271,31 @@
         <div style="background: var(--bg-primary); padding: 1rem 1.35rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
             <div style="display: flex; align-items: center; gap: 0.65rem;">
                 <button type="button" onclick="closeNewLeaveRequestModal()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem 0.8rem; border-radius: 0.65rem; cursor: pointer; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.4rem; font-family: inherit; transition: all 0.2s;">
-                    <i class="fa-solid fa-arrow-right" style="color: var(--accent-color);"></i> رجوع
+                    <i class="fa-solid fa-arrow-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}" style="color: var(--accent-color);"></i> {{ __('messages.back_btn') }}
                 </button>
                 <div>
-                    <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--text-primary);">تقديم طلب إذن جديد</h3>
+                    <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ __('messages.new_leave_request_btn') }}</h3>
                 </div>
             </div>
             <button type="button" onclick="closeNewLeaveRequestModal()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">&times;</button>
         </div>
 
         {{-- Modal Form Body قابلة للسكرول بالسحب --}}
-        <div class="modal-scrollable-body" style="padding: 1.5rem; overflow-y: auto; flex: 1;" dir="rtl">
+        <div class="modal-scrollable-body" style="padding: 1.5rem; overflow-y: auto; flex: 1;">
             <form action="{{ route('student.leave_requests.store') }}" method="POST" enctype="multipart/form-data" id="leaveRequestForm" novalidate onsubmit="handleLeaveFormAjaxSubmit(event)">
                 @csrf
                 <div class="form-group">
-                    <label class="form-label"><i class="fa-solid fa-list" style="color: var(--accent-color);"></i> نوع الإذن</label>
+                    <label class="form-label"><i class="fa-solid fa-list" style="color: var(--accent-color);"></i> {{ __('messages.leave_type_label') }}</label>
                     <select name="type" id="leaveTypeSelect" class="form-control" onchange="toggleHourlyFields(this.value)">
-                        <option value="full_day">إذن يوم كامل (يومي)</option>
-                        <option value="hourly">إذن ساعي (ساعات محددة)</option>
+                        <option value="full_day">{{ __('messages.full_day_leave_opt') }}</option>
+                        <option value="hourly">{{ __('messages.hourly_leave_opt') }}</option>
                     </select>
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
                         <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> تاريخ الإذن</span>
+                            <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> {{ __('messages.leave_date_label', ['date' => '']) }}</span>
                             <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">(YYYY-MM-DD)</span>
                         </label>
                         <input type="date" name="date" id="leaveDateInput" class="form-control" value="{{ date('Y-m-d') }}">
@@ -303,8 +303,8 @@
 
                     <div id="fullDayTimeField">
                         <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت الإذن (قبل 3:00 عصراً)</span>
-                            <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">ساعة : دقيقة</span>
+                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> {{ __('messages.leave_time_before_3pm') }}</span>
+                            <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">{{ __('messages.hour') }} : {{ __('messages.minutes') }}</span>
                         </label>
                         <input type="time" name="leave_time" id="leaveTimeInput" class="form-control" max="15:00" value="{{ date('H:i') > '15:00' ? '14:00' : date('H:i') }}">
                     </div>
@@ -313,36 +313,36 @@
                 <div id="hourlyTimeFields" style="display: none; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
                         <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> من الساعة (قبل 3:00 عصراً)</span>
-                            <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">ساعة : دقيقة</span>
+                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> {{ __('messages.from_time_label') }}</span>
+                            <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">{{ __('messages.hour') }} : {{ __('messages.minutes') }}</span>
                         </label>
                         <input type="time" name="from_time" id="fromTimeInput" class="form-control" max="15:00" value="{{ date('H:i') > '15:00' ? '12:00' : date('H:i') }}" disabled>
                     </div>
                     <div>
                         <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> إلى الساعة (قبل 3:00 عصراً)</span>
-                            <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">ساعة : دقيقة</span>
+                            <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> {{ __('messages.to_time_label') }}</span>
+                            <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">{{ __('messages.hour') }} : {{ __('messages.minutes') }}</span>
                         </label>
                         <input type="time" name="to_time" id="toTimeInput" class="form-control" max="15:00" value="{{ date('H:i', strtotime('+2 hours')) > '15:00' ? '14:00' : date('H:i', strtotime('+2 hours')) }}" disabled>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label"><i class="fa-solid fa-align-right" style="color: var(--accent-color);"></i> سبب طلب الإذن بالتفصيل</label>
-                    <textarea name="reason" id="leaveReasonInput" class="form-control" rows="3" placeholder="اكتب سبب طلب الإذن هنا..."></textarea>
+                    <label class="form-label"><i class="fa-solid fa-align-right" style="color: var(--accent-color);"></i> {{ __('messages.leave_reason_details_label') }}</label>
+                    <textarea name="reason" id="leaveReasonInput" class="form-control" rows="3" placeholder="{{ __('messages.leave_reason_ph') }}"></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label"><i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i> مستند مرفق (تقرير طبي أو عذر رسمياً - اختياري)</label>
+                    <label class="form-label"><i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i> {{ __('messages.attached_doc_optional_label') }}</label>
                     <input type="file" name="document" id="leaveDocumentInput" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                 </div>
 
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                     <button type="submit" id="submitLeaveBtn" class="btn-submit">
-                        <i class="fa-solid fa-paper-plane"></i> تقديم الطلب
+                        <i class="fa-solid fa-paper-plane"></i> {{ __('messages.submit_leave_request_btn') }}
                     </button>
                     <button type="button" onclick="closeNewLeaveRequestModal()" style="background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.875rem 1.5rem; border-radius: 0.75rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit;">
-                        إلغاء
+                        {{ __('messages.cancel_btn') }}
                     </button>
                 </div>
             </form>
@@ -357,36 +357,36 @@
         {{-- Modal Header مع سهم رجوع بارز وزر إغلاق --}}
         <div style="background: var(--bg-primary); padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
             <button type="button" onclick="closeExitPassModal()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.45rem 0.9rem; border-radius: 0.65rem; cursor: pointer; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.45rem; font-family: inherit; transition: all 0.2s;">
-                <i class="fa-solid fa-arrow-right" style="color: var(--accent-color); font-size: 0.95rem;"></i> رجوع
+                <i class="fa-solid fa-arrow-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}" style="color: var(--accent-color); font-size: 0.95rem;"></i> {{ __('messages.back_btn') }}
             </button>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fa-solid fa-graduation-cap" style="font-size: 1.25rem; color: var(--accent-color);"></i>
-                <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-primary);">Edu-Bridge | تفاصيل الإذن</h3>
+                <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ __('messages.exit_pass_details_title') }}</h3>
             </div>
             <button type="button" onclick="closeExitPassModal()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">&times;</button>
         </div>
 
         {{-- Modal Content Body قابلة للسكرول والتصفح الكامل بالماوس أو اللمس --}}
-        <div class="modal-scrollable-body" style="padding: 1.25rem; overflow-y: auto; flex: 1;" dir="rtl">
+        <div class="modal-scrollable-body" style="padding: 1.25rem; overflow-y: auto; flex: 1;">
             
             {{-- Pass Status Banner --}}
             <div id="passStatusBanner" style="text-align: center; padding: 0.75rem 1rem; border-radius: 0.75rem; font-weight: 800; font-size: 0.9rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.55rem; transition: all 0.3s;">
                 <i id="passStatusIcon" class="fa-solid fa-circle-check" style="font-size: 1.1rem;"></i>
-                <span id="passStatusText">موافق عليه رسمياً - يُسمح بالمغادرة</span>
+                <span id="passStatusText">{{ __('messages.officially_approved_exit_allowed') }}</span>
             </div>
 
             {{-- Student Information Card --}}
-            <div style="background: var(--bg-primary); border-radius: 0.85rem; padding: 0.9rem; margin-bottom: 0.9rem; border: 1px solid var(--border-color); border-right: 4px solid var(--accent-color); display: flex; align-items: center; gap: 0.85rem;">
+            <div style="background: var(--bg-primary); border-radius: 0.85rem; padding: 0.9rem; margin-bottom: 0.9rem; border: 1px solid var(--border-color); border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 4px solid var(--accent-color); display: flex; align-items: center; gap: 0.85rem;">
                 <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--accent-color); color: #1a1a1a; font-size: 1.35rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    {{ mb_substr(auth()->user()->full_name ?? 'ط', 0, 1) }}
+                    {{ mb_substr(auth()->user()->full_name ?? 'S', 0, 1) }}
                 </div>
                 <div>
                     <h4 id="passStudentName" style="font-size: 1rem; font-weight: 800; color: var(--text-primary); margin: 0;">{{ auth()->user()->full_name }}</h4>
                     <div style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.15rem;">
-                        الرقم الجامعي: <strong id="passStudentCode" style="color: var(--text-primary); font-weight: 700;">{{ $student->student_code ?? 'غير محدد' }}</strong>
+                        {{ __('messages.university_code_label') }} <strong id="passStudentCode" style="color: var(--text-primary); font-weight: 700;">{{ $student->student_code ?? __('messages.not_specified') }}</strong>
                     </div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                        القسم الأكاديمي: <span id="passDepartment" style="color: var(--text-primary); font-weight: 600;">{{ auth()->user()->department ?? 'عام' }}</span>
+                        {{ __('messages.academic_dept_label') }} <span id="passDepartment" style="color: var(--text-primary); font-weight: 600;">{{ auth()->user()->department ?? __('messages.general_department') }}</span>
                     </div>
                 </div>
             </div>
@@ -394,15 +394,15 @@
             {{-- Details List --}}
             <div style="background: var(--bg-primary); border-radius: 0.85rem; padding: 0.85rem; margin-bottom: 0.9rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem;">
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.4rem;">
-                    <span style="color: var(--text-secondary);"><i class="fa-regular fa-calendar-check" style="color: var(--accent-color);"></i> تاريخ الإذن:</span>
+                    <span style="color: var(--text-secondary);"><i class="fa-regular fa-calendar-check" style="color: var(--accent-color);"></i> {{ __('messages.leave_date_label', ['date' => '']) }}</span>
                     <strong id="passDate" style="color: var(--text-primary); font-weight: 700;"></strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.4rem; gap: 0.5rem;">
-                    <span style="color: var(--text-secondary); white-space: nowrap;"><i class="fa-solid fa-comment-dots" style="color: var(--accent-color);"></i> سبب الخروج:</span>
+                    <span style="color: var(--text-secondary); white-space: nowrap;"><i class="fa-solid fa-comment-dots" style="color: var(--accent-color);"></i> {{ __('messages.exit_reason_label') }}</span>
                     <strong id="passReason" style="color: var(--text-primary); font-weight: 600; text-align: left; word-break: break-word;"></strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-secondary);"><i class="fa-solid fa-barcode" style="color: var(--accent-color);"></i> رقم التصريح:</span>
+                    <span style="color: var(--text-secondary);"><i class="fa-solid fa-barcode" style="color: var(--accent-color);"></i> {{ __('messages.pass_serial_label') }}</span>
                     <strong id="passSerial" style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem; font-weight: 700;"></strong>
                 </div>
             </div>
@@ -410,7 +410,7 @@
             {{-- Sequential Approvals Verification Chain --}}
             <div style="background: var(--bg-primary); padding: 0.85rem; border-radius: 0.85rem; font-size: 0.8rem; margin-bottom: 1rem; border: 1px solid var(--border-color);">
                 <div style="font-weight: 800; color: var(--text-primary); margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.4rem;">
-                    <i class="fa-solid fa-shield-cat" style="color: var(--accent-color); font-size: 0.95rem;"></i> تسلسل الاعتمادات الرسمية:
+                    <i class="fa-solid fa-shield-cat" style="color: var(--accent-color); font-size: 0.95rem;"></i> {{ __('messages.sequential_approvals_chain') }}
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.35rem;" id="passApprovalsChain">
                     {{-- Rendered dynamically via JS --}}
@@ -422,13 +422,13 @@
                 <div style="display: inline-block; background: #ffffff; padding: 0.45rem 0.65rem; border-radius: 0.5rem; border: 1px solid var(--border-color); margin-bottom: 0.3rem;">
                     <i class="fa-solid fa-qrcode" style="font-size: 3rem; color: #1a1a1a;"></i>
                 </div>
-                <div style="font-size: 0.74rem; color: var(--text-secondary); font-weight: 600;">رمز التحقق الأمني المعتمد لحراس البوابة الإلكترونية</div>
+                <div style="font-size: 0.74rem; color: var(--text-secondary); font-weight: 600;">{{ __('messages.security_qr_code_for_guards') }}</div>
             </div>
 
             {{-- Action Buttons --}}
             <div style="margin-top: 1.25rem;">
                 <button type="button" onclick="window.print()" style="width: 100%; background: var(--accent-color); color: #1a1a1a; border: none; padding: 0.85rem; border-radius: 0.75rem; font-size: 0.95rem; font-weight: 800; cursor: pointer; font-family: inherit; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 14px rgba(242, 242, 13, 0.3);">
-                    <i class="fa-solid fa-print" style="font-size: 1.1rem;"></i> طباعة البطاقة
+                    <i class="fa-solid fa-print" style="font-size: 1.1rem;"></i> {{ __('messages.print_pass_card') }}
                 </button>
             </div>
 
@@ -454,7 +454,7 @@ function openNewLeaveRequestModal() {
         const submitBtn = document.getElementById('submitLeaveBtn');
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> تقديم الطلب';
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ' + @json(__('messages.submit_leave_request_btn'));
         }
     }
 }
@@ -488,7 +488,7 @@ function toggleHourlyFields(typeVal) {
     }
 }
 
-// 🚀 إرسال التقديم عبر AJAX بسلاسة مع التجاوز المطلق للـ Validation المعطل للمتصفح
+// 🚀 إرسال التقديم عبر AJAX بسلاسة
 let isSubmittingLeave = false;
 
 function handleLeaveFormAjaxSubmit(event) {
@@ -501,7 +501,7 @@ function handleLeaveFormAjaxSubmit(event) {
     const reasonInput = document.getElementById('leaveReasonInput');
 
     if (!reasonInput || !reasonInput.value.trim()) {
-        alert('⚠️ يرجى كتابة سبب طلب الإذن أولاً.');
+        alert(@json(__('messages.leave_reason_details_label')));
         if (reasonInput) reasonInput.focus();
         return false;
     }
@@ -511,13 +511,13 @@ function handleLeaveFormAjaxSubmit(event) {
         const fromTime = document.getElementById('fromTimeInput')?.value;
         const toTime = document.getElementById('toTimeInput')?.value;
         if ((fromTime && fromTime > '15:00') || (toTime && toTime > '15:00')) {
-            alert('⚠️ عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).');
+            alert(@json(__('messages.alert_past_date')));
             return false;
         }
     } else {
         const leaveTime = document.getElementById('leaveTimeInput')?.value;
         if (leaveTime && leaveTime > '15:00') {
-            alert('⚠️ عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).');
+            alert(@json(__('messages.alert_past_date')));
             return false;
         }
     }
@@ -526,7 +526,7 @@ function handleLeaveFormAjaxSubmit(event) {
     isSubmittingLeave = true;
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إرسال الطلب...';
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + @json(__('messages.sending'));
     }
 
     const formData = new FormData(form);
@@ -549,7 +549,7 @@ function handleLeaveFormAjaxSubmit(event) {
         isSubmittingLeave = false;
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> تقديم الطلب';
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ' + @json(__('messages.submit_leave_request_btn'));
         }
 
         if (data.success) {
@@ -565,29 +565,29 @@ function handleLeaveFormAjaxSubmit(event) {
             }
 
             const req = data.request;
-            const studentName = "{{ addslashes(auth()->user()->full_name ?? 'الطالب') }}";
-            const studentCode = "{{ addslashes($student->student_code ?? 'غير محدد') }}";
-            const department  = "{{ addslashes(auth()->user()->department ?? 'قسم العام') }}";
+            const studentName = "{{ addslashes(auth()->user()->full_name ?? __('messages.student')) }}";
+            const studentCode = "{{ addslashes($student->student_code ?? __('messages.not_specified')) }}";
+            const department  = "{{ addslashes(auth()->user()->department ?? __('messages.general_department')) }}";
 
             const newCardHtml = `
                 <div class="request-card" id="req-card-${req.id}">
                     <div style="flex: 1;">
                         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem;">
                             <div style="display: flex; align-items: center; gap: 0.6rem;">
-                                <span class="badge badge-pending"><i class="fa-solid fa-hourglass-half"></i> قيد المراجعة (معلق)</span>
+                                <span class="badge badge-pending"><i class="fa-solid fa-hourglass-half"></i> ${@json(__('messages.filter_pending'))}</span>
                                 <span style="font-weight: 800; font-size: 0.95rem; color: var(--text-primary);">
                                     <i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i>
-                                    تاريخ الإذن: ${req.date}
+                                    ${@json(__('messages.leave_date_label', ['date' => '___'])).replace('___', req.date)}
                                 </span>
                             </div>
                             <div style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;">
                                 <i class="fa-regular fa-clock" style="color: var(--accent-color);"></i>
-                                تاريخ التقديم: الآن
+                                ${@json(__('messages.submission_date_label', ['date' => '___'])).replace('___', req.created_at || 'Just now')}
                             </div>
                         </div>
                         
                         <div style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-top: 0.5rem; background: var(--bg-primary); padding: 0.75rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color);">
-                            <strong style="color: var(--text-primary);">السبب:</strong> ${req.reason}
+                            <strong style="color: var(--text-primary);">${@json(__('messages.reason_label'))}</strong> ${req.reason}
                         </div>
                         
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.85rem; flex-wrap: wrap; gap: 0.6rem; border-top: 1px dashed var(--border-color); padding-top: 0.75rem;">
@@ -595,15 +595,15 @@ function handleLeaveFormAjaxSubmit(event) {
                                 ${req.document ? `
                                     <a href="/storage/${req.document}" target="_blank" download
                                        style="color: var(--text-secondary); font-weight: 700; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; background: var(--bg-primary); padding: 0.4rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
-                                        <i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i> المستند المرفق
+                                        <i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i> ${@json(__('messages.attached_document_btn'))}
                                     </a>
-                                ` : `<span style="font-size: 0.8rem; color: var(--text-secondary);"><i class="fa-regular fa-file-excel"></i> لا يوجد مستند مرفق</span>`}
+                                ` : `<span style="font-size: 0.8rem; color: var(--text-secondary);"><i class="fa-regular fa-file-excel"></i> ${@json(__('messages.no_attached_document'))}</span>`}
                             </div>
                             
                             <button type="button" 
                                     onclick="openExitPassModal('${req.id}', '${studentName}', '${studentCode}', '${department}', '${req.date}', '${req.reason.replace(/'/g, "\\'")}', 'pending_parent', '${req.created_at}')"
                                     style="background: var(--accent-color); color: #1a1a1a; border: none; padding: 0.5rem 1.1rem; border-radius: 0.65rem; font-size: 0.85rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem; font-family: inherit;">
-                                <i class="fa-solid fa-id-card"></i> عرض تفاصيل الاعتماد
+                                <i class="fa-solid fa-id-card"></i> ${@json(__('messages.view_approval_details_btn'))}
                             </button>
                         </div>
                     </div>
@@ -627,18 +627,18 @@ function handleLeaveFormAjaxSubmit(event) {
             form.reset();
             toggleHourlyFields('full_day');
         } else {
-            alert('⚠️ ' + (data.message || 'حدث خطأ أثناء تقديم الطلب.'));
+            alert('⚠️ ' + (data.message || @json(__('messages.server_connect_error'))));
         }
     })
     .catch(err => {
         isSubmittingLeave = false;
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> تقديم الطلب';
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> ' + @json(__('messages.submit_leave_request_btn'));
         }
         console.error('Submission error:', err);
-        const errorMsg = err.message || (err.errors ? Object.values(err.errors).flat().join('\n') : 'تعذر الاتصال بالسيرفر.');
-        alert('⚠️ تنبيه: ' + errorMsg);
+        const errorMsg = err.message || (err.errors ? Object.values(err.errors).flat().join('\n') : @json(__('messages.server_connect_error')));
+        alert('⚠️ ' + errorMsg);
     });
 }
 
@@ -667,36 +667,36 @@ function openExitPassModal(reqId, studentName, studentCode, department, date, re
         banner.style.color = '#1a1a1a';
         banner.style.border = '1px solid var(--accent-color)';
         icon.className = 'fa-solid fa-circle-check';
-        text.innerText = 'تصريح خروج معتمد نهائياً - يُسمح بالمغادرة ✓';
+        text.innerText = @json(__('messages.officially_approved_exit_allowed'));
 
         chain.innerHTML = `
-            <div style="color: #10b981; font-weight: 700;"><i class="fa-solid fa-check"></i> موافقة ولي الأمر: تمت بنجاح ✓</div>
-            <div style="color: #10b981; font-weight: 700;"><i class="fa-solid fa-check"></i> موافقة رئيس القسم: تمت بنجاح ✓</div>
-            <div style="color: #10b981; font-weight: 800;"><i class="fa-solid fa-circle-check"></i> اعتماد شؤون الطلاب: تمت الموافقة وتثبيت الخروج ✓</div>
+            <div style="color: #10b981; font-weight: 700;"><i class="fa-solid fa-check"></i> ${@json(__('messages.parent_approval_success'))}</div>
+            <div style="color: #10b981; font-weight: 700;"><i class="fa-solid fa-check"></i> ${@json(__('messages.hod_approval_success'))}</div>
+            <div style="color: #10b981; font-weight: 800;"><i class="fa-solid fa-circle-check"></i> ${@json(__('messages.affairs_approval_success'))}</div>
         `;
     } else if (status === 'rejected') {
         banner.style.background = 'hsl(0,70%,90%)';
         banner.style.color = 'hsl(0,50%,30%)';
         banner.style.border = '1px solid hsl(0,50%,80%)';
         icon.className = 'fa-solid fa-circle-xmark';
-        text.innerText = 'طلب مرفوض - لا يُسمح بالمغادرة من البوابة';
+        text.innerText = @json(__('messages.rejected_exit_not_allowed'));
 
         chain.innerHTML = `
-            <div style="color: hsl(0,50%,30%); font-weight: 700;"><i class="fa-solid fa-xmark"></i> القرار النهائي: تم رفض طلب الخروج</div>
+            <div style="color: hsl(0,50%,30%); font-weight: 700;"><i class="fa-solid fa-xmark"></i> ${@json(__('messages.final_decision_rejected'))}</div>
         `;
     } else {
         banner.style.background = 'hsl(30,70%,90%)';
         banner.style.color = 'hsl(30,50%,30%)';
         banner.style.border = '1px solid hsl(30,50%,80%)';
         icon.className = 'fa-solid fa-clock';
-        text.innerText = 'الطلب قيد المراجعة (معلق) - في انتظار الاعتماد النهائي';
+        text.innerText = @json(__('messages.pending_approval_notice'));
 
-        let stageText = 'بانتظار موافقة ولي الأمر';
-        if (status === 'pending_hod') stageText = 'بانتظار موافقة رئيس القسم';
-        if (status === 'pending_affairs') stageText = 'بانتظار اعتماد شؤون الطلاب';
+        let stageText = @json(__('messages.pending_parent_stage'));
+        if (status === 'pending_hod') stageText = @json(__('messages.pending_hod_stage'));
+        if (status === 'pending_affairs') stageText = @json(__('messages.pending_affairs_stage'));
 
         chain.innerHTML = `
-            <div style="color: hsl(30,50%,30%); font-weight: 700;"><i class="fa-solid fa-spinner fa-spin"></i> المرحلة الحالية: ${stageText}</div>
+            <div style="color: hsl(30,50%,30%); font-weight: 700;"><i class="fa-solid fa-spinner fa-spin"></i> ${@json(__('messages.current_stage'))}: ${stageText}</div>
         `;
     }
 
