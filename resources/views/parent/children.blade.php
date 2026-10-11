@@ -1,6 +1,6 @@
 @extends('layouts.parent')
-@section('title', 'أبنائي')
-@section('subtitle', 'إدارة الأبناء المرتبطين بحسابك وربط أبناء جدد')
+@section('title', __('messages.my_children'))
+@section('subtitle', __('messages.child_management_subtitle'))
 
 @push('styles')
 <style>
@@ -160,7 +160,7 @@
 @section('content')
 
 <h3 class="section-title" style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
-    <i class="fa-solid fa-child" style="color: var(--accent-color);"></i> الأبناء المرتبطون حالياً
+    <i class="fa-solid fa-child" style="color: var(--accent-color);"></i> {{ __('messages.currently_linked_children') }}
 </h3>
 
 @if($parent_children->isNotEmpty())
@@ -176,8 +176,8 @@
                 </div>
                 <div class="child-details">
                     <div class="child-name">{{ $child->full_name }}</div>
-                    <div class="child-meta">{{ $child->department ?? 'تخصص عام' }} • {{ $child->display_level ?? $child->level ?? 'غير محدد' }} • <span style="color: var(--accent-color); font-weight: 700;">{{ $child->active_semester_name ?? '' }}</span></div>
-                    <div class="child-code">الرقم الجامعي: {{ $child->student_code }}</div>
+                    <div class="child-meta">{{ $child->department ?? __('messages.general_major') }} • {{ $child->display_level ?? $child->level ?? __('messages.unspecified') }} • <span style="color: var(--accent-color); font-weight: 700;">{{ $child->active_semester_name ?? '' }}</span></div>
+                    <div class="child-code">{{ __('messages.student_university_id') }}: {{ $child->student_code }}</div>
                 </div>
             </div>
         @endforeach
@@ -185,24 +185,25 @@
 @else
     <div style="text-align: center; padding: 3rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color); margin-bottom: 3rem; color: var(--text-secondary);">
         <i class="fa-solid fa-users-slash" style="font-size: 2.5rem; opacity: 0.5; margin-bottom: 1rem; display: block;"></i>
-        لا يوجد أي أبناء مرتبطين بحسابك حالياً.
+        {{ __('messages.no_children_linked_yet') }}
     </div>
 @endif
 
 <div class="link-card">
-    <h3><i class="fa-solid fa-link"></i> ربط ابن جديد</h3>
-    <p>يرجى إدخال الرقم الجامعي للابن لتتمكن من ربطه بحسابك. يرجى الملاحظة أن نظام الحماية يتطلب تطابق اسم العائلة (الاسم الأخير) بين حسابك وحساب الابن لإتمام عملية الربط بنجاح.</p>
+    <h3><i class="fa-solid fa-link"></i> {{ __('messages.link_child_modal_title') }}</h3>
+    <p>{{ __('messages.link_child_modal_desc') }} {{ __('messages.link_child_security_notice') }}</p>
     
     <form action="{{ route('parent.children.link') }}" method="POST">
         @csrf
         <div class="form-group">
-            <label for="student_code">الرقم الجامعي للابن</label>
-            <input type="text" name="student_code" id="student_code" class="form-control" placeholder="مثال: 20230012" required>
+            <label for="student_code">{{ __('messages.student_university_id') }}</label>
+            <input type="text" name="student_code" id="student_code" class="form-control" placeholder="{{ __('messages.student_code_placeholder') }}" required>
         </div>
         <button type="submit" class="btn-submit">
-            <i class="fa-solid fa-plus"></i> ربط الابن بالحساب
+            <i class="fa-solid fa-plus"></i> {{ __('messages.link_child_submit_btn') }}
         </button>
     </form>
 </div>
 
 @endsection
+

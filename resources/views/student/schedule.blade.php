@@ -1,6 +1,6 @@
 @extends('layouts.student')
-@section('title', 'جدولي الدراسي')
-@section('subtitle', 'جدول المحاضرات والامتحانات')
+@section('title', __('messages.my_schedule_title'))
+@section('subtitle', __('messages.my_schedule_subtitle'))
 
 @push('styles')
 <style>
@@ -152,7 +152,7 @@
         border: 1px solid var(--border-color);
     }
 
-    /* ===== Timeline & Class Cards (نظام التايم لاين والكروت الفاخرة) ===== */
+    /* ===== Timeline & Class Cards ===== */
     .day-timeline-wrapper {
         display: none;
     }
@@ -317,7 +317,7 @@
         font-weight: 700;
     }
 
-    /* ===== Exams View (كروت الامتحانات مثل الموبايل) ===== */
+    /* ===== Exams View ===== */
     .exam-cards-list {
         display: flex;
         flex-direction: column;
@@ -443,19 +443,28 @@
 @section('content')
 
 @php
+    $isAr = app()->getLocale() === 'ar';
     $weekDaysMap = [
-        'Sunday'    => 'الأحد',
-        'Monday'    => 'الاثنين',
-        'Tuesday'   => 'الثلاثاء',
-        'Wednesday' => 'الأربعاء',
-        'Thursday'  => 'الخميس',
+        'Sunday'    => $isAr ? 'الأحد' : 'Sunday',
+        'Monday'    => $isAr ? 'الاثنين' : 'Monday',
+        'Tuesday'   => $isAr ? 'الثلاثاء' : 'Tuesday',
+        'Wednesday' => $isAr ? 'الأربعاء' : 'Wednesday',
+        'Thursday'  => $isAr ? 'الخميس' : 'Thursday',
     ];
 
     $groupedSchedules = [];
-    foreach ($weekDaysMap as $enDay => $arDay) {
-        $groupedSchedules[$enDay] = $schedules->filter(function($s) use ($enDay, $arDay) {
+    foreach (['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'] as $enDay) {
+        $groupedSchedules[$enDay] = $schedules->filter(function($s) use ($enDay) {
             $d = trim($s->day);
-            return strcasecmp($d, $enDay) === 0 || $d === $arDay;
+            $arEquivalent = match($enDay) {
+                'Sunday' => 'الأحد',
+                'Monday' => 'الاثنين',
+                'Tuesday' => 'الثلاثاء',
+                'Wednesday' => 'الأربعاء',
+                'Thursday' => 'الخميس',
+                default => $enDay
+            };
+            return strcasecmp($d, $enDay) === 0 || $d === $arEquivalent;
         })->sortBy('start_time')->values();
     }
 
@@ -468,10 +477,10 @@
 {{-- ===== التاب العلوي مثل تطبيق الموبايل ===== --}}
 <div class="schedule-tab-bar">
     <button type="button" class="tab-pill-btn active" id="tab-classes-btn" onclick="switchScheduleTab('classes')">
-        <i class="fa-solid fa-graduation-cap"></i> جدول الحصص
+        <i class="fa-solid fa-graduation-cap"></i> {{ __('messages.classes_schedule_tab') }}
     </button>
     <button type="button" class="tab-pill-btn" id="tab-exams-btn" onclick="switchScheduleTab('exams')">
-        <i class="fa-solid fa-file-pen"></i> جدول الامتحانات
+        <i class="fa-solid fa-file-pen"></i> {{ __('messages.exams_schedule_tab_btn') }}
     </button>
 </div>
 
@@ -481,15 +490,15 @@
 <div id="classes-schedule-section">
     {{-- شريط الأيام الدائرية --}}
     <div class="day-circles-container">
-        @foreach($weekDaysMap as $enDay => $arDay)
+        @foreach($weekDaysMap as $enDay => $displayDay)
             @php
                 $count = count($groupedSchedules[$enDay] ?? []);
             @endphp
             <button type="button" 
                     class="day-circle-btn {{ $enDay === $defaultDayKey ? 'active' : '' }}" 
                     id="day-btn-{{ $enDay }}" 
-                    onclick="selectDay('{{ $enDay }}', '{{ $arDay }}', {{ $count }})">
-                <span class="day-name">{{ $arDay }}</span>
+                    onclick="selectDay('{{ $enDay }}', '{{ $displayDay }}', {{ $count }})">
+                <span class="day-name">{{ $displayDay }}</span>
                 @if($count > 0)
                     <span class="day-dot"></span>
                 @endif
@@ -501,37 +510,37 @@
     <div class="day-header-row">
         <div class="day-title-wrap">
             <h4 class="day-title" id="current-day-title">
-                {{ $defaultDayKey === $currentDayName ? 'برنامج اليوم (' . $weekDaysMap[$defaultDayKey] . ')' : 'برنامج ' . $weekDaysMap[$defaultDayKey] }}
+                {{ $defaultDayKey === $currentDayName ? __('messages.today_program', ['day' => $weekDaysMap[$defaultDayKey]]) : __('messages.day_program', ['day' => $weekDaysMap[$defaultDayKey]]) }}
             </h4>
             <div class="export-actions">
-                <a href="{{ route('student.schedule.export_image') }}" class="btn-dark-export" title="تنزيل صورة البرنامج الأسبوعي الرسمي">
-                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> صورة الجدول (PNG)
+                <a href="{{ route('student.schedule.export_image') }}" class="btn-dark-export" title="{{ __('messages.schedule_image_png') }}">
+                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> {{ __('messages.schedule_image_png') }}
                 </a>
             </div>
         </div>
         <div class="day-count-badge" id="current-day-count">
-            {{ count($groupedSchedules[$defaultDayKey] ?? []) }} حصص
+            {{ __('messages.classes_count', ['count' => count($groupedSchedules[$defaultDayKey] ?? [])]) }}
         </div>
     </div>
 
     {{-- خط المحاضرات الزمني والبطاقات (Timelines) --}}
     <div id="schedule-export-area" style="padding: 4px; border-radius: 20px;">
-        @foreach($weekDaysMap as $enDay => $arDay)
+        @foreach($weekDaysMap as $enDay => $displayDay)
             <div class="day-timeline-wrapper {{ $enDay === $defaultDayKey ? 'active' : '' }}" id="timeline-{{ $enDay }}">
                 @if($groupedSchedules[$enDay]->isEmpty())
                     <div class="empty-day-state">
                         <i class="fa-regular fa-calendar-xmark"></i>
-                        <p>لا توجد حصص مجدولة ليوم {{ $arDay }}</p>
+                        <p>{{ __('messages.no_classes_for_day', ['day' => $displayDay]) }}</p>
                     </div>
                 @else
                     <div class="timeline-list">
                         @foreach($groupedSchedules[$enDay] as $index => $lec)
                             @php
                                 $start = !empty($lec->start_time) ? \Carbon\Carbon::parse($lec->start_time)->format('h:i') : '';
-                                $startPeriod = !empty($lec->start_time) ? (\Carbon\Carbon::parse($lec->start_time)->format('A') === 'AM' ? 'ص' : 'م') : '';
+                                $startPeriod = !empty($lec->start_time) ? (\Carbon\Carbon::parse($lec->start_time)->format('A') === 'AM' ? ($isAr ? 'ص' : 'AM') : ($isAr ? 'م' : 'PM')) : '';
                                 $end = !empty($lec->end_time) ? \Carbon\Carbon::parse($lec->end_time)->format('h:i') : '';
-                                $endPeriod = !empty($lec->end_time) ? (\Carbon\Carbon::parse($lec->end_time)->format('A') === 'AM' ? 'ص' : 'م') : '';
-                                $duration = (!empty($lec->start_time) && !empty($lec->end_time)) ? round((strtotime($lec->end_time) - strtotime($lec->start_time)) / 60) . ' دقيقة' : 'محاضرة';
+                                $endPeriod = !empty($lec->end_time) ? (\Carbon\Carbon::parse($lec->end_time)->format('A') === 'AM' ? ($isAr ? 'ص' : 'AM') : ($isAr ? 'م' : 'PM')) : '';
+                                $duration = (!empty($lec->start_time) && !empty($lec->end_time)) ? round((strtotime($lec->end_time) - strtotime($lec->start_time)) / 60) . ' ' . __('messages.minute_label') : __('messages.lecture_card_title');
                                 $isLast = $index === count($groupedSchedules[$enDay]) - 1;
                             @endphp
                             <div class="timeline-item {{ $index === 0 ? 'is-selected' : '' }}" onclick="highlightLecture(this)">
@@ -580,10 +589,10 @@
 <div id="exams-schedule-section" style="display: none;">
     <div class="day-header-row">
         <div class="day-title-wrap">
-            <h4 class="day-title">الامتحانات النهائية</h4>
+            <h4 class="day-title">{{ __('messages.final_exams_title') }}</h4>
             <div class="export-actions">
-                <a href="{{ route('student.schedule.export_exam_image') }}" class="btn-dark-export" title="تنزيل صورة برنامج الامتحانات الرسمي">
-                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> صورة الجدول (PNG)
+                <a href="{{ route('student.schedule.export_exam_image') }}" class="btn-dark-export" title="{{ __('messages.exam_schedule_image_png') }}">
+                    <i class="fa-solid fa-image" style="color: #3b82f6;"></i> {{ __('messages.exam_schedule_image_png') }}
                 </a>
             </div>
         </div>
@@ -593,27 +602,27 @@
         @if($exams->isEmpty())
             <div class="empty-day-state">
                 <i class="fa-solid fa-file-circle-xmark"></i>
-                <p>لا يوجد برنامج امتحانات متاح حالياً</p>
+                <p>{{ __('messages.no_exam_schedule_available') }}</p>
             </div>
         @else
             <div class="exam-cards-list">
                 @foreach($exams as $exam)
                     @php
-                        $cDate = \Carbon\Carbon::parse($exam->exam_date);
+                        $cDate = \Carbon\Carbon::parse($exam->exam_date)->locale(app()->getLocale());
                         $dayNum = $cDate->format('d');
                         $dayName = $cDate->translatedFormat('l') ?: $cDate->format('D');
                         $monthName = $cDate->translatedFormat('F') ?: $cDate->format('M');
                         $timeStr = !empty($exam->start_time ?? null) ? \Carbon\Carbon::parse($exam->start_time)->format('H:i') : $cDate->format('h:i A');
-                        $duration = '120 دقيقة';
+                        $duration = '120 ' . __('messages.minute_label');
                     @endphp
                     <div class="exam-mobile-card">
                         <div class="exam-time-tag">{{ $timeStr }}</div>
                         <div class="exam-info-body">
-                            <span class="exam-type-pill">نهائي</span>
+                            <span class="exam-type-pill">{{ __('messages.final_badge') }}</span>
                             <div class="exam-subject-title">{{ $exam->course_title }}</div>
                             <div class="exam-meta-row">
                                 <span><i class="fa-regular fa-clock"></i> {{ $duration }}</span>
-                                <span><i class="fa-solid fa-location-dot"></i> {{ $exam->room ?? 'القاعة الامتحانية' }}</span>
+                                <span><i class="fa-solid fa-location-dot"></i> {{ $exam->room ?? __('messages.exam_room_default') }}</span>
                             </div>
                         </div>
                         <div class="exam-date-box">
@@ -627,7 +636,7 @@
 
             <div class="exam-notice-box">
                 <i class="fa-solid fa-circle-info" style="font-size: 1.1rem; flex-shrink: 0;"></i>
-                <div>يرجى الحضور قبل موعد الامتحان بـ 15 دقيقة على الأقل وإحضار البطاقة الجامعية.</div>
+                <div>{{ __('messages.exam_instructions_notice') }}</div>
             </div>
         @endif
     </div>
@@ -639,6 +648,8 @@
 <script src="{{ asset('js/html2canvas.min.js') }}"></script>
 <script src="{{ asset('js/html2pdf.bundle.min.js') }}"></script>
 <script>
+const isArLocale = {{ app()->getLocale() === 'ar' ? 'true' : 'false' }};
+
 // تبديل التاب بين الحصص والامتحانات
 function switchScheduleTab(tab) {
     const classesBtn = document.getElementById('tab-classes-btn');
@@ -660,7 +671,7 @@ function switchScheduleTab(tab) {
 }
 
 // اختيار اليوم من الشريط الدائري
-function selectDay(enDay, arDay, count) {
+function selectDay(enDay, displayDay, count) {
     // تحديث الأزرار الدائرية
     document.querySelectorAll('.day-circle-btn').forEach(btn => btn.classList.remove('active'));
     const targetBtn = document.getElementById('day-btn-' + enDay);
@@ -677,10 +688,14 @@ function selectDay(enDay, arDay, count) {
     const countEl = document.getElementById('current-day-count');
 
     if (titleEl) {
-        titleEl.textContent = (enDay === nowDayEn) ? `برنامج اليوم (${arDay})` : `برنامج ${arDay}`;
+        if (isArLocale) {
+            titleEl.textContent = (enDay === nowDayEn) ? (isArLocale ? `برنامج اليوم (${displayDay})` : `Today's Program (${displayDay})`) : (isArLocale ? `برنامج ${displayDay}` : `Program of ${displayDay}`);
+        } else {
+            titleEl.textContent = (enDay === nowDayEn) ? `Today's Schedule (${displayDay})` : `${displayDay} Schedule`;
+        }
     }
     if (countEl) {
-        countEl.textContent = `${count} حصص`;
+        countEl.textContent = isArLocale ? `${count} حصص` : `${count} Classes`;
     }
 }
 
@@ -701,7 +716,7 @@ function downloadScheduleAsImage() {
 
     html2canvas(target, { scale: 2, useCORS: true, backgroundColor: getExportBgColor() }).then(canvas => {
         const link = document.createElement('a');
-        link.download = 'جدول_الحصص.png';
+        link.download = isArLocale ? 'جدول_الحصص.png' : 'class_schedule.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
     });
@@ -713,7 +728,7 @@ function downloadScheduleAsPDF() {
 
     const opt = {
         margin: 0.4,
-        filename: 'جدول_الحصص.pdf',
+        filename: isArLocale ? 'جدول_الحصص.pdf' : 'class_schedule.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: getExportBgColor() },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -727,7 +742,7 @@ function downloadExamsAsImage() {
 
     html2canvas(target, { scale: 2, useCORS: true, backgroundColor: getExportBgColor() }).then(canvas => {
         const link = document.createElement('a');
-        link.download = 'جدول_الامتحانات.png';
+        link.download = isArLocale ? 'جدول_الامتحانات.png' : 'exams_schedule.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
     });
@@ -739,7 +754,7 @@ function downloadExamsAsPDF() {
 
     const opt = {
         margin: 0.4,
-        filename: 'جدول_الامتحانات.pdf',
+        filename: isArLocale ? 'جدول_الامتحانات.pdf' : 'exams_schedule.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: getExportBgColor() },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -748,3 +763,4 @@ function downloadExamsAsPDF() {
 }
 </script>
 @endpush
+

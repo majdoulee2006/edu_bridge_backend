@@ -1,5 +1,5 @@
 @extends('layouts.parent')
-@section('title', 'طلبات الإذن والإجازات')
+@section('title', __('messages.permissions_and_leaves'))
 
 @push('styles')
 <style>
@@ -16,7 +16,7 @@
         flex-wrap: wrap;
         gap: 1rem;
         border: 1px solid var(--border-color);
-        border-right: 5px solid var(--accent-color);
+        border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 5px solid var(--accent-color);
     }
     .page-header-info h2 {
         font-size: 1.25rem;
@@ -245,12 +245,12 @@
 @if(!$selected_child_id)
     <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color);">
         <i class="fa-solid fa-child" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 1rem; display: block;"></i>
-        <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">يرجى اختيار ابن أولاً</h4>
-        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">يرجى اختيار الابن من القائمة في الأعلى أو إضافة ابن من تبويب "أبنائي".</p>
+        <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.please_select_child_first') }}</h4>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">{{ __('messages.select_child_hint') }}</p>
     </div>
 @else
     @section('subtitle')
-        مراجعة طلبات إذن الخروج والإجازات للابن: {{ $selected_child->full_name }}
+        {{ __('messages.permissions_for_child') }}: {{ $selected_child->full_name }}
     @endsection
 
     {{-- 🌟 رأس الصفحة العلوي مع زر إشارة زائد (+ تقديم طلب إجازة جديد) 🌟 --}}
@@ -258,13 +258,13 @@
         <div class="page-header-info">
             <h2>
                 <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-color);"></i>
-                طلبات الإذن والإجازات للابن: {{ $selected_child->full_name }}
+                {{ __('messages.permissions_and_leaves') }}: {{ $selected_child->full_name }}
             </h2>
-            <p>مراجعة سجل الأذون وتقديم طلبات إجازة جديدة للقسم</p>
+            <p>{{ __('messages.permissions_banner_desc') }}</p>
         </div>
         <button type="button" class="btn-create-leave" onclick="openParentLeaveModal()">
             <i class="fa-solid fa-plus" style="font-size: 1.1rem;"></i>
-            تقديم طلب إجازة جديد
+            {{ __('messages.submit_new_leave_btn') }}
         </button>
     </div>
 
@@ -272,7 +272,7 @@
     <div style="margin-bottom: 2rem;">
         <h3 class="section-title" style="font-size: 1.2rem; font-weight: 800; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
             <i class="fa-solid fa-list-check" style="color: var(--accent-color);"></i>
-            <span>سجل طلبات الإجازات (<span id="requestsCount">{{ $requests->count() }}</span>)</span>
+            <span>{{ __('messages.leave_requests_log') }} (<span id="requestsCount">{{ $requests->count() }}</span>)</span>
         </h3>
         
         <div id="parentRequestsContainer" class="requests-list">
@@ -280,17 +280,17 @@
                 <div class="request-card" id="req-card-{{ $req->request_id ?? $req->id }}">
                     <div class="request-header">
                         <span class="request-type">
-                            <i class="fa-solid fa-envelope-open-text" style="color: var(--accent-color); margin-left: 0.5rem;"></i>
-                            إجازة {{ (($req->type ?? '') === 'hourly' || str_contains($req->reason ?? '', 'إذن ساعي')) ? 'ساعية' : 'يومية (يوم كامل)' }}
+                            <i class="fa-solid fa-envelope-open-text" style="color: var(--accent-color); margin-inline-end: 0.5rem;"></i>
+                            {{ __('messages.leave_type_label') }} {{ (($req->type ?? '') === 'hourly' || str_contains($req->reason ?? '', 'إذن ساعي') || str_contains($req->reason ?? '', 'hourly')) ? __('messages.leave_hourly') : __('messages.leave_daily') }}
                         </span>
                         @php
                             $reqId = $req->request_id ?? $req->id;
                             $statusLabels = [
-                                'pending' => 'قيد المراجعة',
-                                'pending_parent' => 'بانتظار موافقة ولي الأمر',
-                                'pending_hod' => 'بانتظار موافقة القسم (معلق)',
-                                'approved' => 'تمت الموافقة',
-                                'rejected' => 'مرفوض'
+                                'pending' => __('messages.pending_review'),
+                                'pending_parent' => __('messages.pending_parent_approval'),
+                                'pending_hod' => __('messages.pending_hod_approval'),
+                                'approved' => __('messages.approved_status'),
+                                'rejected' => __('messages.rejected_status')
                             ];
                         @endphp
                         <span class="status-badge status-{{ $req->status }}">
@@ -299,12 +299,12 @@
                     </div>
                     
                     <div class="request-reason">
-                        <strong style="color: var(--text-primary);">السبب:</strong> {{ $req->reason }}
+                        <strong style="color: var(--text-primary);">{{ __('messages.reason') }}:</strong> {{ $req->reason }}
                     </div>
                     
                     <div class="request-meta">
-                        <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> تاريخ الإجازة: {{ \Carbon\Carbon::parse($req->date)->format('Y-m-d') }}</span>
-                        <span style="font-weight: 700; color: var(--text-primary);"><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> تاريخ ووقت التقديم: {{ \Carbon\Carbon::parse($req->created_at)->format('Y-m-d - h:i A') }}</span>
+                        <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> {{ __('messages.leave_date') }}: {{ \Carbon\Carbon::parse($req->date)->format('Y-m-d') }}</span>
+                        <span style="font-weight: 700; color: var(--text-primary);"><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> {{ __('messages.submitted_date_time') }}: {{ \Carbon\Carbon::parse($req->created_at)->format('Y-m-d - h:i A') }}</span>
                     </div>
                     
                     @if(in_array($req->status, ['pending', 'pending_parent']))
@@ -313,7 +313,7 @@
                                 @csrf
                                 <input type="hidden" name="status" value="approved">
                                 <button type="submit" class="btn-approve">
-                                    <i class="fa-solid fa-check"></i> موافقة
+                                    <i class="fa-solid fa-check"></i> {{ __('messages.approve') }}
                                 </button>
                             </form>
                             
@@ -321,7 +321,7 @@
                                 @csrf
                                 <input type="hidden" name="status" value="rejected">
                                 <button type="submit" class="btn-reject">
-                                    <i class="fa-solid fa-xmark"></i> رفض
+                                    <i class="fa-solid fa-xmark"></i> {{ __('messages.reject') }}
                                 </button>
                             </form>
                         </div>
@@ -330,10 +330,10 @@
             @empty
                 <div id="emptyRequestsState" style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.25rem; border: 1px dashed var(--border-color); color: var(--text-secondary);">
                     <i class="fa-solid fa-folder-open" style="font-size: 2.8rem; color: var(--accent-color); opacity: 0.6; margin-bottom: 1rem; display: block;"></i>
-                    <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.3rem;">لا توجد طلبات إجازة مسجلة للابن حالياً</h3>
-                    <p style="font-size: 0.88rem; margin-bottom: 1.2rem;">يمكنك تقديم طلب إجازة جديد بالضغط على زر "تقديم طلب إجازة جديد" أعلاه.</p>
+                    <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.3rem;">{{ __('messages.no_leave_requests_yet') }}</h3>
+                    <p style="font-size: 0.88rem; margin-bottom: 1.2rem;">{{ __('messages.no_leave_requests_hint') }}</p>
                     <button type="button" class="btn-create-leave" onclick="openParentLeaveModal()">
-                        <i class="fa-solid fa-plus"></i> تقديم طلب الآن
+                        <i class="fa-solid fa-plus"></i> {{ __('messages.submit_request_now') }}
                     </button>
                 </div>
             @endforelse
@@ -348,26 +348,26 @@
             <div style="background: var(--bg-primary); padding: 1rem 1.35rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
                 <div style="display: flex; align-items: center; gap: 0.65rem;">
                     <button type="button" onclick="closeParentLeaveModal()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem 0.8rem; border-radius: 0.65rem; cursor: pointer; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.4rem; font-family: inherit; transition: all 0.2s;">
-                        <i class="fa-solid fa-arrow-right" style="color: var(--accent-color);"></i> رجوع
+                        <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left' }}" style="color: var(--accent-color);"></i> {{ __('messages.back') }}
                     </button>
                     <div>
-                        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--text-primary);">تقديم طلب إجازة للابن</h3>
+                        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ __('messages.submit_leave_for_child_title') }}</h3>
                     </div>
                 </div>
                 <button type="button" onclick="closeParentLeaveModal()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">&times;</button>
             </div>
 
             {{-- Body قابلة للسكرول --}}
-            <div class="modal-scrollable-body" style="padding: 1.5rem; overflow-y: auto; flex: 1;" dir="rtl">
+            <div class="modal-scrollable-body" style="padding: 1.5rem; overflow-y: auto; flex: 1;">
                 <form action="{{ route('parent.permissions.submit') }}" method="POST" id="parentLeaveForm" novalidate onsubmit="handleParentLeaveFormAjaxSubmit(event)">
                     @csrf
                     <input type="hidden" name="student_id" value="{{ $selected_child_id }}">
                     
                     <div class="form-group">
-                        <label><i class="fa-solid fa-list" style="color: var(--accent-color);"></i> نوع الإجازة</label>
+                        <label><i class="fa-solid fa-list" style="color: var(--accent-color);"></i> {{ __('messages.leave_type') }}</label>
                         <div class="type-options">
-                            <div class="type-option active" data-value="full_day" onclick="selectType('full_day')">يوم كامل</div>
-                            <div class="type-option" data-value="hourly" onclick="selectType('hourly')">ساعية</div>
+                            <div class="type-option active" data-value="full_day" onclick="selectType('full_day')">{{ __('messages.full_day') }}</div>
+                            <div class="type-option" data-value="hourly" onclick="selectType('hourly')">{{ __('messages.hourly') }}</div>
                         </div>
                         <input type="hidden" name="type" id="leave-type-input" value="full_day">
                     </div>
@@ -375,7 +375,7 @@
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
                         <div>
                             <label for="leave-date" style="display: flex; align-items: center; justify-content: space-between;">
-                                <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> تاريخ الإجازة</span>
+                                <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> {{ __('messages.leave_date') }}</span>
                                 <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">(YYYY-MM-DD)</span>
                             </label>
                             <input type="date" name="date" id="leave-date" class="form-control" min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d') }}">
@@ -383,24 +383,24 @@
 
                         <div id="parent-time-group">
                             <label for="leave-time" style="display: flex; align-items: center; justify-content: space-between;">
-                                <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> وقت الإذن (قبل 3:00 عصراً)</span>
-                                <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">ساعة : دقيقة</span>
+                                <span><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> {{ __('messages.leave_time_label') }}</span>
+                                <span style="font-size: 0.75rem; background: var(--accent-color); color: #1a1a1a; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 800;">{{ __('messages.hour_minute_badge') }}</span>
                             </label>
                             <input type="time" name="time" id="leave-time" class="form-control" max="15:00" value="{{ date('H:i') > '15:00' ? '14:00' : date('H:i') }}">
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="leave-reason"><i class="fa-solid fa-align-right" style="color: var(--accent-color);"></i> السبب بالتفصيل</label>
-                        <textarea name="reason" id="leave-reason" class="form-control" rows="4" placeholder="اكتب سبب طلب الإجازة..."></textarea>
+                        <label for="leave-reason"><i class="fa-solid fa-align-right" style="color: var(--accent-color);"></i> {{ __('messages.detailed_reason') }}</label>
+                        <textarea name="reason" id="leave-reason" class="form-control" rows="4" placeholder="{{ __('messages.leave_reason_placeholder') }}"></textarea>
                     </div>
                     
                     <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                         <button type="submit" id="submitParentLeaveBtn" class="btn-submit">
-                            <i class="fa-solid fa-paper-plane"></i> إرسال الطلب
+                            <i class="fa-solid fa-paper-plane"></i> {{ __('messages.send_request_btn') }}
                         </button>
                         <button type="button" onclick="closeParentLeaveModal()" style="background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.875rem 1.5rem; border-radius: 0.75rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit;">
-                            إلغاء
+                            {{ __('messages.cancel') }}
                         </button>
                     </div>
                 </form>
@@ -420,7 +420,7 @@ function openParentLeaveModal() {
         const submitBtn = document.getElementById('submitParentLeaveBtn');
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال الطلب';
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> {{ __('messages.send_request_btn') }}';
         }
     }
 }
@@ -454,14 +454,14 @@ function handleParentLeaveFormAjaxSubmit(event) {
     const reasonInput = document.getElementById('leave-reason');
 
     if (!reasonInput || !reasonInput.value.trim()) {
-        alert('⚠️ يرجى كتابة سبب طلب الإجازة أولاً.');
+        alert('{{ __('messages.leave_reason_required_alert') }}');
         if (reasonInput) reasonInput.focus();
         return false;
     }
 
     const parentTimeInput = document.getElementById('leave-time');
     if (parentTimeInput && parentTimeInput.value && parentTimeInput.value > '15:00') {
-        alert('⚠️ عذراً، يجب أن يكون وقت الإذن قبل انتهاء الدوام الرسمي (الساعة 3:00 عصراً).');
+        alert('{{ __('messages.leave_time_limit_alert') }}');
         if (parentTimeInput) parentTimeInput.focus();
         return false;
     }
@@ -469,7 +469,7 @@ function handleParentLeaveFormAjaxSubmit(event) {
     isSubmittingParentLeave = true;
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إرسال الطلب...';
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> {{ __('messages.submitting_request') }}';
     }
 
     const formData = new FormData(form);
@@ -492,7 +492,7 @@ function handleParentLeaveFormAjaxSubmit(event) {
         isSubmittingParentLeave = false;
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال الطلب';
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> {{ __('messages.send_request_btn') }}';
         }
 
         if (data.success) {
@@ -512,27 +512,27 @@ function handleParentLeaveFormAjaxSubmit(event) {
 
             // 4. إدراج كرت الطلب الجديد تحت كـ "معلق" (بانتظار موافقة القسم)
             const req = data.request;
-            const typeText = req.type === 'hourly' ? 'ساعية' : 'يومية (يوم كامل)';
+            const typeText = req.type === 'hourly' ? '{{ __('messages.leave_hourly') }}' : '{{ __('messages.leave_daily') }}';
             
             const newCardHtml = `
                 <div class="request-card" id="req-card-${req.id}">
                     <div class="request-header">
                         <span class="request-type">
-                            <i class="fa-solid fa-envelope-open-text" style="color: var(--accent-color); margin-left: 0.5rem;"></i>
-                            إجازة ${typeText}
+                            <i class="fa-solid fa-envelope-open-text" style="color: var(--accent-color); margin-inline-end: 0.5rem;"></i>
+                            {{ __('messages.leave_type_label') }} ${typeText}
                         </span>
                         <span class="status-badge status-pending_hod">
-                            بانتظار موافقة القسم (معلق)
+                            {{ __('messages.pending_hod_approval') }}
                         </span>
                     </div>
                     
                     <div class="request-reason">
-                        <strong style="color: var(--text-primary);">السبب:</strong> ${req.reason}
+                        <strong style="color: var(--text-primary);">{{ __('messages.reason') }}:</strong> ${req.reason}
                     </div>
                     
                     <div class="request-meta">
-                        <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> تاريخ الإجازة: ${req.date}</span>
-                        <span style="font-weight: 700; color: var(--text-primary);"><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> تاريخ ووقت التقديم: الآن</span>
+                        <span><i class="fa-regular fa-calendar-days" style="color: var(--accent-color);"></i> {{ __('messages.leave_date') }}: ${req.date}</span>
+                        <span style="font-weight: 700; color: var(--text-primary);"><i class="fa-regular fa-clock" style="color: var(--accent-color);"></i> {{ __('messages.submitted_date_time') }}: {{ __('messages.now') ?? 'Now' }}</span>
                     </div>
                 </div>
             `;
@@ -555,18 +555,18 @@ function handleParentLeaveFormAjaxSubmit(event) {
             form.reset();
             selectType('full_day');
         } else {
-            alert('⚠️ ' + (data.message || 'حدث خطأ أثناء إرسال الطلب.'));
+            alert('⚠️ ' + (data.message || '{{ __('messages.submission_error') }}'));
         }
     })
     .catch(err => {
         isSubmittingParentLeave = false;
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> إرسال الطلب';
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> {{ __('messages.send_request_btn') }}';
         }
         console.error('Submission error:', err);
-        const errorMsg = err.message || (err.errors ? Object.values(err.errors).flat().join('\n') : 'تعذر الاتصال بالسيرفر.');
-        alert('⚠️ تنبيه: ' + errorMsg);
+        const errorMsg = err.message || (err.errors ? Object.values(err.errors).flat().join('\n') : '{{ __('messages.server_error') ?? 'Server error' }}');
+        alert('⚠️ ' + errorMsg);
     });
 }
 </script>

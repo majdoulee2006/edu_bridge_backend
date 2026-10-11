@@ -29,8 +29,8 @@ class TeacherWebController extends Controller
             'login'    => 'required|string',
             'password' => 'required',
         ], [
-            'login.required'    => 'اسم المستخدم أو البريد الإلكتروني مطلوب.',
-            'password.required' => 'كلمة المرور مطلوبة.',
+            'login.required'    => __('messages.username_or_email_required'),
+            'password.required' => __('messages.password_required'),
         ]);
 
         $input = trim($request->login);
@@ -56,20 +56,20 @@ class TeacherWebController extends Controller
                 } else {
                     \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'هذا الحساب ليس حساب معلم', $user);
                     Auth::logout();
-                    return back()->withErrors(['login' => 'هذا الحساب ليس حساب معلم.']);
+                    return back()->withErrors(['login' => __('messages.login_not_teacher_account')]);
                 }
             }
             if (Auth::user()->status !== 'active') {
                 \App\Models\UserActivity::log('محاولة دخول مرفوضة', 'حساب المعلم موقوف مؤقتاً', $user);
                 Auth::logout();
-                return back()->withErrors(['login' => 'عذراً. حسابك موقوف مؤقتاً.']);
+                return back()->withErrors(['login' => __('messages.login_teacher_suspended')]);
             }
             $request->session()->regenerate();
             \App\Models\UserActivity::log('تسجيل دخول', 'تسجيل دخول ناجح لوحة التحكم للمعلم');
             return redirect('/teacher/dashboard');
         }
 
-        return back()->withInput()->withErrors(['login' => 'اسم المستخدم/البريد الإلكتروني أو كلمة المرور غير صحيحة.']);
+        return back()->withInput()->withErrors(['login' => __('messages.login_invalid_credentials_teacher')]);
     }
 
     public function logout(Request $request)
@@ -1215,7 +1215,7 @@ class TeacherWebController extends Controller
             'course_id' => $request->course_id ?? null,
         ]);
 
-        return redirect()->route('teacher.dashboard')->with('success', 'تم نشر الإعلان بنجاح!');
+        return redirect()->route('teacher.dashboard')->with('success', __('messages.announcement_created_success'));
     }
 
     public function editAnnouncement($id)
@@ -1240,7 +1240,7 @@ class TeacherWebController extends Controller
         }
 
         $announcement->update($updates);
-        return redirect()->route('teacher.dashboard')->with('success', 'تم تحديث الإعلان!');
+        return redirect()->route('teacher.dashboard')->with('success', __('messages.announcement_updated_success'));
     }
 
     public function deleteAnnouncement($id)
@@ -1249,7 +1249,7 @@ class TeacherWebController extends Controller
             ->where('user_id', Auth::id())->firstOrFail();
         if ($announcement->image) \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->image);
         $announcement->delete();
-        return redirect()->route('teacher.dashboard')->with('success', 'تم حذف الإعلان.');
+        return redirect()->route('teacher.dashboard')->with('success', __('messages.announcement_deleted_success'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1371,7 +1371,7 @@ class TeacherWebController extends Controller
             return response()->json(['status' => 'success', 'success' => true, 'data' => $message, 'message' => $message]);
         }
 
-        return redirect()->back()->with('success', 'تم إرسال الرسالة بنجاح!');
+        return redirect()->back()->with('success', __('messages.message_sent_successfully'));
     }
 
     public function updateMessage(Request $request, $id)
@@ -1379,11 +1379,11 @@ class TeacherWebController extends Controller
         $message = \App\Models\Message::findOrFail($id);
         
         if ($message->sender_id !== Auth::id()) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.unauthorized')], 403);
         }
 
         if ($message->attachment || $message->message === '[Voice Note]') {
-            return response()->json(['status' => 'error', 'message' => 'لا يمكن تعديل المرفقات'], 400);
+            return response()->json(['status' => 'error', 'message' => __('messages.cannot_edit_attachments')], 400);
         }
 
         $request->validate(['message' => 'required|string|max:2000']);
@@ -1397,7 +1397,7 @@ class TeacherWebController extends Controller
         $message = \App\Models\Message::findOrFail($id);
 
         if ($message->sender_id !== Auth::id()) {
-            return response()->json(['status' => 'error', 'message' => 'غير مصرح'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.unauthorized')], 403);
         }
 
         if ($message->attachment) {
@@ -1445,7 +1445,7 @@ class TeacherWebController extends Controller
             return response()->json(['status' => 'success']);
         }
 
-        return back()->with('success', 'تم تحديد الإشعار كمقروء.');
+        return back()->with('success', __('messages.notification_marked_read_single'));
     }
 
     public function markAllNotificationsRead()
@@ -1458,7 +1458,7 @@ class TeacherWebController extends Controller
             return response()->json(['status' => 'success']);
         }
 
-        return back()->with('success', 'تم تحديد جميع الإشعارات كمقروءة.');
+        return back()->with('success', __('messages.notification_marked_read_all'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -1500,7 +1500,7 @@ class TeacherWebController extends Controller
                 'updated_at' => now(),
             ]);
 
-        return redirect()->back()->with('success', 'تم تحديث الملف الشخصي بنجاح!');
+        return redirect()->back()->with('success', __('messages.profile_updated_successfully'));
     }
 
     public function sendOTP(Request $request)
@@ -1521,7 +1521,7 @@ class TeacherWebController extends Controller
             if (!Hash::check($request->current_password, $user->password)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'كلمة المرور الحالية غير صحيحة.'
+                    'message' => __('messages.current_password_incorrect')
                 ]);
             }
         }
@@ -1545,7 +1545,7 @@ class TeacherWebController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إرسال رمز التحقق (OTP) إلى حسابك في بوت تيليغرام بنجاح!'
+            'message' => __('messages.otp_sent_telegram_msg')
         ]);
     }
 
@@ -1581,13 +1581,13 @@ class TeacherWebController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'تم تحديث البيانات بنجاح!'
+                'message' => __('messages.profile_updated_successfully')
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'message' => 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.'
+            'message' => __('messages.invalid_otp_code')
         ]);
     }
 
@@ -1601,7 +1601,7 @@ class TeacherWebController extends Controller
         $user = Auth::user();
 
         if (!Hash::check($request->current_password, $user->password)) {
-            return back()->withErrors(['current_password' => 'كلمة المرور الحالية غير صحيحة.']);
+            return back()->withErrors(['current_password' => __('messages.current_password_incorrect')]);
         }
 
         DB::table('users')
@@ -1611,7 +1611,7 @@ class TeacherWebController extends Controller
                 'updated_at' => now(),
             ]);
 
-        return redirect()->back()->with('success', 'تم تغيير كلمة المرور بنجاح!');
+        return redirect()->back()->with('success', __('messages.password_changed_successfully'));
     }
     // ────────────────────────────────────────────────────────────
     //  ADVISOR TOOLS (أدوات المربي)
@@ -1731,7 +1731,7 @@ class TeacherWebController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', 'تم رفع التقرير السلوكي وإشعار ولي الأمر بنجاح!');
+        return redirect()->back()->with('success', __('messages.report_submitted_success'));
     }
 
     public function storeAdvisorAttendance(Request $request)
@@ -1752,7 +1752,7 @@ class TeacherWebController extends Controller
         $isAdvisor = !empty($teacher->advisor_branch) && !empty($teacher->advisor_year);
 
         if (!$isAdvisor) {
-            return back()->with('error', 'ليس لديك صلاحية مربي لهذه الدورة.');
+            return back()->with('error', __('messages.unauthorized_action'));
         }
 
         $lesson = DB::table('lessons')
@@ -1800,7 +1800,7 @@ class TeacherWebController extends Controller
             DB::table('attendance')->insert($attendanceRecords);
         }
 
-        return back()->with('success', 'تم حفظ الحضور اليومي للقاعة بنجاح.');
+        return back()->with('success', __('messages.attendance_saved_successfully'));
     }
 
     // ===== التقارير =====
@@ -1849,7 +1849,7 @@ class TeacherWebController extends Controller
         // الطلب موجَّه لهذا المعلّم فقط
         $reportTeacher = $this->getTeacher();
         if (!$reportTeacher || (int) $reportRequest->teacher_id !== (int) $reportTeacher->teacher_id) {
-            abort(403, 'هذا الطلب غير موجَّه إليك.');
+            abort(403, __('messages.unauthorized_action'));
         }
 
         $studentId     = $reportRequest->student_id;
@@ -2084,7 +2084,7 @@ class TeacherWebController extends Controller
             'updated_at' => now(),
         ]);
 
-        return redirect()->back()->with('success', 'تمت إضافة التقييم بنجاح!');
+        return redirect()->back()->with('success', __('messages.grade_event_created_success'));
     }
 
     public function gradeEventStudents($id)
@@ -2099,7 +2099,7 @@ class TeacherWebController extends Controller
             ->first();
 
         if (!$event) {
-            return back()->with('error', 'التقييم غير موجود أو لا تملك صلاحية الوصول إليه.');
+            return back()->with('error', __('messages.unauthorized_action'));
         }
 
         // Get all students enrolled in this course
@@ -2133,7 +2133,7 @@ class TeacherWebController extends Controller
             ->first();
 
         if (!$event) {
-            return back()->with('error', 'التقييم غير موجود.');
+            return back()->with('error', __('messages.grade_event_not_found'));
         }
 
         $scores = $request->input('scores', []);
@@ -2289,7 +2289,7 @@ class TeacherWebController extends Controller
             }
         }
 
-        return redirect()->route('teacher.grade_events')->with('success', 'تم حفظ الدرجات وإرسال الإشعارات بنجاح!');
+        return redirect()->route('teacher.grade_events')->with('success', __('messages.grades_saved_successfully'));
     }
 
 
@@ -2302,7 +2302,7 @@ class TeacherWebController extends Controller
             ->where('teacher_id', $teacher->teacher_id)
             ->delete();
 
-        return redirect()->back()->with('success', 'تم حذف التقييم.');
+        return redirect()->back()->with('success', __('messages.grade_event_deleted_success'));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -2353,7 +2353,7 @@ class TeacherWebController extends Controller
         ]);
 
         return redirect()->route('teacher.quizzes.builder', $quiz->id)
-            ->with('success', 'تم إنشاء الاختبار، أضف الأسئلة الآن');
+            ->with('success', __('messages.quiz_created_success'));
     }
 
     public function quizBuilder($id)
@@ -2403,7 +2403,7 @@ class TeacherWebController extends Controller
         }
 
         return redirect()->route('teacher.quizzes.builder', $quizId)
-            ->with('success', 'تمت إضافة السؤال');
+            ->with('success', __('messages.question_added_success'));
     }
 
     public function deleteQuestion($quizId, $questionId)
@@ -2416,7 +2416,7 @@ class TeacherWebController extends Controller
         $quiz->questions()->where('id', $questionId)->delete();
 
         return redirect()->route('teacher.quizzes.builder', $quizId)
-            ->with('success', 'تم حذف السؤال');
+            ->with('success', __('messages.question_deleted_success'));
     }
 
     public function publishQuiz($id)
@@ -2429,7 +2429,7 @@ class TeacherWebController extends Controller
         $quiz->update(['is_published' => !$quiz->is_published]);
 
         return redirect()->route('teacher.quizzes')
-            ->with('success', $quiz->is_published ? 'تم نشر الاختبار' : 'تم إلغاء نشر الاختبار');
+            ->with('success', $quiz->is_published ? __('messages.quiz_published_success') : __('messages.quiz_unpublished_success'));
     }
 
     public function deleteQuiz($id)
@@ -2440,7 +2440,7 @@ class TeacherWebController extends Controller
             ->firstOrFail();
 
         $quiz->delete();
-        return redirect()->route('teacher.quizzes')->with('success', 'تم حذف الاختبار');
+        return redirect()->route('teacher.quizzes')->with('success', __('messages.quiz_deleted_success'));
     }
 
     public function settings()

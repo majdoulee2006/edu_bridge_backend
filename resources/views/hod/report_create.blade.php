@@ -1,6 +1,6 @@
 @extends('layouts.hod')
 
-@section('title', 'طلب تقرير جديد')
+@section('title', __('messages.request_new_report'))
 
 @push('styles')
 <style>
@@ -58,7 +58,9 @@
 
     .search-wrap { position: relative; margin-bottom: 0.75rem; }
     .search-wrap .form-control { padding-right: 1rem; padding-left: 3rem; }
+    [dir="ltr"] .search-wrap .form-control { padding-left: 1rem; padding-right: 3rem; }
     .search-icon { position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+    [dir="ltr"] .search-icon { left: auto; right: 1.25rem; }
 
     select.form-control { appearance: none; cursor: pointer; }
 
@@ -107,10 +109,10 @@
 
 @section('content')
 
-    {{-- زر الرجوع --}}
+    {{-- Back Button --}}
     <a href="{{ route('hod.reports') }}" class="back-btn">
         <i class="fa-solid fa-arrow-right"></i>
-        رجوع إلى التقارير
+        {{ __('messages.back_to_reports') }}
     </a>
 
     @if($errors->any())
@@ -123,27 +125,27 @@
         @csrf
         <input type="hidden" name="report_type" id="report_type_input" value="academic">
 
-        {{-- Section 1: الطالب --}}
+        {{-- Section 1: Target Student --}}
         <div class="form-card">
             <div class="section-title-wrap">
                 <div class="section-icon icon-yellow"><i class="fa-solid fa-user-graduate"></i></div>
-                <h3 class="section-title">الطالب المعني</h3>
+                <h3 class="section-title">{{ __('messages.target_student') }}</h3>
             </div>
 
             <div class="search-wrap">
                 <input type="text" id="student-search" oninput="filterStudents()"
-                       class="form-control" placeholder="ابحث باسم الطالب المكتوب أدناه...">
+                       class="form-control" placeholder="{{ __('messages.search_student_ph') }}">
                 <i class="fa-solid fa-magnifying-glass search-icon"></i>
             </div>
 
             <select class="form-control" name="student_id" id="student-select" required style="margin-bottom:1rem;">
-                <option value="" disabled selected>اختر الطالب من القائمة...</option>
+                <option value="" disabled selected>{{ __('messages.select_student_from_list') }}</option>
                 @foreach($students as $s)
                     <option value="{{ $s->student_id }}">{{ $s->full_name }}</option>
                 @endforeach
             </select>
 
-            <div class="suggestions-label">مقترحات سريعة (انقر للاختيار الفوري)</div>
+            <div class="suggestions-label">{{ __('messages.quick_suggestions_label') }}</div>
             <div class="suggestions-list">
                 @foreach($students->take(3) as $s)
                 <div class="suggestion-chip" onclick="selectStudent({{ $s->student_id }})">
@@ -154,56 +156,56 @@
             </div>
         </div>
 
-        {{-- Section 2: المدرب --}}
+        {{-- Section 2: Responsible Teacher --}}
         <div class="form-card">
             <div class="section-title-wrap">
                 <div class="section-icon icon-blue"><i class="fa-solid fa-chalkboard-user"></i></div>
-                <h3 class="section-title">المدرب المسؤول</h3>
+                <h3 class="section-title">{{ __('messages.responsible_teacher') }}</h3>
             </div>
 
             <div class="search-wrap">
                 <input type="text" id="teacher-search" oninput="filterTeachers()"
-                       class="form-control" placeholder="ابحث باسم المدرب المسؤول...">
+                       class="form-control" placeholder="{{ __('messages.search_teacher_ph') }}">
                 <i class="fa-solid fa-magnifying-glass search-icon"></i>
             </div>
 
             <select class="form-control" name="teacher_id" id="teacher-select" required>
-                <option value="" disabled selected>اختر المدرب من القائمة...</option>
+                <option value="" disabled selected>{{ __('messages.select_teacher_from_list') }}</option>
                 @foreach($teachers as $t)
                     <option value="{{ $t->teacher_id }}">{{ $t->full_name }}</option>
                 @endforeach
             </select>
         </div>
 
-        {{-- Section 3: تفاصيل التقرير --}}
+        {{-- Section 3: Report Details --}}
         <div class="form-card">
             <div class="section-title-wrap">
                 <div class="section-icon icon-purple"><i class="fa-solid fa-clipboard-list"></i></div>
-                <h3 class="section-title">تفاصيل التقرير</h3>
+                <h3 class="section-title">{{ __('messages.report_details_section') }}</h3>
             </div>
 
             <div class="type-cards" style="margin-bottom:1.25rem;">
                 <div class="type-card active" id="type-academic" onclick="setType('academic')">
                     <div class="type-icon"><i class="fa-solid fa-graduation-cap"></i></div>
-                    <h4>أداء أكاديمي</h4>
+                    <h4>{{ __('messages.academic_performance_opt') }}</h4>
                 </div>
                 <div class="type-card" id="type-behavioral" onclick="setType('behavioral')">
                     <div class="type-icon"><i class="fa-solid fa-user-check"></i></div>
-                    <h4>سلوك وحضور</h4>
+                    <h4>{{ __('messages.behavior_and_attendance_opt') }}</h4>
                 </div>
             </div>
 
             <label style="display:block;margin-bottom:0.5rem;font-size:0.9rem;color:var(--text-secondary);">
-                ملاحظات إضافية (اختياري)
+                {{ __('messages.additional_notes_optional') }}
             </label>
             <textarea class="form-control" name="recommendations"
-                      placeholder="اكتب أي نقاط محددة ترغب في التركيز عليها..."></textarea>
+                      placeholder="{{ __('messages.focus_points_ph') }}"></textarea>
         </div>
 
-        {{-- زر الإرسال --}}
+        {{-- Submit Button --}}
         <button type="submit" class="submit-btn">
             <i class="fa-solid fa-paper-plane"></i>
-            إرسال التقرير
+            {{ __('messages.send_report_request_btn') }}
         </button>
     </form>
 

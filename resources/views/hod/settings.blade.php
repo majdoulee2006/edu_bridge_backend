@@ -1,6 +1,6 @@
 @extends('layouts.hod')
 
-@section('title', 'الإعدادات')
+@section('title', __('messages.settings'))
 
 @push('styles')
 <style>
@@ -130,30 +130,30 @@
 
     <div class="card">
         <div class="profile-summary">
-            <img src="https://ui-avatars.com/api/?name=أحمد+محمد&background=random" class="profile-avatar" alt="Avatar">
+            <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->full_name ?? __('messages.user')) }}&background=random" class="profile-avatar" alt="Avatar">
             <div class="profile-info">
-                <h3>أحمد محمد</h3>
-                <p>رئيس قسم</p>
+                <h3>{{ auth()->user()->full_name ?? __('messages.academic_hod_role') }}</h3>
+                <p>{{ __('messages.academic_hod_role') }}</p>
             </div>
         </div>
     </div>
 
     <div class="settings-group">
-        <div class="settings-group-title">المظهر</div>
+        <div class="settings-group-title">{{ __('messages.appearance') }}</div>
         
         <div class="setting-item">
-            <div class="setting-label">حجم الخط</div>
+            <div class="setting-label">{{ __('messages.font_size_label') }}</div>
             <div class="font-size-control">
-                <span style="font-size: 0.9rem; color: var(--text-secondary);">صغير</span>
+                <span style="font-size: 0.9rem; color: var(--text-secondary);">{{ __('messages.font_small') }}</span>
                 <input type="range" min="14" max="22" value="16" class="range-slider" id="fontSizeSlider">
-                <span style="font-size: 1.2rem; font-weight: bold; color: var(--text-secondary);">كبير</span>
+                <span style="font-size: 1.2rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.font_large') }}</span>
             </div>
         </div>
         
         <div class="setting-item">
             <div class="setting-label">
-                الوضع الداكن
-                <i class="fa-solid fa-moon" style="margin-right: 0.5rem;"></i>
+                {{ __('messages.dark_mode') }}
+                <i class="fa-solid fa-moon"></i>
             </div>
             <label class="switch">
                 <input type="checkbox" id="darkModeToggle">
@@ -163,13 +163,13 @@
     </div>
 
     <div class="settings-group">
-        <div class="settings-group-title">إعدادات الحضور والغياب</div>
+        <div class="settings-group-title">{{ __('messages.offline_sync_policy_title') }}</div>
         
         <form action="{{ route('hod.settings.attendance_policy') }}" method="POST" style="margin-top: 1rem;">
             @csrf
             <div style="display: flex; flex-direction: column; gap: 1rem;">
                 <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; margin-bottom: 0.5rem;">
-                    اختر سياسة مزامنة الحضور للطلاب الذين يسجلون حضورهم بدون إنترنت (Offline Sync):
+                    {{ __('messages.offline_sync_desc') }}
                 </p>
                 
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -178,9 +178,9 @@
                                {{ ($department && $department->offline_sync_policy === 'anytime') || !$department ? 'checked' : '' }}
                                style="margin-top: 0.25rem; scale: 1.2; accent-color: var(--accent-color);">
                         <div>
-                            <span style="font-weight: 700; color: var(--text-primary);">مفتوح (في أي وقت)</span>
+                            <span style="font-weight: 700; color: var(--text-primary);">{{ __('messages.sync_policy_anytime') }}</span>
                             <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">
-                                يتم قبول الحضور ومزامنته فور اتصال الطالب بالإنترنت، حتى بعد مضي عدة أيام على المحاضرة.
+                                {{ __('messages.sync_policy_anytime_desc') }}
                             </p>
                         </div>
                     </label>
@@ -190,9 +190,9 @@
                                {{ $department && $department->offline_sync_policy === 'same_day' ? 'checked' : '' }}
                                style="margin-top: 0.25rem; scale: 1.2; accent-color: var(--accent-color);">
                         <div>
-                            <span style="font-weight: 700; color: var(--text-primary);">محدد (نهاية نفس اليوم)</span>
+                            <span style="font-weight: 700; color: var(--text-primary);">{{ __('messages.sync_policy_same_day') }}</span>
                             <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">
-                                يجب مزامنة الحضور قبل نهاية اليوم الدراسي الفعلي للمحاضرة (قبل الساعة 11:59 مساءً من نفس اليوم)، وإلا يعتبر الطالب غائباً بشكل نهائي.
+                                {{ __('messages.sync_policy_same_day_desc') }}
                             </p>
                         </div>
                     </label>
@@ -200,22 +200,20 @@
                 
                 <div style="margin-top: 1rem;">
                     <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.6rem 1.5rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer; transition: opacity 0.2s;">
-                        حفظ الإعدادات
+                        {{ __('messages.save_settings_btn') }}
                     </button>
                 </div>
             </div>
         </form>
     </div>
 
-
-
     <div class="settings-group">
-        <div class="settings-group-title">الإشعارات</div>
+        <div class="settings-group-title">{{ __('messages.notifications') }}</div>
         
         <div class="setting-item">
             <div class="setting-label">
-                تفعيل الإشعارات
-                <i class="fa-solid fa-bell" style="margin-right: 0.5rem;"></i>
+                {{ __('messages.enable_notifications') }}
+                <i class="fa-solid fa-bell"></i>
             </div>
             <label class="switch">
                 <input type="checkbox" checked>
@@ -225,8 +223,8 @@
         
         <div class="setting-item">
             <div class="setting-label">
-                الأصوات
-                <i class="fa-solid fa-volume-high" style="margin-right: 0.5rem;"></i>
+                {{ __('messages.sounds') }}
+                <i class="fa-solid fa-volume-high"></i>
             </div>
             <label class="switch">
                 <input type="checkbox" checked>
@@ -235,14 +233,14 @@
         </div>
     </div>
 
-    {{-- الدعم والمعلومات والأمان --}}
+    {{-- Support, Info & Security --}}
     <div class="settings-group" style="padding: 1.75rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
             <div class="settings-group-title" style="margin: 0;">
-                <i class="fa-solid fa-shield-halved" style="color: var(--accent-color); margin-left: 0.5rem;"></i> الدعم والمعلومات والأمان
+                <i class="fa-solid fa-shield-halved" style="color: var(--accent-color);"></i> {{ __('messages.support_and_info') }}
             </div>
             <span style="font-size: 0.78rem; font-weight: 700; background: rgba(255,204,0,0.15); color: #eab308; padding: 0.25rem 0.75rem; border-radius: 20px; border: 1px solid rgba(255,204,0,0.3);">
-                منظومة معتمدة
+                {{ __('messages.certified_system') }}
             </span>
         </div>
 
@@ -254,18 +252,18 @@
                         <i class="fa-solid fa-graduation-cap"></i>
                     </div>
                     <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-color); display: flex; align-items: center; gap: 0.35rem;">
-                        استعراض <i class="fa-solid fa-arrow-left" style="font-size: 0.7rem;"></i>
+                        {{ __('messages.explore') }} <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}" style="font-size: 0.7rem;"></i>
                     </span>
                 </div>
                 <div style="margin-top: 1rem;">
-                    <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--text-primary);">حول المنصة وفريق التطوير</h4>
+                    <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--text-primary);">{{ __('messages.about_platform_and_team') }}</h4>
                     <p style="margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
-                        معلومات نظام Edu-Bridge الأكاديمي، كادر الهندسة والبرمجة، سياسة الخصوصية، والتقنيات المعتمدة.
+                        {{ __('messages.about_platform_desc') }}
                     </p>
                 </div>
                 <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
-                    <span>5 مهندسين معتمدين</span>
-                    <span style="color: #eab308; font-weight: 700;">منظومة معتمدة</span>
+                    <span>{{ __('messages.certified_engineers') }}</span>
+                    <span style="color: #eab308; font-weight: 700;">{{ __('messages.certified_system') }}</span>
                 </div>
             </div>
         </div>

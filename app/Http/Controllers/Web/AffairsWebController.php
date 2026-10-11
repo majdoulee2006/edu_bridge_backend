@@ -137,10 +137,23 @@ class AffairsWebController extends Controller
     public function getCourseWeightsPayload()
     {
         // 1. الأقسام
-        $departments = DB::table('departments')->select('department_id', 'name')->get();
+        $departments = \App\Models\Department::all()->map(function ($d) {
+            return (object) [
+                'department_id' => $d->department_id,
+                'name'          => $d->display_name ?? $d->name,
+                'raw_name'      => $d->name,
+            ];
+        });
 
         // 2. التخصصات / البرامج
-        $programs = DB::table('programs')->select('id', 'name', 'department_id')->get();
+        $programs = \App\Models\Program::all()->map(function ($p) {
+            return (object) [
+                'id'            => $p->id,
+                'name'          => $p->display_name ?? $p->name,
+                'raw_name'      => $p->name,
+                'department_id' => $p->department_id,
+            ];
+        });
 
         // 3. الفصول الدراسية
         $semesters = DB::table('semesters')->select('semester_id', 'name')->get();
@@ -317,19 +330,61 @@ class AffairsWebController extends Controller
             $advKey = trim((string)$s->program_name) . '_' . trim((string)$s->level);
             $advisor = $advisors->get($advKey);
 
+            $rawProgName = $s->program_name ?? 'عام';
+            $rawDeptName = $s->department_name ?? 'عام';
+            $rawLevel    = $s->level ?? 'السنة الأولى';
+
+            $progMap = [
+                'معلوماتية'                 => 'prog_informatics',
+                'اتصالات'                   => 'prog_telecom',
+                'الكترون'                   => 'prog_electronics',
+                'ذكاء اصطناعي'              => 'prog_ai',
+                'مخبري'                     => 'prog_medical_lab',
+                'صيدلة'                     => 'prog_pharmacy',
+                'هندسة مدني'                => 'prog_civil_eng',
+                'هندسة عمارة'               => 'prog_arch_eng',
+                'هندسة ديكور وتصميم داخلي' => 'prog_interior_design',
+                'إدارة اعمال'               => 'prog_business_admin',
+                'محاسبة'                    => 'prog_accounting',
+                'مصارف و تأمين'             => 'prog_banking_insurance',
+            ];
+            $deptMap = [
+                'هندسي'                  => 'dept_engineering',
+                'نظم المعلومات الحاسوبية' => 'dept_cis',
+                'طبي'                    => 'dept_medical',
+                'تجاري'                  => 'dept_business',
+            ];
+
+            $translatedProg = isset($progMap[$rawProgName]) ? __("messages.{$progMap[$rawProgName]}") : $rawProgName;
+            $translatedDept = isset($deptMap[$rawDeptName]) ? __("messages.{$deptMap[$rawDeptName]}") : $rawDeptName;
+
+            $translatedLevel = $rawLevel;
+            if (app()->getLocale() === 'en') {
+                if (str_contains($rawLevel, 'السنة الأولى') || $rawLevel === '1') {
+                    $translatedLevel = str_contains($rawLevel, 'راسب') ? 'First Year (Failed - Repeat)' : 'First Year';
+                } elseif (str_contains($rawLevel, 'السنة الثانية') || $rawLevel === '2') {
+                    $translatedLevel = str_contains($rawLevel, 'راسب') ? 'Second Year (Failed - Repeat)' : 'Second Year';
+                } elseif (str_contains($rawLevel, 'خريج')) {
+                    $translatedLevel = 'Certified Graduate';
+                }
+            }
+
             return [
                 'student_id'      => $s->student_id,
                 'user_id'         => $s->user_id,
                 'student_code'    => $s->student_code ?? '',
                 'full_name'       => $s->full_name,
                 'program_id'      => $s->program_id,
-                'program_name'    => $s->program_name ?? 'عام',
+                'program_name'    => $translatedProg,
+                'raw_program_name'=> $rawProgName,
                 'department_id'   => $s->department_id,
-                'department_name' => $s->department_name ?? 'عام',
-                'level'           => $s->level ?? 'السنة الأولى',
+                'department_name' => $translatedDept,
+                'raw_department_name' => $rawDeptName,
+                'level'           => $translatedLevel,
+                'raw_level'       => $rawLevel,
                 'joined_at'       => $s->joined_at ? \Carbon\Carbon::parse($s->joined_at)->format('Y-m-d') : '2026-09-01',
-                'hod_name'        => $hods->get($s->department_id) ?? 'د. أحمد ديب (رئيس القسم)',
-                'advisor_name'    => $advisor ? $advisor->full_name : 'أ. أحمد نصلى (المرشد الأكاديمي)',
+                'hod_name'        => $hods->get($s->department_id) ?? (app()->getLocale() === 'en' ? 'Dr. Ahmad Deeb (Head of Dept)' : 'د. أحمد ديب (رئيس القسم)'),
+                'advisor_name'    => $advisor ? $advisor->full_name : (app()->getLocale() === 'en' ? 'Mr. Ahmad Nasli (Academic Advisor)' : 'أ. أحمد نصلى (المرشد الأكاديمي)'),
                 'status'          => $s->user_status ?? 'active',
                 'courses'         => $stdCourses,
                 'summary'         => [

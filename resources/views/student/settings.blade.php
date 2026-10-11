@@ -1,6 +1,6 @@
 @extends('layouts.student')
-@section('title', 'الإعدادات')
-@section('subtitle', 'تخصيص تفضيلات التطبيق ومعلومات النظام')
+@section('title', __('messages.settings'))
+@section('subtitle', __('messages.settings_subtitle'))
 
 @push('styles')
 <style>
@@ -127,26 +127,26 @@
     <div class="settings-group" style="display: flex; align-items: center; justify-content: space-between;">
         <div style="display: flex; align-items: center; gap: 1.25rem;">
             <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--accent-color); color: #1a1a1a; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.5rem; box-shadow: 0 4px 15px rgba(242,242,13,0.3);">
-                {{ mb_substr(Auth::user()->full_name ?? 'ط', 0, 1) }}
+                {{ mb_substr(Auth::user()->full_name ?? (app()->getLocale() === 'ar' ? 'ط' : 'S'), 0, 1) }}
             </div>
             <div>
                 <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">{{ Auth::user()->full_name }}</h3>
-                <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">حساب طالب جامعي</p>
+                <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">{{ __('messages.university_student_account') }}</p>
             </div>
         </div>
         <span style="background: rgba(242,242,13,0.15); color: var(--accent-color); padding: 0.3rem 0.85rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 700;">
-            نشط
+            {{ __('messages.active_status_badge') }}
         </span>
     </div>
 
     <!-- Appearance -->
     <div class="settings-group">
-        <div class="settings-group-title">المظهر والعرض</div>
+        <div class="settings-group-title">{{ __('messages.appearance_and_display') }}</div>
         
         <div class="setting-item">
             <div class="setting-label">
                 <i class="fa-solid fa-moon"></i>
-                الوضع الداكن
+                {{ __('messages.dark_mode_label') }}
             </div>
             <label class="switch">
                 <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
@@ -157,12 +157,12 @@
 
     <!-- Notifications -->
     <div class="settings-group">
-        <div class="settings-group-title">الإشعارات والتنبيهات</div>
+        <div class="settings-group-title">{{ __('messages.notifications_and_alerts') }}</div>
         
         <div class="setting-item">
             <div class="setting-label">
                 <i class="fa-solid fa-bell"></i>
-                تفعيل التنبيهات الفورية
+                {{ __('messages.enable_push_notifications') }}
             </div>
             <label class="switch">
                 <input type="checkbox" checked>
@@ -173,7 +173,7 @@
         <div class="setting-item">
             <div class="setting-label">
                 <i class="fa-solid fa-volume-high"></i>
-                أصوات التنبيهات
+                {{ __('messages.notification_sounds') }}
             </div>
             <label class="switch">
                 <input type="checkbox" checked>
@@ -184,14 +184,10 @@
 
     <!-- System info -->
     <div class="settings-group">
-        <div class="settings-group-title">معلومات النظام</div>
+        <div class="settings-group-title">{{ __('messages.system_information') }}</div>
         <div class="info-row">
-            <span class="info-label">إصدار النظام</span>
+            <span class="info-label">{{ __('messages.system_version') }}</span>
             <span class="info-value">EduBridge v1.0.2</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">المنطقة الزمنية</span>
-            <span class="info-value">{{ config('app.timezone') }}</span>
         </div>
     </div>
 
@@ -199,10 +195,10 @@
     <div class="settings-group" style="padding: 1.75rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
             <div class="settings-group-title" style="margin: 0;">
-                <i class="fa-solid fa-shield-halved" style="color: var(--accent-color); margin-left: 0.5rem;"></i> الدعم والمعلومات والأمان
+                <i class="fa-solid fa-shield-halved" style="color: var(--accent-color); {{ app()->getLocale() === 'ar' ? 'margin-left: 0.5rem;' : 'margin-right: 0.5rem;' }}"></i> {{ __('messages.support_and_info') }}
             </div>
             <span style="font-size: 0.78rem; font-weight: 700; background: rgba(255,204,0,0.15); color: #eab308; padding: 0.25rem 0.75rem; border-radius: 20px; border: 1px solid rgba(255,204,0,0.3);">
-                منظومة معتمدة
+                {{ __('messages.certified_system') }}
             </span>
         </div>
 
@@ -214,18 +210,18 @@
                         <i class="fa-solid fa-graduation-cap"></i>
                     </div>
                     <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-color); display: flex; align-items: center; gap: 0.35rem;">
-                        استعراض <i class="fa-solid fa-arrow-left" style="font-size: 0.7rem;"></i>
+                        {{ __('messages.explore') }} <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}" style="font-size: 0.7rem;"></i>
                     </span>
                 </div>
                 <div style="margin-top: 1rem;">
-                    <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--text-primary);">حول المنصة وفريق التطوير</h4>
+                    <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--text-primary);">{{ __('messages.about_platform_and_team') }}</h4>
                     <p style="margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
-                        معلومات نظام Edu-Bridge الأكاديمي، كادر الهندسة والبرمجة، سياسة الخصوصية، والتقنيات المعتمدة.
+                        {{ __('messages.about_platform_desc') }}
                     </p>
                 </div>
                 <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
-                    <span>5 مهندسين معتمدين</span>
-                    <span style="color: #eab308; font-weight: 700;">منظومة معتمدة</span>
+                    <span>{{ __('messages.certified_engineers') }}</span>
+                    <span style="color: #eab308; font-weight: 700;">{{ __('messages.certified_system') }}</span>
                 </div>
             </div>
         </div>

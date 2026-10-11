@@ -1,5 +1,5 @@
 @extends('layouts.affairs')
-@section('title', 'الأنشطة والفعاليات')
+@section('title', __('messages.activities_and_events'))
 
 @push('styles')
 <style>
@@ -58,7 +58,7 @@
     }
     .search-box input {
         width: 100%;
-        padding: 0.65rem 2.5rem 0.65rem 1rem;
+        padding: {{ app()->getLocale() === 'en' ? '0.65rem 1rem 0.65rem 2.5rem' : '0.65rem 2.5rem 0.65rem 1rem' }};
         background: var(--bg-secondary);
         border: 1px solid var(--border-color);
         border-radius: 2rem;
@@ -75,7 +75,7 @@
     }
     .search-box i {
         position: absolute;
-        right: 1rem;
+        {{ app()->getLocale() === 'en' ? 'left: 1rem;' : 'right: 1rem;' }}
         top: 50%;
         transform: translateY(-50%);
         color: var(--text-secondary);
@@ -159,7 +159,7 @@
     .status-badge {
         position: absolute;
         top: 0.85rem;
-        right: 0.85rem;
+        {{ app()->getLocale() === 'en' ? 'left: 0.85rem;' : 'right: 0.85rem;' }}
         padding: 0.35rem 0.85rem;
         border-radius: 1rem;
         font-size: 0.78rem;
@@ -174,6 +174,7 @@
         flex: 1;
         display: flex;
         flex-direction: column;
+        text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};
     }
     .activity-title {
         font-size: 1.1rem;
@@ -243,10 +244,10 @@
 
     <!-- Header -->
     <div class="page-header">
-        <h2>الأنشطة والفعاليات</h2>
+        <h2>{{ __('messages.activities_and_events') }}</h2>
         <div class="header-note">
             <i class="fa-solid fa-circle-info"></i>
-            تُعرض الأنشطة تلقائياً من أحداث التقويم المجدولة
+            {{ __('messages.activities_note') }}
         </div>
     </div>
 
@@ -258,13 +259,13 @@
                 {{-- اختيار القسم --}}
                 <div>
                     <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                        <i class="fa-solid fa-building-user" style="color: var(--accent-color);"></i> تصفية حسب القسم:
+                        <i class="fa-solid fa-building-user" style="color: var(--accent-color);"></i> {{ __('messages.filter_by_dept') }}
                     </label>
                     <select name="department_id" style="width: 100%; padding: 0.7rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
-                        <option value="">-- جميع الأقسام --</option>
+                        <option value="">{{ __('messages.all_departments') }}</option>
                         @foreach($departments as $dept)
                             <option value="{{ $dept->department_id }}" {{ $deptId == $dept->department_id ? 'selected' : '' }}>
-                                {{ $dept->name }}
+                                {{ $dept->display_name ?? $dept->name }}
                             </option>
                         @endforeach
                     </select>
@@ -273,45 +274,45 @@
                 {{-- نوع التصفية حسب التاريخ --}}
                 <div>
                     <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                        <i class="fa-solid fa-calendar-days" style="color: var(--accent-color);"></i> نوع التصفية الزمنية:
+                        <i class="fa-solid fa-calendar-days" style="color: var(--accent-color);"></i> {{ __('messages.time_filter_type') }}
                     </label>
                     <select name="date_mode" id="date_mode_select" onchange="toggleDateInputs(this.value)" style="width: 100%; padding: 0.7rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;">
-                        <option value="all" {{ $dateMode === 'all' ? 'selected' : '' }}>الكل</option>
-                        <option value="single_date" {{ $dateMode === 'single_date' ? 'selected' : '' }}>يوم محدد</option>
-                        <option value="date_range" {{ $dateMode === 'date_range' ? 'selected' : '' }}>بين تاريخين</option>
-                        <option value="week" {{ $dateMode === 'week' ? 'selected' : '' }}>أسبوع معين</option>
+                        <option value="all" {{ $dateMode === 'all' ? 'selected' : '' }}>{{ __('messages.all') }}</option>
+                        <option value="single_date" {{ $dateMode === 'single_date' ? 'selected' : '' }}>{{ __('messages.single_day') }}</option>
+                        <option value="date_range" {{ $dateMode === 'date_range' ? 'selected' : '' }}>{{ __('messages.date_range') }}</option>
+                        <option value="week" {{ $dateMode === 'week' ? 'selected' : '' }}>{{ __('messages.specific_week') }}</option>
                     </select>
                 </div>
 
                 {{-- مدخل يوم معين --}}
                 <div id="single_date_container" style="display: {{ $dateMode === 'single_date' ? 'block' : 'none' }};">
-                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">التاريخ المحدد:</label>
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">{{ __('messages.selected_date') }}</label>
                     <input type="date" name="single_date" value="{{ $singleDate }}" style="width: 100%; padding: 0.7rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;" />
                 </div>
 
                 {{-- مدخل بين تاريخين --}}
                 <div id="date_range_start_container" style="display: {{ $dateMode === 'date_range' ? 'block' : 'none' }};">
-                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">من تاريخ:</label>
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">{{ __('messages.from_date') }}</label>
                     <input type="date" name="start_date" value="{{ $startDate }}" style="width: 100%; padding: 0.7rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;" />
                 </div>
                 <div id="date_range_end_container" style="display: {{ $dateMode === 'date_range' ? 'block' : 'none' }};">
-                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">إلى تاريخ:</label>
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">{{ __('messages.to_date') }}</label>
                     <input type="date" name="end_date" value="{{ $endDate }}" style="width: 100%; padding: 0.7rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;" />
                 </div>
 
                 {{-- مدخل أسبوع معين --}}
                 <div id="week_container" style="display: {{ $dateMode === 'week' ? 'block' : 'none' }};">
-                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">اختر أي يوم ضمن الأسبوع:</label>
+                    <label style="display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">{{ __('messages.select_week_day') }}</label>
                     <input type="date" name="week_date" value="{{ $weekDate }}" style="width: 100%; padding: 0.7rem 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-weight: 700;" />
                 </div>
 
                 {{-- أزرار التحكم --}}
                 <div style="display: flex; gap: 0.5rem;">
                     <button type="submit" style="flex: 1; padding: 0.7rem 1.25rem; border: none; border-radius: 0.75rem; background: var(--accent-color); color: #101924; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
-                        <i class="fa-solid fa-filter"></i> تطبيق الفلترة
+                        <i class="fa-solid fa-filter"></i> {{ __('messages.apply_filter') }}
                     </button>
                     @if($deptId || $dateMode !== 'all')
-                        <a href="{{ route('affairs.activities') }}" style="padding: 0.7rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-secondary); font-weight: 700; text-decoration: none; display: flex; align-items: center; justify-content: center;" title="إعادة ضبط">
+                        <a href="{{ route('affairs.activities') }}" style="padding: 0.7rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-secondary); font-weight: 700; text-decoration: none; display: flex; align-items: center; justify-content: center;" title="{{ __('messages.reset_filters') }}">
                             <i class="fa-solid fa-rotate-right"></i>
                         </a>
                     @endif
@@ -327,29 +328,29 @@
     <div class="controls-row">
         <div class="filters">
             <button class="filter-chip active" data-filter="all">
-                الكل <span class="count-badge" id="count-all">0</span>
+                {{ __('messages.all') }} <span class="count-badge" id="count-all">0</span>
             </button>
             <button class="filter-chip" data-filter="ongoing">
-                قيد التنفيذ <span class="count-badge" id="count-ongoing">0</span>
+                {{ __('messages.ongoing_activities') }} <span class="count-badge" id="count-ongoing">0</span>
             </button>
             <button class="filter-chip" data-filter="upcoming">
-                الأنشطة القادمة <span class="count-badge" id="count-upcoming">0</span>
+                {{ __('messages.upcoming_activities') }} <span class="count-badge" id="count-upcoming">0</span>
             </button>
             <button class="filter-chip" data-filter="completed">
-                الأنشطة المنتهية <span class="count-badge" id="count-completed">0</span>
+                {{ __('messages.completed_activities') }} <span class="count-badge" id="count-completed">0</span>
             </button>
         </div>
 
         <div class="search-box">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="searchInput" placeholder="بحث عن نشاط أو مكان..." oninput="applyFilters()">
+            <input type="text" id="searchInput" placeholder="{{ __('messages.search_activity_placeholder') }}" oninput="applyFilters()">
         </div>
     </div>
 
     <!-- Grid -->
     <div class="activities-grid" id="activitiesGrid">
 
-        @forelse([] as $event)
+        @forelse($events ?? [] as $event)
             @php
                 $today     = \Carbon\Carbon::today();
                 $eventDate = \Carbon\Carbon::parse($event->event_date)->startOfDay();
@@ -357,17 +358,17 @@
                 if ($eventDate->equalTo($today)) {
                     $status      = 'ongoing';
                     $badgeClass  = 'badge-ongoing';
-                    $badgeLabel  = 'قيد التنفيذ';
+                    $badgeLabel  = __('messages.status_ongoing');
                     $icon        = 'fa-solid fa-champagne-glasses';
                 } elseif ($eventDate->greaterThan($today)) {
                     $status      = 'upcoming';
                     $badgeClass  = 'badge-upcoming';
-                    $badgeLabel  = 'قادم';
+                    $badgeLabel  = __('messages.status_upcoming');
                     $icon        = 'fa-solid fa-calendar-check';
                 } else {
                     $status      = 'completed';
                     $badgeClass  = 'badge-completed';
-                    $badgeLabel  = 'منتهي';
+                    $badgeLabel  = __('messages.status_completed_event');
                     $icon        = 'fa-solid fa-flag-checkered';
                 }
 
@@ -386,12 +387,12 @@
 
                     <div class="info-row">
                         <i class="fa-solid fa-building-user"></i>
-                        <span>القسم: {{ $event->department ? $event->department->name : 'عام (جميع الأقسام)' }}</span>
+                        <span>{{ __('messages.academic_department') }}: {{ $event->department ? ($event->department->display_name ?? $event->department->name) : __('messages.general_all_depts') }}</span>
                     </div>
 
                     <div class="info-row">
                         <i class="fa-solid fa-calendar-day"></i>
-                        <span>{{ $eventDate->translatedFormat('d F Y') }}</span>
+                        <span>{{ $eventDate->locale(app()->getLocale())->translatedFormat('d F Y') }}</span>
                     </div>
 
                     @if($time)
@@ -413,19 +414,19 @@
         @empty
             <div class="empty-state">
                 <i class="fa-regular fa-calendar-xmark"></i>
-                <h3>لا توجد أنشطة حتى الآن</h3>
-                <p>قم بإضافة أحداث في صفحة التقويم لتعرض هنا تلقائياً</p>
+                <h3>{{ __('messages.no_activities_yet') }}</h3>
+                <p>{{ __('messages.add_calendar_events_hint') }}</p>
                 <a href="{{ route('affairs.calendar') }}">
                     <i class="fa-solid fa-calendar-plus"></i>
-                    الذهاب إلى التقويم
+                    {{ __('messages.go_to_calendar') }}
                 </a>
             </div>
         @endforelse
 
         <div id="noResultsState" class="empty-state" style="display: none;">
             <i class="fa-solid fa-filter-circle-xmark"></i>
-            <h3>لا توجد نتائج تطابق هذا التصفية</h3>
-            <p>جرّب اختيار تصنيف آخر أو تغيير كلمة البحث</p>
+            <h3>{{ __('messages.no_matching_activities_filter') }}</h3>
+            <p>{{ __('messages.try_other_filter') }}</p>
         </div>
 
     </div>

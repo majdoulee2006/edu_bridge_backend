@@ -1,6 +1,6 @@
 @extends('layouts.affairs')
 
-@section('title', 'التقارير')
+@section('title', __('messages.reports_title'))
 
 @push('styles')
 <style>
@@ -88,12 +88,12 @@
 @endpush
 
 @section('content')
-    <p class="page-subtitle">إدارة ومتابعة تقارير الأداء</p>
+    <p class="page-subtitle">{{ __('messages.reports_subtitle') }}</p>
 
     {{-- Header مع زر + --}}
     <div class="section-header">
-        <h4 class="section-title"><i class="fa-solid fa-file-lines" style="color:var(--accent-color);margin-left:0.5rem;"></i> التقارير الصادرة</h4>
-        <button class="add-circle-btn" onclick="openModal('report-modal')" title="طلب تقرير جديد">
+        <h4 class="section-title"><i class="fa-solid fa-file-lines" style="color:var(--accent-color);margin-inline-end:0.5rem;"></i> {{ __('messages.outgoing_reports') }}</h4>
+        <button class="add-circle-btn" onclick="openModal('report-modal')" title="{{ __('messages.request_new_report') }}">
             <i class="fa-solid fa-plus"></i>
         </button>
     </div>
@@ -111,14 +111,14 @@
             <div class="report-info" style="min-width:0;">
                 <h5>{{ $report->student_name }}</h5>
                 <p>
-                    @if($report->teacher_name) المدرب: {{ $report->teacher_name }} &bull; @endif
+                    @if($report->teacher_name) {{ __('messages.teacher_mentor_label') }} {{ $report->teacher_name }} &bull; @endif
                     {{ \Carbon\Carbon::parse($report->created_at)->format('d/m/Y') }}
                 </p>
                 @if($isAcademic && $report->attendance_rate)
                     <p style="margin-top:0.2rem;">
-                        <span style="color:#2563eb;">نسبة الحضور: {{ $report->attendance_rate }}%</span>
+                        <span style="color:#2563eb;">{{ __('messages.attendance_rate_label', ['rate' => $report->attendance_rate]) }}</span>
                         &bull;
-                        <span style="color:#16a34a;">المعدل: {{ $report->average_grade }}</span>
+                        <span style="color:#16a34a;">{{ __('messages.gpa_average_label', ['avg' => $report->average_grade]) }}</span>
                     </p>
                 @endif
                 @if(!$isAcademic && $report->recommendations)
@@ -127,14 +127,14 @@
             </div>
         </div>
         <span class="badge-type {{ $isAcademic ? 'badge-academic' : 'badge-behavioral' }}">
-            {{ $isAcademic ? 'أكاديمي' : 'سلوكي' }}
+            {{ $isAcademic ? __('messages.report_type_academic') : __('messages.report_type_behavioral') }}
         </span>
     </div>
     @empty
     <div class="empty-state">
         <div><i class="fa-solid fa-file-circle-question"></i></div>
-        <p>لا توجد تقارير صادرة حتى الآن.</p>
-        <p style="font-size:0.88rem;">اضغط <strong>+</strong> لإرسال طلب تقرير لمدرب.</p>
+        <p>{{ __('messages.no_outgoing_reports_yet') }}</p>
+        <p style="font-size:0.88rem;">{{ __('messages.click_plus_to_request_report') }}</p>
     </div>
     @endforelse
 
@@ -143,16 +143,16 @@
     <div id="report-modal" class="modal-overlay">
         <div class="modal-card">
             <h4 style="font-size:1.3rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">
-                <i class="fa-solid fa-plus-circle" style="color:var(--accent-color);margin-left:0.4rem;"></i>
-                طلب تقرير جديد
+                <i class="fa-solid fa-plus-circle" style="color:var(--accent-color);margin-inline-end:0.4rem;"></i>
+                {{ __('messages.request_new_report') }}
             </h4>
             <form action="{{ route('affairs.reports.store') }}" method="POST">
                 @csrf
 
                 <div class="form-group">
-                    <label class="form-label">الطالب المعني <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.target_student') }} <span style="color:#ef4444">*</span></label>
                     <select name="student_id" required class="form-input">
-                        <option value="" disabled selected>اختر الطالب</option>
+                        <option value="" disabled selected>{{ __('messages.select_student') }}</option>
                         @foreach($students as $s)
                             <option value="{{ $s->student_id }}">{{ $s->full_name }}</option>
                         @endforeach
@@ -160,9 +160,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">المدرب المعني <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.target_teacher') }} <span style="color:#ef4444">*</span></label>
                     <select name="teacher_id" required class="form-input">
-                        <option value="" disabled selected>اختر المدرب</option>
+                        <option value="" disabled selected>{{ __('messages.select_teacher') }}</option>
                         @foreach($teachers as $t)
                             <option value="{{ $t->teacher_id }}">{{ $t->full_name }}</option>
                         @endforeach
@@ -170,22 +170,22 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">نوع التقرير <span style="color:#ef4444">*</span></label>
+                    <label class="form-label">{{ __('messages.report_type') }} <span style="color:#ef4444">*</span></label>
                     <select name="report_type" required class="form-input">
-                        <option value="" disabled selected>اختر نوع التقرير</option>
-                        <option value="academic">أكاديمي (يولّده النظام تلقائياً)</option>
-                        <option value="behavioral">سلوكي (يكتبه المدرب)</option>
+                        <option value="" disabled selected>{{ __('messages.select_report_type') }}</option>
+                        <option value="academic">{{ __('messages.academic_system_generated') }}</option>
+                        <option value="behavioral">{{ __('messages.behavioral_written_by_teacher') }}</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">ملاحظات إضافية</label>
-                    <textarea name="notes" rows="3" class="form-input" placeholder="أي تعليمات أو ملاحظات للمدرب..."></textarea>
+                    <label class="form-label">{{ __('messages.additional_notes') }}</label>
+                    <textarea name="notes" rows="3" class="form-input" placeholder="{{ __('messages.notes_instructions_placeholder') }}"></textarea>
                 </div>
 
                 <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
-                    <button type="submit" class="btn-save">إرسال الطلب</button>
-                    <button type="button" onclick="closeModal('report-modal')" class="btn-cancel">إلغاء</button>
+                    <button type="submit" class="btn-save">{{ __('messages.send_request') }}</button>
+                    <button type="button" onclick="closeModal('report-modal')" class="btn-cancel">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>

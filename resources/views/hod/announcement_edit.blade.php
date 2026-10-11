@@ -1,14 +1,14 @@
 @extends('layouts.hod')
-@section('title', 'تعديل الإعلان')
+@section('title', __('messages.edit_announcement_title'))
 
 @section('content')
 <div style="max-width: 700px; margin: 0 auto;">
     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
         <a href="{{ route('hod.dashboard') }}"
            style="width: 40px; height: 40px; border-radius: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); text-decoration: none;">
-            <i class="fa-solid fa-arrow-right"></i>
+            <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left' }}"></i>
         </a>
-        <h2 style="font-weight: 800; font-size: 1.2rem;">تعديل الإعلان</h2>
+        <h2 style="font-weight: 800; font-size: 1.2rem;">{{ __('messages.edit_announcement_title') }}</h2>
     </div>
 
     <form action="{{ route('hod.announcements.update', $announcement->announcement_id) }}" method="POST" enctype="multipart/form-data"
@@ -16,20 +16,20 @@
         @csrf
 
         <div>
-            <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">العنوان *</label>
+            <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">{{ __('messages.announcement_title_label') }} *</label>
             <input type="text" name="title" required value="{{ old('title', $announcement->title) }}"
                    style="width: 100%; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; box-sizing: border-box;">
         </div>
 
         <div>
-            <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">المحتوى *</label>
+            <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary);">{{ __('messages.announcement_content_label') }} *</label>
             <textarea name="content" rows="5" required
                       style="width: 100%; padding: 0.85rem 1rem; border: 1px solid var(--border-color); border-radius: 0.75rem; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; resize: vertical; box-sizing: border-box;">{{ old('content', $announcement->content) }}</textarea>
         </div>
 
         <div>
             <label style="display:block; font-weight:700; font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-secondary);">
-                الصورة <span style="font-weight:400;">(اترك فارغاً للإبقاء على الحالية)</span>
+                {{ __('messages.image') }} <span style="font-weight:400;">{{ __('messages.leave_empty_keep_image') }}</span>
             </label>
             <div onclick="document.getElementById('hod-edit-img-input').click()"
                  style="border:2px dashed var(--border-color); border-radius:0.75rem; padding:1.25rem 1rem; text-align:center; cursor:pointer; background:var(--bg-primary); transition:border-color .2s;"
@@ -42,16 +42,16 @@
                     @if($announcement->image)
                         <img src="{{ asset('storage/' . $announcement->image) }}"
                              style="max-height:130px; border-radius:0.5rem; object-fit:cover; margin:0 auto; display:block; margin-bottom:0.5rem;">
-                        <p style="font-size:0.78rem; color:var(--text-secondary); margin:0;">اضغط لتغيير الصورة</p>
+                        <p style="font-size:0.78rem; color:var(--text-secondary); margin:0;">{{ __('messages.click_to_change_image') }}</p>
                     @else
                         <div style="font-size:1.75rem; margin-bottom:0.35rem;">🖼️</div>
-                        <p style="font-weight:600; color:var(--text-secondary); font-size:0.88rem; margin:0 0 0.2rem;">اضغط لإضافة صورة</p>
+                        <p style="font-weight:600; color:var(--text-secondary); font-size:0.88rem; margin:0 0 0.2rem;">{{ __('messages.click_to_add_image') }}</p>
                         <p style="font-size:0.75rem; color:var(--text-secondary); opacity:.7; margin:0;">JPG / PNG / WebP</p>
                     @endif
                 </div>
                 <div id="hod-edit-prev-wrap" style="display:none;">
                     <img id="hod-edit-prev-img" src="" alt="" style="max-height:140px; border-radius:0.5rem; object-fit:cover; margin:0 auto; display:block;">
-                    <p style="margin-top:0.4rem; font-size:0.75rem; color:var(--text-secondary);">اضغط مجدداً لتغيير الصورة</p>
+                    <p style="margin-top:0.4rem; font-size:0.75rem; color:var(--text-secondary);">{{ __('messages.click_again_to_change') }}</p>
                 </div>
             </div>
         </div>
@@ -59,11 +59,11 @@
         <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
             <button type="submit"
                     style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
-                <i class="fa-solid fa-save"></i> حفظ التعديلات
+                <i class="fa-solid fa-save"></i> {{ __('messages.save_announcement_btn') }}
             </button>
             <a href="{{ route('hod.dashboard') }}"
                style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); border-radius: 0.75rem; font-weight: 700; text-align: center; color: var(--text-primary); text-decoration: none;">
-                إلغاء
+                {{ __('messages.cancel') }}
             </a>
         </div>
     </form>

@@ -1,5 +1,5 @@
 @extends('layouts.parent')
-@section('title', 'الجدول الدراسي')
+@section('title', __('messages.study_schedule'))
 
 @push('styles')
 <style>
@@ -90,25 +90,25 @@
 
 @php
     $days = [
-        'Sunday' => 'الأحد',
-        'Monday' => 'الاثنين',
-        'Tuesday' => 'الثلاثاء',
-        'Wednesday' => 'الأربعاء',
-        'Thursday' => 'الخميس',
-        'Friday' => 'الجمعة',
-        'Saturday' => 'السبت',
+        'Sunday'    => __('messages.sunday'),
+        'Monday'    => __('messages.monday'),
+        'Tuesday'   => __('messages.tuesday'),
+        'Wednesday' => __('messages.wednesday'),
+        'Thursday'  => __('messages.thursday'),
+        'Friday'    => __('messages.friday'),
+        'Saturday'  => __('messages.saturday'),
     ];
 @endphp
 
 @if(!$selected_child_id)
     <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color);">
         <i class="fa-solid fa-child" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 1rem; display: block;"></i>
-        <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">يرجى اختيار ابن أولاً</h4>
-        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">يرجى اختيار الابن من القائمة في الأعلى أو إضافة ابن من تبويب "أبنائي".</p>
+        <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.please_select_child_first') }}</h4>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">{{ __('messages.select_child_hint') }}</p>
     </div>
 @else
     @section('subtitle')
-        الجدول الدراسي الأسبوعي للابن: {{ $selected_child->full_name }}
+        {{ (app()->getLocale() === 'en' ? 'Weekly study schedule for: ' : __('messages.weekly_study_schedule_for_child') . ' ') . $selected_child->full_name }}
     @endsection
 
     @php
@@ -139,7 +139,7 @@
             <table class="timetable">
                 <thead>
                     <tr>
-                        <th>الوقت</th>
+                        <th>{{ __('messages.time') }}</th>
                         @foreach($days as $dayEn => $dayAr)
                             @if($dayEn !== 'Friday' && $dayEn !== 'Saturday')
                                 <th>{{ $dayAr }}</th>
@@ -170,10 +170,10 @@
                                     <div class="course-block {{ $courseColors[$match->course_id] ?? 'cb-yellow' }}">
                                         <span class="cb-name">{{ $match->course_title }}</span>
                                         @if($match->teacher_name)
-                                            <span class="cb-info"><i class="fa-solid fa-user" style="font-size:0.65rem; margin-left:0.25rem;"></i> {{ $match->teacher_name }}</span>
+                                            <span class="cb-info"><i class="fa-solid fa-user" style="font-size:0.65rem; margin-inline-end:0.25rem;"></i> {{ $match->teacher_name }}</span>
                                         @endif
                                         @if($match->room)
-                                            <span class="cb-info"><i class="fa-solid fa-door-open" style="font-size:0.65rem; margin-left:0.25rem;"></i> قاعة: {{ $match->room }}</span>
+                                            <span class="cb-info"><i class="fa-solid fa-door-open" style="font-size:0.65rem; margin-inline-end:0.25rem;"></i> {{ __('messages.room') }}: {{ $match->room }}</span>
                                         @endif
                                     </div>
                                 @else
@@ -190,10 +190,11 @@
     @else
         <div style="text-align: center; padding: 4rem 2rem; background: var(--bg-secondary); border-radius: 1.5rem; border: 1px dashed var(--border-color);">
             <i class="fa-solid fa-calendar-days" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.4; margin-bottom: 1rem; display: block;"></i>
-            <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">لا يوجد جدول دراسي محدد</h4>
-            <p style="color: var(--text-secondary); font-size: 0.95rem;">لم يتم تسجيل أي محاضرات أو مواد دراسية للابن {{ $selected_child->full_name }} في هذا الفصل الدراسي بعد.</p>
+            <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.no_schedule_specified') }}</h4>
+            <p style="color: var(--text-secondary); font-size: 0.95rem;">{{ (app()->getLocale() === 'en' ? 'No study schedule or lectures registered for ' : __('messages.no_lectures_or_subjects_for_child') . ' ') . $selected_child->full_name . (app()->getLocale() === 'en' ? ' for this semester yet.' : ' ' . __('messages.in_this_semester_yet')) }}</p>
         </div>
     @endif
 @endif
 
 @endsection
+

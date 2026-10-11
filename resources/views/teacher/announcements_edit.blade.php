@@ -1,5 +1,5 @@
 @extends('layouts.teacher')
-@section('title', 'تعديل الإعلان')
+@section('title', __('messages.edit_announcement'))
 
 @section('content')
 <div style="max-width: 700px; margin: 0 auto;">
@@ -50,11 +50,11 @@
         <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
             <button type="submit"
                     style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
-                <i class="fa-solid fa-save"></i> حفظ التعديلات
+                <i class="fa-solid fa-save"></i> {{ __('messages.save_changes') }}
             </button>
             <a href="{{ route('teacher.dashboard') }}"
                style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); border-radius: 0.75rem; font-weight: 700; text-align: center; color: var(--text-primary); text-decoration: none;">
-                إلغاء
+                {{ __('messages.cancel') }}
             </a>
         </div>
     </form>
