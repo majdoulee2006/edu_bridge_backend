@@ -60,9 +60,19 @@ flowchart TD
 
 بدائل الدخول: **OTP عبر البريد** (`/login-otp/send` ثم `/login-otp/verify`)، وللويب صفحة دخول لكل دور مع **التحقق بالوجه** للطالب عند الدخول من أجهزة متعددة.
 
-## 3) تسجيل الحضور (QR + جهاز + موقع + وجه)
+## 3) تسجيل الحضور (المتصل + الأوفلاين الكامل)
 
-(المصدر: `Api\TeacherController::generateQrSession` و`Api\StudentController::scanAttendanceQr`)
+(المصدر: `Api\TeacherController`, `Api\StudentController`, `Support\QrTokens`, `Support\TotpQrService`, `Services\AttendanceSessionFinalizer`, `Services\TeacherReceiptService`)
+
+يدعم النظام نمطين متكاملين لتسجيل الحضور:
+1. **المسار المتصل (Online):** تدوير الرموز دورياً والتحقق الفوري.
+2. **المسار غير المتصل الشامل (Full Offline Attendance - الفكرة 8):**
+   - **المعلم أوفلاين:** توليد رموز TOTP محلياً كل 30 ثانية عبر `TotpQrService` (خوارزمية `HMAC-SHA256` مع تسامح زمني `±1`)، وجلب الحصص المجهزة لليوم عبر `GET /api/teacher/attendance/today-sessions`.
+   - **الخط الزمني للرموز:** حفظ السجل الزمني الكامل في `attendance_session_tokens` لمنع رفض مسوح الطلاب القديمة (حل مشكلة P1).
+   - **منع التكرار (Idempotency):** اعتماد `client_scan_id` فريد لكل مسح لمنع تكرار السجلات أو التعارضات عند إعادة المحاولة.
+   - **مزامنة الدفعات:** نقطة `POST /api/student/attendance/sync` لمعالجة حتى 20 مسحاً دفعة واحدة عند استعادة الاتصال.
+   - **تأجيل الغياب (Grace Window):** عند إنهاء الجلسة الأوفلاين (`offline_mode != none`)، يتم وسمها بحالة `pending_sync` وتحديد مهلة `sync_deadline_at` دون إنشاء غياب فوري (حماية الطلاب من الإنذارات الخاطئة P3). ويقوم الأمر المجدول `attendance:finalize-sessions` بتسجيل الغياب تلقائياً فقط بعد انقضاء المهلة.
+   - **الوضع الصارم الاختياري (Strict Mode - Ed25519):** بعد المسح يعرض الطالب رمز إثبات (`edu-bridge://proof?scan_id=...`)، ويقوم المعلم بمسحه وتوقيع إيصال محلياً بمفتاح جهازه Ed25519، ورفعه عبر `POST /api/teacher/attendance/sync` لترقية مستوى الثقة إلى `countersigned = true` و`time_confidence = high`.
 
 ```mermaid
 sequenceDiagram
@@ -74,37 +84,40 @@ sequenceDiagram
     participant API as Laravel API
     participant DB as قاعدة البيانات
 
-    Tch->>TA: فتح جلسة حضور لمقرر
-    TA->>API: POST /api/teacher/attendance/generate-qr
-    API->>DB: إنشاء lesson + attendance_session (QR صالح 30ث، الجلسة 10د)
-    API-->>TA: qr_token
-    loop كل ~30 ثانية
-        TA->>API: POST .../session/{id}/refresh-qr
-        API-->>TA: qr_token جديد
+    rect rgb(240, 248, 255)
+    Note over Tch,API: مرحلة الجلسة (متصل أو أوفلاين)
+    Tch->>TA: بدء الجلسة أو تفعيل حصة مجهزة
+    TA->>TA: توليد رموز TOTP v2 محلياً كل 30ث (أوفلاين)
+    Stu->>SA: مسح QR + التقاط الوجه محلياً
+    SA->>SA: توليد client_scan_id وحفظ المسح في طابور الأوفلاين
+    opt الوضع الصارم (Strict Mode)
+        SA->>TA: عرض رمز الإثبات (Proof QR) ومسحه بكاميرا المعلم
+        TA->>TA: توقيع إيصال Ed25519 بمفتاح جهاز المعلم
     end
-    Stu->>SA: مسح الـ QR + التقاط وجه
-    SA->>SA: كشف الوجه + استخراج بصمة 192 بُعداً (MobileFaceNet)
-    SA->>API: POST /api/student/attendance/scan<br/>(qr_token, device_id, lat/lng, face_embedding, scanned_at)
-    API->>DB: 1) الجلسة موجودة وضمن وقتها
-    API->>DB: 2) سياسة المزامنة (same_day / anytime)
-    API->>DB: 3) أهلية الطالب للمقرر
-    API->>DB: 4) لم يُسجَّل حضوره مسبقاً
-    API->>DB: 5) تطابق الجهاز المرتبط
-    API->>DB: 6) المسافة (Haversine) ≤ نصف القطر
-    API->>DB: 7) تشابه الوجه ≥ 70%
-    alt أي فحص فشل
-        API->>DB: تسجيل محاولة مرفوضة + سبب (reject_reason)
-        API-->>SA: 4xx + reject_reason
-    else كل الفحوص نجحت
-        API->>DB: Attendance = present
-        API-->>SA: 200 تم تسجيل الحضور
     end
+
+    rect rgb(255, 250, 240)
+    Note over Stu,API: مرحلة المزامنة عند عودة الإنترنت
+    SA->>API: POST /api/student/attendance/sync (دفعة مسوح)
+    API->>DB: مطابقة TOTP أو خط الرموز الزمني + التحقق من الأهلية
+    API->>DB: تسجيل حضور مع وسم source=offline و client_scan_id
+    API-->>SA: 200 نتيجة المزامنة لكل مسح
+    opt إيصالات المعلم
+        TA->>API: POST /api/teacher/attendance/sync (إيصالات موثقة)
+        API->>DB: التحقق من توقيع Ed25519 وترقية countersigned=true
+    end
+    end
+
+    rect rgb(255, 245, 245)
+    Note over Tch,DB: مرحلة الإنهاء ومهلة المزامنة
     Tch->>TA: إنهاء الجلسة
     TA->>API: POST .../session/{id}/end
-    API->>DB: تسجيل غياب لمن لم يحضر
+    API->>DB: تأجيل الغياب وتعيين sync_deadline_at (pending_sync)
+    Note over API,DB: المجدول attendance:finalize-sessions يسجل الغياب فقط بعد انقضاء المهلة
+    end
 ```
 
-أسباب الرفض (`reject_reason`): `expired_qr`, `sync_timeout`, `lesson_not_found`, `device_mismatch`, `location_too_far`, `face_mismatch`، بالإضافة لأسباب الأهلية وتكرار التسجيل.
+أسباب الرفض (`reject_reason`): `expired_qr`, `sync_timeout`, `lesson_not_found`, `device_mismatch`, `location_too_far`, `face_mismatch`, `bad_offline_token`, `bad_receipt`، بالإضافة لأسباب الأهلية وتكرار التسجيل.
 
 ## 4) الإنذارات التلقائية للغياب
 
