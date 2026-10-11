@@ -125,27 +125,32 @@ class FcmService
         if (!$accessToken) return false;
 
         try {
+            $message = [
+                'token' => $token,
+                'notification' => [
+                    'title' => $title,
+                    'body'  => $body,
+                ],
+                'android' => [
+                    'priority' => 'high',
+                    'notification' => [
+                        'sound' => 'default',
+                        'channel_id' => 'edu_bridge',
+                        'notification_priority' => 'PRIORITY_MAX',
+                        'default_sound' => true,
+                        'default_vibrate_timings' => true,
+                        'default_light_settings' => true,
+                    ],
+                ],
+            ];
+
+            if (!empty($data)) {
+                $message['data'] = array_map('strval', $data);
+            }
+
             $res = Http::withToken($accessToken)
                 ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                    'message' => [
-                        'token' => $token,
-                        'notification' => [
-                            'title' => $title,
-                            'body'  => $body,
-                        ],
-                        'data' => array_map('strval', $data),
-                        'android' => [
-                            'priority' => 'high',
-                            'notification' => [
-                                'sound' => 'default',
-                                'channel_id' => 'edu_bridge',
-                                'notification_priority' => 'PRIORITY_MAX',
-                                'default_sound' => true,
-                                'default_vibrate_timings' => true,
-                                'default_light_settings' => true,
-                            ],
-                        ],
-                    ],
+                    'message' => $message,
                 ]);
 
             if (!$res->successful()) {
