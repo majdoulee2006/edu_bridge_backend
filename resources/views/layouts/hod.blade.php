@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Edu-Bridge | رئيس القسم</title>
+    <title>Edu-Bridge | {{ __('messages.academic_hod_role') }}</title>
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
@@ -140,8 +140,9 @@
         /* Dropdown Card */
         .notif-dropdown-card {
             position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
+            top: calc(100% + 6px);
+            right: 0;
+            left: auto;
             width: 350px;
             max-width: calc(100vw - 2rem);
             background: var(--bg-primary, #121212);
@@ -152,12 +153,26 @@
             display: none;
             flex-direction: column;
             overflow: hidden;
-            transform-origin: top left;
+            transform-origin: top right;
             animation: notifCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
+        [dir="rtl"] .notif-dropdown-card {
+            left: 0;
+            right: auto;
+            transform-origin: top left;
+        }
+
+        [dir="ltr"] .notif-dropdown-card {
+            right: 0;
+            left: auto;
+            transform-origin: top right;
+        }
+
         @media (max-width: 640px) {
-            .notif-dropdown-card {
+            .notif-dropdown-card,
+            [dir="rtl"] .notif-dropdown-card,
+            [dir="ltr"] .notif-dropdown-card {
                 position: fixed !important;
                 top: 68px !important;
                 left: 12px !important;
@@ -388,30 +403,30 @@
             <!-- HOD Info -->
             <div style="text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
                 <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
-                    {{ mb_substr(auth()->user()->full_name ?? 'ر', 0, 1) }}
+                    {{ mb_substr(auth()->user()->full_name ?? (app()->getLocale() === 'en' ? 'H' : 'ر'), 0, 1) }}
                 </div>
-                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? 'رئيس القسم' }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">رئيس القسم{{ auth()->user()?->department ? ' ' . auth()->user()->department : '' }}</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? __('messages.department_head') }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ __('messages.department_head') }}{{ auth()->user()?->department ? ' - ' . auth()->user()->department : '' }}</div>
             </div>
             
             <nav class="nav-menu">
                 <a href="{{ url('/hod/dashboard') }}" class="nav-item {{ Request::is('hod/dashboard') ? 'active' : '' }}">
                     <i class="fa-solid fa-house"></i>
-                    الرئيسية
+                    {{ __('messages.dashboard') }}
                 </a>
                 <a href="{{ url('/hod/leaves') }}" class="nav-item {{ Request::is('hod/leaves') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-calendar-check"></i>
-                    طلبات الإجازة
+                    {{ __('messages.leave_requests') }}
                     @php
                         $pendingLeavesCount = \Illuminate\Support\Facades\DB::table('leave_requests')->where('status', 'pending_hod')->count();
                     @endphp
                     @if($pendingLeavesCount > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $pendingLeavesCount }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'ar' ? 'left: 1rem;' : 'right: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $pendingLeavesCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/hod/notifications') }}" class="nav-item {{ Request::is('hod/notifications') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-bell"></i>
-                    الإشعارات
+                    {{ __('messages.notifications') }}
                     @php
                         $unreadHodNotifsCount = \Illuminate\Support\Facades\DB::table('notifications')
                             ->where('user_id', auth()->id())
@@ -419,24 +434,24 @@
                             ->count();
                     @endphp
                     @if($unreadHodNotifsCount > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadHodNotifsCount }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'ar' ? 'left: 1rem;' : 'right: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadHodNotifsCount }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/hod/messages') }}" class="nav-item {{ Request::is('hod/messages') ? 'active' : '' }}" style="position: relative;">
                     <i class="fa-solid fa-comments"></i>
-                    الرسائل
+                    {{ __('messages.messages') }}
                     @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unreadMessages > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'ar' ? 'left: 1rem;' : 'right: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/hod/profile') }}" class="nav-item {{ Request::is('hod/profile') ? 'active' : '' }}">
                     <i class="fa-solid fa-user"></i>
-                    الملف الشخصي
+                    {{ __('messages.profile') }}
                 </a>
                 <a href="{{ url('/hod/organization') }}" class="nav-item {{ Request::is('hod/organization') ? 'active' : '' }}">
                     <i class="fa-solid fa-sitemap"></i>
-                    التنظيم
+                    {{ __('messages.organization_title') ?? 'التنظيم' }}
                 </a>
                 <a href="{{ url('/hod/schedule-studio') }}" class="nav-item {{ Request::is('hod/schedule-studio*') ? 'active' : '' }}">
                     <i class="fa-solid fa-calendar-days"></i>
@@ -452,30 +467,30 @@
                 </a>
                 <a href="{{ url('/hod/accounts') }}" class="nav-item {{ Request::is('hod/accounts') ? 'active' : '' }}">
                     <i class="fa-solid fa-users"></i>
-                    الحسابات
+                    {{ __('messages.accounts') }}
                 </a>
                 <a href="{{ url('/hod/reports') }}" class="nav-item {{ Request::is('hod/reports') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-lines"></i>
-                    طلب التقارير
+                    {{ __('messages.reports_title') }}
                 </a>
                 <a href="{{ url('/hod/student-services') }}" class="nav-item {{ Request::is('hod/student-services*') ? 'active' : '' }}">
                     <i class="fa-solid fa-boxes-stacked"></i>
-                    الخدمات الطلابية
+                    {{ __('messages.student_services') }}
                 </a>
                 <a href="{{ url('/hod/appointments') }}" class="nav-item {{ Request::is('hod/appointments*') ? 'active' : '' }}">
                     <i class="fa-solid fa-calendar-check"></i>
-                    المواعيد واللقاءات
+                    {{ __('messages.appointments') }}
                 </a>
                 <a href="{{ url('/hod/settings') }}" class="nav-item {{ Request::is('hod/settings') ? 'active' : '' }}">
                     <i class="fa-solid fa-gear"></i>
-                    الإعدادات
+                    {{ __('messages.settings') }}
                 </a>
                 
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form action="{{ route('hod.logout') }}" method="POST">
                         @csrf
-                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
+                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }}; padding-inline: 0;">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> {{ __('messages.logout') }}
                         </button>
                     </form>
                 </div>
@@ -510,7 +525,7 @@
                             ->get();
                     @endphp
                     <div class="notif-dropdown-wrapper" id="hodNotifDropdown">
-                        <a href="{{ url('/hod/notifications') }}" class="notif-bell-trigger" id="hodNotifBellBtn" title="الإشعارات">
+                        <a href="{{ url('/hod/notifications') }}" class="notif-bell-trigger" id="hodNotifBellBtn" title="{{ __('messages.notifications') }}">
                             <i class="fa-solid fa-bell"></i>
                             @if($headerUnread > 0)
                                 <span class="notif-badge-dot" id="headerNotifBadgeDot"></span>
@@ -520,14 +535,14 @@
                         <div class="notif-dropdown-card" id="hodNotifDropdownCard">
                             <div class="notif-card-header">
                                 <div class="notif-card-header-title">
-                                    <h4>الإشعارات</h4>
+                                    <h4>{{ __('messages.notifications') }}</h4>
                                     @if($headerUnread > 0)
-                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} جديدة</span>
+                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} {{ __('messages.new') }}</span>
                                     @endif
                                 </div>
                                 @if($headerUnread > 0)
                                     <button type="button" class="btn-mark-all-read" id="btnMarkAllHeaderNotif" onclick="markAllHeaderNotificationsAsRead(event)">
-                                        تحديد الكل كمقروء
+                                        {{ __('messages.mark_all_read') }}
                                     </button>
                                 @endif
                             </div>
@@ -557,19 +572,19 @@
                                 @empty
                                     <div class="notif-card-empty">
                                         <i class="fa-regular fa-bell-slash"></i>
-                                        <span>لا توجد إشعارات حالياً</span>
+                                        <span>{{ __('messages.no_notifications') }}</span>
                                     </div>
                                 @endforelse
                             </div>
 
                             <a href="{{ url('/hod/notifications') }}" class="notif-card-footer">
-                                <span>عرض كافة الإشعارات</span>
-                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>{{ __('messages.view_all') }}</span>
+                                <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}"></i>
                             </a>
                         </div>
                     </div>
                     <!-- Dark Mode Toggle -->
-                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
+                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="{{ __('messages.dark_mode') }}">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
                     </button>
                 </div>
@@ -596,25 +611,25 @@
     <nav class="bottom-nav">
         <a href="{{ url('/hod/dashboard') }}" class="bottom-nav-item {{ Request::is('hod/dashboard') ? 'active' : '' }}">
             <i class="fa-solid fa-house"></i>
-            <span>الرئيسية</span>
+            <span>{{ __('messages.dashboard') }}</span>
         </a>
         <a href="{{ url('/hod/profile') }}" class="bottom-nav-item {{ Request::is('hod/profile*') ? 'active' : '' }}">
             <i class="fa-solid fa-user"></i>
-            <span>الملف الشخصي</span>
+            <span>{{ __('messages.profile') }}</span>
         </a>
         <div class="center-btn" onclick="toggleMobileMenu()">
             <i class="fa-solid fa-border-all"></i>
         </div>
         <a href="{{ url('/hod/notifications') }}" class="bottom-nav-item {{ Request::is('hod/notifications*') ? 'active' : '' }}" style="position:relative;">
             <i class="fa-solid fa-bell"></i>
-            <span>الإشعارات</span>
+            <span>{{ __('messages.notifications') }}</span>
             @if(isset($unreadHodNotifsCount) && $unreadHodNotifsCount > 0)
                 <span style="position:absolute;top:-2px;right:6px;background:#ef4444;width:8px;height:8px;border-radius:50%;"></span>
             @endif
         </a>
         <a href="{{ url('/hod/messages') }}" class="bottom-nav-item {{ Request::is('hod/messages*') ? 'active' : '' }}">
             <i class="fa-solid fa-envelope"></i>
-            <span>الرسائل</span>
+            <span>{{ __('messages.messages') }}</span>
         </a>
     </nav>
 

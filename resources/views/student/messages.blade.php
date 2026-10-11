@@ -1,39 +1,39 @@
 @extends('layouts.student')
 
-@section('title', 'الرسائل')
+@section('title', __('messages.student_messages_title'))
 
 @section('content')
 <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
 <div class="flex h-[calc(100vh-8.5rem)] min-h-[550px] overflow-hidden rounded-3xl bg-[#141417] border border-[#27272a] shadow-2xl text-slate-100 transition-colors" id="chat-app-container">
     
     <!-- ================= SIDEBAR (CONTACTS PANEL) ================= -->
-    <div class="w-full md:w-80 flex flex-col border-l border-[#27272a] h-full shrink-0 md:flex p-4 bg-[#141417] overflow-hidden" id="contacts-sidebar-pane">
+    <div class="w-full md:w-80 flex flex-col {{ app()->getLocale() === 'ar' ? 'border-l' : 'border-r' }} border-[#27272a] h-full shrink-0 md:flex p-4 bg-[#141417] overflow-hidden" id="contacts-sidebar-pane">
         
         <!-- Header & Search Title -->
         <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-extrabold text-white tracking-wide">مكان للبحث عن</h2>
-            <button type="button" onclick="openNewChatModal()" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md" title="محادثة جديدة">
+            <h2 class="text-base font-extrabold text-white tracking-wide">{{ __('messages.messages_search_contacts_header') }}</h2>
+            <button type="button" onclick="openNewChatModal()" class="w-8 h-8 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-md" title="{{ __('messages.new_chat_btn') }}">
                 <span class="material-symbols-outlined text-lg">add_comment</span>
             </button>
         </div>
 
         <!-- Search Input -->
         <div class="relative mb-4">
-            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+            <span class="absolute {{ app()->getLocale() === 'ar' ? 'right-3.5' : 'left-3.5' }} top-1/2 -translate-y-1/2 text-slate-400">
                 <span class="material-symbols-outlined text-lg">search</span>
             </span>
-            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="ابحث عن زملائك..." type="text"/>
+            <input id="contact-search" oninput="filterContactsList()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 {{ app()->getLocale() === 'ar' ? 'pr-10 pl-4' : 'pl-10 pr-4' }} text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] transition-all outline-none" placeholder="{{ __('messages.search_colleagues_placeholder') }}" type="text"/>
         </div>
 
         <!-- Section Title -->
-        <div class="text-[11px] font-bold text-slate-400 mb-2 px-1">أحدث المحادثات</div>
+        <div class="text-[11px] font-bold text-slate-400 mb-2 px-1">{{ __('messages.recent_conversations') }}</div>
 
         <!-- Contacts Scrollable List -->
-        <div class="flex-1 overflow-y-auto hide-scrollbar space-y-1.5 pr-1" id="contacts-list-container">
+        <div class="flex-1 overflow-y-auto hide-scrollbar space-y-1.5 {{ app()->getLocale() === 'ar' ? 'pr-1' : 'pl-1' }}" id="contacts-list-container">
             <!-- Loading Indicator -->
             <div id="contacts-loading" class="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
                 <div class="animate-spin rounded-full h-7 w-7 border-2 border-[#f2f20d] border-t-transparent"></div>
-                <span class="text-xs font-semibold">جاري تحميل المحادثات...</span>
+                <span class="text-xs font-semibold">{{ __('messages.loading_conversations') }}</span>
             </div>
             
             <!-- Dynamic Contacts List Wrapper -->
@@ -41,7 +41,7 @@
             
             <div id="contacts-empty" class="hidden flex flex-col items-center justify-center py-12 text-slate-400 text-center px-4">
                 <span class="material-symbols-outlined text-4xl mb-2 text-slate-600">contact_support</span>
-                <span class="text-xs font-bold">لا توجد جهات اتصال متاحة</span>
+                <span class="text-xs font-bold">{{ __('messages.no_contacts_available') }}</span>
             </div>
         </div>
     </div>
@@ -54,8 +54,8 @@
             <div class="w-20 h-20 rounded-full bg-[#1c1c20] border border-[#27272a] flex items-center justify-center text-[#f2f20d] mb-5 shadow-lg">
                 <span class="material-symbols-outlined text-4xl">forum</span>
             </div>
-            <h3 class="text-base font-black text-white mb-2">مرحباً بك في نظام المحادثات الفورية</h3>
-            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">اختر إحدى المحادثات المتاحة في القائمة للبدء أو انقر على زر إضافة محادثة لبدء تواصل جديد.</p>
+            <h3 class="text-base font-black text-white mb-2">{{ __('messages.chat_welcome_title') }}</h3>
+            <p class="text-xs text-slate-400 max-w-sm leading-relaxed">{{ __('messages.chat_welcome_desc') }}</p>
         </div>
 
         <!-- Active Chat Window Container -->
@@ -66,7 +66,7 @@
                 <div class="flex items-center gap-3">
                     <!-- Mobile Back Arrow -->
                     <button onclick="showSidebarOnMobile()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-[#27272a] text-slate-300 hover:bg-[#3f3f46]">
-                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                        <span class="material-symbols-outlined text-lg">{{ app()->getLocale() === 'ar' ? 'arrow_forward' : 'arrow_back' }}</span>
                     </button>
 
                     <!-- Contact Avatar & Status -->
@@ -75,7 +75,7 @@
                             ?
                         </div>
                         <img id="active-contact-avatar-img" class="w-10 h-10 rounded-full object-cover border border-[#27272a] hidden" src="" alt="Avatar">
-                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
+                        <div class="absolute bottom-0 {{ app()->getLocale() === 'ar' ? 'right-0' : 'left-0' }} w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
                     </div>
 
                     <!-- Contact Info -->
@@ -85,7 +85,7 @@
                             <span id="active-contact-role" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#27272a] text-slate-300">...</span>
                         </div>
                         <span class="text-[10px] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متصل الآن
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {{ __('messages.online_now') }}
                         </span>
                     </div>
                 </div>
@@ -94,36 +94,36 @@
                 <div class="flex items-center gap-2">
                     <!-- Disappearing Timer Menu Dropdown -->
                     <div class="relative">
-                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] text-slate-300 hover:text-[#f2f20d] text-xs font-semibold transition-all border border-[#27272a]" title="الرسائل ذاتية الاختفاء">
+                        <button type="button" onclick="toggleDisappearingMenu()" id="disappearing-menu-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] text-slate-300 hover:text-[#f2f20d] text-xs font-semibold transition-all border border-[#27272a]" title="{{ __('messages.disappearing_messages_title') }}">
                             <span class="material-symbols-outlined text-base text-amber-400">timer</span>
-                            <span id="disappearing-btn-label" class="hidden sm:inline">ذاتية الاختفاء</span>
+                            <span id="disappearing-btn-label" class="hidden sm:inline">{{ __('messages.disappearing_messages_label') }}</span>
                         </button>
                         
                         <!-- Dropdown Options -->
-                        <div id="disappearing-menu" class="hidden absolute left-0 top-10 mt-1 bg-[#1c1c20] rounded-xl shadow-2xl border border-[#27272a] p-2 text-xs min-w-[200px] z-[99] space-y-1">
-                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">مؤقت اختفاء الرسائل الجديدة</div>
-                            <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>🚫 إيقاف (رسائل دائمة)</span>
+                        <div id="disappearing-menu" class="hidden absolute {{ app()->getLocale() === 'ar' ? 'left-0' : 'right-0' }} top-10 mt-1 bg-[#1c1c20] rounded-xl shadow-2xl border border-[#27272a] p-2 text-xs min-w-[200px] z-[99] space-y-1">
+                            <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 border-b border-[#27272a]">{{ __('messages.disappearing_timer_header') }}</div>
+                            <button type="button" onclick="setDisappearingTimer(0, '{{ __('messages.timer_off') }}')" class="w-full {{ app()->getLocale() === 'ar' ? 'text-right' : 'text-left' }} px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>{{ __('messages.disappearing_off') }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(300, '5 دقائق')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 5 دقائق</span>
+                            <button type="button" onclick="setDisappearingTimer(300, '{{ __('messages.timer_5m') }}')" class="w-full {{ app()->getLocale() === 'ar' ? 'text-right' : 'text-left' }} px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>{{ __('messages.disappearing_5m') }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(3600, 'ساعة واحدة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ ساعة واحدة</span>
+                            <button type="button" onclick="setDisappearingTimer(3600, '{{ __('messages.timer_1h') }}')" class="w-full {{ app()->getLocale() === 'ar' ? 'text-right' : 'text-left' }} px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>{{ __('messages.disappearing_1h') }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(86400, '24 ساعة')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 24 ساعة (يوم)</span>
+                            <button type="button" onclick="setDisappearingTimer(86400, '{{ __('messages.timer_24h') }}')" class="w-full {{ app()->getLocale() === 'ar' ? 'text-right' : 'text-left' }} px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>{{ __('messages.disappearing_24h') }}</span>
                             </button>
-                            <button type="button" onclick="setDisappearingTimer(604800, '7 أيام')" class="w-full text-right px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
-                                <span>⏱️ 7 أيام (أسبوع)</span>
+                            <button type="button" onclick="setDisappearingTimer(604800, '{{ __('messages.timer_7d') }}')" class="w-full {{ app()->getLocale() === 'ar' ? 'text-right' : 'text-left' }} px-3 py-2 rounded-lg hover:bg-[#27272a] flex items-center justify-between font-medium text-slate-200">
+                                <span>{{ __('messages.disappearing_7d') }}</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- In-Chat Search Bar -->
                     <div class="hidden sm:block relative">
-                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="البحث في المحادثة..." class="bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-1.5 pr-8 pl-3 text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none w-36 sm:w-44 transition-all">
-                        <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                        <input type="text" id="message-search-input" onkeyup="searchActiveChatMessages()" placeholder="{{ __('messages.search_in_chat_placeholder') }}" class="bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-1.5 {{ app()->getLocale() === 'ar' ? 'pr-8 pl-3' : 'pl-8 pr-3' }} text-xs font-medium text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none w-36 sm:w-44 transition-all">
+                        <span class="absolute {{ app()->getLocale() === 'ar' ? 'right-2.5' : 'left-2.5' }} top-1/2 -translate-y-1/2 text-slate-400">
                             <span class="material-symbols-outlined text-sm">search</span>
                         </span>
                     </div>
@@ -142,9 +142,9 @@
                 <div id="disappearing-active-banner" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-400 font-bold mb-2 transition-all">
                     <div class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">timer</span>
-                        <span>الرسائل الجديدة ستختفي تلقائياً بعد: <strong id="disappearing-banner-time">24 ساعة</strong></span>
+                        <span>{{ __('messages.disappearing_active_banner') }} <strong id="disappearing-banner-time">{{ __('messages.timer_24h') }}</strong></span>
                     </div>
-                    <button type="button" onclick="setDisappearingTimer(0, 'إيقاف')" class="text-slate-400 hover:text-red-400 p-0.5">
+                    <button type="button" onclick="setDisappearingTimer(0, '{{ __('messages.timer_off') }}')" class="text-slate-400 hover:text-red-400 p-0.5">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
@@ -160,7 +160,7 @@
                             <span id="preview-filesize" class="text-[10px] font-semibold text-slate-400">0 KB</span>
                         </div>
                     </div>
-                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0" title="إلغاء الملف">
+                    <button type="button" onclick="clearSelectedAttachment()" class="w-7 h-7 rounded-full bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors shrink-0" title="{{ __('messages.cancel_file') }}">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
@@ -173,14 +173,14 @@
                     <div id="voice-recording-interface" class="hidden flex-1 flex items-center justify-between bg-[#1c1c20] border border-[#27272a] rounded-2xl px-4 py-2.5 text-slate-200">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-                            <span class="text-xs font-black text-red-500">جاري تسجيل الصوت...</span>
+                            <span class="text-xs font-black text-red-500">{{ __('messages.recording_voice_msg') }}</span>
                             <span id="recording-timer" class="text-xs font-bold font-mono text-slate-300">00:00</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="إلغاء">
+                            <button type="button" onclick="cancelAudioRecording()" class="flex items-center justify-center p-1.5 text-slate-400 hover:text-red-400 transition-colors" title="{{ __('messages.cancel_btn') }}">
                                 <span class="material-symbols-outlined">delete</span>
                             </button>
-                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md" title="إرسال الصوت">
+                            <button type="button" onclick="stopAudioRecording(false)" class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md" title="{{ __('messages.send_voice_msg') }}">
                                 <span class="material-symbols-outlined text-lg">check</span>
                             </button>
                         </div>
@@ -190,23 +190,23 @@
                     <div id="standard-input-elements" class="flex-1 flex items-center gap-2 bg-[#1c1c20] border border-[#2d2d35] rounded-2xl px-3 py-1.5 focus-within:border-[#f2f20d] transition-all">
                         
                         <!-- File Input -->
-                        <label class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] cursor-pointer transition-colors shrink-0" title="إرفاق ملف أو صورة">
+                        <label class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] cursor-pointer transition-colors shrink-0" title="{{ __('messages.attach_file_or_image') }}">
                             <span class="material-symbols-outlined text-xl">attach_file</span>
                             <input type="file" id="message-file" class="hidden" onchange="handleFileSelection(event)">
                         </label>
 
                         <!-- Input Field -->
-                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs md:text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="اكتب رسالتك..." type="text" autocomplete="off"/>
+                        <input id="message-text" class="flex-1 bg-transparent border-none py-1.5 px-2 text-xs md:text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:outline-none" placeholder="{{ __('messages.type_your_message') }}" type="text" autocomplete="off"/>
 
                         <!-- Microphone Button -->
-                        <button type="button" onclick="startAudioRecording()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] transition-colors shrink-0" title="تسجيل ملاحظة صوتية">
+                        <button type="button" onclick="startAudioRecording()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#27272a] text-slate-400 hover:text-[#f2f20d] transition-colors shrink-0" title="{{ __('messages.record_voice_note') }}">
                             <span class="material-symbols-outlined text-xl">mic</span>
                         </button>
                     </div>
 
                     <!-- Send Button -->
-                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-lg shrink-0 active:scale-95 border border-[#3f3f46]" title="إرسال">
-                        <span id="send-btn-icon" class="material-symbols-outlined text-xl rotate-180">send</span>
+                    <button type="submit" id="send-btn" class="w-11 h-11 rounded-2xl bg-[#27272a] hover:bg-[#3f3f46] text-[#f2f20d] flex items-center justify-center transition-all shadow-lg shrink-0 active:scale-95 border border-[#3f3f46]" title="{{ __('messages.send_msg_btn') }}">
+                        <span id="send-btn-icon" class="material-symbols-outlined text-xl {{ app()->getLocale() === 'ar' ? 'rotate-180' : '' }}">send</span>
                     </button>
                 </form>
             </div>
@@ -218,36 +218,36 @@
 <div id="new-chat-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center transition-all opacity-0">
     <div class="bg-[#141417] border border-[#27272a] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-all" id="new-chat-modal-content">
         <div class="p-5 border-b border-[#27272a] flex items-center justify-between">
-            <h3 class="text-base font-extrabold text-white">بدء محادثة جديدة</h3>
+            <h3 class="text-base font-extrabold text-white">{{ __('messages.start_new_chat_modal_title') }}</h3>
             <button type="button" onclick="closeNewChatModal()" class="w-8 h-8 rounded-xl bg-[#1c1c20] hover:bg-[#27272a] flex items-center justify-center text-slate-400 hover:text-white transition-colors">
                 <span class="material-symbols-outlined text-sm">close</span>
             </button>
         </div>
         <div class="p-4">
             <div class="relative mb-4">
-                <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                <span class="absolute {{ app()->getLocale() === 'ar' ? 'right-3.5' : 'left-3.5' }} top-1/2 -translate-y-1/2 text-slate-400">
                     <span class="material-symbols-outlined text-lg">search</span>
                 </span>
-                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 pr-10 pl-4 text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all" placeholder="البحث باسم المستخدم..." type="text"/>
+                <input id="modal-contact-search" oninput="filterModalContacts()" class="w-full bg-[#1c1c20] border border-[#2d2d35] rounded-xl py-2.5 {{ app()->getLocale() === 'ar' ? 'pr-10 pl-4' : 'pl-10 pr-4' }} text-xs font-semibold text-slate-200 placeholder:text-slate-500 focus:ring-1 focus:ring-[#f2f20d] outline-none transition-all" placeholder="{{ __('messages.search_user_name_placeholder') }}" type="text"/>
             </div>
             
             <div class="max-h-80 overflow-y-auto hide-scrollbar space-y-1.5" id="modal-contacts-list">
                 @if(isset($allUsers) && count($allUsers) > 0)
                     @foreach($allUsers as $user)
                         @php
-                            $roleAr = $user->role;
+                            $roleLabel = $user->role;
                             $badgeClass = 'bg-[#27272a] text-slate-300';
-                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/20 text-rose-400'; $roleAr = 'الإدارة'; }
-                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/20 text-blue-400'; $roleAr = 'المدرب'; }
-                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/20 text-emerald-400'; $roleAr = 'الطالب'; }
-                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/20 text-purple-400'; $roleAr = 'الأهل'; }
-                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/20 text-amber-400'; $roleAr = 'رئيس القسم'; }
-                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/20 text-cyan-400'; $roleAr = 'الشؤون'; }
+                            if ($user->role === 'admin') { $badgeClass = 'bg-rose-500/20 text-rose-400'; $roleLabel = __('messages.role_admin_label'); }
+                            else if ($user->role === 'teacher') { $badgeClass = 'bg-blue-500/20 text-blue-400'; $roleLabel = __('messages.role_teacher_label'); }
+                            else if ($user->role === 'student') { $badgeClass = 'bg-emerald-500/20 text-emerald-400'; $roleLabel = __('messages.role_student_label'); }
+                            else if ($user->role === 'parent') { $badgeClass = 'bg-purple-500/20 text-purple-400'; $roleLabel = __('messages.role_parent_label'); }
+                            else if ($user->role === 'head') { $badgeClass = 'bg-amber-500/20 text-amber-400'; $roleLabel = __('messages.role_head_label'); }
+                            else if ($user->role === 'affairs') { $badgeClass = 'bg-cyan-500/20 text-cyan-400'; $roleLabel = __('messages.role_affairs_label'); }
                             
                             $avatarUrl = $user->avatar ? asset('storage/' . $user->avatar) : '';
                             $initials = mb_substr(trim($user->full_name), 0, 1);
                         @endphp
-                        <div onclick="startNewChat({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ $roleAr }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-colors border border-transparent hover:border-[#27272a]" data-name="{{ strtolower($user->full_name) }}">
+                        <div onclick="startNewChat({{ $user->user_id }}, '{{ addslashes($user->full_name) }}', '{{ $roleLabel }}', '{{ $avatarUrl }}')" class="modal-contact-row flex items-center gap-3 p-3 rounded-2xl hover:bg-[#1c1c20] cursor-pointer transition-colors border border-transparent hover:border-[#27272a]" data-name="{{ strtolower($user->full_name) }}">
                             <div class="relative shrink-0 select-none">
                                 @if($user->avatar)
                                     <img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="{{ $avatarUrl }}" alt="Avatar">
@@ -260,12 +260,12 @@
                                 <div class="text-[10px] font-medium text-slate-400 truncate">{{ $user->email }}</div>
                             </div>
                             <div class="shrink-0">
-                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md {{ $badgeClass }}">{{ $roleAr }}</span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md {{ $badgeClass }}">{{ $roleLabel }}</span>
                             </div>
                         </div>
                     @endforeach
                 @else
-                    <div class="text-center py-8 text-slate-500 text-xs font-semibold">لا يوجد مستخدمين آخرين في النظام</div>
+                    <div class="text-center py-8 text-slate-500 text-xs font-semibold">{{ __('messages.no_other_users_found') }}</div>
                 @endif
             </div>
         </div>
@@ -274,7 +274,6 @@
 
 <!-- ================= CSS POLISHING ================= -->
 @push('styles')
-<!-- Material Symbols locally provided by layout -->
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -300,9 +299,7 @@
         animation: flash 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 
-    /* ========================================================
-       LIGHT MODE CHAT THEME OVERRIDES (الوضع النهاري للطالب)
-       ======================================================== */
+    /* LIGHT MODE CHAT THEME OVERRIDES */
     html:not(.dark) #chat-app-container,
     html[data-theme="light"] #chat-app-container,
     [data-theme="light"] #chat-app-container {
@@ -316,7 +313,7 @@
     html[data-theme="light"] #contacts-sidebar-pane,
     [data-theme="light"] #contacts-sidebar-pane {
         background-color: #ffffff !important;
-        border-left-color: #e2e8f0 !important;
+        border-color: #e2e8f0 !important;
     }
 
     html:not(.dark) #contacts-sidebar-pane h2,
@@ -357,93 +354,35 @@
         border-color: #e2e8f0 !important;
         color: #0f172a !important;
     }
-    html:not(.dark) #contact-search::placeholder,
-    html:not(.dark) #message-search-input::placeholder,
-    html:not(.dark) #modal-contact-search::placeholder,
-    html[data-theme="light"] #contact-search::placeholder,
-    html[data-theme="light"] #message-search-input::placeholder,
-    html[data-theme="light"] #modal-contact-search::placeholder,
-    [data-theme="light"] #contact-search::placeholder,
-    [data-theme="light"] #message-search-input::placeholder,
-    [data-theme="light"] #modal-contact-search::placeholder {
-        color: #94a3b8 !important;
-    }
-    html:not(.dark) #contact-search:focus,
-    html:not(.dark) #message-search-input:focus,
-    html:not(.dark) #modal-contact-search:focus,
-    html[data-theme="light"] #contact-search:focus,
-    html[data-theme="light"] #message-search-input:focus,
-    html[data-theme="light"] #modal-contact-search:focus,
-    [data-theme="light"] #contact-search:focus,
-    [data-theme="light"] #message-search-input:focus,
-    [data-theme="light"] #modal-contact-search:focus {
-        border-color: #facc15 !important;
-        background-color: #ffffff !important;
-    }
 
-    html:not(.dark) .contact-row,
-    html[data-theme="light"] .contact-row,
-    [data-theme="light"] .contact-row {
-        color: #0f172a !important;
-        border-color: transparent !important;
-    }
     html:not(.dark) .contact-row:hover,
     html[data-theme="light"] .contact-row:hover,
     [data-theme="light"] .contact-row:hover {
         background-color: #f8fafc !important;
     }
-    html:not(.dark) .contact-row[class*="bg-[#1c1c22]"],
-    html:not(.dark) .contact-row.bg-\[\#1c1c22\],
-    html[data-theme="light"] .contact-row[class*="bg-[#1c1c22]"],
-    html[data-theme="light"] .contact-row.bg-\[\#1c1c22\],
-    [data-theme="light"] .contact-row[class*="bg-[#1c1c22]"],
-    [data-theme="light"] .contact-row.bg-\[\#1c1c22\] {
-        background-color: #fefce8 !important;
-        border-right-color: #eab308 !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-    }
+
     html:not(.dark) .contact-row .text-white,
     html[data-theme="light"] .contact-row .text-white,
     [data-theme="light"] .contact-row .text-white {
         color: #0f172a !important;
     }
-    html:not(.dark) .contact-row .text-slate-400,
-    html[data-theme="light"] .contact-row .text-slate-400,
-    [data-theme="light"] .contact-row .text-slate-400 {
-        color: #64748b !important;
-    }
-    html:not(.dark) .contact-row .text-slate-500,
-    html[data-theme="light"] .contact-row .text-slate-500,
-    [data-theme="light"] .contact-row .text-slate-500 {
-        color: #94a3b8 !important;
-    }
-    html:not(.dark) .contact-row img,
-    html[data-theme="light"] .contact-row img,
-    [data-theme="light"] .contact-row img {
-        border-color: #e2e8f0 !important;
-    }
-    html:not(.dark) .contact-row div[class*="bg-emerald-500"],
-    html[data-theme="light"] .contact-row div[class*="bg-emerald-500"],
-    [data-theme="light"] .contact-row div[class*="bg-emerald-500"] {
-        border-color: #ffffff !important;
-    }
 
     html:not(.dark) #chat-room-pane,
-    html:not(.dark) #chat-placeholder,
     html[data-theme="light"] #chat-room-pane,
-    html[data-theme="light"] #chat-placeholder,
-    [data-theme="light"] #chat-room-pane,
-    [data-theme="light"] #chat-placeholder {
+    [data-theme="light"] #chat-room-pane {
         background-color: #f8fafc !important;
     }
 
-    html:not(.dark) #chat-placeholder div[class*="bg-[#1c1c20]"],
-    html[data-theme="light"] #chat-placeholder div[class*="bg-[#1c1c20]"],
-    [data-theme="light"] #chat-placeholder div[class*="bg-[#1c1c20]"] {
+    html:not(.dark) #chat-placeholder,
+    html[data-theme="light"] #chat-placeholder,
+    [data-theme="light"] #chat-placeholder {
+        background-color: #f8fafc !important;
+    }
+    html:not(.dark) #chat-placeholder > div:first-child,
+    html[data-theme="light"] #chat-placeholder > div:first-child,
+    [data-theme="light"] #chat-placeholder > div:first-child {
         background-color: #ffffff !important;
         border-color: #e2e8f0 !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
-        color: #0f172a !important;
     }
     html:not(.dark) #chat-placeholder h3,
     html[data-theme="light"] #chat-placeholder h3,
@@ -759,6 +698,16 @@
 <script src="{{ asset('js/echo.iife.js') }}"></script>
 
 <script>
+    const currentLocale = '{{ app()->getLocale() }}';
+    const roleLabels = {
+        admin: '{{ __('messages.role_admin_label') }}',
+        teacher: '{{ __('messages.role_teacher_label') }}',
+        student: '{{ __('messages.role_student_label') }}',
+        parent: '{{ __('messages.role_parent_label') }}',
+        head: '{{ __('messages.role_head_label') }}',
+        affairs: '{{ __('messages.role_affairs_label') }}'
+    };
+
     let currentUserId = @json(auth()->id());
     let activeContactId = null;
     let selectedAttachmentFile = null;
@@ -831,6 +780,10 @@
             });
     }
 
+    function getRoleLabel(role) {
+        return roleLabels[role] || role;
+    }
+
     function loadContacts() {
         const loadingDiv = document.getElementById('contacts-loading');
         const emptyDiv = document.getElementById('contacts-empty');
@@ -862,24 +815,12 @@
                         targetContact = data.data.find(c => String(c.id) === String(targetContactId));
                     }
                     if (targetContact) {
-                        let roleAr = targetContact.role;
-                        if (targetContact.role === 'admin') roleAr = 'الإدارة';
-                        else if (targetContact.role === 'teacher') roleAr = 'المدرب';
-                        else if (targetContact.role === 'student') roleAr = 'الطالب';
-                        else if (targetContact.role === 'parent') roleAr = 'الأهل';
-                        else if (targetContact.role === 'head') roleAr = 'رئيس القسم';
-                        else if (targetContact.role === 'affairs') roleAr = 'الشؤون';
-                        selectContact(targetContact.id, targetContact.name, roleAr, targetContact.image || '');
+                        let roleLabel = getRoleLabel(targetContact.role);
+                        selectContact(targetContact.id, targetContact.name, roleLabel, targetContact.image || '');
                     } else if (!activeContactId && data.data.length > 0 && window.innerWidth >= 768) {
                         const first = data.data[0];
-                        let roleAr = first.role;
-                        if (first.role === 'admin') roleAr = 'الإدارة';
-                        else if (first.role === 'teacher') roleAr = 'المدرب';
-                        else if (first.role === 'student') roleAr = 'الطالب';
-                        else if (first.role === 'parent') roleAr = 'الأهل';
-                        else if (first.role === 'head') roleAr = 'رئيس القسم';
-                        else if (first.role === 'affairs') roleAr = 'الشؤون';
-                        selectContact(first.id, first.name, roleAr, first.image || '');
+                        let roleLabel = getRoleLabel(first.role);
+                        selectContact(first.id, first.name, roleLabel, first.image || '');
                     }
                 } else {
                     emptyDiv.classList.remove('hidden');
@@ -916,47 +857,44 @@
 
         contacts.forEach(contact => {
             let badgeClass = 'bg-[#27272a] text-slate-300';
-            let roleAr = contact.role;
+            let roleLabel = getRoleLabel(contact.role);
             if (contact.role === 'admin') {
                 badgeClass = 'bg-rose-500/20 text-rose-400';
-                roleAr = 'الإدارة';
             } else if (contact.role === 'teacher') {
                 badgeClass = 'bg-blue-500/20 text-blue-400';
-                roleAr = 'المدرب';
             } else if (contact.role === 'student') {
                 badgeClass = 'bg-emerald-500/20 text-emerald-400';
-                roleAr = 'الطالب';
             } else if (contact.role === 'parent') {
                 badgeClass = 'bg-purple-500/20 text-purple-400';
-                roleAr = 'الأهل';
             } else if (contact.role === 'head') {
                 badgeClass = 'bg-amber-500/20 text-amber-400';
-                roleAr = 'رئيس القسم';
             } else if (contact.role === 'affairs') {
                 badgeClass = 'bg-cyan-500/20 text-cyan-400';
-                roleAr = 'الشؤون';
             }
 
             const unreadBadge = contact.unread > 0 
                 ? `<div class="bg-rose-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-pulse">${contact.unread}</div>` 
                 : '';
 
+            const activeBorderClass = currentLocale === 'ar' ? 'border-r-4' : 'border-l-4';
             const isActive = activeContactId && parseInt(contact.id) === parseInt(activeContactId) 
-                ? 'bg-[#1c1c22] border-r-4 border-[#f2f20d]' 
+                ? `bg-[#1c1c22] ${activeBorderClass} border-[#f2f20d]` 
                 : '';
 
             const initials = contact.name.trim().charAt(0);
             
-            let lastMsgText = contact.last_message || 'ابدأ محادثة جديدة';
+            let lastMsgText = contact.last_message || '{{ __('messages.start_new_conversation') }}';
             if (contact.last_message === '[Attachment]') {
-                lastMsgText = '📁 ملف مرفق';
+                lastMsgText = '{{ __('messages.attachment_label_text') }}';
             } else if (contact.last_message === '[Voice Note]') {
-                lastMsgText = '🎤 رسالة صوتية';
+                lastMsgText = '{{ __('messages.voice_note_label_text') }}';
             }
 
             const safeName = (contact.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            const safeRole = (roleAr || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeRole = (roleLabel || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const safeImg = (contact.image || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            const statusDotPos = currentLocale === 'ar' ? 'right-0' : 'left-0';
 
             const contactHtml = `
                 <div onclick="selectContact(${contact.id}, '${safeName}', '${safeRole}', '${safeImg}')" 
@@ -968,7 +906,7 @@
                             ? `<img class="w-10 h-10 rounded-full object-cover border border-[#27272a]" src="${contact.image}" alt="Avatar">`
                             : `<div class="w-10 h-10 rounded-full bg-[#f2f20d]/20 text-[#f2f20d] flex items-center justify-center font-bold text-xs border border-[#f2f20d]/30">${initials}</div>`
                         }
-                        <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
+                        <div class="absolute bottom-0 ${statusDotPos} w-2.5 h-2.5 bg-emerald-500 border-2 border-[#141417] rounded-full"></div>
                     </div>
 
                     <div class="flex-1 min-w-0">
@@ -978,7 +916,7 @@
                         </div>
                         <div class="flex items-center justify-between mt-0.5">
                             <span class="text-[11px] font-medium truncate text-slate-400 max-w-[130px]">${lastMsgText}</span>
-                            <span class="text-[8px] font-bold px-2 py-0.5 rounded-md ${badgeClass}">${roleAr}</span>
+                            <span class="text-[8px] font-bold px-2 py-0.5 rounded-md ${badgeClass}">${roleLabel}</span>
                         </div>
                     </div>
                     
@@ -1105,7 +1043,7 @@
         feed.innerHTML = `
             <div class="flex flex-col items-center justify-center h-full gap-2 text-slate-400 py-12">
                 <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#f2f20d] border-t-transparent"></div>
-                <span class="text-xs font-semibold">تحميل الرسائل...</span>
+                <span class="text-xs font-semibold">{{ __('messages.loading_chat_feed') }}</span>
             </div>
         `;
 
@@ -1127,14 +1065,14 @@
                     feed.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-full text-slate-400 py-12 text-center">
                             <span class="material-symbols-outlined text-4xl text-slate-600 mb-2">forum</span>
-                            <span class="text-xs font-bold">لا توجد رسائل سابقة. ابدأ المحادثة الآن!</span>
+                            <span class="text-xs font-bold">{{ __('messages.no_previous_messages') }}</span>
                         </div>
                     `;
                 }
             })
             .catch(err => {
                 console.error("Messages history load error: ", err);
-                feed.innerHTML = `<div class="text-center text-xs text-red-500 py-6">خطأ في تحميل أرشيف المحادثة.</div>`;
+                feed.innerHTML = `<div class="text-center text-xs text-red-500 py-6">{{ __('messages.chat_history_error') }}</div>`;
             });
     }
 
@@ -1147,7 +1085,7 @@
         const isMe = parseInt(msg.sender_id) === parseInt(currentUserId);
         
         const emptyState = feed.querySelector('.text-center');
-        if (emptyState && emptyState.innerText.includes('لا توجد رسائل')) {
+        if (emptyState && emptyState.innerText.includes('{{ __('messages.no_previous_messages') }}')) {
             feed.innerHTML = '';
         }
 
@@ -1156,7 +1094,8 @@
             ? 'bg-[#2d3748] text-slate-100 chat-bubble-sent shadow-md border border-[#3f3f46]/30' 
             : 'bg-[#27272a] text-slate-100 chat-bubble-received border border-[#3f3f46]/30 shadow-md';
 
-        const msgTime = new Date(msg.created_at).toLocaleTimeString('ar-EG', {
+        const msgLocale = currentLocale === 'ar' ? 'ar-EG' : 'en-US';
+        const msgTime = new Date(msg.created_at).toLocaleTimeString(msgLocale, {
             hour: '2-digit',
             minute: '2-digit'
         });
@@ -1176,7 +1115,7 @@
             } else if (['mp3', 'wav', 'm4a', 'ogg', 'aac'].includes(ext)) {
                 fileType = 'audio/';
             } else if (['mp4', 'mov', 'webm', 'avi'].includes(ext)) {
-                if (ext === 'webm' && (msg.message === '[Voice Note]' || url.includes('voice') || url.includes('audio') || msg.message.includes('صوتية'))) {
+                if (ext === 'webm' && (msg.message === '[Voice Note]' || url.includes('voice') || url.includes('audio') || msg.message.includes('صوتية') || msg.message.includes('Voice'))) {
                     fileType = 'audio/';
                 } else {
                     fileType = 'video/';
@@ -1187,10 +1126,10 @@
         let pendingOverlay = '';
         let pendingProgressHtml = '';
         if (msg.isPending) {
-            let pendingLabel = 'جاري رفع الملف...';
-            if (fileType.startsWith('image/')) pendingLabel = 'جاري رفع الصورة...';
-            else if (fileType.startsWith('video/')) pendingLabel = 'جاري رفع الفيديو...';
-            else if (fileType.startsWith('audio/') || msg.message === '[Voice Note]') pendingLabel = 'جاري رفع الصوت...';
+            let pendingLabel = '{{ __('messages.uploading_file_progress') }}';
+            if (fileType.startsWith('image/')) pendingLabel = '{{ __('messages.uploading_image_progress') }}';
+            else if (fileType.startsWith('video/')) pendingLabel = '{{ __('messages.uploading_video_progress') }}';
+            else if (fileType.startsWith('audio/') || msg.message === '[Voice Note]') pendingLabel = '{{ __('messages.uploading_audio_progress') }}';
 
             pendingOverlay = `
                 <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white rounded-xl gap-2 p-3 z-20 select-none transition-all">
@@ -1201,8 +1140,9 @@
                 </div>
             `;
 
+            const dirClass = currentLocale === 'ar' ? 'dir-rtl' : 'dir-ltr';
             pendingProgressHtml = `
-                <div class="mt-2.5 w-full min-w-[180px] dir-rtl">
+                <div class="mt-2.5 w-full min-w-[180px] ${dirClass}">
                     <div class="w-full bg-black/20 rounded-full h-2 overflow-hidden border border-white/10">
                         <div id="progress-bar-${msg.id}" class="bg-[#f2f20d] h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
                     </div>
@@ -1225,6 +1165,7 @@
                 `;
             } else if (fileType.startsWith('audio/') || msg.message === '[Voice Note]') {
                 const voiceId = 'voice-' + (msg.id || Math.random().toString(36).substring(2, 9));
+                const voiceDir = currentLocale === 'ar' ? 'dir-rtl' : 'dir-ltr';
                 mediaHtml = `
                     <div class="relative mt-1 max-w-[270px]">
                         ${pendingOverlay}
@@ -1240,9 +1181,9 @@
                                     <div id="progress-${voiceId}" class="h-full bg-[#f2f20d] rounded-full transition-all duration-100" style="width: 0%;"></div>
                                 </div>
                                 
-                                <div class="flex items-center justify-between text-[10px] font-bold opacity-75 dir-rtl">
+                                <div class="flex items-center justify-between text-[10px] font-bold opacity-75 ${voiceDir}">
                                     <span id="time-${voiceId}">00:00</span>
-                                    <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">graphic_eq</span> صوتية</span>
+                                    <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[13px]">graphic_eq</span> {{ __('messages.voice_badge_text') }}</span>
                                 </div>
                             </div>
                         </div>
@@ -1264,7 +1205,7 @@
                         <a href="${url}" download="${fileName}" target="_blank" class="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold transition-all truncate group/doc">
                             <span class="material-symbols-outlined text-[#f2f20d] shrink-0">description</span>
                             <span class="truncate text-slate-200">${displayName}</span>
-                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-[#f2f20d] text-sm mr-auto shrink-0 transition-colors">download</span>
+                            <span class="material-symbols-outlined text-slate-400 group-hover/doc:text-[#f2f20d] text-sm {{ app()->getLocale() === 'ar' ? 'mr-auto' : 'ml-auto' }} shrink-0 transition-colors">download</span>
                         </a>
                     </div>
                 `;
@@ -1280,14 +1221,14 @@
         const checkmarkIcon = msg.isPending
             ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
                 <span class="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
-                <span>جاري الإرسال...</span>
+                <span>{{ __('messages.sending_msg_progress') }}</span>
                </span>`
             : (isRead
                 ? '<span class="material-symbols-outlined text-[10px] text-blue-400">done_all</span>'
                 : '<span class="material-symbols-outlined text-[10px] text-slate-400">done</span>');
 
         const timerIconHtml = (msg.disappears_after || msg.expires_at) 
-            ? `<span class="material-symbols-outlined text-[12px] text-amber-400 shrink-0" title="رسالة ذاتية الاختفاء">timer</span>` 
+            ? `<span class="material-symbols-outlined text-[12px] text-amber-400 shrink-0" title="{{ __('messages.disappearing_messages_title') }}">timer</span>` 
             : '';
 
         const bubbleId = msg.id ? `id="msg-${msg.id}"` : '';
@@ -1297,14 +1238,16 @@
 
         let optionsHtml = '';
         if (!msg.isPending) {
+            const alignOpt = isMe ? (currentLocale === 'ar' ? 'left-0' : 'right-0') : (currentLocale === 'ar' ? 'right-0' : 'left-0');
+            const textAlignOpt = currentLocale === 'ar' ? 'text-right' : 'text-left';
             optionsHtml = `
                 <div class="relative group/options flex flex-col justify-center px-1">
                     <button type="button" class="text-slate-500 hover:text-slate-300 p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100" onclick="toggleMsgOptions('${msg.id}')">
                         <span class="material-symbols-outlined text-sm">more_vert</span>
                     </button>
-                    <div id="msg-options-${msg.id}" class="hidden absolute ${isMe ? 'left-0' : 'right-0'} bottom-8 mb-1 bg-[#1c1c20] rounded-xl shadow-xl border border-[#27272a] py-1 text-xs min-w-[110px] z-[99] flex flex-col">
-                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-[#27272a] text-slate-200 w-full">تعديل</button>` : ''}
-                        <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 text-right hover:bg-red-500/20 text-red-400 w-full">حذف</button>
+                    <div id="msg-options-${msg.id}" class="hidden absolute ${alignOpt} bottom-8 mb-1 bg-[#1c1c20] rounded-xl shadow-xl border border-[#27272a] py-1 text-xs min-w-[110px] z-[99] flex flex-col">
+                        ${isMe && (!msg.attachment && msg.message !== '[Voice Note]') ? `<button type="button" onclick="editMessageInit('${msg.id}')" class="px-3 py-1.5 ${textAlignOpt} hover:bg-[#27272a] text-slate-200 w-full">{{ __('messages.edit_action') }}</button>` : ''}
+                        <button type="button" onclick="deleteMessage('${msg.id}')" class="px-3 py-1.5 ${textAlignOpt} hover:bg-red-500/20 text-red-400 w-full">{{ __('messages.delete_action') }}</button>
                     </div>
                 </div>
             `;
@@ -1345,7 +1288,7 @@
         if (!file) return;
 
         if (file.size > 51200 * 1024) {
-            alert('حجم الملف كبير جداً! الحد الأقصى المسموح به هو 50 ميجابايت.');
+            alert('{{ __('messages.file_size_exceeded_50mb') }}');
             return;
         }
 
@@ -1390,10 +1333,10 @@
                     }
                     cancelEditMode();
                 } else {
-                    alert('فشل التعديل: ' + data.message);
+                    alert('{{ __('messages.edit_failed_prefix') }}' + data.message);
                 }
             }).catch(err => {
-                alert('خطأ في الاتصال.');
+                alert('{{ __('messages.connection_error') }}');
             });
             return;
         }
@@ -1442,9 +1385,9 @@
                 const oText = document.getElementById(`overlay-progress-text-${tempId}`);
 
                 if (pBar) pBar.style.width = percent + '%';
-                if (pText) pText.innerText = `جاري الرفع... ${percent}%`;
+                if (pText) pText.innerText = `{{ __('messages.uploading_percentage_prefix') }}${percent}%`;
                 if (oBar) oBar.style.width = percent + '%';
-                if (oText) oText.innerText = `جاري الرفع... ${percent}%`;
+                if (oText) oText.innerText = `{{ __('messages.uploading_percentage_prefix') }}${percent}%`;
             }
         };
 
@@ -1463,13 +1406,13 @@
                         }
                         loadContactsSilently();
                     } else {
-                        alert('فشل في إرسال الرسالة: ' + (data.error || 'خطأ غير معروف'));
+                        alert('{{ __('messages.failed_send_message_prefix') }}' + (data.error || '{{ __('messages.unknown_error_occurred') }}'));
                     }
                 } catch (e) {
-                    alert('حدث خطأ أثناء معالجة استجابة الخادم.');
+                    alert('{{ __('messages.server_response_error') }}');
                 }
             } else {
-                alert('فشل إرسال الرسالة. خطأ من الخادم: ' + xhr.status);
+                alert('{{ __('messages.failed_send_server_error') }}' + xhr.status);
             }
         };
 
@@ -1478,7 +1421,7 @@
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            alert('فشل إرسال الرسالة. يرجى التحقق من اتصالك بالشبكة.');
+            alert('{{ __('messages.failed_send_network_error') }}');
         };
 
         xhr.send(fd);
@@ -1486,7 +1429,7 @@
 
     async function startAudioRecording() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('تسجيل الصوت غير مدعوم في هذا المتصفح.');
+            alert('{{ __('messages.audio_not_supported_browser') }}');
             return;
         }
 
@@ -1532,7 +1475,7 @@
 
         } catch (err) {
             console.error('Microphone access denied: ', err);
-            alert('لا يمكن الوصول للميكروفون. يرجى تفعيل صلاحية استخدام الميكروفون في متصفحك.');
+            alert('{{ __('messages.mic_access_denied') }}');
         }
     }
 
@@ -1643,7 +1586,7 @@
         document.getElementById('msg-options-' + id).classList.add('hidden');
         const msg = window.activeMessagesData[id];
         if (!msg || msg.attachment || msg.message === '[Voice Note]') {
-            alert('لا يمكن تعديل المرفقات أو الرسائل الصوتية.');
+            alert('{{ __('messages.cannot_edit_voice_attachment') }}');
             return;
         }
         editingMessageId = id;
@@ -1671,17 +1614,17 @@
         if (typeof Swal !== 'undefined') {
             if (isMe) {
                 Swal.fire({
-                    title: 'حذف الرسالة',
-                    text: 'اختر نوع الحذف المطلوب:',
+                    title: '{{ __('messages.delete_message_title') }}',
+                    text: '{{ __('messages.choose_delete_type') }}',
                     icon: 'warning',
                     showCancelButton: true,
                     showDenyButton: true,
                     confirmButtonColor: '#ef4444',
                     denyButtonColor: '#3b82f6',
                     cancelButtonColor: '#64748b',
-                    confirmButtonText: 'حذف لدى الجميع',
-                    denyButtonText: 'حذف لدي فقط',
-                    cancelButtonText: 'إلغاء'
+                    confirmButtonText: '{{ __('messages.delete_for_everyone') }}',
+                    denyButtonText: '{{ __('messages.delete_for_me_only') }}',
+                    cancelButtonText: '{{ __('messages.cancel_btn') }}'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         performDeleteMessage(id, 'everyone');
@@ -1691,14 +1634,14 @@
                 });
             } else {
                 Swal.fire({
-                    title: 'حذف الرسالة',
-                    text: 'هل أنت متأكد من حذف هذه الرسالة لديك؟',
+                    title: '{{ __('messages.delete_message_title') }}',
+                    text: '{{ __('messages.confirm_delete_for_me') }}',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#ef4444',
                     cancelButtonColor: '#64748b',
-                    confirmButtonText: 'حذف لدي',
-                    cancelButtonText: 'إلغاء'
+                    confirmButtonText: '{{ __('messages.delete_for_me_btn') }}',
+                    cancelButtonText: '{{ __('messages.cancel_btn') }}'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         performDeleteMessage(id, 'me');
@@ -1708,13 +1651,13 @@
         } else {
             let type = 'me';
             if (isMe) {
-                if (confirm('هل تريد حذف الرسالة لدى الجميع؟ (اضغط إلغاء للحذف لديك فقط)')) {
+                if (confirm('{{ __('messages.delete_for_everyone') }}?')) {
                     type = 'everyone';
-                } else if (!confirm('هل تريد حذف الرسالة لديك فقط؟')) {
+                } else if (!confirm('{{ __('messages.delete_for_me_only') }}?')) {
                     return;
                 }
             } else {
-                if (!confirm('هل أنت متأكد من حذف هذه الرسالة لديك؟')) return;
+                if (!confirm('{{ __('messages.confirm_delete_for_me') }}')) return;
             }
             performDeleteMessage(id, type);
         }
@@ -1737,14 +1680,14 @@
                 loadContactsSilently();
             } else {
                 if (typeof Swal !== 'undefined') {
-                    Swal.fire('خطأ', data.message || 'فشل الحذف', 'error');
+                    Swal.fire('{{ __('messages.error') }}', data.message || '{{ __('messages.delete_failed_alert') }}', 'error');
                 } else {
-                    alert('فشل الحذف: ' + (data.message || 'خطأ غير معروف'));
+                    alert('{{ __('messages.delete_failed_alert') }}: ' + (data.message || '{{ __('messages.unknown_error_occurred') }}'));
                 }
             }
         }).catch(err => {
             console.error("Delete error:", err);
-            alert('خطأ في الاتصال أثناء تنفيذ عملية الحذف.');
+            alert('{{ __('messages.delete_conn_error') }}');
         });
     }
 
@@ -1765,7 +1708,8 @@
                     data.data.slice().reverse().forEach(msg => appendMessageBubble(msg));
                     scrollMessagesToBottom();
                 } else {
-                    feed.innerHTML = `<div class="text-center text-xs text-slate-400 py-6">لا توجد نتائج مطابقة لـ "${query}"</div>`;
+                    const noResultsMsg = '{{ __('messages.no_search_results_matching', ['query' => ':query']) }}'.replace(':query', query);
+                    feed.innerHTML = `<div class="text-center text-xs text-slate-400 py-6">${noResultsMsg}</div>`;
                 }
             });
     }
@@ -1816,9 +1760,9 @@
                 const oText = document.getElementById(`overlay-progress-text-${tempId}`);
 
                 if (pBar) pBar.style.width = percent + '%';
-                if (pText) pText.innerText = `جاري رفع الصوت... ${percent}%`;
+                if (pText) pText.innerText = `{{ __('messages.uploading_audio_progress') }} ${percent}%`;
                 if (oBar) oBar.style.width = percent + '%';
-                if (oText) oText.innerText = `جاري رفع الصوت... ${percent}%`;
+                if (oText) oText.innerText = `{{ __('messages.uploading_audio_progress') }} ${percent}%`;
             }
         };
 
@@ -1837,13 +1781,13 @@
                         }
                         loadContactsSilently();
                     } else {
-                        alert('فشل إرسال الملاحظة الصوتية: ' + (data.error || 'خطأ غير معروف'));
+                        alert('{{ __('messages.failed_send_voice_prefix') }}' + (data.error || '{{ __('messages.unknown_error_occurred') }}'));
                     }
                 } catch (e) {
-                    alert('حدث خطأ أثناء معالجة استجابة الخادم.');
+                    alert('{{ __('messages.server_response_error') }}');
                 }
             } else {
-                alert('فشل إرسال الصوت. خطأ الخادم: ' + xhr.status);
+                alert('{{ __('messages.failed_send_server_error') }}' + xhr.status);
             }
         };
 
@@ -1852,7 +1796,7 @@
             if (pendingBubble) {
                 pendingBubble.remove();
             }
-            alert('فشل إرسال الملاحظة الصوتية. يرجى التحقق من اتصالك بالشبكة.');
+            alert('{{ __('messages.failed_send_network_error') }}');
         };
 
         xhr.send(fd);
@@ -1865,13 +1809,13 @@
 <div id="image-lightbox-modal" class="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md hidden flex flex-col items-center justify-between p-4 md:p-6 transition-all duration-300 opacity-0 select-none">
     <div class="w-full flex items-center justify-between text-white max-w-5xl z-10">
         <button type="button" onclick="closeImageLightbox()" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold transition-all text-slate-200 hover:text-white backdrop-blur-sm">
-            <span class="material-symbols-outlined text-lg">arrow_back</span>
-            <span>رجوع للمحادثة</span>
+            <span class="material-symbols-outlined text-lg">{{ app()->getLocale() === 'ar' ? 'arrow_forward' : 'arrow_back' }}</span>
+            <span>{{ __('messages.back_to_chat') }}</span>
         </button>
         <div class="flex items-center gap-3">
             <a id="lightbox-download-btn" href="#" download target="_blank" class="flex items-center gap-2 px-5 py-2 rounded-full bg-[#f2f20d] text-black font-bold text-xs hover:bg-[#d9d90b] transition-all shadow-lg active:scale-95">
                 <span class="material-symbols-outlined text-base">download</span>
-                <span>تنزيل الصورة</span>
+                <span>{{ __('messages.download_image') }}</span>
             </a>
             <button type="button" onclick="closeImageLightbox()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all backdrop-blur-sm">
                 <span class="material-symbols-outlined text-xl">close</span>
@@ -1880,7 +1824,7 @@
     </div>
     
     <div class="flex-1 flex items-center justify-center w-full max-w-5xl my-4 overflow-hidden" onclick="closeImageLightbox()">
-        <img id="lightbox-image" src="" alt="صورة المعاينة" class="max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
+        <img id="lightbox-image" src="" alt="{{ __('messages.preview_image') }}" class="max-h-[82vh] max-w-full object-contain rounded-2xl shadow-2xl transition-transform duration-300 scale-95" onclick="event.stopPropagation()">
     </div>
 </div>
 
@@ -1908,7 +1852,7 @@
             if (btnLabel) btnLabel.innerText = label;
         } else {
             if (banner) banner.classList.add('hidden');
-            if (btnLabel) btnLabel.innerText = 'ذاتية الاختفاء';
+            if (btnLabel) btnLabel.innerText = '{{ __('messages.disappearing_messages_label') }}';
         }
     }
 

@@ -164,8 +164,9 @@
         /* Dropdown Card */
         .notif-dropdown-card {
             position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
+            top: calc(100% + 6px);
+            right: 0;
+            left: auto;
             width: 360px;
             max-width: calc(100vw - 2rem);
             background: var(--bg-primary, #121212);
@@ -176,12 +177,26 @@
             display: none;
             flex-direction: column;
             overflow: hidden;
-            transform-origin: top left;
+            transform-origin: top right;
             animation: notifCardIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
+        [dir="rtl"] .notif-dropdown-card {
+            left: 0;
+            right: auto;
+            transform-origin: top left;
+        }
+
+        [dir="ltr"] .notif-dropdown-card {
+            right: 0;
+            left: auto;
+            transform-origin: top right;
+        }
+
         @media (max-width: 640px) {
-            .notif-dropdown-card {
+            .notif-dropdown-card,
+            [dir="rtl"] .notif-dropdown-card,
+            [dir="ltr"] .notif-dropdown-card {
                 position: fixed !important;
                 top: 68px !important;
                 left: 12px !important;
@@ -471,24 +486,24 @@
             <!-- Student Info -->
             <div style="text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
                 <div style="width: 60px; height: 60px; border-radius: 50%; background-color: var(--accent-color); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem; font-weight: 800; color: #1a1a1a;">
-                    {{ mb_substr(auth()->user()->full_name ?? 'ط', 0, 1) }}
+                    {{ mb_substr(auth()->user()->full_name ?? 'S', 0, 1) }}
                 </div>
-                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? 'الطالب' }}</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">طالب</div>
+                <div style="font-weight: 700; font-size: 0.95rem;">{{ auth()->user()->full_name ?? __('messages.student_role') }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ __('messages.student_role') }}</div>
             </div>
 
             <nav class="nav-menu" style="display: flex; flex-direction: column; flex: 1;">
                 <a href="{{ url('/student/dashboard') }}" class="nav-item {{ Request::is('student/dashboard') ? 'active' : '' }}">
                     <i class="fa-solid fa-house"></i>
-                    الرئيسية
+                    {{ __('messages.dashboard') }}
                 </a>
                 <a href="{{ url('/student/schedule') }}" class="nav-item {{ Request::is('student/schedule') ? 'active' : '' }}">
                     <i class="fa-solid fa-calendar-days"></i>
-                    جدولي
+                    {{ __('messages.my_schedule') }}
                 </a>
                 <a href="{{ url('/student/courses') }}" class="nav-item {{ Request::is('student/courses*') ? 'active' : '' }}">
                     <i class="fa-solid fa-book-open"></i>
-                    موادي
+                    {{ __('messages.my_courses') }}
                 </a>
                 <a href="{{ url('/student/study') }}" class="nav-item {{ Request::is('student/study*') ? 'active' : '' }}">
                     <i class="fa-solid fa-book-open-reader"></i>
@@ -496,57 +511,57 @@
                 </a>
                 <a href="{{ url('/student/assignments') }}" class="nav-item {{ Request::is('student/assignments') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-pen"></i>
-                    واجباتي
+                    {{ __('messages.my_assignments') }}
                 </a>
                 <a href="{{ url('/student/grades') }}" class="nav-item {{ Request::is('student/grades') ? 'active' : '' }}">
                     <i class="fa-solid fa-id-card"></i>
-                    بطاقة الطالب (كشف العلامات)
+                    {{ __('messages.student_academic_card') }}
                 </a>
                 <a href="{{ url('/student/attendance') }}" class="nav-item {{ Request::is('student/attendance*') ? 'active' : '' }}">
                     <i class="fa-solid fa-clipboard-user"></i>
-                    الحضور والغياب (QR والوجه)
+                    {{ __('messages.attendance_and_absence') }}
                 </a>
                 <a href="{{ url('/student/warnings') }}" class="nav-item {{ Request::is('student/warnings') ? 'active' : '' }}">
                     <i class="fa-solid fa-triangle-exclamation"></i>
-                    الإنذارات الأكاديمية
+                    {{ __('messages.academic_warnings') }}
                 </a>
                 <a href="{{ url('/student/student-services') }}" class="nav-item {{ Request::is('student/student-services*') ? 'active' : '' }}">
                     <i class="fa-solid fa-hand-holding-hand"></i>
-                    الخدمات الطلابية
+                    {{ __('messages.student_services') }}
                 </a>
                 <a href="{{ url('/student/leave-requests') }}" class="nav-item {{ Request::is('student/leave-requests') ? 'active' : '' }}">
                     <i class="fa-solid fa-envelope-open-text"></i>
-                    طلبات الإذن
+                    {{ __('messages.leave_requests') }}
                 </a>
                 <a href="{{ url('/student/notifications') }}" class="nav-item {{ Request::is('student/notifications') ? 'active' : '' }}" style="position: relative;">
-                    <i class="fa-solid fa-bell"></i> الإشعارات
+                    <i class="fa-solid fa-bell"></i> {{ __('messages.notifications') }}
                     @php $unreadCount = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unreadCount > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadCount }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'ar' ? 'left: 1rem;' : 'right: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadCount }}</span>
                     @endif
                 </a>
                 
                 <a href="{{ url('/student/messages') }}" class="nav-item {{ Request::is('student/messages*') ? 'active' : '' }}" style="position: relative;">
-                    <i class="fa-solid fa-comments"></i> الرسائل
+                    <i class="fa-solid fa-comments"></i> {{ __('messages.messages') }}
                     @php $unreadMessages = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count(); @endphp
                     @if($unreadMessages > 0)
-                        <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
+                        <span style="position: absolute; {{ app()->getLocale() === 'ar' ? 'left: 1rem;' : 'right: 1rem;' }} top: 50%; transform: translateY(-50%); background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: bold;">{{ $unreadMessages }}</span>
                     @endif
                 </a>
                 <a href="{{ url('/student/profile') }}" class="nav-item {{ Request::is('student/profile') ? 'active' : '' }}">
                     <i class="fa-solid fa-user"></i>
-                    الملف الشخصي
+                    {{ __('messages.profile') }}
                 </a>
                 <a href="{{ url('/student/settings') }}" class="nav-item {{ Request::is('student/settings*') ? 'active' : '' }}">
                     <i class="fa-solid fa-gear"></i>
-                    الإعدادات
+                    {{ __('messages.settings') }}
                 </a>
 
                 <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-inline: 1rem;">
                     <form action="{{ route('student.logout') }}" method="POST">
                         @csrf
-                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: right; padding-inline: 0;">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
+                        <button type="button" onclick="triggerLogoutConfirmation(this.closest('form'))" class="nav-item" style="width: 100%; border: none; background: transparent; color: #ef4444; font-weight: 700; cursor: pointer; text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }}; padding-inline: 0;">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> {{ __('messages.logout') }}
                         </button>
                     </form>
                 </div>
@@ -601,7 +616,7 @@
                     @endphp
 
                     <div class="notif-dropdown-wrapper" id="studentNotifDropdown">
-                        <a href="{{ url('/student/notifications') }}" class="notif-bell-trigger" id="studentNotifBellBtn" title="الإشعارات">
+                        <a href="{{ url('/student/notifications') }}" class="notif-bell-trigger" id="studentNotifBellBtn" title="{{ __('messages.notifications') }}">
                             <i class="fa-solid fa-bell"></i>
                             @if($headerUnread > 0)
                                 <span class="notif-badge-dot" id="headerNotifBadgeDot"></span>
@@ -611,14 +626,14 @@
                         <div class="notif-dropdown-card" id="studentNotifDropdownCard">
                             <div class="notif-card-header">
                                 <div class="notif-card-header-title">
-                                    <h4>الإشعارات</h4>
+                                    <h4>{{ __('messages.notifications') }}</h4>
                                     @if($headerUnread > 0)
-                                        <span class="notif-pill" id="notifUnreadChip">{{ $headerUnread }} جديدة</span>
+                                        <span class="notif-pill" id="notifUnreadChip">{{ __('messages.new_notifications_count', ['count' => $headerUnread]) }}</span>
                                     @endif
                                 </div>
                                 @if($headerUnread > 0)
                                     <button type="button" class="btn-mark-all-read" id="btnMarkAllHeaderNotif" onclick="markAllHeaderNotificationsAsRead(event)">
-                                        تحديد الكل كمقروء
+                                        {{ __('messages.mark_all_as_read') }}
                                     </button>
                                 @endif
                             </div>
@@ -627,14 +642,14 @@
                             <div class="notif-card-tabs">
                                 <button type="button" class="notif-tab-btn active" id="tabBtnAcademic" onclick="switchStudentNotifTab(event, 'academic')">
                                     <i class="fa-solid fa-graduation-cap"></i>
-                                    <span>أكاديمي</span>
+                                    <span>{{ __('messages.academic') }}</span>
                                     @if($unreadAcademicCount > 0)
                                         <span class="notif-tab-badge" id="tabBadgeAcademic">{{ $unreadAcademicCount }}</span>
                                     @endif
                                 </button>
                                 <button type="button" class="notif-tab-btn" id="tabBtnAdmin" onclick="switchStudentNotifTab(event, 'admin')">
                                     <i class="fa-solid fa-building-columns"></i>
-                                    <span>إداري</span>
+                                    <span>{{ __('messages.administrative') }}</span>
                                     @if($unreadAdminCount > 0)
                                         <span class="notif-tab-badge" id="tabBadgeAdmin">{{ $unreadAdminCount }}</span>
                                     @endif
@@ -677,7 +692,7 @@
                                     @empty
                                         <div class="notif-card-empty">
                                             <i class="fa-regular fa-bell-slash"></i>
-                                            <span>لا توجد إشعارات أكاديمية</span>
+                                            <span>{{ __('messages.no_academic_notifications') }}</span>
                                         </div>
                                     @endforelse
                                 </div>
@@ -715,20 +730,20 @@
                                     @empty
                                         <div class="notif-card-empty">
                                             <i class="fa-regular fa-bell-slash"></i>
-                                            <span>لا توجد إشعارات إدارية</span>
+                                            <span>{{ __('messages.no_admin_notifications') }}</span>
                                         </div>
                                     @endforelse
                                 </div>
                             </div>
 
                             <a href="{{ url('/student/notifications') }}" class="notif-card-footer">
-                                <span>عرض كافة الإشعارات</span>
-                                <i class="fa-solid fa-arrow-left"></i>
+                                <span>{{ __('messages.view_all_notifications') }}</span>
+                                <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}"></i>
                             </a>
                         </div>
                     </div>
                     <!-- Dark Mode Toggle -->
-                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="تبديل الوضع">
+                    <button onclick="toggleDarkMode()" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; display: flex; align-items: center; justify-content: center;" title="{{ __('messages.toggle_theme') }}">
                         <i class="fa-solid fa-moon" id="dark-mode-icon"></i>
                     </button>
                 </div>
@@ -765,18 +780,18 @@
     <nav class="bottom-nav">
         <a href="{{ url('/student/dashboard') }}" class="bottom-nav-item {{ Request::is('student/dashboard') ? 'active' : '' }}">
             <i class="fa-solid fa-house"></i>
-            <span>الرئيسية</span>
+            <span>{{ __('messages.dashboard') }}</span>
         </a>
         <a href="{{ url('/student/profile') }}" class="bottom-nav-item {{ Request::is('student/profile*') ? 'active' : '' }}">
             <i class="fa-solid fa-user"></i>
-            <span>الملف الشخصي</span>
+            <span>{{ __('messages.profile') }}</span>
         </a>
         <div class="center-btn" onclick="toggleMobileMenu()">
             <i class="fa-solid fa-border-all"></i>
         </div>
         <a href="{{ url('/student/notifications') }}" class="bottom-nav-item {{ Request::is('student/notifications') ? 'active' : '' }}" style="position:relative;">
             <i class="fa-solid fa-bell"></i>
-            <span>الإشعارات</span>
+            <span>{{ __('messages.notifications') }}</span>
             @php $studentNavUnread = \App\Models\Notification::where('user_id', auth()->id())->where('is_read', false)->count(); @endphp
             @if($studentNavUnread > 0)
                 <span style="position:absolute;top:-2px;right:6px;background:#ef4444;width:8px;height:8px;border-radius:50%;"></span>
@@ -784,7 +799,7 @@
         </a>
         <a href="{{ url('/student/messages') }}" class="bottom-nav-item {{ Request::is('student/messages*') ? 'active' : '' }}">
             <i class="fa-solid fa-envelope"></i>
-            <span>الرسائل</span>
+            <span>{{ __('messages.messages') }}</span>
         </a>
     </nav>
 

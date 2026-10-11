@@ -1,8 +1,12 @@
+@php
+    $isRtl = app()->getLocale() === 'ar';
+@endphp
+
 <!-- Edu-Bridge Ultra-Premium About & Privacy Modal Component -->
-<div id="eduBridgeModal" class="edubridge-modal-backdrop" style="display: none;">
+<div id="eduBridgeModal" class="edubridge-modal-backdrop" style="display: none;" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
     <div class="edubridge-modal-container">
         <!-- Close Button -->
-        <button type="button" class="edubridge-close-btn" onclick="closeEduBridgeModal()" title="إغلاق">
+        <button type="button" class="edubridge-close-btn" onclick="closeEduBridgeModal()" title="{{ __('messages.about_btn_close_modal') }}">
             <i class="fa-solid fa-xmark"></i>
         </button>
 
@@ -14,9 +18,9 @@
                 </div>
                 <div>
                     <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                        <h2 class="edubridge-app-title">Edu-Bridge</h2>
+                        <h2 class="edubridge-app-title">{{ __('messages.about_modal_title') }}</h2>
                     </div>
-                    <p class="edubridge-app-subtitle">المنظومة الأكاديمية والطلابية الذكية المتكاملة</p>
+                    <p class="edubridge-app-subtitle">{{ __('messages.about_modal_subtitle') }}</p>
                 </div>
             </div>
 
@@ -24,19 +28,19 @@
             <div class="edubridge-tabs-nav">
                 <button type="button" class="edubridge-tab-btn active" data-tab="tab-about" onclick="switchEduTab('tab-about')">
                     <i class="fa-solid fa-sparkles"></i>
-                    <span>حول المنصة</span>
+                    <span>{{ __('messages.about_tab_about') }}</span>
                 </button>
                 <button type="button" class="edubridge-tab-btn" data-tab="tab-team" onclick="switchEduTab('tab-team')">
                     <i class="fa-solid fa-users-gear"></i>
-                    <span>فريق التطوير</span>
+                    <span>{{ __('messages.about_tab_team') }}</span>
                 </button>
                 <button type="button" class="edubridge-tab-btn" data-tab="tab-privacy" onclick="switchEduTab('tab-privacy')">
                     <i class="fa-solid fa-shield-halved"></i>
-                    <span>سياسة الخصوصية</span>
+                    <span>{{ __('messages.about_tab_privacy') }}</span>
                 </button>
                 <button type="button" class="edubridge-tab-btn" data-tab="tab-contact" onclick="switchEduTab('tab-contact')">
                     <i class="fa-solid fa-headset"></i>
-                    <span>تواصل معنا</span>
+                    <span>{{ __('messages.about_tab_contact') }}</span>
                 </button>
             </div>
         </div>
@@ -50,56 +54,56 @@
                     <div class="edubridge-hero-quote">
                         <i class="fa-solid fa-quote-right edubridge-quote-icon"></i>
                         <p>
-                            منصة <strong>Edu-Bridge</strong> هي نظام متكامل ومتقدم لإدارة الشؤون الأكاديمية والطلابية والمعاهد، تهدف لتسهيل التواجد، الخدمات الإلكترونية، ومتابعة المحاضرات والنتائج بكل يسر وسلاسة وأمان.
+                            {!! __('messages.about_hero_desc', ['app' => '<strong>Edu-Bridge</strong>']) !!}
                         </p>
                     </div>
                 </div>
 
                 <div class="edubridge-features-grid">
                     <div class="edubridge-feature-item">
-                        <div class="edubridge-feat-icon" style="background: rgba(242, 242, 13, 0.12); color: #eab308;">
+                        <div class="edubridge-feat-icon" style="background: rgba(242, 242, 13, 0.15); color: #eab308;">
                             <i class="fa-solid fa-layer-group"></i>
                         </div>
                         <div>
-                            <h4>إدارة أكاديمية شاملة</h4>
-                            <p>تنظيم المقررات، النتائج الامتحانية، الخطط الدراسية، وتقارير المتابعة الدقيقة لكل طالب.</p>
+                            <h4>{{ __('messages.about_feat_academic_title') }}</h4>
+                            <p>{{ __('messages.about_feat_academic_desc') }}</p>
                         </div>
                     </div>
 
                     <div class="edubridge-feature-item">
-                        <div class="edubridge-feat-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+                        <div class="edubridge-feat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                             <i class="fa-solid fa-qrcode"></i>
                         </div>
                         <div>
-                            <h4>حضور ذكي بالـ QR وبصمة الوجه</h4>
-                            <p>تسجيل حضور إلكتروني فوري ومؤمّن يمنع التلاعب مع دعم كامل للعمل والمزامنة دون إنترنت.</p>
+                            <h4>{{ __('messages.about_feat_attendance_title') }}</h4>
+                            <p>{{ __('messages.about_feat_attendance_desc') }}</p>
                         </div>
                     </div>
 
                     <div class="edubridge-feature-item">
-                        <div class="edubridge-feat-icon" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+                        <div class="edubridge-feat-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
                             <i class="fa-solid fa-comments"></i>
                         </div>
                         <div>
-                            <h4>تواصل ومحادثات فورية</h4>
-                            <p>غرف محادثة مباشرة ومشفرة بين الطلاب والمدرسين والإدارة لتبادل الملفات والاستفسارات.</p>
+                            <h4>{{ __('messages.about_feat_comm_title') }}</h4>
+                            <p>{{ __('messages.about_feat_comm_desc') }}</p>
                         </div>
                     </div>
 
                     <div class="edubridge-feature-item">
-                        <div class="edubridge-feat-icon" style="background: rgba(168, 85, 247, 0.12); color: #a855f7;">
+                        <div class="edubridge-feat-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
                             <i class="fa-solid fa-mobile-screen-button"></i>
                         </div>
                         <div>
-                            <h4>تجربة موحدة (ويب وموبايل)</h4>
-                            <p>تطبيق فلاتر فائق السرعة ولوحة تحكم ويب متجاوبة بالكامل لجميع أطراف العملية التعليمية.</p>
+                            <h4>{{ __('messages.about_feat_experience_title') }}</h4>
+                            <p>{{ __('messages.about_feat_experience_desc') }}</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- System Highlights Strip -->
                 <div class="edubridge-tech-strip">
-                    <span class="edubridge-tech-tag"><i class="fa-solid fa-code"></i> Flutter & Laravel</span>
+                    <span class="edubridge-tech-tag"><i class="fa-solid fa-code"></i> Flutter &amp; Laravel</span>
                     <span class="edubridge-tech-tag"><i class="fa-solid fa-database"></i> MySQL Cloud DB</span>
                     <span class="edubridge-tech-tag"><i class="fa-solid fa-lock"></i> AES Encrypted</span>
                     <span class="edubridge-tech-tag"><i class="fa-solid fa-bell"></i> Live Notifications</span>
@@ -111,61 +115,146 @@
                 <div class="edubridge-section-intro">
                     <div class="edubridge-badge-label">
                         <i class="fa-solid fa-laptop-code"></i>
-                        كفاءات هندسية متميزة
+                        {{ __('messages.about_team_badge') }}
                     </div>
-                    <h3>فريق التطوير والبرمجة</h3>
-                    <p>فريق العمل الهندسي المتخصص القائم على تصميم وبناء وتطوير كافة مفاصل نظام Edu-Bridge:</p>
+                    <h3>{{ __('messages.about_team_title') }}</h3>
+                    <p>{{ __('messages.about_team_desc') }}</p>
                 </div>
 
+                <!-- 5 Interactive Team Cards -->
                 <div class="edubridge-team-grid">
-                    <!-- Member 1: مجدولين محمود -->
-                    <div class="edubridge-member-card">
-                        <div class="edubridge-avatar" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                            <span>م</span>
+                    <!-- Member 1: Majdouleen Mahmoud -->
+                    <div class="edubridge-member-card active-member" 
+                         data-member="1" 
+                         data-name="{{ __('messages.team_member_1_name') }}"
+                         data-role="{{ __('messages.team_member_1_role') }}"
+                         data-desc="{{ __('messages.team_member_1_desc') }}"
+                         data-icon="fa-solid fa-server"
+                         data-initials="MM"
+                         data-color="#f59e0b"
+                         data-tags="Laravel, System Architecture, REST APIs Integration, Security & Auth"
+                         onclick="selectTeamMember(this)">
+                        <div class="edubridge-member-icon-badge" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24;">
+                            <i class="fa-solid fa-server"></i>
+                            <span class="edubridge-initials-sub">MM</span>
                         </div>
                         <div class="edubridge-member-info">
-                            <h4>مجدولين محمود</h4>
+                            <h4>{{ __('messages.team_member_1_name') }}</h4>
+                            <p class="edubridge-member-role">{{ __('messages.team_member_1_role') }}</p>
                         </div>
+                        <div class="edubridge-active-pointer"></div>
                     </div>
 
-                    <!-- Member 2: محمود غنّام -->
-                    <div class="edubridge-member-card">
-                        <div class="edubridge-avatar" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
-                            <span>م</span>
+                    <!-- Member 2: Mahmoud Ghannam -->
+                    <div class="edubridge-member-card" 
+                         data-member="2" 
+                         data-name="{{ __('messages.team_member_2_name') }}"
+                         data-role="{{ __('messages.team_member_2_role') }}"
+                         data-desc="{{ __('messages.team_member_2_desc') }}"
+                         data-icon="fa-solid fa-mobile-screen-button"
+                         data-initials="MG"
+                         data-color="#0ea5e9"
+                         data-tags="Flutter, Dart, Mobile Architecture, QR & Biometrics, Fluid UX"
+                         onclick="selectTeamMember(this)">
+                        <div class="edubridge-member-icon-badge" style="background: rgba(14, 165, 233, 0.15); border-color: rgba(14, 165, 233, 0.3); color: #38bdf8;">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                            <span class="edubridge-initials-sub">MG</span>
                         </div>
                         <div class="edubridge-member-info">
-                            <h4>محمود غنّام</h4>
+                            <h4>{{ __('messages.team_member_2_name') }}</h4>
+                            <p class="edubridge-member-role">{{ __('messages.team_member_2_role') }}</p>
                         </div>
+                        <div class="edubridge-active-pointer"></div>
                     </div>
 
-                    <!-- Member 3: إسراء منوّر -->
-                    <div class="edubridge-member-card">
-                        <div class="edubridge-avatar" style="background: linear-gradient(135deg, #10b981, #059669);">
-                            <span>إ</span>
+                    <!-- Member 3: Israa Munawwar -->
+                    <div class="edubridge-member-card" 
+                         data-member="3" 
+                         data-name="{{ __('messages.team_member_3_name') }}"
+                         data-role="{{ __('messages.team_member_3_role') }}"
+                         data-desc="{{ __('messages.team_member_3_desc') }}"
+                         data-icon="fa-solid fa-code"
+                         data-initials="EM"
+                         data-color="#a855f7"
+                         data-tags="PHP & Laravel, RESTful APIs, MySQL Database, Backend Logic"
+                         onclick="selectTeamMember(this)">
+                        <div class="edubridge-member-icon-badge" style="background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
+                            <i class="fa-solid fa-code"></i>
+                            <span class="edubridge-initials-sub">EM</span>
                         </div>
                         <div class="edubridge-member-info">
-                            <h4>إسراء منوّر</h4>
+                            <h4>{{ __('messages.team_member_3_name') }}</h4>
+                            <p class="edubridge-member-role">{{ __('messages.team_member_3_role') }}</p>
                         </div>
+                        <div class="edubridge-active-pointer"></div>
                     </div>
 
-                    <!-- Member 4: شهد زريقي -->
-                    <div class="edubridge-member-card">
-                        <div class="edubridge-avatar" style="background: linear-gradient(135deg, #ec4899, #db2777);">
-                            <span>ش</span>
+                    <!-- Member 4: Hiba Issa -->
+                    <div class="edubridge-member-card" 
+                         data-member="4" 
+                         data-name="{{ __('messages.team_member_4_name') }}"
+                         data-role="{{ __('messages.team_member_4_role') }}"
+                         data-desc="{{ __('messages.team_member_4_desc') }}"
+                         data-icon="fa-solid fa-palette"
+                         data-initials="HA"
+                         data-color="#10b981"
+                         data-tags="Admin Web UI, Blade Templating, Responsive Layouts, JavaScript UX"
+                         onclick="selectTeamMember(this)">
+                        <div class="edubridge-member-icon-badge" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">
+                            <i class="fa-solid fa-palette"></i>
+                            <span class="edubridge-initials-sub">HA</span>
                         </div>
                         <div class="edubridge-member-info">
-                            <h4>شهد زريقي</h4>
+                            <h4>{{ __('messages.team_member_4_name') }}</h4>
+                            <p class="edubridge-member-role">{{ __('messages.team_member_4_role') }}</p>
                         </div>
+                        <div class="edubridge-active-pointer"></div>
                     </div>
 
-                    <!-- Member 5: هبة عيسى -->
-                    <div class="edubridge-member-card">
-                        <div class="edubridge-avatar" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                            <span>هـ</span>
+                    <!-- Member 5: Shahd Zureki -->
+                    <div class="edubridge-member-card" 
+                         data-member="5" 
+                         data-name="{{ __('messages.team_member_5_name') }}"
+                         data-role="{{ __('messages.team_member_5_role') }}"
+                         data-desc="{{ __('messages.team_member_5_desc') }}"
+                         data-icon="fa-solid fa-database"
+                         data-initials="SZ"
+                         data-color="#eab308"
+                         data-tags="Database Modeling, SQL Optimization, Relational Integrity, UI Design"
+                         onclick="selectTeamMember(this)">
+                        <div class="edubridge-member-icon-badge" style="background: rgba(234, 179, 8, 0.15); border-color: rgba(234, 179, 8, 0.3); color: #facc15;">
+                            <i class="fa-solid fa-database"></i>
+                            <span class="edubridge-initials-sub">SZ</span>
                         </div>
                         <div class="edubridge-member-info">
-                            <h4>هبة عيسى</h4>
+                            <h4>{{ __('messages.team_member_5_name') }}</h4>
+                            <p class="edubridge-member-role">{{ __('messages.team_member_5_role') }}</p>
                         </div>
+                        <div class="edubridge-active-pointer"></div>
+                    </div>
+                </div>
+
+                <!-- Interactive Spotlight Detail Card -->
+                <div class="edubridge-member-spotlight" id="memberSpotlight">
+                    <div class="edubridge-spotlight-left">
+                        <div class="edubridge-spotlight-avatar" id="spotlightAvatar" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">
+                            <i class="fa-solid fa-server" id="spotlightIcon"></i>
+                        </div>
+                        <div>
+                            <div class="edubridge-spotlight-header">
+                                <h4 id="spotlightName">{{ __('messages.team_member_1_name') }}</h4>
+                                <span class="edubridge-spotlight-badge" id="spotlightBadge">{{ __('messages.team_member_1_role') }}</span>
+                            </div>
+                            <p class="edubridge-spotlight-desc" id="spotlightDesc">
+                                {{ __('messages.team_member_1_desc') }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="edubridge-spotlight-tags" id="spotlightTags">
+                        <span class="edubridge-mini-tag"><i class="fa-solid fa-check-circle"></i> Laravel</span>
+                        <span class="edubridge-mini-tag"><i class="fa-solid fa-check-circle"></i> System Architecture</span>
+                        <span class="edubridge-mini-tag"><i class="fa-solid fa-check-circle"></i> REST APIs Integration</span>
+                        <span class="edubridge-mini-tag"><i class="fa-solid fa-check-circle"></i> Security &amp; Auth</span>
                     </div>
                 </div>
             </div>
@@ -177,9 +266,9 @@
                         <i class="fa-solid fa-shield-halved"></i>
                     </div>
                     <div>
-                        <h3>سياسة الخصوصية وأمان البيانات</h3>
+                        <h3>{{ __('messages.about_privacy_title') }}</h3>
                         <p class="edubridge-privacy-lead">
-                            نحن نلتزم بحماية بياناتك الشخصية والأكاديمية. يتم استخدام البيانات المجمعة حصرياً لأغراض التحقق من الهوية والأداء الأكاديمي داخل المعهد ومتابعة الخدمات الطلابية.
+                            {{ __('messages.about_privacy_lead') }}
                         </p>
                     </div>
                 </div>
@@ -188,47 +277,47 @@
                     <div class="edubridge-policy-card">
                         <div class="edubridge-policy-card-header">
                             <i class="fa-solid fa-key" style="color: #f59e0b;"></i>
-                            <h4>1. سرية وتشفير الحسابات والمعلومات</h4>
+                            <h4>{{ __('messages.about_privacy_sec1_title') }}</h4>
                         </div>
                         <p>
-                            تخضع جميع كلمات المرور لجلسات تسجيل الدخول لتقنيات التشفير المتقدم (Bcrypt Hashing). لا يمكن لأي كادر تقني أو إداري الاطلاع على كلمة المرور الأصلية لأي مستخدم.
+                            {{ __('messages.about_privacy_sec1_desc') }}
                         </p>
                     </div>
 
                     <div class="edubridge-policy-card">
                         <div class="edubridge-policy-card-header">
                             <i class="fa-solid fa-user-graduate" style="color: #10b981;"></i>
-                            <h4>2. الخصوصية الطلابية والبيانات الأكاديمية</h4>
+                            <h4>{{ __('messages.about_privacy_sec2_title') }}</h4>
                         </div>
                         <p>
-                            سجلات الحضور، الدرجات الامتحانية، الإنذارات والتقارير المرفوعة هي بيانات محصورة بالجهات المعنية المحددة حصراً (الطالب صاحب الحساب، ولي أمره، وإدارة المعهد ذات الصلاحية).
+                            {{ __('messages.about_privacy_sec2_desc') }}
                         </p>
                     </div>
 
                     <div class="edubridge-policy-card">
                         <div class="edubridge-policy-card-header">
                             <i class="fa-solid fa-face-smile" style="color: #3b82f6;"></i>
-                            <h4>3. أمان التعرف بالوجه وتقنيات الحضور (Biometrics & QR)</h4>
+                            <h4>{{ __('messages.about_privacy_sec3_title') }}</h4>
                         </div>
                         <p>
-                            معرفات الأجهزة وبيانات التعرف البصري تُعالج بأعلى معايير الحماية ولا يتم نقلها أو استخدامها لأي غرض خارج نطاق تأكيد التواجد الفعلي في قاعة المحاضرة.
+                            {{ __('messages.about_privacy_sec3_desc') }}
                         </p>
                     </div>
 
                     <div class="edubridge-policy-card">
                         <div class="edubridge-policy-card-header">
                             <i class="fa-solid fa-handshake-slash" style="color: #ef4444;"></i>
-                            <h4>4. التزام تام بعدم مشاركة البيانات مع جهات خارجية</h4>
+                            <h4>{{ __('messages.about_privacy_sec4_title') }}</h4>
                         </div>
                         <p>
-                            تتعهد منظومة Edu-Bridge بعدم تزويد أو بيع أو مشاركة أي جزء من البيانات الشخصية أو الأكاديمية مع أي طرف ثالث أو منصات إعلانية أو خارجية إطلاقاً.
+                            {{ __('messages.about_privacy_sec4_desc') }}
                         </p>
                     </div>
                 </div>
 
                 <div class="edubridge-compliance-badge">
                     <i class="fa-solid fa-certificate"></i>
-                    <span>متوافق مع أفضل معايير أمن المعلومات والخصوصية الأكاديمية المعاصرة</span>
+                    <span>{{ __('messages.about_privacy_badge') }}</span>
                 </div>
             </div>
 
@@ -237,10 +326,10 @@
                 <div class="edubridge-section-intro">
                     <div class="edubridge-badge-label">
                         <i class="fa-solid fa-headset"></i>
-                        دعم فني سريع ومباشر
+                        {{ __('messages.about_contact_badge') }}
                     </div>
-                    <h3>تواصل مع إدارة النظام والمنصة</h3>
-                    <p>يسعدنا تلقي استفساراتك واقتراحاتك ومساعدتك على مدار الساعة عبر القنوات الرسمية التالية:</p>
+                    <h3>{{ __('messages.about_contact_title') }}</h3>
+                    <p>{{ __('messages.about_contact_desc') }}</p>
                 </div>
 
                 <div class="edubridge-contact-grid">
@@ -249,17 +338,17 @@
                         <div class="edubridge-contact-icon-box" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
                             <i class="fa-solid fa-envelope-open-text"></i>
                         </div>
-                        <div style="flex: 1;">
-                            <span class="edubridge-contact-type">البريد الإلكتروني الرسمي</span>
+                        <div style="flex: 1; min-width: 200px;">
+                            <span class="edubridge-contact-type">{{ __('messages.about_contact_email_title') }}</span>
                             <div class="edubridge-contact-value">edubridge2006@gmail.com</div>
-                            <p class="edubridge-contact-desc">للمراسلات الرسمية، الدعم الفني، والملاحظات الأكاديمية</p>
+                            <p class="edubridge-contact-desc">{{ __('messages.about_contact_email_desc') }}</p>
                         </div>
                         <div class="edubridge-contact-action">
                             <a href="mailto:edubridge2006@gmail.com" class="edubridge-btn-action primary">
-                                <i class="fa-solid fa-paper-plane"></i> إرسال رسالة
+                                <i class="fa-solid fa-paper-plane"></i> {{ __('messages.about_contact_send_email') }}
                             </a>
                             <button type="button" class="edubridge-btn-action secondary" onclick="copyContactText('edubridge2006@gmail.com', this)">
-                                <i class="fa-solid fa-copy"></i> <span>نسخ</span>
+                                <i class="fa-solid fa-copy"></i> <span>{{ __('messages.about_contact_copy') }}</span>
                             </button>
                         </div>
                     </div>
@@ -269,17 +358,17 @@
                         <div class="edubridge-contact-icon-box" style="background: rgba(34, 197, 94, 0.12); color: #22c55e;">
                             <i class="fa-brands fa-whatsapp"></i>
                         </div>
-                        <div style="flex: 1;">
-                            <span class="edubridge-contact-type">الدعم الفني المباشر (واتساب / هاتف)</span>
+                        <div style="flex: 1; min-width: 200px;">
+                            <span class="edubridge-contact-type">{{ __('messages.about_contact_whatsapp_title') }}</span>
                             <div class="edubridge-contact-value" dir="ltr">0959031594</div>
-                            <p class="edubridge-contact-desc">للمساعدة الفورية في الحسابات والأجهزة والدورات</p>
+                            <p class="edubridge-contact-desc">{{ __('messages.about_contact_whatsapp_desc') }}</p>
                         </div>
                         <div class="edubridge-contact-action">
                             <a href="https://wa.me/963959031594" target="_blank" class="edubridge-btn-action whatsapp">
-                                <i class="fa-brands fa-whatsapp"></i> محادثة واتساب
+                                <i class="fa-brands fa-whatsapp"></i> {{ __('messages.about_contact_chat_whatsapp') }}
                             </a>
                             <button type="button" class="edubridge-btn-action secondary" onclick="copyContactText('0959031594', this)">
-                                <i class="fa-solid fa-copy"></i> <span>نسخ</span>
+                                <i class="fa-solid fa-copy"></i> <span>{{ __('messages.about_contact_copy') }}</span>
                             </button>
                         </div>
                     </div>
@@ -287,7 +376,7 @@
 
                 <div class="edubridge-location-info">
                     <i class="fa-solid fa-location-dot"></i>
-                    <span>الجمهورية العربية السورية — نظام إدارة المؤسسات الأكاديمية</span>
+                    <span>{{ __('messages.about_contact_location') }}</span>
                 </div>
             </div>
 
@@ -295,58 +384,119 @@
 
         <!-- Modal Footer -->
         <div class="edubridge-modal-footer">
-            <span class="edubridge-footer-copy">© {{ date('Y') }} Edu-Bridge Inc. جميع الحقوق محفوظة</span>
+            <span class="edubridge-footer-copy">© {{ date('Y') }} Edu-Bridge Inc. {{ __('messages.about_footer_rights') }}</span>
             <button type="button" class="edubridge-btn-close-modal" onclick="closeEduBridgeModal()">
-                إغلاق النافذة
+                {{ __('messages.about_btn_close_modal') }}
             </button>
         </div>
     </div>
 </div>
 
-<!-- Dedicated Ultra-Modern Styles -->
+<!-- Dedicated Ultra-Modern Theme-Responsive Styles -->
 <style>
+    :root {
+        --eb-modal-bg: #ffffff;
+        --eb-modal-text: #0f172a;
+        --eb-modal-text-muted: #64748b;
+        --eb-modal-border: #e2e8f0;
+        --eb-modal-card-bg: #f8fafc;
+        --eb-modal-card-border: #e2e8f0;
+        --eb-modal-card-hover: #f1f5f9;
+        --eb-modal-tab-bg: #f1f5f9;
+        --eb-modal-tab-border: #e2e8f0;
+        --eb-modal-tab-text: #475569;
+        --eb-modal-tab-hover: #e2e8f0;
+        --eb-modal-header-bg: linear-gradient(180deg, rgba(234, 179, 8, 0.08) 0%, transparent 100%);
+        --eb-modal-footer-bg: #f8fafc;
+        --eb-modal-close-bg: #f1f5f9;
+        --eb-modal-close-border: #e2e8f0;
+        --eb-modal-close-text: #64748b;
+        --eb-modal-btn-sec-bg: #f1f5f9;
+        --eb-modal-btn-sec-border: #cbd5e1;
+        --eb-modal-btn-sec-text: #334155;
+        --eb-modal-tag-bg: #f1f5f9;
+        --eb-modal-tag-border: #e2e8f0;
+        --eb-modal-tag-text: #475569;
+        --eb-modal-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.3), 0 0 35px -10px rgba(234, 179, 8, 0.2);
+    }
+
+    html.dark, body.dark, body.dark-mode, .dark {
+        --eb-modal-bg: #141416;
+        --eb-modal-text: #f4f4f5;
+        --eb-modal-text-muted: #a1a1aa;
+        --eb-modal-border: rgba(255, 255, 255, 0.1);
+        --eb-modal-card-bg: rgba(255, 255, 255, 0.03);
+        --eb-modal-card-border: rgba(255, 255, 255, 0.08);
+        --eb-modal-card-hover: rgba(255, 255, 255, 0.06);
+        --eb-modal-tab-bg: rgba(255, 255, 255, 0.04);
+        --eb-modal-tab-border: rgba(255, 255, 255, 0.06);
+        --eb-modal-tab-text: #a1a1aa;
+        --eb-modal-tab-hover: rgba(255, 255, 255, 0.08);
+        --eb-modal-header-bg: linear-gradient(180deg, rgba(255, 204, 0, 0.04) 0%, transparent 100%);
+        --eb-modal-footer-bg: rgba(0, 0, 0, 0.25);
+        --eb-modal-close-bg: rgba(255, 255, 255, 0.06);
+        --eb-modal-close-border: rgba(255, 255, 255, 0.1);
+        --eb-modal-close-text: #a1a1aa;
+        --eb-modal-btn-sec-bg: rgba(255, 255, 255, 0.08);
+        --eb-modal-btn-sec-border: rgba(255, 255, 255, 0.12);
+        --eb-modal-btn-sec-text: #e4e4e7;
+        --eb-modal-tag-bg: rgba(255, 255, 255, 0.04);
+        --eb-modal-tag-border: rgba(255, 255, 255, 0.08);
+        --eb-modal-tag-text: #d4d4d8;
+        --eb-modal-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), 0 0 50px -10px rgba(255, 204, 0, 0.15);
+    }
+
     .edubridge-modal-backdrop {
         position: fixed;
         inset: 0;
         z-index: 999999;
-        background: rgba(0, 0, 0, 0.75);
+        background: rgba(15, 23, 42, 0.7);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 1.25rem;
-        direction: rtl;
-        font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: inherit;
         animation: edubridgeFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .edubridge-modal-container {
-        background: #141416;
-        color: #f4f4f5;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--eb-modal-bg);
+        color: var(--eb-modal-text);
+        border: 1px solid var(--eb-modal-border);
         border-radius: 28px;
         width: 100%;
         max-width: 820px;
         max-height: 90vh;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), 0 0 50px -10px rgba(255, 204, 0, 0.15);
+        box-shadow: var(--eb-modal-shadow);
         position: relative;
         overflow: hidden;
         animation: edubridgeZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
+    /* Directional Close Button */
+    [dir="rtl"] .edubridge-close-btn {
+        left: 1.25rem;
+        right: auto;
+    }
+    [dir="ltr"] .edubridge-close-btn {
+        right: 1.25rem;
+        left: auto;
     }
 
     .edubridge-close-btn {
         position: absolute;
         top: 1.25rem;
-        left: 1.25rem;
         width: 38px;
         height: 38px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #a1a1aa;
+        background: var(--eb-modal-close-bg);
+        border: 1px solid var(--eb-modal-close-border);
+        color: var(--eb-modal-close-text);
         font-size: 1.1rem;
         display: flex;
         align-items: center;
@@ -364,8 +514,8 @@
 
     .edubridge-modal-header {
         padding: 1.75rem 2rem 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        background: linear-gradient(180deg, rgba(255, 204, 0, 0.04) 0%, transparent 100%);
+        border-bottom: 1px solid var(--eb-modal-border);
+        background: var(--eb-modal-header-bg);
     }
 
     .edubridge-header-brand {
@@ -394,35 +544,13 @@
         font-weight: 900;
         letter-spacing: -0.5px;
         margin: 0;
-        color: #ffffff;
-    }
-
-    .edubridge-version-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        background: rgba(255, 204, 0, 0.12);
-        border: 1px solid rgba(255, 204, 0, 0.3);
-        color: #facc15;
-        font-weight: 700;
-        font-size: 0.8rem;
-        padding: 0.2rem 0.75rem;
-        border-radius: 20px;
-    }
-
-    .edubridge-status-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background-color: #22c55e;
-        box-shadow: 0 0 8px #22c55e;
-        display: inline-block;
+        color: var(--eb-modal-text);
     }
 
     .edubridge-app-subtitle {
         margin: 0.25rem 0 0;
         font-size: 0.9rem;
-        color: #a1a1aa;
+        color: var(--eb-modal-text-muted);
     }
 
     /* Tabs Bar */
@@ -437,9 +565,9 @@
     }
 
     .edubridge-tab-btn {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        color: #a1a1aa;
+        background: var(--eb-modal-tab-bg);
+        border: 1px solid var(--eb-modal-tab-border);
+        color: var(--eb-modal-tab-text);
         padding: 0.65rem 1.25rem;
         border-radius: 14px;
         font-size: 0.9rem;
@@ -452,8 +580,8 @@
         transition: all 0.25s ease;
     }
     .edubridge-tab-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: #ffffff;
+        background: var(--eb-modal-tab-hover);
+        color: var(--eb-modal-text);
     }
     .edubridge-tab-btn.active {
         background: #ffcc00;
@@ -472,7 +600,7 @@
         width: 6px;
     }
     .edubridge-modal-body::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.15);
+        background: rgba(148, 163, 184, 0.3);
         border-radius: 10px;
     }
 
@@ -486,8 +614,8 @@
 
     /* Hero Quote */
     .edubridge-hero-card {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--eb-modal-card-bg);
+        border: 1px solid var(--eb-modal-card-border);
         border-radius: 20px;
         padding: 1.5rem 1.75rem;
         margin-bottom: 1.5rem;
@@ -500,14 +628,23 @@
         margin: 0;
         font-size: 1.02rem;
         line-height: 1.75;
-        color: #e4e4e7;
+        color: var(--eb-modal-text);
+    }
+    
+    [dir="rtl"] .edubridge-quote-icon {
+        left: 0;
+        right: auto;
+    }
+    [dir="ltr"] .edubridge-quote-icon {
+        right: 0;
+        left: auto;
+        transform: scaleX(-1);
     }
     .edubridge-quote-icon {
         position: absolute;
         top: -10px;
-        left: 0;
         font-size: 2.2rem;
-        color: rgba(255, 204, 0, 0.15);
+        color: rgba(234, 179, 8, 0.15);
     }
 
     /* Features Grid */
@@ -519,19 +656,19 @@
     }
 
     .edubridge-feature-item {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: var(--eb-modal-card-bg);
+        border: 1px solid var(--eb-modal-card-border);
         border-radius: 18px;
         padding: 1.25rem;
         display: flex;
         gap: 1rem;
         align-items: flex-start;
-        transition: transform 0.2s, background 0.2s;
+        transition: transform 0.2s, background 0.2s, border-color 0.2s;
     }
     .edubridge-feature-item:hover {
         transform: translateY(-2px);
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.12);
+        background: var(--eb-modal-card-hover);
+        border-color: rgba(234, 179, 8, 0.3);
     }
     .edubridge-feat-icon {
         width: 44px;
@@ -547,12 +684,12 @@
         margin: 0 0 0.35rem;
         font-size: 0.95rem;
         font-weight: 800;
-        color: #ffffff;
+        color: var(--eb-modal-text);
     }
     .edubridge-feature-item p {
         margin: 0;
         font-size: 0.85rem;
-        color: #a1a1aa;
+        color: var(--eb-modal-text-muted);
         line-height: 1.5;
     }
 
@@ -563,22 +700,22 @@
         gap: 0.6rem;
         justify-content: center;
         padding-top: 0.75rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        border-top: 1px solid var(--eb-modal-border);
     }
     .edubridge-tech-tag {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--eb-modal-tag-bg);
+        border: 1px solid var(--eb-modal-tag-border);
         border-radius: 20px;
         padding: 0.3rem 0.85rem;
         font-size: 0.78rem;
-        color: #d4d4d8;
+        color: var(--eb-modal-tag-text);
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
         font-weight: 600;
     }
     .edubridge-tech-tag i {
-        color: #ffcc00;
+        color: #eab308;
     }
 
     /* Section intro */
@@ -590,89 +727,213 @@
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        background: rgba(255, 204, 0, 0.1);
-        color: #facc15;
+        background: rgba(234, 179, 8, 0.12);
+        color: #ca8a04;
         border-radius: 20px;
         padding: 0.25rem 0.85rem;
         font-size: 0.8rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
     }
+    html.dark .edubridge-badge-label, body.dark .edubridge-badge-label, body.dark-mode .edubridge-badge-label, .dark .edubridge-badge-label {
+        color: #facc15;
+    }
     .edubridge-section-intro h3 {
         margin: 0.25rem 0 0.5rem;
         font-size: 1.35rem;
         font-weight: 800;
-        color: #ffffff;
+        color: var(--eb-modal-text);
     }
     .edubridge-section-intro p {
         margin: 0 auto;
         max-width: 520px;
         font-size: 0.88rem;
-        color: #a1a1aa;
+        color: var(--eb-modal-text-muted);
     }
 
     /* Team Grid */
     .edubridge-team-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
     }
 
     .edubridge-member-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--eb-modal-card-bg);
+        border: 1px solid var(--eb-modal-card-border);
         border-radius: 20px;
-        padding: 1.25rem;
+        padding: 1.1rem 0.65rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.65rem;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        user-select: none;
+    }
+    .edubridge-member-card:hover {
+        transform: translateY(-4px);
+        background: var(--eb-modal-card-hover);
+        border-color: rgba(234, 179, 8, 0.5);
+        box-shadow: 0 12px 25px -8px rgba(0, 0, 0, 0.25);
+    }
+    .edubridge-member-card.active-member {
+        border: 2px solid #eab308 !important;
+        background: rgba(234, 179, 8, 0.08);
+        box-shadow: 0 0 25px rgba(234, 179, 8, 0.3), 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        transform: translateY(-4px);
+    }
+    .edubridge-member-card.active-member .edubridge-active-pointer {
+        display: block;
+    }
+    .edubridge-active-pointer {
+        display: none;
+        position: absolute;
+        bottom: -9px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-top: 8px solid #eab308;
+    }
+    .edubridge-member-icon-badge {
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+        border: 1px solid;
+        flex-shrink: 0;
+        gap: 2px;
+        transition: transform 0.3s;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    }
+    .edubridge-member-card:hover .edubridge-member-icon-badge,
+    .edubridge-member-card.active-member .edubridge-member-icon-badge {
+        transform: scale(1.08);
+    }
+    .edubridge-initials-sub {
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        opacity: 0.85;
+    }
+    .edubridge-member-info h4 {
+        margin: 0;
+        font-size: 0.92rem;
+        font-weight: 800;
+        color: var(--eb-modal-text);
+        letter-spacing: -0.2px;
+        line-height: 1.3;
+    }
+    .edubridge-member-role {
+        margin: 0.25rem 0 0;
+        font-size: 0.72rem;
+        color: var(--eb-modal-text-muted);
+        line-height: 1.4;
+        font-weight: 600;
+    }
+
+    /* Spotlight Showcase */
+    .edubridge-member-spotlight {
+        background: var(--eb-modal-card-bg);
+        border: 1px solid var(--eb-modal-card-border);
+        border-radius: 20px;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+        transition: all 0.3s ease;
+        animation: edubridgeSpotlightIn 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .edubridge-spotlight-left {
         display: flex;
         align-items: center;
         gap: 1rem;
-        transition: all 0.25s ease;
+        flex: 1;
+        min-width: 260px;
     }
-    .edubridge-member-card:hover {
-        transform: translateY(-3px);
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 204, 0, 0.3);
-        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.5);
-    }
-    .edubridge-avatar {
-        width: 52px;
-        height: 52px;
+    .edubridge-spotlight-avatar {
+        width: 54px;
+        height: 54px;
         border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 900;
-        font-size: 1.4rem;
-        color: #ffffff;
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        font-size: 1.5rem;
         flex-shrink: 0;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
     }
-    .edubridge-member-info h4 {
+    .edubridge-spotlight-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.3rem;
+    }
+    .edubridge-spotlight-header h4 {
         margin: 0;
         font-size: 1.1rem;
         font-weight: 800;
-        color: #ffffff;
-        letter-spacing: -0.2px;
+        color: var(--eb-modal-text);
     }
-    .edubridge-role {
-        display: block;
-        font-size: 0.78rem;
-        color: #eab308;
-        font-weight: 600;
-        margin-top: 0.2rem;
+    .edubridge-spotlight-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        background: rgba(234, 179, 8, 0.12);
+        color: #ca8a04;
+        border: 1px solid rgba(234, 179, 8, 0.25);
     }
-    .edubridge-skills {
+    html.dark .edubridge-spotlight-badge, body.dark .edubridge-spotlight-badge, body.dark-mode .edubridge-spotlight-badge, .dark .edubridge-spotlight-badge {
+        color: #facc15;
+    }
+    .edubridge-spotlight-desc {
+        margin: 0;
+        font-size: 0.84rem;
+        color: var(--eb-modal-text-muted);
+        line-height: 1.5;
+    }
+    .edubridge-spotlight-tags {
         display: flex;
-        gap: 0.35rem;
         flex-wrap: wrap;
-        margin-top: 0.4rem;
+        gap: 0.4rem;
+        max-width: 320px;
     }
-    .edubridge-skills span {
-        background: rgba(255, 255, 255, 0.06);
-        border-radius: 6px;
-        padding: 0.15rem 0.4rem;
-        font-size: 0.68rem;
-        color: #a1a1aa;
+    .edubridge-mini-tag {
+        background: var(--eb-modal-tab-bg);
+        border: 1px solid var(--eb-modal-tab-border);
+        border-radius: 12px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--eb-modal-text);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: transform 0.2s;
+    }
+    .edubridge-mini-tag i {
+        color: #10b981;
+        font-size: 0.7rem;
+    }
+    @keyframes edubridgeSpotlightIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     /* Privacy Tab */
@@ -702,12 +963,15 @@
         margin: 0 0 0.4rem;
         font-size: 1.15rem;
         font-weight: 800;
-        color: #ffffff;
+        color: var(--eb-modal-text);
     }
     .edubridge-privacy-lead {
         margin: 0;
         font-size: 0.9rem;
         line-height: 1.6;
+        color: var(--eb-modal-text-muted);
+    }
+    html.dark .edubridge-privacy-lead, body.dark .edubridge-privacy-lead, body.dark-mode .edubridge-privacy-lead, .dark .edubridge-privacy-lead {
         color: #d1fae5;
     }
 
@@ -718,14 +982,14 @@
         margin-bottom: 1.5rem;
     }
     .edubridge-policy-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: var(--eb-modal-card-bg);
+        border: 1px solid var(--eb-modal-card-border);
         border-radius: 16px;
         padding: 1.25rem 1.5rem;
         transition: background 0.2s;
     }
     .edubridge-policy-card:hover {
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--eb-modal-card-hover);
     }
     .edubridge-policy-card-header {
         display: flex;
@@ -737,12 +1001,12 @@
         margin: 0;
         font-size: 0.95rem;
         font-weight: 800;
-        color: #ffffff;
+        color: var(--eb-modal-text);
     }
     .edubridge-policy-card p {
         margin: 0;
         font-size: 0.85rem;
-        color: #a1a1aa;
+        color: var(--eb-modal-text-muted);
         line-height: 1.6;
     }
 
@@ -751,13 +1015,14 @@
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px dashed rgba(255, 255, 255, 0.12);
+        background: var(--eb-modal-card-bg);
+        border: 1px dashed var(--eb-modal-card-border);
         border-radius: 14px;
         padding: 0.75rem;
         font-size: 0.82rem;
-        color: #d4d4d8;
+        color: var(--eb-modal-text-muted);
         font-weight: 600;
+        text-align: center;
     }
     .edubridge-compliance-badge i {
         color: #22c55e;
@@ -771,8 +1036,8 @@
         margin-bottom: 1.5rem;
     }
     .edubridge-contact-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--eb-modal-card-bg);
+        border: 1px solid var(--eb-modal-card-border);
         border-radius: 20px;
         padding: 1.5rem;
         display: flex;
@@ -792,25 +1057,34 @@
     }
     .edubridge-contact-type {
         font-size: 0.8rem;
-        color: #a1a1aa;
+        color: var(--eb-modal-text-muted);
         display: block;
         margin-bottom: 0.2rem;
     }
     .edubridge-contact-value {
         font-size: 1.2rem;
         font-weight: 800;
-        color: #ffffff;
+        color: var(--eb-modal-text);
         font-family: monospace, system-ui;
     }
     .edubridge-contact-desc {
         margin: 0.25rem 0 0;
         font-size: 0.82rem;
-        color: #71717a;
+        color: var(--eb-modal-text-muted);
     }
+
+    [dir="rtl"] .edubridge-contact-action {
+        margin-right: auto;
+        margin-left: 0;
+    }
+    [dir="ltr"] .edubridge-contact-action {
+        margin-left: auto;
+        margin-right: 0;
+    }
+
     .edubridge-contact-action {
         display: flex;
         gap: 0.5rem;
-        margin-right: auto;
     }
     .edubridge-btn-action {
         display: inline-flex;
@@ -842,18 +1116,19 @@
         transform: translateY(-1px);
     }
     .edubridge-btn-action.secondary {
-        background: rgba(255, 255, 255, 0.08);
-        color: #e4e4e7;
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: var(--eb-modal-btn-sec-bg);
+        color: var(--eb-modal-btn-sec-text);
+        border: 1px solid var(--eb-modal-btn-sec-border);
     }
     .edubridge-btn-action.secondary:hover {
-        background: rgba(255, 255, 255, 0.15);
+        background: var(--eb-modal-tab-hover);
+        color: var(--eb-modal-text);
     }
 
     .edubridge-location-info {
         text-align: center;
         font-size: 0.85rem;
-        color: #71717a;
+        color: var(--eb-modal-text-muted);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -866,20 +1141,20 @@
     /* Modal Footer */
     .edubridge-modal-footer {
         padding: 1.25rem 2rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        border-top: 1px solid var(--eb-modal-border);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: rgba(0, 0, 0, 0.2);
+        background: var(--eb-modal-footer-bg);
     }
     .edubridge-footer-copy {
         font-size: 0.8rem;
-        color: #71717a;
+        color: var(--eb-modal-text-muted);
     }
     .edubridge-btn-close-modal {
-        background: rgba(255, 255, 255, 0.08);
-        color: #d4d4d8;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--eb-modal-btn-sec-bg);
+        color: var(--eb-modal-btn-sec-text);
+        border: 1px solid var(--eb-modal-btn-sec-border);
         padding: 0.5rem 1.25rem;
         border-radius: 12px;
         font-size: 0.85rem;
@@ -888,8 +1163,8 @@
         transition: all 0.2s;
     }
     .edubridge-btn-close-modal:hover {
-        background: rgba(255, 255, 255, 0.15);
-        color: #ffffff;
+        background: var(--eb-modal-tab-hover);
+        color: var(--eb-modal-text);
     }
 
     /* Keyframe Animations */
@@ -906,21 +1181,108 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
+    /* Responsive Styles */
     @media (max-width: 640px) {
+        .edubridge-modal-backdrop {
+            padding: 0.75rem;
+        }
+        .edubridge-modal-container {
+            max-height: 94vh;
+            border-radius: 20px;
+        }
         .edubridge-modal-header {
-            padding: 1.25rem 1.25rem 0.75rem;
+            padding: 1.25rem 1rem 0.75rem;
+        }
+        .edubridge-header-brand {
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .edubridge-logo-gem {
+            width: 46px;
+            height: 46px;
+            font-size: 1.35rem;
+            border-radius: 14px;
+        }
+        .edubridge-app-title {
+            font-size: 1.25rem;
+        }
+        .edubridge-app-subtitle {
+            font-size: 0.78rem;
+        }
+        .edubridge-close-btn {
+            top: 0.85rem;
+            width: 32px;
+            height: 32px;
+            font-size: 0.95rem;
+        }
+        [dir="rtl"] .edubridge-close-btn {
+            left: 0.85rem;
+            right: auto;
+        }
+        [dir="ltr"] .edubridge-close-btn {
+            right: 0.85rem;
+            left: auto;
+        }
+        .edubridge-tabs-nav {
+            gap: 0.35rem;
+            -webkit-overflow-scrolling: touch;
+        }
+        .edubridge-tab-btn {
+            padding: 0.5rem 0.85rem;
+            font-size: 0.8rem;
+            border-radius: 10px;
         }
         .edubridge-modal-body {
-            padding: 1.25rem;
+            padding: 1rem;
         }
-        .edubridge-contact-action {
-            margin-right: 0;
+        .edubridge-features-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+        .edubridge-team-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.65rem;
+        }
+        .edubridge-feature-item,
+        .edubridge-member-card,
+        .edubridge-contact-card,
+        .edubridge-hero-card {
+            padding: 0.85rem;
+            border-radius: 16px;
+        }
+        .edubridge-member-spotlight {
+            padding: 1rem;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .edubridge-spotlight-tags {
+            max-width: 100%;
+        }
+        .edubridge-privacy-hero {
+            flex-direction: column;
+            text-align: center;
+            padding: 1.25rem 1rem;
+        }
+        [dir="rtl"] .edubridge-contact-action,
+        [dir="ltr"] .edubridge-contact-action {
+            margin: 0.75rem 0 0 0;
             width: 100%;
-            margin-top: 0.5rem;
         }
         .edubridge-btn-action {
             flex: 1;
             justify-content: center;
+            padding: 0.6rem 0.85rem;
+            font-size: 0.82rem;
+        }
+        .edubridge-modal-footer {
+            padding: 0.85rem 1rem;
+            flex-direction: column-reverse;
+            gap: 0.65rem;
+            text-align: center;
+        }
+        .edubridge-btn-close-modal {
+            width: 100%;
+            padding: 0.6rem 1rem;
         }
     }
 </style>
@@ -966,6 +1328,39 @@
         });
     }
 
+    function selectTeamMember(cardElement) {
+        document.querySelectorAll('.edubridge-member-card').forEach(c => c.classList.remove('active-member'));
+        cardElement.classList.add('active-member');
+
+        const name = cardElement.getAttribute('data-name');
+        const role = cardElement.getAttribute('data-role');
+        const desc = cardElement.getAttribute('data-desc');
+        const icon = cardElement.getAttribute('data-icon');
+        const color = cardElement.getAttribute('data-color');
+        const tagsStr = cardElement.getAttribute('data-tags');
+
+        const spotlightName = document.getElementById('spotlightName');
+        const spotlightBadge = document.getElementById('spotlightBadge');
+        const spotlightDesc = document.getElementById('spotlightDesc');
+        const spotlightIcon = document.getElementById('spotlightIcon');
+        const spotlightAvatar = document.getElementById('spotlightAvatar');
+        const spotlightTags = document.getElementById('spotlightTags');
+
+        if (spotlightName) spotlightName.textContent = name;
+        if (spotlightBadge) spotlightBadge.textContent = role;
+        if (spotlightDesc) spotlightDesc.textContent = desc;
+        if (spotlightIcon) spotlightIcon.className = icon;
+        if (spotlightAvatar) {
+            spotlightAvatar.style.background = color + '25';
+            spotlightAvatar.style.color = color;
+        }
+
+        if (spotlightTags && tagsStr) {
+            const tags = tagsStr.split(',').map(t => t.trim());
+            spotlightTags.innerHTML = tags.map(t => `<span class="edubridge-mini-tag"><i class="fa-solid fa-check-circle"></i> ${t}</span>`).join('');
+        }
+    }
+
     function copyContactText(text, btnElement) {
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text).then(() => {
@@ -991,7 +1386,8 @@
     function showCopySuccess(btnElement) {
         const span = btnElement.querySelector('span');
         const originalText = span ? span.innerText : '';
-        if (span) span.innerText = 'تم النسخ!';
+        const copiedText = "{{ __('messages.about_contact_copied') }}";
+        if (span) span.innerText = copiedText;
         btnElement.style.background = 'rgba(34, 197, 94, 0.25)';
         btnElement.style.color = '#22c55e';
         btnElement.style.borderColor = '#22c55e';

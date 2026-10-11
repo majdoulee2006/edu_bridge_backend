@@ -1,5 +1,5 @@
 @extends('layouts.affairs')
-@section('title', 'الإشعارات')
+@section('title', __('messages.notifications'))
 
 @push('styles')
 <style>
@@ -86,10 +86,10 @@
         padding: 0.1rem 0.6rem;
         border-radius: 1rem;
         font-size: 0.8rem;
-        margin-right: 0.5rem;
+        margin-inline-start: 0.5rem;
     }
     
-    /* Pagination Styles Fix */
+    /* Pagination Styles */
     .pagination-wrapper nav { width: 100%; }
     .pagination-wrapper .pagination { justify-content: center; margin-bottom: 0; }
     .pagination-wrapper .page-item .page-link { background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary); }
@@ -114,12 +114,13 @@
         transition: transform 0.2s, background 0.3s;
         border: 1px solid transparent;
         position: relative;
+        text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};
     }
-    .notif-card:hover { transform: translateX(-5px); }
+    .notif-card:hover { transform: translateX({{ app()->getLocale() === 'ar' ? '-5px' : '5px' }}); }
     
     .notif-card.unread {
-        background: linear-gradient(to left, var(--bg-secondary), rgba(252, 227, 0, 0.05));
-        border-right: 4px solid var(--accent-color);
+        background: linear-gradient(to {{ app()->getLocale() === 'ar' ? 'left' : 'right' }}, var(--bg-secondary), rgba(252, 227, 0, 0.05));
+        border-inline-start: 4px solid var(--accent-color);
     }
 
     .notif-icon {
@@ -132,7 +133,6 @@
         font-size: 1.4rem;
         flex-shrink: 0;
     }
-    /* Icon Colors based on type */
     .icon-leave { background: rgba(16, 185, 129, 0.15); color: #10b981; }
     .icon-msg { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
     .icon-alert { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
@@ -144,6 +144,7 @@
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 0.5rem;
+        gap: 0.5rem;
     }
     .notif-title {
         font-size: 1.1rem;
@@ -189,14 +190,14 @@
         box-shadow: 0 0 5px var(--accent-color);
         position: absolute;
         top: 1.5rem;
-        right: 1.5rem;
+        inset-inline-end: 1.5rem;
         display: none;
     }
     .notif-card.unread .unread-dot { display: block; }
     
     @media (max-width: 600px) {
         .notif-card { flex-direction: column; gap: 1rem; }
-        .unread-dot { top: 1rem; right: 1rem; }
+        .unread-dot { top: 1rem; inset-inline-end: 1rem; }
     }
 </style>
 @endpush
@@ -206,11 +207,11 @@
     
     <!-- Header -->
     <div class="page-header">
-        <h2><i class="fa-solid fa-bell"></i> مركز الإشعارات</h2>
+        <h2><i class="fa-solid fa-bell"></i> {{ __('messages.notifications_center') }}</h2>
         <form method="POST" action="{{ route('affairs.notifications.read_all') }}">
             @csrf
             <button type="submit" class="mark-read-btn">
-                <i class="fa-solid fa-check-double"></i> تحديد الكل كمقروء
+                <i class="fa-solid fa-check-double"></i> {{ __('messages.mark_all_read') }}
             </button>
         </form>
     </div>
@@ -218,17 +219,17 @@
     <!-- Filters -->
     <div class="filters">
         <a href="{{ route('affairs.notifications') }}" class="filter-btn {{ !request('filter') ? 'active' : '' }}" style="text-decoration: none;">
-            الكل
+            {{ __('messages.filter_all') }}
             <span class="badge-count">{{ $notifications->total() }}</span>
         </a>
         <a href="{{ route('affairs.notifications', ['filter' => 'unread']) }}" class="filter-btn {{ request('filter') == 'unread' ? 'active' : '' }}" style="text-decoration: none;">
-            غير المقروءة
+            {{ __('messages.filter_unread') }}
             @if($unreadCount > 0)
                 <span class="badge-count">{{ $unreadCount }}</span>
             @endif
         </a>
         <a href="{{ route('affairs.notifications', ['filter' => 'read']) }}" class="filter-btn {{ request('filter') == 'read' ? 'active' : '' }}" style="text-decoration: none;">
-            المقروءة
+            {{ __('messages.filter_read') }}
         </a>
     </div>
 
@@ -242,27 +243,27 @@
 
                 $targetUrl = null;
                 $serviceTab = 'all';
-                if (str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'علامات')) {
+                if (str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'علامات') || str_contains($titleLower, 'document')) {
                     $serviceTab = 'documents';
-                } elseif (str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'امتحان')) {
+                } elseif (str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'امتحان') || str_contains($titleLower, 'makeup') || str_contains($titleLower, 'exam')) {
                     $serviceTab = 'makeup';
-                } elseif (str_contains($titleLower, 'استرحام')) {
+                } elseif (str_contains($titleLower, 'استرحام') || str_contains($titleLower, 'mercy')) {
                     $serviceTab = 'mercy';
-                } elseif (str_contains($titleLower, 'قفل') || str_contains($titleLower, 'جهاز')) {
+                } elseif (str_contains($titleLower, 'قفل') || str_contains($titleLower, 'جهاز') || str_contains($titleLower, 'device')) {
                     $serviceTab = 'device-reset';
-                } elseif (str_contains($titleLower, 'بصمة') || str_contains($titleLower, 'وجه')) {
+                } elseif (str_contains($titleLower, 'بصمة') || str_contains($titleLower, 'وجه') || str_contains($titleLower, 'photo')) {
                     $serviceTab = 'face-photo';
                 }
 
-                if (in_array($type, ['student_service', 'service', 'service_request']) || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'خدمات') || str_contains($titleLower, 'استرحام') || str_contains($titleLower, 'وثيقة') || str_contains($titleLower, 'كشف') || str_contains($titleLower, 'إكمال') || str_contains($titleLower, 'قفل')) {
+                if (in_array($type, ['student_service', 'service', 'service_request']) || str_contains($titleLower, 'خدمة') || str_contains($titleLower, 'خدمات') || str_contains($titleLower, 'service')) {
                     $targetUrl = route('affairs.student_services') . '?tab=' . $serviceTab;
-                } elseif (in_array($type, ['photo_request', 'photo_change_request']) || str_contains($titleLower, 'صورة') || str_contains($titleLower, 'وجه')) {
+                } elseif (in_array($type, ['photo_request', 'photo_change_request']) || str_contains($titleLower, 'صورة') || str_contains($titleLower, 'وجه') || str_contains($titleLower, 'photo')) {
                     $targetUrl = route('affairs.photo_requests');
-                } elseif (in_array($type, ['leave', 'leave_request']) || str_contains($titleLower, 'إجازة') || str_contains($titleLower, 'مبرر') || str_contains($titleLower, 'غياب')) {
+                } elseif (in_array($type, ['leave', 'leave_request']) || str_contains($titleLower, 'إجازة') || str_contains($titleLower, 'مبرر') || str_contains($titleLower, 'غياب') || str_contains($titleLower, 'leave')) {
                     $targetUrl = route('affairs.leaves');
-                } elseif (in_array($type, ['pending_account', 'account', 'registration']) || str_contains($titleLower, 'تسجيل') || str_contains($titleLower, 'تفعيل') || str_contains($titleLower, 'حساب')) {
+                } elseif (in_array($type, ['pending_account', 'account', 'registration']) || str_contains($titleLower, 'تسجيل') || str_contains($titleLower, 'تفعيل') || str_contains($titleLower, 'حساب') || str_contains($titleLower, 'account')) {
                     $targetUrl = route('affairs.pending_accounts');
-                } elseif (in_array($type, ['message', 'chat']) || str_contains($titleLower, 'رسالة')) {
+                } elseif (in_array($type, ['message', 'chat']) || str_contains($titleLower, 'رسالة') || str_contains($titleLower, 'message')) {
                     $targetUrl = route('affairs.messages');
                 }
 
@@ -290,26 +291,26 @@
                     $senderAvatar = $notif->sender?->avatar ? asset('storage/' . $notif->sender->avatar) : null;
                 @endphp
                 @if($senderAvatar)
-                    <img src="{{ $senderAvatar }}" alt="صورة الطالب" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border:2px solid #ffcc00; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+                    <img src="{{ $senderAvatar }}" alt="Avatar" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border:2px solid #ffcc00; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
                 @else
                     <div class="notif-icon {{ $iconClass }}"><i class="fa-solid {{ $iconName }}"></i></div>
                 @endif
                 <div class="notif-content">
                     <div class="notif-header">
                         <h3 class="notif-title">{{ $notif->title }}</h3>
-                        <span class="notif-time" dir="rtl">{{ \Carbon\Carbon::parse($notif->created_at)->translatedFormat('d F Y - h:i A') }}</span>
+                        <span class="notif-time">{{ \Carbon\Carbon::parse($notif->created_at)->locale(app()->getLocale())->translatedFormat('d F Y - h:i A') }}</span>
                     </div>
                     <p class="notif-body">{{ $notif->message }}</p>
                     <div class="notif-actions" onclick="event.stopPropagation()">
                         @if($targetUrl)
                             <a href="{{ $targetUrl }}" class="action-btn action-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem;">
-                                الانتقال للطلب <i class="fa-solid fa-arrow-left"></i>
+                                {{ __('messages.go_to_request') }} <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left' : 'fa-arrow-right' }}"></i>
                             </a>
                         @endif
                         @if(!$notif->is_read)
                             <form method="POST" action="{{ route('affairs.notifications.read', $notif->id) }}" style="display:inline;">
                                 @csrf
-                                <button type="submit" class="action-btn action-secondary">تحديد كمقروء</button>
+                                <button type="submit" class="action-btn action-secondary">{{ __('messages.mark_as_read') }}</button>
                             </form>
                         @endif
                     </div>
@@ -318,7 +319,7 @@
         @empty
             <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
                 <i class="fa-regular fa-bell-slash" style="font-size: 3rem; margin-bottom: 1rem; color: var(--accent-color);"></i>
-                <p style="font-size: 1.1rem; font-weight: 600;">لا توجد إشعارات لعرضها</p>
+                <p style="font-size: 1.1rem; font-weight: 600;">{{ __('messages.no_notifications_to_show') }}</p>
             </div>
         @endforelse
 
@@ -339,10 +340,8 @@
     const notifCards = document.querySelectorAll('.notif-card');
     const unreadCountBadge = document.getElementById('unreadCount');
 
-    // Filter Logic
     filterBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Active states
             filterBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
@@ -359,16 +358,13 @@
         });
     });
 
-    // Mark single as read
     function markAsRead(btnElement) {
         const card = btnElement.closest('.notif-card');
         card.classList.remove('unread');
         card.setAttribute('data-status', 'read');
-        // Hide the mark as read button
         btnElement.style.display = 'none';
         updateUnreadCount();
         
-        // If current filter is 'unread', hide the card after a short delay
         const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
         if(activeFilter === 'unread') {
             setTimeout(() => {
@@ -377,7 +373,6 @@
         }
     }
 
-    // Mark all as read
     function markAllAsRead() {
         notifCards.forEach(card => {
             if (card.classList.contains('unread')) {
@@ -395,12 +390,10 @@
         }
     }
 
-    // Handle click on notification card
     function handleNotifClick(event, targetUrl, notifId, isUnread) {
         const card = event.currentTarget;
 
         if (isUnread) {
-            // Optimistically update UI
             card.classList.remove('unread');
             card.setAttribute('data-status', 'read');
             const markBtn = card.querySelector('form button.action-secondary');
@@ -408,7 +401,6 @@
 
             updateUnreadCount();
 
-            // Send async POST request to mark read
             fetch(`/affairs/notifications/${notifId}/read`, {
                 method: 'POST',
                 headers: {
@@ -428,7 +420,6 @@
         }
     }
 
-    // Update Counter
     function updateUnreadCount() {
         const unreadCount = document.querySelectorAll('.notif-card.unread').length;
         if (unreadCountBadge) {

@@ -3,7 +3,6 @@
     #web-toast-container {
         position: fixed;
         top: 1.5rem;
-        left: 1.5rem;
         z-index: 99999;
         display: flex;
         flex-direction: column;
@@ -13,28 +12,64 @@
         pointer-events: none;
     }
 
+    /* Arabic / RTL: Notifications on the LEFT */
+    [dir="rtl"] #web-toast-container,
+    html[dir="rtl"] #web-toast-container,
+    body[dir="rtl"] #web-toast-container,
+    html:not([dir="ltr"]) #web-toast-container {
+        left: 1.5rem;
+        right: auto;
+    }
+
+    /* English / LTR: Notifications on the RIGHT */
+    [dir="ltr"] #web-toast-container,
+    html[dir="ltr"] #web-toast-container,
+    body[dir="ltr"] #web-toast-container {
+        right: 1.5rem;
+        left: auto;
+    }
+
     /* Individual Toast Alert */
     .web-toast-item {
         pointer-events: auto;
         background: var(--bg-secondary, #ffffff);
         color: var(--text-primary, #1e293b);
         border: 1px solid var(--border-color, #e2e8f0);
-        border-right: 5px solid var(--accent-color, #3b82f6);
         border-radius: 1rem;
         padding: 1rem 1.2rem;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         display: flex;
         align-items: flex-start;
         gap: 0.85rem;
-        transform: translateX(-120%);
         opacity: 0;
         transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         cursor: pointer;
         font-family: inherit;
     }
 
+    /* RTL: Slide in from LEFT */
+    [dir="rtl"] .web-toast-item,
+    html[dir="rtl"] .web-toast-item,
+    body[dir="rtl"] .web-toast-item,
+    html:not([dir="ltr"]) .web-toast-item {
+        border-right: 5px solid var(--accent-color, #3b82f6);
+        border-left: none;
+        transform: translateX(-120%);
+        text-align: right;
+    }
+
+    /* LTR: Slide in from RIGHT */
+    [dir="ltr"] .web-toast-item,
+    html[dir="ltr"] .web-toast-item,
+    body[dir="ltr"] .web-toast-item {
+        border-left: 5px solid var(--accent-color, #3b82f6);
+        border-right: none;
+        transform: translateX(120%);
+        text-align: left;
+    }
+
     .web-toast-item.show {
-        transform: translateX(0);
+        transform: translateX(0) !important;
         opacity: 1;
     }
 
@@ -178,6 +213,46 @@
         return prefix + '/notifications';
     }
 
+    function localizeToastText(title, body) {
+        const isEn = "{{ app()->getLocale() }}" === 'en';
+        if (!isEn) return { title: title || 'إشعار جديد', body: body || '' };
+
+        let t = (title || '').trim();
+        let b = (body || '').trim();
+
+        // Titles
+        if (t.includes('رسالة جديدة')) t = 'New Message';
+        else if (t.includes('تقرير سلوكي')) t = 'New Behavioral Report';
+        else if (t.includes('تقرير أكاديمي')) t = 'New Academic Report';
+        else if (t.includes('تقرير جاهز')) t = 'Report Ready';
+        else if (t.includes('إعلان جديد') || t.includes('اعلان جديد')) t = 'New Announcement';
+        else if (t.includes('واجب جديد')) t = 'New Assignment Posted';
+        else if (t.includes('تسليم واجب')) t = 'Assignment Submitted';
+        else if (t.includes('تصحيح واجب') || t.includes('تم تصحيح واجب')) t = 'Assignment Graded';
+        else if (t.includes('إجازة') || t.includes('إذن')) t = 'Leave / Permission Request';
+        else if (t.includes('استدعاء')) t = 'Parent Summons Notice';
+        else if (t.includes('نتيجة') || t.includes('علامة')) t = 'Assessment Result';
+        else if (t.includes('محاضرة جديدة')) t = 'New Lecture Uploaded';
+        else if (t.includes('اختبار جديد')) t = 'New Quiz / Test';
+        else if (t.includes('إنذار')) t = 'Academic Warning';
+        else if (!t) t = 'New Notification';
+
+        // Bodies
+        if (b.includes('لقد تلقيت رسالة جديدة من')) {
+            b = b.replace('لقد تلقيت رسالة جديدة من', 'You received a new message from');
+        } else if (b.includes('تم إضافة تقرير سلوكي جديد عن ابنك/ابنتك')) {
+            b = b.replace(/تم إضافة تقرير سلوكي جديد عن ابنك\/ابنتك\s*(.*?)\s*من قبل مربي الدورة/u, 'A new behavioral report was added for your child $1 by the class advisor.');
+        } else if (b.includes('علامتك في')) {
+            b = b.replace(/علامتك في\s*(.*?)\s*[«"״\'](.*?)[»"״\']\s*-\s*(.*?):\s*([0-9.]+)\s*\/\s*([0-9.]+)/u, 'Your score in $1 "$2" - $3: $4 / $5');
+        } else if (b.includes('علامة')) {
+            b = b.replace(/علامة\s*(.*?)\s*في\s*(.*?)\s*[«"״\'](.*?)[»"״\']\s*-\s*(.*?):\s*([0-9.]+)\s*\/\s*([0-9.]+)/u, "$1's score in $2 \"$3\" - $4: $5 / $6");
+        } else if (b.includes('رفع المعلم')) {
+            b = b.replace(/رفع المعلم\s*(.*?)\s*واجباً جديداً:\s*(.*)/u, 'Teacher $1 posted a new assignment: $2');
+        }
+
+        return { title: t, body: b };
+    }
+
     function showWebToast(notif) {
         const container = document.getElementById('web-toast-container');
         if (!container) return;
@@ -185,7 +260,11 @@
         const toast = document.createElement('div');
         toast.className = 'web-toast-item';
 
-        const titleText = ((notif.title || '') + ' ' + (notif.message || notif.body || '')).toLowerCase();
+        const rawTitle = notif.title || '';
+        const rawBody = notif.message || notif.body || '';
+        const localized = localizeToastText(rawTitle, rawBody);
+
+        const titleText = (rawTitle + ' ' + rawBody).toLowerCase();
         const isExam = titleText.includes('فحص') || titleText.includes('امتحان') || titleText.includes('اختبار') || notif.type === 'exam';
         const isLeave = (notif.type === 'leave_request' || notif.type === 'leave');
         const iconClass = isExam ? 'fa-pencil' : (isLeave ? 'fa-calendar-check' : 'fa-bell');
@@ -196,8 +275,8 @@
                 <i class="fa-solid ${iconClass}"></i>
             </div>
             <div class="web-toast-content">
-                <div class="web-toast-title">${escapeHtml(notif.title || 'إشعار جديد')}</div>
-                <div class="web-toast-body">${escapeHtml(notif.message || notif.body || '')}</div>
+                <div class="web-toast-title">${escapeHtml(localized.title)}</div>
+                <div class="web-toast-body">${escapeHtml(localized.body)}</div>
             </div>
             <button class="web-toast-close" onclick="event.stopPropagation(); this.parentElement.remove();">&times;</button>
         `;

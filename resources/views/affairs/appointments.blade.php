@@ -1,6 +1,6 @@
 @extends('layouts.affairs')
 
-@section('title', 'المواعيد واللقاءات | موظف الشؤون')
+@section('title', __('messages.appointments_and_meetings_title'))
 
 @push('styles')
 <style>
@@ -124,7 +124,7 @@
         font-size: 0.85rem;
         color: var(--text-secondary);
         border-bottom: 1px solid var(--border-color);
-        text-align: right;
+        text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};
     }
 
     [data-theme="dark"] .data-table th {
@@ -136,6 +136,7 @@
         border-bottom: 1px solid var(--border-color);
         font-size: 0.9rem;
         vertical-align: middle;
+        text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};
     }
 
     .status-badge {
@@ -168,6 +169,7 @@
         color: #0f172a !important;
         border: 1px solid #cbd5e1 !important;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
+        text-align: {{ app()->getLocale() === 'en' ? 'left' : 'right' }};
     }
     [data-theme="dark"] .modal-card {
         background-color: #121212 !important;
@@ -195,17 +197,17 @@
 @section('content')
 <div style="width: 100%;">
     <!-- Top Action Bar -->
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">
                 <i class="fa-solid fa-calendar-check" style="color: var(--accent-color); margin-left: 0.5rem;"></i>
-                إدارة المواعيد واللقاءات الاستدعائية
+                {{ __('messages.appointments_management_header') }}
             </h2>
-            <p style="color: var(--text-secondary); font-size: 0.88rem;">متابعة طلبات لقاء أولياء الأمور وإرسال الاستدعاءات الرسمية للطلاب في جميع الأقسام</p>
+            <p style="color: var(--text-secondary); font-size: 0.88rem;">{{ __('messages.appointments_management_desc') }}</p>
         </div>
         <button onclick="openCreateSummonModal()" style="background-color: #ef4444; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(239,68,68,0.3); transition: all 0.2s;">
             <i class="fa-solid fa-plus"></i>
-            استدعاء ولي أمر جديد
+            {{ __('messages.new_parent_summon') }}
         </button>
     </div>
 
@@ -215,14 +217,14 @@
         <div class="tabs-nav">
             <button class="tab-btn active" onclick="switchTab(event, 'meetings-tab')">
                 <i class="fa-solid fa-comments"></i>
-                طلبات اللقاء من أولياء الأمور
+                {{ __('messages.parent_meeting_requests_tab') }}
                 <span class="tab-badge">
                     {{ $meetings->count() }}
                 </span>
             </button>
             <button class="tab-btn" onclick="switchTab(event, 'summons-tab')">
                 <i class="fa-solid fa-user-gear"></i>
-                استدعاءات أولياء الأمور
+                {{ __('messages.parent_summons_tab') }}
                 <span class="tab-badge summon-badge">
                     {{ $summons->count() }}
                 </span>
@@ -234,31 +236,31 @@
             @if($meetings->isEmpty())
                 <div style="text-align: center; padding: 3rem 1rem; color: var(--text-secondary);">
                     <i class="fa-solid fa-calendar-xmark" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <p style="font-size: 1rem; font-weight: 600;">لا يوجد طلبات لقاء مقدمة من أولياء الأمور حالياً</p>
+                    <p style="font-size: 1rem; font-weight: 600;">{{ __('messages.no_parent_meetings') }}</p>
                 </div>
             @else
                 <div style="overflow-x: auto;">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ولي الأمر</th>
-                                <th>الطالب التابع له</th>
-                                <th>سبب اللقاء Requested</th>
-                                <th>تاريخ التقديم</th>
-                                <th>الموعد المحدد</th>
-                                <th>الحالة</th>
-                                <th style="text-align: center;">الإجراء</th>
+                                <th>{{ __('messages.guardian_parent') }}</th>
+                                <th>{{ __('messages.associated_student') }}</th>
+                                <th>{{ __('messages.meeting_reason') }}</th>
+                                <th>{{ __('messages.submission_date') }}</th>
+                                <th>{{ __('messages.scheduled_appointment') }}</th>
+                                <th>{{ __('messages.status') }}</th>
+                                <th style="text-align: center;">{{ __('messages.actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($meetings as $meeting)
                                 <tr>
                                     <td>
-                                        <div style="font-weight: 700;">{{ $meeting->parent->full_name ?? 'غير معروف' }}</div>
+                                        <div style="font-weight: 700;">{{ $meeting->parent->full_name ?? __('messages.unknown') }}</div>
                                         <div style="font-size: 0.75rem; color: var(--text-secondary);">{{ $meeting->parent->phone ?? '' }}</div>
                                     </td>
                                     <td>
-                                        <span style="font-weight: 600;">{{ $meeting->student->user->full_name ?? 'غير معروف' }}</span>
+                                        <span style="font-weight: 600;">{{ $meeting->student->user->full_name ?? __('messages.unknown') }}</span>
                                         <span style="font-size: 0.75rem; color: var(--text-secondary); display: block;">[{{ $meeting->student->level ?? '' }} - {{ $meeting->student->user->department ?? '' }}]</span>
                                     </td>
                                     <td>
@@ -274,25 +276,25 @@
                                                 <i class="fa-regular fa-clock"></i> {{ \Carbon\Carbon::parse($meeting->scheduled_at)->format('Y-m-d H:i') }}
                                             </span>
                                         @else
-                                            <span style="color: var(--text-secondary); font-size: 0.8rem;">لم يحدد بعد</span>
+                                            <span style="color: var(--text-secondary); font-size: 0.8rem;">{{ __('messages.not_scheduled_yet') }}</span>
                                         @endif
                                     </td>
                                     <td>
                                         @if($meeting->status === 'pending')
-                                            <span class="status-badge status-pending"><i class="fa-solid fa-hourglass-start"></i> قيد الانتظار</span>
+                                            <span class="status-badge status-pending"><i class="fa-solid fa-hourglass-start"></i> {{ __('messages.pending') }}</span>
                                         @elseif($meeting->status === 'approved')
-                                            <span class="status-badge status-approved"><i class="fa-solid fa-circle-check"></i> تم التثبيت</span>
+                                            <span class="status-badge status-approved"><i class="fa-solid fa-circle-check"></i> {{ __('messages.status_confirmed') }}</span>
                                         @elseif($meeting->status === 'rejected')
-                                            <span class="status-badge status-rejected"><i class="fa-solid fa-circle-xmark"></i> اعتذار</span>
+                                            <span class="status-badge status-rejected"><i class="fa-solid fa-circle-xmark"></i> {{ __('messages.status_apology') }}</span>
                                         @else
-                                            <span class="status-badge status-completed"><i class="fa-solid fa-check-double"></i> مكتمل</span>
+                                            <span class="status-badge status-completed"><i class="fa-solid fa-check-double"></i> {{ __('messages.status_completed') }}</span>
                                         @endif
                                     </td>
                                     <td style="text-align: center;">
                                         <button onclick='openResponseModal(@json($meeting))' 
                                                 style="padding: 0.4rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--surface-light); color: var(--text-primary); cursor: pointer; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.4rem;">
                                             <i class="fa-solid fa-pen-to-square"></i>
-                                            معالجة / رد
+                                            {{ __('messages.process_or_respond') }}
                                         </button>
                                     </td>
                                 </tr>
@@ -308,19 +310,19 @@
             @if($summons->isEmpty())
                 <div style="text-align: center; padding: 3rem 1rem; color: var(--text-secondary);">
                     <i class="fa-solid fa-user-xmark" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <p style="font-size: 1rem; font-weight: 600;">لا يوجد استدعاءات صادرة لأولياء الأمور حالياً</p>
+                    <p style="font-size: 1rem; font-weight: 600;">{{ __('messages.no_summons_sent') }}</p>
                 </div>
             @else
                 <div style="overflow-x: auto;">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>الجهة المستدعية</th>
-                                <th>الطالب</th>
-                                <th>ولي الأمر المستدعى</th>
-                                <th>سبب الاستدعاء</th>
-                                <th>التاريخ المحدد</th>
-                                <th>الحالة</th>
+                                <th>{{ __('messages.summoning_party') }}</th>
+                                <th>{{ __('messages.role_student') }}</th>
+                                <th>{{ __('messages.summoned_parent') }}</th>
+                                <th>{{ __('messages.summon_reason') }}</th>
+                                <th>{{ __('messages.scheduled_appointment') }}</th>
+                                <th>{{ __('messages.status') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -328,15 +330,15 @@
                                 <tr>
                                     <td>
                                         <span style="font-weight: 700; color: var(--text-primary);">
-                                            {{ $summon->sender->full_name ?? 'الإدارة العامة / الشؤون' }}
+                                            {{ $summon->sender->full_name ?? __('messages.role_affairs_officer') }}
                                         </span>
                                     </td>
                                     <td>
-                                        <div style="font-weight: 700;">{{ $summon->student->user->full_name ?? 'غير معروف' }}</div>
+                                        <div style="font-weight: 700;">{{ $summon->student->user->full_name ?? __('messages.unknown') }}</div>
                                         <div style="font-size: 0.75rem; color: var(--text-secondary);">[{{ $summon->student->level ?? '' }} - {{ $summon->student->user->department ?? '' }}]</div>
                                     </td>
                                     <td>
-                                        <div style="font-weight: 600;">{{ $summon->parent->full_name ?? 'ولي الأمر' }}</div>
+                                        <div style="font-weight: 600;">{{ $summon->parent->full_name ?? __('messages.guardian_parent') }}</div>
                                         <div style="font-size: 0.75rem; color: var(--text-secondary);">{{ $summon->parent->phone ?? '' }}</div>
                                     </td>
                                     <td>
@@ -351,16 +353,16 @@
                                                 <i class="fa-regular fa-calendar"></i> {{ \Carbon\Carbon::parse($summon->summon_date)->format('Y-m-d') }}
                                             </span>
                                         @else
-                                            <span style="color: var(--text-secondary);">في أقرب وقت</span>
+                                            <span style="color: var(--text-secondary);">{{ __('messages.asap') }}</span>
                                         @endif
                                     </td>
                                     <td>
                                         @if($summon->status === 'sent')
-                                            <span class="status-badge status-pending"><i class="fa-solid fa-paper-plane"></i> تم الإرسال</span>
+                                            <span class="status-badge status-pending"><i class="fa-solid fa-paper-plane"></i> {{ __('messages.status_sent') }}</span>
                                         @elseif($summon->status === 'read')
-                                            <span class="status-badge status-approved"><i class="fa-solid fa-eye"></i> تم الاطلاع</span>
+                                            <span class="status-badge status-approved"><i class="fa-solid fa-eye"></i> {{ __('messages.status_seen') }}</span>
                                         @else
-                                            <span class="status-badge status-completed"><i class="fa-solid fa-check"></i> مكتمل</span>
+                                            <span class="status-badge status-completed"><i class="fa-solid fa-check"></i> {{ __('messages.status_completed') }}</span>
                                         @endif
                                     </td>
                                 </tr>
@@ -379,7 +381,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem;">
             <h3 style="font-size: 1.15rem; font-weight: 700; color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fa-solid fa-user-plus"></i>
-                إرسال استدعاء رسمي لولي الأمر
+                {{ __('messages.send_official_summon_modal') }}
             </h3>
             <button onclick="closeCreateSummonModal()" style="border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.6rem; line-height: 1;">&times;</button>
         </div>
@@ -387,26 +389,26 @@
         <form action="{{ route('affairs.summons.store') }}" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
             @csrf
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">تصفية حسب الدورة / الاختصاص (اختياري):</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">{{ __('messages.filter_by_program_optional') }}</label>
                 <select id="program_filter_select" onchange="filterStudentsByNameAndProgram()" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;">
-                    <option value="all" selected>-- جميع الاختصاصات والبرامج --</option>
+                    <option value="all" selected>{{ __('messages.all_programs_and_specializations') }}</option>
                     @foreach($programs as $prog)
-                        <option value="{{ $prog->id }}">{{ $prog->name }}</option>
+                        <option value="{{ $prog->id }}">{{ $prog->display_name ?? $prog->name }}</option>
                     @endforeach
                 </select>
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">بحث باسم الطالب (أدخل الاسم كاملاً أو جزءاً منه):</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">{{ __('messages.search_student_name_label') }}</label>
                 <div style="position: relative; margin-bottom: 0.5rem;">
-                    <input type="text" id="student_search_input" oninput="filterStudentsByNameAndProgram()" placeholder="🔍 ابحث عن اسم الطالب هنا..." 
+                    <input type="text" id="student_search_input" oninput="filterStudentsByNameAndProgram()" placeholder="{{ __('messages.search_student_placeholder') }}" 
                            style="width: 100%; padding: 0.75rem 2.5rem 0.75rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; background: var(--bg-primary); color: var(--text-primary);" />
                 </div>
                 <select name="student_id" id="student_select" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;">
-                    <option value="" disabled selected>-- اختر الطالب من النتيجة --</option>
+                    <option value="" disabled selected>{{ __('messages.select_student_from_result') }}</option>
                     @foreach($students as $st)
-                        <option value="{{ $st->student_id }}" data-program-id="{{ $st->program_id }}" data-name="{{ mb_strtolower($st->user->full_name ?? '') }}">
-                            {{ $st->user->full_name ?? 'بدون اسم' }} - [{{ $st->program->name ?? $st->level }} - {{ $st->user->department ?? '' }}]
+                        <option value="{{ $st->student_id }}" data-program-id="{{ $st->program_id }}" data-name="{{ mb_strtolower(($st->user->full_name ?? '') . ' ' . ($st->program->display_name ?? '') . ' ' . ($st->program->name ?? '')) }}">
+                            {{ $st->user->full_name ?? __('messages.unknown') }} - [{{ $st->program->display_name ?? $st->program->name ?? $st->level }} - {{ $st->user->department_display_name ?? $st->user->department ?? '' }}]
                         </option>
                     @endforeach
                 </select>
@@ -414,26 +416,26 @@
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">عنوان / سبب الاستدعاء المباشر:</label>
-                <input type="text" name="reason_title" required placeholder="مثال: الحضور للشؤون لمتابعة وضع الطالب"
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">{{ __('messages.summon_reason_title_label') }}</label>
+                <input type="text" name="reason_title" required placeholder="{{ __('messages.summon_reason_title_placeholder') }}"
                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;" />
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">تفاصيل وتعليمات ولي الأمر:</label>
-                <textarea name="details" required rows="4" placeholder="يرجى كتابة التفاصيل التي ستظهر للأهل لمساعدتهم على فهم السبب..."
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">{{ __('messages.parent_details_instructions_label') }}</label>
+                <textarea name="details" required rows="4" placeholder="{{ __('messages.parent_details_instructions_placeholder') }}"
                           style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;"></textarea>
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">التاريخ المطلوب للحضور:</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">{{ __('messages.required_attendance_date') }}</label>
                 <input type="date" name="summon_date"
                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;" />
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
-                <button type="button" onclick="closeCreateSummonModal()" style="padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: inherit; font-weight: bold; cursor: pointer;">إلغاء</button>
-                <button type="submit" style="padding: 0.6rem 1.4rem; border: none; border-radius: 0.5rem; background-color: #ef4444; color: white; font-weight: bold; cursor: pointer;">إرسال الاستدعاء الآن</button>
+                <button type="button" onclick="closeCreateSummonModal()" style="padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: inherit; font-weight: bold; cursor: pointer;">{{ __('messages.cancel') }}</button>
+                <button type="submit" style="padding: 0.6rem 1.4rem; border: none; border-radius: 0.5rem; background-color: #ef4444; color: white; font-weight: bold; cursor: pointer;">{{ __('messages.send_summon_now') }}</button>
             </div>
         </form>
     </div>
@@ -443,7 +445,7 @@
 <div id="responseModal" style="position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background-color: rgba(0,0,0,0.75); backdrop-filter: blur(8px);">
     <div class="modal-card" style="border-radius: 1.25rem; padding: 1.5rem; width: 100%; max-width: 450px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 1rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
-            <h3 id="modalTitle" style="font-size: 1rem; font-weight: 700;">الرد على موعد ولي الأمر</h3>
+            <h3 id="modalTitle" style="font-size: 1rem; font-weight: 700;">{{ __('messages.respond_to_parent_appointment') }}</h3>
             <button onclick="closeResponseModal()" style="border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.25rem;">&times;</button>
         </div>
 
@@ -451,29 +453,29 @@
             @csrf
             
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">القرار النهائي:</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">{{ __('messages.final_decision') }}</label>
                 <select name="status" id="modalStatus" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;">
-                    <option value="approved">موافقة وتثبيت الموعد</option>
-                    <option value="rejected">اعتذار عن اللقاء</option>
-                    <option value="completed">تم اكتمال المقابلة</option>
+                    <option value="approved">{{ __('messages.decision_approve_schedule') }}</option>
+                    <option value="rejected">{{ __('messages.decision_reject_apology') }}</option>
+                    <option value="completed">{{ __('messages.decision_completed') }}</option>
                 </select>
             </div>
 
             <div id="dateInputContainer">
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">تحديد التاريخ والوقت المثبت:</label>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">{{ __('messages.set_confirmed_datetime') }}</label>
                 <input type="datetime-local" name="scheduled_at" id="modalScheduledAt"
                        style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;" />
             </div>
 
             <div>
-                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">ملاحظات ولي الأمر / رد الشؤون:</label>
-                <textarea name="admin_response" id="modalAdminResponse" rows="3" placeholder="اكتب ملاحظاتك للأهل هنا..."
+                <label style="display: block; font-weight: bold; margin-bottom: 0.4rem;">{{ __('messages.parent_notes_affairs_response') }}</label>
+                <textarea name="admin_response" id="modalAdminResponse" rows="3" placeholder="{{ __('messages.write_notes_for_parents') }}"
                           style="width: 100%; padding: 0.75rem; border-radius: 0.5rem;"></textarea>
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 0.75rem; margin-top: 0.5rem;">
-                <button type="button" onclick="closeResponseModal()" style="padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: inherit; font-weight: bold; cursor: pointer;">إلغاء</button>
-                <button type="submit" style="padding: 0.6rem 1.2rem; border: none; border-radius: 0.5rem; background-color: var(--accent-color); color: #1a1a1a; font-weight: bold; cursor: pointer;">حفظ الرد</button>
+                <button type="button" onclick="closeResponseModal()" style="padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: transparent; color: inherit; font-weight: bold; cursor: pointer;">{{ __('messages.cancel') }}</button>
+                <button type="submit" style="padding: 0.6rem 1.2rem; border: none; border-radius: 0.5rem; background-color: var(--accent-color); color: #1a1a1a; font-weight: bold; cursor: pointer;">{{ __('messages.save_response') }}</button>
             </div>
         </form>
     </div>
@@ -515,7 +517,8 @@
 
     function openResponseModal(meeting) {
         document.getElementById('modalForm').action = `/affairs/appointments/${meeting.id}/respond`;
-        document.getElementById('modalTitle').innerText = `الرد على اللقاء لـ: ${meeting.parent ? meeting.parent.full_name : ''}`;
+        const parentName = meeting.parent ? meeting.parent.full_name : '';
+        document.getElementById('modalTitle').innerText = "{{ __('messages.respond_to_meeting_for', ['name' => '']) }} " + parentName;
         document.getElementById('modalStatus').value = meeting.status;
         document.getElementById('modalAdminResponse').value = meeting.admin_response || '';
         
@@ -561,7 +564,7 @@
             const now = new Date();
             if (selectedDate.getTime() < now.getTime() - 60000) {
                 e.preventDefault();
-                alert('تنبيه: لا يمكنك اختيار موعد بتاريخ أو وقت سابق للوقت الحالي!');
+                alert("{{ __('messages.alert_past_date') }}");
                 return false;
             }
         }
@@ -616,7 +619,7 @@
         const countDiv = document.getElementById('search_results_count');
         if (countDiv) {
             if (query || programId !== 'all') {
-                countDiv.textContent = `نتائج المطابقة: تم العثور على (${visibleCount}) طالب`;
+                countDiv.textContent = "{{ __('messages.matching_results_count', ['count' => '__COUNT__']) }}".replace('__COUNT__', visibleCount);
             } else {
                 countDiv.textContent = '';
             }

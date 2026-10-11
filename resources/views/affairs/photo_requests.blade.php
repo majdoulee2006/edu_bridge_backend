@@ -1,5 +1,5 @@
 @extends('layouts.affairs')
-@section('title', 'طلبات تغيير الصورة')
+@section('title', __('messages.photo_change_requests'))
 
 @push('styles')
 <style>
@@ -210,7 +210,7 @@
     <div class="page-header">
         <h2>
             <i class="fa-solid fa-camera" style="color:#ffcc00;"></i>
-            طلبات تغيير الصورة الشخصية
+            {{ __('messages.photo_change_requests') }}
             @if($requests->count() > 0)
                 <span class="badge-count">{{ $requests->count() }}</span>
             @endif
@@ -220,8 +220,8 @@
     @if($requests->isEmpty())
         <div class="empty-state">
             <i class="fa-solid fa-camera-retro"></i>
-            <p style="font-size:1.2rem; font-weight:800; color:var(--text-primary);">لا توجد طلبات تغيير صورة معلقة</p>
-            <p style="font-size:0.9rem; margin-top:0.5rem;">جميع طلبات الطلاب لتحديث بصمة الوجه والصورة الشخصية تمت مراجعتها.</p>
+            <p style="font-size:1.2rem; font-weight:800; color:var(--text-primary);">{{ __('messages.no_pending_photo_requests') }}</p>
+            <p style="font-size:0.9rem; margin-top:0.5rem;">{{ __('messages.all_photo_requests_reviewed') }}</p>
         </div>
     @else
         <div class="requests-grid">
@@ -238,7 +238,7 @@
                         </div>
                         <div>
                             <div class="user-name">{{ $req->full_name }}</div>
-                            <div class="user-sub">{{ $req->department ?? 'طالب' }}</div>
+                            <div class="user-sub">{{ $req->department ?? (app()->getLocale() === 'ar' ? 'طالب' : 'Student') }}</div>
                         </div>
                     </div>
                     <span class="req-date">
@@ -248,10 +248,10 @@
 
                 <div class="comparison-box">
                     <div class="photo-item">
-                        <span class="photo-label">الصورة الحالية</span>
+                        <span class="photo-label">{{ __('messages.current_photo') }}</span>
                         <div class="photo-frame">
                             @if($oldUrl)
-                                <img src="{{ $oldUrl }}" alt="الصورة الحالية">
+                                <img src="{{ $oldUrl }}" alt="Current Photo">
                             @else
                                 <i class="fa-solid fa-user photo-placeholder"></i>
                             @endif
@@ -259,14 +259,14 @@
                     </div>
 
                     <div class="arrow-icon">
-                        <i class="fa-solid fa-arrow-left-long"></i>
+                        <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-left-long' : 'fa-arrow-right-long' }}"></i>
                     </div>
 
                     <div class="photo-item">
-                        <span class="photo-label" style="color:#ffcc00;">الصورة الجديدة</span>
+                        <span class="photo-label" style="color:#ffcc00;">{{ __('messages.new_photo') }}</span>
                         <div class="photo-frame new-photo">
                             @if($newUrl)
-                                <img src="{{ $newUrl }}" alt="الصورة الجديدة">
+                                <img src="{{ $newUrl }}" alt="New Photo">
                             @else
                                 <i class="fa-solid fa-user photo-placeholder"></i>
                             @endif
@@ -278,14 +278,14 @@
                     <form method="POST" action="{{ route('affairs.photo_requests.approve', $req->id) }}" style="flex:1;">
                         @csrf
                         <button type="submit" class="btn-approve">
-                            <i class="fa-solid fa-check"></i> موافقة
+                            <i class="fa-solid fa-check"></i> {{ __('messages.approve') }}
                         </button>
                     </form>
 
-                    <form method="POST" action="{{ route('affairs.photo_requests.reject', $req->id) }}" style="flex:1;" onsubmit="return confirm('هل أنت متأكد من رفض هذا الطلب؟')">
+                    <form method="POST" action="{{ route('affairs.photo_requests.reject', $req->id) }}" style="flex:1;" onsubmit="return confirm('{{ __('messages.confirm_reject_photo_request') }}')">
                         @csrf
                         <button type="submit" class="btn-reject">
-                            <i class="fa-solid fa-xmark"></i> رفض
+                            <i class="fa-solid fa-xmark"></i> {{ __('messages.reject') }}
                         </button>
                     </form>
                 </div>

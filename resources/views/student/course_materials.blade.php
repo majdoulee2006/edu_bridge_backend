@@ -1,6 +1,6 @@
 @extends('layouts.student')
 @section('title', $course->title)
-@section('subtitle', 'المواد التعليمية والمحاضرات')
+@section('subtitle', __('messages.educational_materials_lectures'))
 
 @push('styles')
 <style>
@@ -13,7 +13,7 @@
         align-items: center;
         gap: 1rem;
         box-shadow: var(--shadow);
-        border-right: 3px solid var(--accent-color);
+        border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 3px solid var(--accent-color);
     }
     .material-icon {
         width: 44px; height: 44px; border-radius: 0.75rem;
@@ -27,8 +27,8 @@
 @section('content')
 
 <div style="margin-bottom: 1.5rem;">
-    <a href="{{ route('student.courses') }}" style="color: var(--text-secondary); font-size: 0.9rem; text-decoration: none; font-weight: 600;">
-        <i class="fa-solid fa-arrow-right"></i> العودة للمواد
+    <a href="{{ route('student.courses') }}" style="color: var(--text-secondary); font-size: 0.9rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
+        <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-arrow-right' : 'fa-arrow-left' }}"></i> {{ __('messages.back_to_courses') }}
     </a>
 </div>
 
@@ -54,14 +54,15 @@
     </div>
     <a href="{{ route('student.lessons.download', $m->lesson_id) }}" target="_blank"
        style="background: var(--accent-color); color: #1a1a1a; padding: 0.45rem 1rem; border-radius: 0.65rem; font-size: 0.85rem; font-weight: 700; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
-        <i class="fa-solid fa-download"></i> تحميل / فتح المحاضرة
+        <i class="fa-solid fa-download"></i> {{ __('messages.download_open_lecture') }}
     </a>
 </div>
 @empty
 <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
     <i class="fa-solid fa-folder-open" style="font-size: 2.5rem; opacity: 0.4; display: block; margin-bottom: 0.75rem;"></i>
-    لا توجد محاضرات لهذه المادة بعد
+    {{ __('messages.no_lectures_yet') }}
 </div>
 @endforelse
 
 @endsection
+

@@ -1,5 +1,5 @@
 @extends('layouts.affairs')
-@section('title', 'الأرقام الجامعية')
+@section('title', __('messages.university_ids'))
 
 @push('styles')
 <style>
@@ -8,14 +8,14 @@
 .add-btn { background:var(--accent-color); color:#1a1a1a; border:none; padding:0.8rem 1.5rem; border-radius:0.8rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
 .add-btn:hover { opacity:0.9; }
 table { width:100%; border-collapse:collapse; background:var(--bg-secondary); border-radius:1rem; overflow:hidden; }
-th { background:var(--bg-primary); padding:1rem 1.2rem; text-align:right; font-size:0.85rem; color:var(--text-secondary); font-weight:700; }
-td { padding:1rem 1.2rem; border-bottom:1px solid var(--border-color); color:var(--text-primary); font-size:0.95rem; }
+th { background:var(--bg-primary); padding:1rem 1.2rem; text-align:{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}; font-size:0.85rem; color:var(--text-secondary); font-weight:700; }
+td { padding:1rem 1.2rem; border-bottom:1px solid var(--border-color); color:var(--text-primary); font-size:0.95rem; text-align:{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}; }
 tr:last-child td { border-bottom:none; }
 .badge-used { background:#fee2e2; color:#dc2626; padding:0.25rem 0.8rem; border-radius:2rem; font-size:0.8rem; font-weight:700; }
 .badge-free { background:#d1fae5; color:#059669; padding:0.25rem 0.8rem; border-radius:2rem; font-size:0.8rem; font-weight:700; }
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; }
 .modal-overlay.active { display:flex; }
-.modal-content { background:var(--bg-secondary); border-radius:1.5rem; padding:2rem; width:520px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.2); max-height:90vh; overflow-y:auto; }
+.modal-content { background:var(--bg-secondary); border-radius:1.5rem; padding:2rem; width:520px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.2); max-height:90vh; overflow-y:auto; text-align:{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}; }
 .modal-content h3, .modal-content label { color:var(--text-primary) !important; }
 .modal-content .form-control { background:var(--bg-primary); color:var(--text-primary); border-color:var(--border-color); }
 .modal-content h3 { font-size:1.3rem; font-weight:800; margin-bottom:1.5rem; }
@@ -33,31 +33,31 @@ tr:last-child td { border-bottom:none; }
 .photo-upload-area:hover { border-color:var(--accent-color); }
 .photo-upload-area input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; }
 .photo-preview { width:80px; height:80px; border-radius:50%; object-fit:cover; margin:0 auto 0.5rem; display:block; border:2px solid var(--accent-color); }
-.optional-label { font-weight:400; font-size:0.8rem; color:#999; margin-right:0.3rem; }
+.optional-label { font-weight:400; font-size:0.8rem; color:#999; margin-inline-start:0.3rem; }
 </style>
 @endpush
 
 @section('content')
 <div style="max-width:1100px; margin:2rem auto; padding:0 1rem;">
     <div class="page-header">
-        <h2><i class="fa-solid fa-id-card" style="color:var(--accent-color); margin-left:0.5rem;"></i> الأرقام الجامعية</h2>
+        <h2><i class="fa-solid fa-id-card" style="color:var(--accent-color); margin-inline-end:0.5rem;"></i> {{ __('messages.university_ids') }}</h2>
         <button class="add-btn" onclick="document.getElementById('addModal').classList.add('active')">
-            <i class="fa-solid fa-plus"></i> إضافة رقم جامعي
+            <i class="fa-solid fa-plus"></i> {{ __('messages.add_university_id') }}
         </button>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>الصورة</th>
-                <th>الرقم الجامعي</th>
-                <th>الاسم الكامل</th>
-                <th>تاريخ الميلاد</th>
-                <th>الهاتف</th>
-                <th>تليجرام</th>
-                <th>الحالة</th>
-                <th>تاريخ الإضافة</th>
-                <th>إجراء</th>
+                <th>{{ __('messages.photo') }}</th>
+                <th>{{ __('messages.university_id') }}</th>
+                <th>{{ __('messages.full_name') }}</th>
+                <th>{{ __('messages.date_of_birth') }}</th>
+                <th>{{ __('messages.phone') }}</th>
+                <th>{{ __('messages.telegram') }}</th>
+                <th>{{ __('messages.status') }}</th>
+                <th>{{ __('messages.date_added') }}</th>
+                <th style="text-align: center;">{{ __('messages.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -65,7 +65,7 @@ tr:last-child td { border-bottom:none; }
             <tr>
                 <td>
                     @if(isset($uid->photo) && $uid->photo)
-                        <img src="{{ asset('storage/' . $uid->photo) }}" alt="صورة" class="student-photo">
+                        <img src="{{ asset('storage/' . $uid->photo) }}" alt="Photo" class="student-photo">
                     @else
                         <div class="student-photo-placeholder">
                             <i class="fa-solid fa-user"></i>
@@ -75,7 +75,7 @@ tr:last-child td { border-bottom:none; }
                 <td><strong>{{ $uid->university_id }}</strong></td>
                 <td>{{ $uid->full_name }}</td>
                 <td>{{ $uid->date_of_birth ?? '—' }}</td>
-                <td>{{ $uid->phone ?? '—' }}</td>
+                <td dir="ltr" style="text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};">{{ $uid->phone ?? '—' }}</td>
                 <td>
                     @if($uid->telegram_chat_id)
                         <code>{{ $uid->telegram_chat_id }}</code>
@@ -85,21 +85,21 @@ tr:last-child td { border-bottom:none; }
                 </td>
                 <td>
                     @if($uid->is_used)
-                        <span class="badge-used">مستخدم</span>
+                        <span class="badge-used">{{ __('messages.used') }}</span>
                     @else
-                        <span class="badge-free">متاح</span>
+                        <span class="badge-free">{{ __('messages.available') }}</span>
                     @endif
                 </td>
                 <td>{{ \Carbon\Carbon::parse($uid->created_at)->format('Y-m-d') }}</td>
-                <td>
+                <td style="text-align: center;">
                     @if(!$uid->is_used)
                     <div style="display:flex; gap:0.5rem; justify-content:center;">
                         <button type="button" onclick="openEditModal({{ json_encode($uid) }})" class="btn-delete" style="background:transparent; border:1px solid #3b82f6; color:#3b82f6;">
-                            <i class="fa-solid fa-pen"></i> تعديل
+                            <i class="fa-solid fa-pen"></i> {{ __('messages.edit') }}
                         </button>
-                        <form method="POST" action="{{ route('affairs.university_ids.delete', $uid->id) }}" onsubmit="return confirm('حذف هذا الرقم؟')">
+                        <form method="POST" action="{{ route('affairs.university_ids.delete', $uid->id) }}" onsubmit="return confirm('{{ __('messages.confirm_delete_id') }}')">
                             @csrf
-                            <button type="submit" class="btn-delete"><i class="fa-solid fa-trash"></i> حذف</button>
+                            <button type="submit" class="btn-delete"><i class="fa-solid fa-trash"></i> {{ __('messages.delete') }}</button>
                         </form>
                     </div>
                     @else
@@ -111,7 +111,7 @@ tr:last-child td { border-bottom:none; }
             <tr>
                 <td colspan="9" style="text-align:center; padding:3rem; color:var(--text-secondary);">
                     <i class="fa-solid fa-inbox" style="font-size:2rem; opacity:0.4; display:block; margin-bottom:0.75rem;"></i>
-                    لا توجد أرقام جامعية مضافة بعد
+                    {{ __('messages.no_university_ids_yet') }}
                 </td>
             </tr>
             @endforelse
@@ -123,7 +123,7 @@ tr:last-child td { border-bottom:none; }
 <div class="modal-overlay" id="addModal">
     <div class="modal-content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-            <h3><i class="fa-solid fa-plus-circle" style="color:var(--accent-color); margin-left:0.5rem;"></i> إضافة رقم جامعي</h3>
+            <h3><i class="fa-solid fa-plus-circle" style="color:var(--accent-color); margin-inline-end:0.5rem;"></i> {{ __('messages.add_university_id') }}</h3>
             <button onclick="document.getElementById('addModal').classList.remove('active')"
                     style="background:none; border:none; color:var(--text-secondary); font-size:1.3rem; cursor:pointer;">
                 <i class="fa-solid fa-xmark"></i>
@@ -134,45 +134,45 @@ tr:last-child td { border-bottom:none; }
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>الاسم الأول <span style="color:red;">*</span></label>
-                    <input type="text" name="first_name" class="form-control" placeholder="مثال: أحمد" required>
+                    <label>{{ __('messages.first_name') }} <span style="color:red;">*</span></label>
+                    <input type="text" name="first_name" class="form-control" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: أحمد' : 'e.g., Ahmad' }}" required>
                 </div>
                 <div class="form-group">
-                    <label>اللقب (اسم العائلة) <span style="color:red;">*</span></label>
-                    <input type="text" name="last_name" class="form-control" placeholder="مثال: محمود" required>
+                    <label>{{ __('messages.last_name') }} <span style="color:red;">*</span></label>
+                    <input type="text" name="last_name" class="form-control" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: محمود' : 'e.g., Mahmoud' }}" required>
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>تاريخ الميلاد <span class="optional-label">(اختياري)</span></label>
+                    <label>{{ __('messages.date_of_birth') }} <span class="optional-label">{{ __('messages.optional') }}</span></label>
                     <input type="date" name="date_of_birth" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label>رقم الهاتف <span class="optional-label">(اختياري)</span></label>
-                    <input type="text" name="phone" class="form-control" placeholder="مثال: 0912345678">
+                    <label>{{ __('messages.phone') }} <span class="optional-label">{{ __('messages.optional') }}</span></label>
+                    <input type="text" name="phone" class="form-control" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: 0912345678' : 'e.g., 0912345678' }}">
                 </div>
             </div>
 
             <div class="form-group">
-                <label>معرّف التليجرام (Telegram Chat ID) <span class="optional-label">(اختياري)</span></label>
-                <input type="text" name="telegram_chat_id" class="form-control" placeholder="مثال: 123456789">
+                <label>{{ __('messages.telegram_chat_id') }} <span class="optional-label">{{ __('messages.optional') }}</span></label>
+                <input type="text" name="telegram_chat_id" class="form-control" placeholder="{{ app()->getLocale() === 'ar' ? 'مثال: 123456789' : 'e.g., 123456789' }}">
             </div>
 
             <div class="form-group">
-                <label>صورة الطالب <span class="optional-label">(اختياري)</span></label>
+                <label>{{ __('messages.student_photo') }} <span class="optional-label">{{ __('messages.optional') }}</span></label>
                 <div class="photo-upload-area" id="addPhotoArea">
                     <input type="file" name="photo" accept="image/*" onchange="previewPhoto(this, 'addPhotoPreview', 'addPhotoArea')">
                     <img id="addPhotoPreview" class="photo-preview" style="display:none;">
                     <div id="addPhotoText">
                         <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.5rem; color:#999; margin-bottom:0.5rem; display:block;"></i>
-                        <span style="color:#666; font-size:0.9rem;">اضغط لاختيار صورة أو اسحبها هنا</span>
+                        <span style="color:#666; font-size:0.9rem;">{{ __('messages.click_to_choose_photo') }}</span>
                     </div>
                 </div>
             </div>
 
             <button type="submit" class="btn-save">
-                <i class="fa-solid fa-floppy-disk"></i> إنشاء الرقم الجامعي
+                <i class="fa-solid fa-floppy-disk"></i> {{ __('messages.create_university_id') }}
             </button>
         </form>
     </div>
@@ -182,7 +182,7 @@ tr:last-child td { border-bottom:none; }
 <div class="modal-overlay" id="editModal">
     <div class="modal-content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-            <h3><i class="fa-solid fa-pen" style="color:var(--accent-color); margin-left:0.5rem;"></i> تعديل بيانات الطالب</h3>
+            <h3><i class="fa-solid fa-pen" style="color:var(--accent-color); margin-inline-end:0.5rem;"></i> {{ __('messages.edit_student_data') }}</h3>
             <button onclick="document.getElementById('editModal').classList.remove('active')"
                     style="background:none; border:none; color:var(--text-secondary); font-size:1.3rem; cursor:pointer;">
                 <i class="fa-solid fa-xmark"></i>
@@ -193,45 +193,45 @@ tr:last-child td { border-bottom:none; }
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>الاسم الأول <span style="color:red;">*</span></label>
+                    <label>{{ __('messages.first_name') }} <span style="color:red;">*</span></label>
                     <input type="text" id="edit_first_name" name="first_name" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label>اللقب (اسم العائلة) <span style="color:red;">*</span></label>
+                    <label>{{ __('messages.last_name') }} <span style="color:red;">*</span></label>
                     <input type="text" id="edit_last_name" name="last_name" class="form-control" required>
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>تاريخ الميلاد <span class="optional-label">(اختياري)</span></label>
+                    <label>{{ __('messages.date_of_birth') }} <span class="optional-label">{{ __('messages.optional') }}</span></label>
                     <input type="date" id="edit_date_of_birth" name="date_of_birth" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label>رقم الهاتف <span class="optional-label">(اختياري)</span></label>
+                    <label>{{ __('messages.phone') }} <span class="optional-label">{{ __('messages.optional') }}</span></label>
                     <input type="text" id="edit_phone" name="phone" class="form-control">
                 </div>
             </div>
 
             <div class="form-group">
-                <label>معرّف التليجرام <span class="optional-label">(اختياري)</span></label>
+                <label>{{ __('messages.telegram_chat_id') }} <span class="optional-label">{{ __('messages.optional') }}</span></label>
                 <input type="text" id="edit_telegram_chat_id" name="telegram_chat_id" class="form-control">
             </div>
 
             <div class="form-group">
-                <label>صورة الطالب <span class="optional-label">(اختياري — اتركه فارغ للإبقاء على الصورة الحالية)</span></label>
+                <label>{{ __('messages.student_photo_edit_hint') }}</label>
                 <div class="photo-upload-area" id="editPhotoArea">
                     <input type="file" name="photo" accept="image/*" onchange="previewPhoto(this, 'editPhotoPreview', 'editPhotoArea')">
                     <img id="editPhotoPreview" class="photo-preview" style="display:none;">
                     <div id="editPhotoText">
                         <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.5rem; color:#999; margin-bottom:0.5rem; display:block;"></i>
-                        <span style="color:#666; font-size:0.9rem;">اضغط لاختيار صورة جديدة</span>
+                        <span style="color:#666; font-size:0.9rem;">{{ __('messages.click_to_choose_new_photo') }}</span>
                     </div>
                 </div>
             </div>
 
             <button type="submit" class="btn-save">
-                <i class="fa-solid fa-floppy-disk"></i> حفظ التعديلات
+                <i class="fa-solid fa-floppy-disk"></i> {{ __('messages.save_changes') }}
             </button>
         </form>
     </div>
@@ -258,7 +258,6 @@ function openEditModal(uid) {
     document.getElementById('edit_phone').value = uid.phone || '';
     document.getElementById('edit_telegram_chat_id').value = uid.telegram_chat_id || '';
 
-    // عرض الصورة الحالية إن وجدت
     const preview = document.getElementById('editPhotoPreview');
     const text = document.getElementById('editPhotoText');
     if (uid.photo) {

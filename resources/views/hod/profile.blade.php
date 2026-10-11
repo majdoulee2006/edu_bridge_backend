@@ -1,6 +1,6 @@
 @extends('layouts.hod')
 
-@section('title', 'الملف الشخصي')
+@section('title', __('messages.profile'))
 
 @push('styles')
 <style>
@@ -27,7 +27,6 @@
     .edit-avatar-btn {
         position: absolute;
         bottom: 5px;
-        right: 5px;
         background-color: var(--accent-color);
         color: #1a1a1a;
         width: 32px;
@@ -39,6 +38,8 @@
         border: 2px solid var(--bg-secondary);
         cursor: pointer;
     }
+    [dir="rtl"] .edit-avatar-btn { right: 5px; left: auto; }
+    [dir="ltr"] .edit-avatar-btn { left: 5px; right: auto; }
     
     .profile-name {
         font-size: 1.75rem;
@@ -63,8 +64,9 @@
         font-weight: 700;
         color: var(--text-secondary);
         margin-bottom: 1rem;
-        padding-right: 0.5rem;
     }
+    [dir="rtl"] .section-label { padding-right: 0.5rem; padding-left: 0; }
+    [dir="ltr"] .section-label { padding-left: 0.5rem; padding-right: 0; }
     
     .info-card {
         background-color: var(--bg-secondary);
@@ -120,6 +122,9 @@
         font-size: 1.1rem;
         font-weight: 700;
     }
+
+    [dir="rtl"] .item-details { margin-right: 1.5rem; margin-left: 0; }
+    [dir="ltr"] .item-details { margin-left: 1.5rem; margin-right: 0; }
     
     .edit-icon {
         color: var(--text-secondary);
@@ -188,7 +193,6 @@
     .sms-toast {
         position: fixed;
         top: 20px;
-        right: 20px;
         background-color: #1e293b;
         color: #ffffff;
         border-radius: 1rem;
@@ -199,11 +203,21 @@
         gap: 1rem;
         z-index: 2000;
         max-width: 350px;
-        border-left: 4px solid var(--accent-color);
         transform: translateY(-100px);
         opacity: 0;
         transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    }
+    [dir="rtl"] .sms-toast {
+        left: 20px;
+        right: auto;
+        border-right: 4px solid var(--accent-color);
         direction: rtl;
+    }
+    [dir="ltr"] .sms-toast {
+        right: 20px;
+        left: auto;
+        border-left: 4px solid var(--accent-color);
+        direction: ltr;
     }
     .sms-toast.active {
         transform: translateY(0);
@@ -230,34 +244,34 @@
 
     <div class="profile-header">
         <div class="avatar-wrapper">
-            <img src="https://ui-avatars.com/api/?name={{ urlencode($user->full_name ?? 'المستخدم') }}&background=random" class="avatar-large" alt="Profile">
+            <img src="https://ui-avatars.com/api/?name={{ urlencode($user->full_name ?? __('messages.user')) }}&background=random" class="avatar-large" alt="Profile">
             <div class="edit-avatar-btn">
                 <i class="fa-solid fa-pen"></i>
             </div>
         </div>
-        <h2 class="profile-name">{{ $user->full_name ?? 'رئيس قسم' }}</h2>
-        <span class="profile-role">رئيس القسم الأكاديمي</span>
+        <h2 class="profile-name">{{ $user->full_name ?? __('messages.academic_hod_role') }}</h2>
+        <span class="profile-role">{{ __('messages.academic_hod_role') }}</span>
     </div>
 
-    {{-- Section 1: معلومات التواصل --}}
+    {{-- Section 1: Contact Info --}}
     <div class="info-section">
-        <h3 class="section-label">معلومات التواصل</h3>
+        <h3 class="section-label">{{ __('messages.contact_info') }}</h3>
         <div class="info-card">
-            {{-- رقم الهاتف --}}
+            {{-- Phone Number --}}
             <div class="info-item">
                 <div class="item-content" style="width: 100%;">
                     <div class="item-icon icon-green"><i class="fa-solid fa-phone"></i></div>
-                    <div class="item-details" style="flex: 1; margin-right: 1.5rem;">
-                        <p>رقم الهاتف</p>
+                    <div class="item-details" style="flex: 1;">
+                        <p>{{ __('messages.phone_number') }}</p>
                         <div id="phone-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <h5 dir="ltr" style="text-align: right;">{{ $user->phone ?? 'غير متوفر' }}</h5>
+                            <h5 dir="ltr" style="text-align: start;">{{ $user->phone ?? __('messages.unspecified') }}</h5>
                             <i class="fa-solid fa-pen edit-icon" onclick="toggleEdit('phone')"></i>
                         </div>
                         <form id="phone-form" action="{{ route('hod.profile.update') }}" method="POST" style="display: none; align-items: center; gap: 1rem; width: 100%; margin-top: 0.5rem;">
                             @csrf
                             <input type="text" name="phone" value="{{ $user->phone }}" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);">
-                            <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">حفظ</button>
-                            <button type="button" class="btn" onclick="toggleEdit('phone')" style="background-color: var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
+                            <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">{{ __('messages.save') }}</button>
+                            <button type="button" class="btn" onclick="toggleEdit('phone')" style="background-color: var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">{{ __('messages.cancel') }}</button>
                         </form>
                     </div>
                 </div>
@@ -265,14 +279,14 @@
 
             <div style="height: 1px; background-color: var(--border-color); margin: 0 1rem;"></div>
 
-            {{-- البريد الإلكتروني --}}
+            {{-- Email Address --}}
             <div class="info-item">
                 <div class="item-content" style="width: 100%;">
                     <div class="item-icon icon-blue"><i class="fa-solid fa-envelope"></i></div>
-                    <div class="item-details" style="flex: 1; margin-right: 1.5rem;">
-                        <p>البريد الإلكتروني</p>
+                    <div class="item-details" style="flex: 1;">
+                        <p>{{ __('messages.email_address') }}</p>
                         <div id="email-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <h5>{{ $user->email ?? 'email@example.com' }}</h5>
+                            <h5 dir="ltr" style="text-align: start;">{{ $user->email ?? 'email@example.com' }}</h5>
                             <i class="fa-solid fa-lock edit-icon" style="opacity: 0.4;"></i>
                         </div>
                     </div>
@@ -281,16 +295,16 @@
         </div>
     </div>
 
-    {{-- Section 2: المعلومات الشخصية --}}
+    {{-- Section 2: Personal Info --}}
     <div class="info-section">
-        <h3 class="section-label">المعلومات الشخصية</h3>
+        <h3 class="section-label">{{ __('messages.personal_info') }}</h3>
         <div class="info-card">
             <div class="info-item">
                 <div class="item-content">
                     <div class="item-icon icon-purple"><i class="fa-solid fa-building"></i></div>
                     <div class="item-details">
-                        <p>القسم</p>
-                        <h5>{{ $departmentName ?? 'غير محدد' }}</h5>
+                        <p>{{ __('messages.department') }}</p>
+                        <h5>{{ $departmentName ?? __('messages.unspecified') }}</h5>
                     </div>
                 </div>
                 <i class="fa-solid fa-lock edit-icon" style="opacity: 0.4;"></i>
@@ -298,16 +312,16 @@
         </div>
     </div>
 
-    {{-- Section 3: الصلاحيات والنظام --}}
+    {{-- Section 3: Permissions & System --}}
     <div class="info-section">
-        <h3 class="section-label">الصلاحيات والنظام</h3>
+        <h3 class="section-label">{{ __('messages.permissions_and_system') }}</h3>
         <div class="info-card">
             <div class="info-item">
                 <div class="item-content">
                     <div class="item-icon icon-gold"><i class="fa-solid fa-user-shield"></i></div>
                     <div class="item-details">
-                        <p>نوع الحساب</p>
-                        <h5>رئيس القسم</h5>
+                        <p>{{ __('messages.account_status') }}</p>
+                        <h5>{{ __('messages.academic_hod_role') }}</h5>
                     </div>
                 </div>
                 <i class="fa-solid fa-lock edit-icon" style="opacity: 0.4;"></i>
@@ -319,8 +333,8 @@
                 <div class="item-content">
                     <div class="item-icon icon-teal"><i class="fa-regular fa-clock"></i></div>
                     <div class="item-details">
-                        <p>آخر تسجيل دخول</p>
-                        <h5>{{ $user && $user->updated_at ? \Carbon\Carbon::parse($user->updated_at)->format('d/m/Y H:i') : 'غير متاح' }}</h5>
+                        <p>{{ __('messages.last_login') }}</p>
+                        <h5 dir="ltr" style="text-align: start;">{{ $user && $user->updated_at ? \Carbon\Carbon::parse($user->updated_at)->format('d/m/Y H:i') : __('messages.unspecified') }}</h5>
                     </div>
                 </div>
                 <i class="fa-solid fa-lock edit-icon" style="opacity: 0.4;"></i>
@@ -328,24 +342,24 @@
         </div>
     </div>
 
-    {{-- Section 4: الإعدادات والأمان --}}
+    {{-- Section 4: Security Settings --}}
     <div class="info-section">
-        <h3 class="section-label">الإعدادات والأمان</h3>
+        <h3 class="section-label">{{ __('messages.security_settings') }}</h3>
         <div class="info-card">
             <div class="info-item">
                 <div class="item-content" style="width: 100%;">
                     <div class="item-icon icon-red"><i class="fa-solid fa-lock"></i></div>
-                    <div class="item-details" style="flex: 1; margin-right: 1.5rem;">
-                        <p>كلمة المرور</p>
+                    <div class="item-details" style="flex: 1;">
+                        <p>{{ __('messages.password') }}</p>
                         <div id="password-display" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <h5>••••••••</h5>
-                            <button onclick="toggleEdit('password')" style="background-color: var(--border-color); color: var(--text-primary); border-radius: 1rem; padding: 0.25rem 1rem; font-size: 0.85rem; border: none; cursor: pointer; font-weight: 700;">تغيير</button>
+                            <button onclick="toggleEdit('password')" style="background-color: var(--border-color); color: var(--text-primary); border-radius: 1rem; padding: 0.25rem 1rem; font-size: 0.85rem; border: none; cursor: pointer; font-weight: 700;">{{ __('messages.change') }}</button>
                         </div>
                         <form id="password-form" action="{{ route('hod.profile.update') }}" method="POST" style="display: none; align-items: center; gap: 1rem; width: 100%; margin-top: 0.5rem;">
                             @csrf
-                            <input type="password" name="password" placeholder="كلمة المرور الجديدة" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);" minlength="6" required>
-                            <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">حفظ</button>
-                            <button type="button" class="btn" onclick="toggleEdit('password')" style="background-color: var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">إلغاء</button>
+                            <input type="password" name="password" placeholder="{{ __('messages.new_password') }}" class="form-control" style="flex: 1; padding: 0.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary);" minlength="6" required>
+                            <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">{{ __('messages.save') }}</button>
+                            <button type="button" class="btn" onclick="toggleEdit('password')" style="background-color: var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; font-weight: 700; cursor: pointer;">{{ __('messages.cancel') }}</button>
                         </form>
                     </div>
                 </div>
@@ -359,8 +373,8 @@
             <div style="font-size: 3rem; color: var(--accent-color); margin-bottom: 1rem;">
                 <i class="fa-solid fa-shield-halved"></i>
             </div>
-            <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">رمز التحقق الثنائي (OTP)</h4>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">لقد أرسلنا رمز التحقق المكون من 4 أرقام عبر SMS إلى رقم هاتفك لتأكيد التغييرات.</p>
+            <h4 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">{{ __('messages.two_factor_otp') }}</h4>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">{{ __('messages.otp_desc') }}</p>
             
             <div class="otp-inputs">
                 <input type="text" maxlength="1" class="otp-input-field" oninput="moveNext(this, 'otp-2')" id="otp-1">
@@ -369,8 +383,8 @@
                 <input type="text" maxlength="1" class="otp-input-field" oninput="verifyInputOTP()" id="otp-4">
             </div>
 
-            <button onclick="submitVerifyOTP()" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem; margin-bottom: 1rem;">تأكيد وحفظ</button>
-            <button onclick="closeOTPModal()" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); width: 100%; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">إلغاء</button>
+            <button onclick="submitVerifyOTP()" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem; margin-bottom: 1rem;">{{ __('messages.confirm_and_save') }}</button>
+            <button onclick="closeOTPModal()" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); width: 100%; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">{{ __('messages.cancel') }}</button>
         </div>
     </div>
 
@@ -380,8 +394,8 @@
             <i class="fa-solid fa-comment-sms"></i>
         </div>
         <div class="sms-toast-content">
-            <h6>📬 رسالة SMS جديدة</h6>
-            <p id="sms-text">رمز التحقق الخاص بك لتعديل الحساب هو: ....</p>
+            <h6>{{ __('messages.sms_new_message') }}</h6>
+            <p id="sms-text">{{ __('messages.sms_otp_text', ['otp' => '....']) }}</p>
         </div>
     </div>
 
@@ -389,6 +403,13 @@
 
 @push('scripts')
 <script>
+    const profileStrings = {
+        noInternet: "{{ __('messages.no_internet') }}",
+        smsOtpTemplate: "{{ __('messages.sms_otp_text', ['otp' => ':otp']) }}",
+        enterFullCode: "{{ __('messages.enter_full_code') }}",
+        updatedSuccess: "{{ __('messages.data_updated_success') }}"
+    };
+
     let activeFormId = null;
 
     function toggleEdit(field) {
@@ -404,28 +425,37 @@
         }
     }
 
-    // اعتراض النماذج لإرسال OTP أولاً
-    document.getElementById('phone-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        activeFormId = 'phone-form';
-        sendOTPRequest({ phone: this.querySelector('input[name="phone"]').value });
-    });
+    // Intercept forms to request OTP first
+    const phoneForm = document.getElementById('phone-form');
+    if (phoneForm) {
+        phoneForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            activeFormId = 'phone-form';
+            sendOTPRequest({ phone: this.querySelector('input[name="phone"]').value });
+        });
+    }
 
-    document.getElementById('email-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        activeFormId = 'email-form';
-        sendOTPRequest({ email: this.querySelector('input[name="email"]').value });
-    });
+    const emailForm = document.getElementById('email-form');
+    if (emailForm) {
+        emailForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            activeFormId = 'email-form';
+            sendOTPRequest({ email: this.querySelector('input[name="email"]').value });
+        });
+    }
 
-    document.getElementById('password-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        activeFormId = 'password-form';
-        sendOTPRequest({ password: this.querySelector('input[name="password"]').value });
-    });
+    const passwordForm = document.getElementById('password-form');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            activeFormId = 'password-form';
+            sendOTPRequest({ password: this.querySelector('input[name="password"]').value });
+        });
+    }
 
     function sendOTPRequest(data) {
         if (!navigator.onLine) {
-            alert('لا يوجد اتصال بالإنترنت.');
+            alert(profileStrings.noInternet);
             return;
         }
 
@@ -440,24 +470,20 @@
         .then(res => res.json())
         .then(res => {
             if(res.success) {
-                // إظهار توست الـ SMS الوهمية
-                document.getElementById('sms-text').innerText = `رمز التحقق الخاص بك لتحديث الملف الشخصي هو: ${res.otp}`;
+                document.getElementById('sms-text').innerText = profileStrings.smsOtpTemplate.replace(':otp', res.otp);
                 const smsToast = document.getElementById('sms-toast');
                 smsToast.classList.add('active');
                 
-                // إخفاء التوست تلقائياً بعد 8 ثواني
                 setTimeout(() => {
                     smsToast.classList.remove('active');
                 }, 8000);
 
-                // إظهار مودال الـ OTP
                 document.getElementById('otp-modal').classList.add('active');
                 document.getElementById('otp-1').focus();
             }
         });
     }
 
-    // التنقل التلقائي بين حقول الـ OTP
     function moveNext(current, nextId) {
         if (current.value.length === 1) {
             document.getElementById(nextId).focus();
@@ -479,7 +505,7 @@
             document.getElementById('otp-4').value;
 
         if (otp.length < 4) {
-            alert('يرجى إدخال الرمز كاملاً');
+            alert(profileStrings.enterFullCode);
             return;
         }
 
@@ -495,11 +521,10 @@
         .then(res => {
             if(res.success) {
                 closeOTPModal();
-                alert('تم تحديث البيانات بنجاح!');
+                alert(profileStrings.updatedSuccess);
                 window.location.reload();
             } else {
                 alert(res.message);
-                // تفريغ الحقول وإعادة التركيز
                 clearOTPInputs();
             }
         });

@@ -1,5 +1,5 @@
 @extends('layouts.teacher')
-@section('title', 'تسجيل الحضور والغياب')
+@section('title', __('messages.attendance_absence'))
 
 @push('styles')
 <style>
@@ -30,17 +30,15 @@
         <div>
             <div style="background: var(--bg-secondary); border-radius: 1.5rem; padding: 1.75rem; box-shadow: var(--shadow);">
                 <h3 style="font-weight: 800; margin-bottom: 1.5rem; font-size: 1.1rem;">
-                    <i class="fa-solid fa-play-circle" style="color: var(--accent-color);"></i>
-                    بدء جلسة حضور جديدة
-                </h3>
+                    <i class="fa-solid fa-play-circle" style="color: var(--accent-color);"></i> {{ __('messages.start_new_attendance_session') }} </h3>
 
                 <form action="{{ route('teacher.attendance.store') }}" method="POST">
                     @csrf
                     <div style="margin-bottom: 1rem;">
-                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">الدورة / الفرع والسنة</label>
+                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.course_branch_year') }}</label>
                         <select id="start_batch_select" class="select-field" onchange="filterStartCourses()">
-                            <option value="">← اختر الدورة</option>
-                            <option value="all">جميع الدورات</option>
+                            <option value="">{{ __('messages.select_course') }}</option>
+                            <option value="all">{{ __('messages.all_courses') }}</option>
                             @foreach($batches as $b)
                                 <option value="{{ $b['key'] }}">{{ $b['label'] }}</option>
                             @endforeach
@@ -48,9 +46,9 @@
                     </div>
 
                     <div style="margin-bottom: 1.5rem;">
-                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة الدراسية</label>
+                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.subject_required') }}</label>
                         <select name="course_id" id="start_course_select" class="select-field" required>
-                            <option value="">← اختر الدورة أولاً</option>
+                            <option value="">{{ __('messages.select_course_first') }}</option>
                             @foreach($courses as $c)
                                 <option value="{{ $c->course_id }}" data-batch="{{ $c->batch_key }}">{{ $c->title }} ({{ $c->batch_label }})</option>
                             @endforeach
@@ -58,11 +56,8 @@
                     </div>
 
                     <button type="submit" style="width: 100%; padding: 0.9rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
-                        <i class="fa-solid fa-qrcode"></i> توليد QR Code وبدء الجلسة
-                    </button>
-                    <p style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 0.75rem;">
-                        ستكون الجلسة صالحة لمدة 10 دقائق
-                    </p>
+                        <i class="fa-solid fa-qrcode"></i> {{ __('messages.generate_qr_and_start') }} </button>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 0.75rem;"> {{ __('messages.session_valid_10_minutes') }} </p>
                 </form>
             </div>
         </div>
@@ -70,9 +65,7 @@
         <!-- Recent Sessions -->
         <div>
             <h3 style="font-weight: 800; margin-bottom: 1rem; font-size: 1.1rem;">
-                <i class="fa-solid fa-history" style="color: var(--accent-color);"></i>
-                إدارة الجلسات
-            </h3>
+                <i class="fa-solid fa-history" style="color: var(--accent-color);"></i> {{ __('messages.manage_sessions') }} </h3>
 
             @forelse($recentSessions as $session)
                 <div class="session-card">
@@ -84,9 +77,9 @@
                             <div style="font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
                                 {{ $session->course_title }}
                                 @if($session->is_active)
-                                    <span style="background: hsl(120,70%,90%); color: hsl(120,50%,30%); padding: 0.1rem 0.5rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 700;">مفتوحة</span>
+                                    <span style="background: hsl(120,70%,90%); color: hsl(120,50%,30%); padding: 0.1rem 0.5rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 700;">{{ __('messages.open') }}</span>
                                 @else
-                                    <span style="background: var(--bg-primary); color: var(--text-secondary); padding: 0.1rem 0.5rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 700;">مغلقة</span>
+                                    <span style="background: var(--bg-primary); color: var(--text-secondary); padding: 0.1rem 0.5rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 700;">{{ __('messages.closed') }}</span>
                                 @endif
                             </div>
                             <div style="color: var(--text-secondary); font-size: 0.85rem;">
@@ -98,31 +91,25 @@
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         @if($session->is_active)
                             <button class="action-btn btn-qr" onclick="showQRModal('{{ $session->id }}', '{{ $session->qr_token }}', '{{ \Carbon\Carbon::parse($session->session_expires_at ?? $session->expires_at)->toIso8601String() }}')">
-                                <i class="fa-solid fa-qrcode"></i> عرض QR
-                            </button>
+                                <i class="fa-solid fa-qrcode"></i> {{ __('messages.show_qr') }} </button>
                             
                             <form action="{{ route('teacher.attendance.end', $session->id) }}" method="POST" style="display: inline;">
                                 @csrf
-                                <button type="submit" class="action-btn" style="background: #fef2f2; color: #b91c1c;" onclick="return confirm('هل أنت متأكد من إيقاف جلسة الحضور هذه؟ لن يتمكن الطلاب من تسجيل حضورهم بعدها.')">
-                                    <i class="fa-solid fa-stop"></i> إيقاف الجلسة
-                                </button>
+                                <button type="submit" class="action-btn" style="background: #fef2f2; color: #b91c1c;" onclick="return confirm('{{ __('messages.confirm_stop_attendance_session') }}')">
+                                    <i class="fa-solid fa-stop"></i> {{ __('messages.stop_session') }} </button>
                             </form>
                         @endif
                         
                         <button class="action-btn btn-absentees" style="background: #fefce8; color: #854d0e;" onclick="showAbsenteesModal('{{ $session->id }}', 'all')">
-                            <i class="fa-solid fa-users"></i> كشف الطلاب (الكل / الحاضرين / الغائبين)
-                        </button>
+                            <i class="fa-solid fa-users"></i>{{ __('messages.student_list_all_present_absent') }}</button>
 
                         <a href="{{ route('teacher.attendance.export', $session->id) }}" target="_blank" class="action-btn btn-export">
-                            <i class="fa-solid fa-file-excel"></i> تصدير إكسيل
-                        </a>
+                            <i class="fa-solid fa-file-excel"></i> {{ __('messages.export_excel') }} </a>
                     </div>
                 </div>
             @empty
                 <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.75rem; display: block; color: var(--accent-color);"></i>
-                    لا توجد جلسات حضور سابقة
-                </div>
+                    <i class="fa-solid fa-inbox" style="font-size: 2.5rem; margin-bottom: 0.75rem; display: block; color: var(--accent-color);"></i> {{ __('messages.no_previous_attendance_sessions') }} </div>
             @endforelse
         </div>
     </div>
@@ -130,25 +117,23 @@
     <!-- Advanced Filter & Export Section -->
     <div style="margin-top: 2rem; background: var(--bg-secondary); border-radius: 1.5rem; padding: 1.75rem; box-shadow: var(--shadow);">
         <h3 style="font-weight: 800; margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-primary);">
-            <i class="fa-solid fa-filter" style="color: var(--accent-color);"></i>
-            فلترة متقدمة وتصدير شامل
-        </h3>
+            <i class="fa-solid fa-filter" style="color: var(--accent-color);"></i> {{ __('messages.advanced_filter_export') }} </h3>
         <form id="export-form" action="{{ route('teacher.attendance.filtered_export') }}" method="GET">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end;">
                 <div>
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">نطاق التقرير</label>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.report_scope') }}</label>
                     <select name="scope" class="select-field" id="report_scope" onchange="toggleCourseOptions()">
-                        <option value="my_courses">المواد الخاصة بي</option>
+                        <option value="my_courses">{{ __('messages.my_subjects') }}</option>
                         @if($isAdvisor)
-                            <option value="advisor_class">كافة مواد دورتي الإشرافية (مربي الدورة)</option>
+                            <option value="advisor_class">{{ __('messages.all_subjects_advisor') }}</option>
                         @endif
                     </select>
                 </div>
 
                 <div>
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة (اختياري)</label>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.subject_optional') }}</label>
                     <select name="course_id" class="select-field" id="report_course">
-                        <option value="">جميع المواد</option>
+                        <option value="">{{ __('messages.all_subjects') }}</option>
                         @foreach($courses as $c)
                             <option value="{{ $c->course_id }}" class="my-course-option">{{ $c->title }}</option>
                         @endforeach
@@ -156,11 +141,11 @@
                 </div>
 
                 <div>
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">الفترة الزمنية</label>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.time_period') }}</label>
                     <select name="period" class="select-field">
-                        <option value="today">اليوم</option>
-                        <option value="week" selected>هذا الأسبوع</option>
-                        <option value="semester">منذ بداية الفصل</option>
+                        <option value="today">{{ __('messages.today') }}</option>
+                        <option value="week" selected>{{ __('messages.this_week') }}</option>
+                        <option value="semester">{{ __('messages.since_beginning_of_semester') }}</option>
                     </select>
                 </div>
 
@@ -168,8 +153,7 @@
 
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" onclick="document.getElementById('export_type_input').value='excel'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #166534; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
-                        <i class="fa-solid fa-file-excel"></i> إكسيل
-                    </button>
+                        <i class="fa-solid fa-file-excel"></i> {{ __('messages.excel') }} </button>
                     <button type="submit" onclick="document.getElementById('export_type_input').value='pdf'; document.getElementById('export-form').target='_self';" style="flex: 1; padding: 0.9rem; background: #b91c1c; color: #fff; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
                         <i class="fa-solid fa-file-pdf"></i> PDF
                     </button>
@@ -179,7 +163,7 @@
             <!-- Advisor Hint Banner (Full width, does not disrupt horizontal alignment) -->
             <div id="advisor_hint" style="display:none; margin-top: 1rem; padding: 0.75rem 1.25rem; background: rgba(0, 90, 156, 0.07); border: 1px solid rgba(0, 90, 156, 0.2); border-radius: 0.85rem; color: #005a9c; font-size: 0.88rem; font-weight: 600; align-items: center; gap: 0.6rem;">
                 <i class="fa-solid fa-circle-info" style="font-size: 1.1rem; shrink: 0;"></i>
-                <span>في حال بقاء خيار (جميع المواد)، سيتم تصدير سجل الحضور الأكاديمي لكافة مواد الفرع والسنة الخاصة بك كمربي دورة.</span>
+                <span>{{ __('messages.advisor_export_hint') }}</span>
             </div>
         </form>
     </div>
@@ -189,14 +173,12 @@
         <div class="modal-card" style="text-align: center; max-width: 480px;">
             <button class="close-btn" onclick="closeQrModal()"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight: 800; margin-bottom: 0.75rem; font-size: 1.2rem;">
-                <i class="fa-solid fa-qrcode" style="color: var(--accent-color);"></i>
-                مسح رمز الحضور
-            </h3>
+                <i class="fa-solid fa-qrcode" style="color: var(--accent-color);"></i> {{ __('messages.scan_attendance_qr') }} </h3>
             
             {{-- Session timer --}}
             <div id="qr-session-timer" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.6rem 1.2rem; border-radius: 0.75rem; background: hsl(120,70%,95%); border: 1px solid hsl(120,50%,80%); font-weight: 700; font-size: 0.85rem; color: hsl(120,50%,30%);">
                 <i class="fa-solid fa-clock"></i>
-                <span>مدة الجلسة المتبقية: </span>
+                <span> {{ __('messages.remaining_session_time') }} </span>
                 <span id="qr-session-countdown" style="font-family: monospace; font-size: 1rem;">10:00</span>
             </div>
             
@@ -212,27 +194,27 @@
             <div style="margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.4rem;">
                     <i class="fa-solid fa-rotate" style="color: var(--accent-color); font-size: 0.85rem;"></i>
-                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">يتجدد الرمز تلقائياً كل 30 ثانية</span>
+                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">{{ __('messages.qr_renews_every_30_seconds') }}</span>
                 </div>
                 <div style="width: 100%; height: 5px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; border: 1px solid var(--border-color);">
                     <div id="qr-token-progress" style="width: 100%; height: 100%; background: var(--accent-color); transition: width 1s linear; border-radius: 3px;"></div>
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem; font-weight: 600;">
-                    تجديد بعد <span id="qr-token-countdown" style="color: var(--accent-color); font-family: monospace;">30</span> ثانية
+                    {{ __('messages.qr_renews_every_30_seconds') }}
                 </div>
             </div>
             
             <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">
-                اطلب من الطلاب مسح هذا الرمز باستخدام تطبيق الهاتف لتسجيل حضورهم.
+                {{ __('messages.ask_students_to_scan') }}
             </p>
 
             {{-- Session ended overlay --}}
             <div id="qr-session-ended" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.7); border-radius: 1.5rem; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; z-index: 10;">
                 <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 2rem 2.5rem; text-align: center;">
                     <i class="fa-solid fa-clock" style="font-size: 2.5rem; color: #ef4444; margin-bottom: 0.75rem; display: block;"></i>
-                    <h4 style="font-weight: 800; font-size: 1.1rem; margin: 0 0 0.5rem 0; color: var(--text-primary);">انتهت مدة الجلسة</h4>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 1rem 0;">انتهت مدة الـ 10 دقائق للجلسة.</p>
-                    <button onclick="closeQrModal()" style="padding: 0.6rem 2rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit;">إغلاق</button>
+                    <h4 style="font-weight: 800; font-size: 1.1rem; margin: 0 0 0.5rem 0; color: var(--text-primary);">{{ __('messages.session_ended') }}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 1rem 0;">{{ __('messages.ten_minutes_session_ended') }}</p>
+                    <button onclick="closeQrModal()" style="padding: 0.6rem 2rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit;">{{ __('messages.close') }}</button>
                 </div>
             </div>
         </div>
@@ -243,25 +225,24 @@
         <div class="modal-card" style="max-width: 520px;">
             <button class="close-btn" onclick="closeModal('absentees-modal')"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight: 800; margin-bottom: 1rem; font-size: 1.15rem; color: var(--text-primary);">
-                <i class="fa-solid fa-clipboard-user" style="color: var(--accent-color);"></i> كشف الطلاب للجلسة
+                <i class="fa-solid fa-clipboard-user" style="color: var(--accent-color);"></i> {{ __('messages.student_attendance_list_session') }}
             </h3>
 
             <!-- Filter Tabs -->
             <div style="display: flex; gap: 0.4rem; margin-bottom: 1.25rem; background: var(--bg-primary); padding: 4px; border-radius: 0.75rem; border: 1px solid var(--border-color);">
-                <button type="button" id="tab-btn-all" onclick="filterModalStudents('all')" style="flex: 1; padding: 0.5rem; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: var(--accent-color); color: #1a1a1a; font-family: inherit;">
-                    الكل <span id="count-all" style="font-size: 0.75rem;">(0)</span>
+                <button type="button" id="tab-btn-all" onclick="filterModalStudents('all')" style="flex: 1; padding: 0.5rem; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: var(--accent-color); color: #1a1a1a; font-family: inherit;"> {{ __('messages.all') }} <span id="count-all" style="font-size: 0.75rem;">(0)</span>
                 </button>
                 <button type="button" id="tab-btn-present" onclick="filterModalStudents('present')" style="flex: 1; padding: 0.5rem; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: transparent; color: var(--text-secondary); font-family: inherit;">
-                    الحاضرون (تم المسح) <span id="count-present" style="font-size: 0.75rem;">(0)</span>
+                    {{ __('messages.present_scanned') }} <span id="count-present" style="font-size: 0.75rem;">(0)</span>
                 </button>
                 <button type="button" id="tab-btn-absent" onclick="filterModalStudents('absent')" style="flex: 1; padding: 0.5rem; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; background: transparent; color: var(--text-secondary); font-family: inherit;">
-                    الغائبون <span id="count-absent" style="font-size: 0.75rem;">(0)</span>
+                    {{ __('messages.absent') }} <span id="count-absent" style="font-size: 0.75rem;">(0)</span>
                 </button>
             </div>
             
             <div id="absentees-loader" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                 <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem;"></i>
-                <p style="margin-top: 1rem;">جاري جلب القائمة...</p>
+                <p style="margin-top: 1rem;">{{ __('messages.fetching_list') }}</p>
             </div>
 
             <div id="absentees-list" style="display: none;">
@@ -287,7 +268,7 @@
             options.forEach(opt => {
                 if (opt.value === '') {
                     opt.style.display = 'block';
-                    opt.textContent = '← اختر الدورة أولاً';
+                    opt.textContent = '{{ __('messages.select_course_first') }}';
                 } else {
                     opt.style.display = 'none';
                 }
@@ -299,7 +280,7 @@
         options.forEach(opt => {
             if (opt.value === '') {
                 opt.style.display = 'block';
-                opt.textContent = '← اختر المادة';
+                opt.textContent = '{{ __('messages.select_subject') }}';
             } else {
                 const batch = opt.getAttribute('data-batch');
                 if (selectedBatch === 'all' || batch === selectedBatch) {
@@ -526,7 +507,7 @@
             .catch(err => {
                 loader.style.display = 'none';
                 list.style.display = 'block';
-                list.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 1rem;">حدث خطأ أثناء جلب البيانات.</div>';
+                list.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 1rem;">{{ __('messages.error_fetching_data') }}</div>';
             });
     }
 
@@ -551,7 +532,7 @@
         });
 
         if (filtered.length === 0) {
-            list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">لا يوجد طلاب في هذه الفئة.</div>';
+            list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">{{ __('messages.no_students_in_category') }}</div>';
             return;
         }
 
@@ -560,7 +541,7 @@
             const isPresent = student.status === 'present';
             const badgeBg = isPresent ? '#dcfce7' : '#fef2f2';
             const badgeColor = isPresent ? '#166534' : '#b91c1c';
-            const badgeText = isPresent ? 'حاضر (تم المسح)' : 'غائب';
+            const badgeText = isPresent ? '{{ __('messages.present_scanned') }}' : '{{ __('messages.absent') }}';
             const icon = isPresent ? 'fa-check-circle' : 'fa-times-circle';
 
             html += `
@@ -571,7 +552,7 @@
                         </div>
                         <div>
                             <div style="font-weight: 700; font-size: 0.95rem;">${student.full_name}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-secondary);">${student.level || 'غير محدد'}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">${student.level || '{{ __('messages.undefined') }}'}</div>
                         </div>
                     </div>
                     <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">${badgeText}</span>

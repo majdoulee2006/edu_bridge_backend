@@ -1,5 +1,5 @@
 @extends('layouts.teacher')
-@section('title', 'الاختبارات والمذاكرات')
+@section('title', __('messages.quizzes_and_tests'))
 
 @push('styles')
 <style>
@@ -27,7 +27,7 @@
     <div style="font-size: 1rem; color: var(--text-secondary);">{{ $quizzes->count() }} اختبار</div>
     <button onclick="document.getElementById('create-modal').classList.add('active')"
             style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; padding: 0.6rem 1.25rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem;">
-        <i class="fa-solid fa-plus"></i> اختبار جديد
+        <i class="fa-solid fa-plus"></i> {{ __('messages.new_quiz') }}
     </button>
 </div>
 
@@ -37,9 +37,9 @@
         <div style="flex: 1;">
             <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
                 @if($quiz->is_published)
-                    <span class="badge badge-published"><i class="fa-solid fa-circle-check"></i> منشور</span>
+                    <span class="badge badge-published"><i class="fa-solid fa-circle-check"></i> {{ __('messages.published') }} </span>
                 @else
-                    <span class="badge badge-draft"><i class="fa-solid fa-pencil"></i> مسودة</span>
+                    <span class="badge badge-draft"><i class="fa-solid fa-pencil"></i> {{ __('messages.draft') }} </span>
                 @endif
                 <span style="font-weight: 800; font-size: 1rem;">{{ $quiz->title }}</span>
             </div>
@@ -57,13 +57,13 @@
         </div>
         <div style="display: flex; gap: 0.5rem; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;">
             <a href="{{ route('teacher.quizzes.builder', $quiz->id) }}" class="btn-icon">
-                <i class="fa-solid fa-pen-to-square"></i> الأسئلة
+                <i class="fa-solid fa-pen-to-square"></i> {{ __('messages.questions') }}
             </a>
             <form action="{{ route('teacher.quizzes.publish', $quiz->id) }}" method="POST" style="display:inline;">
                 @csrf
                 <button type="submit" class="btn-icon" style="{{ $quiz->is_published ? 'color:#ef4444;' : '' }}">
                     <i class="fa-solid fa-{{ $quiz->is_published ? 'eye-slash' : 'paper-plane' }}"></i>
-                    {{ $quiz->is_published ? 'إلغاء النشر' : 'نشر' }}
+                    {{ $quiz->is_published ? __('messages.unpublish_quiz') : __('messages.publish_quiz') }}
                 </button>
             </form>
             <form action="{{ route('teacher.quizzes.delete', $quiz->id) }}" method="POST" style="display:inline;"
@@ -85,7 +85,7 @@
 <div class="modal-overlay" id="create-modal" onclick="if(event.target===this)this.classList.remove('active')">
     <div class="modal-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0;">اختبار جديد</h3>
+            <h3 style="font-size: 1.1rem; font-weight: 800; margin: 0;">{{ __('messages.new_quiz') }}</h3>
             <button onclick="document.getElementById('create-modal').classList.remove('active')"
                     style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--text-secondary);">✕</button>
         </div>
@@ -99,7 +99,7 @@
                 <div>
                     <label class="form-label">المادة الدراسية *</label>
                     <select name="course_id" class="form-input" required>
-                        <option value="">اختر المادة</option>
+                        <option value="">{{ __('messages.select_subject') }}</option>
                         @foreach($courses as $c)
                             <option value="{{ $c->course_id }}">{{ $c->title }}</option>
                         @endforeach
@@ -107,7 +107,7 @@
                 </div>
                 <div>
                     <label class="form-label">الوصف (اختياري)</label>
-                    <textarea name="description" class="form-input" rows="2" placeholder="تعليمات الاختبار..."></textarea>
+                    <textarea name="description" class="form-input" rows="2" placeholder="{{ __('messages.quiz_instructions') }}"></textarea>
                 </div>
                 <div class="row-2">
                     <div>
@@ -121,16 +121,16 @@
                 </div>
                 <div class="row-2">
                     <div>
-                        <label class="form-label">تاريخ البداية</label>
+                        <label class="form-label">{{ __('messages.start_date') }}</label>
                         <input type="datetime-local" name="start_at" class="form-input">
                     </div>
                     <div>
-                        <label class="form-label">تاريخ الانتهاء</label>
+                        <label class="form-label">{{ __('messages.end_date') }}</label>
                         <input type="datetime-local" name="end_at" class="form-input">
                     </div>
                 </div>
                 <button type="submit" class="btn-primary" style="margin-top: 0.5rem;">
-                    <i class="fa-solid fa-arrow-left"></i> إنشاء الاختبار وإضافة الأسئلة
+                    <i class="fa-solid fa-arrow-left"></i> إنشاء الاختبار وإضافة {{ __('messages.questions') }}
                 </button>
             </div>
         </form>

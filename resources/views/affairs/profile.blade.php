@@ -1,5 +1,5 @@
 @extends('layouts.affairs')
-@section('title', 'الملف الشخصي')
+@section('title', __('messages.profile'))
 
 @push('styles')
 <style>
@@ -34,7 +34,7 @@
     .cover-accent {
         position: absolute;
         bottom: -2px;
-        right: 2rem;
+        inset-inline-end: 2rem;
         width: 100px;
         height: 100px;
         background: var(--accent-color);
@@ -47,7 +47,7 @@
     .profile-avatar-wrapper {
         position: absolute;
         bottom: -55px;
-        right: 2rem;
+        inset-inline-end: 2rem;
         width: 110px;
         height: 110px;
         border-radius: 50%;
@@ -81,6 +81,7 @@
     .profile-identity {
         padding: 0 2rem;
         margin-bottom: 2rem;
+        text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};
     }
     .profile-name {
         font-size: 1.8rem;
@@ -133,6 +134,7 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};
     }
     .section-heading i { color: var(--accent-color); }
 
@@ -153,7 +155,7 @@
         box-shadow: var(--shadow);
         transition: transform 0.2s;
     }
-    .info-card:hover { transform: translateX(-3px); }
+    .info-card:hover { transform: translateX({{ app()->getLocale() === 'ar' ? '-3px' : '3px' }}); }
     .info-right {
         display: flex;
         align-items: center;
@@ -169,7 +171,9 @@
         font-size: 1.1rem;
         flex-shrink: 0;
     }
-    .info-details {}
+    .info-details {
+        text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};
+    }
     .info-label {
         color: var(--text-secondary);
         font-size: 0.8rem;
@@ -210,9 +214,9 @@
         transition: transform 0.2s;
         width: 100%;
         border: none;
-        text-align: right;
+        text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};
     }
-    .action-row:hover { transform: translateX(-3px); }
+    .action-row:hover { transform: translateX({{ app()->getLocale() === 'ar' ? '-3px' : '3px' }}); }
     .action-row-inner { display: flex; align-items: center; gap: 1rem; }
     .action-row-icon {
         width: 44px; height: 44px; border-radius: 50%;
@@ -318,35 +322,35 @@
     <!-- Name & Role -->
     <div class="profile-identity">
         <h2 class="profile-name">{{ $user->full_name }}</h2>
-        <span class="profile-role-badge">موظف شؤون طلاب</span>
+        <span class="profile-role-badge">{{ __('messages.student_affairs_officer') }}</span>
     </div>
 
     <!-- Stats -->
     <div class="profile-stats">
         <div class="stat-card">
             <span class="stat-value">{{ $reviewedLeaves }}</span>
-            <span class="stat-label">طلب تمت معالجته</span>
+            <span class="stat-label">{{ __('messages.processed_requests_stat') }}</span>
         </div>
         <div class="stat-card">
             <span class="stat-value">{{ $sentMessages }}</span>
-            <span class="stat-label">رسالة مرسلة</span>
+            <span class="stat-label">{{ __('messages.sent_messages_stat') }}</span>
         </div>
         <div class="stat-card">
             <span class="stat-value">{{ now()->year - ($user->created_at ? $user->created_at->year : now()->year) }}</span>
-            <span class="stat-label">سنوات الخدمة</span>
+            <span class="stat-label">{{ __('messages.years_of_service') }}</span>
         </div>
     </div>
 
     <!-- Personal Info -->
-    <p class="section-heading"><i class="fa-solid fa-circle-info"></i> المعلومات الشخصية</p>
+    <p class="section-heading"><i class="fa-solid fa-circle-info"></i> {{ __('messages.personal_info') }}</p>
     <div class="info-list">
         <!-- Phone -->
         <div class="info-card">
             <div class="info-right">
                 <div class="info-icon-wrapper" style="background: rgba(252, 227, 0, 0.15); color: var(--accent-color);"><i class="fa-solid fa-phone"></i></div>
                 <div class="info-details">
-                    <div class="info-label">رقم الهاتف</div>
-                    <div class="info-value" dir="ltr" style="text-align: right;">{{ $user->phone ?? 'غير محدد' }}</div>
+                    <div class="info-label">{{ __('messages.phone') }}</div>
+                    <div class="info-value" dir="ltr" style="text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};">{{ $user->phone ?? __('messages.unspecified') }}</div>
                 </div>
             </div>
             <button class="edit-btn" onclick="openEditModal('phone')"><i class="fa-solid fa-pen"></i></button>
@@ -357,11 +361,11 @@
             <div class="info-right">
                 <div class="info-icon-wrapper" style="background: rgba(252, 227, 0, 0.15); color: var(--accent-color);"><i class="fa-solid fa-envelope"></i></div>
                 <div class="info-details">
-                    <div class="info-label">البريد الإلكتروني</div>
+                    <div class="info-label">{{ __('messages.email') }}</div>
                     <div class="info-value">{{ $user->email }}</div>
                 </div>
             </div>
-            <i class="fa-solid fa-lock" style="opacity: 0.4; font-size: 1rem; color: var(--text-secondary); margin-left: 0.5rem;"></i>
+            <i class="fa-solid fa-lock" style="opacity: 0.4; font-size: 1rem; color: var(--text-secondary); margin-inline-start: 0.5rem;"></i>
         </div>
 
         <!-- Birthdate -->
@@ -369,8 +373,8 @@
             <div class="info-right">
                 <div class="info-icon-wrapper" style="background: rgba(252, 227, 0, 0.15); color: var(--accent-color);"><i class="fa-solid fa-calendar"></i></div>
                 <div class="info-details">
-                    <div class="info-label">تاريخ الميلاد</div>
-                    <div class="info-value">{{ $user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->format('d / m / Y') : 'غير محدد' }}</div>
+                    <div class="info-label">{{ __('messages.date_of_birth') }}</div>
+                    <div class="info-value">{{ $user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->format('d / m / Y') : __('messages.unspecified') }}</div>
                 </div>
             </div>
             <div></div>
@@ -381,8 +385,8 @@
             <div class="info-right">
                 <div class="info-icon-wrapper" style="background: rgba(252, 227, 0, 0.15); color: var(--accent-color);"><i class="fa-solid fa-building"></i></div>
                 <div class="info-details">
-                    <div class="info-label">القسم</div>
-                    <div class="info-value">شؤون الطلاب</div>
+                    <div class="info-label">{{ __('messages.department') }}</div>
+                    <div class="info-value">{{ __('messages.student_affairs') }}</div>
                 </div>
             </div>
             <div></div>
@@ -390,19 +394,19 @@
     </div>
 
     <!-- Action Rows -->
-    <p class="section-heading"><i class="fa-solid fa-sliders"></i> إعدادات الحساب</p>
+    <p class="section-heading"><i class="fa-solid fa-sliders"></i> {{ __('messages.account_settings') }}</p>
     <div class="action-rows">
         <button class="action-row" onclick="openPasswordModal()">
             <div class="action-row-inner">
                 <div class="action-row-icon" style="background: rgba(252,227,0,0.15); color: var(--accent-color);">
                     <i class="fa-solid fa-key"></i>
                 </div>
-                <div style="text-align: right;">
-                    <div class="action-row-title">تغيير كلمة المرور</div>
-                    <div class="action-row-desc">حماية إضافية للحساب</div>
+                <div style="text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};">
+                    <div class="action-row-title">{{ __('messages.change_password') }}</div>
+                    <div class="action-row-desc">{{ __('messages.password_security_desc') }}</div>
                 </div>
             </div>
-            <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary);"></i>
+            <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right' }}" style="color: var(--text-secondary);"></i>
         </button>
 
         <button class="action-row" onclick="window.location.href='/affairs/settings'">
@@ -410,12 +414,12 @@
                 <div class="action-row-icon" style="background: rgba(252,227,0,0.15); color: var(--accent-color);">
                     <i class="fa-solid fa-gear"></i>
                 </div>
-                <div style="text-align: right;">
-                    <div class="action-row-title">الإعدادات العامة</div>
-                    <div class="action-row-desc">الإشعارات، المظهر</div>
+                <div style="text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};">
+                    <div class="action-row-title">{{ __('messages.general_settings') }}</div>
+                    <div class="action-row-desc">{{ __('messages.general_settings_desc') }}</div>
                 </div>
             </div>
-            <i class="fa-solid fa-chevron-left" style="color: var(--text-secondary);"></i>
+            <i class="fa-solid {{ app()->getLocale() === 'ar' ? 'fa-chevron-left' : 'fa-chevron-right' }}" style="color: var(--text-secondary);"></i>
         </button>
     </div>
 
@@ -424,7 +428,7 @@
         @csrf
         <button type="submit" class="logout-btn">
             <i class="fa-solid fa-arrow-right-from-bracket"></i>
-            تسجيل الخروج
+            {{ __('messages.logout') }}
         </button>
     </form>
 
@@ -434,18 +438,18 @@
 <!-- Update Info Modal -->
 <div class="modal-overlay" id="editInfoModal">
     <div class="modal-card">
-        <h3 id="modalTitle" style="margin-bottom: 1.5rem;">تعديل البيانات</h3>
+        <h3 id="modalTitle" style="margin-bottom: 1.5rem;">{{ __('messages.edit_data') }}</h3>
         <form id="profileUpdateForm" action="{{ route('affairs.profile.update') }}" method="POST">
             @csrf
             <input type="hidden" name="full_name" value="{{ $user->full_name }}">
             
-            <div id="phoneInputGroup" style="display: none; text-align: right; margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">رقم الهاتف</label>
+            <div id="phoneInputGroup" style="display: none; text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }}; margin-bottom: 1rem;">
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.phone') }}</label>
                 <input type="text" name="phone" class="form-control" value="{{ $user->phone }}" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             </div>
 
-            <button type="submit" class="modal-confirm-btn">حفظ التغييرات</button>
-            <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
+            <button type="submit" class="modal-confirm-btn">{{ __('messages.save_changes') }}</button>
+            <button type="button" class="modal-cancel-btn" onclick="closeModals()">{{ __('messages.cancel') }}</button>
         </form>
     </div>
 </div>
@@ -453,24 +457,24 @@
 <!-- Update Password Modal -->
 <div class="modal-overlay" id="editPasswordModal">
     <div class="modal-card">
-        <h3 style="margin-bottom: 1.5rem;">تغيير كلمة المرور</h3>
-        <form action="{{ route('affairs.profile.password') }}" method="POST" style="text-align: right;">
+        <h3 style="margin-bottom: 1.5rem;">{{ __('messages.change_password') }}</h3>
+        <form action="{{ route('affairs.profile.password') }}" method="POST" style="text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};">
             @csrf
             <div style="margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الحالية</label>
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.current_password') }}</label>
                 <input type="password" name="current_password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             </div>
             <div style="margin-bottom: 1rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">كلمة المرور الجديدة</label>
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.new_password') }}</label>
                 <input type="password" name="password" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             </div>
             <div style="margin-bottom: 1.5rem;">
-                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">تأكيد كلمة المرور الجديدة</label>
+                <label style="display:block; margin-bottom:0.5rem; font-weight:700;">{{ __('messages.confirm_new_password') }}</label>
                 <input type="password" name="password_confirmation" required style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             </div>
 
-            <button type="submit" class="modal-confirm-btn">تغيير كلمة المرور</button>
-            <button type="button" class="modal-cancel-btn" onclick="closeModals()">إلغاء</button>
+            <button type="submit" class="modal-confirm-btn">{{ __('messages.change_password') }}</button>
+            <button type="button" class="modal-cancel-btn" onclick="closeModals()">{{ __('messages.cancel') }}</button>
         </form>
     </div>
 </div>
@@ -479,16 +483,16 @@
 <div class="modal-overlay" id="otpModal">
     <div class="modal-card">
         <div class="modal-icon" style="width: 70px; height: 70px; background: rgba(252, 227, 0, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--accent-color); margin: 0 auto 1rem;"><i class="fa-solid fa-shield-halved"></i></div>
-        <h3 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem;">التحقق الأمني (OTP)</h3>
-        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">أرسلنا رمزاً مؤلفاً من 4 أرقام لتأكيد هويتك. أدخله أدناه للمتابعة.</p>
+        <h3 style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.5rem;">{{ __('messages.otp_verification') }}</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">{{ __('messages.otp_desc') }}</p>
         <div style="display: flex; gap: 0.8rem; justify-content: center; margin-bottom: 1.5rem;">
             <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
             <input class="otp-digit" type="text" maxlength="1" style="width: 55px; height: 60px; border: 2px solid var(--border-color); border-radius: 0.75rem; text-align: center; font-size: 1.8rem; font-weight: 800; background: var(--bg-primary) !important; color: var(--text-primary) !important; -webkit-text-fill-color: var(--text-primary) !important; caret-color: var(--text-primary);">
         </div>
-        <button type="button" class="modal-confirm-btn" onclick="submitProfileForm()">تأكيد وحفظ</button>
-        <button type="button" class="modal-cancel-btn" onclick="closeOTPModal()">إلغاء</button>
+        <button type="button" class="modal-confirm-btn" onclick="submitProfileForm()">{{ __('messages.confirm_and_save') }}</button>
+        <button type="button" class="modal-cancel-btn" onclick="closeOTPModal()">{{ __('messages.cancel') }}</button>
     </div>
 </div>
 
@@ -501,7 +505,7 @@
     function openEditModal(field) {
         document.getElementById('editInfoModal').classList.add('active');
         document.getElementById('phoneInputGroup').style.display = 'block';
-        document.getElementById('modalTitle').innerText = 'تعديل رقم الهاتف';
+        document.getElementById('modalTitle').innerText = '{{ __('messages.edit_phone') }}';
     }
 
     function openPasswordModal() {
@@ -513,11 +517,6 @@
         document.getElementById('editPasswordModal').classList.remove('active');
     }
 
-    // 🐛 كان هون بس بيفتح شكل الـOTP شكلياً وبعدين يحفظ التغيير مباشرة
-    // (pendingForm.submit() يروح لـ updateProfile اللي بيحفظ بدون أي تحقق)
-    // بدون ما يطلب أو يتحقق من رمز حقيقي من السيرفر إطلاقاً. هلق منادي
-    // فعلياً على /profile/send-otp و/profile/verify-otp الموجودين
-    // بالباك إند أصلاً وما كانوا مستخدمين.
     let otpBusy = false;
 
     document.getElementById('profileUpdateForm').addEventListener('submit', function(e) {
@@ -546,12 +545,12 @@
                 closeModals();
                 openOTPModal();
             } else {
-                alert(data.message || 'تعذّر إرسال رمز التحقق.');
+                alert(data.message || '{{ __('messages.error') }}');
             }
         })
         .catch(() => {
             setOtpBusy(false);
-            alert('تعذّر الاتصال بالسيرفر، حاول مرة أخرى.');
+            alert('{{ __('messages.error') }}');
         });
     });
 
@@ -574,7 +573,7 @@
     function submitProfileForm() {
         const code = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
         if (code.length < 4) {
-            alert('يرجى إدخال الرمز كاملاً (4 أرقام)');
+            alert('{{ app()->getLocale() === 'ar' ? 'يرجى إدخال الرمز كاملاً (4 أرقام)' : 'Please enter the full 4-digit code' }}');
             return;
         }
         if (!pendingForm || otpBusy) return;
@@ -597,16 +596,15 @@
             if (data.success) {
                 window.location.reload();
             } else {
-                alert(data.message || 'رمز التحقق غير صحيح.');
+                alert(data.message || '{{ app()->getLocale() === 'ar' ? 'رمز التحقق غير صحيح.' : 'Invalid verification code.' }}');
             }
         })
         .catch(() => {
             otpBusy = false;
-            alert('تعذّر الاتصال بالسيرفر، حاول مرة أخرى.');
+            alert('{{ __('messages.error') }}');
         });
     }
 
-    // Auto-advance OTP inputs
     document.querySelectorAll('.otp-digit').forEach((input, index, inputs) => {
         input.addEventListener('input', () => {
             if(input.value && index < inputs.length - 1) {
@@ -620,7 +618,6 @@
         });
     });
 
-    // Close on background click
     window.addEventListener('click', function(e) {
         if (e.target.classList.contains('modal-overlay')) {
             closeModals();

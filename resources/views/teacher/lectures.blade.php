@@ -1,5 +1,5 @@
 @extends('layouts.teacher')
-@section('title', 'المحاضرات')
+@section('title', __('messages.lectures'))
 
 @push('styles')
 <style>
@@ -81,10 +81,9 @@
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <p style="color: var(--text-secondary);">{{ $lectures->count() }} محاضرة مضافة</p>
+        <p style="color: var(--text-secondary);">{{ $lectures->count() }} {{ __('messages.lecture_added') }}</p>
         <button onclick="document.getElementById('add-lecture-modal').classList.add('active')" style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; padding: 0.6rem 1.25rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fa-solid fa-plus"></i> إضافة محاضرة
-        </button>
+            <i class="fa-solid fa-plus"></i>{{ __('messages.add_lecture') }}</button>
     </div>
 
     @forelse($lectures as $l)
@@ -117,9 +116,9 @@
                             default    => 'fa-file-lines',
                         };
                         $chipLabel = match($l->file_type) {
-                            'image'    => 'صورة',
-                            'video'    => 'فيديو',
-                            default    => 'مستند',
+                            'image'    => "{{ __('messages.image') }}",
+                            'video'    => "{{ __('messages.video') }}",
+                            default    => "{{ __('messages.document') }}",
                         };
                     @endphp
                     <div style="margin-top: 0.5rem;">
@@ -138,7 +137,7 @@
                     <i class="fa-solid fa-pen"></i>
                 </button>
                 <a href="{{ route('teacher.lectures.delete', $l->lesson_id) }}" 
-                   onclick="return confirm('هل أنت متأكد من حذف هذه المحاضرة؟')"
+                   onclick="return confirm("{{ __('messages.confirm_delete_lecture') }}")"
                    style="background: hsl(0,70%,95%); border: none; color: hsl(0,50%,40%); border-radius: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center;">
                     <i class="fa-solid fa-trash"></i>
                 </a>
@@ -147,7 +146,7 @@
     @empty
         <div style="text-align: center; padding: 4rem; background: var(--bg-secondary); border-radius: 1.5rem; color: var(--text-secondary);">
             <i class="fa-solid fa-book-open" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
-            <p style="font-size: 1.1rem; font-weight: 600;">لا توجد محاضرات مضافة بعد</p>
+            <p style="font-size: 1.1rem; font-weight: 600;">{{ __('messages.no_lectures_added_yet') }}</p>
         </div>
     @endforelse
 
@@ -156,9 +155,7 @@
         <div class="modal-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 style="font-weight: 800;">
-                    <i class="fa-solid fa-pen" style="color: var(--accent-color);"></i>
-                    تعديل المحاضرة
-                </h3>
+                    <i class="fa-solid fa-pen" style="color: var(--accent-color);"></i>{{ __('messages.edit_lecture') }}</h3>
                 <button onclick="document.getElementById('edit-lecture-modal').classList.remove('active')" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.25rem;">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -168,12 +165,12 @@
                 <input type="hidden" name="_method" value="POST">
 
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">عنوان المحاضرة</label>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.lecture_title') }}</label>
                     <input type="text" name="title" id="edit-title" class="form-input" required>
                 </div>
 
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة</label>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.subject') }}</label>
                     <select name="course_id" id="edit-course_id" class="form-input" required>
                         @foreach($courses as $c)
                             <option value="{{ $c->course_id }}">{{ $c->title }}</option>
@@ -182,15 +179,14 @@
                 </div>
 
                 <div style="margin-bottom: 1.5rem;">
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">وصف المحاضرة (اختياري)</label>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.lecture_description_optional') }}</label>
                     <textarea name="description" id="edit-description" class="form-input" rows="3" style="resize: vertical;"></textarea>
                 </div>
 
                 <div style="display: flex; gap: 1rem;">
                     <button type="submit" style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
-                        <i class="fa-solid fa-save"></i> حفظ التعديلات
-                    </button>
-                    <button type="button" onclick="document.getElementById('edit-lecture-modal').classList.remove('active')" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">إلغاء</button>
+                        <i class="fa-solid fa-save"></i>{{ __('messages.save_changes') }}</button>
+                    <button type="button" onclick="document.getElementById('edit-lecture-modal').classList.remove('active')" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -201,9 +197,7 @@
         <div class="modal-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 style="font-weight: 800;">
-                    <i class="fa-solid fa-chalkboard" style="color: var(--accent-color);"></i>
-                    إضافة محاضرة
-                </h3>
+                    <i class="fa-solid fa-chalkboard" style="color: var(--accent-color);"></i>{{ __('messages.add_lecture') }}</h3>
                 <button onclick="closeLectureModal()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.25rem;">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -211,17 +205,17 @@
             <form action="{{ route('teacher.lectures.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
-                {{-- عنوان المحاضرة --}}
+                {{-- {{ __('messages.lecture_title') }} --}}
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">عنوان المحاضرة</label>
-                    <input type="text" name="title" class="form-input" placeholder="أدخل عنوان المحاضرة هنا" required>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.lecture_title') }}</label>
+                    <input type="text" name="title" class="form-input" placeholder="{{ __('messages.enter_lecture_title_here') }}" required>
                 </div>
 
                 {{-- المادة --}}
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">المادة</label>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.subject') }}</label>
                     <select name="course_id" class="form-input" required>
-                        <option value="">← اختر المادة</option>
+                        <option value="">{{ __('messages.select_subject') }}</option>
                         @foreach($courses as $c)
                             <option value="{{ $c->course_id }}">{{ $c->title }}</option>
                         @endforeach
@@ -230,16 +224,14 @@
 
                 {{-- وصف المحاضرة --}}
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">وصف المحاضرة (اختياري)</label>
-                    <textarea name="description" class="form-input" rows="3" placeholder="ملاحظات أو وصف مختصر..." style="resize: vertical;"></textarea>
+                    <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.lecture_description_optional') }}</label>
+                    <textarea name="description" class="form-input" rows="3" placeholder="{{ __('messages.notes_or_short_description') }}" style="resize: vertical;"></textarea>
                 </div>
 
                 {{-- رفع ملف --}}
                 <div style="margin-bottom: 1.5rem;">
                     <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">
-                        <i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i>
-                        ملف مرفق (اختياري)
-                    </label>
+                        <i class="fa-solid fa-paperclip" style="color: var(--accent-color);"></i>{{ __('messages.attached_file_optional') }}</label>
 
                     <div class="upload-area" id="upload-area"
                          ondragover="event.preventDefault(); this.classList.add('drag-over')"
@@ -250,17 +242,17 @@
                                onchange="previewFile(this)">
                         <div id="upload-placeholder">
                             <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-                            <div class="upload-text">اسحب وأفلت الملف هنا، أو اضغط للاختيار</div>
-                            <div class="upload-hint">صور · فيديو · PDF · Word · PowerPoint · Excel · ZIP — حتى 50 ميجابايت</div>
+                            <div class="upload-text">{{ __('messages.drag_and_drop_file_here_or_click_to_select') }}</div>
+                            <div class="upload-hint">{{ __('messages.supported_files_50mb') }}</div>
                         </div>
                     </div>
 
-                    {{-- معاينة الملف المختار --}}
+                    {{-- معاينة {{ __('messages.the_file') }} المختار --}}
                     <div class="file-preview" id="file-preview">
                         <span class="file-preview-icon" id="preview-icon">📎</span>
                         <span class="file-preview-name" id="preview-name"></span>
                         <span class="file-preview-size" id="preview-size" style="color: var(--text-secondary); font-size: 0.78rem; white-space: nowrap;"></span>
-                        <button type="button" class="file-preview-remove" onclick="removeFile()" title="حذف الملف">
+                        <button type="button" class="file-preview-remove" onclick="removeFile()" title="{{ __('messages.delete_file') }}">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
@@ -269,9 +261,8 @@
                 {{-- أزرار --}}
                 <div style="display: flex; gap: 1rem;">
                     <button type="submit" style="flex: 1; padding: 0.85rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 1rem;">
-                        <i class="fa-solid fa-plus"></i> إضافة المحاضرة
-                    </button>
-                    <button type="button" onclick="closeLectureModal()" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">إلغاء</button>
+                        <i class="fa-solid fa-plus"></i>{{ __('messages.add_the_lecture') }}</button>
+                    <button type="button" onclick="closeLectureModal()" style="flex: 1; padding: 0.85rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 1rem;">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -309,14 +300,14 @@ document.getElementById('add-lecture-modal').addEventListener('click', function(
 
 /* ===== File Upload ===== */
 const iconMap = {
-    image:    { icon: '🖼️', label: 'صورة' },
-    video:    { icon: '🎬', label: 'فيديو' },
+    image:    { icon: '🖼️', label: "{{ __('messages.image') }}" },
+    video:    { icon: '🎬', label: "{{ __('messages.video') }}" },
     pdf:      { icon: '📄', label: 'PDF' },
     word:     { icon: '📝', label: 'Word' },
     ppt:      { icon: '📊', label: 'PowerPoint' },
     excel:    { icon: '📊', label: 'Excel' },
     zip:      { icon: '📦', label: 'ZIP' },
-    default:  { icon: '📎', label: 'ملف' },
+    default:  { icon: '📎', label: "{{ __('messages.document') }}" },
 };
 
 function getFileIcon(mime, name) {

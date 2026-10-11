@@ -68,9 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.classList.add('light');
         }
         
-        // Language - Always maintain RTL direction to protect system layout structure
-        document.documentElement.setAttribute('dir', 'rtl');
-        document.documentElement.setAttribute('lang', settings.lang);
+        // Language - Sync dir with current server-rendered lang/dir or settings
+        const currentLang = document.documentElement.getAttribute('lang') || settings.lang || 'ar';
+        const targetDir = currentLang === 'en' ? 'ltr' : 'rtl';
+        document.documentElement.setAttribute('dir', targetDir);
+        document.documentElement.setAttribute('lang', currentLang);
         
         // Font Size
         document.documentElement.style.setProperty('--base-font-size', `${settings.fontSize}px`);

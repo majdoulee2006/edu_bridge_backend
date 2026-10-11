@@ -1,6 +1,6 @@
 @extends('layouts.teacher')
-@section('title', 'جداولي')
-@section('subtitle', 'الجدول الدراسي الأسبوعي')
+@section('title', __('messages.my_schedule'))
+@section('subtitle', __('messages.weekly_schedule'))
 
 @push('styles')
 <style>
@@ -188,10 +188,10 @@
     {{-- Tab Switcher --}}
     <div class="type-switcher">
         <button class="type-btn active" id="btn-weekly" onclick="switchTab('weekly')">
-            <i class="fa-solid fa-calendar-days"></i> الجدول الأسبوعي
+            <i class="fa-solid fa-calendar-days"></i> {{ __('messages.weekly_schedule') }}
         </button>
         <button class="type-btn" id="btn-exams" onclick="switchTab('exams')">
-            <i class="fa-solid fa-file-pen"></i> الجدول الامتحاني
+            <i class="fa-solid fa-file-pen"></i> {{ __('messages.exam_schedule') }}
         </button>
     </div>
 
@@ -200,15 +200,15 @@
         @if($schedules->isEmpty())
             <div class="empty-state">
                 <i class="fa-regular fa-calendar-xmark" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
-                <p style="font-size: 1.1rem; font-weight: 600;">لا يوجد جدول محدد لكم حتى الآن</p>
-                <p style="font-size: 0.9rem; margin-top: 0.5rem;">يقوم رئيس القسم بإعداد جداول الحصص</p>
+                <p style="font-size: 1.1rem; font-weight: 600;">{{ __('messages.no_schedule_assigned_yet') }}</p>
+                <p style="font-size: 0.9rem; margin-top: 0.5rem;">{{ __('messages.hod_prepares_schedule_hint') }}</p>
             </div>
         @else
             <div class="schedule-table-wrapper">
                 <table class="schedule-table">
                     <thead>
                         <tr>
-                            <th>اليوم / الحصة</th>
+                            <th>{{ __('messages.day_period') }}</th>
                             @foreach($periodLabels as $i => $label)
                             <th>
                                 {{ $label }}<br>
@@ -233,7 +233,7 @@
                                         </div>
                                         @endif
                                         <div class="cell-meta">
-                                            <i class="fa-solid fa-door-open"></i> قاعة {{ $s->room ?? 'غير محدد' }}
+                                            <i class="fa-solid fa-door-open"></i> {{ __('messages.room') }} {{ $s->room ?? __('messages.unspecified') }}
                                         </div>
                                     </div>
                                 @else
@@ -256,11 +256,11 @@
             <table class="exam-table">
                 <thead>
                     <tr>
-                        <th>المادة</th>
-                        <th>الدورة</th>
-                        <th>التاريخ والتوقيت</th>
-                        <th>القاعة</th>
-                        <th style="text-align: center;">العلامة</th>
+                        <th>{{ __('messages.course') }}</th>
+                        <th>{{ __('messages.session_round') }}</th>
+                        <th>{{ __('messages.date_and_time') }}</th>
+                        <th>{{ __('messages.room') }}</th>
+                        <th style="text-align: center;">{{ __('messages.grade_max') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -279,7 +279,7 @@
         @else
         <div class="empty-state">
             <i class="fa-regular fa-calendar-xmark" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
-            <p style="font-size: 1.1rem; font-weight: 600;">لا توجد امتحانات مجدولة حتى الآن</p>
+            <p style="font-size: 1.1rem; font-weight: 600;">{{ __('messages.no_exams_scheduled_yet') }}</p>
         </div>
         @endif
     </div>

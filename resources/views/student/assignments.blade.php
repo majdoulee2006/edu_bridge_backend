@@ -1,6 +1,6 @@
 @extends('layouts.student')
-@section('title', 'واجباتي')
-@section('subtitle', 'الواجبات والتسليمات الموزعة حسب المواد')
+@section('title', __('messages.my_assignments_title'))
+@section('subtitle', __('messages.my_assignments_subtitle'))
 
 @push('styles')
 <style>
@@ -35,16 +35,16 @@
         padding: 1.25rem;
         margin-bottom: 1rem;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        border-right: 4px solid var(--accent-color);
+        border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 4px solid var(--accent-color);
         transition: transform 0.2s, box-shadow 0.2s;
     }
     .assignment-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(0,0,0,0.08);
     }
-    .assignment-card.overdue   { border-right-color: #ef4444; }
-    .assignment-card.submitted { border-right-color: #3b82f6; }
-    .assignment-card.graded    { border-right-color: #22c55e; }
+    .assignment-card.overdue   { border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}-color: #ef4444; }
+    .assignment-card.submitted { border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}-color: #3b82f6; }
+    .assignment-card.graded    { border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}-color: #22c55e; }
 
     .badge { padding: 0.2rem 0.65rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; }
     .badge-pending  { background: hsl(30,70%,90%);  color: hsl(30,50%,30%); }
@@ -125,29 +125,29 @@
 <!-- Filter Tabs -->
 <div class="filter-tabs" style="display: flex; gap: 0.6rem; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
     <button class="filter-btn active" data-filter="all" style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
-        عرض الكل
+        {{ __('messages.view_all') }}
         <span class="filter-tab-count" style="background: rgba(0,0,0,0.08); font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $allCount }}</span>
     </button>
     <button class="filter-btn" data-filter="pending" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
-        نشط (بانتظار التسليم)
+        {{ __('messages.active_pending_submission') }}
         @if($pendingCount > 0)
             <span class="filter-tab-count" style="background: #ef4444; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $pendingCount }}</span>
         @endif
     </button>
     <button class="filter-btn" data-filter="submitted" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
-        تم التسليم
+        {{ __('messages.submitted_status') }}
         @if($submittedCount > 0)
             <span class="filter-tab-count" style="background: #3b82f6; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $submittedCount }}</span>
         @endif
     </button>
     <button class="filter-btn" data-filter="graded" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
-        تم التصحيح
+        {{ __('messages.graded_status') }}
         @if($gradedCount > 0)
             <span class="filter-tab-count" style="background: #22c55e; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $gradedCount }}</span>
         @endif
     </button>
     <button class="filter-btn" data-filter="overdue" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.45rem 1.1rem; border-radius: 2rem; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
-        منتهي
+        {{ __('messages.overdue_status') }}
         @if($overdueCount > 0)
             <span class="filter-tab-count" style="background: #64748b; color: #ffffff; font-size: 0.72rem; font-weight: 800; padding: 0.1rem 0.5rem; border-radius: 1rem;">{{ $overdueCount }}</span>
         @endif
@@ -181,14 +181,14 @@
                     </div>
                     <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.2rem; display: flex; align-items: center; gap: 0.4rem;">
                         <i class="fa-solid fa-chalkboard-user" style="color: var(--accent-color);"></i>
-                        <span><strong>المدرس:</strong> {{ $c->teacher_name }}</span>
+                        <span><strong>{{ __('messages.teacher_label') }}</strong> {{ $c->teacher_name }}</span>
                     </div>
                 </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.85rem;">
                 <span class="course-assign-count-badge" data-total="{{ $courseAssigns->count() }}" style="font-size: 0.8rem; font-weight: 700; background: var(--bg-primary); padding: 0.35rem 0.85rem; border-radius: 2rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
-                    {{ $courseAssigns->count() }} واجب{{ $courseAssigns->count() == 1 ? '' : 'ات' }}
+                    {{ $courseAssigns->count() }} {{ $courseAssigns->count() == 1 ? __('messages.assignment_word') : __('messages.assignments_word') }}
                 </span>
                 <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
                     <i id="chevron-{{ $c->course_id }}" class="fa-solid fa-chevron-down toggle-icon" style="transition: transform 0.3s ease; color: var(--text-secondary); transform: {{ $shouldExpand ? 'rotate(180deg)' : 'rotate(0deg)' }};"></i>
@@ -217,13 +217,13 @@
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
                             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                                 @if($isGraded)
-                                    <span class="badge badge-graded">تم التصحيح</span>
+                                    <span class="badge badge-graded">{{ __('messages.graded_status') }}</span>
                                 @elseif($isSubmitted)
-                                    <span class="badge badge-submitted">تم التسليم</span>
+                                    <span class="badge badge-submitted">{{ __('messages.submitted_status') }}</span>
                                 @elseif($isOverdue)
-                                    <span class="badge badge-late">منتهي</span>
+                                    <span class="badge badge-late">{{ __('messages.overdue_status') }}</span>
                                 @else
-                                    <span class="badge badge-pending">نشط</span>
+                                    <span class="badge badge-pending">{{ __('messages.active') }}</span>
                                 @endif
                                 <span style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">{{ $a->title }}</span>
                             </div>
@@ -241,60 +241,60 @@
                         </div>
 
                         <div style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-                            <span><i class="fa-solid fa-calendar" style="color: var(--accent-color);"></i> موعد التسليم: <strong>{{ $dueDate->format('Y-m-d H:i') }}</strong></span>
+                            <span><i class="fa-solid fa-calendar" style="color: var(--accent-color);"></i> {{ __('messages.due_date_label') }} <strong>{{ $dueDate->format('Y-m-d H:i') }}</strong></span>
                         </div>
 
                         @if($a->file_path ?? false)
                             <div style="margin-bottom: 0.75rem;">
-                                <a href="/storage/{{ $a->file_path }}" target="_blank" download="{{ $a->file_name ?? 'ملف_المعلم' }}"
+                                <a href="/storage/{{ $a->file_path }}" target="_blank" download="{{ $a->file_name ?? 'teacher_attachment' }}"
                                    style="display: inline-flex; align-items: center; gap: 0.4rem; color: #eab308; font-size: 0.82rem; font-weight: 700; text-decoration: none; background: rgba(234, 179, 8, 0.1); padding: 0.35rem 0.85rem; border-radius: 0.5rem;">
-                                    <i class="fa-solid fa-paperclip"></i> تحميل مرفق المعلم
+                                    <i class="fa-solid fa-paperclip"></i> {{ __('messages.download_teacher_attachment') }}
                                 </a>
                             </div>
                         @endif
 
                         @if($isGraded)
-                            <div style="background: var(--bg-secondary); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.85rem; color: #22c55e; font-weight: 700; border-right: 3px solid #22c55e; line-height: 1.5;">
-                                <i class="fa-solid fa-circle-check"></i> تم تصحيح وتقييم الواجب بنجاح
+                            <div style="background: var(--bg-secondary); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.85rem; color: #22c55e; font-weight: 700; border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 3px solid #22c55e; line-height: 1.5;">
+                                <i class="fa-solid fa-circle-check"></i> {{ __('messages.assignment_graded_successfully') }}
                                 @if($a->feedback)
                                     <div style="margin-top: 0.4rem; color: var(--text-secondary); font-weight: normal;">
-                                        <strong style="color: var(--text-primary);">ملاحظة المعلم:</strong> {{ $a->feedback }}
+                                        <strong style="color: var(--text-primary);">{{ __('messages.teacher_feedback_label') }}</strong> {{ $a->feedback }}
                                     </div>
                                 @endif
                             </div>
                         @elseif($a->submission_id)
-                            <div style="background: var(--bg-secondary); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.85rem; color: #3b82f6; font-weight: 700; border-right: 3px solid #3b82f6;">
+                            <div style="background: var(--bg-secondary); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.85rem; color: #3b82f6; font-weight: 700; border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 3px solid #3b82f6;">
                                 <i class="fa-solid fa-circle-check"></i>
-                                تم تسليم الواجب في {{ \Carbon\Carbon::parse($a->submitted_at)->format('Y-m-d H:i') }}
+                                {{ __('messages.submitted_on_date', ['date' => \Carbon\Carbon::parse($a->submitted_at)->format('Y-m-d H:i')]) }}
                                 @if($a->submission_file)
                                     <div style="margin-top: 0.4rem; font-weight: normal;">
-                                        <a href="/storage/{{ $a->submission_file }}" target="_blank" style="color: #eab308; text-decoration: none; font-weight: 700;">
-                                            <i class="fa-solid fa-paperclip"></i> الملف المرفق
+                                        <a href="/storage/{{ $a->submission_file }}" target="_blank" style="color: #eab308; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                            <i class="fa-solid fa-paperclip"></i> {{ __('messages.attached_file_label') }}
                                         </a>
                                     </div>
                                 @endif
                                 @if($a->solution_text)
                                     <div style="margin-top: 0.4rem; color: var(--text-primary); font-weight: normal; background: var(--bg-primary); padding: 0.5rem 0.75rem; border-radius: 0.5rem;">
-                                        <strong>نص الحل:</strong> {{ $a->solution_text }}
+                                        <strong>{{ __('messages.solution_text_label') }}</strong> {{ $a->solution_text }}
                                     </div>
                                 @endif
                                 @if($a->student_notes)
                                     <div style="margin-top: 0.4rem; color: var(--text-secondary); font-weight: normal;">
-                                        <strong>ملاحظاتك:</strong> {{ $a->student_notes }}
+                                        <strong>{{ __('messages.your_notes_label') }}</strong> {{ $a->student_notes }}
                                     </div>
                                 @endif
                             </div>
                         @elseif(!$isOverdue)
                             <button onclick="openSubmitModal({{ $a->assignment_id }}, '{{ addslashes($a->title) }}')"
                                 style="background: linear-gradient(135deg, #ffe600, #facc15); color: #111827; border: none; padding: 0.6rem 1.4rem; border-radius: 0.75rem; font-size: 0.88rem; font-weight: 800; cursor: pointer; font-family: inherit; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.35); transition: transform 0.2s;">
-                                <i class="fa-solid fa-upload"></i> تسليم الواجب
+                                <i class="fa-solid fa-upload"></i> {{ __('messages.submit_assignment_now') }}
                             </button>
                         @endif
                     </div>
                 @empty
                     <div class="course-empty-msg" style="text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.9rem;">
                         <i class="fa-solid fa-folder-open" style="font-size: 2rem; opacity: 0.4; display: block; margin-bottom: 0.5rem;"></i>
-                        لا توجد واجبات مضافة لهذه المادة حالياً
+                        {{ __('messages.no_assignments_in_course') }}
                     </div>
                 @endforelse
             </div>
@@ -303,7 +303,7 @@
 @empty
     <div style="text-align: center; padding: 3rem; background: var(--bg-secondary); border-radius: 1.25rem; color: var(--text-secondary);">
         <i class="fa-solid fa-file-circle-check" style="font-size: 2.5rem; opacity: 0.4; display: block; margin-bottom: 0.75rem;"></i>
-        لا توجد مواد مسجلة حالياً
+        {{ __('messages.no_courses_registered') }}
     </div>
 @endforelse
 
@@ -313,7 +313,7 @@
         <div class="modal-header">
             <h3 style="font-weight: 800; font-size: 1.05rem; display: flex; align-items: center; gap: 0.4rem;">
                 <span style="color: #eab308;">🔑</span>
-                تسليم الواجب: <span id="modal-assignment-title"></span>
+                {{ __('messages.submit_assignment_now') }}: <span id="modal-assignment-title"></span>
             </h3>
             <button onclick="closeSubmitModal()" style="background: none; border: none; font-size: 1.3rem; color: var(--text-secondary); cursor: pointer;">
                 <i class="fa-solid fa-xmark"></i>
@@ -322,23 +322,23 @@
         <form id="submit-form" method="POST" enctype="multipart/form-data">
             @csrf
             
-            <div style="font-size: 0.78rem; color: #ef4444; font-weight: 700; margin-bottom: 0.85rem; background: rgba(239, 68, 68, 0.08); padding: 0.4rem 0.75rem; border-radius: 0.5rem; border-right: 3px solid #ef4444;">
-                * يجب كتابة نص الحل أو إرفاق ملف على الأقل لإتمام التسليم.
+            <div style="font-size: 0.78rem; color: #ef4444; font-weight: 700; margin-bottom: 0.85rem; background: rgba(239, 68, 68, 0.08); padding: 0.4rem 0.75rem; border-radius: 0.5rem; border-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}: 3px solid #ef4444;">
+                {{ __('messages.submit_assignment_rule_hint') }}
             </div>
 
             {{-- 1. نص الحل / الإجابة الكتابية --}}
-            <div style="margin-bottom: 1rem; text-align: right;">
+            <div style="margin-bottom: 1rem; text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};">
                 <label for="solution_text" style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.4rem;">
-                    <i class="fa-solid fa-pen-to-square" style="color: var(--accent-color); margin-left: 0.3rem;"></i> نص الحل / الإجابة
+                    <i class="fa-solid fa-pen-to-square" style="color: var(--accent-color); margin-{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}: 0.3rem;"></i> {{ __('messages.solution_text_input_label') }}
                 </label>
-                <textarea id="solution_text" name="solution_text" rows="3" placeholder="اكتب إجابتك أو نص الحل هنا..."
+                <textarea id="solution_text" name="solution_text" rows="3" placeholder="{{ __('messages.solution_text_ph') }}"
                     style="width: 100%; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 0.75rem; font-family: inherit; font-size: 0.88rem; outline: none; resize: vertical; box-sizing: border-box; transition: border-color 0.2s;"></textarea>
             </div>
 
             {{-- 2. منطقة رفع الملف --}}
-            <div style="margin-bottom: 1rem; text-align: right;">
+            <div style="margin-bottom: 1rem; text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};">
                 <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.4rem;">
-                    <i class="fa-solid fa-paperclip" style="color: var(--accent-color); margin-left: 0.3rem;"></i> إرفاق ملف الحل
+                    <i class="fa-solid fa-paperclip" style="color: var(--accent-color); margin-{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}: 0.3rem;"></i> {{ __('messages.attach_solution_file_label') }}
                 </label>
                 <div class="upload-area" onclick="document.getElementById('submit-file').click()" style="border: 2px dashed #cbd5e1; border-radius: 1rem; padding: 1.25rem 1rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg-primary);">
                     <input type="file" id="submit-file" name="file"
@@ -347,23 +347,23 @@
                     <div style="width: 52px; height: 52px; background: rgba(234, 179, 8, 0.18); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.6rem auto;">
                         <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.6rem; color: #eab308;"></i>
                     </div>
-                    <div id="file-name-display" style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">اضغط لاختيار ملف</div>
-                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">PDF, DOC, JPG, ZIP — حتى 50 ميجابايت</div>
+                    <div id="file-name-display" style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">{{ __('messages.click_to_select_file') }}</div>
+                    <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ __('messages.allowed_files_hint') }}</div>
                 </div>
             </div>
 
             {{-- 3. ملاحظات إضافية للمدرس --}}
-            <div style="margin-bottom: 1.25rem; text-align: right;">
+            <div style="margin-bottom: 1.25rem; text-align: {{ app()->getLocale() === 'ar' ? 'right' : 'left' }};">
                 <label for="student_notes" style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.4rem;">
-                    <i class="fa-solid fa-comment-dots" style="color: var(--accent-color); margin-left: 0.3rem;"></i> ملاحظات للمدرس (اختياري)
+                    <i class="fa-solid fa-comment-dots" style="color: var(--accent-color); margin-{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}: 0.3rem;"></i> {{ __('messages.notes_for_teacher_label') }}
                 </label>
-                <input type="text" id="student_notes" name="student_notes" placeholder="أضف أي ملاحظة ترغب بإرسالها للمدرس..."
+                <input type="text" id="student_notes" name="student_notes" placeholder="{{ __('messages.notes_for_teacher_ph') }}"
                     style="width: 100%; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 0.65rem 0.85rem; font-family: inherit; font-size: 0.85rem; outline: none; box-sizing: border-box;">
             </div>
 
             {{-- 4. زر التسليم المتوهج --}}
             <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, #ffe600, #facc15); color: #111827; border: none; padding: 0.85rem 1.5rem; border-radius: 1rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit; width: 100%; box-shadow: 0 8px 25px rgba(250, 204, 21, 0.45); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                تسليم الآن <i class="fa-solid fa-paper-plane"></i>
+                {{ __('messages.submit_now_btn') }} <i class="fa-solid fa-paper-plane"></i>
             </button>
         </form>
     </div>
@@ -373,6 +373,12 @@
 
 @push('scripts')
 <script>
+const isArLocale = {{ app()->getLocale() === 'ar' ? 'true' : 'false' }};
+const selectFileDefaultText = @json(__('messages.click_to_select_file'));
+const validationAlertMsg = @json(__('messages.submit_validation_alert'));
+const assignmentSingular = @json(__('messages.assignment_word'));
+const assignmentPlural = @json(__('messages.assignments_word'));
+
 function toggleAccordion(bodyId, iconId) {
     const body = document.getElementById(bodyId);
     const icon = document.getElementById(iconId);
@@ -401,7 +407,7 @@ function openSubmitModal(id, title) {
     const fileInput = document.getElementById('submit-file');
     if (fileInput) fileInput.value = '';
     const display = document.getElementById('file-name-display');
-    if (display) display.textContent = 'اضغط لاختيار ملف';
+    if (display) display.textContent = selectFileDefaultText;
 }
 function closeSubmitModal() {
     document.getElementById('submit-modal').classList.remove('active');
@@ -409,7 +415,7 @@ function closeSubmitModal() {
 }
 function updateFileName(input) {
     const display = document.getElementById('file-name-display');
-    display.textContent = input.files[0] ? input.files[0].name : 'اضغط لاختيار ملف';
+    display.textContent = input.files[0] ? input.files[0].name : selectFileDefaultText;
 }
 document.getElementById('submit-modal').addEventListener('click', function(e) {
     if (e.target === this) closeSubmitModal();
@@ -423,7 +429,7 @@ document.getElementById('submit-form').addEventListener('submit', function(e) {
     
     if (!solText && !hasFile) {
         e.preventDefault();
-        alert('⚠️ يرجى كتابة نص الحل أو إرفاق ملف على الأقل لتسليم الواجب.');
+        alert('⚠️ ' + validationAlertMsg);
         return false;
     }
 });
@@ -463,9 +469,9 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
             if (countBadge) {
                 if (filter === 'all') {
                     const total = parseInt(countBadge.getAttribute('data-total') || '0');
-                    countBadge.textContent = total + (total === 1 ? ' واجب' : ' واجبات');
+                    countBadge.textContent = total + ' ' + (total === 1 ? assignmentSingular : assignmentPlural);
                 } else {
-                    countBadge.textContent = visibleCount + (visibleCount === 1 ? ' واجب' : ' واجبات');
+                    countBadge.textContent = visibleCount + ' ' + (visibleCount === 1 ? assignmentSingular : assignmentPlural);
                 }
             }
 
@@ -499,3 +505,4 @@ if (initialActive) {
 }
 </script>
 @endpush
+

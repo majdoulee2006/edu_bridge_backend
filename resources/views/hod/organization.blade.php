@@ -1,6 +1,6 @@
 @extends('layouts.hod')
 
-@section('title', 'التنظيم')
+@section('title', __('messages.organization'))
 
 @push('styles')
 <style>
@@ -175,20 +175,20 @@
 @endpush
 
 @section('content')
-    <p class="page-subtitle">إدارة الجداول الأكاديمية</p>
+    <p class="page-subtitle">{{ __('messages.manage_academic_schedules') }}</p>
 
     <div class="type-switcher">
-        <button class="type-btn active" id="btn-schedules" onclick="switchTab('schedules')"><i class="fa-solid fa-graduation-cap"></i> جدول دراسي</button>
-        <button class="type-btn" id="btn-exams" onclick="switchTab('exams')"><i class="fa-solid fa-file-pen"></i> جدول امتحاني</button>
-        <button class="type-btn" id="btn-weights" onclick="switchTab('weights')"><i class="fa-solid fa-balance-scale"></i> تثقيلات المواد</button>
+        <button class="type-btn active" id="btn-schedules" onclick="switchTab('schedules')"><i class="fa-solid fa-graduation-cap"></i> {{ __('messages.study_schedule_tab') }}</button>
+        <button class="type-btn" id="btn-exams" onclick="switchTab('exams')"><i class="fa-solid fa-file-pen"></i> {{ __('messages.exam_schedule_tab') }}</button>
+        <button class="type-btn" id="btn-weights" onclick="switchTab('weights')"><i class="fa-solid fa-balance-scale"></i> {{ __('messages.course_weights_tab') }}</button>
     </div>
 
     <!-- Weekly Schedule Tab Content -->
     <div id="tab-schedules" class="tab-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h4 style="font-weight: 800; font-size: 1.25rem;">الجدول الدراسي الأسبوعي</h4>
+            <h4 style="font-weight: 800; font-size: 1.25rem;">{{ __('messages.weekly_study_schedule') }}</h4>
             <button onclick="openModal('schedule-modal')" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fa-solid fa-plus"></i> إضافة حصة دراسية
+                <i class="fa-solid fa-plus"></i> {{ __('messages.add_schedule_slot') }}
             </button>
         </div>
 
@@ -202,20 +202,20 @@
 
         <!-- Years Navigation -->
         <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-            <button class="year-btn active" onclick="selectYear('سنة أولى', this)">سنة أولى</button>
-            <button class="year-btn" onclick="selectYear('سنة ثانية', this)">سنة ثانية</button>
+            <button class="year-btn active" onclick="selectYear('سنة أولى', this)">{{ __('messages.first_year') }}</button>
+            <button class="year-btn" onclick="selectYear('سنة ثانية', this)">{{ __('messages.second_year') }}</button>
         </div>
 
         <div style="overflow-x: auto; background-color: var(--bg-secondary); border-radius: 1.5rem; box-shadow: var(--shadow); padding: 1rem;">
             <table style="width: 100%; border-collapse: collapse; text-align: center; min-width: 800px;">
                 <thead>
                     <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.9rem;">
-                        <th style="padding: 1rem; text-align: right; width: 10%;">اليوم / الحصة</th>
-                        <th style="padding: 1rem; width: 18%;">الأولى<br><small>08:00 - 09:30</small></th>
-                        <th style="padding: 1rem; width: 18%;">الثانية<br><small>09:30 - 11:00</small></th>
-                        <th style="padding: 1rem; width: 18%;">الثالثة<br><small>11:00 - 12:30</small></th>
-                        <th style="padding: 1rem; width: 18%;">الرابعة<br><small>12:30 - 14:00</small></th>
-                        <th style="padding: 1rem; width: 18%;">الخامسة<br><small>14:00 - 15:30</small></th>
+                        <th style="padding: 1rem; text-align: right; width: 10%;">{{ __('messages.day_period') }}</th>
+                        <th style="padding: 1rem; width: 18%;">{{ __('messages.slot_1') }}<br><small>08:00 - 09:30</small></th>
+                        <th style="padding: 1rem; width: 18%;">{{ __('messages.slot_2') }}<br><small>09:30 - 11:00</small></th>
+                        <th style="padding: 1rem; width: 18%;">{{ __('messages.slot_3') }}<br><small>11:00 - 12:30</small></th>
+                        <th style="padding: 1rem; width: 18%;">{{ __('messages.slot_4') }}<br><small>12:30 - 14:00</small></th>
+                        <th style="padding: 1rem; width: 18%;">{{ __('messages.slot_5') }}<br><small>14:00 - 15:30</small></th>
                     </tr>
                 </thead>
                 <tbody id="grid-body">
@@ -228,8 +228,8 @@
     <!-- Course Weights Tab Content -->
     <div id="tab-weights" class="tab-content" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h4 style="font-weight: 800; font-size: 1.25rem;">تثقيلات المواد</h4>
-            <span style="color: var(--text-secondary); font-size: 0.9rem;">إدارة الأوزان (تثقيل) المخصصة لكل مادة لحساب المعدل</span>
+            <h4 style="font-weight: 800; font-size: 1.25rem;">{{ __('messages.course_weights_tab') }}</h4>
+            <span style="color: var(--text-secondary); font-size: 0.9rem;">{{ __('messages.weights_mgmt_desc') }}</span>
         </div>
 
         {{-- فلتر القسم --}}
@@ -242,8 +242,8 @@
 
         {{-- فلتر السنة --}}
         <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-            <button class="year-btn active" onclick="selectWeightYear('سنة أولى', this)">سنة أولى</button>
-            <button class="year-btn" onclick="selectWeightYear('سنة ثانية', this)">سنة ثانية</button>
+            <button class="year-btn active" onclick="selectWeightYear('سنة أولى', this)">{{ __('messages.first_year') }}</button>
+            <button class="year-btn" onclick="selectWeightYear('سنة ثانية', this)">{{ __('messages.second_year') }}</button>
         </div>
 
         <div style="background-color: var(--bg-secondary); border-radius: 1.5rem; box-shadow: var(--shadow); padding: 1.5rem;">
@@ -253,7 +253,7 @@
                         <div>
                             <h5 style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">{{ $course->title }}</h5>
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <span style="font-size: 0.75rem; background: var(--bg-secondary); padding: 0.2rem 0.6rem; border-radius: 1rem; color: var(--text-secondary);"><i class="fa-solid fa-clock"></i> {{ $course->hours }} ساعة</span>
+                                <span style="font-size: 0.75rem; background: var(--bg-secondary); padding: 0.2rem 0.6rem; border-radius: 1rem; color: var(--text-secondary);"><i class="fa-solid fa-clock"></i> {{ $course->hours }} {{ __('messages.hour') ?? 'ساعة' }}</span>
                                 <span style="font-size: 0.75rem; background: var(--bg-secondary); padding: 0.2rem 0.6rem; border-radius: 1rem; color: var(--text-secondary);"><i class="fa-solid fa-layer-group"></i> {{ $course->semester_id }}</span>
                             </div>
                         </div>
@@ -261,7 +261,7 @@
                         <form action="{{ route('hod.organization.course_weight', $course->course_id) }}" method="POST" style="display: flex; gap: 0.5rem; align-items: flex-end;">
                             @csrf
                             <div style="flex: 1;">
-                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.4rem;">تثقيل المادة</label>
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.4rem;">{{ __('messages.course_weight_label') }}</label>
                                 <input type="number" name="weight" value="{{ $course->weight ?? 1 }}" min="1" required style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); font-weight: 700; text-align: center;">
                             </div>
                             <button type="submit" style="background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.5rem; padding: 0.6rem 1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
@@ -272,7 +272,7 @@
                 @empty
                     <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-secondary);">
                         <i class="fa-solid fa-book-open" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                        <p style="font-weight: 700;">لا توجد مواد دراسية متوفرة حالياً</p>
+                        <p style="font-weight: 700;">{{ __('messages.no_courses_available') }}</p>
                     </div>
                 @endforelse
             </div>
@@ -282,9 +282,9 @@
     <!-- Exams Tab Content -->
     <div id="tab-exams" class="tab-content" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h4 style="font-weight: 800; font-size: 1.25rem;">الجدول الامتحاني</h4>
+            <h4 style="font-weight: 800; font-size: 1.25rem;">{{ __('messages.exam_schedule_tab') }}</h4>
             <button onclick="openModal('exam-modal')" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; padding: 0.5rem 1rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fa-solid fa-plus"></i> إضافة امتحان
+                <i class="fa-solid fa-plus"></i> {{ __('messages.add_exam') }}
             </button>
         </div>
 
@@ -298,19 +298,19 @@
 
         {{-- فلتر السنة --}}
         <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-            <button class="year-btn active" onclick="selectExamYear('سنة أولى', this)">سنة أولى</button>
-            <button class="year-btn" onclick="selectExamYear('سنة ثانية', this)">سنة ثانية</button>
+            <button class="year-btn active" onclick="selectExamYear('سنة أولى', this)">{{ __('messages.first_year') }}</button>
+            <button class="year-btn" onclick="selectExamYear('سنة ثانية', this)">{{ __('messages.second_year') }}</button>
         </div>
 
         <div style="overflow-x: auto; background-color: var(--bg-secondary); border-radius: 1.5rem; box-shadow: var(--shadow); padding: 1rem;">
             <table style="width: 100%; border-collapse: collapse; text-align: right;">
                 <thead>
                     <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary); font-size: 0.9rem;">
-                        <th style="padding: 1rem;">المادة</th>
-                        <th style="padding: 1rem;">التاريخ والتوقيت</th>
-                        <th style="padding: 1rem;">القاعة</th>
-                        <th style="padding: 1rem; text-align: center;">الدرجة</th>
-                        <th style="padding: 1rem; text-align: center;">إجراء</th>
+                        <th style="padding: 1rem;">{{ __('messages.course') ?? 'المادة' }}</th>
+                        <th style="padding: 1rem;">{{ __('messages.date_and_time') }}</th>
+                        <th style="padding: 1rem;">{{ __('messages.room_or_hall') }}</th>
+                        <th style="padding: 1rem; text-align: center;">{{ __('messages.max_score_label') }}</th>
+                        <th style="padding: 1rem; text-align: center;">{{ __('messages.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody id="exam-table-body">
@@ -323,27 +323,27 @@
     <!-- Schedule Modal -->
     <div id="schedule-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">إضافة حصة دراسية جديدة</h4>
+            <h4 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">{{ __('messages.add_new_schedule_slot') }}</h4>
             <form action="{{ route('hod.organization.store_schedule') }}" method="POST">
                 @csrf
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">المادة الدراسية</label>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.course') ?? 'المادة الدراسية' }}</label>
                     <select id="modal-course-select" name="course_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        <option value="">-- اختر المادة --</option>
+                        <option value="">{{ __('messages.select_course_option') }}</option>
                     </select>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الفصل الدراسي</label>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.academic_semester') }}</label>
                     <select id="modal-semester-select" name="semester" onchange="populateScheduleModal()" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        <option value="1">الفصل الأول</option>
-                        <option value="2">الفصل الثاني</option>
+                        <option value="1">{{ __('messages.first_semester') }}</option>
+                        <option value="2">{{ __('messages.second_semester') }}</option>
                     </select>
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القسم</label>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.department') }}</label>
                         <select name="department" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                             <option value="اتصالات">اتصالات</option>
                             <option value="معلوماتية">معلوماتية</option>
@@ -352,45 +352,45 @@
                         </select>
                     </div>
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">السنة الدراسية</label>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.academic_year') }}</label>
                         <select name="year" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                            <option value="سنة أولى">سنة أولى</option>
-                            <option value="سنة ثانية">سنة ثانية</option>
+                            <option value="سنة أولى">{{ __('messages.first_year') }}</option>
+                            <option value="سنة ثانية">{{ __('messages.second_year') }}</option>
                         </select>
                     </div>
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">اليوم</label>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.day_period') }}</label>
                         <select name="day" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                            <option value="Sunday">الأحد</option>
-                            <option value="Monday">الاثنين</option>
-                            <option value="Tuesday">الثلاثاء</option>
-                            <option value="Wednesday">الأربعاء</option>
-                            <option value="Thursday">الخميس</option>
+                            <option value="Sunday">{{ __('messages.day_sunday') }}</option>
+                            <option value="Monday">{{ __('messages.day_monday') }}</option>
+                            <option value="Tuesday">{{ __('messages.day_tuesday') }}</option>
+                            <option value="Wednesday">{{ __('messages.day_wednesday') }}</option>
+                            <option value="Thursday">{{ __('messages.day_thursday') }}</option>
                         </select>
                     </div>
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">رقم الحصة</label>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.period') ?? 'رقم الحصة' }}</label>
                         <select name="period" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                            <option value="1">الحصة الأولى (8:00 - 9:30)</option>
-                            <option value="2">الحصة الثانية (9:30 - 11:00)</option>
-                            <option value="3">الحصة الثالثة (11:00 - 12:30)</option>
-                            <option value="4">الحصة الرابعة (12:30 - 14:00)</option>
-                            <option value="5">الحصة الخامسة (14:00 - 15:30)</option>
+                            <option value="1">{{ __('messages.slot_1') }} (8:00 - 9:30)</option>
+                            <option value="2">{{ __('messages.slot_2') }} (9:30 - 11:00)</option>
+                            <option value="3">{{ __('messages.slot_3') }} (11:00 - 12:30)</option>
+                            <option value="4">{{ __('messages.slot_4') }} (12:30 - 14:00)</option>
+                            <option value="5">{{ __('messages.slot_5') }} (14:00 - 15:30)</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القاعة</label>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.room_or_hall') }}</label>
                     <input type="text" name="room" placeholder="مثال: A1" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                 </div>
 
                 <div style="display: flex; gap: 1rem;">
-                    <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">حفظ</button>
-                    <button type="button" onclick="closeModal('schedule-modal')" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); flex: 1; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">إلغاء</button>
+                    <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">{{ __('messages.save') }}</button>
+                    <button type="button" onclick="closeModal('schedule-modal')" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); flex: 1; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -399,11 +399,11 @@
     <!-- Edit Exam Modal -->
     <div id="edit-exam-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">تعديل الامتحان</h4>
+            <h4 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">{{ __('messages.edit_exam_title') }}</h4>
             <form id="edit-exam-form" method="POST">
                 @csrf
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">المادة الدراسية</label>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">{{ __('messages.course') ?? 'المادة الدراسية' }}</label>
                     <select name="course_id" id="edit-exam-course" style="width:100%; padding:0.75rem; border-radius:0.75rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
                         @foreach($courses as $c)
                             <option value="{{ $c->course_id }}">{{ $c->title }}</option>
@@ -411,22 +411,22 @@
                     </select>
                 </div>
                 <div style="margin-bottom: 1rem;">
-                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">التاريخ والوقت</label>
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">{{ __('messages.date_and_time') }}</label>
                     <input type="datetime-local" name="exam_date" id="edit-exam-date" style="width:100%; padding:0.75rem; border-radius:0.75rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
                 </div>
                 <div style="display:flex; gap:1rem; margin-bottom:1.5rem;">
                     <div style="flex:1;">
-                        <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">القاعة</label>
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">{{ __('messages.room_or_hall') }}</label>
                         <input type="text" name="room" id="edit-exam-room" style="width:100%; padding:0.75rem; border-radius:0.75rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
                     </div>
                     <div style="flex:1;">
-                        <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">الدرجة الكبرى</label>
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:bold; color:var(--text-secondary);">{{ __('messages.max_score_label') }}</label>
                         <input type="number" name="max_score" id="edit-exam-score" style="width:100%; padding:0.75rem; border-radius:0.75rem; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
                     </div>
                 </div>
                 <div style="display:flex; gap:1rem;">
-                    <button type="submit" style="background:var(--accent-color); color:#1a1a1a; flex:1; padding:0.75rem; border-radius:0.75rem; border:none; font-weight:700; cursor:pointer;">حفظ</button>
-                    <button type="button" onclick="closeModal('edit-exam-modal')" style="background:transparent; border:1px solid var(--border-color); color:var(--text-primary); flex:1; padding:0.75rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">إلغاء</button>
+                    <button type="submit" style="background:var(--accent-color); color:#1a1a1a; flex:1; padding:0.75rem; border-radius:0.75rem; border:none; font-weight:700; cursor:pointer;">{{ __('messages.save') }}</button>
+                    <button type="button" onclick="closeModal('edit-exam-modal')" style="background:transparent; border:1px solid var(--border-color); color:var(--text-primary); flex:1; padding:0.75rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -435,25 +435,25 @@
     <!-- Exam Modal -->
     <div id="exam-modal" class="modal-overlay">
         <div class="modal-card">
-            <h4 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">إضافة امتحان جديد</h4>
+            <h4 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">{{ __('messages.add_new_exam_title') }}</h4>
             <form action="{{ route('hod.organization.store_exam') }}" method="POST">
                 @csrf
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">اسم الامتحان</label>
-                    <input type="text" name="exam_name" placeholder="مثال: الامتحان النصفي" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.exam_name_label') }}</label>
+                    <input type="text" name="exam_name" placeholder="{{ __('messages.exam_name_placeholder') }}" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الفصل الدراسي</label>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.academic_semester') }}</label>
                     <select id="exam-modal-semester-select" name="semester" onchange="populateExamModal()" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        <option value="1">الفصل الأول</option>
-                        <option value="2">الفصل الثاني</option>
+                        <option value="1">{{ __('messages.first_semester') }}</option>
+                        <option value="2">{{ __('messages.second_semester') }}</option>
                     </select>
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القسم</label>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.department') }}</label>
                         <select id="exam-modal-dept-select" name="department" onchange="populateExamModal()" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                             <option value="اتصالات">اتصالات</option>
                             <option value="معلوماتية">معلوماتية</option>
@@ -462,40 +462,40 @@
                         </select>
                     </div>
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">السنة الدراسية</label>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.academic_year') }}</label>
                         <select id="exam-modal-year-select" name="year" onchange="populateExamModal()" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                            <option value="سنة أولى">سنة أولى</option>
-                            <option value="سنة ثانية">سنة ثانية</option>
+                            <option value="سنة أولى">{{ __('messages.first_year') }}</option>
+                            <option value="سنة ثانية">{{ __('messages.second_year') }}</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">المادة الدراسية</label>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.course') ?? 'المادة الدراسية' }}</label>
                     <select id="exam-modal-course-select" name="course_id" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
-                        <option value="">-- اختر المادة --</option>
+                        <option value="">{{ __('messages.select_course_option') }}</option>
                     </select>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">تاريخ ووقت الامتحان</label>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.date_and_time') }}</label>
                     <input type="datetime-local" name="exam_date" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">القاعة</label>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.room_or_hall') }}</label>
                         <input type="text" name="room" placeholder="مثال: مدرج 2" style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                     </div>
                     <div class="form-group" style="flex: 1;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">الدرجة الكبرى</label>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-secondary);">{{ __('messages.max_score_label') }}</label>
                         <input type="number" name="max_score" value="100" required style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
                     </div>
                 </div>
 
                 <div style="display: flex; gap: 1rem;">
-                    <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">حفظ</button>
-                    <button type="button" onclick="closeModal('exam-modal')" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); flex: 1; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">إلغاء</button>
+                    <button type="submit" class="btn" style="background-color: var(--accent-color); color: #1a1a1a; flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; font-weight: 700; cursor: pointer; font-size: 1rem;">{{ __('messages.save') }}</button>
+                    <button type="button" onclick="closeModal('exam-modal')" class="btn" style="background-color: transparent; border: 1px solid var(--border-color); color: var(--text-primary); flex: 1; padding: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem;">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -533,7 +533,13 @@
         
         const classGroup = currentDept + ' - ' + currentYear;
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-        const dayNames = {'Sunday':'الأحد', 'Monday':'الاثنين', 'Tuesday':'الثلاثاء', 'Wednesday':'الأربعاء', 'Thursday':'الخميس'};
+        const dayNames = {
+            'Sunday': '{{ __('messages.day_sunday') }}',
+            'Monday': '{{ __('messages.day_monday') }}',
+            'Tuesday': '{{ __('messages.day_tuesday') }}',
+            'Wednesday': '{{ __('messages.day_wednesday') }}',
+            'Thursday': '{{ __('messages.day_thursday') }}'
+        };
         const periodStarts = ['08:00:00', '09:30:00', '11:00:00', '12:30:00', '14:00:00'];
 
         days.forEach(day => {
@@ -563,11 +569,11 @@
                     td.innerHTML = `
                         <div style="background-color: #eff6ff; padding: 0.75rem; border-radius: 0.5rem; border-right: 3px solid #3b82f6; text-align: right; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                             <div style="font-weight: 800; color: #1e40af; font-size: 0.95rem; margin-bottom: 0.25rem;">${sch.course_title}</div>
-                            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.25rem;"><i class="fa-solid fa-user-tie"></i> ${sch.teacher_name || 'غير محدد'}</div>
-                            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem;"><i class="fa-solid fa-door-open"></i> قاعة: ${sch.room}</div>
-                            <form action="/hod/organization/schedule/delete/${sch.schedule_id}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف هذه الحصة؟')">
+                            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.25rem;"><i class="fa-solid fa-user-tie"></i> ${sch.teacher_name || '{{ __('messages.unspecified') }}'}</div>
+                            <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem;"><i class="fa-solid fa-door-open"></i> {{ __('messages.room_or_hall') }}: ${sch.room}</div>
+                            <form action="/hod/organization/schedule/delete/${sch.schedule_id}" method="POST" onsubmit="return confirm('{{ __('messages.delete_slot_confirm') }}')">
                                 <input type="hidden" name="_token" value="${csrfToken}">
-                                <button type="submit" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size: 0.8rem; padding: 0;"><i class="fa-solid fa-trash-can"></i> حذف</button>
+                                <button type="submit" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size: 0.8rem; padding: 0;"><i class="fa-solid fa-trash-can"></i> {{ __('messages.delete') }}</button>
                             </form>
                         </div>
                     `;
@@ -605,7 +611,7 @@
         const filtered = allExams.filter(e => !e.class_group || e.class_group === group || e.class_group === '');
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="padding:2rem; text-align:center; color:var(--text-secondary);">لا توجد امتحانات لهذا القسم والسنة.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="padding:2rem; text-align:center; color:var(--text-secondary);">{{ __('messages.no_exams_for_dept_year') }}</td></tr>`;
             return;
         }
 
@@ -623,13 +629,13 @@
                     <div style="display:flex; gap:0.5rem; justify-content:center;">
                         <button onclick="openEditExam(${JSON.stringify(e).replace(/"/g,'&quot;')})"
                                 style="background:#eff6ff; border:none; color:#1d4ed8; border-radius:0.5rem; padding:0.35rem 0.65rem; cursor:pointer; font-size:0.8rem; font-weight:700;">
-                            <i class="fa-solid fa-pen"></i> تعديل
+                            <i class="fa-solid fa-pen"></i> {{ __('messages.edit') }}
                         </button>
                         <form action="/hod/organization/exam/delete/${e.exam_id}" method="POST"
-                              onsubmit="return confirm('حذف هذا الامتحان؟')" style="margin:0;">
+                              onsubmit="return confirm('{{ __('messages.delete_exam_confirm') }}')" style="margin:0;">
                             <input type="hidden" name="_token" value="${csrfToken}">
                             <button type="submit" style="background:#fef2f2; border:none; color:#dc2626; border-radius:0.5rem; padding:0.35rem 0.65rem; cursor:pointer; font-size:0.8rem; font-weight:700;">
-                                <i class="fa-solid fa-trash"></i> حذف
+                                <i class="fa-solid fa-trash"></i> {{ __('messages.delete') }}
                             </button>
                         </form>
                     </div>
@@ -641,7 +647,7 @@
     function formatDate(d) {
         if (!d) return '-';
         const dt = new Date(d);
-        return dt.toLocaleDateString('ar-SA') + ' ' + dt.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'});
+        return dt.toLocaleDateString('{{ app()->getLocale() == "ar" ? "ar-SA" : "en-US" }}') + ' ' + dt.toLocaleTimeString('{{ app()->getLocale() == "ar" ? "ar-SA" : "en-US" }}', {hour:'2-digit', minute:'2-digit'});
     }
 
     function openEditExam(exam) {
@@ -688,7 +694,7 @@
         const courseSelect = document.getElementById('modal-course-select');
         const semesterSelect = document.getElementById('modal-semester-select');
 
-        courseSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+        courseSelect.innerHTML = '<option value="">{{ __('messages.select_course_option') }}</option>';
 
         // تحويل السنة إلى رقم (حسب قاعدة البيانات)
         const yearInt = currentYear === 'سنة أولى' ? 1 : (currentYear === 'سنة ثانية' ? 2 : 3);
@@ -710,7 +716,7 @@
         const deptSelect = document.getElementById('exam-modal-dept-select');
         const yearSelect = document.getElementById('exam-modal-year-select');
 
-        courseSelect.innerHTML = '<option value="">-- اختر المادة --</option>';
+        courseSelect.innerHTML = '<option value="">{{ __('messages.select_course_option') }}</option>';
 
         const yearInt = yearSelect.value === 'سنة أولى' ? 1 : (yearSelect.value === 'سنة ثانية' ? 2 : 3);
         const semesterInt = parseInt(semesterSelect.value);
@@ -779,7 +785,7 @@
                 emptyState.style.textAlign = 'center';
                 emptyState.style.padding = '3rem';
                 emptyState.style.color = 'var(--text-secondary)';
-                emptyState.innerHTML = '<i class="fa-solid fa-book-open" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i><p style="font-weight: 700;">لا توجد مواد دراسية متوفرة حالياً</p>';
+                emptyState.innerHTML = '<i class="fa-solid fa-book-open" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;"></i><p style="font-weight: 700;">{{ __('messages.no_courses_available') }}</p>';
                 grid.appendChild(emptyState);
             }
             emptyState.style.display = 'block';
