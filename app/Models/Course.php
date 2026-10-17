@@ -22,6 +22,12 @@ class Course extends Model
         'semester_id',
     ];
 
+    // الفصل الدراسي الذي تتبع له المادة
+    public function semester()
+    {
+        return $this->belongsTo(Semester::class, 'semester_id', 'semester_id');
+    }
+
     // علاقة المادة بالمعلمين (Many to Many)
     public function teachers()
     {
