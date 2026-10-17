@@ -1997,7 +1997,7 @@ class TeacherController extends Controller
     public function getExams(Request $request)
     {
         $teacher   = $request->user()->teacher;
-        $courseIds = $teacher->courses()->pluck('course_id');
+        $courseIds = $teacher->courses()->pluck('courses.course_id');
 
         $exams = \App\Models\Exam::whereIn('course_id', $courseIds)
             ->with('course')
