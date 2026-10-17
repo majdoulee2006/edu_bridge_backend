@@ -629,7 +629,17 @@ class AdminController extends Controller
 
     public function getDepartments(Request $request)
     {
-        $departments = Department::withCount('courses')->get();
+        // جدول course_departments لم يعد موجوداً: ارتباط المادة بالقسم يتم عبر البرامج (course_program → programs.department_id)
+        $counts = \DB::table('programs')
+            ->join('course_program', 'programs.id', '=', 'course_program.program_id')
+            ->select('programs.department_id', \DB::raw('COUNT(DISTINCT course_program.course_id) as c'))
+            ->groupBy('programs.department_id')
+            ->pluck('c', 'department_id');
+
+        $departments = Department::all()->each(function ($d) use ($counts) {
+            $d->courses_count = (int) ($counts[$d->department_id] ?? 0);
+        });
+
         return response()->json(['success' => true, 'data' => $departments], 200);
     }
 
