@@ -60,3 +60,7 @@ ngrok.exe
 /site/
 /site-pdf/
 
+# أدلة داخلية ومستندات لا تُرفع للمستودع
+deployment_cleanup_guide.html
+deployment_cleanup_guide.pdf
+APP_RELEASE_GUIDE_FOR_AI.md
