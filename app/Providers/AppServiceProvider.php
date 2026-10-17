@@ -31,7 +31,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        if (config('app.env') === 'production' || request()->secure() || request()->header('X-Forwarded-Proto') === 'https') {
+        // ضبط البروتوكول (HTTP / HTTPS) بمرونة بناءً على APP_URL في .env
+        $appUrl = (string) config('app.url');
+        if (str_starts_with($appUrl, 'http://')) {
+            \Illuminate\Support\Facades\URL::forceScheme('http');
+        } elseif (str_starts_with($appUrl, 'https://') || request()->secure() || request()->header('X-Forwarded-Proto') === 'https') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
