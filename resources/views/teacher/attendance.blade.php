@@ -476,6 +476,7 @@
     }
 
     let currentSessionStudentsData = [];
+    let currentSessionId = null;
 
     function showAbsenteesModal(sessionId, initialFilter = 'all') {
         openModal('absentees-modal');
@@ -486,6 +487,7 @@
         list.style.display = 'none';
         list.innerHTML = '';
         currentSessionStudentsData = [];
+        currentSessionId = sessionId;
 
         fetch('{{ url("teacher/attendance/absentees") }}/' + sessionId)
             .then(res => res.json())
@@ -496,7 +498,7 @@
 
                 const total = currentSessionStudentsData.length;
                 const present = currentSessionStudentsData.filter(s => s.status === 'present').length;
-                const absent = currentSessionStudentsData.filter(s => s.status === 'absent').length;
+                const absent = currentSessionStudentsData.filter(s => s.status === 'absent' || s.status === 'pending').length;
 
                 document.getElementById('count-all').innerText = `(${total})`;
                 document.getElementById('count-present').innerText = `(${present})`;
@@ -509,6 +511,24 @@
                 list.style.display = 'block';
                 list.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 1rem;">{{ __('messages.error_fetching_data') }}</div>';
             });
+    }
+
+    // زر "استثناء": يسجّل الطالب حاضرًا بسبب مكتوب (نفس قواعد التطبيق)، ويبقى السبب محفوظًا للتدقيق
+    function recordException(studentId) {
+        const reason = prompt('سبب الاستثناء (مطلوب، 5 أحرف على الأقل):');
+        if (!reason || reason.trim().length < 5) { if (reason !== null) alert('اكتب سببًا من 5 أحرف على الأقل.'); return; }
+
+        fetch('{{ url("teacher/attendance/exception") }}/' + currentSessionId, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_id: studentId, reason: reason.trim() })
+        })
+            .then(res => res.json().then(j => ({ ok: res.ok, j })))
+            .then(({ ok, j }) => {
+                alert(j.message || (ok ? 'تم تسجيل الاستثناء' : 'تعذّر تسجيل الاستثناء'));
+                if (ok) showAbsenteesModal(currentSessionId, 'absent');
+            })
+            .catch(() => alert('تعذّر الاتصال بالخادم'));
     }
 
     function filterModalStudents(filter) {
@@ -527,7 +547,7 @@
 
         const filtered = currentSessionStudentsData.filter(s => {
             if (filter === 'present') return s.status === 'present';
-            if (filter === 'absent') return s.status === 'absent';
+            if (filter === 'absent') return s.status === 'absent' || s.status === 'pending';
             return true;
         });
 
@@ -539,10 +559,11 @@
         let html = '';
         filtered.forEach(student => {
             const isPresent = student.status === 'present';
-            const badgeBg = isPresent ? '#dcfce7' : '#fef2f2';
-            const badgeColor = isPresent ? '#166534' : '#b91c1c';
-            const badgeText = isPresent ? '{{ __('messages.present_scanned') }}' : '{{ __('messages.absent') }}';
-            const icon = isPresent ? 'fa-check-circle' : 'fa-times-circle';
+            const isPending = student.status === 'pending';
+            const badgeBg = isPresent ? '#dcfce7' : (isPending ? '#fef3c7' : '#fef2f2');
+            const badgeColor = isPresent ? '#166534' : (isPending ? '#92400e' : '#b91c1c');
+            const badgeText = isPresent ? '{{ __('messages.present_scanned') }}' : (isPending ? 'قيد المزامنة' : '{{ __('messages.absent') }}');
+            const icon = isPresent ? 'fa-check-circle' : (isPending ? 'fa-hourglass-half' : 'fa-times-circle');
 
             html += `
                 <div class="absentee-item">
@@ -555,7 +576,10 @@
                             <div style="font-size: 0.8rem; color: var(--text-secondary);">${student.level || '{{ __('messages.undefined') }}'}</div>
                         </div>
                     </div>
-                    <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">${badgeText}</span>
+                    <div style="display:flex; align-items:center; gap:.5rem;">
+                        ${isPresent ? '' : `<button type="button" onclick="recordException(${student.student_id})" style="border:1px solid var(--border-color); background:transparent; color:var(--text-primary); padding:.2rem .6rem; border-radius:1rem; font-size:.75rem; font-weight:700; cursor:pointer; font-family:inherit;">استثناء</button>`}
+                        <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">${badgeText}</span>
+                    </div>
                 </div>
             `;
         });

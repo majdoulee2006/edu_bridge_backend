@@ -198,6 +198,7 @@
                 'grade'          => '/hod/dashboard',
                 'message'        => '/hod/messages',
                 'risk_alert'     => '/hod/risk',
+                'clock_alert_escalation' => '/hod/follow-up',
                 'administrative' => $isService ? $serviceLink : '/hod/dashboard',
                 'general'        => $isService ? $serviceLink : '/hod/notifications',
             ];

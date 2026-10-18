@@ -1303,6 +1303,21 @@ class StudentWebController extends Controller
         return back()->with('success', __('messages.notification_marked_read_single'));
     }
 
+    /** "رد" الطالب على تنبيه ساعة الهاتف من صفحة الإشعارات (نفس تأكيد التطبيق). */
+    public function acknowledgeClockAlert(Request $request, $id)
+    {
+        $student = Auth::user()->student;
+        abort_unless($student, 403);
+
+        $alert = \App\Models\AttendanceClockAlert::where('id', $id)->where('student_id', $student->student_id)->firstOrFail();
+        if (!$alert->acknowledged_at) {
+            $alert->update(['acknowledged_at' => now(), 'ack_note' => $request->input('note')]);
+        }
+        \App\Models\Notification::where('user_id', Auth::id())->where('type', 'clock_alert')->where('related_id', $alert->id)->update(['is_read' => true]);
+
+        return back()->with('success', 'شكرًا، تم تسجيل تأكيدك أنك صحّحت ساعة الهاتف.');
+    }
+
     public function markAllNotificationsRead()
     {
         \App\Models\Notification::where('user_id', Auth::id())

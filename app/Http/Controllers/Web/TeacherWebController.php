@@ -490,54 +490,38 @@ class TeacherWebController extends Controller
             return response()->json([]);
         }
 
-        $session = DB::table('attendance_sessions')
-            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
-            ->where('attendance_sessions.id', $sessionId)
-            ->select('attendance_sessions.*', 'lessons.course_id')
-            ->first();
-
-        if (!$session) return response()->json([]);
-
-        // Course details
-        $course = DB::table('courses')->where('course_id', $session->course_id)->first();
-        $coursePrograms = DB::table('course_program')->where('course_id', $session->course_id)->pluck('program_id')->toArray();
-
-        // Convert course year to string
-        $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
-        $courseYearStr = $yearMap[$course->year] ?? null;
-
-        // Get students either explicitly enrolled OR matching the program and year
-        $studentsQuery = DB::table('students')
-            ->join('users', 'students.user_id', '=', 'users.user_id')
-            ->leftJoin('enrollments', function($join) use ($session) {
-                $join->on('students.student_id', '=', 'enrollments.student_id')
-                     ->where('enrollments.course_id', '=', $session->course_id);
-            })
-            ->where(function($query) use ($coursePrograms, $courseYearStr) {
-                $query->whereNotNull('enrollments.enrollment_id'); // explicitly enrolled
-                if (!empty($coursePrograms) && $courseYearStr) {
-                    $query->orWhere(function($q) use ($coursePrograms, $courseYearStr) {
-                        $q->whereIn('students.program_id', $coursePrograms)
-                          ->where('users.academic_year', $courseYearStr);
-                    });
-                }
-            })
-            ->select('students.student_id', 'users.full_name', 'users.academic_year as level')
-            ->distinct()
-            ->get();
-
-        $attendances = DB::table('attendance')
-            ->where('lesson_id', $session->lesson_id)
-            ->where('status', 'present')
-            ->pluck('student_id')->toArray();
-
-        $result = [];
-        foreach ($studentsQuery as $student) {
-            $student->status = in_array($student->student_id, $attendances) ? 'present' : 'absent';
-            $result[] = $student;
+        $session = \App\Models\AttendanceSession::with('lesson.course')->find($sessionId);
+        if (!$session) {
+            return response()->json([]);
         }
 
-        return response()->json($result);
+        // نفس قائمة التطبيق تمامًا (present / absent / pending)
+        return response()->json(array_map(fn ($r) => [
+            'student_id' => $r['student_id'], 'full_name' => $r['name'], 'level' => $r['level'], 'status' => $r['status'],
+        ], \App\Services\AttendanceSessionFinalizer::roster($session)));
+    }
+
+    /** زر "استثناء" في صفحة الويب: نفس قواعد التطبيق (سبب مكتوب، مدة محددة، طالب من المقرر). */
+    public function attendanceException(Request $request, $sessionId)
+    {
+        if (!$this->ownsSession($sessionId)) {
+            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
+        }
+
+        $data = $request->validate([
+            'student_id' => 'required|integer',
+            'reason'     => 'required|string|min:5|max:500',
+        ]);
+
+        $session = \App\Models\AttendanceSession::with('lesson.course')->find($sessionId);
+
+        try {
+            \App\Services\AttendanceSessionFinalizer::recordException($session, (int) $data['student_id'], $data['reason'], (int) Auth::id());
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'message' => 'تم تسجيل الاستثناء']);
     }
 
     // ────────────────────────────────────────────────────────────

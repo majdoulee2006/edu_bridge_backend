@@ -145,6 +145,7 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::get('/attendance/export/{id}', [TeacherWebController::class, 'exportAttendance'])->name('teacher.attendance.export');
     Route::get('/attendance/filtered-export', [TeacherWebController::class, 'exportFilteredAttendance'])->name('teacher.attendance.filtered_export');
     Route::get('/attendance/absentees/{id}', [TeacherWebController::class, 'getAbsentees'])->name('teacher.attendance.absentees');
+    Route::post('/attendance/exception/{id}', [TeacherWebController::class, 'attendanceException'])->name('teacher.attendance.exception');
 
     // الواجبات
     Route::get('/assignments', [TeacherWebController::class, 'assignments'])->name('teacher.assignments');
@@ -597,6 +598,7 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::get('/notifications', [StudentWebController::class, 'notifications'])->name('student.notifications');
     Route::post('/notifications/{id}/read', [StudentWebController::class, 'markNotificationRead'])->name('student.notifications.read');
     Route::post('/notifications/read-all', [StudentWebController::class, 'markAllNotificationsRead'])->name('student.notifications.read_all');
+    Route::post('/clock-alerts/{id}/acknowledge', [StudentWebController::class, 'acknowledgeClockAlert'])->name('student.clock_alerts.ack');
 
     // الرسائل
     Route::get('/messages', [StudentWebController::class, 'messages'])->name('student.messages');

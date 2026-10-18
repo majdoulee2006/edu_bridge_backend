@@ -107,6 +107,7 @@
         @endif
     </div>
 
+    @php $ackedClockAlerts = \DB::table('attendance_clock_alerts')->whereIn('id', $notifications->where('type', 'clock_alert')->pluck('related_id')->filter()->all())->whereNotNull('acknowledged_at')->pluck('id')->all(); @endphp
     @forelse($notifications as $n)
         @php
             $isRead = $n->is_read ?? false;
@@ -207,6 +208,18 @@
                 <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.4rem; line-height: 1.5;">
                     {{ $bodyDisplay }}
                 </div>
+                @if($n->type === 'clock_alert' && $n->related_id)
+                    @if(in_array($n->related_id, $ackedClockAlerts))
+                        <div style="margin-top:.6rem; font-size:.8rem; color:#2e7d32; font-weight:700;"><i class="fa-solid fa-circle-check"></i> تم تأكيدك</div>
+                    @else
+                        <form method="POST" action="{{ route('student.clock_alerts.ack', $n->related_id) }}" style="margin-top:.6rem;" onclick="event.stopPropagation();">
+                            @csrf
+                            <button type="submit" class="single-read-btn" style="background:#e65100; color:#fff; border:none; padding:.45rem 1rem; border-radius:.6rem; font-weight:800; cursor:pointer;">
+                                <i class="fa-solid fa-clock"></i> تأكيد: صحّحت ساعة الهاتف
+                            </button>
+                        </form>
+                    @endif
+                @endif
             </div>
             @if(!$isRead)
                 <div style="width: 9px; height: 9px; border-radius: 50%; background: var(--accent-color); flex-shrink: 0; margin-top: 4px;"></div>

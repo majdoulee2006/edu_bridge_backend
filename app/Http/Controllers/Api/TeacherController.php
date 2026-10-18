@@ -551,57 +551,18 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
         }
 
-        $lesson = $session->lesson;
-        $course = $lesson->course;
-
-        $enrolledStudents = $course->students()->with('user')->get();
-
-        $presentIds = Attendance::where('lesson_id', $lesson->lesson_id)
-            ->where('status', 'present')
-            ->pluck('student_id')
-            ->toArray();
-
-        // إضا�™Âة ا�™ط�™اب ا�™ذ�™Å Ã™â€  Ã™&سح�™�ا QR Ã™â€žÃ™Æ’Ã™  غ�™`ر �™&سج�™â€˜Ã™â€žÃ™Å Ã™â€  Ã™ÂÃ™` ا�™â€žÃ™Æ’Ã™�رس
-        $enrolledIds = $enrolledStudents->pluck('student_id')->toArray();
-        $extraIds = array_diff($presentIds, $enrolledIds);
-        $extraStudents = !empty($extraIds)
-            ? \App\Models\Student::with('user')->whereIn('student_id', $extraIds)->get()
-            : collect();
-
-        $allStudents = $enrolledStudents->merge($extraStudents);
-
-        // أثناء الجلسة النشطة: من لم يمسح بعد يظهر "absent" (سلوك التطبيق الحالي: لم يحضر بعد).
-        // بعد إغلاق الجلسة وحتى 12 ليلاً: "pending" (قيد المزامنة، قد يكون مسح بلا إنترنت). بعدها "absent" نهائيًا.
-        $windowOpen = !$session->is_active && !\App\Services\AttendanceSessionFinalizer::windowClosed($session);
-        $absentIds  = Attendance::where('lesson_id', $lesson->lesson_id)
-            ->where('status', 'absent')
-            ->pluck('student_id')
-            ->toArray();
-
-        $students = $allStudents->map(function ($student) use ($presentIds, $absentIds, $windowOpen) {
-            $status = match (true) {
-                in_array($student->student_id, $presentIds) => 'present',
-                in_array($student->student_id, $absentIds)  => 'absent',
-                $windowOpen                                 => 'pending',
-                default                                     => 'absent',
-            };
-
-            return [
-                'student_id' => $student->student_id,
-                'name'       => $student->user->full_name ?? $student->user->name ?? 'غير معروف',
-                'status'     => $status,
-            ];
-        });
+        $students = collect(\App\Services\AttendanceSessionFinalizer::roster($session))
+            ->map(fn ($r) => ['student_id' => $r['student_id'], 'name' => $r['name'], 'status' => $r['status']]);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'session_active'  => $session->is_active,
-                'present_count'   => count($presentIds),
-                'pending_count'   => $students->where('status', 'pending')->count(),
-                'total_count'     => $allStudents->count(),
+                'session_active'   => $session->is_active,
+                'present_count'    => $students->where('status', 'present')->count(),
+                'pending_count'    => $students->where('status', 'pending')->count(),
+                'total_count'      => $students->count(),
                 'sync_deadline_at' => \App\Services\AttendanceSessionFinalizer::deadlineFor($session)->toIso8601String(),
-                'students'        => $students->values(),
+                'students'         => $students->values(),
             ]
         ], 200);
     }
@@ -642,7 +603,7 @@ class TeacherController extends Controller
 
     /**
      * زر "استثناء" للمعلم: تسجيل حضور طالب لم يُسجَّل حضوره (لم تتم مزامنته، هاتفه تعطل، إلخ) بسبب مكتوب.
-     * يعمل قبل الإنهاء النهائي للجلسة وبعده (ضمن attendance.exception_days)، ويُحفظ السبب وكاتب القرار للتدقيق.
+     * المنطق في AttendanceSessionFinalizer::recordException (مشترك مع صفحة الويب).
      */
     public function attendanceException(Request $request, $sessionId)
     {
@@ -657,50 +618,12 @@ class TeacherController extends Controller
             'reason'     => 'required|string|min:5|max:500',
         ]);
 
-        $maxDays = (int) config('attendance.exception_days', 7);
-        if ($session->created_at->copy()->startOfDay()->diffInDays(now()->startOfDay()) > $maxDays) {
-            return response()->json([
-                'success' => false,
-                'message' => "انتهت مدة تسجيل الاستثناء لهذه الجلسة ({$maxDays} أيام). راجع رئيس القسم.",
-            ], 422);
-        }
-
-        $lesson = $session->lesson;
-        $eligible = collect(\App\Services\AttendanceSessionFinalizer::eligibleStudents((int) $lesson->course_id))
-            ->pluck('student_id')->map(fn ($i) => (int) $i)->all();
-        if (!in_array((int) $data['student_id'], $eligible, true)) {
-            return response()->json(['success' => false, 'message' => 'الطالب غير مسجّل في هذا المقرر'], 422);
-        }
-
-        $attendance = Attendance::updateOrCreate(
-            [
-                'student_id'      => (int) $data['student_id'],
-                'lesson_id'       => $lesson->lesson_id,
-                'attendance_date' => $session->created_at->toDateString(),
-            ],
-            [
-                'session_id'       => $session->id,
-                'status'           => $data['status'] ?? 'present',
-                'source'           => 'manual_exception',
-                'time_confidence'  => 'high',
-                'review_status'    => 'confirmed',
-                'exception_reason' => $data['reason'],
-                'exception_by'     => $request->user()->user_id,
-            ]
-        );
-
-        \App\Models\UserActivity::log('استثناء حضور', "المعلم سجّل حضور الطالب ID: {$data['student_id']} في الجلسة {$session->id}: {$data['reason']}");
-
         try {
-            $studentUserId = \Illuminate\Support\Facades\DB::table('students')->where('student_id', $data['student_id'])->value('user_id');
-            $title = 'تم تسجيل حضورك كاستثناء';
-            $body  = 'سجّل معلمك حضورك في ' . ($lesson->course->title ?? 'المقرر') . ' بعد مراجعة. السبب: ' . $data['reason'];
-            \App\Models\Notification::create([
-                'user_id' => $studentUserId, 'sender_id' => $request->user()->user_id, 'title' => $title, 'message' => $body,
-                'type' => 'attendance_exception', 'category' => 'academic', 'related_id' => $attendance->attendance_id, 'is_read' => false,
-            ]);
-        } catch (\Throwable $e) {
-            // فشل الإشعار لا يلغي القرار
+            $attendance = \App\Services\AttendanceSessionFinalizer::recordException(
+                $session, (int) $data['student_id'], $data['reason'], $request->user()->user_id, $data['status'] ?? 'present'
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
 
         return response()->json([
