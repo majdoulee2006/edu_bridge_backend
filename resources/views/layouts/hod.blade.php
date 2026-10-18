@@ -451,7 +451,7 @@
                 </a>
                 <a href="{{ url('/hod/organization') }}" class="nav-item {{ Request::is('hod/organization') ? 'active' : '' }}">
                     <i class="fa-solid fa-sitemap"></i>
-                    {{ __('messages.organization_title') ?? 'التنظيم' }}
+                    {{ __('messages.organization_title') }}
                 </a>
                 <a href="{{ url('/hod/schedule-studio') }}" class="nav-item {{ Request::is('hod/schedule-studio*') ? 'active' : '' }}">
                     <i class="fa-solid fa-calendar-days"></i>

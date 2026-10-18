@@ -2934,4 +2934,6 @@ return [
     'msg_voice_word' => 'صوتية',
     'conversations' => 'المحادثات',
     'no_pending_report_requests' => 'لا توجد طلبات تقارير بانتظار الرد.',
+    'organization_title' => 'التنظيم',
+    'new_plural' => 'جديدة',
 ];

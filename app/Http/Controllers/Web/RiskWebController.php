@@ -31,6 +31,7 @@ class RiskWebController extends Controller
             'search'     => 'nullable|string|max:100',
             'program_id' => 'nullable|integer',
             'sort'       => 'nullable|in:score,change',
+            'followup'   => 'nullable|in:overdue',
         ]);
 
         $user = Auth::user();

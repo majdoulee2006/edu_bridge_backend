@@ -34,6 +34,7 @@ class FollowUpWebController extends Controller
             'sort'       => 'nullable|in:' . implode(',', FollowUpDashboard::SORTS),
             'search'     => 'nullable|string|max:100',
             'days'       => 'nullable|integer|between:7,120',
+            'pending'    => 'nullable|boolean',
         ]);
 
         return view('followup.index', [

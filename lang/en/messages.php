@@ -2935,4 +2935,6 @@ return [
     'msg_voice_word' => 'voice',
     'conversations' => 'Conversations',
     'no_pending_report_requests' => 'No pending report requests.',
+    'organization_title' => 'Organization',
+    'new_plural' => 'new',
 ];

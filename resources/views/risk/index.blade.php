@@ -14,6 +14,9 @@
     .rk-stat { background: var(--bg-secondary); border:1px solid var(--border-color); border-radius:1.1rem; padding:1rem; text-align:center; box-shadow: var(--shadow); }
     .rk-stat b { display:block; font-size:1.8rem; font-weight:800; color: var(--c); }
     .rk-stat small { color: var(--text-secondary); font-size:.8rem; }
+    a.rk-stat { display:block; text-decoration:none; cursor:pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
+    a.rk-stat:hover { transform: translateY(-2px); border-color: var(--c); }
+    a.rk-stat.active { border-color: var(--c); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 35%, transparent); }
     .rk-filter { display:flex; gap:.7rem; flex-wrap:wrap; align-items:flex-end; margin-bottom:1rem; background: var(--bg-secondary); border:1px solid var(--border-color); border-radius:1.1rem; padding:.9rem; }
     .rk-filter label { display:block; font-size:.75rem; color: var(--text-secondary); margin-bottom:.2rem; }
     .rk-filter input, .rk-filter select { padding:.5rem .7rem; border-radius:.7rem; border:1px solid var(--border-color); background:transparent; color: var(--text-primary); font-family:inherit; }
@@ -43,11 +46,14 @@
 @section('content')
     @if(session('error'))<div class="rk-alert">{{ session('error') }}</div>@endif
 
+    @php $curLevel = $filters['level'] ?? ''; $curFollow = $filters['followup'] ?? ''; $base = url('/' . $prefix . '/risk'); @endphp
+    {{-- كل مربع رابط: يعرض الطلاب المطابقين له تحت (مع الإبقاء على البحث والبرنامج والترتيب) --}}
     <div class="rk-stats">
         @foreach(['high' => 'خطر عالٍ', 'medium' => 'خطر متوسط', 'low' => 'منخفض', 'unknown' => 'بيانات غير كافية'] as $k => $label)
-            <div class="rk-stat" style="--c: {{ $lvlColor[$k] }}"><b>{{ $summary[$k] }}</b><small>{{ $label }}</small></div>
+            <a class="rk-stat {{ $curLevel === $k && !$curFollow ? 'active' : '' }}" style="--c: {{ $lvlColor[$k] }}" href="{{ $base . '?' . http_build_query($q(['level' => $k])) }}#list"><b>{{ $summary[$k] }}</b><small>{{ $label }}</small></a>
         @endforeach
-        <div class="rk-stat" style="--c: var(--text-primary)"><b>{{ $summary['total'] }}</b><small>إجمالي طلابك</small></div>
+        <a class="rk-stat {{ $curFollow === 'overdue' ? 'active' : '' }}" style="--c: #e65100" href="{{ $base . '?' . http_build_query($q(['followup' => 'overdue'])) }}#list"><b>{{ $summary['overdue'] ?? 0 }}</b><small>متابعات فات موعدها</small></a>
+        <a class="rk-stat {{ !$curLevel && !$curFollow ? 'active' : '' }}" style="--c: var(--text-primary)" href="{{ $base . '?' . http_build_query($q()) }}#list"><b>{{ $summary['total'] }}</b><small>إجمالي طلابك (عرض الكل)</small></a>
     </div>
 
     <form method="GET" action="{{ url('/' . $prefix . '/risk') }}" class="rk-filter">
@@ -64,10 +70,11 @@
         <button type="submit">تطبيق</button>
     </form>
 
-    <div class="rk-tabs">
+    <div class="rk-tabs" id="list">
         @foreach($tabs as $key => $label)
-            <a href="{{ url('/' . $prefix . '/risk') . '?' . http_build_query($q(['level' => $key])) }}" class="rk-tab {{ ($filters['level'] ?? '') === $key ? 'active' : '' }}">{{ $label }}</a>
+            <a href="{{ url('/' . $prefix . '/risk') . '?' . http_build_query($q(['level' => $key])) }}" class="rk-tab {{ ($filters['level'] ?? '') === $key && !($filters['followup'] ?? '') ? 'active' : '' }}">{{ $label }}</a>
         @endforeach
+        <a href="{{ url('/' . $prefix . '/risk') . '?' . http_build_query($q(['followup' => 'overdue'])) }}" class="rk-tab {{ ($filters['followup'] ?? '') === 'overdue' ? 'active' : '' }}">متابعة فات موعدها ({{ $summary['overdue'] ?? 0 }})</a>
     </div>
 
     @forelse($rows as $r)

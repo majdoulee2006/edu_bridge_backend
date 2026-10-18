@@ -27,7 +27,7 @@ class FollowUpDashboard
     public const STATUSES = ['attention', 'watch', 'ok', 'nodata'];
 
     /**
-     * @param array{program_id?:?int, year?:?int, status?:?string, search?:?string, sort?:?string, days?:?int} $f
+     * @param array{program_id?:?int, year?:?int, status?:?string, search?:?string, sort?:?string, days?:?int, pending?:?bool} $f
      * @return array|null null إن لم تكن للمستخدم صلاحية
      */
     public function build(User $user, array $f = []): ?array
@@ -186,7 +186,7 @@ class FollowUpDashboard
             $ids     = $group->pluck('student_id')->map(fn ($i) => (int) $i)->all();
             $courses = $this->courses($ids, $f, $days)->values()->all();
 
-            if (!$courses && (!empty($f['status']) || !empty($f['year']) || !empty($f['search']))) {
+            if (!$courses && (!empty($f['status']) || !empty($f['year']) || !empty($f['search']) || !empty($f['pending']))) {
                 continue; // الفلتر استبعد كل مقررات هذا البرنامج
             }
 
@@ -307,6 +307,9 @@ class FollowUpDashboard
 
         if (!empty($f['status']) && in_array($f['status'], self::STATUSES, true)) {
             $out = $out->where('status', $f['status']);
+        }
+        if (!empty($f['pending'])) {
+            $out = $out->where('pending_sessions', '>', 0); // مقررات لها جلسات اليوم بانتظار الإغلاق
         }
 
         return $this->sorted($out, $f['sort'] ?? 'attention');

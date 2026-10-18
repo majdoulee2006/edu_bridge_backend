@@ -72,6 +72,27 @@ class RiskWebPagesTest extends TestCase
 
     // ------------------------------------------------------------------ القائمة
 
+    public function test_summary_boxes_are_links_to_their_own_filtered_list(): void
+    {
+        $this->actingAs($this->a['advisor']['user']);
+
+        $html = $this->get('/teacher/risk?search=x&program_id=' . $this->a['program'])->assertOk()->getContent();
+
+        foreach (['level=high', 'level=medium', 'level=low', 'level=unknown', 'followup=overdue'] as $needle) {
+            $this->assertMatchesRegularExpression('/<a class="rk-stat[^"]*"[^>]*href="[^"]*' . preg_quote($needle, '/') . '[^"]*"/', $html, "المربع $needle ليس رابطًا");
+        }
+        $this->assertStringContainsString('search=x', $html, 'الروابط تحتفظ بالبحث');
+        $this->assertDoesNotMatchRegularExpression('/<div class="rk-stat[ "]/', $html, 'لم يبقَ مربع غير تفاعلي');
+    }
+
+    public function test_the_active_box_follows_the_current_filter(): void
+    {
+        $this->actingAs($this->a['advisor']['user']);
+
+        $this->assertMatchesRegularExpression('/class="rk-stat active"[^>]*href="[^"]*level=high/', $this->get('/teacher/risk?level=high')->getContent());
+        $this->assertMatchesRegularExpression('/class="rk-stat active"[^>]*href="[^"]*followup=overdue/', $this->get('/teacher/risk?followup=overdue')->getContent());
+    }
+
     public function test_advisor_page_lists_own_cohort_with_reasons_and_hides_others(): void
     {
         $this->atRisk($this->a, 'سارة المتعثرة');

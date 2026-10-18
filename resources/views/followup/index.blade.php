@@ -21,7 +21,10 @@
 <style>
     .fu-kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:1rem; margin-bottom:1.25rem; }
     .fu-kpi { display:block; text-decoration:none; background: var(--bg-secondary); border:1px solid var(--border-color); border-radius:1.1rem; padding:1rem; text-align:center; box-shadow: var(--shadow); transition: transform .15s; }
-    a.fu-kpi:hover { transform: translateY(-2px); }
+    a.fu-kpi:hover { transform: translateY(-2px); border-color: var(--c, var(--border-color)); }
+    a.fu-kpi.active { border-color: var(--c); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 35%, transparent); }
+    html { scroll-behavior: smooth; }
+    .fu-box:target { box-shadow: 0 0 0 3px #e65100; }
     .fu-kpi b { display:block; font-size:1.8rem; font-weight:800; color: var(--c, var(--text-primary)); }
     .fu-kpi small { color: var(--text-secondary); font-size:.8rem; }
     .fu-filter { display:flex; gap:.7rem; flex-wrap:wrap; align-items:flex-end; margin-bottom:1.2rem; background: var(--bg-secondary); border:1px solid var(--border-color); border-radius:1.1rem; padding:.9rem; }
@@ -67,15 +70,16 @@
 @section('content')
     @if(session('error'))<div class="fu-alert">{{ session('error') }}</div>@endif
 
-    {{-- المؤشرات: كل رقم قابل للنقر حيث توجد صفحة تفصيل --}}
+    {{-- كل مربع رابط إلى مكان بياناته: قائمة الطلاب المطابقة، أو القسم المناسب في هذه الصفحة --}}
+    @php $pendingOn = !empty($filters['pending']); @endphp
     <div class="fu-kpis">
         <a class="fu-kpi" style="--c: {{ $lvl['high'] }}" href="{{ $riskUrl(['level' => 'high']) }}"><b>{{ $k['high'] }}</b><small>خطر عالٍ</small></a>
         <a class="fu-kpi" style="--c: {{ $lvl['medium'] }}" href="{{ $riskUrl(['level' => 'medium']) }}"><b>{{ $k['medium'] }}</b><small>خطر متوسط</small></a>
         <a class="fu-kpi" style="--c: #c62828" href="{{ $riskUrl(['sort' => 'change', 'level' => 'at_risk']) }}"><b>{{ $k['rising_week'] }}</b><small>ارتفع خطرهم هذا الأسبوع</small></a>
-        <div class="fu-kpi" style="--c: {{ $k['overdue_followups'] ? '#e65100' : '#2e7d32' }}"><b>{{ $k['overdue_followups'] }}</b><small>متابعات فات موعدها</small></div>
-        <div class="fu-kpi" style="--c: {{ $k['clock_alerts_escalated'] ? '#c62828' : '#2e7d32' }}"><b>{{ $k['clock_alerts_escalated'] }}</b><small>تلاعب بساعة الهاتف بلا رد</small></div>
-        <div class="fu-kpi" style="--c: {{ $k['pending_sessions'] ? '#e65100' : '#2e7d32' }}"><b>{{ $k['pending_sessions'] }}</b><small>جلسات اليوم بانتظار الإغلاق (12 ليلاً)</small></div>
-        <div class="fu-kpi"><b>{{ $k['students'] }}</b><small>إجمالي الطلاب</small></div>
+        <a class="fu-kpi" style="--c: {{ $k['overdue_followups'] ? '#e65100' : '#2e7d32' }}" href="{{ $riskUrl(['followup' => 'overdue']) }}"><b>{{ $k['overdue_followups'] }}</b><small>متابعات فات موعدها</small></a>
+        <a class="fu-kpi" style="--c: {{ $k['clock_alerts_escalated'] ? '#c62828' : '#2e7d32' }}" href="#clock-alerts"><b>{{ $k['clock_alerts_escalated'] }}</b><small>تلاعب بساعة الهاتف بلا رد</small></a>
+        <a class="fu-kpi {{ $pendingOn ? 'active' : '' }}" style="--c: {{ $k['pending_sessions'] ? '#e65100' : '#2e7d32' }}" href="{{ url('/' . $prefix . '/follow-up') . '?' . http_build_query(array_merge(request()->only('program_id', 'year', 'sort', 'days'), $pendingOn ? [] : ['pending' => 1])) }}#programs"><b>{{ $k['pending_sessions'] }}</b><small>جلسات اليوم بانتظار الإغلاق (12 ليلاً)</small></a>
+        <a class="fu-kpi" href="{{ $riskUrl() }}"><b>{{ $k['students'] }}</b><small>إجمالي الطلاب (عرض الكل)</small></a>
     </div>
 
     <form method="GET" action="{{ url('/' . $prefix . '/follow-up') }}" class="fu-filter">
@@ -129,7 +133,7 @@
                 </div>
             @empty <div class="fu-empty">لا متابعات متأخرة. 👌</div> @endforelse
         </div>
-        <div class="fu-box">
+        <div class="fu-box" id="clock-alerts">
             <h4>تلاعب بساعة الهاتف دون رد</h4>
             @forelse($d['today']['clock_alerts'] as $s)
                 <div class="fu-row">
@@ -141,7 +145,9 @@
     </div>
 
     {{-- البرامج (الدورات) ثم مقرراتها --}}
-    <div class="fu-h">البرامج ومقرراتها <span class="n" style="--c:#546e7a">{{ count($d['programs']) }}</span></div>
+    <div class="fu-h" id="programs">البرامج ومقرراتها <span class="n" style="--c:#546e7a">{{ count($d['programs']) }}</span>
+        @if($pendingOn)<a href="{{ url('/' . $prefix . '/follow-up') }}#programs" class="fu-chip" style="text-decoration:none">⏳ جلسات معلّقة فقط ✕</a>@endif
+    </div>
     @if(!count($d['programs']))
         <div class="fu-box"><div class="fu-empty">لا توجد دورات مطابقة. جرّب تغيير الفلاتر.</div></div>
     @endif

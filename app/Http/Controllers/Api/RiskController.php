@@ -29,6 +29,7 @@ class RiskController extends Controller
             'search'     => 'nullable|string|max:100',
             'program_id' => 'nullable|integer',
             'sort'       => 'nullable|in:score,change',
+            'followup'   => 'nullable|in:overdue',
         ]);
 
         $out  = $this->directory->list($request->user(), $f, (int) $request->query('per_page', 20));

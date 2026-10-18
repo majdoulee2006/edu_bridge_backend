@@ -277,6 +277,33 @@ class FollowUpDashboardTest extends TestCase
         $this->assertSame(1, $only['kpis']['students']);
     }
 
+    public function test_pending_filter_keeps_only_courses_with_sessions_awaiting_closure(): void
+    {
+        $now = now();
+        $lesson = DB::table('lessons')->insertGetId(['course_id' => $this->a['c1'], 'teacher_id' => $this->teacher['teacher_id'], 'title' => 'P', 'type' => 'session', 'created_at' => $now, 'updated_at' => $now]);
+        DB::table('attendance_sessions')->insert(['lesson_id' => $lesson, 'qr_token' => 'PENDFILT012345678901234567890123', 'is_active' => false, 'created_at' => $now, 'updated_at' => $now]);
+
+        $json = $this->api('head', $this->a, ['pending' => 1])->assertOk()->json();
+
+        $this->assertSame(['C1 A'], $this->titles($json));
+        $this->assertSame(['C1 A', 'C2 A', 'C3 A'], $this->titles($this->api('head', $this->a)->json()), 'بدونه تظهر كل المقررات');
+    }
+
+    public function test_every_summary_box_on_the_page_is_a_link(): void
+    {
+        $html = $this->actingAs($this->a['head']['user'])->get('/hod/follow-up')->assertOk()->getContent();
+
+        preg_match_all('/<(a|div) class="fu-kpi[ "]/', $html, $m);
+        $this->assertNotEmpty($m[1]);
+        $this->assertSame(array_fill(0, count($m[1]), 'a'), $m[1], 'لا مربع غير تفاعلي');
+
+        foreach (['level=high', 'level=medium', 'followup=overdue', '#clock-alerts', 'pending=1'] as $needle) {
+            $this->assertStringContainsString($needle, $html);
+        }
+        $this->assertStringContainsString('id="clock-alerts"', $html, 'وجهة رابط التلاعب موجودة بالصفحة');
+        $this->assertStringContainsString('id="programs"', $html);
+    }
+
     public function test_invalid_filters_are_rejected(): void
     {
         $this->api('head', $this->a, ['sort' => 'hack'])->assertStatus(422);

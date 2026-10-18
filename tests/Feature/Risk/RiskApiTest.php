@@ -190,7 +190,7 @@ class RiskApiTest extends TestCase
 
         $all = $this->getJson('/api/teacher/risk')->assertOk();
         $this->assertSame(['متعثر', 'متفوق', 'جديد'], $all->json('data.*.student.name'), 'الأعلى خطرًا أولًا والبلا درجة آخرًا');
-        $this->assertSame(['high' => 1, 'medium' => 0, 'low' => 1, 'unknown' => 1, 'total' => 3], $all->json('summary'));
+        $this->assertSame(['high' => 1, 'medium' => 0, 'low' => 1, 'unknown' => 1, 'total' => 3, 'overdue' => 0], $all->json('summary'));
 
         $high = $this->getJson('/api/teacher/risk?level=high');
         $this->assertSame(['متعثر'], $high->json('data.*.student.name'));
@@ -219,6 +219,58 @@ class RiskApiTest extends TestCase
         $this->assertGreaterThan(0, $row['change']);
         $this->assertSame('call', $row['last_intervention']['type']);
         $this->assertTrue($row['follow_up_due'], 'موعد المتابعة مضى');
+    }
+
+    private function followUp(array $student, ?string $on, $createdAt = null): void
+    {
+        DB::table('risk_interventions')->insert([
+            'student_id' => $student['student_id'], 'author_user_id' => $this->a['advisor']['user']->user_id, 'type' => 'call',
+            'follow_up_on' => $on, 'score_at_time' => 80, 'level_at_time' => 'high',
+            'created_at' => $createdAt ?? now(), 'updated_at' => now(),
+        ]);
+    }
+
+    public function test_overdue_followup_filter_and_summary(): void
+    {
+        $late = $this->student($this->a, 'متأخر');
+        $future = $this->student($this->a, 'موعده قادم');
+        $superseded = $this->student($this->a, 'تجاوز الموعد ثم تابعناه');
+        foreach ([$late, $future, $superseded] as $s) {
+            $this->makeAtRisk($this->a, $s);
+        }
+        $this->compute();
+
+        $this->followUp($late, today()->subDay()->toDateString());
+        $this->followUp($future, today()->addDays(3)->toDateString());
+        $this->followUp($superseded, today()->subDays(5)->toDateString(), now()->subDays(6));
+        $this->followUp($superseded, today()->addDays(7)->toDateString()); // أحدث إجراء موعده لم يحن: لم يعد متأخرًا
+
+        $this->actAs($this->a['advisor']['user']);
+
+        $res = $this->getJson('/api/teacher/risk?followup=overdue')->assertOk();
+        $this->assertSame(['متأخر'], $res->json('data.*.student.name'));
+        $this->assertSame(1, $res->json('summary.overdue'));
+        $this->assertSame(3, $res->json('summary.total'), 'الملخص لا يتأثر بالفلتر');
+
+        $this->getJson('/api/teacher/risk')->assertOk()->assertJsonPath('summary.overdue', 1);
+        $this->getJson('/api/teacher/risk?followup=nope')->assertStatus(422);
+    }
+
+    public function test_overdue_is_scoped_to_the_users_own_students(): void
+    {
+        $mine = $this->student($this->a, 'طالبي');
+        $other = $this->student($this->b, 'طالب قسم آخر');
+        $this->makeAtRisk($this->a, $mine);
+        $this->makeAtRisk($this->b, $other);
+        $this->compute();
+        $this->followUp($mine, today()->subDay()->toDateString());
+        $this->followUp($other, today()->subDay()->toDateString());
+
+        $this->actAs($this->a['head']['user']);
+        $res = $this->getJson('/api/department-head/risk?followup=overdue')->assertOk();
+
+        $this->assertSame(['طالبي'], $res->json('data.*.student.name'));
+        $this->assertSame(1, $res->json('summary.overdue'));
     }
 
     public function test_sort_by_change_puts_the_biggest_risers_first(): void

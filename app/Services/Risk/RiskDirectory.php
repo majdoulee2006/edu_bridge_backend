@@ -8,6 +8,7 @@ use App\Models\StudentRiskScore;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 /**
  * قراءة الطلاب المعرَّضين للتعثر وتسجيل المتابعة ضمن نطاق المستخدم. تستعملها واجهة الـ API وصفحات الويب معًا،
@@ -18,7 +19,7 @@ class RiskDirectory
     public const LEVEL_LABELS = ['high' => 'عالٍ', 'medium' => 'متوسط', 'low' => 'منخفض', 'unknown' => 'بيانات غير كافية'];
 
     /**
-     * @param array{level?:?string,search?:?string,program_id?:?int,sort?:?string} $f
+     * @param array{level?:?string,search?:?string,program_id?:?int,sort?:?string,followup?:?string} $f
      * @return array{summary: array, rows: array, paginator: LengthAwarePaginator}
      */
     public function list(User $user, array $f, int $perPage = 20): array
@@ -34,8 +35,13 @@ class RiskDirectory
         // ملخص المستويات ضمن النطاق (قبل فلتر المستوى، كي تبقى الأعداد ثابتة عند التبديل بين التبويبات)
         $counts = (clone $scoped)->selectRaw("COALESCE(r.level, 'unknown') AS lvl, COUNT(*) AS n")->groupBy('lvl')->pluck('n', 'lvl');
 
+        // طلاب موعد متابعتهم الأخيرة حلّ (آخر إجراء لكل طالب)
+        $overdueIds = $this->overdueStudentIds();
+        $overdueCount = (clone $scoped)->whereIn('students.student_id', $overdueIds)->count();
+
         $level = $f['level'] ?? null;
         $q = (clone $scoped)
+            ->when(($f['followup'] ?? null) === 'overdue', fn ($x) => $x->whereIn('students.student_id', $overdueIds))
             ->when($level === 'at_risk', fn ($x) => $x->whereIn('r.level', ['high', 'medium']))
             ->when($level && $level !== 'at_risk', function ($x) use ($level) {
                 $level === 'unknown'
@@ -59,11 +65,23 @@ class RiskDirectory
             'summary' => [
                 'high' => (int) ($counts['high'] ?? 0), 'medium' => (int) ($counts['medium'] ?? 0),
                 'low' => (int) ($counts['low'] ?? 0), 'unknown' => (int) ($counts['unknown'] ?? 0),
-                'total' => (int) $counts->sum(),
+                'total' => (int) $counts->sum(), 'overdue' => $overdueCount,
             ],
             'rows' => collect($page->items())->map(fn ($r) => $this->row($r, $last->get($r->student_id)))->values()->all(),
             'paginator' => $page,
         ];
+    }
+
+    /** @return int[] طلاب آخر إجراء متابعة لهم موعده اليوم أو قبله */
+    private function overdueStudentIds(): array
+    {
+        $latest = DB::table('risk_interventions')->selectRaw('MAX(id) AS id')->groupBy('student_id');
+
+        return DB::table('risk_interventions')
+            ->joinSub($latest, 'l', 'l.id', '=', 'risk_interventions.id')
+            ->whereNotNull('risk_interventions.follow_up_on')
+            ->where('risk_interventions.follow_up_on', '<=', today()->toDateString())
+            ->pluck('risk_interventions.student_id')->map(fn ($i) => (int) $i)->all();
     }
 
     /** تفاصيل طالب ضمن النطاق، أو null إن لم يكن ضمنه. */

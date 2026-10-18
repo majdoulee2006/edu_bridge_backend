@@ -31,6 +31,7 @@ class FollowUpController extends Controller
             'sort'       => 'nullable|in:' . implode(',', FollowUpDashboard::SORTS),
             'search'     => 'nullable|string|max:100',
             'days'       => 'nullable|integer|between:7,120',
+            'pending'    => 'nullable|boolean',
         ]);
 
         return response()->json(['success' => true] + $this->dashboard->build($user, $f), 200);
