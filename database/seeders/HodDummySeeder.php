@@ -83,7 +83,7 @@ class HodDummySeeder extends Seeder
         // إضافة كورسات وهمية إن لم توجد
         $courseId1 = DB::table('courses')->first()->course_id ?? null;
         if (!$courseId1) {
-            $courseId1 = DB::table('courses')->insertGetId([
+            $courseId1 = DB::table('courses')->insertGetId(['semester_id' => \App\Models\Semester::currentOrCreate()->semester_id, 
                 'title' => 'برمجة الويب باستخدام Laravel',
                 'description' => 'كورس برمجة متكامل لبناء مواقع الويب.',
                 'level' => '1',
@@ -93,7 +93,7 @@ class HodDummySeeder extends Seeder
         }
         $courseId2 = DB::table('courses')->skip(1)->first()->course_id ?? null;
         if (!$courseId2) {
-            $courseId2 = DB::table('courses')->insertGetId([
+            $courseId2 = DB::table('courses')->insertGetId(['semester_id' => \App\Models\Semester::currentOrCreate()->semester_id, 
                 'title' => 'قواعد البيانات MySQL',
                 'description' => 'كورس تفصيلي في تصميم وتطوير قواعد البيانات.',
                 'level' => '1',

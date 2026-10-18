@@ -32,8 +32,8 @@ class AcademicSeeder extends Seeder
         $prog2 = DB::table('programs')->insertGetId(['name' => 'دبلوم الذكاء الاصطناعي', 'department_id' => $deptId, 'created_at' => $now, 'updated_at' => $now]);
 
         // 4. إضافة مواد
-        $course1 = DB::table('courses')->insertGetId(['title' => 'أساسيات البرمجة', 'description' => 'مقدمة في البرمجة','level' =>'مبتدئ' ,'semester_id' => $semesterId, 'created_at' => $now, 'updated_at' => $now]);
-        $course2 = DB::table('courses')->insertGetId(['title' => 'قواعد البيانات', 'description' => 'تصميم قواعد البيانات', 'level' =>'متوسط','semester_id' => $semesterId, 'created_at' => $now, 'updated_at' => $now]);
+        $course1 = DB::table('courses')->insertGetId(['semester_id' => \App\Models\Semester::currentOrCreate()->semester_id, 'title' => 'أساسيات البرمجة', 'description' => 'مقدمة في البرمجة','level' =>'مبتدئ' ,'semester_id' => $semesterId, 'created_at' => $now, 'updated_at' => $now]);
+        $course2 = DB::table('courses')->insertGetId(['semester_id' => \App\Models\Semester::currentOrCreate()->semester_id, 'title' => 'قواعد البيانات', 'description' => 'تصميم قواعد البيانات', 'level' =>'متوسط','semester_id' => $semesterId, 'created_at' => $now, 'updated_at' => $now]);
 
         // 5. ربط المواد بالمسارات (تطبيق فكرة المادة المشتركة)
         DB::table('course_program')->insert([

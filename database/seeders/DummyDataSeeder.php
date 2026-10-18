@@ -46,7 +46,7 @@ class DummyDataSeeder extends Seeder
 
 
         // 1. Create a Course if not exists
-        $courseId = DB::table('courses')->insertGetId([
+        $courseId = DB::table('courses')->insertGetId(['semester_id' => \App\Models\Semester::currentOrCreate()->semester_id, 
             'title' => 'تصميم تجربة المستخدم',
             'description' => 'مادة تعنى بتصميم واجهات وتجربة المستخدم',
             'level' => 'سنة ثالثة',

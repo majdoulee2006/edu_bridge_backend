@@ -353,7 +353,7 @@ class AdminController extends Controller
             'level' => 'nullable|string',
             'year' => 'nullable|string',
             'credit_hours' => 'nullable',
-            'semester_id' => 'nullable',
+            'semester_id' => 'nullable|integer|exists:semesters,semester_id',
             'program_id' => 'nullable',
             'teacher_ids' => 'nullable|array',
             'teacher_ids.*' => 'exists:teachers,teacher_id',
@@ -369,7 +369,12 @@ class AdminController extends Controller
             'level' => $request->input('level', 'المستوى الأول'),
         ];
         if ($request->filled('year')) $courseData['year'] = $request->year;
-        if ($request->filled('semester_id')) $courseData['semester_id'] = $request->semester_id;
+        // لكل مقرر فصل: إن لم يُحدَّد فهو الفصل الفعّال، وإن لم يوجد فعّال نرفض برسالة واضحة
+        try {
+            $courseData['semester_id'] = $request->filled('semester_id') ? (int) $request->semester_id : \App\Models\Semester::currentOrFail()->semester_id;
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
         if ($request->filled('hours')) $courseData['hours'] = $request->hours;
         if ($request->filled('credit_hours')) $courseData['hours'] = $request->credit_hours;
 
@@ -535,6 +540,8 @@ class AdminController extends Controller
         if (!$course) {
             return response()->json(['success' => false, 'message' => 'الدورة غير موجودة'], 404);
         }
+
+        $request->validate(['semester_id' => 'sometimes|required|integer|exists:semesters,semester_id']);
 
         $course->update($request->only(['title', 'description', 'level', 'semester_id']));
 

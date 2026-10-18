@@ -14,7 +14,7 @@ class LessonSeeder extends Seeder
         $course = DB::table('courses')->first();
         
         if (!$course) {
-            $courseId = DB::table('courses')->insertGetId([
+            $courseId = DB::table('courses')->insertGetId(['semester_id' => \App\Models\Semester::currentOrCreate()->semester_id, 
                 'title' => 'كورس البرمجة التجريبي',
                 'description' => 'كورس مخصص لاختبار واجهات التطبيق',
                 'level' => 'المستوى الأول', // 🌟 شوفيه؟ هون مكانه الصحيح بجدول الكورسات!

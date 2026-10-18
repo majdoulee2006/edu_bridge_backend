@@ -76,7 +76,7 @@ class AttendanceIntelligenceDemoSeeder extends Seeder
 
         $course = [];
         foreach (self::COURSES as $key => $title) {
-            $course[$key] = DB::table('courses')->insertGetId([
+            $course[$key] = DB::table('courses')->insertGetId(['semester_id' => \App\Models\Semester::currentOrCreate()->semester_id, 
                 'title' => $title, 'level' => '1', 'year' => 1, 'created_at' => now(), 'updated_at' => now(),
             ]);
             DB::table('course_program')->insert(['course_id' => $course[$key], 'program_id' => $programId, 'created_at' => now(), 'updated_at' => now()]);

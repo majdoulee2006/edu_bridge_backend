@@ -17,7 +17,7 @@ class CourseSeeder extends Seeder
         ];
 
         foreach ($courses as $course) {
-            DB::table('courses')->insertOrIgnore($course);
+            DB::table('courses')->insertOrIgnore($course + ['semester_id' => \App\Models\Semester::currentOrCreate()->semester_id]);
         }
     }
 }

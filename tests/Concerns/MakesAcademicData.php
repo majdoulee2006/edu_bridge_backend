@@ -119,6 +119,7 @@ trait MakesAcademicData
         $courseId = DB::table('courses')->insertGetId(array_merge([
             'title'      => 'Course ' . $this->nextSeq(),
             'level'      => '1',
+            'semester_id' => \App\Models\Semester::currentOrCreate()->semester_id, // لكل مقرر فصل
             'created_at' => now(),
             'updated_at' => now(),
         ], $attrs));

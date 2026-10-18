@@ -346,7 +346,7 @@ class AdminAcademicController extends Controller
             'description' => 'nullable|string',
             'level'       => 'nullable|string',
             'year'        => 'required|integer|in:1,2',
-            'semester_id' => 'required|integer',
+            'semester_id' => 'required|integer|exists:semesters,semester_id',
             'program_id'  => 'required|integer',
             'hours'       => 'required|integer|min:1',
         ]);
@@ -425,7 +425,7 @@ class AdminAcademicController extends Controller
             'description' => 'nullable|string',
             'level'       => 'nullable|string',
             'year'        => 'required|integer|in:1,2',
-            'semester_id' => 'required|integer',
+            'semester_id' => 'required|integer|exists:semesters,semester_id',
             'program_id'  => 'required|integer',
             'hours'       => 'required|integer|min:1',
         ]);

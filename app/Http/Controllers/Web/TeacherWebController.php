@@ -1556,7 +1556,7 @@ class TeacherWebController extends Controller
                     'level' => $teacher->advisor_year,
                     'hours' => 0,
                     'year' => 1,
-                    'semester_id' => 1,
+                    'semester_id' => \App\Models\Semester::currentOrCreate()->semester_id,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
