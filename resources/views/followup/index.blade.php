@@ -14,8 +14,6 @@
     $lvl = ['high' => '#c62828', 'medium' => '#e65100'];
     $k = $d['kpis'];
     $sort = $filters['sort'] ?? 'attention';
-    $grouped = $sort === 'attention' && empty($filters['status']);
-    $byStatus = collect($d['courses'])->groupBy('status');
     $riskUrl = fn (array $q = []) => url('/' . $prefix . '/risk') . ($q ? '?' . http_build_query($q) : '');
 @endphp
 
@@ -51,6 +49,12 @@
     .fu-bar i { display:block; height:100%; border-radius:6px; }
     .fu-chip { padding:.12rem .65rem; border-radius:2rem; font-size:.74rem; font-weight:700; background: rgba(120,120,120,.14); color: var(--text-primary); }
     .fu-reasons { display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.65rem; }
+    .fu-prog { background: var(--bg-secondary); border:1px solid var(--border-color); border-right:6px solid var(--c); border-radius:1.2rem; margin-bottom:1rem; box-shadow: var(--shadow); overflow:hidden; }
+    .fu-prog > summary { list-style:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; padding:1rem 1.2rem; }
+    .fu-prog > summary::-webkit-details-marker { display:none; }
+    .fu-prog[open] > summary { border-bottom:1px solid var(--border-color); }
+    .fu-psum { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+    .fu-prog .fu-course { margin:.8rem; }
     .fu-table { width:100%; border-collapse:collapse; font-size:.85rem; }
     .fu-table th, .fu-table td { padding:.6rem .5rem; text-align:right; border-bottom:1px solid var(--border-color); }
     .fu-table th { color: var(--text-secondary); font-size:.76rem; font-weight:700; }
@@ -136,36 +140,43 @@
         </div>
     </div>
 
-    {{-- الدورات --}}
-    <div class="fu-h">الدورات <span class="n" style="--c:#546e7a">{{ count($d['courses']) }}</span></div>
-    @if(!count($d['courses']))
+    {{-- البرامج (الدورات) ثم مقرراتها --}}
+    <div class="fu-h">البرامج ومقرراتها <span class="n" style="--c:#546e7a">{{ count($d['programs']) }}</span></div>
+    @if(!count($d['programs']))
         <div class="fu-box"><div class="fu-empty">لا توجد دورات مطابقة. جرّب تغيير الفلاتر.</div></div>
     @endif
 
-    @php
-        $renderCourse = function ($c) use ($statusMeta) {
-            $sm = $statusMeta[$c['status']];
-            $rate = $c['attendance_rate'];
-            $barColor = $rate === null ? '#78909c' : ($rate >= 90 ? '#2e7d32' : ($rate >= 70 ? '#e65100' : '#c62828'));
-            return compact('sm', 'rate', 'barColor');
-        };
-    @endphp
+    @foreach($d['programs'] as $p)
+        @php $pm = $statusMeta[$p['status']]; $pr = $p['attendance_rate']; @endphp
+        <details class="fu-prog" style="--c: {{ $pm['color'] }}" {{ $p['status'] !== 'ok' || count($d['programs']) === 1 ? 'open' : '' }}>
+            <summary>
+                <div>
+                    <div class="fu-cname" style="font-size:1.02rem">{{ $p['name'] }}</div>
+                    <div class="fu-cmeta">
+                        @if($p['department']){{ $p['department'] }} · @endif
+                        {{ $p['students'] }} طالب · {{ count($p['courses']) }} مقرر
+                        @if($pr !== null) · الحضور {{ rtrim(rtrim(number_format($pr, 1), '0'), '.') }}%@endif
+                    </div>
+                </div>
+                <div class="fu-psum">
+                    @if($p['high'])<span class="fu-chip" style="color:{{ $lvl['high'] }}">{{ $p['high'] }} عالٍ</span>@endif
+                    @if($p['medium'])<span class="fu-chip" style="color:{{ $lvl['medium'] }}">{{ $p['medium'] }} متوسط</span>@endif
+                    <span class="fu-badge">{{ $pm['label'] }}</span>
+                </div>
+            </summary>
 
-    @foreach($grouped ? array_keys($statusMeta) : ['__all'] as $sk)
-        @php $list = $grouped ? ($byStatus->get($sk) ?? collect()) : collect($d['courses']); @endphp
-        @if($list->isNotEmpty())
-            @if($grouped)
-                <div class="fu-h" style="font-size:.92rem; --c: {{ $statusMeta[$sk]['color'] }}">{{ $statusMeta[$sk]['label'] }} <span class="n">{{ $list->count() }}</span></div>
-            @endif
-            @foreach($list as $c)
-                @php extract($renderCourse($c)); @endphp
+            @forelse($p['courses'] as $c)
+                @php
+                    $sm = $statusMeta[$c['status']];
+                    $rate = $c['attendance_rate'];
+                    $barColor = $rate === null ? '#78909c' : ($rate >= 90 ? '#2e7d32' : ($rate >= 70 ? '#e65100' : '#c62828'));
+                @endphp
                 <div class="fu-course" style="--c: {{ $sm['color'] }}">
                     <div class="fu-ctop">
                         <div>
                             <div class="fu-cname">{{ $c['title'] }} @if($c['code'])<small style="color:var(--text-secondary)">({{ $c['code'] }})</small>@endif</div>
                             <div class="fu-cmeta">
-                                @if($c['year'])السنة {{ $c['year'] }} · @endif
-                                {{ implode('، ', $c['programs']) ?: 'بلا برنامج' }}
+                                @if($c['year'])السنة {{ $c['year'] }}@endif
                                 @if($c['teachers']) · د. {{ implode('، ', array_slice($c['teachers'], 0, 2)) }}@endif
                             </div>
                         </div>
@@ -190,8 +201,10 @@
                         <div class="fu-reasons">@foreach($c['reasons'] as $r)<span class="fu-chip">{{ $r }}</span>@endforeach</div>
                     @endif
                 </div>
-            @endforeach
-        @endif
+            @empty
+                <div class="fu-empty" style="padding:.8rem 1.2rem">لا مقررات لطلاب هذا البرنامج.</div>
+            @endforelse
+        </details>
     @endforeach
 
     {{-- المرشدون (رئيس القسم) --}}

@@ -130,9 +130,16 @@ class FollowUpDashboardTest extends TestCase
         return $this->actAs($user)->getJson("/api/$prefix/follow-up" . ($query ? '?' . http_build_query($query) : ''));
     }
 
+    /** كل المقررات من كل البرامج مفهرسة بالعنوان. */
     private function courses(array $json): array
     {
-        return collect($json['courses'])->keyBy('title')->all();
+        return collect($json['programs'])->pluck('courses')->flatten(1)->keyBy('title')->all();
+    }
+
+    /** عناوين المقررات بترتيب ظهورها (برنامج ثم مقرراته). */
+    private function titles(array $json): array
+    {
+        return collect($json['programs'])->pluck('courses')->flatten(1)->pluck('title')->all();
     }
 
     // ───────────────────────────── النطاق والصلاحيات ─────────────────────────────
@@ -195,7 +202,7 @@ class FollowUpDashboardTest extends TestCase
         $json = $this->api('head', $this->a)->assertOk()->json();
         $c = $this->courses($json);
 
-        $this->assertSame(['C1 A', 'C2 A', 'C3 A'], array_column($json['courses'], 'title'), 'الأحوج أولاً، ومن لا بيانات له آخرًا');
+        $this->assertSame(['C1 A', 'C2 A', 'C3 A'], $this->titles($json), 'الأحوج أولاً، ومن لا بيانات له آخرًا');
 
         $this->assertSame('attention', $c['C1 A']['status']);
         $this->assertEqualsWithDelta(50.0, $c['C1 A']['attendance_rate'], 0.1);
@@ -234,7 +241,7 @@ class FollowUpDashboardTest extends TestCase
 
     public function test_sort_status_year_and_search_filters(): void
     {
-        $titles = fn (array $q) => array_column($this->api('head', $this->a, $q)->assertOk()->json('courses'), 'title');
+        $titles = fn (array $q) => $this->titles($this->api('head', $this->a, $q)->assertOk()->json());
 
         $this->assertSame(['C1 A'], $titles(['status' => 'attention']));
         $this->assertSame(['C3 A'], $titles(['status' => 'nodata']));
@@ -328,6 +335,93 @@ class FollowUpDashboardTest extends TestCase
         $this->assertNotNull($c60['C1 A']['attendance_rate']);
     }
 
+
+    // ───────────────────────────── البرنامج (الدورة) ثم مقرراته ─────────────────────────────
+
+    /** برنامج ثانٍ في القسم A له طالبان: واحد عالي الخطر يدرس مقررًا مشتركًا مع البرنامج الأول. */
+    private function secondProgram(): array
+    {
+        $p2 = $this->makeProgram($this->a['dept']);
+        DB::table('programs')->where('id', $p2)->update(['name' => 'برنامج ثانٍ']);
+        $h = $this->makeStudent(['full_name' => 'p2high', 'academic_year' => 'السنة الأولى', 'status' => 'active'], $p2);
+        $l = $this->makeStudent(['full_name' => 'p2low', 'academic_year' => 'السنة الأولى', 'status' => 'active'], $p2);
+        $own = $this->makeCourse($p2, ['title' => 'P2 only', 'year' => 1]);
+        foreach ([$h, $l] as $st) {
+            $this->enroll($st['student_id'], $own);
+            $this->enroll($st['student_id'], $this->a['c1']); // مقرر مشترك مع البرنامج الأول
+        }
+        $this->risk($h, 'high', 90);
+        $this->risk($l, 'low', 5);
+
+        return ['id' => $p2, 'high' => $h, 'low' => $l, 'course' => $own];
+    }
+
+    public function test_courses_are_grouped_under_their_program(): void
+    {
+        $p2 = $this->secondProgram();
+        $this->attendance($p2['course'], [$p2['high'], $p2['low']], present: 2, absent: 4); // حضور ضعيف يرفعها فوق C1 في هذا البرنامج
+
+        $programs = collect($this->api('head', $this->a)->assertOk()->json('programs'))->keyBy('name');
+
+        $this->assertEqualsCanonicalizing([$this->a['program_name'], 'برنامج ثانٍ'], $programs->keys()->all());
+        $this->assertSame(['C1 A', 'C2 A', 'C3 A'], array_column($programs[$this->a['program_name']]['courses'], 'title'));
+        $this->assertSame(['P2 only', 'C1 A'], array_column($programs['برنامج ثانٍ']['courses'], 'title'), 'الأحوج أولاً داخل البرنامج');
+        $this->assertSame('Dept A', $programs['برنامج ثانٍ']['department']);
+    }
+
+    public function test_a_shared_course_is_counted_per_program_cohort(): void
+    {
+        $this->secondProgram();
+
+        $programs = collect($this->api('head', $this->a)->json('programs'))->keyBy('name');
+        $inFirst  = collect($programs[$this->a['program_name']]['courses'])->firstWhere('title', 'C1 A');
+        $inSecond = collect($programs['برنامج ثانٍ']['courses'])->firstWhere('title', 'C1 A');
+
+        $this->assertSame(3, $inFirst['enrolled']);
+        $this->assertSame([1, 1], [$inFirst['high'], $inFirst['medium']]);
+        $this->assertSame(2, $inSecond['enrolled'], 'طالبا البرنامج الثاني فقط');
+        $this->assertSame([1, 0], [$inSecond['high'], $inSecond['medium']]);
+    }
+
+    public function test_program_summary_and_order(): void
+    {
+        $this->secondProgram();
+
+        $json = $this->api('head', $this->a)->json();
+        $programs = collect($json['programs'])->keyBy('name');
+
+        $first = $programs[$this->a['program_name']];
+        $this->assertSame(6, $first['students']);
+        $this->assertSame([1, 1], [$first['high'], $first['medium']]);
+        $this->assertEqualsWithDelta(75.0, $first['attendance_rate'], 0.1, 'حضور كل مقررات البرنامج: 9 من 12');
+        $this->assertSame(2, $programs['برنامج ثانٍ']['students']);
+
+        $rank = ['attention' => 0, 'watch' => 1, 'ok' => 2, 'nodata' => 3];
+        $keys = array_map(fn ($p) => [$rank[$p['status']], -($p['attention_score'] ?? 0)], $json['programs']);
+        $sorted = $keys;
+        usort($sorted, fn ($a, $b) => $a <=> $b);
+        $this->assertSame($sorted, $keys, 'الحالة أولاً (تحتاج اهتمامًا قبل راقبها) ثم الدرجة');
+    }
+
+    public function test_status_filter_hides_programs_without_matching_courses(): void
+    {
+        $this->secondProgram();
+
+        $names = array_column($this->api('head', $this->a, ['status' => 'nodata'])->json('programs'), 'name');
+
+        $this->assertSame([$this->a['program_name']], $names, 'C3 وحده بلا بيانات، وبرنامج ثانٍ كله فيه بيانات');
+    }
+
+    public function test_advisor_sees_a_single_program(): void
+    {
+        $this->secondProgram();
+
+        $programs = $this->api('advisor', $this->a)->json('programs');
+
+        $this->assertCount(1, $programs);
+        $this->assertSame($this->a['program_name'], $programs[0]['name']);
+    }
+
     // ───────────────────────────── المرشدون ─────────────────────────────
 
     public function test_advisor_table_flags_an_advisor_who_ignores_at_risk_students(): void
@@ -375,7 +469,7 @@ class FollowUpDashboardTest extends TestCase
         $head = $this->makeHead($dept);
 
         $this->actAs($head['user'])->getJson('/api/department-head/follow-up')->assertOk()
-            ->assertJson(['kpis' => ['students' => 0, 'high' => 0], 'courses' => []]);
+            ->assertJson(['kpis' => ['students' => 0, 'high' => 0], 'programs' => []]);
 
         $this->actingAs($head['user'])->get('/hod/follow-up')->assertOk()->assertSee('لا توجد دورات');
     }
@@ -387,6 +481,6 @@ class FollowUpDashboardTest extends TestCase
         $json = $this->actAs($admin)->getJson('/api/admin/follow-up')->assertOk()->json();
 
         $this->assertGreaterThanOrEqual(6, $json['kpis']['students']);
-        $this->assertContains('C1 A', array_column($json['courses'], 'title'));
+        $this->assertContains('C1 A', $this->titles($json));
     }
 }

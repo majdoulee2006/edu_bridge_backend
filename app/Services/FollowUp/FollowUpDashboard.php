@@ -42,7 +42,7 @@ class FollowUpDashboard
 
         $students = $base->select(
             'students.student_id', 'students.user_id', 'users.full_name', 'users.academic_year',
-            'programs.id as program_id', 'programs.name as program'
+            'programs.id as program_id', 'programs.name as program', 'programs.department_id'
         )->get();
 
         $ids   = $students->pluck('student_id')->map(fn ($i) => (int) $i)->all();
@@ -52,9 +52,11 @@ class FollowUpDashboard
         $latest = $this->latestInterventions($ids);
 
         $overdue = $latest->filter(fn ($i) => $i->follow_up_on && $i->follow_up_on->lte(today()));
-        $courses = $this->courses($ids, $f, $days);
 
-        $pendingTotal = (int) $courses->sum('pending_sessions');
+        $programs = $this->programs($students, $scores, $f, $days);
+
+        // الدورة (مقرر) قد تتبع أكثر من برنامج: نعدّ جلساتها المعلّقة مرة واحدة
+        $pendingTotal = (int) collect($programs)->pluck('courses')->flatten(1)->unique('course_id')->sum('pending_sessions');
 
         return [
             'kind'        => $kind,
@@ -62,7 +64,7 @@ class FollowUpDashboard
             'computed_on' => $scores->max('computed_on'),
             'kpis'        => $this->kpis($ids, $scores, $overdue, $pendingTotal),
             'today'       => $this->todayLists($students, $scores, $overdue, $latest, $ids),
-            'courses'     => $courses->values()->all(),
+            'programs'    => $programs,
             'advisors'    => in_array($kind, [RiskScope::HEAD, RiskScope::ADMIN], true)
                 ? $this->advisors($user, $kind, $students, $scores, $latest)
                 : [],
@@ -148,6 +150,73 @@ class FollowUpDashboard
             : [];
 
         return ['top_risk' => $top, 'overdue' => $overdueList, 'clock_alerts' => $clock];
+    }
+
+    // ───────────────────────────── البرامج (الدورات) ─────────────────────────────
+
+    /**
+     * كل برنامج (معلوماتية، ذكاء اصطناعي، ...) بملخصه ومقرراته. المقررات تُحسب على طلاب البرنامج نفسه،
+     * فمقرر مشترك بين برنامجين يظهر في كل منهما بأرقام طلابه هو.
+     *
+     * @return array<int, array>
+     */
+    private function programs(Collection $students, Collection $scores, array $f, int $days): array
+    {
+        if ($students->isEmpty()) {
+            return [];
+        }
+
+        $deptNames = DB::table('departments')->pluck('name', 'department_id');
+        $from = today()->subDays($days - 1)->toDateString();
+        $minRecords = (int) config('followup.min_attendance_records');
+
+        // نسبة حضور البرنامج كله (كل مقرراته) في النافذة، بدون الغياب المعذور
+        $att = DB::table('attendance as a')
+            ->join('students as st', 'st.student_id', '=', 'a.student_id')
+            ->whereIn('a.student_id', $students->pluck('student_id')->all())
+            ->whereBetween('a.attendance_date', [$from, today()->toDateString()])
+            ->whereIn('a.status', ['present', 'late', 'absent'])
+            ->whereRaw("NOT (a.status = 'absent' AND a.excuse_status = 'approved')")
+            ->groupBy('st.program_id')
+            ->selectRaw("st.program_id, COUNT(*) AS total, SUM(CASE WHEN a.status IN ('present','late') THEN 1 ELSE 0 END) AS attended")
+            ->get()->keyBy('program_id');
+
+        $out = [];
+        foreach ($students->groupBy(fn ($s) => $s->program_id ?? 0) as $programId => $group) {
+            $ids     = $group->pluck('student_id')->map(fn ($i) => (int) $i)->all();
+            $courses = $this->courses($ids, $f, $days)->values()->all();
+
+            if (!$courses && (!empty($f['status']) || !empty($f['year']) || !empty($f['search']))) {
+                continue; // الفلتر استبعد كل مقررات هذا البرنامج
+            }
+
+            $high = $group->filter(fn ($s) => ($scores->get($s->student_id)->level ?? null) === 'high')->count();
+            $med  = $group->filter(fn ($s) => ($scores->get($s->student_id)->level ?? null) === 'medium')->count();
+            $hasRisk = $group->contains(fn ($s) => $scores->has($s->student_id));
+
+            $a = $att->get($programId ?: '');
+            $total = (int) ($a->total ?? 0);
+            $rate = $total >= $minRecords ? round(((int) $a->attended / $total) * 100, 1) : null;
+            $share = $group->count() > 0 ? ($high + 0.5 * $med) / $group->count() : 0.0;
+            [$score, $status] = $this->attention($rate, $share, $hasRisk);
+
+            $first = $group->first();
+            $out[] = [
+                'program_id' => $programId ?: null,
+                'name'       => $first->program ?: 'بدون برنامج',
+                'department' => $deptNames[$first->department_id] ?? null,
+                'students'   => $group->count(), 'high' => $high, 'medium' => $med,
+                'attendance_rate' => $rate,
+                'attention_score' => $score, 'status' => $status,
+                'reasons'    => $this->reasons($rate, $high, $med, 0, $days),
+                'courses'    => $courses,
+            ];
+        }
+
+        return collect($out)->sortBy(fn ($p) => match ($f['sort'] ?? 'attention') {
+            'name'  => [$p['name']],
+            default => [self::statusRank($p['status']), -($p['attention_score'] ?? 0), $p['name']],
+        })->values()->all();
     }
 
     // ───────────────────────────── الدورات ─────────────────────────────
@@ -296,6 +365,12 @@ class FollowUpDashboard
         return $r;
     }
 
+    /** الحالة أولاً (تحتاج اهتمامًا ثم راقبها ثم جيدة ثم بلا بيانات)، فالدرجة داخل الحالة الواحدة. */
+    private static function statusRank(string $status): int
+    {
+        return ['attention' => 0, 'watch' => 1, 'ok' => 2, 'nodata' => 3][$status] ?? 4;
+    }
+
     private function sorted(Collection $c, string $sort): Collection
     {
         return match ($sort) {
@@ -303,7 +378,7 @@ class FollowUpDashboard
             'attendance' => $c->sortBy(fn ($x) => [$x['attendance_rate'] === null ? 1 : 0, $x['attendance_rate'] ?? 0]),
             'risk'       => $c->sortByDesc(fn ($x) => [$x['high'] * 2 + $x['medium'], $x['enrolled']]),
             'name'       => $c->sortBy('title'),
-            default      => $c->sortBy(fn ($x) => [$x['attention_score'] === null ? 1 : 0, -($x['attention_score'] ?? 0), $x['title']]),
+            default      => $c->sortBy(fn ($x) => [self::statusRank($x['status']), -($x['attention_score'] ?? 0), $x['title']]),
         };
     }
 
