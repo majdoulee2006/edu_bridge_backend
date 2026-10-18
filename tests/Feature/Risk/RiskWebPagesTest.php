@@ -218,10 +218,10 @@ class RiskWebPagesTest extends TestCase
         $this->actingAs($plain['user']);
 
         $this->get('/teacher/risk')->assertRedirect('/teacher/dashboard')->assertSessionHas('error');
-        $this->get('/teacher/dashboard')->assertDontSee('المعرّضون للتعثر');
+        $this->get('/teacher/dashboard')->assertDontSee('لوحة المتابعة')->assertDontSee('المعرّضون للتعثر');
 
         $this->actingAs($this->a['advisor']['user']);
-        $this->get('/teacher/dashboard')->assertSee('المعرّضون للتعثر');
+        $this->get('/teacher/dashboard')->assertSee('لوحة المتابعة')->assertDontSee('المعرّضون للتعثر', false);
     }
 
     public function test_students_and_parents_cannot_open_the_pages(): void

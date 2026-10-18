@@ -477,13 +477,9 @@
                     رفيق المذاكرة
                 </a>
                 @if(optional(auth()->user()->teacher)->advisor_branch)
-                <a href="{{ url('/teacher/follow-up') }}" class="nav-item {{ Request::is('teacher/follow-up*') ? 'active' : '' }}">
+                <a href="{{ url('/teacher/follow-up') }}" class="nav-item {{ Request::is('teacher/follow-up*') || Request::is('teacher/risk*') ? 'active' : '' }}">
                     <i class="fa-solid fa-gauge-high"></i>
                     لوحة المتابعة
-                </a>
-                <a href="{{ url('/teacher/risk') }}" class="nav-item {{ Request::is('teacher/risk*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    المعرّضون للتعثر
                 </a>
                 @endif
                 <a href="{{ url('/teacher/attendance-flags') }}" class="nav-item {{ Request::is('teacher/attendance-flags*') ? 'active' : '' }}">

@@ -457,13 +457,9 @@
                     <i class="fa-solid fa-calendar-days"></i>
                     مولّد الجدول
                 </a>
-                <a href="{{ url('/hod/follow-up') }}" class="nav-item {{ Request::is('hod/follow-up*') ? 'active' : '' }}">
+                <a href="{{ url('/hod/follow-up') }}" class="nav-item {{ Request::is('hod/follow-up*') || Request::is('hod/risk*') ? 'active' : '' }}">
                     <i class="fa-solid fa-gauge-high"></i>
                     لوحة المتابعة
-                </a>
-                <a href="{{ url('/hod/risk') }}" class="nav-item {{ Request::is('hod/risk*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    المعرّضون للتعثر
                 </a>
                 <a href="{{ url('/hod/attendance-insights') }}" class="nav-item {{ Request::is('hod/attendance-insights*') ? 'active' : '' }}">
                     <i class="fa-solid fa-chart-column"></i>

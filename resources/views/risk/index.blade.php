@@ -1,5 +1,5 @@
 @extends($layout)
-@section('title', 'الطلاب المعرَّضون للتعثر')
+@section('title', 'لوحة المتابعة')
 @section('subtitle', 'درجة خطر أكاديمي لكل طالب من الحضور والواجبات والعلامات والنشاط، مع أسبابها. أداة لترتيب أولوياتك، وليست حكمًا على الطالب.')
 
 @php
@@ -46,6 +46,7 @@
 @endpush
 
 @section('content')
+    @include('followup._tabs', ['active' => 'students'])
     @if(session('error'))<div class="rk-alert">{{ session('error') }}</div>@endif
 
     @php

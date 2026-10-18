@@ -70,6 +70,7 @@
 @endpush
 
 @section('content')
+    @include('followup._tabs', ['active' => 'overview'])
     @if(session('error'))<div class="fu-alert">{{ session('error') }}</div>@endif
 
     @php

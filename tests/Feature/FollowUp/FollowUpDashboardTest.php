@@ -322,6 +322,24 @@ class FollowUpDashboardTest extends TestCase
         $this->assertStringContainsString('إزالة الفلاتر', $html);
     }
 
+    public function test_overview_and_students_are_two_tabs_of_one_dashboard(): void
+    {
+        foreach ([['head', '/hod', $this->a['head']['user']], ['advisor', '/teacher', $this->a['advisor']['user']]] as [$role, $prefix, $user]) {
+            $overview = $this->actingAs($user)->get("$prefix/follow-up")->assertOk()->getContent();
+            $students = $this->actingAs($user)->get("$prefix/risk")->assertOk()->getContent();
+
+            foreach ([$overview, $students] as $html) {
+                $this->assertStringContainsString('<title>', $html);
+                $this->assertStringContainsString('لوحة المتابعة', $html, "$role: نفس الاسم في الصفحتين");
+                $this->assertStringContainsString('نظرة عامة', $html);
+                $this->assertStringContainsString('الطلاب المعرَّضون', $html);
+            }
+            $this->assertMatchesRegularExpression('#href="[^"]*' . preg_quote($prefix, '#') . '/follow-up"[^>]*class="active"#', $overview, "$role: تبويب النظرة العامة فعّال");
+            $this->assertMatchesRegularExpression('#href="[^"]*' . preg_quote($prefix, '#') . '/risk"[^>]*class="active"#', $students, "$role: تبويب الطلاب فعّال");
+            $this->assertStringNotContainsString('المعرّضون للتعثر', $overview, "$role: لا عنصر قائمة ثانٍ بالاسم القديم");
+        }
+    }
+
     public function test_invalid_filters_are_rejected(): void
     {
         $this->api('head', $this->a, ['sort' => 'hack'])->assertStatus(422);
