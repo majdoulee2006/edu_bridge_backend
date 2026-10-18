@@ -2033,6 +2033,7 @@ class StudentController extends Controller
             'face_embedding'  => 'nullable|array',
             'face_image'      => 'nullable|string',
             'scanned_at'      => 'nullable|date', // الحقل الجديد للتحضير بدون إنترنت
+            'device_time'     => 'nullable|date', // ساعة الهاتف لحظة الإرسال: لكشف انحرافها/التلاعب بها
         ]);
 
         $student   = $request->user()->student;
@@ -2041,6 +2042,10 @@ class StudentController extends Controller
         $longitude = $request->longitude;
         // جلب وقت المسح الفعلي من الموبايل أو اعتماد وقت السيرفر الحالي
         $scannedAt = $request->scanned_at ? Carbon::parse($request->scanned_at) : now();
+
+        // مقارنة ساعة الهاتف بساعة السيرفر: نعتمد وقت المسح مصحَّحًا بانحراف الساعة، لا ما يدّعيه الهاتف
+        $clock     = \App\Services\ClockIntegrityService::assess($request, now());
+        $scannedAt = $clock['corrected'];
 
         // منع التكرار (Idempotency): إذا أرسل التطبيق نفس المسح مسبقاً عبر client_scan_id
         if ($request->filled('client_scan_id')) {
@@ -2082,6 +2087,11 @@ class StudentController extends Controller
         $session = \App\Support\QrTokens::resolve($token, $request->scanned_at ? $scannedAt : null);
 
         if (!$session) {
+            // رمز قديم بساعة معدّلة هو أوضح أشكال التلاعب: ننبّه الطالب إن كان الرمز يخص جلسة معروفة
+            if ($clock['tampered'] && ($hint = \App\Support\QrTokens::sessionForToken($token))) {
+                \App\Services\ClockAlertService::record($student, $hint, $clock);
+            }
+
             return response()->json([
                 'success'       => false,
                 'message'       => 'رمز QR غير صالح',
@@ -2089,23 +2099,18 @@ class StudentController extends Controller
             ], 400);
         }
 
-        // التحقق من سياسة المزامنة بدون إنترنت لقسم الطالب
-        $studentUser = $request->user();
-        $studentDeptName = $studentUser->department;
-        $department = DB::table('departments')->where('name', $studentDeptName)->first();
-        $policy = $department ? $department->offline_sync_policy : 'anytime';
+        // نافذة المسح/المزامنة تُغلق عند 12 ليلاً من يوم الجلسة (أو عند الإنهاء النهائي لها)
+        if (\App\Services\AttendanceSessionFinalizer::windowClosed($session)) {
+            return response()->json([
+                'success'       => false,
+                'message'       => 'انتهت مهلة تسجيل الحضور لهذه الجلسة (تُغلق عند الساعة 12 ليلاً). تواصل مع معلم المقرر لتسجيل استثناء إن كان لديك عذر.',
+                'reject_reason' => 'sync_window_closed',
+            ], 400);
+        }
 
-        if ($policy === 'same_day') {
-            $sessionDate = Carbon::parse($session->created_at)->toDateString();
-            $todayDate = now()->toDateString();
-            
-            if ($todayDate !== $sessionDate) {
-                return response()->json([
-                    'success'       => false,
-                    'message'       => 'انتهت المهلة المحددة لمزامنة الحضور لهذه الجلسة (يجب المزامنة في نفس اليوم)',
-                    'reject_reason' => 'sync_timeout',
-                ], 400);
-            }
+        // ساعة الهاتف مختلفة عن ساعة السيرفر: تنبيه للطالب، وتصعيد لرئيس القسم عند التكرار دون رد
+        if ($clock['tampered']) {
+            \App\Services\ClockAlertService::record($student, $session, $clock);
         }
 
         // مقارنة وقت المسح الفعلي مع وقت بداية ونهاية الجلسة (مع تسامح لانحراف الساعات)
@@ -2324,10 +2329,10 @@ class StudentController extends Controller
                 'face_image'      => $savedFaceImagePath,
                 'face_score'      => $faceScore,
                 'face_status'     => $faceStatus,
-                'source'          => $request->filled('scanned_at') ? 'offline' : 'online',
+                'source'          => $clock['offline'] ? 'offline' : 'online',
                 'client_scan_id'  => $request->client_scan_id,
-                'synced_at'       => $request->filled('scanned_at') ? now() : null,
-                'time_confidence' => $request->time_confidence ?? 'high',
+                'synced_at'       => $clock['offline'] ? now() : null,
+                'time_confidence' => $clock['confidence'], // يحسبها السيرفر؛ لا نصدّق ما يرسله الهاتف
             ] + \App\Support\ScanFingerprint::capture($request, $session, $scannedAt) // بصمة المسح لتحليل الأنماط المشبوهة
         );
 
@@ -2354,6 +2359,43 @@ class StudentController extends Controller
         ], 200);
     }
 
+    /** تنبيهات ساعة الهاتف الخاصة بالطالب (الأحدث أولاً). */
+    public function clockAlerts(Request $request)
+    {
+        $student = $request->user()->student;
+
+        $alerts = \App\Models\AttendanceClockAlert::where('student_id', $student->student_id)
+            ->orderByDesc('id')->limit(30)->get()
+            ->map(fn ($a) => [
+                'id'              => $a->id,
+                'kind'            => $a->kind,
+                'skew_seconds'    => $a->skew_seconds,
+                'created_at'      => $a->created_at?->toIso8601String(),
+                'acknowledged_at' => $a->acknowledged_at?->toIso8601String(),
+            ]);
+
+        return response()->json(['success' => true, 'data' => $alerts], 200);
+    }
+
+    /** "رد" الطالب على تنبيه الساعة: تأكيد أنه صحّح الضبط. يوقف تصعيد التنبيه لرئيس القسم. */
+    public function acknowledgeClockAlert(Request $request, $id)
+    {
+        $request->validate(['note' => 'nullable|string|max:500']);
+
+        $student = $request->user()->student;
+        $alert   = \App\Models\AttendanceClockAlert::where('id', $id)->where('student_id', $student->student_id)->first();
+
+        if (!$alert) {
+            return response()->json(['success' => false, 'message' => 'التنبيه غير موجود'], 404);
+        }
+
+        if (!$alert->acknowledged_at) {
+            $alert->update(['acknowledged_at' => now(), 'ack_note' => $request->input('note')]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'شكرًا، تم تسجيل ردّك'], 200);
+    }
+
     /**
      * مزامنة دفعة مسوح أوفلاين في طلب واحد (المرحلة 1 - البند 6.5).
      *
@@ -2373,6 +2415,7 @@ class StudentController extends Controller
             'scans.*.face_embedding'  => 'nullable|array',
             'scans.*.face_image'      => 'nullable|string',
             'scans.*.scanned_at'      => 'nullable|date',
+            'scans.*.device_time'     => 'nullable|date',
         ]);
 
         $results = [];

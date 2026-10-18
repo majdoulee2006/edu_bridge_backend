@@ -8,43 +8,35 @@ use Illuminate\Console\Command;
 
 class FinalizeAttendanceSessionsCommand extends Command
 {
-    /**
-     * اسم الأمر في سطر الأوامر.
-     *
-     * @var string
-     */
     protected $signature = 'attendance:finalize-sessions';
 
-    /**
-     * وصف وظيفة الأمر.
-     *
-     * @var string
-     */
-    protected $description = 'إغلاق جلسات الحضور الأوفلاين وتسجيل الغياب بعد انتهاء مهلة المزامنة (المرحلة 3)';
+    protected $description = 'إنهاء جلسات الحضور التي بلغت موعدها النهائي (12 ليلاً من يوم الجلسة) وتسجيل غياب من لم يسجّل، حتى لو نسي المعلم إنهاءها';
 
     public function handle(): int
     {
-        $sessions = AttendanceSession::where('is_active', false)
-            ->whereNull('finalized_at')
-            ->where('offline_mode', '!=', 'none')
-            ->whereNotNull('sync_deadline_at')
-            ->where('sync_deadline_at', '<=', now())
+        // الجلسة تُنهى نهائيًا إذا: لها موعد نهائي مضى، أو بلا موعد (لم ينهِها المعلم) وأُنشئت قبل اليوم.
+        $sessions = AttendanceSession::whereNull('finalized_at')
+            ->where(function ($q) {
+                $q->where(fn ($w) => $w->whereNotNull('sync_deadline_at')->where('sync_deadline_at', '<=', now()))
+                    ->orWhere(fn ($w) => $w->whereNull('sync_deadline_at')->where('created_at', '<', now()->startOfDay()));
+            })
             ->get();
 
-        $count = $sessions->count();
-        if ($count === 0) {
-            $this->info('لا توجد جلسات انتهت مهلة مزامنتها حالياً.');
-            return 0;
+        if ($sessions->isEmpty()) {
+            $this->info('لا توجد جلسات بلغت موعدها النهائي.');
+
+            return self::SUCCESS;
         }
 
-        $totalAbsent = 0;
+        $total = 0;
         foreach ($sessions as $session) {
             $absent = AttendanceSessionFinalizer::finalize($session);
-            $totalAbsent += $absent;
-            $this->line("تم إنهاء الجلسة #{$session->id} وتسجيل {$absent} غياب.");
+            $total += $absent;
+            $this->line("الجلسة #{$session->id}: سُجّل {$absent} غياب.");
         }
 
-        $this->info("اكتمل إنهاء {$count} جلسة وتسجيل {$totalAbsent} غياب إجمالي.");
-        return 0;
+        $this->info("اكتمل إنهاء {$sessions->count()} جلسة وتسجيل {$total} غياب.");
+
+        return self::SUCCESS;
     }
 }

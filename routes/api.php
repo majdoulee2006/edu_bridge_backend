@@ -211,6 +211,8 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         // مسارات الحضور والإجازات
         Route::get('/attendance', [StudentController::class, 'getMyAttendance']);
         Route::post('/attendance/scan', [StudentController::class, 'scanAttendanceQr']);
+        Route::get('/clock-alerts', [StudentController::class, 'clockAlerts']);
+        Route::post('/clock-alerts/{id}/acknowledge', [StudentController::class, 'acknowledgeClockAlert']);
         Route::post('/attendance/sync', [StudentController::class, 'syncAttendanceBatch']);
         Route::post('/attendance/{attendance_id}/excuse', [StudentController::class, 'submitAttendanceExcuse']);
         Route::get('/warnings', [StudentController::class, 'getMyWarnings']);
@@ -276,6 +278,7 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
         Route::post('/attendance/session/{sessionId}/refresh-qr', [TeacherController::class, 'refreshQrToken']);
         Route::get('/attendance/session/{sessionId}/list', [TeacherController::class, 'getSessionAttendance']);
         Route::post('/attendance/session/{sessionId}/end', [TeacherController::class, 'endSession']);
+        Route::post('/attendance/session/{sessionId}/exception', [TeacherController::class, 'attendanceException']);
         Route::post('/students/{studentId}/reset-face', [TeacherController::class, 'resetStudentFace']);
         Route::get('/attendance/export', [TeacherController::class, 'exportAttendance']);
         Route::get('/attendance/export-pdf', [TeacherController::class, 'exportFilteredPdf']);

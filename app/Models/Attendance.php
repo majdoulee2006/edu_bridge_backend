@@ -38,6 +38,8 @@ class Attendance extends Model
         'synced_at',
         'countersigned',
         'review_status',
+        'exception_reason',
+        'exception_by',
     ];
 
     protected $casts = [

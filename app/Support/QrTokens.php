@@ -93,6 +93,31 @@ class QrTokens
     }
 
     /**
+     * الجلسة التي ينتمي إليها هذا الرمز دون أي فحص للوقت أو الصلاحية. للتنبيه فقط (مثلاً: طالب أعاد ساعته للخلف
+     * ليستعمل رمزًا قديمًا)، وليس للقبول. رمز لا يخص أي جلسة معروفة يرجع null فلا يولّد تنبيهات من مدخلات عشوائية.
+     */
+    public static function sessionForToken(string $token): ?AttendanceSession
+    {
+        $parsed = TotpQrService::parsePayload($token);
+        if ($parsed) {
+            return AttendanceSession::where('session_uuid', $parsed['sid'])->first();
+        }
+
+        $current = AttendanceSession::where('qr_token', $token)->first();
+        if ($current) {
+            return $current;
+        }
+
+        if (Schema::hasTable('attendance_session_tokens') && preg_match('/^[A-Za-z0-9]{16,64}$/', $token)) {
+            $sessionId = DB::table('attendance_session_tokens')->where('token', $token)->value('session_id');
+
+            return $sessionId ? AttendanceSession::find($sessionId) : null;
+        }
+
+        return null;
+    }
+
+    /**
      * الجلسة التي يخصها هذا الرمز:
      * - الرمز الحالي دائماً.
      * - أو إذا تم تمرير وقت مسح فعلي ($scannedAt): التحقق من الخط الزمني الكامل للرموز.

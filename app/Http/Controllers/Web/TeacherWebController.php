@@ -373,86 +373,22 @@ class TeacherWebController extends Controller
             return redirect()->back()->with('error', 'الجلسة غير موجودة');
         }
 
-        $session = DB::table('attendance_sessions')->where('id', $id)->first();
+        $session = \App\Models\AttendanceSession::find($id);
         if (!$session) {
             return redirect()->back()->with('error', 'الجلسة غير موجودة');
         }
 
-        DB::table('attendance_sessions')
-            ->where('id', $id)
-            ->update([
-                'is_active' => 0,
-                'expires_at' => now(), // إنهاء الصلاحية فوراً
-                'closed_at' => now(),
-                'updated_at' => now()
-            ]);
+        // نفس مسار تطبيق الموبايل: إغلاق الجلسة الآن، وتسجيل الغياب عند 12 ليلاً (أو فورًا عند طلب المعلم الصريح)
+        if (request()->boolean('immediate')) {
+            $absent = \App\Services\AttendanceSessionFinalizer::finalize($session);
 
-        // تحليل الأنماط المشبوهة للجلسة (الأمر المجدول attendance:analyze شبكة أمان إن لم يعمل الطابور)
-        \App\Jobs\AnalyzeAttendanceSessionJob::dispatch((int) $id);
-
-        // ==========================================
-        // إضافة سجل "غائب" لجميع الطلاب الذين لم يحضروا
-        // ==========================================
-        $sessionData = DB::table('attendance_sessions')
-            ->join('lessons', 'attendance_sessions.lesson_id', '=', 'lessons.lesson_id')
-            ->where('attendance_sessions.id', $id)
-            ->select('attendance_sessions.*', 'lessons.course_id', 'lessons.lesson_id')
-            ->first();
-
-        if ($sessionData) {
-            $course = DB::table('courses')->where('course_id', $sessionData->course_id)->first();
-            $coursePrograms = DB::table('course_program')->where('course_id', $sessionData->course_id)->pluck('program_id')->toArray();
-            $yearMap = [1 => 'السنة الأولى', 2 => 'السنة الثانية', 3 => 'السنة الثالثة', 4 => 'السنة الرابعة', 5 => 'السنة الخامسة'];
-            $courseYearStr = $yearMap[$course->year] ?? null;
-
-            // جلب كل الطلاب المطابقين للمادة (حصراً نفس الاختصاص ونفس السنة ومسجلين)
-            $stQuery = DB::table('students')
-                ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->join('enrollments', function($join) use ($sessionData) {
-                    $join->on('students.student_id', '=', 'enrollments.student_id')
-                         ->where('enrollments.course_id', '=', $sessionData->course_id)
-                         ->where('enrollments.status', '!=', 'dropped');
-                });
-
-            if (!empty($coursePrograms)) {
-                $stQuery->whereIn('students.program_id', $coursePrograms);
-            }
-            if ($courseYearStr) {
-                $stQuery->where('users.academic_year', $courseYearStr);
-            }
-
-            $students = $stQuery->pluck('students.student_id')->toArray();
-
-            // جلب الطلاب اللي حضروا فعلاً
-            $attendedStudents = DB::table('attendance')
-                ->where('lesson_id', $sessionData->lesson_id)
-                ->pluck('student_id')
-                ->toArray();
-
-            // الطلاب الغائبين = كل الطلاب - اللي حضروا
-            $absentStudents = array_diff($students, $attendedStudents);
-
-            $absentRecords = [];
-            $now = now();
-            $sessionDate = \Carbon\Carbon::parse($sessionData->created_at)->format('Y-m-d');
-
-            foreach ($absentStudents as $absentId) {
-                $absentRecords[] = [
-                    'student_id' => $absentId,
-                    'lesson_id' => $sessionData->lesson_id,
-                    'status' => 'absent',
-                    'attendance_date' => $sessionDate,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-
-            if (!empty($absentRecords)) {
-                DB::table('attendance')->insert($absentRecords);
-            }
+            return redirect()->back()->with('success', "تم إنهاء الجلسة وتسجيل {$absent} غياب.");
         }
 
-        return redirect()->back()->with('success', 'تم إيقاف الجلسة بنجاح! وتم تسجيل غياب الطلاب المتخلفين عن الحضور.');
+        $session->update(['expires_at' => now()]); // إنهاء صلاحية الـ QR فورًا
+        \App\Services\AttendanceSessionFinalizer::close($session->fresh());
+
+        return redirect()->back()->with('success', 'تم إغلاق الجلسة. يُسجَّل غياب من لم يحضر عند الساعة 12 ليلاً، وحتى ذلك الحين يمكن للطالب مزامنة مسحه.');
     }
 
     public function exportAttendance($sessionId)

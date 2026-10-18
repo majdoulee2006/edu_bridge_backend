@@ -233,7 +233,8 @@ class OfflineAttendanceRegressionTest extends TestCase
             ]);
 
         // طالب غائب
-        $absentStudent = $this->makeStudent(['academic_year' => 'السنة الأولى'], $this->makeProgram($this->makeDepartment()));
+        $programId     = DB::table('course_program')->where('course_id', $this->courseId)->value('program_id');
+        $absentStudent = $this->makeStudent(['academic_year' => 'السنة الأولى'], $programId);
         $this->enroll($absentStudent['student_id'], $this->courseId);
 
         // تشغيل الأمر قبل انتهاء المهلة: لا يحدث شيء

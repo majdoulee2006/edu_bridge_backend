@@ -58,11 +58,16 @@ class EndSessionAndWarningsTest extends TestCase
         ]);
     }
 
+    /** المعلم ينهي الجلسة، ثم يمرّ منتصف الليل فيعمل الإنهاء النهائي المجدول (هو من يسجّل الغياب). */
     private function end(): void
     {
         $this->actAs($this->teacher['user'])
             ->postJson("/api/teacher/attendance/session/{$this->sessionId}/end")
             ->assertOk();
+
+        \Carbon\Carbon::setTestNow(now()->addDay()->startOfDay()->addMinute());
+        \Illuminate\Support\Facades\Artisan::call('attendance:finalize-sessions');
+        \Carbon\Carbon::setTestNow();
     }
 
     public function test_late_student_is_not_turned_into_absent(): void

@@ -18,6 +18,20 @@ return [
     'qr_grace_seconds' => (int) env('ATTENDANCE_QR_GRACE_SECONDS', 90),
 
     /*
+    | مقارنة ساعة هاتف الطالب بساعة السيرفر. فرق أكبر من tolerance_seconds يُعدّ انحرافًا/تلاعبًا:
+    | يُصحَّح وقت المسح به، ويُنبَّه الطالب، وإذا تكرر escalate_after مرات خلال alert_window_days يومًا
+    | دون أن يؤكد الطالب التنبيه يُشعَر رئيس قسمه.
+    */
+    'clock' => [
+        'tolerance_seconds' => (int) env('ATTENDANCE_CLOCK_TOLERANCE', 120),
+        'escalate_after'    => (int) env('ATTENDANCE_CLOCK_ESCALATE_AFTER', 2),
+        'alert_window_days' => (int) env('ATTENDANCE_CLOCK_ALERT_DAYS', 14),
+    ],
+
+    // كم يومًا بعد الجلسة يستطيع المعلم تسجيل "استثناء" حضور لطالب (بسبب مكتوب)
+    'exception_days' => (int) env('ATTENDANCE_EXCEPTION_DAYS', 7),
+
+    /*
     | إعدادات الحضور الأوفلاين الشامل (المرحلة 3)
     */
     'offline' => [

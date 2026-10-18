@@ -570,21 +570,38 @@ class TeacherController extends Controller
 
         $allStudents = $enrolledStudents->merge($extraStudents);
 
-        $students = $allStudents->map(function ($student) use ($presentIds) {
+        // أثناء الجلسة النشطة: من لم يمسح بعد يظهر "absent" (سلوك التطبيق الحالي: لم يحضر بعد).
+        // بعد إغلاق الجلسة وحتى 12 ليلاً: "pending" (قيد المزامنة، قد يكون مسح بلا إنترنت). بعدها "absent" نهائيًا.
+        $windowOpen = !$session->is_active && !\App\Services\AttendanceSessionFinalizer::windowClosed($session);
+        $absentIds  = Attendance::where('lesson_id', $lesson->lesson_id)
+            ->where('status', 'absent')
+            ->pluck('student_id')
+            ->toArray();
+
+        $students = $allStudents->map(function ($student) use ($presentIds, $absentIds, $windowOpen) {
+            $status = match (true) {
+                in_array($student->student_id, $presentIds) => 'present',
+                in_array($student->student_id, $absentIds)  => 'absent',
+                $windowOpen                                 => 'pending',
+                default                                     => 'absent',
+            };
+
             return [
                 'student_id' => $student->student_id,
-                    'name'   => $student->user->full_name ?? $student->user->name ?? 'غير معروف',
-                'status' => in_array($student->student_id, $presentIds) ? 'present' : 'absent',
+                'name'       => $student->user->full_name ?? $student->user->name ?? 'غير معروف',
+                'status'     => $status,
             ];
         });
 
         return response()->json([
             'success' => true,
             'data' => [
-                'session_active' => $session->is_active,
-                'present_count' => count($presentIds),
-                'total_count'   => $allStudents->count(),
-                'students' => $students,
+                'session_active'  => $session->is_active,
+                'present_count'   => count($presentIds),
+                'pending_count'   => $students->where('status', 'pending')->count(),
+                'total_count'     => $allStudents->count(),
+                'sync_deadline_at' => \App\Services\AttendanceSessionFinalizer::deadlineFor($session)->toIso8601String(),
+                'students'        => $students->values(),
             ]
         ], 200);
     }
@@ -600,41 +617,96 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
         }
 
-        // فحص وضع الجلسة: هل هي جلسة تدعم الأوفلاين أم جلسة عادية متصلة (المرحلة 3)
-        $isOfflineSession = in_array($session->offline_mode, ['standard', 'strict'], true);
-        $forceImmediate   = $request->boolean('immediate', false);
-
-        if ($isOfflineSession && !$forceImmediate) {
-            $lesson     = $session->lesson;
-            $course     = $lesson?->course;
-            $department = $course?->programs()->with('department')->first()?->department;
-            $policy     = $department?->offline_sync_policy ?? 'anytime';
-
-            $windowHours = (int) config('attendance.offline.default_window_hours', 48);
-            $deadline    = $policy === 'same_day'
-                ? now()->endOfDay()
-                : now()->addHours($windowHours);
-
-            $session->update([
-                'is_active'        => false,
-                'closed_at'        => now(),
-                'sync_deadline_at' => $deadline,
-            ]);
+        // طلب صريح من المعلم لتسجيل الغياب فورًا (اختياري، ولا يرسله التطبيق افتراضيًا)
+        if ($request->boolean('immediate', false)) {
+            $absent = \App\Services\AttendanceSessionFinalizer::finalize($session);
 
             return response()->json([
-                'success'          => true,
-                'message'          => 'تم إغلاق الجلسة وتحديد مهلة المزامنة حتى ' . $deadline->translatedFormat('Y-m-d H:i') . ' (في انتظار مزامنة مسوح الطلاب)',
-                'sync_deadline_at' => $deadline->toIso8601String(),
-                'status'           => 'pending_sync',
+                'success' => true,
+                'status'  => 'finalized',
+                'message' => "تم إنهاء الجلسة وتسجيل {$absent} غياب",
             ], 200);
         }
 
-        // للجلسات المتصلة العادية (offline_mode = none) أو عند طلب الإنهاء الفوري القسري
-        \App\Services\AttendanceSessionFinalizer::finalize($session);
+        // الوضع المعتاد: نغلق الجلسة ونؤجّل الغياب إلى 12 ليلاً. من لم يمسح قد يكون مسح بلا إنترنت وسيزامن.
+        $session  = \App\Services\AttendanceSessionFinalizer::close($session);
+        $deadline = \App\Services\AttendanceSessionFinalizer::deadlineFor($session);
+
+        return response()->json([
+            'success'          => true,
+            'status'           => $session->finalized_at ? 'finalized' : 'pending_sync',
+            'message'          => 'تم إغلاق الجلسة. يُسجَّل غياب من لم يحضر عند الساعة 12 ليلاً، وحتى ذلك الحين يمكن للطالب مزامنة مسحه.',
+            'sync_deadline_at' => $deadline->toIso8601String(),
+        ], 200);
+    }
+
+    /**
+     * زر "استثناء" للمعلم: تسجيل حضور طالب لم يُسجَّل حضوره (لم تتم مزامنته، هاتفه تعطل، إلخ) بسبب مكتوب.
+     * يعمل قبل الإنهاء النهائي للجلسة وبعده (ضمن attendance.exception_days)، ويُحفظ السبب وكاتب القرار للتدقيق.
+     */
+    public function attendanceException(Request $request, $sessionId)
+    {
+        $session = $this->findOwnedSession($request, $sessionId);
+        if (!$session) {
+            return response()->json(['success' => false, 'message' => 'الجلسة غير موجودة'], 404);
+        }
+
+        $data = $request->validate([
+            'student_id' => 'required|integer',
+            'status'     => 'nullable|in:present,late',
+            'reason'     => 'required|string|min:5|max:500',
+        ]);
+
+        $maxDays = (int) config('attendance.exception_days', 7);
+        if ($session->created_at->copy()->startOfDay()->diffInDays(now()->startOfDay()) > $maxDays) {
+            return response()->json([
+                'success' => false,
+                'message' => "انتهت مدة تسجيل الاستثناء لهذه الجلسة ({$maxDays} أيام). راجع رئيس القسم.",
+            ], 422);
+        }
+
+        $lesson = $session->lesson;
+        $eligible = collect(\App\Services\AttendanceSessionFinalizer::eligibleStudents((int) $lesson->course_id))
+            ->pluck('student_id')->map(fn ($i) => (int) $i)->all();
+        if (!in_array((int) $data['student_id'], $eligible, true)) {
+            return response()->json(['success' => false, 'message' => 'الطالب غير مسجّل في هذا المقرر'], 422);
+        }
+
+        $attendance = Attendance::updateOrCreate(
+            [
+                'student_id'      => (int) $data['student_id'],
+                'lesson_id'       => $lesson->lesson_id,
+                'attendance_date' => $session->created_at->toDateString(),
+            ],
+            [
+                'session_id'       => $session->id,
+                'status'           => $data['status'] ?? 'present',
+                'source'           => 'manual_exception',
+                'time_confidence'  => 'high',
+                'review_status'    => 'confirmed',
+                'exception_reason' => $data['reason'],
+                'exception_by'     => $request->user()->user_id,
+            ]
+        );
+
+        \App\Models\UserActivity::log('استثناء حضور', "المعلم سجّل حضور الطالب ID: {$data['student_id']} في الجلسة {$session->id}: {$data['reason']}");
+
+        try {
+            $studentUserId = \Illuminate\Support\Facades\DB::table('students')->where('student_id', $data['student_id'])->value('user_id');
+            $title = 'تم تسجيل حضورك كاستثناء';
+            $body  = 'سجّل معلمك حضورك في ' . ($lesson->course->title ?? 'المقرر') . ' بعد مراجعة. السبب: ' . $data['reason'];
+            \App\Models\Notification::create([
+                'user_id' => $studentUserId, 'sender_id' => $request->user()->user_id, 'title' => $title, 'message' => $body,
+                'type' => 'attendance_exception', 'category' => 'academic', 'related_id' => $attendance->attendance_id, 'is_read' => false,
+            ]);
+        } catch (\Throwable $e) {
+            // فشل الإشعار لا يلغي القرار
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'تم إنهاء الجلسة وتسجيل الغياب',
+            'message' => 'تم تسجيل الاستثناء',
+            'data'    => ['attendance_id' => $attendance->attendance_id, 'status' => $attendance->status],
         ], 200);
     }
 
