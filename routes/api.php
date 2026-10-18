@@ -247,6 +247,7 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
 
         // الإنذار المبكر للتعثر (للمرشد فقط: يُرفض من ليس مرشدًا)
         Route::get('/risk', [RiskController::class, 'index']);
+        Route::get('/follow-up', [\App\Http\Controllers\Api\FollowUpController::class, 'index']);
         Route::get('/risk/students/{id}', [RiskController::class, 'show']);
         Route::post('/risk/students/{id}/interventions', [RiskController::class, 'storeIntervention']);
         Route::get('/attendance-flags', [AttendanceFlagController::class, 'index']);
@@ -425,6 +426,7 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
 
         // الإنذار المبكر للتعثر لطلاب القسم
         Route::get('/risk', [RiskController::class, 'index']);
+        Route::get('/follow-up', [\App\Http\Controllers\Api\FollowUpController::class, 'index']);
         Route::get('/risk/students/{id}', [RiskController::class, 'show']);
         Route::post('/risk/students/{id}/interventions', [RiskController::class, 'storeIntervention']);
 
@@ -462,6 +464,7 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
             Route::get('/dashboard', [AdminController::class, 'dashboard']);
             // الإنذار المبكر للتعثر (كل الطلاب)
             Route::get('/risk', [RiskController::class, 'index']);
+            Route::get('/follow-up', [\App\Http\Controllers\Api\FollowUpController::class, 'index']);
             Route::get('/risk/students/{id}', [RiskController::class, 'show']);
             Route::post('/risk/students/{id}/interventions', [RiskController::class, 'storeIntervention']);
             Route::get('/attendance/insights', [AttendanceInsightsController::class, 'insights']);
