@@ -304,6 +304,24 @@ class FollowUpDashboardTest extends TestCase
         $this->assertStringContainsString('id="programs"', $html);
     }
 
+    public function test_follow_up_page_announces_active_filters(): void
+    {
+        $this->actingAs($this->a['head']['user']);
+
+        $plain = $this->get('/hod/follow-up')->assertOk()->getContent();
+        $this->assertStringNotContainsString('عرض مفلتر', $plain);
+
+        $name = $this->a['program_name'];
+        $html = $this->get('/hod/follow-up?program_id=' . $this->a['program'] . '&status=attention&pending=1')->assertOk()->getContent();
+
+        $this->assertStringContainsString('عرض مفلتر', $html);
+        $this->assertStringContainsString('البرنامج: ' . $name, $html);
+        $this->assertStringContainsString('الحالة: تحتاج اهتمامًا', $html);
+        $this->assertStringContainsString('جلسات معلّقة فقط', $html);
+        $this->assertStringContainsString('المؤشرات العلوية تخص هذا البرنامج فقط', $html);
+        $this->assertStringContainsString('إزالة الفلاتر', $html);
+    }
+
     public function test_invalid_filters_are_rejected(): void
     {
         $this->api('head', $this->a, ['sort' => 'hack'])->assertStatus(422);

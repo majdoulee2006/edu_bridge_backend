@@ -58,6 +58,8 @@
     .fu-prog[open] > summary { border-bottom:1px solid var(--border-color); }
     .fu-psum { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
     .fu-prog .fu-course { margin:.8rem; }
+    .fu-banner { display:flex; justify-content:space-between; align-items:center; gap:.8rem; flex-wrap:wrap; padding:.7rem 1rem; margin-bottom:1rem; border-radius:.9rem; background: rgba(230,81,0,.12); color:#e65100; font-weight:700; font-size:.88rem; }
+    .fu-banner a { color:#e65100; text-decoration:none; font-weight:800; white-space:nowrap; }
     .fu-table { width:100%; border-collapse:collapse; font-size:.85rem; }
     .fu-table th, .fu-table td { padding:.6rem .5rem; text-align:right; border-bottom:1px solid var(--border-color); }
     .fu-table th { color: var(--text-secondary); font-size:.76rem; font-weight:700; }
@@ -69,6 +71,25 @@
 
 @section('content')
     @if(session('error'))<div class="fu-alert">{{ session('error') }}</div>@endif
+
+    @php
+        $progId = $filters['program_id'] ?? null;
+        $progName = $progId ? (\DB::table('programs')->where('id', (int) $progId)->value('name') ?? ('#' . $progId)) : null;
+        $labels = array_filter([
+            $progName ? 'البرنامج: ' . $progName : null,
+            !empty($filters['year']) ? 'السنة: ' . $filters['year'] : null,
+            !empty($filters['status']) ? 'الحالة: ' . ($statusMeta[$filters['status']]['label'] ?? $filters['status']) : null,
+            !empty($filters['search']) ? 'بحث: «' . $filters['search'] . '»' : null,
+            !empty($filters['pending']) ? 'جلسات معلّقة فقط' : null,
+        ]);
+    @endphp
+    @if($labels)
+        <div class="fu-banner">
+            <span><i class="fa-solid fa-filter"></i> عرض مفلتر: {{ implode(' · ', $labels) }}
+                @if($progName) — المؤشرات العلوية تخص هذا البرنامج فقط @endif</span>
+            <a href="{{ url('/' . $prefix . '/follow-up') }}">إزالة الفلاتر ✕</a>
+        </div>
+    @endif
 
     {{-- كل مربع رابط إلى مكان بياناته: قائمة الطلاب المطابقة، أو القسم المناسب في هذه الصفحة --}}
     @php $pendingOn = !empty($filters['pending']); @endphp

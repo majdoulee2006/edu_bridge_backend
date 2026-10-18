@@ -14,6 +14,8 @@
     .rk-stat { background: var(--bg-secondary); border:1px solid var(--border-color); border-radius:1.1rem; padding:1rem; text-align:center; box-shadow: var(--shadow); }
     .rk-stat b { display:block; font-size:1.8rem; font-weight:800; color: var(--c); }
     .rk-stat small { color: var(--text-secondary); font-size:.8rem; }
+    .rk-banner { display:flex; justify-content:space-between; align-items:center; gap:.8rem; flex-wrap:wrap; padding:.7rem 1rem; margin-bottom:1rem; border-radius:.9rem; background: rgba(230,81,0,.12); color:#e65100; font-weight:700; font-size:.88rem; }
+    .rk-banner a { color:#e65100; text-decoration:none; font-weight:800; white-space:nowrap; }
     a.rk-stat { display:block; text-decoration:none; cursor:pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
     a.rk-stat:hover { transform: translateY(-2px); border-color: var(--c); }
     a.rk-stat.active { border-color: var(--c); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 35%, transparent); }
@@ -45,6 +47,21 @@
 
 @section('content')
     @if(session('error'))<div class="rk-alert">{{ session('error') }}</div>@endif
+
+    @php
+        $progFilter = !empty($filters['program_id']);
+        $progName = $progFilter ? (\DB::table('programs')->where('id', (int) $filters['program_id'])->value('name') ?? ('#' . $filters['program_id'])) : null;
+    @endphp
+    {{-- الأرقام تتبع البحث والبرنامج المختارين: نقول ذلك صراحة كي لا يُظن أنها كل طلابك --}}
+    @if($progFilter || !empty($filters['search']))
+        <div class="rk-banner">
+            <span><i class="fa-solid fa-filter"></i> عرض مفلتر، الأرقام أدناه لجزء من طلابك:
+                @if($progFilter) البرنامج: {{ $progName }} @endif
+                @if(!empty($filters['search'])) بحث: «{{ $filters['search'] }}» @endif
+            </span>
+            <a href="{{ url('/' . $prefix . '/risk') }}">إزالة الفلاتر ✕</a>
+        </div>
+    @endif
 
     @php $curLevel = $filters['level'] ?? ''; $curFollow = $filters['followup'] ?? ''; $base = url('/' . $prefix . '/risk'); @endphp
     {{-- كل مربع رابط: يعرض الطلاب المطابقين له تحت (مع الإبقاء على البحث والبرنامج والترتيب) --}}

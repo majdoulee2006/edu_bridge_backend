@@ -85,6 +85,28 @@ class RiskWebPagesTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<div class="rk-stat[ "]/', $html, 'لم يبقَ مربع غير تفاعلي');
     }
 
+    public function test_a_filtered_view_says_so_and_offers_to_clear_it(): void
+    {
+        $this->actingAs($this->a['head']['user']);
+
+        $name = DB::table('programs')->where('id', $this->a['program'])->value('name');
+        $html = $this->get('/hod/risk?program_id=' . $this->a['program'])->assertOk()->getContent();
+
+        $this->assertStringContainsString('عرض مفلتر', $html);
+        $this->assertStringContainsString('البرنامج: ' . $name, $html);
+        $this->assertStringContainsString('إزالة الفلاتر', $html);
+
+        $this->assertStringContainsString('بحث: «زيد»', $this->get('/hod/risk?search=' . urlencode('زيد'))->getContent());
+    }
+
+    public function test_an_unfiltered_view_has_no_filter_banner(): void
+    {
+        $this->actingAs($this->a['head']['user']);
+
+        $this->assertStringNotContainsString('عرض مفلتر', $this->get('/hod/risk')->assertOk()->getContent());
+        $this->assertStringNotContainsString('عرض مفلتر', $this->get('/hod/risk?level=high')->getContent(), 'فلتر المستوى ظاهر بالشرائح ولا يحتاج شريطًا');
+    }
+
     public function test_the_active_box_follows_the_current_filter(): void
     {
         $this->actingAs($this->a['advisor']['user']);
