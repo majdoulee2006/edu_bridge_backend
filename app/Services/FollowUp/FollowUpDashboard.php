@@ -330,6 +330,11 @@ class FollowUpDashboard
             return [null, 'nodata'];
         }
 
+        // لا سجلات حضور كافية ولا مؤشر خطر: "لا دليل" وليست "وضعها جيد". نقول ذلك صراحة.
+        if ($rate === null && $riskShare <= 0.0) {
+            return [null, 'nodata'];
+        }
+
         // بلا حضور كافٍ لا نعتمد على الخطر وحده لنصنّفها "تحتاج اهتمامًا": نكتفي بـ "راقب" كحد أقصى
         $w = array_sum(array_column($parts, 0));
         $score = round(array_sum(array_map(fn ($p) => $p[0] * $p[1], $parts)) / ($w ?: 1), 1);

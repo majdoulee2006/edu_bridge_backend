@@ -239,6 +239,17 @@ class FollowUpDashboardTest extends TestCase
         $this->assertNotSame('attention', $c['status'], 'الخطر وحده بلا حضور كافٍ يكفي لـ "راقب" فقط');
     }
 
+    public function test_low_risk_students_without_attendance_records_are_not_called_good(): void
+    {
+        $c5 = $this->makeCourse($this->a['program'], ['title' => 'C5 A', 'year' => 1]);
+        $this->enroll($this->s['low2']['student_id'], $c5); // خطره منخفض لكن لا سجلات حضور للمقرر
+
+        $c = $this->courses($this->api('head', $this->a)->json())['C5 A'];
+
+        $this->assertNull($c['attendance_rate']);
+        $this->assertSame('nodata', $c['status'], 'غياب الأدلة ليس دليلاً على أن الوضع جيد');
+    }
+
     public function test_sort_status_year_and_search_filters(): void
     {
         $titles = fn (array $q) => $this->titles($this->api('head', $this->a, $q)->assertOk()->json());
