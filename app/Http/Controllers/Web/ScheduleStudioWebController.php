@@ -7,7 +7,9 @@ use App\Models\Room;
 use App\Models\ScheduleDraft;
 use App\Models\Semester;
 use App\Models\TeacherAvailability;
+use App\Services\Schedule\RoomService;
 use App\Services\Schedule\ScheduleDraftService;
+use App\Services\Schedule\ScheduleReadiness;
 use App\Services\Schedule\ScheduleProblem;
 use App\Services\Schedule\ScheduleRuleException;
 use Illuminate\Http\Request;
@@ -20,14 +22,14 @@ use Illuminate\Support\Facades\DB;
  */
 class ScheduleStudioWebController extends Controller
 {
-    public function __construct(private ScheduleDraftService $svc)
+    public function __construct(private ScheduleDraftService $svc, private RoomService $roomSvc, private ScheduleReadiness $readiness)
     {
     }
 
     public function index(Request $request)
     {
         $deptId = $this->dept();
-        $request->validate(['semester_id' => 'nullable|integer|exists:semesters,semester_id']);
+        $request->validate(['semester_id' => 'nullable|integer|exists:semesters,semester_id', 'tab' => 'nullable|in:drafts,rooms,availability']);
 
         $semesters = Semester::orderByDesc('start_date')->get();
         $selected = $request->filled('semester_id') ? $semesters->firstWhere('semester_id', (int) $request->semester_id) : Semester::current();
@@ -36,6 +38,11 @@ class ScheduleStudioWebController extends Controller
         return view('schedule_studio.index', [
             'semesters' => $semesters, 'selected' => $selected, 'currentId' => Semester::currentId(),
             'capacity' => $problem ? $problem->capacityReport() : [],
+            'readiness' => $selected ? $this->readiness->check($deptId, $selected->semester_id) : null,
+            'tab' => $request->input('tab', 'drafts'),
+            'groups' => $this->roomSvc->groups($deptId),
+            'programs' => DB::table('programs')->where('department_id', $deptId)->orderBy('name')->get(['id', 'name']),
+            'roomTypes' => Room::TYPES,
             'drafts'   => ScheduleDraft::with('semester')->where('department_id', $deptId)->orderByDesc('id')->limit(20)->get(),
             'rooms'    => Room::where(fn ($q) => $q->where('department_id', $deptId)->orWhereNull('department_id'))->orderBy('name')->get(),
             'teachers' => $this->teachers($deptId),
@@ -155,12 +162,23 @@ class ScheduleStudioWebController extends Controller
 
     public function storeRoom(Request $request)
     {
-        $data = $request->validate(['name' => 'required|string|max:60', 'capacity' => 'required|integer|between:1,2000']);
         $dept = $this->dept();
+        $data = $this->roomRules($request, $dept);
 
-        Room::updateOrCreate(['name' => $data['name'], 'department_id' => $dept], ['capacity' => $data['capacity'], 'is_active' => true]);
+        Room::updateOrCreate(['name' => $data['name'], 'department_id' => $dept], $data + ['is_active' => true]);
 
         return back()->with('success', 'حُفظت القاعة.');
+    }
+
+    public function updateRoom(Request $request, $id)
+    {
+        $dept = $this->dept();
+        $room = Room::where('department_id', $dept)->findOrFail($id);
+        $data = $this->roomRules($request, $dept, $room->name);
+
+        $room->update($data);
+
+        return back()->with('success', 'حُدّثت القاعة.');
     }
 
     public function deleteRoom($id)
@@ -168,6 +186,44 @@ class ScheduleStudioWebController extends Controller
         Room::where('department_id', $this->dept())->where('id', $id)->delete();
 
         return back()->with('success', 'حُذفت القاعة.');
+    }
+
+    /** ينشئ قاعة خاصة لكل شعبة بلا قاعة (أو يربط قاعة موجودة بنفس الاسم). */
+    public function autoRooms()
+    {
+        $r = $this->roomSvc->createGroupRooms($this->dept());
+        $msg = count($r['created']) + count($r['linked']) === 0
+            ? 'لكل شعبة قاعتها الخاصة أصلاً.'
+            : 'أُنشئت ' . count($r['created']) . ' قاعة، وربطت ' . count($r['linked']) . ' قاعة موجودة بشعبتها. راجع السعات وعدّلها عند الحاجة.';
+
+        return back()->with('success', $msg);
+    }
+
+    /** استيراد قاعات من نص ملصوق: سطر لكل قاعة. */
+    public function importRooms(Request $request)
+    {
+        $data = $request->validate(['lines' => 'required|string|max:20000']);
+        $r = $this->roomSvc->import($this->dept(), $data['lines']);
+
+        $back = back()->with($r['created'] + $r['updated'] > 0 ? 'success' : 'error', "استُورد: {$r['created']} جديدة، {$r['updated']} محدّثة" . ($r['errors'] ? '، و' . count($r['errors']) . ' سطر فيه خطأ.' : '.'));
+
+        return $r['errors'] ? $back->with('import_errors', $r['errors']) : $back;
+    }
+
+    /** قواعد حقول القاعة المشتركة بين الإضافة والتعديل. الدورة يجب أن تكون من دورات قسم رئيس القسم. */
+    private function roomRules(Request $request, int $dept, ?string $currentName = null): array
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:60', 'capacity' => 'required|integer|between:1,2000',
+            'type' => 'nullable|in:' . implode(',', array_keys(Room::TYPES)),
+            'program_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('programs', 'id')->where('department_id', $dept)],
+            'year' => 'nullable|integer|between:1,5|required_with:program_id',
+        ]);
+
+        return [
+            'name' => $data['name'], 'capacity' => (int) $data['capacity'], 'type' => $data['type'] ?? 'classroom',
+            'program_id' => $data['program_id'] ?? null, 'year' => !empty($data['program_id']) ? (int) $data['year'] : null,
+        ];
     }
 
     public function storeAvailability(Request $request)

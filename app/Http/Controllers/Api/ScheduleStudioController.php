@@ -7,7 +7,9 @@ use App\Models\Room;
 use App\Models\ScheduleDraft;
 use App\Models\Semester;
 use App\Models\TeacherAvailability;
+use App\Services\Schedule\RoomService;
 use App\Services\Schedule\ScheduleDraftService;
+use App\Services\Schedule\ScheduleReadiness;
 use App\Services\Schedule\ScheduleProblem;
 use App\Services\Schedule\ScheduleRuleException;
 use Illuminate\Http\Request;
@@ -19,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 class ScheduleStudioController extends Controller
 {
-    public function __construct(private ScheduleDraftService $svc)
+    public function __construct(private ScheduleDraftService $svc, private RoomService $roomSvc, private ScheduleReadiness $readiness)
     {
     }
 
@@ -36,6 +38,7 @@ class ScheduleStudioController extends Controller
                 'current_semester_id' => Semester::currentId(),
                 'selected_semester_id' => $selected?->semester_id,
                 'capacity' => $selected ? ScheduleProblem::forDepartment($dept, ['semester_id' => $selected->semester_id])->capacityReport() : [],
+                'readiness' => $selected ? $this->readiness->check($dept, $selected->semester_id) : null,
                 'periods' => config('schedule.periods'), 'default_periods' => config('schedule.default_periods'), 'max_periods' => config('schedule.max_periods'),
                 'drafts' => ScheduleDraft::where('department_id', $dept)->orderByDesc('id')->limit(20)->get()->map(fn ($d) => $this->brief($d))->values(),
             ]]);
@@ -122,8 +125,15 @@ class ScheduleStudioController extends Controller
             $teachers = $this->teachers($dept);
 
             return response()->json(['success' => true, 'data' => [
-                'rooms' => Room::where(fn ($q) => $q->where('department_id', $dept)->orWhereNull('department_id'))->orderBy('name')->get()
-                    ->map(fn ($r) => ['id' => $r->id, 'name' => $r->name, 'capacity' => $r->capacity, 'shared' => $r->department_id === null])->values(),
+                'rooms' => Room::with('program')->where(fn ($q) => $q->where('department_id', $dept)->orWhereNull('department_id'))->orderBy('name')->get()
+                    ->map(fn ($r) => [
+                        'id' => $r->id, 'name' => $r->name, 'capacity' => $r->capacity, 'shared' => $r->department_id === null,
+                        'type' => $r->type, 'type_label' => Room::TYPES[$r->type] ?? $r->type,
+                        'program_id' => $r->program_id, 'program' => $r->program?->name, 'year' => $r->year,
+                    ])->values(),
+                'room_types' => collect(Room::TYPES)->map(fn ($l, $k) => ['key' => $k, 'label' => $l])->values(),
+                'programs' => DB::table('programs')->where('department_id', $dept)->orderBy('name')->get(['id', 'name'])->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->values(),
+                'groups' => $this->roomSvc->groups($dept),
                 'teachers' => $teachers->map(fn ($t) => ['user_id' => $t->user_id, 'name' => $t->full_name])->values(),
                 'availability' => TeacherAvailability::whereIn('teacher_user_id', $teachers->pluck('user_id'))->orderBy('teacher_user_id')->get()
                     ->map(fn ($a) => ['id' => $a->id, 'teacher_user_id' => $a->teacher_user_id, 'day' => $a->day, 'period' => $a->period, 'kind' => $a->kind])->values(),
@@ -134,12 +144,25 @@ class ScheduleStudioController extends Controller
 
     public function storeRoom(Request $request)
     {
-        $d = $request->validate(['name' => 'required|string|max:60', 'capacity' => 'required|integer|between:1,2000']);
+        $dept = null;
 
-        return $this->guard(function () use ($request, $d) {
-            $room = Room::updateOrCreate(['name' => $d['name'], 'department_id' => $this->svc->departmentOf($request->user())], ['capacity' => $d['capacity'], 'is_active' => true]);
+        return $this->guard(function () use ($request, &$dept) {
+            $dept = $this->svc->departmentOf($request->user());
+            $d = $this->roomRules($request, $dept);
+            $room = Room::updateOrCreate(['name' => $d['name'], 'department_id' => $dept], $d + ['is_active' => true]);
 
             return response()->json(['success' => true, 'data' => ['id' => $room->id]], 201);
+        });
+    }
+
+    public function updateRoom(Request $request, $id)
+    {
+        return $this->guard(function () use ($request, $id) {
+            $dept = $this->svc->departmentOf($request->user());
+            $room = Room::where('department_id', $dept)->findOrFail($id);
+            $room->update($this->roomRules($request, $dept));
+
+            return response()->json(['success' => true, 'data' => ['id' => $room->id]]);
         });
     }
 
@@ -150,6 +173,35 @@ class ScheduleStudioController extends Controller
 
             return response()->json(['success' => true]);
         });
+    }
+
+    /** قاعة خاصة لكل شعبة بلا قاعة. */
+    public function autoRooms(Request $request)
+    {
+        return $this->guard(fn () => response()->json(['success' => true, 'data' => $this->roomSvc->createGroupRooms($this->svc->departmentOf($request->user()))]));
+    }
+
+    /** استيراد قاعات من نص (سطر لكل قاعة). يعيد الأخطاء برقم السطر دون إيقاف الباقي. */
+    public function importRooms(Request $request)
+    {
+        $d = $request->validate(['lines' => 'required|string|max:20000']);
+
+        return $this->guard(fn () => response()->json(['success' => true, 'data' => $this->roomSvc->import($this->svc->departmentOf($request->user()), $d['lines'])]));
+    }
+
+    private function roomRules(Request $request, int $dept): array
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:60', 'capacity' => 'required|integer|between:1,2000',
+            'type' => 'nullable|in:' . implode(',', array_keys(Room::TYPES)),
+            'program_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('programs', 'id')->where('department_id', $dept)],
+            'year' => 'nullable|integer|between:1,5|required_with:program_id',
+        ]);
+
+        return [
+            'name' => $data['name'], 'capacity' => (int) $data['capacity'], 'type' => $data['type'] ?? 'classroom',
+            'program_id' => $data['program_id'] ?? null, 'year' => !empty($data['program_id']) ? (int) $data['year'] : null,
+        ];
     }
 
     public function storeAvailability(Request $request)

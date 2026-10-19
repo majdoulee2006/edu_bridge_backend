@@ -45,7 +45,7 @@ class ScheduleStudioWebTest extends TestCase
     public function test_index_shows_both_choices_and_capacity(): void
     {
         $this->get('/hod/schedule-studio')->assertOk()
-            ->assertSee('إنشاء يدوي')->assertSee('اقتراح من النظام')->assertSee('برنامج - سنة أولى')->assertSee('يتسع')
+            ->assertSee('ابنِ لي الجدول تلقائياً')->assertSee('أنشئه بنفسي')->assertSee('جاهزية البيانات')->assertSee('كل الشعب تتسع')
             ->assertSee('مولّد الجدول');   // رابط القائمة الجانبية
     }
 

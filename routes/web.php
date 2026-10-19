@@ -225,6 +225,9 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
         Route::get('/', [$c, 'index'])->name('hod.studio');
         Route::post('/generate', [$c, 'generate'])->name('hod.studio.generate');
         Route::post('/rooms', [$c, 'storeRoom'])->name('hod.studio.rooms.store');
+        Route::post('/rooms/auto', [$c, 'autoRooms'])->name('hod.studio.rooms.auto');
+        Route::post('/rooms/import', [$c, 'importRooms'])->name('hod.studio.rooms.import');
+        Route::post('/rooms/{id}/update', [$c, 'updateRoom'])->name('hod.studio.rooms.update');
         Route::post('/rooms/{id}/delete', [$c, 'deleteRoom'])->name('hod.studio.rooms.delete');
         Route::post('/availability', [$c, 'storeAvailability'])->name('hod.studio.availability.store');
         Route::post('/availability/{id}/delete', [$c, 'deleteAvailability'])->name('hod.studio.availability.delete');

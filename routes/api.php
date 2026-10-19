@@ -356,6 +356,9 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'index']);
             Route::get('/settings', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'settings']);
             Route::post('/rooms', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'storeRoom']);
+            Route::post('/rooms/auto', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'autoRooms']);
+            Route::post('/rooms/import', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'importRooms']);
+            Route::put('/rooms/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'updateRoom']);
             Route::delete('/rooms/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'deleteRoom']);
             Route::post('/availability', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'storeAvailability']);
             Route::delete('/availability/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'deleteAvailability']);
