@@ -10,7 +10,7 @@ class GenerateAcademicSchedules extends Command
 {
     protected $signature = 'schedules:generate {--fresh : حذف الجداول الدراسية والامتحانية الحالية قبل التوليد}';
 
-    protected $description = 'يولّد جدولاً دراسياً أسبوعياً وجدولاً امتحانياً لكل برنامج/سنة بمواده الحالية، بدون أي تعارض بالمدرّس أو القاعة أو الشعبة';
+    protected $description = '[مهجور - بيانات تجريبية فقط] يولّد جدولاً دراسياً أسبوعياً وجدولاً امتحانياً لكل برنامج/سنة بمواده الحالية، بدون أي تعارض بالمدرّس أو القاعة أو الشعبة';
 
     private const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 
@@ -28,6 +28,14 @@ class GenerateAcademicSchedules extends Command
 
     public function handle()
     {
+        // مهجور: بيانات تجريبية فقط. لا يعمل متى وُجد جدول معتمد من مولّد الجدول، حمايةً لجداول رئيس القسم وعلامات الامتحانات.
+        $approved = DB::table('schedule_drafts')->where('status', 'approved')->whereNull('reverted_at')->exists();
+        $graded = DB::table('grades')->whereNotNull('exam_id')->exists();
+        if ($approved || $graded) {
+            $this->error('هذا الأمر مهجور ولا يعمل لأن هناك جداول معتمدة أو علامات امتحانات. استعمل «مولّد الجدول» و«مولّد الامتحانات» من لوحة رئيس القسم.');
+            return Command::FAILURE;
+        }
+
         if ($this->option('fresh')) {
             DB::table('schedules')->delete();
             DB::table('exams')->delete();
