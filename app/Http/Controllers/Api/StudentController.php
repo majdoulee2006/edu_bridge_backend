@@ -1034,8 +1034,38 @@ class StudentController extends Controller
                 ];
             });
 
+        // الجدول الامتحاني المعتمد من رئيس القسم (مذاكرات وامتحانات بقاعة الطالب ومقعده)
+        $scheduled = \App\Services\Schedule\ExamScheduleReader::decorateForStudent(
+            \App\Services\Schedule\ExamScheduleReader::restrictToStudent(
+                DB::table('exams')->join('courses', 'courses.course_id', '=', 'exams.course_id')->whereIn('exams.course_id', $myCourseIds)
+                    ->whereExists(fn ($q) => $q->select(DB::raw(1))->from('exam_seatings')->whereColumn('exam_seatings.exam_id', 'exams.exam_id')->where('exam_seatings.student_id', $student->student_id)),
+                $student->student_id
+            )->select('exams.*', 'courses.title as course_title')->get(),
+            $student->student_id
+        )->map(function ($e) {
+            $date = Carbon::parse($e->exam_date);
+
+            return [
+                'exam_id'    => $e->exam_id,
+                'event_id'   => null,
+                'source'     => 'exam_schedule',
+                'subject'    => $e->course_title,
+                'type_label' => $e->type_label,
+                'title'      => $e->exam_name,
+                'day_num'    => $date->format('d'),
+                'month'      => $date->translatedFormat('F'),
+                'day_name'   => $date->translatedFormat('l'),
+                'time'       => $e->start_hm . ' - ' . $e->end_hm,
+                'duration'   => $e->duration_minutes . ' دقيقة',
+                'room'       => $e->room . ($e->seat ? ' - مقعد ' . $e->seat : ''),
+                'max_score'  => null,
+                'score'      => null,
+                'date'       => $date->toDateString(),
+            ];
+        });
+
         // ترتيب حسب تاريخ التقييم
-        $all = $gradeEvents->sortBy('date')->values();
+        $all = $gradeEvents->concat($scheduled)->sortBy('date')->values();
 
         return response()->json(['success' => true, 'data' => $all], 200);
     }

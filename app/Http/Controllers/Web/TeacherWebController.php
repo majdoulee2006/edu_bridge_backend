@@ -225,9 +225,13 @@ class TeacherWebController extends Controller
             ->whereIn('exams.course_id', $courseIds)
             ->select('exams.*', 'courses.title as course_title')
             ->orderBy('exams.exam_date')
-            ->get();
+            ->get()
+            ->map(fn ($e) => \App\Services\Schedule\ExamScheduleReader::decorate($e));
 
-        return view('teacher.schedule', compact('schedules', 'exams'));
+        // قاعات مراقبتي من الجدول الامتحاني المعتمد، مع قائمة طلاب كل قاعة
+        $invigilation = \App\Services\Schedule\ExamScheduleReader::invigilationOf((int) $teacher->user_id);
+
+        return view('teacher.schedule', compact('schedules', 'exams', 'invigilation'));
     }
 
     // ────────────────────────────────────────────────────────────

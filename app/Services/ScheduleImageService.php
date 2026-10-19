@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Schedule;
 use App\Models\Student;
+use App\Services\Schedule\ExamScheduleReader;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -147,10 +148,14 @@ class ScheduleImageService
                 });
             }
 
-            $exams = $examsQuery
+            $exams = ExamScheduleReader::restrictToStudent($examsQuery, $student->student_id)
                 ->select('exams.*', 'courses.title as course_title', 'courses.code as course_code')
                 ->orderBy('exams.exam_date')
                 ->get();
+
+            if ($exams->isNotEmpty()) {
+                $exams = ExamScheduleReader::decorateForStudent($exams, $student->student_id);
+            }
 
             if ($exams->isEmpty()) {
                 $exams = DB::table('exams')

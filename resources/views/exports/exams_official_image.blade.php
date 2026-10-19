@@ -216,6 +216,12 @@
                             $dateFormatted = $cDate ? $cDate->format('d/m/Y') : '—';
                             $timeStr = $exam->time ?? ($cDate ? $cDate->format('h:i A') : '09:00 ص');
                             $timeEndStr = $cDate ? $cDate->copy()->addHours(2)->format('h:i A') : '11:00 ص';
+                            $durLabel = '(ساعتان)';
+                            if (isset($exam->start_hm)) {
+                                $timeStr = $exam->start_hm;
+                                $timeEndStr = $exam->end_hm;
+                                $durLabel = '(' . $exam->duration_minutes . ' دقيقة)';
+                            }
                             $cTitle = $exam->course_title ?? $exam->course?->title ?? $exam->title ?? $exam->exam_name ?? 'مقرر دراسي';
                             $cCode = $exam->course_code ?? $exam->course?->code ?? ('CS' . (101 + $index));
                             $teacherName = $exam->teacher_name ?? $exam->teacher ?? 'هيئة التدريس';
@@ -233,7 +239,7 @@
                             <!-- 2. التوقيت -->
                             <td class="py-3.5 px-4 whitespace-nowrap">
                                 <span class="text-[12px] text-slate-800 font-semibold font-mono">{{ $timeStr }} - {{ $timeEndStr }}</span>
-                                <span class="block text-[10px] text-slate-500">(ساعتان)</span>
+                                <span class="block text-[10px] text-slate-500">{{ $durLabel }}</span>
                             </td>
 
                             <!-- 3. رمز المقرر -->
@@ -246,6 +252,9 @@
                             <!-- 4. اسم المقرر -->
                             <td class="py-3.5 px-4">
                                 <span class="text-[13px] text-[#0f172a] font-bold">{{ $cTitle }}</span>
+                                @if (isset($exam->type_label))
+                                    <span class="block text-[10px] text-slate-500">{{ $exam->type_label }}@if (!empty($exam->room)) — القاعة: {{ $exam->room }}@if (!empty($exam->seat)) (مقعد {{ $exam->seat }})@endif @endif</span>
+                                @endif
                             </td>
 
                             <!-- 5. المشرف المسؤول (أستاذ المادة) -->

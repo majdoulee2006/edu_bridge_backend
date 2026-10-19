@@ -251,12 +251,37 @@
 
     {{-- ========= Exams Tab ========= --}}
     <div id="tab-exams" style="display: none;">
+        @if(isset($invigilation) && $invigilation->isNotEmpty())
+        <div style="margin-bottom:1.4rem">
+            <h4 style="margin:0 0 .7rem;color:var(--text-primary)"><i class="fa-solid fa-eye"></i> مراقباتي</h4>
+            @foreach($invigilation as $iv)
+                @foreach($iv['rooms'] as $r)
+                <div style="border:1px solid var(--border-color);border-right:5px solid var(--accent-color);border-radius:.9rem;padding:.8rem 1rem;margin-bottom:.6rem;background:var(--card-bg, transparent)">
+                    <div style="display:flex;flex-wrap:wrap;gap:.7rem;align-items:center">
+                        <b>{{ $iv['type_label'] }}: {{ $iv['course'] }}</b>
+                        <span style="color:var(--text-secondary)">{{ $iv['class_group'] }}</span>
+                        <span dir="ltr" style="color:var(--text-secondary)">{{ $iv['date'] }} {{ $iv['start'] }}–{{ $iv['end'] }}</span>
+                        <span class="room-badge">{{ $r['name'] }}</span>
+                        <span style="color:var(--text-secondary)">{{ $r['count'] }} طالباً</span>
+                    </div>
+                    <details style="margin-top:.4rem">
+                        <summary style="cursor:pointer;color:var(--accent-color);font-weight:700">قائمة الطلاب</summary>
+                        <ol style="margin:.4rem 0 0;padding-inline-start:1.4rem">
+                            @foreach($r['students'] as $s)<li>{{ $s['name'] }} <small style="color:var(--text-secondary)">(مقعد {{ $s['seat'] }})</small></li>@endforeach
+                        </ol>
+                    </details>
+                </div>
+                @endforeach
+            @endforeach
+        </div>
+        @endif
         @if(isset($exams) && $exams->count() > 0)
         <div class="exam-table-wrapper">
             <table class="exam-table">
                 <thead>
                     <tr>
                         <th>{{ __('messages.course') }}</th>
+                        <th>النوع</th>
                         <th>{{ __('messages.session_round') }}</th>
                         <th>{{ __('messages.date_and_time') }}</th>
                         <th>{{ __('messages.room') }}</th>
@@ -267,8 +292,9 @@
                     @foreach($exams as $e)
                     <tr>
                         <td style="font-weight: bold;">{{ $e->course_title }}</td>
+                        <td>{{ $e->type_label }}</td>
                         <td style="color: var(--text-secondary);">{{ $e->class_group ?? '-' }}</td>
-                        <td dir="ltr" style="color: var(--text-secondary);">{{ \Carbon\Carbon::parse($e->exam_date)->format('Y-m-d h:i A') }}</td>
+                        <td dir="ltr" style="color: var(--text-secondary);">{{ \Carbon\Carbon::parse($e->exam_date)->format('Y-m-d') }} {{ $e->start_hm }}–{{ $e->end_hm }}</td>
                         <td><span class="room-badge">{{ $e->room ?? '-' }}</span></td>
                         <td style="text-align: center; font-weight: bold; color: var(--accent-color);">{{ $e->max_score }}</td>
                     </tr>

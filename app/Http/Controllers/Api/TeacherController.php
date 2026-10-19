@@ -2005,10 +2005,32 @@ class TeacherController extends Controller
                     'course'    => $exam->course->title,
                     'exam_date' => $exam->exam_date,
                     'max_score' => $exam->max_score,
+                    'exam_type' => $exam->exam_type,
+                    'type_label' => \App\Models\Exam::TYPES[$exam->exam_type] ?? 'امتحان',
+                    'duration_minutes' => $exam->duration_minutes,
+                    'class_group' => $exam->class_group,
+                    'room' => $exam->room,
                 ];
             });
 
         return response()->json(['success' => true, 'data' => $exams], 200);
+    }
+
+    /** قاعات المراقبة المسندة للمعلم من الجدول الامتحاني المعتمد، مع قائمة طلاب كل قاعة. */
+    public function getInvigilations(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'data' => \App\Services\Schedule\ExamScheduleReader::invigilationOf((int) $request->user()->user_id)->values(),
+        ], 200);
+    }
+
+    /** تقييمات مقرراتي (مذاكرات وامتحانات) مع قاعاتها وطلاب كل قاعة ومراقبها. */
+    public function getExamRooms(Request $request)
+    {
+        $courseIds = $request->user()->teacher->courses()->pluck('courses.course_id')->all();
+
+        return response()->json(['success' => true, 'data' => \App\Services\Schedule\ExamScheduleReader::forCourses($courseIds)->values()], 200);
     }
 
     public function createExam(Request $request)

@@ -612,17 +612,20 @@
                         $dayNum = $cDate->format('d');
                         $dayName = $cDate->translatedFormat('l') ?: $cDate->format('D');
                         $monthName = $cDate->translatedFormat('F') ?: $cDate->format('M');
-                        $timeStr = !empty($exam->start_time ?? null) ? \Carbon\Carbon::parse($exam->start_time)->format('H:i') : $cDate->format('h:i A');
-                        $duration = '120 ' . __('messages.minute_label');
+                        $timeStr = ($exam->start_hm ?? null)
+                            ? $exam->start_hm . ' - ' . $exam->end_hm
+                            : (!empty($exam->start_time ?? null) ? \Carbon\Carbon::parse($exam->start_time)->format('H:i') : $cDate->format('h:i A'));
+                        $duration = ($exam->duration_minutes ?? 120) . ' ' . __('messages.minute_label');
+                        $isMidterm = ($exam->kind ?? 'final') === 'midterm';
                     @endphp
                     <div class="exam-mobile-card">
                         <div class="exam-time-tag">{{ $timeStr }}</div>
                         <div class="exam-info-body">
-                            <span class="exam-type-pill">{{ __('messages.final_badge') }}</span>
+                            <span class="exam-type-pill">{{ $isMidterm ? 'مذاكرة' : __('messages.final_badge') }}</span>
                             <div class="exam-subject-title">{{ $exam->course_title }}</div>
                             <div class="exam-meta-row">
                                 <span><i class="fa-regular fa-clock"></i> {{ $duration }}</span>
-                                <span><i class="fa-solid fa-location-dot"></i> {{ $exam->room ?? __('messages.exam_room_default') }}</span>
+                                <span><i class="fa-solid fa-location-dot"></i> {{ $exam->room ?? __('messages.exam_room_default') }}@if (!empty($exam->seat)) — مقعد {{ $exam->seat }}@endif</span>
                             </div>
                         </div>
                         <div class="exam-date-box">

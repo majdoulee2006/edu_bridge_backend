@@ -326,10 +326,13 @@ class StudentWebController extends Controller
             });
         }
 
-        $exams = $examsQuery
-            ->select('exams.*', 'courses.title as course_title')
-            ->orderBy('exams.exam_date')
-            ->get();
+        $exams = \App\Services\Schedule\ExamScheduleReader::decorateForStudent(
+            \App\Services\Schedule\ExamScheduleReader::restrictToStudent($examsQuery, $student->student_id)
+                ->select('exams.*', 'courses.title as course_title')
+                ->orderBy('exams.exam_date')
+                ->get(),
+            $student->student_id
+        );
 
         $days = ['Sunday' => 'الأحد', 'Monday' => 'الاثنين', 'Tuesday' => 'الثلاثاء',
                  'Wednesday' => 'الأربعاء', 'Thursday' => 'الخميس'];

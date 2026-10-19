@@ -312,6 +312,8 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
 
         // الامتحانات
         Route::get('/exams', [TeacherController::class, 'getExams']);
+        Route::get('/exam-rooms', [TeacherController::class, 'getExamRooms']);
+        Route::get('/invigilations', [TeacherController::class, 'getInvigilations']);
         Route::post('/exams', [TeacherController::class, 'createExam']);
 
         // الواجبات
@@ -371,6 +373,21 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'approve']);
             Route::post('/{id}/discard', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'discard']);
             Route::post('/{id}/revert', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'revert']);
+        });
+
+        // مولّد الجدول الامتحاني (مذاكرات + امتحانات): توزيع على القاعات ومراقب لكل قاعة، ثم اعتماد
+        Route::prefix('exam-studio')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ExamStudioController::class, 'index']);
+            Route::post('/generate', [\App\Http\Controllers\Api\ExamStudioController::class, 'generate']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\ExamStudioController::class, 'show']);
+            Route::post('/{id}/move', [\App\Http\Controllers\Api\ExamStudioController::class, 'move']);
+            Route::post('/{id}/lock', [\App\Http\Controllers\Api\ExamStudioController::class, 'lock']);
+            Route::post('/{id}/student', [\App\Http\Controllers\Api\ExamStudioController::class, 'moveStudent']);
+            Route::post('/{id}/proctor', [\App\Http\Controllers\Api\ExamStudioController::class, 'proctor']);
+            Route::post('/{id}/regenerate', [\App\Http\Controllers\Api\ExamStudioController::class, 'regenerate']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\ExamStudioController::class, 'approve']);
+            Route::post('/{id}/discard', [\App\Http\Controllers\Api\ExamStudioController::class, 'discard']);
+            Route::post('/{id}/revert', [\App\Http\Controllers\Api\ExamStudioController::class, 'revert']);
         });
 
         // Dashboard & Profile & Notifications
