@@ -22,6 +22,12 @@ final class ScheduleProblem
     public array $rooms = [];
     /** @var array<string,?int> */
     public array $roomCapacity = [];
+    /** @var array<string,string> اسم القاعة => مفتاح الشعبة المالكة (القاعات المشتركة غير موجودة هنا) */
+    public array $roomOwner = [];
+    /** @var array<string,string> مفتاح الشعبة => قاعتها الخاصة */
+    public array $homeRoom = [];
+    /** @var array<string,string> اسم القاعة => نوعها */
+    public array $roomType = [];
     /** @var array<string,bool> "teacher|day|period" مشغول بحصص من خارج نطاق المسودة */
     public array $busyTeacher = [];
     /** @var array<string,bool> "room|day|period" */
@@ -171,11 +177,19 @@ final class ScheduleProblem
     {
         $rooms = DB::table('rooms')->where('is_active', true)
             ->where(fn ($q) => $q->where('department_id', $departmentId)->orWhereNull('department_id'))
-            ->orderBy('name')->get(['name', 'capacity']);
+            ->orderBy('name')->get(['name', 'capacity', 'program_id', 'year', 'type']);
 
         foreach ($rooms as $r) {
             $this->rooms[] = $r->name;
             $this->roomCapacity[$r->name] = $r->capacity !== null ? (int) $r->capacity : null;
+            $this->roomType[$r->name] = (string) ($r->type ?? 'classroom');
+
+            // قاعة خاصة بشعبة: لا تستعملها شعبة أخرى
+            $owner = $r->program_id && $r->year ? $r->program_id . '-' . $r->year : null;
+            if ($owner !== null) {
+                $this->roomOwner[$r->name] = $owner;
+                $this->homeRoom[$owner] ??= $r->name;
+            }
         }
     }
 

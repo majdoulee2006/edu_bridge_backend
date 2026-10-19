@@ -199,13 +199,14 @@ final class ScheduleSolver
         }
 
         $size = $p->groups[$g]['size'];
-        $pool = $p->rooms;
-        usort($pool, function ($a, $b) use ($g, $p) {
-            // نفضّل قاعة الشعبة السابقة (ثبات)، ثم الأصغر سعة الكافية
-            $pa = ($this->lastRoom[$g] ?? null) === $a ? 0 : 1;
-            $pb = ($this->lastRoom[$g] ?? null) === $b ? 0 : 1;
+        $home = $p->homeRoom[$g] ?? null;
 
-            return [$pa, $p->roomCapacity[$a] ?? PHP_INT_MAX, $a] <=> [$pb, $p->roomCapacity[$b] ?? PHP_INT_MAX, $b];
+        // قاعة الشعبة الخاصة أولاً، ثم القاعات المشتركة. قاعات الشعب الأخرى الخاصة ليست متاحة لهذه الشعبة.
+        $pool = array_values(array_filter($p->rooms, fn ($r) => !isset($p->roomOwner[$r]) || $r === $home));
+        usort($pool, function ($a, $b) use ($g, $p, $home) {
+            $rank = fn ($r) => $r === $home ? 0 : (($this->lastRoom[$g] ?? null) === $r ? 1 : 2);   // الخاصة، ثم الثابتة، ثم غيرهما
+
+            return [$rank($a), $p->roomCapacity[$a] ?? PHP_INT_MAX, $a] <=> [$rank($b), $p->roomCapacity[$b] ?? PHP_INT_MAX, $b];
         });
 
         foreach ($pool as $room) {

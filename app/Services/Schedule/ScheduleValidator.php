@@ -21,6 +21,7 @@ final class ScheduleValidator
         'external_room_clash' => 'القاعة مشغولة بحصة في قسم آخر',
         'teacher_unavailable' => 'المعلم غير متاح في هذا الوقت',
         'room_capacity' => 'القاعة أصغر من عدد طلاب الشعبة',
+        'room_owned' => 'القاعة مخصصة لشعبة أخرى',
         'same_course_day' => 'المادة نفسها مرتين في يوم واحد',
     ];
 
@@ -58,6 +59,11 @@ final class ScheduleValidator
             }
             if ($p->rooms && isset($p->busyRoom["{$e['room']}|{$slot}"])) {
                 $v[] = self::v('external_room_clash', "القاعة {$e['room']} مشغولة (قسم آخر) {$when}", [$i]);
+            }
+
+            $owner = $p->roomOwner[$e['room']] ?? null;
+            if ($owner !== null && $owner !== $e['group']) {
+                $v[] = self::v('room_owned', "القاعة {$e['room']} مخصصة لشعبة " . ($p->groups[$owner]['label'] ?? $owner) . " وليست لشعبة {$label}", [$i]);
             }
 
             $cap = $p->roomCapacity[$e['room']] ?? null;
