@@ -26,6 +26,11 @@ class ScheduleDraft extends Model
         return $this->hasMany(ScheduleDraftEntry::class, 'draft_id');
     }
 
+    public function examEntries()
+    {
+        return $this->hasMany(ExamDraftEntry::class, 'draft_id');
+    }
+
     public function semester()
     {
         return $this->belongsTo(Semester::class, 'semester_id', 'semester_id');

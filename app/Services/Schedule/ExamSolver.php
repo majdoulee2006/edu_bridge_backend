@@ -24,10 +24,17 @@ class ExamSolver
     /** @var array<string,int> date => عدد التقييمات */
     private array $dayLoad = [];
 
-    /** @return array{entries: array<int,array>, unscheduled: array<int,array>, required: int, placed: int, restarts: int, cost: float} */
-    public function solve(ExamProblem $p): array
+    /** @var array<int,array> تقييمات مثبّتة لا يغيّرها المولّد */
+    private array $fixed = [];
+
+    /**
+     * @param array<int,array> $fixed تقييمات مثبّتة (بنفس شكل ناتج المولّد) تُحجز أولاً ولا تُنقل
+     * @return array{entries: array<int,array>, unscheduled: array<int,array>, required: int, placed: int, restarts: int, cost: float}
+     */
+    public function solve(ExamProblem $p, array $fixed = []): array
     {
         $this->p = $p;
+        $this->fixed = $fixed;
         $best = null;
         $restarts = max(1, (int) config('exam.search.restarts'));
 
@@ -50,7 +57,16 @@ class ExamSolver
         $this->occRoom = [];
         $this->dayLoad = [];
 
-        $tasks = $this->orderedTasks();
+        // المثبّتة أولاً: تحجز يومها وقاعاتها فلا يتعدّى عليها غيرها
+        foreach ($this->fixed as $f) {
+            $this->placed[$f['key']] = $f + ['cost' => 0.0];
+            $this->dayLoad[$f['date']] = ($this->dayLoad[$f['date']] ?? 0) + 1;
+            foreach ($f['rooms'] as $r) {
+                $this->occRoom[$r['name']][$f['date']][] = [ExamProblem::minutes($f['start']), ExamProblem::minutes($f['end'])];
+            }
+        }
+
+        $tasks = array_values(array_filter($this->orderedTasks(), fn ($t) => !isset($this->placed[$t['key']])));
         $unscheduled = [];
         $cost = 0.0;
 
@@ -71,6 +87,31 @@ class ExamSolver
         usort($entries, fn ($a, $b) => [$a['date'], $a['start'], $a['group']] <=> [$b['date'], $b['start'], $b['group']]);
 
         return ['entries' => $entries, 'unscheduled' => $unscheduled, 'required' => count($this->p->tasks), 'placed' => count($entries), 'cost' => round($cost, 2)];
+    }
+
+    /**
+     * قاعات تصلح لتقييم محدد في (تاريخ، وقت) بالنظر إلى بقية التقييمات (يُستثنى هو نفسه)، مع إعادة توزيع طلابه.
+     * تستعملها خدمة المسودة عند نقل تقييم يدوياً. null = لا قاعات كافية.
+     *
+     * @param array<int,array> $entries كل تقييمات المسودة
+     * @return array<int,array{name:string,capacity:int,students:int[],proctor:?int}>|null
+     */
+    public static function roomsFor(ExamProblem $p, array $entries, int $index, string $date, string $start, string $end): ?array
+    {
+        $s = new self();
+        $s->p = $p;
+        foreach ($entries as $i => $e) {
+            if ($i === $index) {
+                continue;
+            }
+            foreach ($e['rooms'] as $r) {
+                $s->occRoom[$r['name']][$e['date']][] = [ExamProblem::minutes($e['start']), ExamProblem::minutes($e['end'])];
+            }
+        }
+        $t = $p->tasks[$entries[$index]['key']];
+        $rooms = $s->pickRooms($t, $date, ExamProblem::minutes($start), ExamProblem::minutes($end));
+
+        return $rooms === null ? null : self::distribute($t['students'], $rooms, $p->studentNames);
     }
 
     private function orderedTasks(): array
