@@ -26,6 +26,11 @@ class ExamDraftService
     {
     }
 
+    public function departmentOf(User $user): int
+    {
+        return $this->weekly->departmentOf($user);
+    }
+
     // ------------------------------------------------------------------ توليد
 
     /**
@@ -78,6 +83,43 @@ class ExamDraftService
         });
 
         return $this->refreshStats($draft->fresh(), $result['unscheduled'], $result['restarts']);
+    }
+
+    /**
+     * يحوّل مدخلات نموذج رئيس القسم (ويب أو تطبيق) إلى شكل ExamProblem::normalizeKinds.
+     * كل نوع: enabled، from، to، duration، excluded (نص تفصله فواصل/أسطر أو مصفوفة)، slots = [{start,end}].
+     *
+     * @param array<string,mixed> $input
+     * @return array<string,array>
+     */
+    public static function kindsFromInput(array $input): array
+    {
+        $out = [];
+        foreach (array_keys(ExamProblem::KINDS) as $kind) {
+            $in = $input[$kind] ?? null;
+            if (!is_array($in) || !filter_var($in['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
+                continue;
+            }
+            $excluded = $in['excluded'] ?? [];
+            if (is_string($excluded)) {
+                $excluded = preg_split('/[\s,،;]+/u', trim($excluded), -1, PREG_SPLIT_NO_EMPTY);
+            }
+            $slots = [];
+            foreach ((array) ($in['slots'] ?? []) as $s) {
+                $a = trim((string) ($s['start'] ?? $s[0] ?? ''));
+                $b = trim((string) ($s['end'] ?? $s[1] ?? ''));
+                if ($a === '' && $b === '') {
+                    continue;   // صف فارغ في النموذج
+                }
+                $slots[] = [$a, $b];
+            }
+            $out[$kind] = [
+                'from' => trim((string) ($in['from'] ?? '')), 'to' => trim((string) ($in['to'] ?? '')),
+                'duration' => $in['duration'] ?? null, 'excluded' => $excluded, 'slots' => $slots,
+            ];
+        }
+
+        return $out;
     }
 
     // ------------------------------------------------------------------ تعديل يدوي
@@ -438,6 +480,106 @@ class ExamDraftService
         }
 
         return $out;
+    }
+
+    // ------------------------------------------------------------------ جاهزية وعرض
+
+    /**
+     * جاهزية بيانات الجدول الامتحاني قبل أن يدخل رئيس القسم التواريخ: مقررات، طلاب، قاعات، مراقبون.
+     *
+     * @return array{ready:bool,errors:int,warnings:int,items:array<int,array{key:string,level:string,title:string,detail:string,action:?string}>}
+     */
+    public function readiness(int $deptId, int $semesterId): array
+    {
+        $p = ScheduleProblem::forDepartment($deptId, ['semester_id' => $semesterId]);
+        $item = fn (string $k, string $l, string $t, string $d = '', ?string $a = null) => ['key' => $k, 'level' => $l, 'title' => $t, 'detail' => $d, 'action' => $a];
+        $items = [];
+
+        $courses = array_sum(array_map(fn ($g) => count($g['courses']), $p->groups));
+        if ($courses === 0) {
+            $items[] = $item('courses', 'error', "لا مقررات في «{$p->semesterName}» لقسمك", 'اختر فصلاً آخر.');
+        } else {
+            $items[] = $item('courses', 'ok', "{$courses} مقرراً في " . count($p->groups) . ' شعبة', "كل مقرر له مذاكرة وامتحان في فصل «{$p->semesterName}»");
+        }
+
+        $empty = [];
+        $courseIds = collect($p->groups)->flatMap(fn ($g) => array_column($g['courses'], 'course_id'))->unique()->all();
+        $enrolled = DB::table('enrollments')->join('students', 'students.student_id', '=', 'enrollments.student_id')
+            ->join('users', 'users.user_id', '=', 'students.user_id')->whereIn('enrollments.course_id', $courseIds)
+            ->where('enrollments.status', '!=', 'dropped')->where('users.status', 'active')
+            ->get(['enrollments.course_id', 'students.program_id'])->groupBy(fn ($r) => $r->course_id . '|' . $r->program_id);
+        foreach ($p->groups as $g) {
+            foreach ($g['courses'] as $c) {
+                if (!isset($enrolled[$c['course_id'] . '|' . $g['program_id']])) {
+                    $empty[] = $g['label'] . ' — ' . $c['title'];
+                }
+            }
+        }
+        if ($empty) {
+            $items[] = $item('no_students', 'warn', count($empty) . ' مقرر بلا طلاب مسجّلين', implode('، ', array_slice($empty, 0, 5)) . (count($empty) > 5 ? ' ...' : '') . '. سيُجدول بلا طلاب في قاعاته.');
+        }
+
+        $caps = array_filter($p->roomCapacity, fn ($c) => $c !== null);
+        $biggest = max(array_merge([0], array_column($p->groups, 'size')));
+        if (!$caps) {
+            $items[] = $item('rooms', 'error', 'لا قاعات مسجّلة', 'الامتحانات تحتاج قاعات بسعاتها لتوزيع الطلاب. أضفها من مولّد الجدول ← القاعات.', 'open_rooms');
+        } elseif (array_sum($caps) < $biggest) {
+            $items[] = $item('rooms', 'error', 'مجموع سعات القاعات أقل من أكبر شعبة', "أكبر شعبة {$biggest} طالباً ومجموع المقاعد " . array_sum($caps) . '.', 'open_rooms');
+        } else {
+            $items[] = $item('rooms', 'ok', count($caps) . ' قاعة بمجموع ' . array_sum($caps) . ' مقعداً', "الطلاب يتوزعون على عدة قاعات عند الحاجة (أكبر شعبة {$biggest}).");
+        }
+
+        $n = $this->departmentTeachers($deptId)->count();
+        $items[] = $n > 0
+            ? $item('proctors', 'ok', "{$n} معلماً متاحاً للمراقبة", 'تختار مراقباً لكل قاعة بعد التوليد.')
+            : $item('proctors', 'warn', 'لا معلمين في قسمك للمراقبة', 'ستعتمد الجدول بلا مراقبين.');
+
+        $count = fn (string $l) => count(array_filter($items, fn ($i) => $i['level'] === $l));
+
+        return ['ready' => $count('error') === 0, 'errors' => $count('error'), 'warnings' => $count('warn'), 'items' => $items];
+    }
+
+    /**
+     * مسودة جاهزة للعرض (ويب وتطبيق): تقييمات مرتبة بالتاريخ مع أسماء المقررات والمراقبين والطلاب لكل قاعة، وإحصاءات.
+     *
+     * @return array<string,mixed>
+     */
+    public function describe(ScheduleDraft $draft): array
+    {
+        $problem = $this->problemFor($draft);
+        $teachers = $this->departmentTeachers($draft->department_id);
+        $names = $teachers->pluck('full_name', 'user_id')->all();
+        $dayNames = config('schedule.day_labels');
+
+        $entries = $draft->examEntries()->orderBy('exam_date')->orderBy('start_time')->orderBy('id')->get()->map(function (ExamDraftEntry $e) use ($problem, $names, $dayNames) {
+            $t = $problem->tasks[$e->taskKey()] ?? null;
+
+            return [
+                'id' => $e->id, 'course_id' => (int) $e->course_id, 'title' => $t['title'] ?? ('#' . $e->course_id), 'group' => $e->program_id . '-' . $e->year,
+                'group_label' => $e->class_group, 'kind' => $e->kind, 'kind_label' => ExamProblem::KINDS[$e->kind] ?? $e->kind,
+                'date' => $e->exam_date->toDateString(), 'day' => $dayNames[$e->exam_date->englishDayOfWeek] ?? $e->exam_date->englishDayOfWeek,
+                'start' => $e->start_time, 'end' => $e->end_time, 'duration' => $e->duration_minutes, 'locked' => (bool) $e->locked, 'source' => $e->source,
+                'rooms' => array_map(fn ($r) => [
+                    'name' => $r['name'], 'capacity' => $r['capacity'], 'count' => count($r['students']), 'proctor_id' => $r['proctor'] ?? null,
+                    'proctor' => !empty($r['proctor']) ? ($names[$r['proctor']] ?? ('#' . $r['proctor'])) : null,
+                    'students' => array_map(fn ($sid) => ['id' => $sid, 'name' => $problem->studentNames[$sid] ?? ('#' . $sid)], $r['students']),
+                ], $e->rooms),
+            ];
+        })->all();
+
+        $slots = [];
+        foreach ($problem->kinds as $kind => $cfg) {
+            $slots[$kind] = array_map(fn ($s, $i) => ['slot' => $i, 'start' => $s[0], 'end' => $s[1]], $cfg['slots'], array_keys($cfg['slots']));
+        }
+
+        return [
+            'id' => $draft->id, 'name' => $draft->name, 'status' => $draft->status, 'semester_id' => $draft->semester_id,
+            'semester' => $draft->semester?->name, 'saved_for_next' => $draft->isSavedForNext(), 'reverted' => $draft->reverted_at !== null,
+            'approved_at' => $draft->approved_at?->toDateTimeString(), 'kinds' => $draft->settings['kinds'] ?? [], 'slots' => $slots,
+            'stats' => $draft->stats, 'entries' => $entries,
+            'teachers' => $teachers->map(fn ($t) => ['id' => (int) $t->user_id, 'name' => $t->full_name])->values()->all(),
+            'dates' => $problem->calendar,
+        ];
     }
 
     // ------------------------------------------------------------------ مساعدة

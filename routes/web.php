@@ -240,6 +240,20 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
         Route::post('/{id}/discard', [$c, 'discard'])->name('hod.studio.discard');
         Route::post('/{id}/revert', [$c, 'revert'])->name('hod.studio.revert');
     });
+    Route::prefix('exam-studio')->group(function () {
+        $c = \App\Http\Controllers\Web\ExamStudioWebController::class;
+        Route::get('/', [$c, 'index'])->name('hod.exams');
+        Route::post('/generate', [$c, 'generate'])->name('hod.exams.generate');
+        Route::get('/{id}', [$c, 'show'])->whereNumber('id')->name('hod.exams.show');
+        Route::post('/{id}/move', [$c, 'move'])->name('hod.exams.move');
+        Route::post('/{id}/lock', [$c, 'lock'])->name('hod.exams.lock');
+        Route::post('/{id}/student', [$c, 'moveStudent'])->name('hod.exams.student');
+        Route::post('/{id}/proctors', [$c, 'proctors'])->name('hod.exams.proctors');
+        Route::post('/{id}/regenerate', [$c, 'regenerate'])->name('hod.exams.regenerate');
+        Route::post('/{id}/approve', [$c, 'approve'])->name('hod.exams.approve');
+        Route::post('/{id}/discard', [$c, 'discard'])->name('hod.exams.discard');
+        Route::post('/{id}/revert', [$c, 'revert'])->name('hod.exams.revert');
+    });
     Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
     Route::post('/profile/send-otp', [HODWebController::class, 'sendOTP'])->name('hod.profile.send_otp');

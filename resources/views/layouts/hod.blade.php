@@ -457,6 +457,10 @@
                     <i class="fa-solid fa-calendar-days"></i>
                     مولّد الجدول
                 </a>
+                <a href="{{ url('/hod/exam-studio') }}" class="nav-item {{ Request::is('hod/exam-studio*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-file-pen"></i>
+                    مولّد الامتحانات
+                </a>
                 <a href="{{ url('/hod/follow-up') }}" class="nav-item {{ Request::is('hod/follow-up*') || Request::is('hod/risk*') ? 'active' : '' }}">
                     <i class="fa-solid fa-gauge-high"></i>
                     لوحة المتابعة

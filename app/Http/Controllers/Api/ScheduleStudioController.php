@@ -40,7 +40,7 @@ class ScheduleStudioController extends Controller
                 'capacity' => $selected ? ScheduleProblem::forDepartment($dept, ['semester_id' => $selected->semester_id])->capacityReport() : [],
                 'readiness' => $selected ? $this->readiness->check($dept, $selected->semester_id) : null,
                 'periods' => config('schedule.periods'), 'default_periods' => config('schedule.default_periods'), 'max_periods' => config('schedule.max_periods'),
-                'drafts' => ScheduleDraft::where('department_id', $dept)->orderByDesc('id')->limit(20)->get()->map(fn ($d) => $this->brief($d))->values(),
+                'drafts' => ScheduleDraft::where('department_id', $dept)->where('type', ScheduleDraft::TYPE_WEEKLY)->orderByDesc('id')->limit(20)->get()->map(fn ($d) => $this->brief($d))->values(),
             ]]);
         });
     }
@@ -246,7 +246,7 @@ class ScheduleStudioController extends Controller
 
     private function draft(Request $request, $id): ScheduleDraft
     {
-        return ScheduleDraft::where('department_id', $this->svc->departmentOf($request->user()))->findOrFail($id);
+        return ScheduleDraft::where('department_id', $this->svc->departmentOf($request->user()))->where('type', ScheduleDraft::TYPE_WEEKLY)->findOrFail($id);
     }
 
     private function brief(ScheduleDraft $d): array

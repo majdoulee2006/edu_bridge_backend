@@ -192,7 +192,7 @@ class ScheduleDraftService
             throw new ScheduleRuleException(['هذه المسودة ليست معتمَدة أو سبق التراجع عنها']);
         }
 
-        $newer = ScheduleDraft::where('department_id', $draft->department_id)->where('status', ScheduleDraft::APPROVED)
+        $newer = ScheduleDraft::where('department_id', $draft->department_id)->where('type', ScheduleDraft::TYPE_WEEKLY)->where('status', ScheduleDraft::APPROVED)
             ->whereNull('reverted_at')->where('approved_at', '>', $draft->approved_at)->exists();
         if ($newer) {
             throw new ScheduleRuleException(['اعتُمدت مسودة أحدث بعدها: تراجعي عن الأحدث أولًا']);
@@ -361,7 +361,7 @@ class ScheduleDraftService
     private function pruneOld(int $deptId, int $semesterId): void
     {
         $keep = (int) config('schedule.max_drafts_per_department');
-        ScheduleDraft::where('department_id', $deptId)->where('semester_id', $semesterId)->where('status', '!=', ScheduleDraft::APPROVED)
+        ScheduleDraft::where('department_id', $deptId)->where('type', ScheduleDraft::TYPE_WEEKLY)->where('semester_id', $semesterId)->where('status', '!=', ScheduleDraft::APPROVED)
             ->orderByDesc('id')->skip($keep)->take(1000)->get()->each->delete();
     }
 

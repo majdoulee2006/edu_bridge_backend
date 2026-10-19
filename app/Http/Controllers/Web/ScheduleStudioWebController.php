@@ -43,7 +43,7 @@ class ScheduleStudioWebController extends Controller
             'groups' => $this->roomSvc->groups($deptId),
             'programs' => DB::table('programs')->where('department_id', $deptId)->orderBy('name')->get(['id', 'name']),
             'roomTypes' => Room::TYPES,
-            'drafts'   => ScheduleDraft::with('semester')->where('department_id', $deptId)->orderByDesc('id')->limit(20)->get(),
+            'drafts'   => ScheduleDraft::with('semester')->where('department_id', $deptId)->where('type', ScheduleDraft::TYPE_WEEKLY)->orderByDesc('id')->limit(20)->get(),
             'rooms'    => Room::where(fn ($q) => $q->where('department_id', $deptId)->orWhereNull('department_id'))->orderBy('name')->get(),
             'teachers' => $this->teachers($deptId),
             'avail'    => TeacherAvailability::whereIn('teacher_user_id', $this->teachers($deptId)->pluck('user_id'))->orderBy('teacher_user_id')->get(),
@@ -103,7 +103,7 @@ class ScheduleStudioWebController extends Controller
             'days' => $draft->settings['days'], 'dayLabels' => config('schedule.day_labels'),
             'periodCount' => (int) $draft->settings['periods'], 'periods' => config('schedule.periods'),
             'rooms' => Room::where(fn ($q) => $q->where('department_id', $draft->department_id)->orWhereNull('department_id'))->where('is_active', true)->orderBy('name')->pluck('name'),
-            'latestApprovedId' => ScheduleDraft::where('department_id', $draft->department_id)->where('status', 'approved')->whereNull('reverted_at')->orderByDesc('approved_at')->value('id'),
+            'latestApprovedId' => ScheduleDraft::where('department_id', $draft->department_id)->where('type', ScheduleDraft::TYPE_WEEKLY)->where('status', 'approved')->whereNull('reverted_at')->orderByDesc('approved_at')->value('id'),
         ]);
     }
 
@@ -255,7 +255,7 @@ class ScheduleStudioWebController extends Controller
 
     private function draft($id): ScheduleDraft
     {
-        return ScheduleDraft::where('department_id', $this->dept())->findOrFail($id);
+        return ScheduleDraft::where('department_id', $this->dept())->where('type', ScheduleDraft::TYPE_WEEKLY)->findOrFail($id);
     }
 
     private function teachers(int $deptId)
