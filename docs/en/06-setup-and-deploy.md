@@ -139,4 +139,4 @@ The app is not on Google Play; it is downloaded **directly from the institute se
 4. Edit `release.json` (`version_name`, `version_code`, `changelog`; change `min_version_code` only to force an update).
 5. Upload the backend folder to the server.
 
-**Signing rule:** an update installs over the existing app (keeping its data) only if the `applicationId` and the signing key are the same and the version number is higher. The release key (`android/edubridge-release.jks` and `android/key.properties`) is not in Git and must be backed up. Full details are in `APP_RELEASE_GUIDE_FOR_AI.md` at the project root.
+**Signing rule:** an update installs over the existing app (keeping its data) only if the `applicationId` and the signing key are the same and the version number is higher. Official releases are built and published only by the project owner, who alone holds the signing key (never in Git). The public rule is in `OFFICIAL_RELEASES.md` in the Flutter project.
