@@ -45,7 +45,14 @@
 <div class="st-bar" style="margin-bottom:1rem">
     <a class="st-btn sec" href="{{ route('hod.studio') }}">← كل المسودات</a>
     <span class="st-btn sec" style="cursor:default">{{ $statusLabel }}{{ $draft->reverted_at ? ' (تُرُوجع عنها)' : '' }}</span>
+    <span class="st-btn sec" style="cursor:default">{{ $draft->semester->name ?? '' }}</span>
 </div>
+@if ($draft->isSavedForNext())
+    <div class="st-card" style="margin-bottom:1rem;border-color:#1565c0">
+        <b style="color:#1565c0">محفوظة للفصل القادم</b>
+        <p style="margin:.4rem 0 0;color:var(--text-secondary);font-size:.88rem">هذه المسودة لفصل «{{ $draft->semester->name }}» وهو ليس الفصل الفعّال الآن. يمكنك مراجعتها وتعديلها بحرية، لكنها لا تُعتمد ولا تظهر للطلاب والمعلمين إلا عندما يصبح هذا الفصل فعّالاً.</p>
+    </div>
+@endif
 
 <div class="st-stats">
     <div class="st-stat" style="--c:#2e7d32"><b>{{ $stats['placed'] ?? 0 }} / {{ $stats['required'] ?? 0 }}</b><small>حصص موضوعة</small></div>
@@ -137,7 +144,8 @@
         @if ($unscheduled)
             <label style="display:block;margin-bottom:.6rem;font-size:.85rem"><input type="checkbox" name="acknowledge" value="1"> أقرّ بأن بعض المواد لم تُجدول بالكامل وأريد اعتماد المسودة كما هي</label>
         @endif
-        <button class="st-btn" @disabled($violations)>اعتماد الجدول</button>
+        <button class="st-btn" @disabled($violations || $draft->isSavedForNext())>اعتماد الجدول</button>
+        @if ($draft->isSavedForNext())<small style="color:#1565c0"> الاعتماد متاح عندما يصبح فصل هذه المسودة فعّالاً</small>@endif
         @if ($violations)<small style="color:#c62828"> لا يمكن الاعتماد قبل حل التعارضات</small>@endif
     </form>
 </div>

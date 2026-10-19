@@ -2,6 +2,7 @@
 
 namespace App\Services\Schedule;
 
+use App\Models\Semester;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,6 +33,9 @@ final class ScheduleProblem
     /** @var array<int,array> حصص مثبّتة (locked) لا يغيّرها المولّد */
     public array $fixed = [];
     public int $seed = 1;
+    /** الفصل الدراسي الذي نجدول مقرراته فقط */
+    public ?int $semesterId = null;
+    public string $semesterName = '';
     /** @var array<string,float> */
     public array $weights = [];
     /** @var array<int,string> أسماء المعلمين (للرسائل والواجهات) */
@@ -73,12 +77,20 @@ final class ScheduleProblem
     /**
      * يبني المسألة لقسم من القاعدة.
      *
-     * @param array{days?:string[],periods?:int,seed?:int,weights?:array,program_ids?:int[]} $options
+     * @param array{days?:string[],periods?:int,seed?:int,weights?:array,program_ids?:int[],semester_id?:int} $options
      * @param array<int,array> $locked حصص مثبّتة يجب الحفاظ عليها
      */
     public static function forDepartment(int $departmentId, array $options = [], array $locked = []): self
     {
+        // لا جدولة بلا فصل: مقررات الفصل المختار فقط (الافتراضي الفعّال). الخلط بين فصلين كان يضاعف حصص الشعبة.
+        $semester = !empty($options['semester_id']) ? Semester::find((int) $options['semester_id']) : Semester::current();
+        if (!$semester) {
+            throw new ScheduleRuleException([!empty($options['semester_id']) ? 'الفصل الدراسي المختار غير موجود' : 'لا يوجد فصل دراسي فعّال. اختر فصلاً لتوليد جدوله.']);
+        }
+
         $p = new self();
+        $p->semesterId = (int) $semester->semester_id;
+        $p->semesterName = (string) $semester->name;
         $p->days = $options['days'] ?? config('schedule.days');
         $p->periods = max(1, min((int) ($options['periods'] ?? config('schedule.default_periods')), (int) config('schedule.max_periods')));
         $p->seed = (int) ($options['seed'] ?? 1);
@@ -89,6 +101,7 @@ final class ScheduleProblem
             ->join('courses', 'courses.course_id', '=', 'course_program.course_id')
             ->join('programs', 'programs.id', '=', 'course_program.program_id')
             ->where('programs.department_id', $departmentId)
+            ->where('courses.semester_id', $p->semesterId)
             ->when(!empty($options['program_ids']), fn ($q) => $q->whereIn('programs.id', $options['program_ids']))
             ->orderBy('programs.id')->orderBy('courses.year')->orderBy('courses.course_id')
             ->get(['programs.id as program_id', 'programs.name as program', 'courses.course_id', 'courses.title', 'courses.hours', 'courses.year']);

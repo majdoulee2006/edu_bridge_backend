@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
 use App\Models\ScheduleDraft;
+use App\Models\Semester;
 use App\Models\TeacherAvailability;
 use App\Services\Schedule\ScheduleDraftService;
 use App\Services\Schedule\ScheduleProblem;
@@ -23,14 +24,19 @@ class ScheduleStudioWebController extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $deptId = $this->dept();
-        $problem = ScheduleProblem::forDepartment($deptId, []);
+        $request->validate(['semester_id' => 'nullable|integer|exists:semesters,semester_id']);
+
+        $semesters = Semester::orderByDesc('start_date')->get();
+        $selected = $request->filled('semester_id') ? $semesters->firstWhere('semester_id', (int) $request->semester_id) : Semester::current();
+        $problem = $selected ? ScheduleProblem::forDepartment($deptId, ['semester_id' => $selected->semester_id]) : null;
 
         return view('schedule_studio.index', [
-            'capacity' => $problem->capacityReport(),
-            'drafts'   => ScheduleDraft::where('department_id', $deptId)->orderByDesc('id')->limit(20)->get(),
+            'semesters' => $semesters, 'selected' => $selected, 'currentId' => Semester::currentId(),
+            'capacity' => $problem ? $problem->capacityReport() : [],
+            'drafts'   => ScheduleDraft::with('semester')->where('department_id', $deptId)->orderByDesc('id')->limit(20)->get(),
             'rooms'    => Room::where(fn ($q) => $q->where('department_id', $deptId)->orWhereNull('department_id'))->orderBy('name')->get(),
             'teachers' => $this->teachers($deptId),
             'avail'    => TeacherAvailability::whereIn('teacher_user_id', $this->teachers($deptId)->pluck('user_id'))->orderBy('teacher_user_id')->get(),
@@ -48,12 +54,15 @@ class ScheduleStudioWebController extends Controller
             'name' => 'nullable|string|max:120',
             'periods' => 'nullable|integer|between:1,' . config('schedule.max_periods'),
             'seed' => 'nullable|integer|min:1|max:99999',
+            'semester_id' => 'nullable|integer|exists:semesters,semester_id',
         ]);
 
         return $this->run(function () use ($data) {
             $draft = $this->svc->generate(Auth::user(), array_filter($data, fn ($v) => $v !== null && $v !== ''));
 
-            return redirect()->route('hod.studio.show', $draft->id)->with('success', 'أُنشئت مسودة مقترحة. راجعها قبل الاعتماد؛ لن يتغيّر الجدول الحالي حتى تعتمدها.');
+            return redirect()->route('hod.studio.show', $draft->id)->with('success', $draft->isSavedForNext()
+                ? 'حُفظت المسودة للفصل القادم «' . $draft->semester->name . '». راجعها وعدّلها، وتعتمدها عندما يصبح فصلها فعّالاً.'
+                : 'أُنشئت مسودة مقترحة. راجعها قبل الاعتماد؛ لن يتغيّر الجدول الحالي حتى تعتمدها.');
         });
     }
 

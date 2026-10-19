@@ -5,6 +5,7 @@ namespace App\Services\Schedule;
 use App\Models\Notification;
 use App\Models\ScheduleDraft;
 use App\Models\ScheduleDraftEntry;
+use App\Models\Semester;
 use App\Models\User;
 use App\Support\Access;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ class ScheduleDraftService
     // ------------------------------------------------------------------ توليد
 
     /**
-     * @param array{name?:string,seed?:int,periods?:int,program_ids?:int[]} $options
+     * @param array{name?:string,seed?:int,periods?:int,program_ids?:int[],semester_id?:int} $options
      */
     public function generate(User $by, array $options = []): ScheduleDraft
     {
@@ -32,9 +33,10 @@ class ScheduleDraftService
         $draft = DB::transaction(function () use ($by, $deptId, $problem, $options, $result) {
             $draft = ScheduleDraft::create([
                 'department_id' => $deptId, 'created_by' => $by->user_id,
-                'name' => $options['name'] ?? ('مسودة ' . now()->format('Y-m-d H:i')),
+                'semester_id' => $problem->semesterId, 'type' => ScheduleDraft::TYPE_WEEKLY,
+                'name' => $options['name'] ?? ('جدول أسبوعي: ' . $problem->semesterName),
                 'status' => ScheduleDraft::DRAFT,
-                'settings' => ['days' => $problem->days, 'periods' => $problem->periods, 'seed' => $problem->seed, 'program_ids' => $options['program_ids'] ?? []],
+                'settings' => ['days' => $problem->days, 'periods' => $problem->periods, 'seed' => $problem->seed, 'program_ids' => $options['program_ids'] ?? [], 'semester_id' => $problem->semesterId],
                 'stats' => null,
             ]);
             $this->storeEntries($draft, $problem, $result['entries']);
@@ -43,7 +45,7 @@ class ScheduleDraftService
             return $draft;
         });
 
-        $this->pruneOld($deptId);
+        $this->pruneOld($deptId, (int) $problem->semesterId);
 
         return $draft->fresh();
     }
@@ -137,6 +139,13 @@ class ScheduleDraftService
     public function approve(ScheduleDraft $draft, User $by, bool $acknowledgeUnscheduled = false): ScheduleDraft
     {
         $this->assertEditable($draft);
+
+        // اعتماد جدول يستبدل الجدول الجاري، والجدول الجاري هو الفصل الفعّال فقط. غيره يُحفظ للفصل القادم.
+        if ($draft->isSavedForNext()) {
+            $name = $draft->semester?->name ?? ('#' . $draft->semester_id);
+            throw new ScheduleRuleException(["هذه المسودة لفصل «{$name}» وهو ليس الفصل الفعّال حالياً، فهي محفوظة للفصل القادم ولا تُعتمد الآن. اعتمدها عندما يصبح هذا الفصل فعّالاً."]);
+        }
+
         $draft = $this->refreshStats($draft);
         $stats = $draft->stats;
 
@@ -299,7 +308,11 @@ class ScheduleDraftService
     {
         $s = $draft->settings;
 
-        return ['days' => $s['days'], 'periods' => $s['periods'], 'seed' => $seed ?? $s['seed'], 'program_ids' => $s['program_ids'] ?? []];
+        return [
+            'days' => $s['days'], 'periods' => $s['periods'], 'seed' => $seed ?? $s['seed'], 'program_ids' => $s['program_ids'] ?? [],
+            // مسودة الفصل تبقى على فصلها دائماً (إعادة التوليد والنقل والفحص كلها على مقرراته)
+            'semester_id' => $draft->semester_id ?? ($s['semester_id'] ?? null),
+        ];
     }
 
     /** @return array{0: ScheduleProblem, 1: array, 2: int} المسألة وكل الحصص وفهرس الحصة المطلوبة */
@@ -344,10 +357,11 @@ class ScheduleDraftService
         }
     }
 
-    private function pruneOld(int $deptId): void
+    /** الحد الأقصى للمسودات غير المعتمدة يُطبَّق لكل فصل على حدة، فلا تُحذف مسودة فصل قادم بسبب مسودات الفصل الجاري. */
+    private function pruneOld(int $deptId, int $semesterId): void
     {
         $keep = (int) config('schedule.max_drafts_per_department');
-        ScheduleDraft::where('department_id', $deptId)->where('status', '!=', ScheduleDraft::APPROVED)
+        ScheduleDraft::where('department_id', $deptId)->where('semester_id', $semesterId)->where('status', '!=', ScheduleDraft::APPROVED)
             ->orderByDesc('id')->skip($keep)->take(1000)->get()->each->delete();
     }
 

@@ -11,7 +11,10 @@ class ScheduleDraft extends Model
     public const APPROVED = 'approved';
     public const DISCARDED = 'discarded';
 
-    protected $fillable = ['department_id', 'created_by', 'name', 'status', 'settings', 'stats', 'backup', 'approved_by', 'approved_at', 'reverted_at'];
+    public const TYPE_WEEKLY = 'weekly';
+    public const TYPE_EXAM = 'exam';
+
+    protected $fillable = ['department_id', 'semester_id', 'type', 'created_by', 'name', 'status', 'settings', 'stats', 'backup', 'approved_by', 'approved_at', 'reverted_at'];
 
     protected $casts = [
         'settings' => 'array', 'stats' => 'array', 'backup' => 'array',
@@ -21,6 +24,17 @@ class ScheduleDraft extends Model
     public function entries()
     {
         return $this->hasMany(ScheduleDraftEntry::class, 'draft_id');
+    }
+
+    public function semester()
+    {
+        return $this->belongsTo(Semester::class, 'semester_id', 'semester_id');
+    }
+
+    /** مسودة لفصل غير الفعّال حالياً: تُحفظ للفصل القادم ولا تُعتمد الآن. */
+    public function isSavedForNext(): bool
+    {
+        return $this->status === self::DRAFT && $this->semester_id !== null && (int) $this->semester_id !== (int) Semester::currentId();
     }
 
     public function creator()

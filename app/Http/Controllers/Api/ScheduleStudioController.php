@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
 use App\Models\ScheduleDraft;
+use App\Models\Semester;
 use App\Models\TeacherAvailability;
 use App\Services\Schedule\ScheduleDraftService;
 use App\Services\Schedule\ScheduleProblem;
@@ -24,11 +25,17 @@ class ScheduleStudioController extends Controller
 
     public function index(Request $request)
     {
+        $request->validate(['semester_id' => 'nullable|integer|exists:semesters,semester_id']);
+
         return $this->guard(function () use ($request) {
             $dept = $this->svc->departmentOf($request->user());
+            $selected = $request->filled('semester_id') ? Semester::find((int) $request->semester_id) : Semester::current();
 
             return response()->json(['success' => true, 'data' => [
-                'capacity' => ScheduleProblem::forDepartment($dept, [])->capacityReport(),
+                'semesters' => Semester::orderByDesc('start_date')->get()->map(fn ($s) => ['id' => $s->semester_id, 'name' => $s->name, 'current' => (bool) $s->is_active])->values(),
+                'current_semester_id' => Semester::currentId(),
+                'selected_semester_id' => $selected?->semester_id,
+                'capacity' => $selected ? ScheduleProblem::forDepartment($dept, ['semester_id' => $selected->semester_id])->capacityReport() : [],
                 'periods' => config('schedule.periods'), 'default_periods' => config('schedule.default_periods'), 'max_periods' => config('schedule.max_periods'),
                 'drafts' => ScheduleDraft::where('department_id', $dept)->orderByDesc('id')->limit(20)->get()->map(fn ($d) => $this->brief($d))->values(),
             ]]);
@@ -37,7 +44,10 @@ class ScheduleStudioController extends Controller
 
     public function generate(Request $request)
     {
-        $data = $request->validate(['name' => 'nullable|string|max:120', 'periods' => 'nullable|integer|between:1,' . config('schedule.max_periods')]);
+        $data = $request->validate([
+            'name' => 'nullable|string|max:120', 'periods' => 'nullable|integer|between:1,' . config('schedule.max_periods'),
+            'semester_id' => 'nullable|integer|exists:semesters,semester_id',
+        ]);
 
         return $this->guard(fn () => response()->json(['success' => true, 'data' => $this->full($this->svc->generate($request->user(), array_filter($data)))], 201));
     }
@@ -193,6 +203,7 @@ class ScheduleStudioController extends Controller
 
         return [
             'id' => $d->id, 'name' => $d->name, 'status' => $d->status, 'reverted' => $d->reverted_at !== null,
+            'semester_id' => $d->semester_id, 'semester_name' => $d->semester?->name, 'type' => $d->type, 'saved_for_next' => $d->isSavedForNext(),
             'placed' => $s['placed'] ?? 0, 'required' => $s['required'] ?? 0, 'unscheduled' => count($s['unscheduled'] ?? []),
             'violations' => count($s['violations'] ?? []), 'created_at' => $d->created_at?->toIso8601String(),
         ];

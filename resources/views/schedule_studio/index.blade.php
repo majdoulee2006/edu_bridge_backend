@@ -28,6 +28,24 @@
 @section('content')
 @php $statusLabel = ['draft' => ['مسودة', '#e65100'], 'approved' => ['معتمدة', '#2e7d32'], 'discarded' => ['مُهمَلة', '#78909c']]; @endphp
 
+<div class="st-card" style="margin-bottom:1rem">
+    <form method="GET" action="{{ route('hod.studio') }}" class="st-form">
+        <div>
+            <label>الفصل الدراسي</label>
+            <select name="semester_id" onchange="this.form.submit()">
+                @foreach ($semesters as $sem)
+                    <option value="{{ $sem->semester_id }}" @selected($selected && $selected->semester_id === $sem->semester_id)>{{ $sem->name }}{{ $sem->semester_id === $currentId ? ' (الحالي)' : '' }}</option>
+                @endforeach
+            </select>
+        </div>
+        @if (!$selected)
+            <span class="st-warn">لا يوجد فصل دراسي فعّال. اختر فصلاً لعرض مقرراته وتوليد جدوله.</span>
+        @elseif ($selected->semester_id !== $currentId)
+            <span class="st-warn">هذا الفصل ليس الفعّال حالياً: المسودة التي تولّدها تُحفظ للفصل القادم، ولا تُعتمد إلا عندما يصبح فعّالاً.</span>
+        @endif
+    </form>
+</div>
+
 <div class="st-choice">
     <div class="st-card">
         <h3><i class="fa-solid fa-hand-pointer"></i> إنشاء يدوي</h3>
@@ -39,7 +57,8 @@
         <p>يبني النظام مسودة تحترم القيود (لا تعارض ولا قاعة ممتلئة ولا معلم غير متاح) ويشرح ما تعذّر وضعه. أنت من يراجع ويعدّل ويعتمد.</p>
         <form class="st-form" method="POST" action="{{ route('hod.studio.generate') }}">
             @csrf
-            <div><label>اسم المسودة</label><input name="name" maxlength="120" placeholder="مثال: الفصل الأول"></div>
+            @if ($selected)<input type="hidden" name="semester_id" value="{{ $selected->semester_id }}">@endif
+            <div><label>اسم المسودة</label><input name="name" maxlength="120" placeholder="افتراضي: جدول أسبوعي: {{ $selected->name ?? '' }}"></div>
             <div><label>فترات اليوم</label>
                 <select name="periods">
                     @for ($i = 3; $i <= $maxPeriods; $i++)
@@ -47,13 +66,13 @@
                     @endfor
                 </select>
             </div>
-            <button class="st-btn">توليد مسودة</button>
+            <button class="st-btn" @disabled(!$selected)>توليد مسودة</button>
         </form>
     </div>
 </div>
 
 <div class="st-sec st-card">
-    <h2>هل يتسع الأسبوع لحصص كل شعبة؟</h2>
+    <h2>هل يتسع الأسبوع لحصص كل شعبة؟ @if ($selected)<small style="color:var(--text-secondary)">(مقررات {{ $selected->name }})</small>@endif</h2>
     <table class="st-table">
         <tr><th>الشعبة</th><th>حصص مطلوبة</th><th>الفترات المتاحة</th><th>الحالة</th></tr>
         @forelse ($capacity as $c)
@@ -76,11 +95,12 @@
 <div class="st-sec st-card">
     <h2>المسودات</h2>
     <table class="st-table">
-        <tr><th>الاسم</th><th>الحالة</th><th>موضوع</th><th>غير مجدول</th><th>التاريخ</th><th></th></tr>
+        <tr><th>الاسم</th><th>الفصل</th><th>الحالة</th><th>موضوع</th><th>غير مجدول</th><th>التاريخ</th><th></th></tr>
         @forelse ($drafts as $d)
-            @php [$lbl, $col] = $statusLabel[$d->status]; $s = $d->stats ?? []; @endphp
+            @php [$lbl, $col] = $statusLabel[$d->status]; $s = $d->stats ?? []; if ($d->isSavedForNext()) { [$lbl, $col] = ['محفوظة للفصل القادم', '#1565c0']; } @endphp
             <tr>
                 <td>{{ $d->name }}</td>
+                <td>{{ $d->semester->name ?? '—' }}</td>
                 <td><span class="st-badge" style="color:{{ $col }};background:color-mix(in srgb, {{ $col }} 16%, transparent)">{{ $lbl }}{{ $d->reverted_at ? ' (تُرُوجع عنها)' : '' }}</span></td>
                 <td>{{ $s['placed'] ?? 0 }} / {{ $s['required'] ?? 0 }}</td>
                 <td>{{ count($s['unscheduled'] ?? []) }}</td>
@@ -88,7 +108,7 @@
                 <td><a class="st-btn sec" href="{{ route('hod.studio.show', $d->id) }}">فتح</a></td>
             </tr>
         @empty
-            <tr><td colspan="6">لا مسودات بعد.</td></tr>
+            <tr><td colspan="7">لا مسودات بعد.</td></tr>
         @endforelse
     </table>
 </div>
