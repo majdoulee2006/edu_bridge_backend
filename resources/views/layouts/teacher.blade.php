@@ -472,10 +472,12 @@
                     <i class="fa-solid fa-clipboard-user"></i>
                     {{ __('messages.attendance_absence') }}
                 </a>
+                @if (config('study.ui_enabled'))
                 <a href="{{ url('/teacher/study') }}" class="nav-item {{ Request::is('teacher/study*') ? 'active' : '' }}">
                     <i class="fa-solid fa-book-open-reader"></i>
                     رفيق المذاكرة
                 </a>
+                @endif
                 @if(optional(auth()->user()->teacher)->advisor_branch)
                 <a href="{{ url('/teacher/follow-up') }}" class="nav-item {{ Request::is('teacher/follow-up*') || Request::is('teacher/risk*') ? 'active' : '' }}">
                     <i class="fa-solid fa-gauge-high"></i>

@@ -115,7 +115,7 @@ Route::prefix('teacher')->middleware([\App\Http\Middleware\CheckTeacherRole::cla
     Route::get('/', fn() => redirect()->route('teacher.dashboard'));
     Route::get('/dashboard', [TeacherWebController::class, 'dashboard'])->name('teacher.dashboard');
     // رفيق المذاكرة: مسودات يولّدها الذكاء الاصطناعي ويعتمدها المعلم
-    Route::prefix('study')->group(function () {
+    Route::prefix('study')->middleware(\App\Http\Middleware\StudyUiEnabled::class)->group(function () {
         $c = \App\Http\Controllers\Web\StudyWebController::class;
         Route::get('/', [$c, 'teacherIndex'])->name('teacher.study');
         Route::post('/generate/{lessonId}', [$c, 'teacherGenerate'])->name('teacher.study.generate');
@@ -566,9 +566,9 @@ Route::prefix('student')->middleware(['student'])->group(function () {
     Route::get('/schedule/export-exam-image', [StudentWebController::class, 'exportExamScheduleImage'])->name('student.schedule.export_exam_image');
 
     // رفيق المذاكرة (المعتمد من المعلم فقط)
-    Route::get('/study', [\App\Http\Controllers\Web\StudyWebController::class, 'studentIndex'])->name('student.study');
-    Route::get('/study/{id}', [\App\Http\Controllers\Web\StudyWebController::class, 'studentShow'])->whereNumber('id')->name('student.study.show');
-    Route::post('/study/{id}/attempt', [\App\Http\Controllers\Web\StudyWebController::class, 'studentAttempt'])->name('student.study.attempt');
+    Route::get('/study', [\App\Http\Controllers\Web\StudyWebController::class, 'studentIndex'])->middleware(\App\Http\Middleware\StudyUiEnabled::class)->name('student.study');
+    Route::get('/study/{id}', [\App\Http\Controllers\Web\StudyWebController::class, 'studentShow'])->whereNumber('id')->middleware(\App\Http\Middleware\StudyUiEnabled::class)->name('student.study.show');
+    Route::post('/study/{id}/attempt', [\App\Http\Controllers\Web\StudyWebController::class, 'studentAttempt'])->middleware(\App\Http\Middleware\StudyUiEnabled::class)->name('student.study.attempt');
 
     // المواد والمحاضرات
     Route::get('/courses', [StudentWebController::class, 'courses'])->name('student.courses');

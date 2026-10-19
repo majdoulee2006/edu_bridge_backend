@@ -7,6 +7,9 @@
 return [
     'enabled' => env('STUDY_COMPANION_ENABLED', true),
 
+    // إظهار واجهات رفيق المذاكرة (ويب): معطّلة مؤقتاً. اجعلها true أو STUDY_COMPANION_UI=true لإعادتها.
+    'ui_enabled' => env('STUDY_COMPANION_UI', false),
+
     // أقصى حجم لملف المحاضرة (كيلوبايت) وأقصى طول نص يُرسل للنموذج (حروف)
     'max_file_kb' => 15360,
     'max_chars'   => 24000,

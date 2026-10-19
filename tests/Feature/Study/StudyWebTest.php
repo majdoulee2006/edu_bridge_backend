@@ -29,7 +29,7 @@ class StudyWebTest extends TestCase
         Http::preventStrayRequests();
         Storage::fake('public');
         Queue::fake();
-        config(['services.gemini.key' => 'k', 'services.gemini.models' => ['m']]);
+        config(['services.gemini.key' => 'k', 'services.gemini.models' => ['m'], 'study.ui_enabled' => true]);
 
         $this->teacher = $this->makeTeacher();
         $tid = (int) DB::table('teachers')->where('user_id', $this->teacher['user']->user_id)->value('teacher_id');
@@ -145,5 +145,24 @@ class StudyWebTest extends TestCase
         $this->actingAs($this->makeStudent()['user']);
         $this->get("/student/study/{$m->id}")->assertNotFound();
         $this->post("/student/study/{$m->id}/attempt", ['answers' => []])->assertNotFound();
+    }
+
+    public function test_the_web_ui_is_switched_off_by_default_and_hidden_from_menus(): void
+    {
+        config(['study.ui_enabled' => false]);
+
+        $this->actingAs($this->teacher['user']);
+        $this->get('/teacher/study')->assertNotFound();
+        $html = $this->get('/teacher/schedule')->assertOk()->getContent();
+        $this->assertStringNotContainsString('/teacher/study', $html);
+
+        $this->actingAs($this->makeStudent()['user']);
+        $this->get('/student/study')->assertNotFound();
+        $this->assertStringNotContainsString('/student/study', $this->get('/student/schedule')->assertOk()->getContent());
+    }
+
+    public function test_config_default_is_off(): void
+    {
+        $this->assertFalse((bool) (require base_path('config/study.php'))['ui_enabled']);
     }
 }

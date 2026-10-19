@@ -505,10 +505,12 @@
                     <i class="fa-solid fa-book-open"></i>
                     {{ __('messages.my_courses') }}
                 </a>
+                @if (config('study.ui_enabled'))
                 <a href="{{ url('/student/study') }}" class="nav-item {{ Request::is('student/study*') ? 'active' : '' }}">
                     <i class="fa-solid fa-book-open-reader"></i>
                     رفيق المذاكرة
                 </a>
+                @endif
                 <a href="{{ url('/student/assignments') }}" class="nav-item {{ Request::is('student/assignments') ? 'active' : '' }}">
                     <i class="fa-solid fa-file-pen"></i>
                     {{ __('messages.my_assignments') }}
