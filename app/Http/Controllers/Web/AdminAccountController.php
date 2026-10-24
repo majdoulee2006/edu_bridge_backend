@@ -472,19 +472,11 @@ class AdminAccountController extends Controller
         } elseif ($usr->role_id == 4) { // Parent
             $parent = DB::table('parents')->where('user_id', $id)->first();
 
-            // parent_students.parent_id/student_id هما FK على users.user_id، مع تحمّل سجلات قديمة بقيم parents.parent_id/students.student_id
+            // parent_students.parent_id/student_id هما FK على users.user_id
             $children = DB::table('parent_students')
-                ->join('students', function ($j) {
-                    $j->on('parent_students.student_id', '=', 'students.student_id')
-                      ->orOn('parent_students.student_id', '=', 'students.user_id');
-                })
-                ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
-                ->where(function ($q) use ($parent, $id) {
-                    $q->where('parent_students.parent_id', $id);
-                    if ($parent) {
-                        $q->orWhere('parent_students.parent_id', $parent->parent_id);
-                    }
-                })
+                ->join('users as student_users', 'parent_students.student_id', '=', 'student_users.user_id')
+                ->leftJoin('students', 'student_users.user_id', '=', 'students.user_id')
+                ->where('parent_students.parent_id', $id)
                 ->select('student_users.user_id as student_user_id', 'student_users.full_name', DB::raw('COALESCE(student_users.university_id, students.student_code) as university_id'))
                 ->distinct()
                 ->get();
@@ -521,7 +513,7 @@ class AdminAccountController extends Controller
 
         $updateData = [
             'full_name'  => $fullName,
-            'email'      => $request->email,
+            'email'      => $request->filled('email') ? trim($request->email) : null,
             'phone'      => $request->phone,
             'status'     => $request->status,
             'updated_at' => now(),
@@ -843,7 +835,7 @@ class AdminAccountController extends Controller
                 'first_name'       => $request->first_name,
                 'last_name'        => $request->last_name,
                 'username'         => $request->username,
-                'email'            => $request->email,
+                'email'            => $request->filled('email') ? trim($request->email) : null,
                 'phone'            => $request->phone,
                 'telegram_id'      => $request->telegram_id,
                 'telegram_chat_id' => $request->telegram_id,

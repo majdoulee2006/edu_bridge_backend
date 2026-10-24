@@ -359,7 +359,7 @@ class DepartmentHeadController extends Controller
             $user = User::create([
                 'full_name' => $request->full_name,
                 'phone'     => $request->phone,
-                'email'     => $request->email,
+                'email'     => $request->filled('email') ? trim($request->email) : null,
                 'password'  => Hash::make($request->password),
                 'role_id'   => 4,
                 'status'    => 'active',

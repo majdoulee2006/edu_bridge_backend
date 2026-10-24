@@ -55,10 +55,7 @@
                     <span class="pl-4 pr-3 text-slate-400 flex items-center justify-center">
                         <span class="material-symbols-outlined">badge</span>
                     </span>
-                    <input required name="username" autocomplete="new-username" class="flex-1 bg-transparent py-3.5 text-slate-800 dark:text-slate-100 focus:outline-none placeholder:text-slate-400 font-medium min-w-0" placeholder="yousef_parent" type="text" value="{{ old('username') }}"/>
-                    <span class="pr-4 pl-2 text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap select-none">
-                        @edu-bridge.com
-                    </span>
+                    <input required name="username" autocomplete="new-username" class="flex-1 bg-transparent py-3.5 px-3 text-slate-800 dark:text-slate-100 focus:outline-none placeholder:text-slate-400 font-medium min-w-0" placeholder="yousef_parent" type="text" value="{{ old('username') }}"/>
                 </div>
                 @error('username')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>
@@ -67,12 +64,12 @@
         <!-- البريد الإلكتروني ومعرف تليجرام -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
-                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">البريد الإلكتروني</label>
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300 mr-1">البريد الإلكتروني <span class="text-xs font-normal text-slate-400">(اختياري)</span></label>
                 <div class="relative flex items-center bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary transition-all overflow-hidden" dir="ltr">
                     <span class="pl-4 pr-3 text-slate-400 flex items-center justify-center">
                         <span class="material-symbols-outlined">mail</span>
                     </span>
-                    <input required name="email" autocomplete="new-email" class="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 py-3.5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium min-w-0" placeholder="parent" type="text" value="{{ old('email') }}"/>
+                    <input name="email" autocomplete="new-email" class="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 py-3.5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium min-w-0" placeholder="parent" type="text" value="{{ old('email') }}"/>
                     <span class="pr-4 pl-2 text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap select-none">
                         @gmail.com
                     </span>

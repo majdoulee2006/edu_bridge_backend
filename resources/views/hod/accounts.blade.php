@@ -238,7 +238,7 @@
         @php $colorClass = ['avatar-green','avatar-blue','avatar-purple','avatar-orange'][$index % 4]; @endphp
         <div class="account-card">
             <div class="delete-btn-wrap" style="display:flex; gap:0.5rem;">
-                <button type="button" onclick="openEditModal({{ $parent->user_id }}, '{{ addslashes($parent->full_name) }}', '{{ addslashes($parent->email) }}', '{{ addslashes($parent->phone) }}')" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" onclick="openEditModal({{ $parent->user_id }}, '{{ addslashes($parent->full_name) }}', '{{ addslashes($parent->email ?? '') }}', '{{ addslashes($parent->phone ?? '') }}', 'parent')" style="background:transparent;border:none;color:#3b82f6;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-pen"></i></button>
                 <form action="{{ route('hod.accounts.delete', $parent->user_id) }}" method="POST" onsubmit="return confirm('{{ __('messages.delete_confirm') }}')">
                     @csrf
                     <button type="submit" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:1.1rem;"><i class="fa-solid fa-trash-can"></i></button>
@@ -248,7 +248,7 @@
                 <div class="account-avatar {{ $colorClass }}">{{ mb_substr($parent->full_name,0,1,'UTF-8') }}</div>
                 <div class="account-info">
                     <h4>{{ $parent->full_name }}</h4>
-                    <p>{{ $parent->email }} @if($parent->phone) | {{ $parent->phone }} @endif</p>
+                    <p>{{ $parent->email ?: ($parent->phone ?: '—') }} @if($parent->email && $parent->phone) | {{ $parent->phone }} @endif</p>
                 </div>
             </div>
             <div class="chips-container">
@@ -329,86 +329,138 @@
 
     {{-- Modal: Add Student --}}
     <div id="student-modal" class="modal-overlay">
-        <div class="modal-card">
+        <div class="modal-card" style="position: relative;">
+            <button type="button" onclick="closeModal('student-modal')" style="position: absolute; top: 1.25rem; left: 1.25rem; background: none; border: none; font-size: 1.3rem; color: var(--text-secondary); cursor: pointer; padding: 0.25rem;" title="{{ __('messages.cancel') }}">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <h4 style="font-size:1.4rem;font-weight:800;margin-bottom:1.25rem;text-align:center;">{{ __('messages.add_new_student_account') }}</h4>
-            <form action="{{ route('hod.accounts.store_student') }}" method="POST">
+            <form action="{{ route('hod.accounts.store_student') }}" method="POST" id="add-student-form">
                 @csrf
-                <div class="form-group">
-                    <label class="form-label">{{ __('messages.full_name') }} <span style="color:#ef4444">*</span></label>
-                    <input type="text" name="full_name" required placeholder="مثال: يوسف المحمد" class="form-input">
-                </div>
-                <div class="form-row">
-                    <div>
-                        <label class="form-label">{{ __('messages.phone_number') }}</label>
-                        <input type="tel" name="phone" placeholder="09xxxxxxxx" dir="ltr" class="form-input">
+                
+                {{-- 1. مرحلة إدخال الرقم الجامعي والتحقق من الشؤون --}}
+                <div style="background: var(--bg-primary); border: 1.5px solid var(--border-color); border-radius: 1rem; padding: 1rem; margin-bottom: 1.25rem;">
+                    <label class="form-label" style="font-size: 0.92rem; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                        <span>
+                            <i class="fa-solid fa-id-card" style="color: var(--accent-color); margin-inline-end: 0.35rem;"></i>
+                            {{ __('messages.student_university_id') }} <span style="color:#ef4444">*</span>
+                        </span>
+                        <span id="uid-loading-badge" style="display: none; font-size: 0.78rem; color: #2563eb; font-weight: normal;">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i> جاري الفحص...
+                        </span>
+                    </label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" name="university_id" id="student_university_id_input" required 
+                               placeholder="مثال: 20261001" dir="ltr" class="form-input" 
+                               style="font-weight: 700; font-size: 1.05rem; letter-spacing: 1px;"
+                               autocomplete="off" oninput="handleStudentUidInput(this.value)"
+                               onkeydown="if(event.key==='Enter'){event.preventDefault(); verifyStudentUidNow();}">
+                        <button type="button" class="btn-save" id="btn-verify-uid" onclick="verifyStudentUidNow()" style="flex: 0 0 auto; padding: 0.6rem 1rem; font-size: 0.9rem;">
+                            <i class="fa-solid fa-magnifying-glass"></i> تحقق
+                        </button>
                     </div>
-                    <div>
-                        <label class="form-label">{{ __('messages.student_university_id') }} <span style="color:#ef4444">*</span></label>
-                        <input type="text" name="university_id" required placeholder="2023xxxx" dir="ltr" class="form-input">
+
+                    {{-- شريط حالة التحقق التفاعلي --}}
+                    <div id="uid-feedback-box" style="margin-top: 0.6rem; font-size: 0.84rem; border-radius: 0.6rem; padding: 0.6rem 0.8rem; display: flex; align-items: center; gap: 0.5rem; background: rgba(59, 130, 246, 0.08); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <i class="fa-solid fa-circle-info" id="uid-feedback-icon"></i>
+                        <span id="uid-feedback-text">يرجى إدخال الرقم الجامعي أولاً. الحقول أدناه مقفلة حتى يتم التأكد من وجود الرقم في سجلات الشؤون.</span>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">{{ __('messages.email_address') }} <span style="color:#ef4444">*</span></label>
-                    <input type="email" name="email" required placeholder="student@university.edu" dir="ltr" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">{{ __('messages.telegram_chat_id') }}</label>
-                    <input type="text" name="telegram_chat_id" placeholder="مثال: 123456789" dir="ltr" class="form-input" value="7650604064" title="احصل عليه من بوت الجامعة لإرسال الإشعارات وبيانات الدخول فوراً">
-                    <small style="color: #6b7280; font-size: 0.8rem;">{{ __('messages.telegram_chat_hint') }}</small>
-                </div>
-                <div class="form-row">
-                    <div>
-                        <label class="form-label">{{ __('messages.department') }} <span style="color:#ef4444">*</span></label>
-                        <input type="text" name="department" value="{{ Auth::user()->department }}" readonly class="form-input" style="background-color: var(--bg-primary); cursor: not-allowed; color: var(--text-secondary);">
-                    </div>
-                    <div>
-                        <label class="form-label">{{ __('messages.specialization') }} <span style="color:#ef4444">*</span></label>
-                        <select name="program_id" required class="form-input">
-                            <option value="" disabled selected>{{ __('messages.select_branch_placeholder') }}</option>
-                            @foreach($branches as $branch)
-                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div>
-                        <label class="form-label">{{ __('messages.academic_year_label') }} <span style="color:#ef4444">*</span></label>
-                        <select name="level" required class="form-input">
-                            <option value="" disabled selected>{{ __('messages.select_year_placeholder') }}</option>
-                            <option value="السنة الأولى">{{ __('messages.first_year') }}</option>
-                            <option value="السنة الثانية">{{ __('messages.second_year') }}</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div>
-                        <label class="form-label">{{ __('messages.birth_date') }} <span style="color:#ef4444">*</span></label>
-                        <input type="date" name="birth_date" required class="form-input">
-                    </div>
-                    <div>
-                        <label class="form-label">{{ __('messages.gender') }} <span style="color:#ef4444">*</span></label>
-                        <div class="gender-toggle">
-                            <input type="radio" name="gender" id="male-s" value="ذكر" checked>
-                            <label for="male-s">{{ __('messages.male') }}</label>
-                            <input type="radio" name="gender" id="female-s" value="أنثى">
-                            <label for="female-s">{{ __('messages.female') }}</label>
+
+                    {{-- بطاقة معاينة بيانات وصورة الطالب من الشؤون --}}
+                    <div id="student-preview-card" style="display: none; margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.75rem; background: var(--bg-secondary); border: 1px solid #86efac; align-items: center; gap: 0.85rem;">
+                        <img id="student-preview-img" src="" alt="صورة الطالب" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #22c55e; display: none;">
+                        <div id="student-preview-placeholder" style="width: 52px; height: 52px; border-radius: 50%; background: #dcfce7; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 800; font-size: 0.98rem; color: var(--text-primary);" id="student-preview-name">اسم الطالب</div>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
+                                <span class="chip chip-accent" style="font-size: 0.75rem;"><i class="fa-solid fa-check"></i> معتمد من الشؤون</span>
+                                <span id="student-preview-phone" style="font-size: 0.8rem; color: var(--text-secondary); direction: ltr;"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div>
-                        <label class="form-label">{{ __('messages.password') }} <span style="color:#ef4444">*</span></label>
-                        <input type="password" name="password" required minlength="6" placeholder="••••••••" class="form-input">
-                    </div>
-                    <div>
-                        <label class="form-label">{{ __('messages.confirm_password') }} <span style="color:#ef4444">*</span></label>
-                        <input type="password" name="password_confirmation" required placeholder="••••••••" class="form-input">
+
+                {{-- 2. الحقول المقفلة: تُفتح فقط وتُملأ تلقائياً بعد التحقق من الشؤون --}}
+                <div id="student-locked-section" style="opacity: 0.45; filter: grayscale(0.8); transition: all 0.3s ease;">
+                    <div id="student-inputs-wrapper" style="pointer-events: none;">
+                        <div class="form-group">
+                            <label class="form-label">{{ __('messages.full_name') }} <span style="color:#ef4444">*</span> (مجلوب من الشؤون)</label>
+                            <input type="text" name="full_name" id="student_full_name_input" required placeholder="مثال: يوسف المحمد" class="form-input" readonly style="background-color: var(--bg-primary); cursor: not-allowed; font-weight: 600;">
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label class="form-label">{{ __('messages.phone_number') }}</label>
+                                <input type="tel" name="phone" id="student_phone_input" placeholder="09xxxxxxxx" dir="ltr" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="form-label">{{ __('messages.birth_date') }} <span style="color:#ef4444">*</span></label>
+                                <input type="date" name="birth_date" id="student_birth_date_input" required class="form-input" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">{{ __('messages.email_address') }} <span style="color:#ef4444">*</span></label>
+                            <input type="email" name="email" id="student_email_input" required placeholder="student@university.edu" dir="ltr" class="form-input" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">{{ __('messages.telegram_chat_id') }}</label>
+                            <input type="text" name="telegram_chat_id" id="student_telegram_chat_id_input" placeholder="مثال: 123456789" dir="ltr" class="form-input" title="احصل عليه من بوت الجامعة لإرسال الإشعارات وبيانات الدخول فوراً" disabled>
+                            <small style="color: #6b7280; font-size: 0.8rem;">{{ __('messages.telegram_chat_hint') }}</small>
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label class="form-label">{{ __('messages.department') }} <span style="color:#ef4444">*</span></label>
+                                <input type="text" name="department" id="student_department_input" value="{{ Auth::user()->department }}" readonly class="form-input" style="background-color: var(--bg-primary); cursor: not-allowed; color: var(--text-secondary);" disabled>
+                            </div>
+                            <div>
+                                <label class="form-label">{{ __('messages.specialization') }} <span style="color:#ef4444">*</span></label>
+                                <select name="program_id" id="student_program_id_select" required class="form-input" disabled>
+                                    <option value="" disabled selected>{{ __('messages.select_branch_placeholder') }}</option>
+                                    @foreach($branches as $branch)
+                                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label class="form-label">{{ __('messages.academic_year_label') }} <span style="color:#ef4444">*</span></label>
+                                <select name="level" id="student_level_select" required class="form-input" disabled>
+                                    <option value="" disabled selected>{{ __('messages.select_year_placeholder') }}</option>
+                                    <option value="السنة الأولى">{{ __('messages.first_year') }}</option>
+                                    <option value="السنة الثانية">{{ __('messages.second_year') }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">{{ __('messages.gender') }} <span style="color:#ef4444">*</span></label>
+                                <div class="gender-toggle">
+                                    <input type="radio" name="gender" id="male-s" value="ذكر" checked disabled>
+                                    <label for="male-s">{{ __('messages.male') }}</label>
+                                    <input type="radio" name="gender" id="female-s" value="أنثى" disabled>
+                                    <label for="female-s">{{ __('messages.female') }}</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row" id="student-password-row">
+                            <div>
+                                <label class="form-label">{{ __('messages.password') }} <span style="color:#ef4444">*</span></label>
+                                <input type="password" name="password" id="student_password_input" required minlength="6" placeholder="••••••••" class="form-input" disabled>
+                            </div>
+                            <div>
+                                <label class="form-label">{{ __('messages.confirm_password') }} <span style="color:#ef4444">*</span></label>
+                                <input type="password" name="password_confirmation" id="student_password_confirm_input" required placeholder="••••••••" class="form-input" disabled>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
-                    <button type="submit" class="btn-save">{{ __('messages.save') }}</button>
-                    <button type="button" onclick="closeModal('student-modal')" class="btn-cancel">{{ __('messages.cancel') }}</button>
+
+                {{-- 3. أزرار التحكم: مستقلة تماماً وتعمل دائماً --}}
+                <div style="display:flex;gap:0.75rem;margin-top:1rem;align-items:center;">
+                    <button type="submit" class="btn-save" id="btn-submit-student" disabled style="opacity: 0.5; cursor: not-allowed;">{{ __('messages.save') }}</button>
+                    <div id="student-readonly-badge" style="display:none; flex:1; padding:0.75rem; background:#fef3c7; color:#b45309; border:1px solid #fcd34d; border-radius:0.75rem; text-align:center; font-weight:700; font-size:0.92rem;">
+                        <i class="fa-solid fa-lock"></i> الحساب منشأ ومفعل مسبقاً (وضع العرض فقط)
+                    </div>
+                    <button type="button" onclick="closeModal('student-modal')" class="btn-cancel" style="cursor: pointer; pointer-events: auto;">{{ __('messages.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -435,8 +487,8 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">{{ __('messages.email_address') }} <span style="color:#ef4444">*</span></label>
-                    <input type="email" name="email" required placeholder="parent@test.com" dir="ltr" class="form-input">
+                    <label class="form-label">{{ __('messages.email_address') }} <span style="color:var(--text-secondary);font-size:0.8rem;font-weight:normal;">({{ __('messages.optional') ?? 'اختياري' }})</span></label>
+                    <input type="email" name="email" placeholder="parent@test.com" dir="ltr" class="form-input">
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ __('messages.children_count') }}</label>
@@ -652,10 +704,24 @@
         const map = { teachers: 'teacher-modal', students: 'student-modal', parents: 'parent-modal' };
         openModal(map[activeTab]);
         if (activeTab === 'parents') updateChildrenFields(1);
+        if (activeTab === 'students') resetStudentModal();
     }
 
     function openModal(id)  { document.getElementById(id).classList.add('active'); }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.classList.remove('active');
+            });
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+            }
+        });
+    });
 
     // ===== Advisor Modal =====
     function openAdvisorModal(teacherId, teacherName, isAdvisor) {
@@ -694,7 +760,13 @@
         const form = document.getElementById('edit-account-form');
         form.action = `/hod/accounts/update/${userId}`;
         document.getElementById('edit_full_name').value = fullName;
-        document.getElementById('edit_email').value = email;
+        const emailInput = document.getElementById('edit_email');
+        emailInput.value = email || '';
+        if (role === 'parent') {
+            emailInput.removeAttribute('required');
+        } else {
+            emailInput.setAttribute('required', 'required');
+        }
         document.getElementById('edit_phone').value = phone || '';
         
         const coursesSection = document.getElementById('edit_teacher_courses');
@@ -763,6 +835,295 @@
                 })
                 .catch(() => { result.style.display='none'; });
         }, 500);
+    }
+
+    // ===== التحقق التلقائي من الرقم الجامعي للطالب من الشؤون =====
+    let studentUidTimer = null;
+
+    function resetStudentModal() {
+        const form = document.getElementById('add-student-form');
+        if (form) form.reset();
+        setStudentFieldsLocked(true);
+        const feedbackBox = document.getElementById('uid-feedback-box');
+        const feedbackIcon = document.getElementById('uid-feedback-icon');
+        const feedbackText = document.getElementById('uid-feedback-text');
+        const previewCard = document.getElementById('student-preview-card');
+        const passwordRow = document.getElementById('student-password-row');
+        const btnSubmit = document.getElementById('btn-submit-student');
+        const readonlyBadge = document.getElementById('student-readonly-badge');
+
+        if (passwordRow) passwordRow.style.display = 'flex';
+        if (btnSubmit) btnSubmit.style.display = 'block';
+        if (readonlyBadge) readonlyBadge.style.display = 'none';
+
+        if (feedbackBox) {
+            feedbackBox.style.background = 'rgba(59, 130, 246, 0.08)';
+            feedbackBox.style.color = '#2563eb';
+            feedbackBox.style.border = '1px solid rgba(59, 130, 246, 0.2)';
+        }
+        if (feedbackIcon) feedbackIcon.className = 'fa-solid fa-circle-info';
+        if (feedbackText) feedbackText.textContent = 'يرجى إدخال الرقم الجامعي أولاً. الحقول أدناه مقفلة حتى يتم التأكد من وجود الرقم في سجلات الشؤون.';
+        if (previewCard) {
+            previewCard.style.display = 'none';
+            const badge = previewCard.querySelector('.chip');
+            if (badge) {
+                badge.style.background = '';
+                badge.style.color = '';
+                badge.style.border = '';
+                badge.className = 'chip chip-accent';
+                badge.innerHTML = '<i class="fa-solid fa-check"></i> معتمد من الشؤون';
+            }
+        }
+        const loadingBadge = document.getElementById('uid-loading-badge');
+        if (loadingBadge) loadingBadge.style.display = 'none';
+    }
+
+    function setStudentFieldsLocked(locked) {
+        const section = document.getElementById('student-locked-section');
+        const wrapper = document.getElementById('student-inputs-wrapper');
+        const btnSubmit = document.getElementById('btn-submit-student');
+        const passwordRow = document.getElementById('student-password-row');
+        const readonlyBadge = document.getElementById('student-readonly-badge');
+
+        if (!section) return;
+
+        if (locked) {
+            section.style.opacity = '0.45';
+            section.style.filter = 'grayscale(0.8)';
+            if (wrapper) wrapper.style.pointerEvents = 'none';
+            section.querySelectorAll('input:not(#student_university_id_input), select').forEach(el => {
+                if (el.id !== 'student_full_name_input') {
+                    el.disabled = true;
+                }
+            });
+            if (btnSubmit) {
+                btnSubmit.style.display = 'block';
+                btnSubmit.disabled = true;
+                btnSubmit.style.opacity = '0.5';
+                btnSubmit.style.cursor = 'not-allowed';
+            }
+            if (readonlyBadge) readonlyBadge.style.display = 'none';
+            if (passwordRow) passwordRow.style.display = 'flex';
+        } else {
+            section.style.opacity = '1';
+            section.style.filter = 'none';
+            if (wrapper) wrapper.style.pointerEvents = 'auto';
+            section.querySelectorAll('input, select').forEach(el => {
+                el.disabled = false;
+            });
+            const fullNameInput = document.getElementById('student_full_name_input');
+            if (fullNameInput) {
+                fullNameInput.readOnly = true;
+            }
+            if (passwordRow) passwordRow.style.display = 'flex';
+            if (btnSubmit) {
+                btnSubmit.style.display = 'block';
+                btnSubmit.disabled = false;
+                btnSubmit.style.opacity = '1';
+                btnSubmit.style.cursor = 'pointer';
+            }
+            if (readonlyBadge) readonlyBadge.style.display = 'none';
+        }
+    }
+
+    function showStudentReadOnly(studentData) {
+        const section = document.getElementById('student-locked-section');
+        const wrapper = document.getElementById('student-inputs-wrapper');
+        const btnSubmit = document.getElementById('btn-submit-student');
+        const readonlyBadge = document.getElementById('student-readonly-badge');
+        const passwordRow = document.getElementById('student-password-row');
+
+        if (!section) return;
+
+        // إتاحة رؤية الحقول بوضوح تام، وقفل التعديل عليها فقط
+        section.style.opacity = '1';
+        section.style.filter = 'none';
+        if (wrapper) wrapper.style.pointerEvents = 'none';
+
+        document.getElementById('student_full_name_input').value = studentData.full_name || '';
+        document.getElementById('student_phone_input').value = studentData.phone || '';
+        document.getElementById('student_birth_date_input').value = studentData.date_of_birth || '';
+        document.getElementById('student_email_input').value = studentData.email || '';
+        document.getElementById('student_telegram_chat_id_input').value = studentData.telegram_chat_id || '';
+        
+        const deptInput = document.getElementById('student_department_input');
+        if (deptInput && studentData.department) deptInput.value = studentData.department;
+
+        const programSelect = document.getElementById('student_program_id_select');
+        if (programSelect && studentData.program_id) programSelect.value = studentData.program_id;
+
+        const levelSelect = document.getElementById('student_level_select');
+        if (levelSelect && studentData.level) levelSelect.value = studentData.level;
+
+        if (studentData.gender === 'أنثى') {
+            const fRadio = document.getElementById('female-s');
+            if (fRadio) fRadio.checked = true;
+        } else {
+            const mRadio = document.getElementById('male-s');
+            if (mRadio) mRadio.checked = true;
+        }
+
+        // إخفاء حقول كلمة المرور وزر الحفظ، وإظهار شارة العرض فقط
+        if (passwordRow) passwordRow.style.display = 'none';
+        if (btnSubmit) btnSubmit.style.display = 'none';
+        if (readonlyBadge) readonlyBadge.style.display = 'block';
+    }
+
+    function handleStudentUidInput(val) {
+        clearTimeout(studentUidTimer);
+        const trimmed = (val || '').trim();
+        if (!trimmed) {
+            resetStudentModal();
+            return;
+        }
+        setStudentFieldsLocked(true);
+        const feedbackBox = document.getElementById('uid-feedback-box');
+        const feedbackIcon = document.getElementById('uid-feedback-icon');
+        const feedbackText = document.getElementById('uid-feedback-text');
+        const previewCard = document.getElementById('student-preview-card');
+        if (previewCard) previewCard.style.display = 'none';
+
+        if (feedbackBox) {
+            feedbackBox.style.background = 'rgba(59, 130, 246, 0.08)';
+            feedbackBox.style.color = '#2563eb';
+            feedbackBox.style.border = '1px solid rgba(59, 130, 246, 0.2)';
+        }
+        if (feedbackIcon) feedbackIcon.className = 'fa-solid fa-circle-notch fa-spin';
+        if (feedbackText) feedbackText.textContent = 'جاري التحقق من الرقم...';
+
+        studentUidTimer = setTimeout(() => {
+            verifyStudentUidNow();
+        }, 500);
+    }
+
+    function verifyStudentUidNow() {
+        clearTimeout(studentUidTimer);
+        const input = document.getElementById('student_university_id_input');
+        if (!input) return;
+        const uid = input.value.trim();
+        if (!uid) {
+            resetStudentModal();
+            return;
+        }
+
+        const loadingBadge = document.getElementById('uid-loading-badge');
+        const feedbackBox = document.getElementById('uid-feedback-box');
+        const feedbackIcon = document.getElementById('uid-feedback-icon');
+        const feedbackText = document.getElementById('uid-feedback-text');
+        const previewCard = document.getElementById('student-preview-card');
+        const previewImg = document.getElementById('student-preview-img');
+        const previewPlaceholder = document.getElementById('student-preview-placeholder');
+        const previewName = document.getElementById('student-preview-name');
+        const previewPhone = document.getElementById('student-preview-phone');
+
+        if (loadingBadge) loadingBadge.style.display = 'inline-block';
+        if (feedbackIcon) feedbackIcon.className = 'fa-solid fa-circle-notch fa-spin';
+        if (feedbackText) feedbackText.textContent = 'جاري التحقق من السجلات...';
+
+        fetch('{{ route("hod.accounts.check_student_uid") }}?university_id=' + encodeURIComponent(uid), {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (loadingBadge) loadingBadge.style.display = 'none';
+
+            if (data.status === 'already_registered') {
+                // الحساب منشأ ومفعل مسبقاً: عرض كافة بياناته للقراءة فقط
+                feedbackBox.style.background = '#fffbeb';
+                feedbackBox.style.color = '#b45309';
+                feedbackBox.style.border = '1px solid #fde68a';
+                feedbackIcon.className = 'fa-solid fa-id-card-clip';
+                feedbackText.textContent = data.message;
+
+                if (previewCard) {
+                    previewCard.style.display = 'flex';
+                    if (previewName) previewName.textContent = data.data.full_name;
+                    if (previewPhone) previewPhone.textContent = data.data.phone ? ('هاتف: ' + data.data.phone) : '';
+                    
+                    const badge = previewCard.querySelector('.chip');
+                    if (badge) {
+                        badge.style.background = '#fef3c7';
+                        badge.style.color = '#92400e';
+                        badge.style.border = '1px solid #fcd34d';
+                        badge.innerHTML = '<i class="fa-solid fa-user-check"></i> حساب مسجل ومفعل';
+                    }
+
+                    if (data.data.photo_url) {
+                        previewImg.src = data.data.photo_url;
+                        previewImg.style.display = 'block';
+                        previewPlaceholder.style.display = 'none';
+                    } else {
+                        previewImg.style.display = 'none';
+                        previewPlaceholder.style.display = 'flex';
+                    }
+                }
+
+                showStudentReadOnly(data.data);
+
+            } else if (data.status === 'success') {
+                // طالب جديد من الشؤون غير مسجل بعد
+                feedbackBox.style.background = '#f0fdf4';
+                feedbackBox.style.color = '#15803d';
+                feedbackBox.style.border = '1px solid #bbf7d0';
+                feedbackIcon.className = 'fa-solid fa-circle-check';
+                feedbackText.textContent = data.message;
+
+                if (previewCard) {
+                    previewCard.style.display = 'flex';
+                    if (previewName) previewName.textContent = data.data.full_name;
+                    if (previewPhone) previewPhone.textContent = data.data.phone ? ('هاتف: ' + data.data.phone) : '';
+                    
+                    const badge = previewCard.querySelector('.chip');
+                    if (badge) {
+                        badge.style.background = '';
+                        badge.style.color = '';
+                        badge.style.border = '';
+                        badge.className = 'chip chip-accent';
+                        badge.innerHTML = '<i class="fa-solid fa-check"></i> معتمد من الشؤون';
+                    }
+
+                    if (data.data.photo_url) {
+                        previewImg.src = data.data.photo_url;
+                        previewImg.style.display = 'block';
+                        previewPlaceholder.style.display = 'none';
+                    } else {
+                        previewImg.style.display = 'none';
+                        previewPlaceholder.style.display = 'flex';
+                    }
+                }
+
+                setStudentFieldsLocked(false);
+                document.getElementById('student_full_name_input').value = data.data.full_name || '';
+                document.getElementById('student_phone_input').value = data.data.phone || '';
+                document.getElementById('student_birth_date_input').value = data.data.date_of_birth || '';
+                document.getElementById('student_telegram_chat_id_input').value = data.data.telegram_chat_id || '';
+                
+                const emailInput = document.getElementById('student_email_input');
+                if (!emailInput.value) {
+                    emailInput.value = data.data.university_id + '@edu-bridge.com';
+                }
+            } else {
+                feedbackBox.style.background = '#fef2f2';
+                feedbackBox.style.color = '#dc2626';
+                feedbackBox.style.border = '1px solid #fecaca';
+                feedbackIcon.className = 'fa-solid fa-circle-xmark';
+                feedbackText.textContent = data.message || 'هذا الرقم الجامعي غير صالح.';
+
+                if (previewCard) previewCard.style.display = 'none';
+                setStudentFieldsLocked(true);
+            }
+        })
+        .catch(err => {
+            if (loadingBadge) loadingBadge.style.display = 'none';
+            feedbackBox.style.background = '#fef2f2';
+            feedbackBox.style.color = '#dc2626';
+            feedbackBox.style.border = '1px solid #fecaca';
+            feedbackIcon.className = 'fa-solid fa-triangle-exclamation';
+            feedbackText.textContent = 'تعذر الاتصال بالسيرفر للتحقق من الرقم الجامعي.';
+            if (previewCard) previewCard.style.display = 'none';
+            setStudentFieldsLocked(true);
+        });
     }
 </script>
 @endpush

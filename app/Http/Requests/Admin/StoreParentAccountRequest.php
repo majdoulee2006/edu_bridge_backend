@@ -37,7 +37,7 @@ class StoreParentAccountRequest extends FormRequest
                 'max:255',
             ],
             'email'                   => [
-                'required',
+                'nullable',
                 'email',
                 'unique:users,email',
                 'max:255',

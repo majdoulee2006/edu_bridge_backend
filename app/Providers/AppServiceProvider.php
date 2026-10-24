@@ -31,13 +31,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // ضبط البروتوكول (HTTP / HTTPS) بمرونة بناءً على APP_URL في .env
-        $appUrl = (string) config('app.url');
-        if (str_starts_with($appUrl, 'http://')) {
-            \Illuminate\Support\Facades\URL::forceScheme('http');
-        } elseif (str_starts_with($appUrl, 'https://') || request()->secure() || request()->header('X-Forwarded-Proto') === 'https') {
+        // ضبط البروتوكول (HTTP / HTTPS): إذا كان الطلب قادماً عبر نفق/بروكسي مشفر (HTTPS) نعتمد HTTPS لمنع تحذيرات المتصفح
+        if (request()->header('X-Forwarded-Proto') === 'https' || request()->secure() || str_starts_with((string) config('app.url'), 'https://')) {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
+
 
         if (\Illuminate\Support\Facades\DB::getDriverName() === 'mysql') {
             \Illuminate\Support\Facades\DB::statement("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");

@@ -314,9 +314,11 @@ class TeacherWebController extends Controller
     {
         $request->validate([
             'course_id' => 'required|exists:courses,course_id',
+            'require_face_verification' => 'nullable',
         ]);
 
         $teacher = $this->getTeacher();
+        $requireFace = $request->has('require_face_verification') ? 1 : 0;
 
         $lessonId = DB::table('lessons')->insertGetId([
             'course_id'   => $request->course_id,
@@ -327,15 +329,19 @@ class TeacherWebController extends Controller
             'updated_at'  => now(),
         ]);
 
+        $token = \Illuminate\Support\Str::random(32);
         $sessionId = DB::table('attendance_sessions')->insertGetId([
-            'lesson_id'          => $lessonId,
-            'qr_token'           => \Illuminate\Support\Str::random(32),
-            'expires_at'         => now()->addSeconds(30),
-            'session_expires_at' => now()->addMinutes(10),
-            'is_active'          => 1,
-            'created_at'         => now(),
-            'updated_at'         => now(),
+            'lesson_id'                 => $lessonId,
+            'qr_token'                  => $token,
+            'require_face_verification' => $requireFace,
+            'expires_at'                => now()->addSeconds(30),
+            'session_expires_at'        => now()->addMinutes(10),
+            'is_active'                 => 1,
+            'created_at'                => now(),
+            'updated_at'                => now(),
         ]);
+
+        \App\Support\QrTokens::recordIssued((int) $sessionId, $token);
 
         return redirect()->back()->with([
             'success' => 'تم بدء جلسة الحضور بنجاح لمدة 10 دقائق!',
@@ -365,9 +371,10 @@ class TeacherWebController extends Controller
         \App\Support\QrTokens::rotate((int) $id, $newToken);
 
         return response()->json([
-            'success' => true,
-            'qr_token' => $newToken,
-            'expires_in_seconds' => 30,
+            'success'                   => true,
+            'qr_token'                  => $newToken,
+            'require_face_verification' => (bool) ($session->require_face_verification ?? true),
+            'expires_in_seconds'        => 30,
         ]);
     }
 
@@ -2178,15 +2185,8 @@ class TeacherWebController extends Controller
 
                 // parent_students.parent_id/student_id هما FK على users.user_id
                 $parentUserIds = DB::table('parent_students')
-                    ->join('parents', function($j) {
-                        $j->on('parent_students.parent_id', '=', 'parents.user_id')
-                          ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
-                    })
-                    ->where(function($q) use ($studentUserId, $studentId) {
-                        $q->where('parent_students.student_id', $studentUserId)
-                          ->orWhere('parent_students.student_id', $studentId);
-                    })
-                    ->pluck('parents.user_id');
+                    ->where('parent_students.student_id', $studentUserId)
+                    ->pluck('parent_id');
 
                 foreach ($parentUserIds as $parentUserId) {
                     DB::table('notifications')->insert([

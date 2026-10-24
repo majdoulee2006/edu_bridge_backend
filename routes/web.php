@@ -220,40 +220,6 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/risk', [\App\Http\Controllers\Web\RiskWebController::class, 'index'])->name('hod.risk');
     Route::get('/risk/students/{id}', [\App\Http\Controllers\Web\RiskWebController::class, 'show'])->name('hod.risk.show');
     Route::post('/risk/students/{id}/interventions', [\App\Http\Controllers\Web\RiskWebController::class, 'storeIntervention'])->name('hod.risk.interventions');
-    Route::prefix('schedule-studio')->group(function () {
-        $c = \App\Http\Controllers\Web\ScheduleStudioWebController::class;
-        Route::get('/', [$c, 'index'])->name('hod.studio');
-        Route::post('/generate', [$c, 'generate'])->name('hod.studio.generate');
-        Route::post('/rooms', [$c, 'storeRoom'])->name('hod.studio.rooms.store');
-        Route::post('/rooms/auto', [$c, 'autoRooms'])->name('hod.studio.rooms.auto');
-        Route::post('/rooms/import', [$c, 'importRooms'])->name('hod.studio.rooms.import');
-        Route::post('/rooms/{id}/update', [$c, 'updateRoom'])->name('hod.studio.rooms.update');
-        Route::post('/rooms/{id}/delete', [$c, 'deleteRoom'])->name('hod.studio.rooms.delete');
-        Route::post('/availability', [$c, 'storeAvailability'])->name('hod.studio.availability.store');
-        Route::post('/availability/{id}/delete', [$c, 'deleteAvailability'])->name('hod.studio.availability.delete');
-        Route::get('/{id}', [$c, 'show'])->whereNumber('id')->name('hod.studio.show');
-        Route::post('/{id}/move', [$c, 'move'])->name('hod.studio.move');
-        Route::post('/{id}/swap', [$c, 'swap'])->name('hod.studio.swap');
-        Route::post('/{id}/lock', [$c, 'lock'])->name('hod.studio.lock');
-        Route::post('/{id}/regenerate', [$c, 'regenerate'])->name('hod.studio.regenerate');
-        Route::post('/{id}/approve', [$c, 'approve'])->name('hod.studio.approve');
-        Route::post('/{id}/discard', [$c, 'discard'])->name('hod.studio.discard');
-        Route::post('/{id}/revert', [$c, 'revert'])->name('hod.studio.revert');
-    });
-    Route::prefix('exam-studio')->group(function () {
-        $c = \App\Http\Controllers\Web\ExamStudioWebController::class;
-        Route::get('/', [$c, 'index'])->name('hod.exams');
-        Route::post('/generate', [$c, 'generate'])->name('hod.exams.generate');
-        Route::get('/{id}', [$c, 'show'])->whereNumber('id')->name('hod.exams.show');
-        Route::post('/{id}/move', [$c, 'move'])->name('hod.exams.move');
-        Route::post('/{id}/lock', [$c, 'lock'])->name('hod.exams.lock');
-        Route::post('/{id}/student', [$c, 'moveStudent'])->name('hod.exams.student');
-        Route::post('/{id}/proctors', [$c, 'proctors'])->name('hod.exams.proctors');
-        Route::post('/{id}/regenerate', [$c, 'regenerate'])->name('hod.exams.regenerate');
-        Route::post('/{id}/approve', [$c, 'approve'])->name('hod.exams.approve');
-        Route::post('/{id}/discard', [$c, 'discard'])->name('hod.exams.discard');
-        Route::post('/{id}/revert', [$c, 'revert'])->name('hod.exams.revert');
-    });
     Route::get('/profile', [HODWebController::class, 'profile'])->name('hod.profile');
     Route::post('/profile', [HODWebController::class, 'updateProfile'])->name('hod.profile.update');
     Route::post('/profile/send-otp', [HODWebController::class, 'sendOTP'])->name('hod.profile.send_otp');
@@ -261,6 +227,7 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::get('/leaves', [HODWebController::class, 'leaves'])->name('hod.leaves');
     Route::post('/leaves/{id}/status', [HODWebController::class, 'updateLeaveStatus'])->name('hod.leaves.status');
     Route::get('/accounts', [HODWebController::class, 'accounts'])->name('hod.accounts');
+    Route::get('/accounts/check-student-uid', [HODWebController::class, 'checkStudentUniversityId'])->name('hod.accounts.check_student_uid');
     Route::post('/accounts/teacher', [HODWebController::class, 'storeTeacher'])->name('hod.accounts.store_teacher');
     Route::post('/accounts/student', [HODWebController::class, 'storeStudent'])->name('hod.accounts.store_student');
     Route::post('/accounts/advisor', [HODWebController::class, 'assignAdvisor'])->name('hod.accounts.advisor');
@@ -269,6 +236,8 @@ Route::prefix('hod')->middleware([\App\Http\Middleware\CheckHodRole::class])->gr
     Route::post('/accounts/delete/{id}', [HODWebController::class, 'deleteAccount'])->name('hod.accounts.delete');
     Route::get('/organization', [HODWebController::class, 'organization'])->name('hod.organization');
     Route::post('/organization/schedule', [HODWebController::class, 'storeSchedule'])->name('hod.organization.store_schedule');
+    Route::post('/organization/schedule/structure', [HODWebController::class, 'saveScheduleStructure'])->name('hod.organization.save_schedule_structure');
+    Route::get('/organization/schedule/structure', [HODWebController::class, 'getScheduleStructure'])->name('hod.organization.get_schedule_structure');
     Route::post('/organization/schedule/delete/{id}', [HODWebController::class, 'deleteSchedule'])->name('hod.organization.delete_schedule');
     Route::post('/organization/exam', [HODWebController::class, 'storeExam'])->name('hod.organization.store_exam');
     Route::post('/organization/exam/delete/{id}', [HODWebController::class, 'deleteExam'])->name('hod.organization.delete_exam');

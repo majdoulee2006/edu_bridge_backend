@@ -326,23 +326,24 @@ class UnifiedAuthController extends Controller
         $roleStr = strtolower($user->role ?? '');
 
         if ($roleId === 6 || $roleStr === 'affairs') {
-            return redirect()->to(url('/affairs/dashboard'));
+            return redirect()->to('/affairs/dashboard');
         }
         if ($roleId === 5 || $roleStr === 'head' || $roleStr === 'hod') {
-            return redirect()->to(url('/hod/dashboard'));
+            return redirect()->to('/hod/dashboard');
         }
         if ($roleId === 1 || $roleStr === 'admin' || !empty($user->is_admin)) {
-            return redirect()->to(url('/admin/dashboard'));
+            return redirect()->to('/admin/dashboard');
         }
         if ($roleId === 2 || $roleStr === 'teacher' || $roleStr === 'instructor') {
-            return redirect()->to(url('/teacher/dashboard'));
+            return redirect()->to('/teacher/dashboard');
         }
         if ($roleId === 3 || $roleStr === 'student' || Student::where('user_id', $user->user_id)->exists()) {
-            return redirect()->to(url('/student/dashboard'));
+            return redirect()->to('/student/dashboard');
         }
         if ($roleId === 4 || $roleStr === 'parent' || Parents::where('user_id', $user->user_id)->exists()) {
-            return redirect()->to(url('/parent/dashboard'));
+            return redirect()->to('/parent/dashboard');
         }
+
 
         return redirect()->route('login');
     }

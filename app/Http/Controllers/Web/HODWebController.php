@@ -454,23 +454,14 @@ class HODWebController extends Controller
         }
 
         // 4. الأهل (الآباء الذين لديهم أبناء في هذا القسم)
-        // ملاحظة: parent_students.parent_id/student_id هما FK على users.user_id، لكن بعض السجلات القديمة
-        // في قاعدة البيانات أُدخلت (عبر أكواد سابقة) بقيم parents.parent_id/students.student_id الخاطئة،
-        // لذا نتحقق من الاحتمالين معاً لضمان عدم فقدان أي ربط قديم.
+        // parent_students.parent_id و parent_students.student_id هما FK يشيران إلى users.user_id
         $parents = DB::table('parents')
             ->join('users', 'parents.user_id', '=', 'users.user_id')
             ->whereExists(function ($query) use ($hodDept) {
                 $query->select(DB::raw(1))
                       ->from('parent_students')
-                      ->join('students', function ($j) {
-                          $j->on('parent_students.student_id', '=', 'students.user_id')
-                            ->orOn('parent_students.student_id', '=', 'students.student_id');
-                      })
-                      ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
-                      ->where(function ($q) {
-                          $q->whereColumn('parent_students.parent_id', 'parents.user_id')
-                            ->orWhereColumn('parent_students.parent_id', 'parents.parent_id');
-                      })
+                      ->join('users as student_users', 'parent_students.student_id', '=', 'student_users.user_id')
+                      ->whereColumn('parent_students.parent_id', 'parents.user_id')
                       ->where('student_users.department', $hodDept);
             })
             ->select('parents.parent_id', 'users.user_id', 'users.full_name', 'users.username', 'users.email', 'users.phone')
@@ -478,16 +469,9 @@ class HODWebController extends Controller
 
         foreach ($parents as $parent) {
             $parent->children = DB::table('parent_students')
-                ->join('students', function ($j) {
-                    $j->on('parent_students.student_id', '=', 'students.user_id')
-                      ->orOn('parent_students.student_id', '=', 'students.student_id');
-                })
-                ->join('users', 'students.user_id', '=', 'users.user_id')
-                ->where(function ($q) use ($parent) {
-                    $q->where('parent_students.parent_id', $parent->user_id)
-                      ->orWhere('parent_students.parent_id', $parent->parent_id);
-                })
-                ->pluck('users.full_name');
+                ->join('users as student_users', 'parent_students.student_id', '=', 'student_users.user_id')
+                ->where('parent_students.parent_id', $parent->user_id)
+                ->pluck('student_users.full_name');
         }
 
         // 5. بيانات النماذج
@@ -658,12 +642,160 @@ class HODWebController extends Controller
     }
 
     /**
-     * إضافة طالب جديد — مطابق للأدمن
+     * التحقق من الرقم الجامعي من الشؤون وجلب بيانات الطالب
+     */
+    public function checkStudentUniversityId(Request $request)
+    {
+        $uid = trim((string) $request->query('university_id', ''));
+        if (empty($uid)) {
+            return response()->json([
+                'status'  => 'empty',
+                'message' => 'يرجى إدخال الرقم الجامعي.',
+            ], 400);
+        }
+
+        // 1. فحص إذا كان هناك حساب مستخدم موجود بالفعل
+        $existingUser = DB::table('users')
+            ->where('university_id', $uid)
+            ->orWhere('username', $uid)
+            ->first();
+
+        if ($existingUser) {
+            $student = DB::table('students')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->where('students.user_id', $existingUser->user_id)
+                ->select('students.*', 'programs.name as program_name')
+                ->first();
+
+            $photo = $existingUser->avatar ?? ($student->reference_photo ?? null);
+            if (!$photo) {
+                $photo = DB::table('university_ids')->where('university_id', $uid)->value('photo');
+            }
+            $photoUrl = $photo ? asset('storage/' . $photo) : null;
+
+            $programId = $student->program_id ?? null;
+            if (!$programId && $student && $student->program_name) {
+                $programId = DB::table('programs')->where('name', $student->program_name)->value('id');
+            }
+
+            return response()->json([
+                'status'  => 'already_registered',
+                'message' => 'هذا الرقم الجامعي لديه حساب مفعل بالفعل في النظام باسم: ' . $existingUser->full_name . ' (وضع العرض فقط)',
+                'data'    => [
+                    'university_id'    => $existingUser->university_id ?: ($existingUser->username ?: $uid),
+                    'full_name'        => $existingUser->full_name,
+                    'phone'            => $existingUser->phone ?? '',
+                    'email'            => $existingUser->email ?? '',
+                    'date_of_birth'    => $existingUser->birth_date ? date('Y-m-d', strtotime($existingUser->birth_date)) : ($student && $student->birth_date ? date('Y-m-d', strtotime($student->birth_date)) : ''),
+                    'telegram_chat_id' => $existingUser->telegram_chat_id ?? '',
+                    'department'       => $existingUser->department ?? '',
+                    'program_id'       => $programId,
+                    'program_name'     => $student->program_name ?? '',
+                    'level'            => $student->level ?? ($existingUser->academic_year ?? 'السنة الأولى'),
+                    'gender'           => $existingUser->gender ?? 'ذكر',
+                    'photo'            => $photo,
+                    'photo_url'        => $photoUrl,
+                    'is_existing'      => true,
+                ]
+            ]);
+        }
+
+        // 2. فحص هل الرقم مسجل في جدول الشؤون
+        $uidRecord = DB::table('university_ids')->where('university_id', $uid)->first();
+        if (!$uidRecord) {
+            return response()->json([
+                'status'  => 'not_found',
+                'message' => 'هذا الرقم الجامعي غير مسجل في الشؤون الجامعية! لا يمكن لرئيس القسم إنشاء حساب قبل أن تُنشئ الشؤون رقماً جامعياً للطالب.',
+            ]);
+        }
+
+        // 3. فحص إذا كان مستخدم سابقاً
+        if ($uidRecord->is_used) {
+            $studentUser = DB::table('students')
+                ->join('users', 'students.user_id', '=', 'users.user_id')
+                ->leftJoin('programs', 'students.program_id', '=', 'programs.id')
+                ->where('students.student_code', $uid)
+                ->orWhere('users.university_id', $uid)
+                ->orWhere('users.username', $uid)
+                ->select('users.*', 'students.program_id', 'students.level as student_level', 'students.reference_photo', 'programs.name as program_name')
+                ->first();
+
+            if ($studentUser) {
+                $photo = $studentUser->avatar ?? ($studentUser->reference_photo ?? $uidRecord->photo);
+                $photoUrl = $photo ? asset('storage/' . $photo) : null;
+
+                return response()->json([
+                    'status'  => 'already_registered',
+                    'message' => 'هذا الرقم الجامعي لديه حساب مفعل بالفعل في النظام باسم: ' . $studentUser->full_name . ' (وضع العرض فقط)',
+                    'data'    => [
+                        'university_id'    => $uid,
+                        'full_name'        => $studentUser->full_name,
+                        'phone'            => $studentUser->phone ?? ($uidRecord->phone ?? ''),
+                        'email'            => $studentUser->email ?? '',
+                        'date_of_birth'    => $studentUser->birth_date ? date('Y-m-d', strtotime($studentUser->birth_date)) : ($uidRecord->date_of_birth ? date('Y-m-d', strtotime($uidRecord->date_of_birth)) : ''),
+                        'telegram_chat_id' => $studentUser->telegram_chat_id ?? ($uidRecord->telegram_chat_id ?? ''),
+                        'department'       => $studentUser->department ?? '',
+                        'program_id'       => $studentUser->program_id ?? '',
+                        'program_name'     => $studentUser->program_name ?? '',
+                        'level'            => $studentUser->student_level ?? ($studentUser->academic_year ?? 'السنة الأولى'),
+                        'gender'           => $studentUser->gender ?? 'ذكر',
+                        'photo'            => $photo,
+                        'photo_url'        => $photoUrl,
+                        'is_existing'      => true,
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'status'  => 'already_used',
+                'message' => 'تم استخدام هذا الرقم الجامعي مسبقاً في إنشاء حساب آخر.',
+            ]);
+        }
+
+        $fullName = $uidRecord->full_name ?: trim(($uidRecord->first_name ?? '') . ' ' . ($uidRecord->last_name ?? ''));
+        $photoUrl = $uidRecord->photo ? asset('storage/' . $uidRecord->photo) : null;
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'تم التحقق بنجاح من سجلات الشؤون واسترجاع بيانات الطالب.',
+            'data'    => [
+                'university_id'    => $uidRecord->university_id,
+                'full_name'        => $fullName,
+                'first_name'       => $uidRecord->first_name,
+                'last_name'        => $uidRecord->last_name,
+                'phone'            => $uidRecord->phone ?? '',
+                'date_of_birth'    => $uidRecord->date_of_birth ? date('Y-m-d', strtotime($uidRecord->date_of_birth)) : '',
+                'telegram_chat_id' => $uidRecord->telegram_chat_id ?? '',
+                'department_id'    => $uidRecord->department_id ?? null,
+                'program_id'       => $uidRecord->program_id ?? null,
+                'level'            => $uidRecord->academic_year ?? null,
+                'photo'            => $uidRecord->photo,
+                'photo_url'        => $photoUrl,
+            ]
+        ]);
+    }
+
+    /**
+     * إضافة طالب جديد — مربوط بالشؤون
      */
     public function storeStudent(Request $request)
     {
         $this->normalizeAccountCredentials($request);
 
+        $uid = trim((string) $request->university_id);
+        $uidRecord = DB::table('university_ids')->where('university_id', $uid)->first();
+
+        if (!$uidRecord) {
+            return back()->withInput()->withErrors([
+                'university_id' => 'لا يمكن إنشاء الحساب: هذا الرقم الجامعي غير مسجل في الشؤون الجامعية! يرجى مراجعة موظف الشؤون لإصدار رقم جامعي للطالب أولاً.'
+            ]);
+        }
+
+        if ($uidRecord->is_used) {
+            return back()->withInput()->withErrors([
+                'university_id' => 'هذا الرقم الجامعي مستخدم مسبقاً ولديه حساب في النظام.'
+            ]);
+        }
 
         $request->validate([
             'full_name'        => 'required|string|max:255',
@@ -673,7 +805,6 @@ class HODWebController extends Controller
                 'email',
                 'unique:users,email',
                 'max:255',
-                
             ],
             'phone'            => 'nullable|string|max:20',
             'telegram_chat_id' => 'nullable|string|max:100',
@@ -691,7 +822,7 @@ class HODWebController extends Controller
             'program_id.exists'    => 'التخصص المختار غير موجود.'
         ]);
 
-        DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request, $uidRecord) {
             $userId = DB::table('users')->insertGetId([
                 'role_id'          => 3,
                 'full_name'        => $request->full_name,
@@ -701,6 +832,7 @@ class HODWebController extends Controller
                 'phone'            => $request->phone,
                 'telegram_chat_id' => $request->telegram_chat_id,
                 'department'       => $request->department,
+                'avatar'           => $uidRecord->photo ?? null,
                 'gender'           => $request->gender,
                 'birth_date'       => $request->birth_date,
                 'academic_year'    => $request->level,
@@ -711,13 +843,20 @@ class HODWebController extends Controller
             ]);
 
             $studentId = DB::table('students')->insertGetId([
-                'user_id'      => $userId,
-                'student_code' => $request->university_id,
-                'level'        => $request->level,
-                'birth_date'   => $request->birth_date,
-                'program_id'   => $request->program_id,
-                'created_at'   => now(),
-                'updated_at'   => now(),
+                'user_id'         => $userId,
+                'student_code'    => $request->university_id,
+                'level'           => $request->level,
+                'birth_date'      => $request->birth_date,
+                'program_id'      => $request->program_id,
+                'reference_photo' => $uidRecord->photo ?? null,
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+
+            // تعليم الرقم الجامعي كمستخدم في جدول الشؤون
+            DB::table('university_ids')->where('id', $uidRecord->id)->update([
+                'is_used'    => true,
+                'updated_at' => now(),
             ]);
 
             \App\Models\Student::autoAssignAdvisor($studentId);
@@ -765,7 +904,7 @@ class HODWebController extends Controller
             'full_name'               => 'required|string|max:255',
             'phone'                   => 'required|string|max:20',
             'username'                => 'required|string|unique:users,username|max:255',
-            'email'                   => 'required|email|unique:users,email|max:255',
+            'email'                   => 'nullable|email|unique:users,email|max:255',
             'children_university_ids' => 'nullable|array',
             'password'                => 'required|string|min:6|confirmed',
         ], [
@@ -779,7 +918,7 @@ class HODWebController extends Controller
                 'role_id'    => 4,
                 'full_name'  => $request->full_name,
                 'username'   => $request->username,
-                'email'      => $request->email,
+                'email'      => $request->filled('email') ? trim($request->email) : null,
                 'phone'      => $request->phone,
                 'password'   => bcrypt($request->password),
                 'status'     => 'active',
@@ -835,15 +974,16 @@ class HODWebController extends Controller
             abort(403, 'لا تملك صلاحية تعديل هذا الحساب.');
         }
 
+        $isParent = ($user->role_id == 4);
+
         $request->validate([
             'full_name' => 'required|string|max:255',
             'phone'     => 'nullable|string|max:20',
             'email'     => [
-                'required',
+                $isParent ? 'nullable' : 'required',
                 'email',
                 'max:255',
                 'unique:users,email,' . $id . ',user_id',
-                
             ],
             'password'  => 'nullable|string|min:6|confirmed',
         ], [
@@ -853,7 +993,7 @@ class HODWebController extends Controller
 
         $updates = [
             'full_name'  => $request->full_name,
-            'email'      => $request->email,
+            'email'      => $request->filled('email') ? trim($request->email) : null,
             'phone'      => $request->phone,
             'updated_at' => now(),
         ];
@@ -913,6 +1053,17 @@ class HODWebController extends Controller
      */
     public function organization()
     {
+        $dept = \App\Support\Access::headDepartment(Auth::user());
+        $departmentId = $dept['id'];
+
+        // الفروع والتخصصات التابعة لقسم رئيس القسم
+        $branches = [];
+        if ($departmentId) {
+            $branches = DB::table('programs')->where('department_id', $departmentId)->orderBy('id')->get();
+        } else {
+            $branches = DB::table('programs')->orderBy('id')->get();
+        }
+
         // 1. جلب الجدول الدراسي الأسبوعي
         $schedules = DB::table('schedules')
             ->join('courses', 'schedules.course_id', '=', 'courses.course_id')
@@ -932,16 +1083,20 @@ class HODWebController extends Controller
             ->get();
 
         // 3. جلب المواد مجمّعة حسب الفرع (program) والسنة للفلترة في JavaScript
-        $allCourses = DB::table('courses')
+        $allCoursesQuery = DB::table('courses')
             ->join('course_program', 'courses.course_id', '=', 'course_program.course_id')
             ->join('programs', 'course_program.program_id', '=', 'programs.id')
             ->leftJoin('departments', 'programs.department_id', '=', 'departments.department_id')
             ->select('courses.course_id', 'courses.title', 'programs.name as branch_name', 'courses.year', 'courses.semester_id', 'courses.weight', 'courses.hours')
-            ->orderBy('courses.title')
-            ->get();
+            ->orderBy('courses.title');
+
+        if ($departmentId) {
+            $allCoursesQuery->where('programs.department_id', $departmentId);
+        }
+        $allCourses = $allCoursesQuery->get();
 
         // 4. جلب المدربين مجمّعين حسب الفرع والسنة للفلترة في JavaScript
-        $allTeachers = DB::table('teachers')
+        $allTeachersQuery = DB::table('teachers')
             ->join('users', 'teachers.user_id', '=', 'users.user_id')
             ->join('course_teachers', 'teachers.teacher_id', '=', 'course_teachers.teacher_id')
             ->join('courses', 'course_teachers.course_id', '=', 'courses.course_id')
@@ -955,14 +1110,28 @@ class HODWebController extends Controller
                 'courses.year'
             )
             ->distinct()
-            ->orderBy('users.full_name')
-            ->get();
+            ->orderBy('users.full_name');
 
-        // للتوافق مع نماذج الإضافة القديمة (fallback)
+        if ($departmentId) {
+            $allTeachersQuery->where('programs.department_id', $departmentId);
+        }
+        $allTeachers = $allTeachersQuery->get();
+
+        // للتوافق مع نماذج الإضافة والقوالب
         $courses  = $allCourses;
         $teachers = $allTeachers;
 
-        return view('hod.organization', compact('schedules', 'exams', 'courses', 'teachers', 'allCourses', 'allTeachers'));
+        // جلب هيكل التوقيت والحصص المعتمد للقسم
+        $scheduleStructure = \App\Services\ScheduleStructureService::getStructure($departmentId);
+        $dayTimelines = [];
+        foreach (\App\Services\ScheduleStructureService::DAYS as $d) {
+            $dayTimelines[$d] = \App\Services\ScheduleStructureService::calculateDayTimeline($departmentId, $d);
+        }
+
+        return view('hod.organization', compact(
+            'schedules', 'exams', 'courses', 'teachers', 'allCourses', 'allTeachers', 'branches',
+            'scheduleStructure', 'dayTimelines'
+        ));
     }
 
     /**
@@ -1121,20 +1290,21 @@ class HODWebController extends Controller
     }
 
     /**
-     * حفظ حصة دراسية جديدة
+     * حفظ حصة دراسية جديدة (تدعم حصة مفردة أو مجال حصص متتالية من X إلى Y)
      */
     public function storeSchedule(Request $request)
     {
         $this->normalizeAccountCredentials($request);
 
-
         $request->validate([
-            'course_id' => 'required|exists:courses,course_id',
-            'day' => 'required|string',
-            'period' => 'required|integer|between:1,5',
-            'department' => 'required|string',
-            'year' => 'required|string',
-            'room' => 'required|string',
+            'course_id'   => 'required|exists:courses,course_id',
+            'day'         => 'required|string',
+            'from_period' => 'nullable|integer|between:1,9',
+            'to_period'   => 'nullable|integer|between:1,9',
+            'period'      => 'nullable|integer|between:1,9',
+            'department'  => 'required|string',
+            'year'        => 'required|string',
+            'room'        => 'required|string',
         ]);
 
         if (!\App\Support\Access::headManagesCourse(Auth::user(), $request->course_id)) {
@@ -1142,61 +1312,161 @@ class HODWebController extends Controller
         }
 
         // جلب الأستاذ تلقائياً بناءً على المادة المختارة
-        // schedules.teacher_id مرتبط بـ users.user_id (وليس teachers.teacher_id)، لذا نمرّ عبر جدول teachers لجلب user_id الصحيح
         $teacherId = DB::table('course_teachers')
             ->join('teachers', 'course_teachers.teacher_id', '=', 'teachers.teacher_id')
             ->where('course_teachers.course_id', $request->course_id)
             ->value('teachers.user_id');
 
-        // تعيين أوقات الحصص بناءً على الرقم
-        $periods = [
-            1 => ['start' => '08:00', 'end' => '09:30'],
-            2 => ['start' => '09:30', 'end' => '11:00'],
-            3 => ['start' => '11:00', 'end' => '12:30'],
-            4 => ['start' => '12:30', 'end' => '14:00'],
-            5 => ['start' => '14:00', 'end' => '15:30'],
-        ];
+        $dept = \App\Support\Access::headDepartment(Auth::user());
+        $departmentId = $dept['id'] ?? null;
 
-        $startTime = $periods[$request->period]['start'];
-        $endTime = $periods[$request->period]['end'];
+        $fromPeriod = (int) ($request->from_period ?? $request->period ?? 1);
+        $toPeriod   = (int) ($request->to_period ?? $fromPeriod);
+        if ($toPeriod < $fromPeriod) {
+            $toPeriod = $fromPeriod;
+        }
+
+        // حساب أوقات البداية والنهاية من هيكل التوقيت المعتمد للقسم
+        $rangeTimes = \App\Services\ScheduleStructureService::getRangeTimes($departmentId, $request->day, $fromPeriod, $toPeriod);
+        $startTime  = $rangeTimes['start'];
+        $endTime    = $rangeTimes['end'];
         
         // دمج القسم والسنة في حقل الشعبة
         $classGroup = $request->department . ' - ' . $request->year;
 
-        // التحقق من تضارب المواعيد للمدرب (لا يمكن إضافة نفس الأستاذ بنفس الوقت)
-        if ($teacherId) {
-            $conflict = DB::table('schedules')
-                ->where('teacher_id', $teacherId)
-                ->where('day', $request->day)
-                ->where('start_time', 'like', $startTime . '%')
-                ->first();
+        // التحقق من تضارب المواعيد (تداخل فترات المحاضرات)
+        $hasOverlap = function ($query) use ($request, $startTime, $endTime) {
+            return $query->where('day', $request->day)
+                ->where(function ($q) use ($startTime, $endTime) {
+                    $q->where(function ($sq) use ($startTime, $endTime) {
+                        $sq->where('start_time', '<', $endTime)
+                           ->where('end_time', '>', $startTime);
+                    });
+                })->exists();
+        };
 
-            if ($conflict) {
+        if ($teacherId) {
+            $teacherConflict = DB::table('schedules')->where('teacher_id', $teacherId);
+            if ($hasOverlap($teacherConflict)) {
                 return redirect()->back()->with('error', __('messages.schedule_conflict_error'));
             }
         }
 
-        $sameSlot = fn () => DB::table('schedules')->where('day', $request->day)->where('start_time', 'like', $startTime . '%');
-        if ($sameSlot()->where('class_group', $classGroup)->exists()) {
-            return redirect()->back()->with('error', 'هذه الشعبة لديها حصة أخرى في نفس اليوم ونفس الوقت.');
+        $classConflict = DB::table('schedules')->where('class_group', $classGroup);
+        if ($hasOverlap($classConflict)) {
+            return redirect()->back()->with('error', 'هذه الشعبة لديها حصة أخرى متداخلة في نفس اليوم ونفس التوقيت.');
         }
-        if ($sameSlot()->where('room', $request->room)->exists()) {
-            return redirect()->back()->with('error', 'القاعة محجوزة في هذا الوقت لحصة أخرى.');
+
+        $roomConflict = DB::table('schedules')->where('room', $request->room);
+        if ($hasOverlap($roomConflict)) {
+            return redirect()->back()->with('error', 'القاعة محجوزة في هذا التوقيت لحصة أخرى.');
         }
 
         DB::table('schedules')->insert([
-            'course_id' => $request->course_id,
-            'teacher_id' => $teacherId,
-            'day' => $request->day,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'room' => $request->room,
+            'course_id'   => $request->course_id,
+            'teacher_id'  => $teacherId,
+            'day'         => $request->day,
+            'from_period' => $fromPeriod,
+            'to_period'   => $toPeriod,
+            'start_time'  => $startTime,
+            'end_time'    => $endTime,
+            'room'        => $request->room,
             'class_group' => $classGroup,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at'  => now(),
+            'updated_at'  => now(),
         ]);
 
         return redirect()->back()->with('success', __('messages.schedule_added_success'));
+    }
+
+    /**
+     * حفظ وتحديث هيكل وتوقيت الحصص الأسبوعي للقسم
+     */
+    public function saveScheduleStructure(Request $request)
+    {
+        $dept = \App\Support\Access::headDepartment(Auth::user());
+        $departmentId = $dept['id'] ?? null;
+
+        $rules = $request->input('rules');
+        if (!is_array($rules) || empty($rules)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'يرجى إضافة بطاقة واحدة على الأقل لهيكل الدوام.'], 422);
+            }
+            return back()->with('error', 'يرجى إضافة بطاقة واحدة على الأقل لهيكل الدوام.');
+        }
+
+        // تنظيف وتجهيز القواعد
+        $sanitizedRules = [];
+        foreach ($rules as $card) {
+            $days = array_values(array_filter((array) ($card['days'] ?? [])));
+            if (empty($days)) continue;
+
+            $isHoliday = !empty($card['is_holiday']) && ($card['is_holiday'] === true || $card['is_holiday'] === '1' || $card['is_holiday'] === 'true');
+
+            $sanitizedRules[] = [
+                'days'                    => $days,
+                'is_holiday'              => $isHoliday,
+                'first_period_start'      => trim($card['first_period_start'] ?? '08:15'),
+                'last_period_end'         => trim($card['last_period_end'] ?? '15:35'),
+                'period_duration_minutes' => max(20, (int) ($card['period_duration_minutes'] ?? 45)),
+                'break1_after_period'     => !empty($card['break1_after_period']) ? (int) $card['break1_after_period'] : null,
+                'break1_duration_minutes' => !empty($card['break1_duration_minutes']) ? (int) $card['break1_duration_minutes'] : 0,
+                'break2_after_period'     => !empty($card['break2_after_period']) ? (int) $card['break2_after_period'] : null,
+                'break2_duration_minutes' => !empty($card['break2_duration_minutes']) ? (int) $card['break2_duration_minutes'] : 0,
+            ];
+        }
+
+        if (empty($sanitizedRules)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'لم يتم تحديد أي أيام للبطاقات.'], 422);
+            }
+            return back()->with('error', 'لم يتم تحديد أي أيام للبطاقات.');
+        }
+
+        DB::table('department_schedule_structures')->updateOrInsert(
+            ['department_id' => $departmentId],
+            [
+                'title'      => 'الهيكل المعتمد للقسم',
+                'rules'      => json_encode($sanitizedRules, JSON_UNESCAPED_UNICODE),
+                'is_active'  => true,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
+        \App\Models\UserActivity::log('تحديث هيكل البرنامج', 'قام رئيس القسم بتحديث هيكل وتوقيت الحصص الأسبوعي للقسم.');
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حفظ واعتماد هيكل وتوقيت الحصص الأسبوعي بنجاح.',
+                'rules'   => $sanitizedRules,
+            ]);
+        }
+
+        return back()->with('success', 'تم حفظ واعتماد هيكل وتوقيت الحصص الأسبوعي بنجاح.');
+    }
+
+    /**
+     * جلب هيكل البرنامج وتوقيت الحصص الحالي كـ JSON
+     */
+    public function getScheduleStructure(Request $request)
+    {
+        $dept = \App\Support\Access::headDepartment(Auth::user());
+        $departmentId = $dept['id'] ?? null;
+
+        $rules = \App\Services\ScheduleStructureService::getStructure($departmentId);
+
+        $dayTimelines = [];
+        foreach (\App\Services\ScheduleStructureService::DAYS as $d) {
+            $dayTimelines[$d] = \App\Services\ScheduleStructureService::calculateDayTimeline($departmentId, $d);
+        }
+
+        return response()->json([
+            'success'      => true,
+            'rules'        => $rules,
+            'dayTimelines' => $dayTimelines,
+        ]);
     }
 
     /**

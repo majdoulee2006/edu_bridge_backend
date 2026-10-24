@@ -410,6 +410,7 @@ class TeacherController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'course_id' => 'required|exists:courses,course_id',
+            'require_face_verification' => 'nullable',
         ]);
 
         if ($validator->fails()) {
@@ -436,15 +437,20 @@ class TeacherController extends Controller
         $sessionUuid   = (string) \Illuminate\Support\Str::uuid();
         $sessionSecret = bin2hex(random_bytes(16));
 
+        $requireFace = $request->has('require_face_verification')
+            ? filter_var($request->input('require_face_verification'), FILTER_VALIDATE_BOOLEAN)
+            : true;
+
         $session = \App\Models\AttendanceSession::create([
-            'lesson_id'          => $lesson->lesson_id,
-            'qr_token'           => $token,
-            'session_uuid'       => $sessionUuid,
-            'session_secret'     => $sessionSecret,
-            'offline_mode'       => $request->input('offline_mode', 'standard'),
-            'expires_at'         => now()->addSeconds(30),
-            'session_expires_at' => now()->addMinutes(10),
-            'is_active'          => true,
+            'lesson_id'                 => $lesson->lesson_id,
+            'qr_token'                  => $token,
+            'session_uuid'              => $sessionUuid,
+            'session_secret'            => $sessionSecret,
+            'offline_mode'              => $request->input('offline_mode', 'standard'),
+            'require_face_verification' => $requireFace,
+            'expires_at'                => now()->addSeconds(30),
+            'session_expires_at'        => now()->addMinutes(10),
+            'is_active'                 => true,
         ]);
 
         \App\Support\QrTokens::recordIssued($session->id, $token);
@@ -452,15 +458,16 @@ class TeacherController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'session_id'          => $session->id,
-                'session_uuid'        => $sessionUuid,
-                'session_secret'      => $sessionSecret,
-                'qr_token'            => $token,
-                'expires_at'          => $session->expires_at,
-                'session_expires_at'  => $session->session_expires_at,
-                'expires_in_seconds'  => 30,
-                'lesson_id'           => $lesson->lesson_id,
-                'course_name'         => $course->title,
+                'session_id'                => $session->id,
+                'session_uuid'              => $sessionUuid,
+                'session_secret'            => $sessionSecret,
+                'qr_token'                  => $token,
+                'require_face_verification' => (bool) $session->require_face_verification,
+                'expires_at'                => $session->expires_at,
+                'session_expires_at'        => $session->session_expires_at,
+                'expires_in_seconds'        => 30,
+                'lesson_id'                 => $lesson->lesson_id,
+                'course_name'               => $course->title,
             ]
         ], 200);
     }
@@ -3001,15 +3008,8 @@ class TeacherController extends Controller
 
         // جلب ولي أمر الطالب للتسجيل المبدئي — parent_students.parent_id/student_id هما FK على users.user_id
         $parentUserId = DB::table('parent_students')
-            ->join('parents', function($j) {
-                $j->on('parent_students.parent_id', '=', 'parents.user_id')
-                  ->orOn('parent_students.parent_id', '=', 'parents.parent_id');
-            })
-            ->where(function($q) use ($student) {
-                $q->where('parent_students.student_id', $student->user_id)
-                  ->orWhere('parent_students.student_id', $student->student_id);
-            })
-            ->value('parents.user_id');
+            ->where('parent_students.student_id', $student->user_id)
+            ->value('parent_id');
 
         $summonId = DB::table('parent_summons')->insertGetId([
             'sender_user_id' => $sender->user_id,

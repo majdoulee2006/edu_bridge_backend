@@ -66,7 +66,8 @@ class UpdateAccountRequest extends FormRequest
         } elseif ($roleId == 6) { // Affairs
             $rules['username']       = ['required', 'string', 'max:255', 'unique:users,username,'.$id.',user_id'];
         } elseif ($roleId == 4) { // Parent
-            $rules['username']       = ['nullable', 'string', 'max:255', 'unique:users,username,'.$id.',user_id'];
+            $rules['username'] = ['nullable', 'string', 'max:255', 'unique:users,username,'.$id.',user_id'];
+            $rules['email']    = ['nullable', 'email', 'max:255', 'unique:users,email,'.$id.',user_id'];
         }
 
         return $rules;

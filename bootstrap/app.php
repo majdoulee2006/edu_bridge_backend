@@ -35,7 +35,12 @@ return Application::configure(basePath: dirname(__DIR__))
         })->everyFiveMinutes();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
+
+
             'role'          => \App\Http\Middleware\RoleMiddleware::class,
             'hod'           => \App\Http\Middleware\CheckHodRole::class,
             'teacher'       => \App\Http\Middleware\CheckTeacherRole::class,

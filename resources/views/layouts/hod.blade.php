@@ -19,6 +19,15 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/hod-style.css') }}?v={{ filemtime(public_path('css/hod-style.css')) }}">
     
+    <!-- Turbo Drive (Smooth SPA-like navigation without full page reloads) -->
+    <link rel="stylesheet" href="{{ asset('css/turbo.css') }}">
+    <script src="{{ asset('js/turbo.min.js') }}"></script>
+    <script src="{{ asset('js/turbo-bridge.js') }}" defer></script>
+
+    <!-- Glassmorphic Toasts & Skeleton Shimmer Loaders -->
+    <link rel="stylesheet" href="{{ asset('css/toast-skeleton.css') }}">
+    <script src="{{ asset('js/toast-skeleton.js') }}" defer></script>
+    
 @php
     $sysPrimary = \App\Models\SystemSetting::getSetting('primary_color', '#f2f20d');
 @endphp
@@ -453,14 +462,6 @@
                     <i class="fa-solid fa-sitemap"></i>
                     {{ __('messages.organization_title') }}
                 </a>
-                <a href="{{ url('/hod/schedule-studio') }}" class="nav-item {{ Request::is('hod/schedule-studio*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-calendar-days"></i>
-                    مولّد الجدول
-                </a>
-                <a href="{{ url('/hod/exam-studio') }}" class="nav-item {{ Request::is('hod/exam-studio*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-file-pen"></i>
-                    مولّد الامتحانات
-                </a>
                 <a href="{{ url('/hod/follow-up') }}" class="nav-item {{ Request::is('hod/follow-up*') || Request::is('hod/risk*') ? 'active' : '' }}">
                     <i class="fa-solid fa-gauge-high"></i>
                     لوحة المتابعة
@@ -752,6 +753,8 @@
     @include('partials.logout_modal')
     @include('partials.inactivity_logout')
     @include('partials.web_toast_notifications')
+    @include('partials.flash_toasts')
+
 </body>
 </html>
 

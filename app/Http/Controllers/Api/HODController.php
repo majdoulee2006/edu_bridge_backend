@@ -123,7 +123,7 @@ class HODController extends Controller
     {
         $request->validate([
             'full_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'email' => 'required_unless:role,parent|nullable|email|unique:users,email',
             'password' => 'required|string|min:6',
             'role' => 'required|in:teacher,student,parent',
             'specialization' => 'required_if:role,teacher|string',
@@ -140,12 +140,13 @@ class HODController extends Controller
                 'parent' => 4
             ];
 
-            $username = explode('@', $request->email)[0] . rand(10, 99);
+            $email = $request->filled('email') ? trim($request->email) : null;
+            $username = $email ? (explode('@', $email)[0] . rand(10, 99)) : ('parent_' . time() . rand(10, 99));
 
             $userId = DB::table('users')->insertGetId([
                 'full_name' => $request->full_name,
                 'username' => $username,
-                'email' => $request->email,
+                'email' => $email,
                 'password' => \Illuminate\Support\Facades\Hash::make($request->password),
                 'role_id' => $rolesMap[$request->role],
                 'status' => 'active',

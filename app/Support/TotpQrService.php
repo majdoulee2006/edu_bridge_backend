@@ -34,18 +34,20 @@ class TotpQrService
         string $secret,
         string $sessionUuid,
         int $unixTime,
+        bool $requireFace = true,
         int $step = self::DEFAULT_STEP
     ): string {
         $counter = self::calculateCounter($unixTime, $step);
         $token   = self::generateToken($secret, $sessionUuid, $counter);
+        $rf      = $requireFace ? 1 : 0;
 
-        return self::PROTOCOL_PREFIX . "?v=2&sid={$sessionUuid}&c={$counter}&t={$token}";
+        return self::PROTOCOL_PREFIX . "?v=2&sid={$sessionUuid}&c={$counter}&t={$token}&rf={$rf}";
     }
 
     /**
      * تحليل حمولة QR واستخراج مكوناتها.
      *
-     * @return array{version: int, sid: string, counter: int, token: string}|null
+     * @return array{version: int, sid: string, counter: int, token: string, require_face: bool}|null
      */
     public static function parsePayload(string $payload): ?array
     {
@@ -71,10 +73,11 @@ class TotpQrService
         }
 
         return [
-            'version' => (int) $params['v'],
-            'sid'     => (string) $params['sid'],
-            'counter' => (int) $params['c'],
-            'token'   => (string) $params['t'],
+            'version'      => (int) $params['v'],
+            'sid'          => (string) $params['sid'],
+            'counter'      => (int) $params['c'],
+            'token'        => (string) $params['t'],
+            'require_face' => isset($params['rf']) ? ($params['rf'] !== '0' && $params['rf'] !== 0) : true,
         ];
     }
 

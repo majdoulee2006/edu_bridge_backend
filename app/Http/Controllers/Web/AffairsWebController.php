@@ -2625,10 +2625,74 @@ class AffairsWebController extends Controller
     }
 
     // ─────────────────────────── الأرقام الجامعية ────────────────────
-    public function universityIds()
+    public function universityIds(Request $request)
     {
-        $ids = DB::table('university_ids')->orderByDesc('created_at')->get();
-        return view('affairs.university_ids', compact('ids'));
+        $departments = DB::table('departments')->orderBy('name')->get();
+        $programs = DB::table('programs')->orderBy('name')->get();
+
+        $query = DB::table('university_ids')
+            ->leftJoin('students', 'university_ids.university_id', '=', 'students.student_code')
+            ->leftJoin('users', 'students.user_id', '=', 'users.user_id')
+            ->leftJoin('programs', function($j) {
+                $j->on('students.program_id', '=', 'programs.id')
+                  ->orOn('university_ids.program_id', '=', 'programs.id');
+            })
+            ->leftJoin('departments', function($j) {
+                $j->on('programs.department_id', '=', 'departments.department_id')
+                  ->orOn('university_ids.department_id', '=', 'departments.department_id')
+                  ->orOn('users.department', '=', 'departments.name');
+            })
+            ->select(
+                'university_ids.*',
+                'departments.name as department_name',
+                'departments.department_id as department_id',
+                'programs.name as program_name',
+                'programs.id as program_id',
+                DB::raw('COALESCE(students.level, users.academic_year, university_ids.academic_year) as academic_year')
+            );
+
+        if ($request->filled('department_id')) {
+            $query->where(function($q) use ($request) {
+                $q->where('departments.department_id', $request->department_id)
+                  ->orWhere('university_ids.department_id', $request->department_id);
+            });
+        }
+
+        if ($request->filled('program_id')) {
+            $query->where(function($q) use ($request) {
+                $q->where('programs.id', $request->program_id)
+                  ->orWhere('university_ids.program_id', $request->program_id);
+            });
+        }
+
+        if ($request->filled('academic_year')) {
+            $query->where(function($q) use ($request) {
+                $q->where('students.level', $request->academic_year)
+                  ->orWhere('users.academic_year', $request->academic_year)
+                  ->orWhere('university_ids.academic_year', $request->academic_year);
+            });
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'used') {
+                $query->where('university_ids.is_used', true);
+            } elseif ($request->status === 'available') {
+                $query->where('university_ids.is_used', false);
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('university_ids.university_id', 'like', "%{$search}%")
+                  ->orWhere('university_ids.full_name', 'like', "%{$search}%")
+                  ->orWhere('university_ids.phone', 'like', "%{$search}%");
+            });
+        }
+
+        $ids = $query->orderByDesc('university_ids.created_at')->get();
+
+        return view('affairs.university_ids', compact('ids', 'departments', 'programs'));
     }
 
     public function storeUniversityId(Request $request)
@@ -2637,26 +2701,19 @@ class AffairsWebController extends Controller
 
 
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
-            'date_of_birth' => 'nullable|date',
-            'phone'      => 'nullable|string|max:20',
+            'university_id'    => 'required|string|max:50|unique:university_ids,university_id',
+            'first_name'       => 'required|string|max:255',
+            'last_name'        => 'required|string|max:255',
+            'date_of_birth'    => 'nullable|date',
+            'phone'            => 'nullable|string|max:20',
             'telegram_chat_id' => 'nullable|string|max:50',
-            'photo'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'photo'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+        ], [
+            'university_id.required' => 'الرقم الجامعي مطلوب.',
+            'university_id.unique'   => 'هذا الرقم الجامعي مسجل مسبقاً في النظام.',
         ]);
 
-        $year = date('Y');
-        $lastId = DB::table('university_ids')
-            ->where('university_id', 'like', $year . '%')
-            ->orderBy('university_id', 'desc')
-            ->value('university_id');
-
-        if ($lastId) {
-            $increment = intval(substr($lastId, 4)) + 1;
-            $newId = $year . str_pad($increment, 2, '0', STR_PAD_LEFT);
-        } else {
-            $newId = $year . '01';
-        }
+        $newId = trim($request->university_id);
 
         $fullName = trim($request->first_name . ' ' . $request->last_name);
         $telegramChatId = $request->telegram_chat_id ? trim($request->telegram_chat_id) : null;
@@ -2706,12 +2763,16 @@ class AffairsWebController extends Controller
     public function updateUniversityId(Request $request, $id)
     {
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
-            'date_of_birth' => 'nullable|date',
-            'phone'      => 'nullable|string|max:20',
+            'university_id'    => 'required|string|max:50|unique:university_ids,university_id,' . $id,
+            'first_name'       => 'required|string|max:255',
+            'last_name'        => 'required|string|max:255',
+            'date_of_birth'    => 'nullable|date',
+            'phone'            => 'nullable|string|max:20',
             'telegram_chat_id' => 'nullable|string|max:50',
-            'photo'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'photo'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+        ], [
+            'university_id.required' => 'الرقم الجامعي مطلوب.',
+            'university_id.unique'   => 'هذا الرقم الجامعي مسجل مسبقاً لطالب آخر.',
         ]);
 
         $uid = DB::table('university_ids')->where('id', $id)->first();
@@ -2722,6 +2783,7 @@ class AffairsWebController extends Controller
         $fullName = trim($request->first_name . ' ' . $request->last_name);
 
         $updates = [
+            'university_id'    => trim($request->university_id),
             'full_name'        => $fullName,
             'first_name'       => $request->first_name,
             'last_name'        => $request->last_name,

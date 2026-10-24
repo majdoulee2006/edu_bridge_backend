@@ -68,10 +68,7 @@
                     <span class="pl-4 pr-3 text-slate-400 flex items-center justify-center">
                         <span class="material-symbols-outlined">badge</span>
                     </span>
-                    <input required name="username" class="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 py-3.5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium min-w-0" placeholder="teacher_user" type="text" value="{{ old('username', isset($usr) ? preg_replace('/@edu-bridge\.com$/i', '', $usr->username) : '') }}"/>
-                    <span class="pr-4 pl-2 text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap select-none">
-                        @edu-bridge.com
-                    </span>
+                    <input required name="username" class="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 py-3.5 px-3 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium min-w-0" placeholder="teacher_user" type="text" value="{{ old('username', isset($usr) ? preg_replace('/@edu-bridge\.com$/i', '', $usr->username) : '') }}"/>
                 </div>
                 @error('username')<span class="text-xs text-red-500 font-semibold mr-1">{{ $message }}</span>@enderror
             </div>

@@ -40,17 +40,9 @@ class ParentWebController extends Controller
 
         // Get children linked to parent
         $children = DB::table('parent_students')
-            ->join('students', function($j) {
-                $j->on('parent_students.student_id', '=', 'students.student_id')
-                  ->orOn('parent_students.student_id', '=', 'students.user_id');
-            })
-            ->join('users as student_users', 'students.user_id', '=', 'student_users.user_id')
-            ->where(function($q) use ($parent, $user) {
-                $q->where('parent_students.parent_id', $user->user_id);
-                if ($parent) {
-                    $q->orWhere('parent_students.parent_id', $parent->parent_id);
-                }
-            })
+            ->join('users as student_users', 'parent_students.student_id', '=', 'student_users.user_id')
+            ->leftJoin('students', 'student_users.user_id', '=', 'students.user_id')
+            ->where('parent_students.parent_id', $user->user_id)
             ->select('students.student_id', 'students.level', 'student_users.academic_year', 'student_users.full_name', 'student_users.department', 'student_users.avatar', 'students.student_code')
             ->distinct()
             ->get();

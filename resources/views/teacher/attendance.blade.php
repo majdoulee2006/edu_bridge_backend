@@ -20,6 +20,13 @@
 
     .absentee-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border-color); }
     .absentee-item:last-child { border-bottom: none; }
+
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
+    .switch .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    .switch input:checked + .slider { background-color: #10b981; }
+    .switch input:checked + .slider:before { transform: translateX(20px); }
 </style>
 @endpush
 
@@ -45,14 +52,22 @@
                         </select>
                     </div>
 
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display:block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">{{ __('messages.subject_required') }}</label>
-                        <select name="course_id" id="start_course_select" class="select-field" required>
-                            <option value="">{{ __('messages.select_course_first') }}</option>
-                            @foreach($courses as $c)
-                                <option value="{{ $c->course_id }}" data-batch="{{ $c->batch_key }}">{{ $c->title }} ({{ $c->batch_label }})</option>
-                            @endforeach
-                        </select>
+                    <div style="margin-bottom: 1.5rem; padding: 0.9rem 1rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                        <div>
+                            <label for="require_face_verification" style="font-weight: 700; font-size: 0.92rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                                <i class="fa-solid fa-camera" style="color: var(--accent-color);"></i>
+                                <span>التحقق ببصمة الوجه</span>
+                            </label>
+                            <span style="font-size: 0.78rem; color: var(--text-secondary); display: block;">
+                                عند التفعيل، يُلزم الطالب بتأكيد وجهه بالكاميرا. عند الإلغاء، يكتفي بمسح رمز QR فقط.
+                            </span>
+                        </div>
+                        <div>
+                            <label class="switch" style="cursor: pointer; margin: 0;">
+                                <input type="checkbox" name="require_face_verification" id="require_face_verification" value="1" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
 
                     <button type="submit" style="width: 100%; padding: 0.9rem; background: var(--accent-color); color: #1a1a1a; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;">
@@ -74,12 +89,21 @@
                             <i class="fa-solid fa-clipboard-user"></i>
                         </div>
                         <div>
-                            <div style="font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="font-weight: 700; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                                 {{ $session->course_title }}
                                 @if($session->is_active)
                                     <span style="background: hsl(120,70%,90%); color: hsl(120,50%,30%); padding: 0.1rem 0.5rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 700;">{{ __('messages.open') }}</span>
                                 @else
                                     <span style="background: var(--bg-primary); color: var(--text-secondary); padding: 0.1rem 0.5rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 700;">{{ __('messages.closed') }}</span>
+                                @endif
+                                @if(!empty($session->require_face_verification))
+                                    <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 0.1rem 0.5rem; border-radius: 2rem; font-size: 0.68rem; font-weight: 700;">
+                                        <i class="fa-solid fa-camera"></i> بالوجه
+                                    </span>
+                                @else
+                                    <span style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 0.1rem 0.5rem; border-radius: 2rem; font-size: 0.68rem; font-weight: 700;">
+                                        <i class="fa-solid fa-bolt"></i> رمز فقط
+                                    </span>
                                 @endif
                             </div>
                             <div style="color: var(--text-secondary); font-size: 0.85rem;">
@@ -90,7 +114,7 @@
                     
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         @if($session->is_active)
-                            <button class="action-btn btn-qr" onclick="showQRModal('{{ $session->id }}', '{{ $session->qr_token }}', '{{ \Carbon\Carbon::parse($session->session_expires_at ?? $session->expires_at)->toIso8601String() }}')">
+                            <button class="action-btn btn-qr" onclick="showQRModal('{{ $session->id }}', '{{ $session->qr_token }}', '{{ \Carbon\Carbon::parse($session->session_expires_at ?? $session->expires_at)->toIso8601String() }}', {{ $session->require_face_verification ? 'true' : 'false' }})">
                                 <i class="fa-solid fa-qrcode"></i> {{ __('messages.show_qr') }} </button>
                             
                             <form action="{{ route('teacher.attendance.end', $session->id) }}" method="POST" style="display: inline;">
@@ -173,8 +197,14 @@
         <div class="modal-card" style="text-align: center; max-width: 480px;">
             <button class="close-btn" onclick="closeQrModal()"><i class="fa-solid fa-xmark"></i></button>
             <h3 style="font-weight: 800; margin-bottom: 0.75rem; font-size: 1.2rem;">
-                <i class="fa-solid fa-qrcode" style="color: var(--accent-color);"></i> {{ __('messages.scan_attendance_qr') }} </h3>
+                                <i class="fa-solid fa-qrcode" style="color: var(--accent-color);"></i> {{ __('messages.scan_attendance_qr') }} </h3>
             
+            {{-- Face status badge --}}
+            <div id="qr-face-status-badge" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.85rem; border-radius: 2rem; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.75rem;">
+                <i class="fa-solid fa-camera"></i>
+                <span id="qr-face-status-text">التحقق ببصمة الوجه: مفعّل 📸</span>
+            </div>
+
             {{-- Session timer --}}
             <div id="qr-session-timer" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.6rem 1.2rem; border-radius: 0.75rem; background: hsl(120,70%,95%); border: 1px solid hsl(120,50%,80%); font-weight: 700; font-size: 0.85rem; color: hsl(120,50%,30%);">
                 <i class="fa-solid fa-clock"></i>
@@ -331,15 +361,17 @@
     /* ===== QR Auto-Refresh System (like Flutter app) ===== */
     let currentSessionId = null;
     let currentToken = null;
+    let currentRequireFace = true;
     let tokenRefreshInterval = null;
     let tokenCountdownInterval = null;
     let sessionCountdownInterval = null;
     let sessionEndTime = null;
     let tokenSecondsLeft = 30;
 
-    function showQRModal(sessionId, token, sessionExpiresAt) {
+    function showQRModal(sessionId, token, sessionExpiresAt, requireFace = true) {
         currentSessionId = sessionId;
         currentToken = token;
+        currentRequireFace = (requireFace === true || requireFace === 1 || requireFace === '1');
         
         if (sessionExpiresAt) {
             let isoString = String(sessionExpiresAt).trim();
@@ -356,7 +388,7 @@
         }
 
         // Render QR
-        renderQR(token);
+        renderQR(token, currentRequireFace);
 
         // Reset UI
         document.getElementById('qr-session-ended').style.display = 'none';
@@ -380,10 +412,36 @@
         startSessionCountdown();
     }
 
-    function renderQR(token) {
+    function updateFaceBadgeUI() {
+        const badge = document.getElementById('qr-face-status-badge');
+        const text = document.getElementById('qr-face-status-text');
+        if (!badge || !text) return;
+        if (currentRequireFace) {
+            badge.style.background = '#ecfdf5';
+            badge.style.color = '#047857';
+            badge.style.border = '1px solid #a7f3d0';
+            const icon = badge.querySelector('i');
+            if (icon) icon.className = 'fa-solid fa-camera';
+            text.textContent = 'التحقق ببصمة الوجه: مفعّل 📸';
+        } else {
+            badge.style.background = '#fffbeb';
+            badge.style.color = '#b45309';
+            badge.style.border = '1px solid #fde68a';
+            const icon = badge.querySelector('i');
+            if (icon) icon.className = 'fa-solid fa-bolt';
+            text.textContent = 'التحقق ببصمة الوجه: ملغى (رمز QR فقط) ⚡';
+        }
+    }
+
+    function renderQR(token, requireFace) {
+        if (requireFace !== undefined) {
+            currentRequireFace = (requireFace === true || requireFace === 1 || requireFace === '1');
+        }
+        updateFaceBadgeUI();
         const qrContainer = document.getElementById('qrcode');
         qrContainer.innerHTML = '';
-        const data = 'edu-bridge://attendance?token=' + token;
+        const rfParam = currentRequireFace ? '1' : '0';
+        const data = 'edu-bridge://attendance?token=' + encodeURIComponent(token) + '&rf=' + rfParam;
         qrcodeInstance = new QRCode(qrContainer, {
             text: data,
             width: 250,
@@ -452,7 +510,10 @@
                 overlay.style.display = 'none';
                 if (data.success) {
                     currentToken = data.qr_token;
-                    renderQR(data.qr_token);
+                    if (data.require_face_verification !== undefined) {
+                        currentRequireFace = Boolean(data.require_face_verification);
+                    }
+                    renderQR(data.qr_token, currentRequireFace);
                     startTokenCountdown();
                 } else if (data.session_ended) {
                     clearInterval(tokenRefreshInterval);
@@ -592,7 +653,7 @@
         @endphp
         @if($newSess)
             document.addEventListener('DOMContentLoaded', function() {
-                showQRModal('{{ $newSess->id }}', '{{ $newSess->qr_token }}', '{{ \Carbon\Carbon::parse($newSess->session_expires_at ?? $newSess->expires_at)->toIso8601String() }}');
+                showQRModal('{{ $newSess->id }}', '{{ $newSess->qr_token }}', '{{ \Carbon\Carbon::parse($newSess->session_expires_at ?? $newSess->expires_at)->toIso8601String() }}', {{ $newSess->require_face_verification ? 'true' : 'false' }});
             });
         @endif
     @endif

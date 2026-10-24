@@ -130,45 +130,32 @@ class StudentController extends Controller
         // 3. جلب المحاضرة القادمة
         $academicYearStr = str_replace('السنة ال', 'سنة ', $user->academic_year ?? '');
         $branchName = \Illuminate\Support\Facades\DB::table('programs')->where('id', $student->program_id ?? null)->value('name') ?? $user->branch ?? '';
-        $classGroup = $branchName . ' - ' . $academicYearStr;
+        $classGroup = trim($branchName . ' - ' . $academicYearStr, ' -');
 
         $nextLecture = null;
         $today = now()->format('l');
 
-        $schedule = Schedule::where(function($q) use ($enrolledCourseIds, $classGroup) {
-                if (!empty($enrolledCourseIds)) {
-                    $q->whereIn('course_id', $enrolledCourseIds);
-                }
-                $q->orWhere('class_group', $classGroup);
-            })
-            ->where('day', $today)
-            ->where('start_time', '>', now()->format('H:i:s'))
-            ->orderBy('start_time', 'asc')
-            ->with('course')
-            ->first();
+        if (!empty($enrolledCourseIds) || !empty($classGroup)) {
+            $schedule = Schedule::where(function($q) use ($enrolledCourseIds, $classGroup) {
+                    if (!empty($enrolledCourseIds)) {
+                        $q->whereIn('course_id', $enrolledCourseIds);
+                    }
+                    if (!empty($classGroup)) {
+                        $q->orWhere('class_group', $classGroup);
+                    }
+                })
+                ->where('day', $today)
+                ->where('start_time', '>', now()->format('H:i:s'))
+                ->orderBy('start_time', 'asc')
+                ->with('course')
+                ->first();
 
-        if ($schedule) {
-            $nextLecture = [
-                'course_name' => $schedule->course->title ?? 'مادة غير محددة',
-                'room' => $schedule->room ?? 'قاعة غير محددة',
-                'start_time' => date('h:i A', strtotime($schedule->start_time)),
-                'end_time' => date('h:i A', strtotime($schedule->end_time)),
-            ];
-        } else {
-            $anySchedule = Schedule::with('course')->first();
-            if ($anySchedule) {
+            if ($schedule) {
                 $nextLecture = [
-                    'course_name' => $anySchedule->course->title ?? 'برمجة الموبايل (Flutter)',
-                    'room' => $anySchedule->room ?? 'مختبر البرمجيات 3',
-                    'start_time' => date('h:i A', strtotime($anySchedule->start_time)),
-                    'end_time' => date('h:i A', strtotime($anySchedule->end_time)),
-                ];
-            } else {
-                $nextLecture = [
-                    'course_name' => 'برمجة التطبيقات المحمولة (Flutter)',
-                    'room' => 'مختبر البرمجيات 3',
-                    'start_time' => '10:00 AM',
-                    'end_time' => '12:00 PM',
+                    'course_name' => $schedule->course->title ?? 'مادة غير محددة',
+                    'room' => $schedule->room ?? 'قاعة غير محددة',
+                    'start_time' => date('h:i A', strtotime($schedule->start_time)),
+                    'end_time' => date('h:i A', strtotime($schedule->end_time)),
                 ];
             }
         }
@@ -914,33 +901,6 @@ class StudentController extends Controller
                 ];
             })->values();
 
-        // 🌟 إذا كان جدول أي يوم فارغاً، نزود النظام بجداول افتراضية للمواضيع الدراسية
-        if ($schedules->isEmpty()) {
-            $defaultDays = [
-                ['day' => 'الأحد', 'course' => 'برمجة الموبايل (Flutter)', 'teacher' => 'د. حسام المحمود', 'time' => '09:00 AM - 11:00 AM', 'room' => 'مختبر البرمجيات 1'],
-                ['day' => 'الاثنين', 'course' => 'قواعد البيانات المتقدمة', 'teacher' => 'د. سارة العلي', 'time' => '10:00 AM - 12:00 PM', 'room' => 'قاعة الحاسوب 2'],
-                ['day' => 'الثلاثاء', 'course' => 'هندسة البرمجيات والتصميم', 'teacher' => 'د. أحمد المصطفى', 'time' => '08:30 AM - 10:30 AM', 'room' => 'المدرج الرئيسي A'],
-                ['day' => 'الأربعاء', 'course' => 'شبكات الحاسوب والأمن', 'teacher' => 'د. خالد الزهراني', 'time' => '11:00 AM - 01:00 PM', 'room' => 'مختبر الشبكات'],
-                ['day' => 'الخميس', 'course' => 'الذكاء الاصطناعي وتعلم الآلة', 'teacher' => 'د. ريم الخالد', 'time' => '09:00 AM - 11:30 AM', 'room' => 'مختبر الذكاء الاصطناعي'],
-            ];
-
-            $schedules = collect($defaultDays)->groupBy('day')->map(function($items, $day) {
-                return [
-                    'day' => $day,
-                    'lectures' => $items->map(function($item) {
-                        $parts = explode(' - ', $item['time']);
-                        return [
-                            'course_name' => $item['course'],
-                            'teacher'     => $item['teacher'],
-                            'start_time'  => $parts[0] ?? '09:00 AM',
-                            'end_time'    => $parts[1] ?? '11:00 AM',
-                            'room'        => $item['room'],
-                            'duration'    => '120 دقيقة',
-                        ];
-                    })->values()
-                ];
-            })->values();
-        }
 
         return response()->json([
             'success' => true,
@@ -2106,8 +2066,14 @@ class StudentController extends Controller
         $token = $request->qr_token;
         
         // محاولة استخراج التوكن إذا كان مدمجاً في رابط أو JSON
-        if (str_starts_with($token, 'edu-bridge://attendance?token=')) {
-            $token = str_replace('edu-bridge://attendance?token=', '', $token);
+        if (str_starts_with($token, 'edu-bridge://attendance')) {
+            $parsedUrl = parse_url($token);
+            if (!empty($parsedUrl['query'])) {
+                parse_str($parsedUrl['query'], $queryParams);
+                if (isset($queryParams['token'])) {
+                    $token = $queryParams['token'];
+                }
+            }
         } elseif (json_decode($token)) {
             $json = json_decode($token, true);
             $token = $json['token'] ?? $json['qr_token'] ?? $token;
@@ -2236,110 +2202,113 @@ class StudentController extends Controller
         $faceScore      = null;
         $attendanceStatus = 'present';
         $rejectReason   = null;
-
-        // حفظ صورة الوجه إن وُجدت
         $savedFaceImagePath = null;
-        if ($faceImage) {
-            // تخزين خاص (storage/app/private/faces) وليس المجلد العام
-            $savedFaceImagePath = \App\Support\FaceImageStore::save($faceImage, 'face_' . $student->student_id);
-        }
 
-        if ($faceEmbedding && count($faceEmbedding) > 0) {
-            $storedEmbedding = $student->face_embedding ?? [];
-            // إذا اختلف عدد القيم (تغيّر الـ format) → نعيد التسجيل تلقائياً
-            $formatChanged = !empty($storedEmbedding) && count($storedEmbedding) !== count($faceEmbedding);
+        // هل تتطلب هذه الجلسة التحقق من الوجه؟
+        $sessionRequiresFace = (bool) ($session->require_face_verification ?? true);
 
-            // كشف الـ embedding الفاسد (كل القيم متساوية = صورة موحدة اللون)
-            $isDegenerateEmbedding = !empty($storedEmbedding) &&
-                count(array_unique(array_map(fn($v) => round($v, 4), $storedEmbedding))) <= 3;
-
-            if (empty($storedEmbedding) || $student->requires_face_reset || $formatChanged) {
-                // تلقائياً: تحويل بصمة الطالب للنموذج الجديد ArcFace عند أول مسح بدون أي أعطال
-                $student->update([
-                    'face_embedding'      => $faceEmbedding,
-                    'requires_face_reset' => false,
-                ]);
-                // أول تسجيل للوجه: لا مرجع للمقارنة، فلا نمنحه "verified" بدرجة 100 وهمية
-                $faceStatus = 'first_time';
-                $faceScore  = null;
-            } elseif ($isDegenerateEmbedding) {
-                // الصورة المرجعية غير صالحة → تجاوز التحقق وتحديث البصمة الحية
-                $faceStatus = 'first_time';
-                $faceScore  = null;
-                $student->update(['face_embedding' => $faceEmbedding]);
-            } else {
-                // مقارنة بصمة ArcFace مع البصمة المرجعية
-                $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
-
-                // رفعنا الحد من 50% إلى 70% لأن 50% كانت تعني تشابهاً شبه معدوم (cosine similarity ~ 0)
-                if ($faceScore >= 70.0) {
-                    $faceStatus = 'verified';
-                    // تحديث تدريجي للتكيف مع النمو والتغيرات الشكليّة
-                    $updated = [];
-                    foreach ($student->face_embedding as $i => $v) {
-                        $updated[$i] = $v * 0.85 + ($faceEmbedding[$i] ?? $v) * 0.15;
-                    }
-                    $student->update(['face_embedding' => $updated]);
-                } else {
-                    // رفض الحضور إذا كانت بصمة الوجه غير مطابقة
-                    $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
-
-                    return response()->json([
-                        'success'       => false,
-                        'message'       => "فشل التحقق من الحضور: الوجه المصور غير مطابق للبصمة المسجلة للطالب (نسبة المطابقة: {$faceScore}%) ❌",
-                        'reject_reason' => 'face_mismatch',
-                        'face_score'    => $faceScore,
-                        'face_status'   => 'rejected',
-                    ], 403);
-                }
+        if (!$sessionRequiresFace) {
+            // الجلسة لا تتطلب تحققاً من الوجه: يكتفى بمسح رمز QR
+            $faceStatus = null;
+        } else {
+            // حفظ صورة الوجه إن وُجدت
+            if ($faceImage) {
+                // تخزين خاص (storage/app/private/faces) وليس المجلد العام
+                $savedFaceImagePath = \App\Support\FaceImageStore::save($faceImage, 'face_' . $student->student_id);
             }
-        } elseif ($faceImage) {
-            $refPhotoPath = $student->reference_photo;
-            if ($refPhotoPath && Storage::disk('public')->exists($refPhotoPath)) {
-                $refPhotoData = Storage::disk('public')->get($refPhotoPath);
-                $capturedData = base64_decode($faceImage);
 
-                $refVector = $this->extractImageVector($refPhotoData);
-                $capVector = $this->extractImageVector($capturedData);
+            if ($faceEmbedding && count($faceEmbedding) > 0) {
+                $storedEmbedding = $student->face_embedding ?? [];
+                // إذا اختلف عدد القيم (تغيّر الـ format) → نعيد التسجيل تلقائياً
+                $formatChanged = !empty($storedEmbedding) && count($storedEmbedding) !== count($faceEmbedding);
 
-                if (!empty($refVector) && !empty($capVector)) {
-                    $faceScore = $this->calculateFaceSimilarity($refVector, $capVector);
-                    // ضبط حد المطابقة لـ 70% ليقبل وجه الطالبة الحقيقي من كاميرا الجوال ويرفض الوجوه الغريبة
+                // كشف الـ embedding الفاسد (كل القيم متساوية = صورة موحدة اللون)
+                $isDegenerateEmbedding = !empty($storedEmbedding) &&
+                    count(array_unique(array_map(fn($v) => round($v, 4), $storedEmbedding))) <= 3;
+
+                if (empty($storedEmbedding) || $student->requires_face_reset || $formatChanged) {
+                    // تلقائياً: تحويل بصمة الطالب للنموذج الجديد ArcFace عند أول مسح بدون أي أعطال
+                    $student->update([
+                        'face_embedding'      => $faceEmbedding,
+                        'requires_face_reset' => false,
+                    ]);
+                    // أول تسجيل للوجه: لا مرجع للمقارنة، فلا نمنحه "verified" بدرجة 100 وهمية
+                    $faceStatus = 'first_time';
+                    $faceScore  = null;
+                } elseif ($isDegenerateEmbedding) {
+                    // الصورة المرجعية غير صالحة → تجاوز التحقق وتحديث البصمة الحية
+                    $faceStatus = 'first_time';
+                    $faceScore  = null;
+                    $student->update(['face_embedding' => $faceEmbedding]);
+                } else {
+                    // مقارنة بصمة ArcFace مع البصمة المرجعية
+                    $faceScore = $this->calculateFaceSimilarity($storedEmbedding, $faceEmbedding);
+
+                    // حد المطابقة 70%
                     if ($faceScore >= 70.0) {
                         $faceStatus = 'verified';
+                        // تحديث تدريجي للتكيف مع النمو والتغيرات الشكليّة
+                        $updated = [];
+                        foreach ($student->face_embedding as $i => $v) {
+                            $updated[$i] = $v * 0.85 + ($faceEmbedding[$i] ?? $v) * 0.15;
+                        }
+                        $student->update(['face_embedding' => $updated]);
                     } else {
+                        // رفض الحضور إذا كانت بصمة الوجه غير مطابقة
                         $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
 
                         return response()->json([
                             'success'       => false,
-                            'message'       => "فشل التحقق من الحضور: الوجه المباشر غير مطابق للصورة الرسمية للطالب ❌ (درجة التطابق: {$faceScore}%)",
+                            'message'       => "فشل التحقق من الحضور: الوجه المصور غير مطابق للبصمة المسجلة للطالب (نسبة المطابقة: {$faceScore}%) ❌",
                             'reject_reason' => 'face_mismatch',
                             'face_score'    => $faceScore,
                             'face_status'   => 'rejected',
                         ], 403);
                     }
+                }
+            } elseif ($faceImage) {
+                $refPhotoPath = $student->reference_photo;
+                if ($refPhotoPath && Storage::disk('public')->exists($refPhotoPath)) {
+                    $refPhotoData = Storage::disk('public')->get($refPhotoPath);
+                    $capturedData = base64_decode($faceImage);
+
+                    $refVector = $this->extractImageVector($refPhotoData);
+                    $capVector = $this->extractImageVector($capturedData);
+
+                    if (!empty($refVector) && !empty($capVector)) {
+                        $faceScore = $this->calculateFaceSimilarity($refVector, $capVector);
+                        if ($faceScore >= 70.0) {
+                            $faceStatus = 'verified';
+                        } else {
+                            $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
+
+                            return response()->json([
+                                'success'       => false,
+                                'message'       => "فشل التحقق من الحضور: الوجه المباشر غير مطابق للصورة الرسمية للطالب ❌ (درجة التطابق: {$faceScore}%)",
+                                'reject_reason' => 'face_mismatch',
+                                'face_score'    => $faceScore,
+                                'face_status'   => 'rejected',
+                            ], 403);
+                        }
+                    } else {
+                        $faceStatus = 'suspicious';
+                        $faceScore  = null;
+                    }
                 } else {
-                    // تعذّر استخراج بصمة للمقارنة: لا نعتبره تحققاً ناجحاً، بل نعلّمه للمراجعة
                     $faceStatus = 'suspicious';
                     $faceScore  = null;
                 }
             } else {
-                // لا توجد صورة مرجعية للمقارنة: الحضور يُسجَّل لكن يُعلَّم للمراجعة بدل اعتباره محقَّقاً
-                $faceStatus = 'suspicious';
-                $faceScore  = null;
+                // الجلسة تشترط التحقق بالوجه ولكن لم تُرسل بصمة أو صورة وجه
+                $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
+
+                return response()->json([
+                    'success'       => false,
+                    'message'       => 'يلزم التحقق بالوجه لتسجيل الحضور في هذه الجلسة.',
+                    'reject_reason' => 'face_mismatch',
+                    'face_status'   => 'rejected',
+                ], 403);
             }
-        }
-
-        // اشتراط الوجه (إعداد attendance.require_face): لا حضور بلا بصمة/صورة وجه
-        if (!$faceEmbedding && !$faceImage && config('attendance.require_face')) {
-            $this->logRejectedAttendance($student, $session, $deviceId, $latitude, $longitude, 'face_mismatch');
-
-            return response()->json([
-                'success'       => false,
-                'message'       => 'يلزم التحقق بالوجه لتسجيل الحضور.',
-                'reject_reason' => 'face_mismatch',
-                'face_status'   => 'rejected',
-            ], 403);
         }
 
         // ─── 6. تسجيل الحضور ─────────────────────────────────────────────

@@ -16,12 +16,12 @@ trait NormalizesAccountCredentialsTrait
      */
     protected function normalizeAccountCredentials(Request $request): void
     {
-        if ($request->filled('email') && !str_contains($request->email, '@')) {
-            $request->merge(['email' => trim($request->email) . '@gmail.com']);
+        if ($request->filled('username')) {
+            $request->merge(['username' => trim($request->username)]);
         }
 
-        if ($request->filled('username') && !str_contains($request->username, '@')) {
-            $request->merge(['username' => trim($request->username) . '@edu-bridge.com']);
+        if ($request->filled('email') && !str_contains($request->email, '@')) {
+            $request->merge(['email' => trim($request->email) . '@gmail.com']);
         }
     }
 }

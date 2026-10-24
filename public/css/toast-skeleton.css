@@ -1,0 +1,272 @@
+/* ==========================================================================
+   EduBridge - Elite Glassmorphic Toasts & Skeleton Shimmer
+   ========================================================================== */
+
+/* ─── 1. Toast Notification Container ─────────────────────────────────── */
+#edubridge-toast-container {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    z-index: 99999999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+    max-width: 400px;
+    width: calc(100vw - 48px);
+}
+
+[dir="ltr"] #edubridge-toast-container {
+    left: auto;
+    right: 24px;
+}
+
+/* ─── 2. Glassmorphic Toast Card ───────────────────────────────────────── */
+.edubridge-toast {
+    pointer-events: auto;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: rgba(20, 20, 24, 0.88);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255, 255, 255, 0.06);
+    color: #f3f4f6;
+    font-family: 'Cairo', system-ui, sans-serif;
+    transform-origin: top left;
+    animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+html.light .edubridge-toast {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.04);
+    color: #111827;
+}
+
+.edubridge-toast.toast-hiding {
+    animation: toastSlideOut 0.28s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* Toast Icon */
+.edubridge-toast-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.15rem;
+}
+
+.edubridge-toast-success .edubridge-toast-icon {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.edubridge-toast-error .edubridge-toast-icon {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.edubridge-toast-info .edubridge-toast-icon {
+    background: rgba(6, 182, 212, 0.15);
+    color: #06b6d4;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.edubridge-toast-warning .edubridge-toast-icon {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Toast Content */
+.edubridge-toast-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.edubridge-toast-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 3px;
+}
+
+.edubridge-toast-message {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+html.light .edubridge-toast-message {
+    color: #6b7280;
+}
+
+/* Toast Close Button */
+.edubridge-toast-close {
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 1rem;
+    line-height: 1;
+    transition: color 0.15s ease, transform 0.15s ease;
+    align-self: flex-start;
+}
+
+.edubridge-toast-close:hover {
+    color: #f3f4f6;
+    transform: scale(1.15);
+}
+
+html.light .edubridge-toast-close:hover {
+    color: #111827;
+}
+
+/* Toast Countdown Progress Bar */
+.edubridge-toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.edubridge-toast-progress-bar {
+    height: 100%;
+    width: 100%;
+    transform-origin: right;
+    animation: toastCountdown linear forwards;
+}
+
+[dir="ltr"] .edubridge-toast-progress-bar {
+    transform-origin: left;
+}
+
+.edubridge-toast-success .edubridge-toast-progress-bar { background: #10b981; }
+.edubridge-toast-error .edubridge-toast-progress-bar { background: #ef4444; }
+.edubridge-toast-info .edubridge-toast-progress-bar { background: #06b6d4; }
+.edubridge-toast-warning .edubridge-toast-progress-bar { background: #f59e0b; }
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.94);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-40px) scale(0.92);
+    }
+}
+
+@keyframes toastCountdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}
+
+/* ─── 3. Skeleton Shimmer Animations & Components ──────────────────────── */
+@keyframes edubridgeShimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.skeleton,
+.skeleton-box,
+.skeleton-text,
+.skeleton-circle,
+.skeleton-row,
+.skeleton-card {
+    background: linear-gradient(90deg, #18181b 25%, #27272a 50%, #18181b 75%) !important;
+    background-size: 200% 100% !important;
+    animation: edubridgeShimmer 1.6s infinite ease-in-out !important;
+    border-radius: 8px;
+    border: none !important;
+    color: transparent !important;
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+html.light .skeleton,
+html.light .skeleton-box,
+html.light .skeleton-text,
+html.light .skeleton-circle,
+html.light .skeleton-row,
+html.light .skeleton-card {
+    background: linear-gradient(90deg, #e4e4e7 25%, #f4f4f5 50%, #e4e4e7 75%) !important;
+    background-size: 200% 100% !important;
+}
+
+.skeleton-text {
+    height: 14px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+
+.skeleton-text.short {
+    width: 45%;
+}
+
+.skeleton-text.medium {
+    width: 70%;
+}
+
+.skeleton-circle {
+    border-radius: 9999px !important;
+}
+
+.skeleton-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 9999px !important;
+    flex-shrink: 0;
+}
+
+.skeleton-card {
+    padding: 20px;
+    border-radius: 16px;
+    min-height: 110px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.skeleton-table-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+}
+
+.skeleton-table-row {
+    height: 48px;
+    border-radius: 10px;
+    width: 100%;
+}

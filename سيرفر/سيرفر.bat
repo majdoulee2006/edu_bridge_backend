@@ -33,6 +33,8 @@ rem ------------------------------------------------------------
 where php >nul 2>&1
 if %errorlevel%==0 (
     set "PHP_EXE=php"
+) else if exist "C:\xampp 8.2\php\php.exe" (
+    set "PHP_EXE=C:\xampp 8.2\php\php.exe"
 ) else if exist "C:\xampp\php\php.exe" (
     set "PHP_EXE=C:\xampp\php\php.exe"
 ) else (

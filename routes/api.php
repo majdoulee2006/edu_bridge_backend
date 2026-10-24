@@ -353,42 +353,6 @@ Route::middleware(['auth:sanctum', 'single.session'])->group(function () {
 
     #========= روابط رئيس القسم ==========
     Route::prefix('department-head')->middleware('role:head')->group(function () {
-        // استوديو الجدول: مسودة يقترحها النظام يراجعها رئيس القسم ويعتمدها
-        Route::prefix('schedule-studio')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'index']);
-            Route::get('/settings', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'settings']);
-            Route::post('/rooms', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'storeRoom']);
-            Route::post('/rooms/auto', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'autoRooms']);
-            Route::post('/rooms/import', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'importRooms']);
-            Route::put('/rooms/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'updateRoom']);
-            Route::delete('/rooms/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'deleteRoom']);
-            Route::post('/availability', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'storeAvailability']);
-            Route::delete('/availability/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'deleteAvailability']);
-            Route::post('/generate', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'generate']);
-            Route::get('/{id}', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'show']);
-            Route::post('/{id}/move', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'move']);
-            Route::post('/{id}/swap', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'swap']);
-            Route::post('/{id}/lock', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'lock']);
-            Route::post('/{id}/regenerate', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'regenerate']);
-            Route::post('/{id}/approve', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'approve']);
-            Route::post('/{id}/discard', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'discard']);
-            Route::post('/{id}/revert', [\App\Http\Controllers\Api\ScheduleStudioController::class, 'revert']);
-        });
-
-        // مولّد الجدول الامتحاني (مذاكرات + امتحانات): توزيع على القاعات ومراقب لكل قاعة، ثم اعتماد
-        Route::prefix('exam-studio')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Api\ExamStudioController::class, 'index']);
-            Route::post('/generate', [\App\Http\Controllers\Api\ExamStudioController::class, 'generate']);
-            Route::get('/{id}', [\App\Http\Controllers\Api\ExamStudioController::class, 'show']);
-            Route::post('/{id}/move', [\App\Http\Controllers\Api\ExamStudioController::class, 'move']);
-            Route::post('/{id}/lock', [\App\Http\Controllers\Api\ExamStudioController::class, 'lock']);
-            Route::post('/{id}/student', [\App\Http\Controllers\Api\ExamStudioController::class, 'moveStudent']);
-            Route::post('/{id}/proctor', [\App\Http\Controllers\Api\ExamStudioController::class, 'proctor']);
-            Route::post('/{id}/regenerate', [\App\Http\Controllers\Api\ExamStudioController::class, 'regenerate']);
-            Route::post('/{id}/approve', [\App\Http\Controllers\Api\ExamStudioController::class, 'approve']);
-            Route::post('/{id}/discard', [\App\Http\Controllers\Api\ExamStudioController::class, 'discard']);
-            Route::post('/{id}/revert', [\App\Http\Controllers\Api\ExamStudioController::class, 'revert']);
-        });
 
         // Dashboard & Profile & Notifications
         Route::get('/dashboard',     [DepartmentHeadController::class, 'dashboard']);

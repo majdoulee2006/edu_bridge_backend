@@ -42,6 +42,15 @@
     <!-- Shared HOD Style (same as teacher/hod) -->
     <link rel="stylesheet" href="{{ asset('css/hod-style.css') }}?v={{ filemtime(public_path('css/hod-style.css')) }}">
 
+    <!-- Turbo Drive (Smooth SPA-like navigation without full page reloads) -->
+    <link rel="stylesheet" href="{{ asset('css/turbo.css') }}">
+    <script src="{{ asset('js/turbo.min.js') }}"></script>
+    <script src="{{ asset('js/turbo-bridge.js') }}" defer></script>
+
+    <!-- Glassmorphic Toasts & Skeleton Shimmer Loaders -->
+    <link rel="stylesheet" href="{{ asset('css/toast-skeleton.css') }}">
+    <script src="{{ asset('js/toast-skeleton.js') }}" defer></script>
+
 @php
     $sysPrimary = \App\Models\SystemSetting::getSetting('primary_color', '#f2f20d');
 @endphp
@@ -949,6 +958,7 @@
     @include('partials.logout_modal')
     @include('partials.inactivity_logout')
     @include('partials.web_toast_notifications')
+    @include('partials.flash_toasts')
 </body>
 </html>
 
